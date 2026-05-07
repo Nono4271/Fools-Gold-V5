@@ -1,7 +1,7 @@
 export const COLS = 700;
 export const ROWS = 700;
-export const TW = 80;   // tile width  — 2:1 classic isometric
-export const TH = 40;   // tile height — TW/2 gives the correct ~26° iso angle
+export const TW = 80;   // tile width
+export const TH = 53;   // tile height — flatter ~35° iso angle (option B)
 export const SW = 0;  // No side walls — RTW flat style
 export const TOP_PAD = 60;
 // Standard isometric: world is a diamond; grid lines run at 2:1 angle on screen
