@@ -720,12 +720,6 @@ export function resolveTroopTier(troopRef) {
   const idx = (troopRef?.tier ?? 1) - 1;
   return branch.tiers[Math.min(idx, 2)] ?? null;
 }
-  const faction = FACTION_TROOPS[factionKey];
-  if (!faction) return null;
-  const branch = faction.branches.find(b => b.key === branchKey);
-  if (!branch) return null;
-  return branch.tiers[tierIndex] ?? null;
-}
 
 // Get skills for a tier (0=lv1, 1=lv2, 2=lv3)
 export function getTierSkills(branch, tierIndex) {
@@ -749,6 +743,3 @@ export function getAllTroopLabels() {
 
 // Legacy TROOP_KEYS shim so any existing code that imports TROOP_KEYS doesn't break
 export const TROOP_KEYS = FACTION_KEYS;
-
-// Legacy CMD_LVL constants (unchanged)
-export { CMD_LVL_MIN, CMD_LVL_MAX, xpToNext };
