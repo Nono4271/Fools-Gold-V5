@@ -1052,7 +1052,6 @@ export default function RiseToWar() {
 
     const mode = modeRef.current;
     const mvCmd = mvCmdRef.current;
-    const zoom = zoomRef.current;
 
     if (mode==="selectMarchDest" && mvCmd) {
       if (k===mvCmd.tk) { setMode("view"); setMvCmd(null); return; }
@@ -1061,18 +1060,27 @@ export default function RiseToWar() {
       return;
     }
 
-    if (tile.isHQ && tile.owner==="player") {
-      const { cx: hqCx, cy: hqCy } = isoXY(tile.c, tile.r);
-      const sX = hqCx * zoom + panRef.current.x;
-      const sY = (hqCy - 14) * zoom + panRef.current.y + 38;
-      const POPUP_W = 120, POPUP_H = 60;
-      const hqPx = Math.min(window.innerWidth-POPUP_W-8, Math.max(8, sX-POPUP_W/2));
-      const hqPy = Math.max(46, sY-POPUP_H-12);
-      setSelKey(k); setPopupPos({ x:hqPx, y:hqPy }); setPopupMode("hqEnter");
+    // Issue 2 fix: ANY part of the player HQ (isHQ or isHQPart) opens the HQ directly
+    const isPlayerHqTile = (tile.isHQ || tile.isHQPart) && tile.owner === "player";
+    const isPlayerHqPartTile = tile.isHQPart && (() => {
+      // isHQPart tiles store hqPrimaryKey — check if that primary tile is player-owned
+      const primaryKey = tile.hqPrimaryKey;
+      if (!primaryKey) return false;
+      const primaryTile = tilesRef.current[primaryKey];
+      return primaryTile?.owner === "player";
+    })();
+
+    if (isPlayerHqTile || isPlayerHqPartTile) {
+      // Issue 1 fix: open HQ directly — no intermediate popup
+      setHqOpen(true);
+      setHqTab("hub");
+      setSelKey(null);
+      setPopupPos(null);
       setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
       return;
     }
 
+    const zoom = zoomRef.current;
     const elev = tile.isHQ ? 14 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
     const { cx, cy } = isoXY(tile.c, tile.r);
     const screenX = cx * zoom + panRef.current.x;
@@ -1083,7 +1091,7 @@ export default function RiseToWar() {
 
     setSelKey(k); setPopupPos({ x:px, y:py }); setPopupMode("main"); setEditArmyCmd(null);
     setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
-  }, [floaty, startMarch]);
+  }, [floaty, startMarch, setHqOpen, setHqTab]);
 
   // ── Screen routing ──
   if (screen==="title")   return <TitleScreen setScreen={setScreen} />;
@@ -1112,8 +1120,24 @@ export default function RiseToWar() {
 
   // ── Game screen ──
   return (
-    <div style={{width:"100vw",height:"100vh",position:"relative",overflow:"hidden",background:"#0e1014",userSelect:"none",touchAction:"none"}}>
-      <style>{CSS}</style>
+    <div style={{
+      width:"100vw", height:"100vh", position:"relative", overflow:"hidden",
+      background:"#0e1014", userSelect:"none",
+      touchAction:"none",
+      // Phone optimizations: eliminate tap delay and visual tap flash
+      WebkitTapHighlightColor:"transparent",
+      WebkitTouchCallout:"none",
+      WebkitUserSelect:"none",
+      // Prevent overscroll bounce on iOS
+      overscrollBehavior:"none",
+    }}>
+      <style>{CSS}
+        {`
+          * { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+          canvas { touch-action: none !important; }
+          button, .btn { touch-action: manipulation; cursor: pointer; }
+        `}
+      </style>
 
       {/* ── Loading overlay ── */}
       {!mapReady && (
