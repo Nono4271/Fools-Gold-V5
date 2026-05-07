@@ -1024,14 +1024,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         world.y = lockedPan.y;
         // Redraw at final pan position — one rAF for Pixi, notify React in the NEXT frame
         // so the two heavy operations don't collide on the same main-thread slot.
-        const t0 = performance.now();
+        const _panT0 = performance.now();
         requestAnimationFrame(() => {
-          const t1 = performance.now();
-          window._perfLog?.(`panEnd→rAF:+${Math.round(t1-t0)}ms`);
+          const _panDelay = performance.now() - _panT0;
+          window._perfLog?.(`panEnd→rAF:+${Math.round(_panDelay)}ms`);
+          if (_panDelay > 2000) { window._perfLog?.(`skip:stale`); return; }
           lastBoundsRef.current = null;
           redrawRef.current?.redraw(true);
-          const t2 = performance.now();
-          window._perfLog?.(`pixi:redraw:+${Math.round(t2-t1)}ms`);
+          const _t2 = performance.now();
+          window._perfLog?.(`pixi:redraw:+${Math.round(_t2 - _panT0 - _panDelay)}ms`);
           requestAnimationFrame(() => {
             onPanChangeRef.current(lockedPan);
             window._perfLog?.(`react:panNotify`);

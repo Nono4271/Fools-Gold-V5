@@ -280,13 +280,13 @@ export default function RiseToWar() {
   const panNotifyTimerRef = useRef(null);
   const onPanChange = useCallback(np => {
     panRef.current = np;
-    // Throttle display-state updates to ~200ms so Minimap doesn't force
-    // a full Game re-render on every pointer-move frame.
+    // Throttle minimap updates to 500ms — canvas redraw is fast but
+    // React reconciliation of props still costs ~1ms, no need for more.
     if (!panNotifyTimerRef.current) {
       panNotifyTimerRef.current = setTimeout(() => {
         panNotifyTimerRef.current = null;
         setDisplayPanZoom(prev => ({ ...prev, pan: { ...panRef.current } }));
-      }, 200);
+      }, 500);
     }
   }, []);
 
