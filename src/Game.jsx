@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { flushSync } from "react-dom";
+import { flushSync, unstable_batchedUpdates } from "react-dom";
 import { MapRenderer } from "./MapRenderer";
 
 // Constants
@@ -619,7 +619,11 @@ export default function RiseToWar() {
     onAiRssTick:    tickAiRss,
     onAiMarchCheck: tickAiMarch,
     onAiEconTick:   tickAiEcon,
-    onTick: (now) => setNowTick(now),
+    onTick: (now) => {
+      // Only update nowTick every 5s — it's only used for draw-timer countdown display
+      // This eliminates 4 out of 5 full Game re-renders from the 1s heartbeat
+      setNowTick(prev => (now - prev >= 5000) ? now : prev);
+    },
   });
 
   // ── Reinforcement march tick ──
@@ -1072,11 +1076,13 @@ export default function RiseToWar() {
 
     if (isPlayerHqTile || isPlayerHqPartTile) {
       // Issue 1 fix: open HQ directly — no intermediate popup
-      setHqOpen(true);
-      setHqTab("hub");
-      setSelKey(null);
-      setPopupPos(null);
-      setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
+      unstable_batchedUpdates(() => {
+        setHqOpen(true);
+        setHqTab("hub");
+        setSelKey(null);
+        setPopupPos(null);
+        setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
+      });
       return;
     }
 
@@ -1089,8 +1095,10 @@ export default function RiseToWar() {
     const px = Math.min(window.innerWidth-POPUP_W-8, Math.max(8, screenX-POPUP_W/2));
     const py = Math.max(46, screenY-POPUP_H-16);
 
-    setSelKey(k); setPopupPos({ x:px, y:py }); setPopupMode("main"); setEditArmyCmd(null);
-    setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
+    unstable_batchedUpdates(() => {
+      setSelKey(k); setPopupPos({ x:px, y:py }); setPopupMode("main"); setEditArmyCmd(null);
+      setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
+    });
   }, [floaty, startMarch, setHqOpen, setHqTab]);
 
   // ── Screen routing ──
