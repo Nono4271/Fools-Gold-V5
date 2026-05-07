@@ -1027,17 +1027,14 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         const t0 = performance.now();
         requestAnimationFrame(() => {
           const t1 = performance.now();
-          // eslint-disable-next-line no-undef
-          if (typeof perfLog !== "undefined") perfLog(`panEnd:rAF +${Math.round(t1-t0)}ms`);
+          window._perfLog?.(`panEnd→rAF:+${Math.round(t1-t0)}ms`);
           lastBoundsRef.current = null;
           redrawRef.current?.redraw(true);
           const t2 = performance.now();
-          // eslint-disable-next-line no-undef
-          if (typeof perfLog !== "undefined") perfLog(`pixi:redraw +${Math.round(t2-t1)}ms`);
+          window._perfLog?.(`pixi:redraw:+${Math.round(t2-t1)}ms`);
           requestAnimationFrame(() => {
             onPanChangeRef.current(lockedPan);
-            // eslint-disable-next-line no-undef
-            if (typeof perfLog !== "undefined") perfLog(`react:panNotify`);
+            window._perfLog?.(`react:panNotify`);
           });
         });
       }
