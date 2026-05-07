@@ -1,5 +1,16 @@
 import { COLS, ROWS } from "../constants/geometry.js";
-import { TROOP } from "../constants/troops.js";
+import { FACTION_TROOPS } from "../constants/troops.js";
+
+// Helper: look up troop spd from a cmd's troopBranch descriptor { faction, branch, tier }
+function resolveTroopSpd(troopBranch) {
+  if (!troopBranch) return null;
+  const { faction, branch, tier = 0 } = troopBranch;
+  const f = FACTION_TROOPS[faction];
+  if (!f) return null;
+  const b = f.branches.find(b => b.key === branch);
+  if (!b) return null;
+  return b.tiers[tier]?.spd ?? null;
+}
 
 // ── Impassable tile set ───────────────────────────────────────────────────────
 // Populated once after map generation with ocean/border-mountain tile keys.
@@ -45,9 +56,9 @@ export function bfsPath(fromKey, toKey) {
   return null;
 }
 
-export function effectiveMarchSpd(cmdSpd, troopType, armySpdBonus = 0) {
-  if (!troopType || !TROOP[troopType]) return (cmdSpd || 60) + armySpdBonus;
-  const tSpd = TROOP[troopType].spd;
+export function effectiveMarchSpd(cmdSpd, troopBranch, armySpdBonus = 0) {
+  const tSpd = resolveTroopSpd(troopBranch);
+  if (!tSpd) return (cmdSpd || 60) + armySpdBonus;
   return Math.round(tSpd * 0.80 + ((cmdSpd || 60) + armySpdBonus) * 0.20);
 }
 
