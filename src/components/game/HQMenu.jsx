@@ -7,31 +7,31 @@ const SC = RC;
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const P = {
-  bg:     "rgba(5,7,11,0.97)",
-  border: "#1a1610",
+  bg:     "#0a0c10",
+  border: "#2a2418",
   gold:   "#f0c040",
-  dim:    "#5a4a3a",
-  text:   "#e0d0c0",
-  sub:    "#8a7a6a",
+  dim:    "#7a6a50",
+  text:   "#f0e8d8",
+  sub:    "#a89878",
   ff:     "'Cinzel',serif",
   ffb:    "'Crimson Pro',serif",
 };
 
 // ── Tile nav buttons (the 6 sections on the hub screen) ───────────────────────
 const HUB_TILES = [
-  { id:"buildings",    icon:"🏗",  label:"Buildings",  badge:null  },
-  { id:"commandcenter",icon:"📡",  label:"Command Center",  badge:null  },
-  { id:"troops",       icon:"⚔️",  label:"Training",    badge:null  },
-  { id:"army",         icon:"🪖",  label:"Army",   badge:null  },
-  { id:"repairbay",    icon:"⛺",  label:"Healing Tent",      badge:null  },
-  { id:"marketplace",  icon:"🏪",  label:"Marketplace",     badge:null  },
+  { id:"buildings",     icon:"🏛",  label:"Buildings",      color:"#c8903a" },
+  { id:"commandcenter", icon:"📊",  label:"Command Center", color:"#4488cc" },
+  { id:"troops",        icon:"⚔️",  label:"Training",       color:"#cc4444" },
+  { id:"army",          icon:"🪖",  label:"Army",           color:"#6aaa40" },
+  { id:"repairbay",     icon:"⛺",  label:"Healing Tent",   color:"#5588dd" },
+  { id:"marketplace",   icon:"🏪",  label:"Marketplace",    color:"#aa55cc" },
 ];
 
 // ── Small section header ──────────────────────────────────────────────────────
 function SectionHeader({ children }) {
   return (
     <div style={{ fontSize:8, color:P.dim, letterSpacing:".12em", fontFamily:P.ff,
-      fontWeight:700, marginBottom:8, paddingBottom:4, borderBottom:`1px solid #1e1810` }}>
+      fontWeight:700, marginBottom:8, paddingBottom:4, borderBottom:`1px solid ${P.border}` }}>
       {children}
     </div>
   );
@@ -52,56 +52,37 @@ function RssPill({ rssKey, amount, rss, small }) {
 // ─────────────────────────────────────────────────────────────────────────────
 //  HUB SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
-function HubScreen({ setHqTab, rss, gems, pKeys, bldgs, woundedTroops, cmds, bLog }) {
-  const totalTroops = cmds.filter(c=>c.owner==="player").reduce((s,c)=>s+(c.troops||0),0);
-  const activeCmds  = cmds.filter(c=>c.owner==="player"&&c.march).length;
-
+function HubScreen({ setHqTab }) {
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%" }}>
-      {/* Stats strip */}
-      <div style={{ display:"flex", gap:6, padding:"10px 14px",
-        background:"rgba(240,192,64,.04)", borderBottom:`1px solid ${P.border}` }}>
-        {[
-          { icon:"🗺", val:pKeys.size,   lbl:"Tiles"      },
-          { icon:"⚔",  val:cmds.filter(c=>c.owner==="player").length, lbl:"Commanders" },
-          { icon:"🪖",  val:totalTroops.toLocaleString(), lbl:"Troops"  },
-          { icon:"🚶",  val:activeCmds,  lbl:"Marching"   },
-        ].map(({ icon, val, lbl }) => (
-          <div key={lbl} style={{ flex:1, textAlign:"center" }}>
-            <div style={{ fontSize:13 }}>{icon}</div>
-            <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:P.text }}>{val}</div>
-            <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".04em" }}>{lbl}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* 6-tile hub grid */}
+    <div style={{ display:"flex", flexDirection:"column", height:"100%", padding:8 }}>
+      {/* 6-tile hub grid — fills full space */}
       <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr",
-        gridTemplateRows:"1fr 1fr 1fr", gap:2, padding:2, overflow:"hidden" }}>
+        gridTemplateRows:"1fr 1fr 1fr", gap:8 }}>
         {HUB_TILES.map(tile => (
           <button key={tile.id} onClick={() => setHqTab(tile.id)}
             style={{
-              position:"relative", background:"rgba(255,255,255,.03)",
-              border:`1px solid ${P.border}`, borderRadius:4, cursor:"pointer",
-              display:"flex", flexDirection:"column", alignItems:"flex-start",
-              justifyContent:"flex-end", padding:"10px 12px",
-              transition:"background .15s, border-color .15s",
-              overflow:"hidden",
+              position:"relative",
+              background:`linear-gradient(145deg, rgba(255,255,255,.04), rgba(255,255,255,.01))`,
+              border:`1px solid ${tile.color}44`,
+              borderRadius:8, cursor:"pointer",
+              display:"flex", flexDirection:"column", alignItems:"center",
+              justifyContent:"center", gap:10,
+              transition:"background .15s, border-color .15s, box-shadow .15s",
+              boxShadow:`inset 0 1px 0 ${tile.color}22`,
             }}
-            onMouseEnter={e => { e.currentTarget.style.background="rgba(240,192,64,.07)"; e.currentTarget.style.borderColor="#3a3020"; }}
-            onMouseLeave={e => { e.currentTarget.style.background="rgba(255,255,255,.03)"; e.currentTarget.style.borderColor=P.border; }}>
-            {/* Badge */}
-            {tile.badge != null && tile.badge > 0 && (
-              <div style={{ position:"absolute", top:8, right:8,
-                background:"#cc3030", borderRadius:"50%", width:16, height:16,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:8, color:"#fff", fontFamily:P.ff, fontWeight:700 }}>
-                {tile.badge}
-              </div>
-            )}
-            <div style={{ fontSize:22, marginBottom:4, opacity:.85 }}>{tile.icon}</div>
-            <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
-              color:P.gold, letterSpacing:".06em", textTransform:"uppercase" }}>
+            onMouseEnter={e => {
+              e.currentTarget.style.background=`linear-gradient(145deg, ${tile.color}18, ${tile.color}08)`;
+              e.currentTarget.style.borderColor=`${tile.color}88`;
+              e.currentTarget.style.boxShadow=`0 0 20px ${tile.color}22, inset 0 1px 0 ${tile.color}44`;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background=`linear-gradient(145deg, rgba(255,255,255,.04), rgba(255,255,255,.01))`;
+              e.currentTarget.style.borderColor=`${tile.color}44`;
+              e.currentTarget.style.boxShadow=`inset 0 1px 0 ${tile.color}22`;
+            }}>
+            <div style={{ fontSize:32 }}>{tile.icon}</div>
+            <div style={{ fontFamily:P.ff, fontSize:10, fontWeight:700,
+              color:tile.color, letterSpacing:".08em", textTransform:"uppercase" }}>
               {tile.label}
             </div>
           </button>
@@ -806,82 +787,81 @@ export default function HQMenu({
   const isHub = hqTab === "hub";
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:400, background:"rgba(0,0,0,.80)",
-      display:"flex", alignItems:"flex-end" }}
-      onClick={() => setHqOpen(false)}>
-      <div className="panel" onClick={e => e.stopPropagation()}
-        style={{ width:"100%", maxWidth:700, margin:"0 auto", maxHeight:"92vh",
-          display:"flex", flexDirection:"column", borderRadius:"10px 10px 0 0",
-          animation:"fadeUp .22s ease", background:P.bg }}>
+    <div style={{ position:"fixed", inset:0, zIndex:400,
+      background:P.bg, display:"flex", flexDirection:"column" }}>
 
-        {/* Title bar */}
-        <div style={{ padding:"10px 14px", borderBottom:`1px solid ${P.border}`,
-          display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            {hqTab !== "hub" && (
-              <button className="btn" onClick={() => setHqTab("hub")}
-                style={{ background:"none", border:`1px solid ${P.border}`,
-                  color:P.sub, fontSize:10, padding:"3px 8px" }}>
-                ← Back
-              </button>
-            )}
-            <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13,
-              background:"linear-gradient(135deg,#f0c040,#c03030,#f0c040)",
-              backgroundSize:"200% auto", WebkitBackgroundClip:"text",
-              WebkitTextFillColor:"transparent", animation:"shimmer 3s linear infinite" }}>
-              🏰 HEADQUARTERS
-            </div>
+      {/* Title bar */}
+      <div style={{ padding:"12px 16px", borderBottom:`1px solid ${P.border}`,
+        display:"flex", justifyContent:"space-between", alignItems:"center",
+        flexShrink:0, background:"rgba(0,0,0,.4)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          {hqTab !== "hub" && (
+            <button className="btn" onClick={() => setHqTab("hub")}
+              style={{ background:"rgba(255,255,255,.06)", border:`1px solid ${P.border}`,
+                color:P.sub, fontSize:11, padding:"4px 12px", borderRadius:4 }}>
+              ← Back
+            </button>
+          )}
+          <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14,
+            background:"linear-gradient(135deg,#f0c040,#c8803a,#f0c040)",
+            backgroundSize:"200% auto", WebkitBackgroundClip:"text",
+            WebkitTextFillColor:"transparent", animation:"shimmer 3s linear infinite" }}>
+            🏰 HEADQUARTERS
           </div>
-          <button className="btn" onClick={() => setHqOpen(false)}
-            style={{ background:"none", border:`1px solid #2a2a2a`, color:"#555", fontSize:11, padding:"3px 10px" }}>
-            ✕
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="scr" style={{ flex:1, overflowY:"auto", minHeight:0,
-          padding: isHub ? 0 : 12 }}>
-
-          {hqTab === "hub" && (
-            <HubScreen
-              setHqTab={setHqTab} rss={rss} gems={gems} pKeys={pKeys}
-              bldgs={bldgs} woundedTroops={woundedTroops} cmds={cmds} bLog={bLog} />
-          )}
-          {hqTab === "buildings" && (
-            <InfrastructureScreen
-              bldgs={bldgs} rss={rss} canAfford={canAfford}
-              upgrade={upgrade} upgQueue={upgQueue}
-              barracksCapacity={barracksCapacity} />
-          )}
-          {hqTab === "commandcenter" && (
-            <CommandCenterScreen
-              cmds={cmds} pKeys={pKeys} rss={rss} gems={gems}
-              bldgs={bldgs} bLog={bLog} tiles={tiles} />
-          )}
-          {hqTab === "troops" && (
-            <StrikeCraftScreen
-              bldgs={bldgs} barracksPool={barracksPool}
-              trainingQueue={trainingQueue} trainSlider={trainSlider}
-              setTrainSlider={setTrainSlider} canAfford={canAfford}
-              queueTraining={queueTraining} rss={rss} />
-          )}
-          {hqTab === "army" && (
-            <BattleGroupsScreen
-              cmds={cmds} setCmds={setCmds} bldgs={bldgs}
-              barracksPool={barracksPool} setBarracks={setBarracks}
-              sliderVals={sliderVals} setSliderVals={setSliderVals}
-              assignTroops={assignTroops} returnTroops={returnTroops}
-              playerHqKey={playerHqKey} />
-          )}
-          {hqTab === "repairbay" && (
-            <RepairBayScreen
-              bldgs={bldgs} woundedTroops={woundedTroops}
-              woundedQueue={woundedQueue} bLog={bLog} />
-          )}
-          {hqTab === "marketplace" && (
-            <MarketplaceScreen rss={rss} setRss={setRss} />
+          {hqTab !== "hub" && (
+            <div style={{ fontFamily:P.ff, fontSize:11, color:P.sub }}>
+              — {HUB_TILES.find(t => t.id === hqTab)?.label ?? ""}
+            </div>
           )}
         </div>
+        <button className="btn" onClick={() => setHqOpen(false)}
+          style={{ background:"rgba(200,50,50,.15)", border:"1px solid rgba(200,50,50,.4)",
+            color:"#dd6060", fontSize:12, padding:"4px 14px", borderRadius:4 }}>
+          ✕ Close
+        </button>
+      </div>
+
+      {/* Content — fills remaining screen */}
+      <div className="scr" style={{ flex:1, overflowY:"auto", minHeight:0,
+        padding: isHub ? 8 : 14 }}>
+
+        {hqTab === "hub" && (
+          <HubScreen setHqTab={setHqTab} />
+        )}
+        {hqTab === "buildings" && (
+          <InfrastructureScreen
+            bldgs={bldgs} rss={rss} canAfford={canAfford}
+            upgrade={upgrade} upgQueue={upgQueue}
+            barracksCapacity={barracksCapacity} />
+        )}
+        {hqTab === "commandcenter" && (
+          <CommandCenterScreen
+            cmds={cmds} pKeys={pKeys} rss={rss} gems={gems}
+            bldgs={bldgs} bLog={bLog} tiles={tiles} />
+        )}
+        {hqTab === "troops" && (
+          <StrikeCraftScreen
+            bldgs={bldgs} barracksPool={barracksPool}
+            trainingQueue={trainingQueue} trainSlider={trainSlider}
+            setTrainSlider={setTrainSlider} canAfford={canAfford}
+            queueTraining={queueTraining} rss={rss} />
+        )}
+        {hqTab === "army" && (
+          <BattleGroupsScreen
+            cmds={cmds} setCmds={setCmds} bldgs={bldgs}
+            barracksPool={barracksPool} setBarracks={setBarracks}
+            sliderVals={sliderVals} setSliderVals={setSliderVals}
+            assignTroops={assignTroops} returnTroops={returnTroops}
+            playerHqKey={playerHqKey} />
+        )}
+        {hqTab === "repairbay" && (
+          <RepairBayScreen
+            bldgs={bldgs} woundedTroops={woundedTroops}
+            woundedQueue={woundedQueue} bLog={bLog} />
+        )}
+        {hqTab === "marketplace" && (
+          <MarketplaceScreen rss={rss} setRss={setRss} />
+        )}
       </div>
     </div>
   );
