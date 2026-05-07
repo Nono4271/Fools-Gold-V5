@@ -57,14 +57,9 @@ if (dist <= 220) return 2;
 return 1;
 }
 
-export function calcSiegePower(troops, troopType, armySiegeBonus = 0) {
-if (!troops || troops <= 0) return 0;
-const SIEGE_RATES = {
-infantry: 1.0,
-mage:     0.3,
-spearmen: 0.8,
-horsemen: 0.5,
-};
-const siegeRate = SIEGE_RATES[troopType] || 0;
-return Math.round(troops * siegeRate + armySiegeBonus);
+export function calcSiegePower(troops, troopBranch, armySiegeBonus = 0, troopTierData = null) {
+  if (!troops || troops <= 0) return 0;
+  // Use the tier's siege stat if available, otherwise default to 0.5 rate
+  const siegeRate = troopTierData ? (troopTierData.siege / troops) : 0.5;
+  return Math.round(troops * siegeRate + (armySiegeBonus || 0));
 }
