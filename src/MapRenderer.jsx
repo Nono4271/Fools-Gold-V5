@@ -226,41 +226,129 @@ function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
 }
 
 function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
-  const rnd = tileRng(c, r);
-  const col = RC[rss] || RC.wood;
-  const cy2 = sy + TH / 2 + 2;
+  const rnd  = tileRng(c, r);
+  // sy is the top of the tile face; surface center is sy + TH/2
+  const base = sy + TH / 2;   // tile surface center — props sit here, grow UP (y decreases)
+  const s    = TH * 0.82;     // scale relative to tile height
+
   if (rss === "wood") {
-    const n = Math.min(6, pl + 2);
-    for (let i = 0; i < n; i++) {
-      const dx = (rnd()-0.5)*TW*0.52, dy = (rnd()-0.5)*TH*0.50, sz = 4+rnd()*4+pl*1.4;
-      gfx.beginFill(col.c); gfx.drawEllipse(cx+dx,cy2+dy+sz*0.4,sz*0.45,sz*0.22); gfx.endFill();
-      gfx.beginFill(col.a); gfx.drawEllipse(cx+dx,cy2+dy,sz*0.65,sz*1.05); gfx.endFill();
-      gfx.beginFill(col.b,0.65); gfx.drawEllipse(cx+dx-sz*0.14,cy2+dy-sz*0.2,sz*0.38,sz*0.45); gfx.endFill();
+    // ── Pine tree cluster ─────────────────────────────────────────────────────
+    const count = Math.min(3, 1 + Math.floor(pl / 2));
+    const offsets = [[-0.22, 0.06, 0.80, 0.55], [0.20, 0.05, 0.65, 0.48], [0.00, -0.02, 0.90, 0.62]];
+    // ground shadow
+    gfx.beginFill(0x000000, 0.20); gfx.drawEllipse(cx, base + s*0.07, s*0.38, s*0.09); gfx.endFill();
+    for (let i = 0; i < count; i++) {
+      const [dxr, dyr, hr, wr] = offsets[i];
+      const tx   = cx + dxr * s + (rnd()-0.5)*s*0.06;
+      const tbase= base + dyr * s;
+      const h    = s * hr;
+      const hw   = s * wr * 0.5;
+      // trunk
+      gfx.beginFill(0x3a2010); gfx.drawRect(tx - s*0.02, tbase - h*0.12, s*0.04, h*0.14); gfx.endFill();
+      // 4 canopy tiers, wide at bottom narrowing to tip
+      const tiers = [[0.00,0.28,0.50],[0.22,0.48,0.38],[0.42,0.65,0.27],[0.60,0.82,0.16]];
+      const dark  = [0x0e2010, 0x163014, 0x1e4018, 0x264e1c];
+      const lite  = [0x1e4020, 0x2a5a28, 0x3a7030, 0x4a8838];
+      tiers.forEach(([t0, t1, hwr], ti) => {
+        const boty = tbase - h * t0;
+        const topy = tbase - h * t1;
+        const thw  = hw * hwr;
+        gfx.beginFill(dark[ti]); gfx.drawPolygon([tx,topy, tx-thw,boty, tx,boty]); gfx.endFill();
+        gfx.beginFill(lite[ti]); gfx.drawPolygon([tx,topy, tx,boty, tx+thw,boty]); gfx.endFill();
+      });
     }
+
   } else if (rss === "stone") {
-    const n = Math.min(7, pl + 3);
-    for (let i = 0; i < n; i++) {
-      const dx = (rnd()-0.5)*TW*0.48, dy = (rnd()-0.5)*TH*0.44, sz = 3+rnd()*3+pl;
-      gfx.beginFill(col.c,0.9); gfx.drawEllipse(cx+dx+1,cy2+dy+1,sz*0.78,sz*0.48); gfx.endFill();
-      gfx.beginFill(col.a); gfx.drawEllipse(cx+dx,cy2+dy,sz*0.78,sz*0.48); gfx.endFill();
-      gfx.beginFill(col.b,0.55); gfx.drawEllipse(cx+dx-sz*0.18,cy2+dy-sz*0.1,sz*0.32,sz*0.18); gfx.endFill();
-    }
+    // ── Chunky boulder cluster ────────────────────────────────────────────────
+    gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(cx, base+s*0.05, s*0.36, s*0.10); gfx.endFill();
+    const boulders = [
+      [-0.16, 0.04, 0.22, 0.28],
+      [ 0.14, 0.02, 0.20, 0.24],
+      [ 0.00,-0.03, 0.26, 0.34],
+      [-0.08, 0.06, 0.14, 0.18],
+    ];
+    const order = [1, 3, 0, 2];
+    order.forEach(i => {
+      const [dxr, dyr, wr, hr] = boulders[i];
+      const bx   = cx + dxr * s + (rnd()-0.5)*s*0.04;
+      const by   = base + dyr * s;
+      const bh   = s * hr;
+      const hw   = s * wr * 0.5;
+      const top  = by - bh;
+      // left dark face
+      gfx.beginFill(0x3a3830);
+      gfx.drawPolygon([bx-hw*0.6,by, bx-hw*0.8,by-bh*0.5, bx-hw*0.2,top, bx+hw*0.1,by-bh*0.3]);
+      gfx.endFill();
+      // top face
+      gfx.beginFill(0x7a7468);
+      gfx.drawPolygon([bx-hw*0.2,top, bx+hw*0.4,top+bh*0.15, bx+hw*0.6,by-bh*0.4, bx+hw*0.1,by-bh*0.3]);
+      gfx.endFill();
+      // right face
+      gfx.beginFill(0x585450);
+      gfx.drawPolygon([bx+hw*0.1,by-bh*0.3, bx+hw*0.6,by-bh*0.4, bx+hw*0.7,by, bx-hw*0.6,by]);
+      gfx.endFill();
+      // highlight
+      gfx.beginFill(0xb4afa5, 0.22); gfx.drawEllipse(bx+hw*0.1, top+bh*0.2, hw*0.3, bh*0.12); gfx.endFill();
+    });
+
   } else if (rss === "ore") {
-    const n = Math.min(7, pl + 3);
-    for (let i = 0; i < n; i++) {
-      const dx = (rnd()-0.5)*TW*0.46, dy = (rnd()-0.5)*TH*0.38, sz = 3+rnd()*3+pl*0.8;
-      gfx.beginFill(col.c); gfx.drawEllipse(cx+dx,cy2+dy,sz*0.58,sz*0.38); gfx.endFill();
-      gfx.beginFill(col.a); gfx.drawEllipse(cx+dx,cy2+dy-sz*0.28,sz*0.48,sz*0.68); gfx.endFill();
-      gfx.beginFill(col.b,0.55); gfx.drawEllipse(cx+dx-sz*0.12,cy2+dy-sz*0.48,sz*0.22,sz*0.28); gfx.endFill();
-    }
+    // ── Gold nuggets half-buried ──────────────────────────────────────────────
+    gfx.beginFill(0x000000, 0.25); gfx.drawEllipse(cx, base+s*0.05, s*0.38, s*0.10); gfx.endFill();
+    const nuggets = [
+      [-0.18, 0.03, 0.12, 0.09],
+      [ 0.10, 0.02, 0.10, 0.08],
+      [-0.02,-0.02, 0.14, 0.10],
+      [ 0.22, 0.04, 0.09, 0.07],
+      [-0.10, 0.05, 0.08, 0.06],
+    ];
+    const order = [1, 4, 3, 0, 2];
+    order.forEach(i => {
+      const [dxr, dyr, rxr, ryr] = nuggets[i];
+      const nx  = cx + dxr * s + (rnd()-0.5)*s*0.03;
+      const ny  = base + dyr * s;
+      const rx  = s * rxr, ry = s * ryr;
+      // dirt socket
+      gfx.beginFill(0x1e1c14); gfx.drawEllipse(nx, ny+ry*0.5, rx*1.1, ry*0.5); gfx.endFill();
+      // nugget — 3 tone approximation of radial gradient
+      gfx.beginFill(0x4a2e08); gfx.drawEllipse(nx, ny, rx, ry*0.85); gfx.endFill();
+      gfx.beginFill(0xc89030); gfx.drawEllipse(nx-rx*0.1, ny-ry*0.12, rx*0.75, ry*0.65); gfx.endFill();
+      gfx.beginFill(0xf0d060); gfx.drawEllipse(nx-rx*0.22, ny-ry*0.28, rx*0.38, ry*0.30); gfx.endFill();
+      // specular
+      gfx.beginFill(0xfffce0, 0.45); gfx.drawEllipse(nx-rx*0.25, ny-ry*0.30, rx*0.28, ry*0.18); gfx.endFill();
+      // ore flecks
+      gfx.beginFill(0x64c8ff, 0.70); gfx.drawCircle(nx-rx*0.12, ny-ry*0.05, s*0.012); gfx.endFill();
+      gfx.beginFill(0x64c8ff, 0.70); gfx.drawCircle(nx+rx*0.08, ny+ry*0.05, s*0.010); gfx.endFill();
+    });
+
   } else {
-    const n = Math.min(6, pl + 2);
-    for (let i = 0; i < n; i++) {
-      const dx = (rnd()-0.5)*TW*0.44, dy = (rnd()-0.5)*TH*0.34, sz = 3+rnd()*3+pl;
-      gfx.beginFill(col.c,0.65); gfx.drawEllipse(cx+dx,cy2+dy+sz*0.28,sz*0.48,sz*0.28); gfx.endFill();
-      gfx.beginFill(col.a,0.82); gfx.drawEllipse(cx+dx,cy2+dy,sz*0.58,sz*0.88); gfx.endFill();
-      gfx.beginFill(col.b,0.45); gfx.drawEllipse(cx+dx-sz*0.08,cy2+dy-sz*0.22,sz*0.28,sz*0.38); gfx.endFill();
-    }
+    // ── Gas: bubbling pit with rising vapor ───────────────────────────────────
+    // pit depression
+    gfx.beginFill(0x080e04); gfx.drawEllipse(cx, base, s*0.28, s*0.11); gfx.endFill();
+    gfx.beginFill(0x121a06); gfx.drawEllipse(cx, base, s*0.20, s*0.07); gfx.endFill();
+    // rim
+    gfx.lineStyle(s*0.018, 0x2a3a10, 0.8);
+    gfx.drawEllipse(cx, base, s*0.28, s*0.11);
+    gfx.lineStyle(0);
+    // bubbles on surface
+    const bubbles = [[-0.10,0.02,0.055],[0.08,-0.02,0.045],[0.01,0.04,0.050],[-0.18,0.00,0.030]];
+    bubbles.forEach(([dxr,dyr,rr]) => {
+      const bx = cx+dxr*s, by = base+dyr*s, br = rr*s;
+      gfx.beginFill(0x3c5a0a, 0.70); gfx.drawEllipse(bx, by, br, br*0.38); gfx.endFill();
+      gfx.beginFill(0xa0d232, 0.30); gfx.drawEllipse(bx-br*0.25, by-br*0.10, br*0.30, br*0.10); gfx.endFill();
+    });
+    // vapor puffs rising UP
+    const vents = [[-0.01,0.80],[-0.12,0.55],[0.13,0.50]];
+    vents.forEach(([vxr, vh], vi) => {
+      const vx = cx + vxr*s;
+      for (let i = 0; i < 8; i++) {
+        const t   = i / 8;
+        const py  = base - t * vh * s;          // UP from surface
+        const px  = vx + Math.sin(t*3.5+vi*1.2)*s*0.04;
+        const r   = s*0.025 + t*s*0.065;
+        const a   = (1-t)*0.38;
+        gfx.beginFill(0x78be28, a); gfx.drawCircle(px, py, r); gfx.endFill();
+      }
+    });
   }
 }
 

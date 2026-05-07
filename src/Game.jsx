@@ -1185,18 +1185,7 @@ export default function RiseToWar() {
         onZoomChange={handleZoomChange}
       />
 
-      {/* Zoom controls */}
-      <div style={{position:"fixed",right:10,top:46,zIndex:190,display:"flex",flexDirection:"column",gap:4}}>
-        <button className="btn" onClick={() => { const nz = ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length-1,ZOOM_LEVELS.indexOf(zoom)+1)]; handleZoomChange(nz); }}
-          style={{width:36,height:36,background:"rgba(8,10,14,.92)",border:"1px solid #2a2010",color:"#c8a060",fontSize:18,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:6,boxShadow:"0 2px 8px rgba(0,0,0,.5)"}}>+</button>
-        <div style={{textAlign:"center",fontSize:8,color:"#4a4a5a",fontFamily:"'Cinzel',serif",lineHeight:1.2,padding:"2px 0"}}>{Math.round(zoom*100)}%</div>
-        <button className="btn" onClick={() => {
-            const idx = ZOOM_LEVELS.indexOf(zoom);
-            if (idx <= 0) { setWorldMapPrompt(true); return; }
-            handleZoomChange(ZOOM_LEVELS[idx - 1]);
-          }}
-          style={{width:36,height:36,background:"rgba(8,10,14,.92)",border:"1px solid #2a2010",color:"#c8a060",fontSize:18,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:6,boxShadow:"0 2px 8px rgba(0,0,0,.5)"}}>−</button>
-      </div>
+      {/* Zoom controls removed — use pinch / mouse wheel */}
 
       {/* Floaties */}
       {floats.map(f => (
