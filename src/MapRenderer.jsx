@@ -1024,11 +1024,20 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         world.y = lockedPan.y;
         // Redraw at final pan position — one rAF for Pixi, notify React in the NEXT frame
         // so the two heavy operations don't collide on the same main-thread slot.
+        const t0 = performance.now();
         requestAnimationFrame(() => {
+          const t1 = performance.now();
+          // eslint-disable-next-line no-undef
+          if (typeof perfLog !== "undefined") perfLog(`panEnd:rAF +${Math.round(t1-t0)}ms`);
           lastBoundsRef.current = null;
           redrawRef.current?.redraw(true);
+          const t2 = performance.now();
+          // eslint-disable-next-line no-undef
+          if (typeof perfLog !== "undefined") perfLog(`pixi:redraw +${Math.round(t2-t1)}ms`);
           requestAnimationFrame(() => {
             onPanChangeRef.current(lockedPan);
+            // eslint-disable-next-line no-undef
+            if (typeof perfLog !== "undefined") perfLog(`react:panNotify`);
           });
         });
       }
