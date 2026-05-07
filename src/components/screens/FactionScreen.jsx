@@ -33,7 +33,7 @@ export default function FactionScreen({
                     // Player commanders — HQ tile assigned later by Game.jsx once map generates
                     const TEMP_HQK = "1,1"; // placeholder; overwritten by Game.jsx map init
                     const startCmds = starters.map((h,i) => ({
-                      ...h, uid:`p${i}`, owner:"player", troops:0, troopType:null,
+                      ...h, uid:`p${i}`, owner:"player", troops:0, troopBranch:null,
                       tk:TEMP_HQK, lvl:5, xp:0, respectPoints:0, respectLevel:0,
                       skillPoints:{}, unspentSkillPoints:5,
                       gear:{helmet:null,armor:null,bracers:null,accessory:null},
@@ -50,7 +50,7 @@ export default function FactionScreen({
                       ].filter(Boolean);
                       aiStarters.forEach((h, i) => {
                         allAiCmds.push({
-                          ...h, uid:`ai_${aiFk}_${i}`, owner:"ai", troops:0, troopType:null,
+                          ...h, uid:`ai_${aiFk}_${i}`, owner:"ai", troops:0, troopBranch:null,
                           tk:TEMP_HQK, lvl:5, xp:0, respectPoints:0, respectLevel:0,
                           skillPoints:{}, unspentSkillPoints:5,
                           gear:{helmet:null,armor:null,bracers:null,accessory:null},
