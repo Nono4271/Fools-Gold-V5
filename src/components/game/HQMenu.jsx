@@ -19,7 +19,7 @@ const P = {
 
 // ── Tile nav buttons (the 6 sections on the hub screen) ───────────────────────
 const HUB_TILES = [
-  { id:"buildings",     icon:"🏛",  label:"Buildings",      color:"#c8903a" },
+  { id:"buildings",     icon:"🏛",  label:"Architecture",   color:"#c8903a" },
   { id:"commandcenter", icon:"📊",  label:"Command Center", color:"#4488cc" },
   { id:"troops",        icon:"⚔️",  label:"Training",       color:"#cc4444" },
   { id:"army",          icon:"🪖",  label:"Army",           color:"#6aaa40" },
@@ -93,108 +93,331 @@ function HubScreen({ setHqTab }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  BUILDINGS (Buildings)
+//  ARCHITECTURE — full-screen left-nav layout
 // ─────────────────────────────────────────────────────────────────────────────
-function InfrastructureScreen({ bldgs, rss, canAfford, upgrade, upgQueue, barracksCapacity: barCap }) {
+
+const QUARTER_UPGRADE_COST = (lvl) => ({
+  stone: Math.round(200 * Math.pow(2.0, lvl)),
+  wood:  Math.round(150 * Math.pow(2.0, lvl)),
+  ore:   Math.round(100 * Math.pow(2.0, lvl)),
+  gas:   Math.round(50  * Math.pow(2.0, lvl)),
+});
+
+const BRANCH_UPGRADE_COST = (lvl) => ({
+  stone: Math.round(120 * Math.pow(1.8, lvl)),
+  wood:  Math.round(80  * Math.pow(1.8, lvl)),
+  ore:   Math.round(60  * Math.pow(1.8, lvl)),
+  gas:   Math.round(30  * Math.pow(1.8, lvl)),
+});
+
+function LevelBar({ lvl, max, color }) {
   return (
-    <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-        <SectionHeader>BUILDINGS</SectionHeader>
-        <div style={{ fontFamily:P.ff, fontSize:9, color:P.gold, fontWeight:700 }}>🏰 HQ Lv{bldgs.hq||1}</div>
-      </div>
-      <div style={{ fontSize:8, color:"#4a3a2a", fontFamily:P.ffb, fontStyle:"italic", marginBottom:12 }}>
-        HQ gates all upgrades. Resource buildings unlock 2 levels per HQ level.
-      </div>
-      {[
-        { label:"⛏ Resources",      keys:["quarry","lumber","forge","refinery"] },
-        { label:"⚔ Military",       keys:["barracks","training","commandcenter","healingtent"] },
-        { label:"🏛 Fortifications", keys:["hq","walls"] },
-      ].map(group => (
-        <div key={group.label} style={{ marginBottom:14 }}>
-          <SectionHeader>{group.label}</SectionHeader>
-          <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
-            {group.keys.map(key => {
-              const def = BLDG[key]; if (!def) return null;
-              const lvl  = bldgs[key]||0;
-              const avail = maxAvailLevel(key, bldgs.hq||1);
-              const isAbsMax  = lvl >= def.max;
-              const isGated   = !isAbsMax && lvl >= avail;
-              const cost      = (!isAbsMax && !isGated) ? upgCost(key, lvl) : null;
-              const ok        = cost && canAfford(cost);
-              const inProg    = upgQueue[key];
-              return (
-                <div key={key} style={{ background:"rgba(255,255,255,.03)",
-                  border:`1px solid ${isGated?"#3a2a10":P.border}`,
-                  borderRadius:5, padding:"9px 12px",
-                  display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-                  <div style={{ fontSize:22, flexShrink:0 }}>{def.icon}</div>
-                  <div style={{ flex:1, minWidth:140 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2, flexWrap:"wrap" }}>
-                      <span style={{ fontFamily:P.ff, fontWeight:600, fontSize:11, color:P.text }}>{def.n}</span>
-                      <span style={{ fontSize:9, color:"#4a4030" }}>
-                        Lv{lvl} / <span style={{ color:"#6a5a3a" }}>{avail}</span>{" "}
-                        <span style={{ color:"#3a3030" }}>({def.max} max)</span>
-                      </span>
-                    </div>
-                    <div style={{ fontSize:9, color:"#6a5a50", fontFamily:P.ffb, marginBottom:3 }}>{def.desc}</div>
-                    {key==="barracks" && <div style={{ fontSize:8, color:"#6a8aaa" }}>Capacity: {barracksCapacity(lvl).toLocaleString()}</div>}
-                    {isGated && <div style={{ fontSize:7, color:"#8a6020", fontFamily:P.ffb, fontStyle:"italic", marginTop:2 }}>🔒 Upgrade HQ to unlock</div>}
-                    <div style={{ display:"flex", gap:1, marginTop:4 }}>
-                      {Array.from({ length:Math.min(avail,20) }).map((_,i) => (
-                        <div key={i} style={{ flex:1, height:3,
-                          background:i<lvl?"#f0c040":i<avail?"#2a2010":"#181820",
-                          borderRadius:2, minWidth:2 }}/>
-                      ))}
-                    </div>
-                  </div>
-                  {inProg ? (() => {
-                    const pct = Math.max(0, Math.min(100, ((Date.now()-inProg.startedAt)/inProg.dur)*100));
-                    const secsLeft = Math.max(0, Math.ceil((inProg.endsAt-Date.now())/1000));
-                    const mm = Math.floor(secsLeft/60), ss = secsLeft%60;
-                    return (
-                      <div style={{ flexShrink:0, minWidth:80, textAlign:"right" }}>
-                        <div style={{ fontSize:8, color:P.gold, fontFamily:P.ff, marginBottom:3 }}>
-                          ⚙ Lv{inProg.newLvl} · {mm>0?`${mm}m ${ss}s`:`${ss}s`}
-                        </div>
-                        <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden", width:80 }}>
-                          <div style={{ height:"100%", width:`${pct}%`,
-                            background:"linear-gradient(90deg,#c03030,#f0c040)",
-                            borderRadius:2, transition:"width .5s linear" }}/>
-                        </div>
-                      </div>
-                    );
-                  })()
-                  : isAbsMax ? <div style={{ fontSize:9, color:P.gold, fontFamily:P.ff, flexShrink:0 }}>MAX</div>
-                  : isGated  ? <div style={{ fontSize:9, color:"#6a4a10", fontFamily:P.ff, flexShrink:0 }}>🔒</div>
-                  : cost ? (() => {
-                    const nd = upgDuration(key, lvl+1);
-                    const mm = Math.floor(nd/60000), ss = Math.floor((nd%60000)/1000);
-                    return (
-                      <div style={{ textAlign:"right", flexShrink:0 }}>
-                        <div style={{ fontSize:8, marginBottom:2 }}>
-                          {Object.entries(cost).filter(([,v])=>v>0).map(([k,v]) => (
-                            <RssPill key={k} rssKey={k} amount={v} rss={rss} small />
-                          ))}
-                        </div>
-                        <div style={{ fontSize:7, color:"#5a4a2a", fontFamily:P.ffb, marginBottom:3 }}>
-                          ⏱ {mm>0?`${mm}m ${ss>0?ss+"s":""}`:`${ss}s`}
-                        </div>
-                        <button className="btn" disabled={!ok} onClick={() => upgrade(key)}
-                          style={{ padding:"4px 10px", fontSize:9, fontWeight:700,
-                            background:ok?"linear-gradient(135deg,rgba(200,160,64,.3),rgba(200,160,64,.1))":"rgba(255,255,255,.02)",
-                            border:`1px solid ${ok?"#8a6020":"#1e1810"}`,
-                            color:ok?P.gold:"#2a2a2a" }}>
-                          {ok ? `↑ Lv${lvl+1}` : "⛔"}
-                        </button>
-                      </div>
-                    );
-                  })() : null}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+    <div style={{ display:"flex", gap:2, marginTop:4 }}>
+      {Array.from({ length: max }).map((_, i) => (
+        <div key={i} style={{ flex:1, height:3, borderRadius:2, minWidth:3,
+          background: i < lvl ? (color||P.gold) : "#1e1810" }}/>
       ))}
+    </div>
+  );
+}
+
+function UpgradeButton({ lvl, maxLvl, cost, canAfford, onUpgrade, inProg }) {
+  const isMax   = lvl >= maxLvl;
+  const ok      = !isMax && !inProg && canAfford(cost||{});
+  const gated   = !isMax && !inProg && !ok;
+
+  if (isMax) return <div style={{ fontSize:9, color:P.gold, fontFamily:P.ff, fontWeight:700 }}>MAX</div>;
+  if (inProg) {
+    const pct = Math.max(0, Math.min(100, ((Date.now()-inProg.startedAt)/inProg.dur)*100));
+    const secsLeft = Math.max(0, Math.ceil((inProg.endsAt-Date.now())/1000));
+    const mm = Math.floor(secsLeft/60), ss = secsLeft%60;
+    return (
+      <div style={{ textAlign:"right" }}>
+        <div style={{ fontSize:8, color:P.gold, fontFamily:P.ff, marginBottom:2 }}>
+          ⚙ {mm>0?`${mm}m ${ss}s`:`${ss}s`}
+        </div>
+        <div style={{ height:3, background:"#181820", borderRadius:2, overflow:"hidden", width:60 }}>
+          <div style={{ height:"100%", width:`${pct}%`, background:"linear-gradient(90deg,#c03030,#f0c040)", borderRadius:2 }}/>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <button className="btn" disabled={!ok} onClick={onUpgrade}
+      style={{ padding:"5px 12px", fontSize:9, fontWeight:700,
+        background: ok ? "linear-gradient(135deg,rgba(200,160,64,.35),rgba(200,160,64,.12))" : "rgba(255,255,255,.02)",
+        border: `1px solid ${ok ? "#8a6020" : "#1e1810"}`,
+        color: ok ? P.gold : "#2a2a2a", borderRadius:4 }}>
+      {ok ? `↑ Lv${lvl+1}` : "⛔"}
+    </button>
+  );
+}
+
+function BuildingDetail({ bKey, bldgs, rss, canAfford, upgrade, upgQueue }) {
+  const def   = BLDG[bKey]; if (!def) return null;
+  const lvl   = bldgs[bKey]||0;
+  const avail = maxAvailLevel(bKey, bldgs.hq||1);
+  const isAbsMax = lvl >= def.max;
+  const isGated  = !isAbsMax && lvl >= avail;
+  const cost     = (!isAbsMax && !isGated) ? upgCost(bKey, lvl) : null;
+  const ok       = cost && canAfford(cost);
+  const inProg   = upgQueue[bKey];
+  const nd       = cost ? upgDuration(bKey, lvl+1) : 0;
+  const mm = Math.floor(nd/60000), ss = Math.floor((nd%60000)/1000);
+
+  return (
+    <div style={{ padding:"16px 20px" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
+        <div style={{ fontSize:40 }}>{def.icon}</div>
+        <div>
+          <div style={{ fontFamily:P.ff, fontSize:16, fontWeight:700, color:P.text }}>{def.n}</div>
+          <div style={{ fontSize:9, color:P.sub, marginTop:2 }}>Lv{lvl} / {avail} <span style={{ color:"#3a3028" }}>({def.max} max)</span></div>
+          <LevelBar lvl={lvl} max={Math.min(avail,20)} color={P.gold} />
+        </div>
+      </div>
+      <div style={{ fontSize:11, color:P.sub, fontFamily:P.ffb, marginBottom:16, lineHeight:1.6 }}>{def.desc}</div>
+      {bKey==="barracks" && <div style={{ fontSize:10, color:"#6a8aaa", marginBottom:12 }}>Capacity: {barracksCapacity(lvl).toLocaleString()}</div>}
+      {isGated && <div style={{ fontSize:9, color:"#8a6020", fontFamily:P.ffb, fontStyle:"italic", marginBottom:12 }}>🔒 Upgrade HQ to Lv{avail+1} to unlock next level</div>}
+      {cost && (
+        <div style={{ padding:"12px 14px", background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:6, marginBottom:12 }}>
+          <div style={{ fontSize:9, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:8 }}>UPGRADE TO Lv{lvl+1}</div>
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:8 }}>
+            {Object.entries(cost).filter(([,v])=>v>0).map(([k,v]) => (
+              <div key={k} style={{ textAlign:"center" }}>
+                <div style={{ fontSize:9, color:(rss[k]||0)>=v ? RSS[k]?.col||"#888" : "#cc3030", fontFamily:P.ff, fontWeight:700 }}>
+                  {RSS[k]?.icon||k} {v.toLocaleString()}
+                </div>
+                <div style={{ fontSize:6, color:P.dim }}>{(rss[k]||0)>=v ? "✓" : `need ${(v-(rss[k]||0)).toLocaleString()} more`}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize:8, color:P.dim, fontFamily:P.ffb, marginBottom:10 }}>
+            ⏱ {mm>0?`${mm}m ${ss>0?ss+"s":""}`:`${ss}s`}
+          </div>
+          <UpgradeButton lvl={lvl} maxLvl={def.max} cost={cost} canAfford={canAfford} onUpgrade={()=>upgrade(bKey)} inProg={inProg} />
+        </div>
+      )}
+      {inProg && <UpgradeButton lvl={lvl} maxLvl={def.max} cost={null} canAfford={canAfford} onUpgrade={null} inProg={inProg} />}
+      {isAbsMax && <div style={{ fontSize:11, color:P.gold, fontFamily:P.ff, fontWeight:700 }}>⭐ MAX LEVEL</div>}
+    </div>
+  );
+}
+
+function QuarterDetail({ fKey, fDef, bldgs, setBldgs, rss, canAfford }) {
+  const [selBranch, setSelBranch] = useState(null);
+  const qLvl = bldgs[`q_${fKey}`] || 0;
+  const qMax = 10;
+  const qCost = QUARTER_UPGRADE_COST(qLvl);
+  const qOk = qLvl < qMax && canAfford(qCost);
+
+  const upgradeQuarter = () => {
+    if (!qOk) return;
+    setBldgs(b => ({ ...b, [`q_${fKey}`]: (b[`q_${fKey}`]||0) + 1 }));
+  };
+
+  const upgradeBranch = (branchKey) => {
+    const bLvl = bldgs[`b_${fKey}_${branchKey}`] || 0;
+    if (bLvl >= 10) return;
+    const cost = BRANCH_UPGRADE_COST(bLvl);
+    if (!canAfford(cost)) return;
+    setBldgs(b => ({ ...b, [`b_${fKey}_${branchKey}`]: (b[`b_${fKey}_${branchKey}`]||0) + 1 }));
+  };
+
+  return (
+    <div style={{ padding:"16px 20px" }}>
+      {/* Quarter header */}
+      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16,
+        padding:"12px 14px", background:`${fDef.c}11`, border:`1px solid ${fDef.c}44`, borderRadius:8 }}>
+        <div style={{ fontSize:36 }}>{fDef.s}</div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontFamily:P.ff, fontSize:15, fontWeight:700, color:fDef.c }}>{fDef.quarters}</div>
+          <div style={{ fontSize:9, color:P.sub, marginTop:2 }}>{fDef.n} · Quarter Lv{qLvl}/{qMax}</div>
+          <LevelBar lvl={qLvl} max={qMax} color={fDef.c} />
+        </div>
+        <div style={{ textAlign:"right" }}>
+          {qLvl < qMax ? (
+            <button className="btn" disabled={!qOk} onClick={upgradeQuarter}
+              style={{ padding:"6px 14px", fontSize:10, fontWeight:700,
+                background: qOk ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
+                border: `1px solid ${qOk ? fDef.c : "#1e1810"}`,
+                color: qOk ? fDef.c : "#2a2a2a", borderRadius:4 }}>
+              ↑ Lv{qLvl+1}
+            </button>
+          ) : (
+            <div style={{ fontSize:9, color:fDef.c, fontFamily:P.ff, fontWeight:700 }}>MAX</div>
+          )}
+        </div>
+      </div>
+
+      {/* Branches */}
+      <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff, letterSpacing:".1em", marginBottom:10 }}>TROOP BRANCHES</div>
+      {fDef.branches.map(br => {
+        const bKey = `b_${fKey}_${br.key}`;
+        const bLvl = bldgs[bKey] || 0;
+        const bMax = 10;
+        const bCost = BRANCH_UPGRADE_COST(bLvl);
+        const bOk   = bLvl < bMax && canAfford(bCost);
+        const isSelected = selBranch === br.key;
+        const dmgColor = br.dmgType === "magical" ? "#a855f7" : "#e08050";
+
+        return (
+          <div key={br.key} style={{ marginBottom:8,
+            border:`1px solid ${isSelected ? fDef.c+"88" : P.border}`,
+            borderRadius:8, overflow:"hidden",
+            background: isSelected ? `${fDef.c}0a` : "rgba(255,255,255,.02)" }}>
+            {/* Branch header — clickable to expand */}
+            <div onClick={() => setSelBranch(isSelected ? null : br.key)}
+              style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer" }}>
+              <div style={{ flex:1 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
+                  <span style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:P.text }}>{br.label}</span>
+                  <span style={{ fontSize:7, color:dmgColor, background:`${dmgColor}18`, padding:"1px 5px", borderRadius:3 }}>
+                    {br.size} · {br.dmgType}
+                  </span>
+                </div>
+                <div style={{ fontSize:8, color:P.sub }}>Lv{bLvl}/{bMax}</div>
+                <LevelBar lvl={bLvl} max={bMax} color={fDef.c} />
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                {bLvl < bMax ? (
+                  <button className="btn" disabled={!bOk}
+                    onClick={e => { e.stopPropagation(); upgradeBranch(br.key); }}
+                    style={{ padding:"4px 10px", fontSize:9, fontWeight:700,
+                      background: bOk ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
+                      border: `1px solid ${bOk ? fDef.c : "#1e1810"}`,
+                      color: bOk ? fDef.c : "#2a2a2a", borderRadius:4 }}>
+                    ↑ Lv{bLvl+1}
+                  </button>
+                ) : (
+                  <div style={{ fontSize:9, color:fDef.c, fontFamily:P.ff, fontWeight:700 }}>MAX</div>
+                )}
+                <span style={{ fontSize:10, color:P.dim }}>{isSelected ? "▲" : "▼"}</span>
+              </div>
+            </div>
+            {/* Expanded: show tiers */}
+            {isSelected && (
+              <div style={{ padding:"0 14px 12px", borderTop:`1px solid ${P.border}` }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginTop:10 }}>
+                  {br.tiers.map((t, idx) => {
+                    const unlocked = bLvl > idx * 3;
+                    return (
+                      <div key={idx} style={{ padding:"8px 10px", borderRadius:6, textAlign:"center",
+                        background: unlocked ? `${fDef.c}15` : "rgba(255,255,255,.02)",
+                        border: `1px solid ${unlocked ? fDef.c+"44" : P.border}`,
+                        opacity: unlocked ? 1 : 0.4 }}>
+                        <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, marginBottom:4 }}>
+                          {unlocked ? `Lv${idx+1}` : `🔒 Need Lv${idx*3+1}`}
+                        </div>
+                        <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700, color: unlocked ? fDef.c : P.dim }}>
+                          {t.label}
+                        </div>
+                        <div style={{ fontSize:7, color:P.sub, marginTop:3, lineHeight:1.5 }}>
+                          HP {t.hp} · DEF {t.def}<br/>
+                          DMG {t.dmgLo}–{t.dmgHi}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function InfrastructureScreen({ bldgs, setBldgs, rss, canAfford, upgrade, upgQueue }) {
+  const [sel, setSel] = useState("hq");
+
+  // Left nav items: all buildings + each quarter
+  const BLDG_KEYS = ["hq","walls","quarry","lumber","forge","refinery","barracks","training","commandcenter","healingtent"];
+
+  // Get quarter data from FACTION_TROOPS
+  const quarters = Object.entries(FACTION_TROOPS).map(([fKey, fDef]) => ({
+    fKey, ...fDef,
+    n: { marines:"Marines", pirates:"Pirates", bountyhunters:"Wizards", merfolk:"MerFolk", orcs:"Orcs", dragons:"Dragons" }[fKey] || fKey,
+    s: { marines:"⚓", pirates:"🏴", bountyhunters:"🔮", merfolk:"🌊", orcs:"⚔️", dragons:"🐉" }[fKey] || "⚑",
+    c: { marines:"#4488cc", pirates:"#d4832a", bountyhunters:"#9955dd", merfolk:"#30b8c8", orcs:"#6aa830", dragons:"#cc3030" }[fKey] || "#888",
+  }));
+
+  const isQuarter = sel.startsWith("q_");
+  const quarterFKey = isQuarter ? sel.slice(2) : null;
+  const quarterData = quarterFKey ? quarters.find(q => q.fKey === quarterFKey) : null;
+
+  return (
+    <div style={{ display:"flex", height:"100%", gap:0 }}>
+
+      {/* ── Left sidebar ── */}
+      <div style={{ width:72, flexShrink:0, overflowY:"auto", borderRight:`1px solid ${P.border}`,
+        background:"rgba(0,0,0,.3)", display:"flex", flexDirection:"column", gap:2, padding:"6px 4px" }}>
+
+        {/* Buildings section label */}
+        <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
+          textAlign:"center", paddingBottom:4, marginBottom:2, borderBottom:`1px solid ${P.border}` }}>
+          BLDGS
+        </div>
+
+        {BLDG_KEYS.map(key => {
+          const def = BLDG[key];
+          const lvl = bldgs[key]||0;
+          const isActive = sel === key;
+          return (
+            <button key={key} onClick={() => setSel(key)}
+              style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2,
+                padding:"6px 4px", borderRadius:6, cursor:"pointer",
+                background: isActive ? "rgba(240,192,64,.12)" : "transparent",
+                border: `1px solid ${isActive ? P.gold+"44" : "transparent"}`,
+                transition:"all .15s" }}>
+              <div style={{ fontSize:18 }}>{def?.icon}</div>
+              <div style={{ fontSize:6, color: isActive ? P.gold : P.dim, fontFamily:P.ff,
+                textAlign:"center", lineHeight:1.2 }}>{def?.n?.split(" ")[0]}</div>
+              <div style={{ fontSize:6, color: isActive ? P.gold : "#3a3028" }}>Lv{lvl}</div>
+            </button>
+          );
+        })}
+
+        {/* Quarters section label */}
+        <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
+          textAlign:"center", paddingBottom:4, marginTop:6, marginBottom:2,
+          borderTop:`1px solid ${P.border}`, paddingTop:6 }}>
+          QUARTERS
+        </div>
+
+        {quarters.map(q => {
+          const qKey = `q_${q.fKey}`;
+          const isActive = sel === qKey;
+          const qLvl = bldgs[qKey] || 0;
+          return (
+            <button key={qKey} onClick={() => setSel(qKey)}
+              style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2,
+                padding:"6px 4px", borderRadius:6, cursor:"pointer",
+                background: isActive ? `${q.c}18` : "transparent",
+                border: `1px solid ${isActive ? q.c+"66" : "transparent"}`,
+                transition:"all .15s" }}>
+              <div style={{ fontSize:18 }}>{q.s}</div>
+              <div style={{ fontSize:6, color: isActive ? q.c : P.dim, fontFamily:P.ff,
+                textAlign:"center", lineHeight:1.2 }}>{q.n}</div>
+              <div style={{ fontSize:6, color: isActive ? q.c : "#3a3028" }}>Lv{qLvl}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Right detail panel ── */}
+      <div style={{ flex:1, overflowY:"auto" }}>
+        {isQuarter && quarterData ? (
+          <QuarterDetail
+            fKey={quarterFKey} fDef={quarterData}
+            bldgs={bldgs} setBldgs={setBldgs}
+            rss={rss} canAfford={canAfford} />
+        ) : (
+          <BuildingDetail
+            bKey={sel} bldgs={bldgs} rss={rss}
+            canAfford={canAfford} upgrade={upgrade} upgQueue={upgQueue} />
+        )}
+      </div>
     </div>
   );
 }
@@ -776,7 +999,7 @@ function MarketplaceScreen({ rss, setRss }) {
 export default function HQMenu({
   hqOpen, setHqOpen, hqTab, setHqTab,
   cmds, setCmds, tiles, rss, setRss, gems, pKeys,
-  bldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
+  bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
   trainingQueue, trainSlider, setTrainSlider,
   upgQueue, sliderVals, setSliderVals, bLog,
   upgrade, canAfford, assignTroops, returnTroops, queueTraining,
@@ -822,17 +1045,17 @@ export default function HQMenu({
       </div>
 
       {/* Content — fills remaining screen */}
-      <div className="scr" style={{ flex:1, overflowY:"auto", minHeight:0,
-        padding: isHub ? 8 : 14 }}>
+      <div className="scr" style={{ flex:1, overflowY: hqTab === "buildings" ? "hidden" : "auto",
+        minHeight:0, padding: (isHub || hqTab === "buildings") ? 0 : 14,
+        display: hqTab === "buildings" ? "flex" : "block", flexDirection:"column" }}>
 
         {hqTab === "hub" && (
           <HubScreen setHqTab={setHqTab} />
         )}
         {hqTab === "buildings" && (
           <InfrastructureScreen
-            bldgs={bldgs} rss={rss} canAfford={canAfford}
-            upgrade={upgrade} upgQueue={upgQueue}
-            barracksCapacity={barracksCapacity} />
+            bldgs={bldgs} setBldgs={setBldgs} rss={rss} canAfford={canAfford}
+            upgrade={upgrade} upgQueue={upgQueue} />
         )}
         {hqTab === "commandcenter" && (
           <CommandCenterScreen
