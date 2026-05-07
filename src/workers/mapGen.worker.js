@@ -300,7 +300,7 @@ self.onmessage = function(e) {
       keepName: reg.keepName,
       defCmd: {
         n:reg.keepName, icon:"🏰", cls:"defender", faction:null, rarity:"veteran",
-        troopType:TROOP_KEYS[0], lvl:KEEP_CMD_LVL, troops:KEEP_TROOPS,
+        troopBranch:{ faction:"marines", branch:"wardens", tier:2 }, lvl:KEEP_CMD_LVL, troops:KEEP_TROOPS,
         atk:120*KEEP_CMD_LVL, spd:40+KEEP_CMD_LVL*2,
       },
     };
