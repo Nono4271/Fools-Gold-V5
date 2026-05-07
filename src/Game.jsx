@@ -8,7 +8,7 @@ import { ALIGNMENT, getFactionAlignment, PLAYABLE_FACTIONS } from "../shared/con
 import { HDEFS, RC, RARITY, CLASS, rollGacha, addRespect, RESPECT_DUPE_POINTS, RESPECT_OVERFLOW_POINTS, RESPECT_MAX, npcForPowerLevel } from "../shared/constants/heroes.js";
 import { rollFullPull, rollGearSchematic, createRespectSchematic, GEAR_RARITY, GEAR_SLOTS, rollFullPullCmdRarity } from "../shared/constants/gear.js";
 import { HQP, AI_HQ_KEY, WIN_KEY, RKEYS, RSS, POWER_DEFS, SIEGE_BASE, SIEGE_KEEP_BASE, calcSiegePower, hqSiegeValue } from "../shared/constants/map.js";
-import { TROOP, TROOP_KEYS, CMD_LVL_MAX, xpToNext } from "../shared/constants/troops.js";
+import { FACTION_TROOPS, COMMAND_COST, CMD_LVL_MAX, xpToNext } from "../shared/constants/troops.js";
 import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainRate, maxTrainBatch } from "../shared/constants/buildings.js";
 import { isoXY, TW, TH, ISO_W, ISO_H } from "../shared/constants/geometry.js";
 import { FACTION_REGIONS, REGION_LIST } from "../shared/constants/regions.js";
@@ -306,7 +306,7 @@ export default function RiseToWar() {
   const [hqOpen, setHqOpen] = useState(false);
   const [worldMapOpen, setWorldMapOpen] = useState(false);
   const [worldMapPrompt, setWorldMapPrompt] = useState(false);
-  const [hqTab,  setHqTab]  = useState("overview");
+  const [hqTab,  setHqTab]  = useState("hub");
   const [cmdScreenOpen,  setCmdScreenOpen]  = useState(false);
   const [cmdScreenUid,   setCmdScreenUid]   = useState(null);
   const [gearScreenOpen, setGearScreenOpen] = useState(false);
@@ -407,7 +407,7 @@ export default function RiseToWar() {
               c, r, k,
               terrain:    isShore ? "shore" : TERRAIN_DEC[terrainArr[idx]] || "grass",
               rss:        RSS_DEC[rssArr[idx]] || null,
-              troopType:  TROOP_DEC[troopArr[idx]] || null,
+              troopBranch: null, // assigned per-commander, not per-tile
               powerLevel: powerArr[idx],
               regionKey:  reg?.key   || null,
               regionName: reg?.name  || null,
@@ -725,7 +725,7 @@ export default function RiseToWar() {
           const pl = t.powerLevel || 1;
           const pd = POWER_DEFS[pl];
           const npc2 = npcForPowerLevel(pl);
-          patchTile(key, { owner:null, garrison:pd?pd.troops:50, siege:t.siegeMax??SIEGE_BASE, siegeMax:t.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:pd?{n:npc2.n,icon:npc2.icon,cls:npc2.cls,faction:null,rarity:'soldier',lvl:pd.cmdLvl,troops:pd.troops,troopType:npc2.troopType,atk:npc2.atk*pd.cmdLvl,spd:npc2.spd+pd.cmdLvl*2}:null });
+          patchTile(key, { owner:null, garrison:pd?pd.troops:50, siege:t.siegeMax??SIEGE_BASE, siegeMax:t.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:pd?{n:npc2.n,icon:npc2.icon,cls:npc2.cls,faction:null,rarity:'soldier',lvl:pd.cmdLvl,troops:pd.troops,troopBranch:npc2.troopBranch,atk:npc2.atk*pd.cmdLvl,spd:npc2.spd+pd.cmdLvl*2}:null });
         });
         const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
         // Fix #6: offload retreat BFS to worker. Collect all affected cmds,
@@ -813,7 +813,7 @@ export default function RiseToWar() {
     const type = destTile?.owner==="player" ? "move" : "attack";
     if (type==="move" && destTile?.owner!=="player") return;
     const boostedSpd = applyGearToCmd(cmd, gearInventory).spd || 60;
-    const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, cmd.troopType));
+    const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, cmd.troopBranch));
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null);
     findPath(cmd.tk, destKey).then(path => {
       if (!path || path.length < 2) return;
@@ -836,7 +836,7 @@ export default function RiseToWar() {
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
     const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
     if (!cmd || cmd.march || cmd.tk===hqKey) return;
-    const stepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, cmd.troopType));
+    const stepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, cmd.troopBranch));
     findPath(cmd.tk, hqKey).then(path => {
       if (!path || path.length < 2) return;
       setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
@@ -849,7 +849,7 @@ export default function RiseToWar() {
   const startReinforcement = useCallback((cmd, amount) => {
     if (!cmd || amount <= 0) return;
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
-    const stepMs = Math.max(100, Math.floor(marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, cmd.troopType))/2));
+    const stepMs = Math.max(100, Math.floor(marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, cmd.troopBranch))/2));
     setMode("view"); setReinCmd(null);
     setSliderVals(v => ({ ...v, [`rein_${cmd.uid}`]:undefined }));
     findPath(hqKey, cmd.tk).then(path => {
@@ -874,24 +874,32 @@ export default function RiseToWar() {
     setTrainingQueue({ amount, remaining:amount, total:amount, cost });
   }, [canAfford, bldgs.barracks, barracksPool, trainingQueue]);
 
-  const assignTroops = useCallback((uid, troopType, newTotal) => {
+  const assignTroops = useCallback((uid, troopBranch, newTotal) => {
     setCmds(prev => {
       const cmd = prev.find(c => c.uid===uid);
       if (!cmd) return prev;
       const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?500:0);
-      const oldTroops = (cmd.troopType && cmd.troopType!==troopType) ? 0 : (cmd.troops||0);
-      const oldReturning = (cmd.troopType && cmd.troopType!==troopType) ? (cmd.troops||0) : 0;
-      const capped = Math.min(newTotal, commandCap);
-      const canDraw = barracksPool + oldReturning;
-      const delta = capped - oldTroops;
-      const finalTotal = delta > 0 ? oldTroops + Math.min(delta, canDraw) : capped;
+      // Command cost per troop varies by size: small=1, medium=2, large=4
+      const branchSize = troopBranch
+        ? (FACTION_TROOPS[troopBranch.faction]?.branches?.find(b => b.key === troopBranch.branch)?.size ?? "small")
+        : "small";
+      const cmdCost = COMMAND_COST[branchSize] ?? 1;
+      // Max troops this commander can field given command cap and cost-per-troop
+      const maxByCommand = Math.floor(commandCap / cmdCost);
+      const branchChanged = JSON.stringify(cmd.troopBranch) !== JSON.stringify(troopBranch);
+      const oldTroops    = branchChanged ? 0 : (cmd.troops||0);
+      const oldReturning = branchChanged ? (cmd.troops||0) : 0;
+      const capped       = Math.min(newTotal, maxByCommand);
+      const canDraw      = barracksPool + oldReturning;
+      const delta        = capped - oldTroops;
+      const finalTotal   = delta > 0 ? oldTroops + Math.min(delta, canDraw) : capped;
       setBarracks(pool => {
         const poolAfterReturn = pool + oldReturning;
-        const drawn = Math.max(0, finalTotal-oldTroops);
-        const returned = Math.max(0, oldTroops-finalTotal);
+        const drawn    = Math.max(0, finalTotal - oldTroops);
+        const returned = Math.max(0, oldTroops  - finalTotal);
         return poolAfterReturn - drawn + returned;
       });
-      return prev.map(c => c.uid===uid ? { ...c, troopType, troops:finalTotal } : c);
+      return prev.map(c => c.uid===uid ? { ...c, troopBranch, troops:finalTotal } : c);
     });
   }, [barracksPool, bldgs.commandcenter]);
 
@@ -900,7 +908,7 @@ export default function RiseToWar() {
       const cmd = prev.find(c => c.uid===uid);
       if (!cmd || !cmd.troops) return prev;
       setBarracks(pool => pool + (cmd.troops||0));
-      return prev.map(c => c.uid===uid ? { ...c, troops:0, troopType:null } : c);
+      return prev.map(c => c.uid===uid ? { ...c, troops:0, troopBranch:null } : c);
     });
   }, []);
 
@@ -995,7 +1003,7 @@ export default function RiseToWar() {
         cmdResults.forEach(h => {
           const existing = nx.find(x => x.id === h.id && x.owner === "player");
           if (!existing) {
-            nx.push({ ...h, uid:h.uid, troops:0, troopType:null, tk:hqk, owner:"player", lvl:5, xp:0,
+            nx.push({ ...h, uid:h.uid, troops:0, troopBranch:null, tk:hqk, owner:"player", lvl:5, xp:0,
               respectPoints:0, respectLevel:0, skillPoints:{}, unspentSkillPoints:5,
               gear:{ helmet:null, armor:null, bracers:null, accessory:null } });
           } else {
@@ -1197,7 +1205,7 @@ export default function RiseToWar() {
       <TilePopup
         selKey={selKey} selTile={selTile} popupPos={popupPos}
         popupMode={popupMode} setPopupMode={setPopupMode}
-        onEnterHQ={() => { setHqOpen(true); setHqTab("overview"); setSelKey(null); setPopupPos(null); }}
+        onEnterHQ={() => { setHqOpen(true); setHqTab("hub"); setSelKey(null); setPopupPos(null); }}
         cmds={cmds} cmdsOnSel={cmdsOnSel} marchingToSel={marchingToSel} canAtk={canAtk}
         barracksPool={barracksPool} editArmyCmd={editArmyCmd} setEditArmyCmd={setEditArmyCmd}
         sliderVals={sliderVals} setSliderVals={setSliderVals}
@@ -1246,7 +1254,7 @@ export default function RiseToWar() {
 
       <HQMenu
         hqOpen={hqOpen} setHqOpen={setHqOpen} hqTab={hqTab} setHqTab={setHqTab}
-        cmds={cmds} setCmds={setCmds} tiles={tiles} rss={rss} gems={gems} pKeys={pKeys}
+        cmds={cmds} setCmds={setCmds} tiles={tiles} rss={rss} setRss={setRss} gems={gems} pKeys={pKeys}
         bldgs={bldgs} barracksPool={barracksPool} setBarracks={setBarracks}
         woundedTroops={woundedTroops} woundedQueue={woundedQueue} trainingQueue={trainingQueue}
         trainSlider={trainSlider} setTrainSlider={setTrainSlider}
