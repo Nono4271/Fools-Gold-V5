@@ -1,5 +1,15 @@
 import { useState, memo } from "react";
-import { TROOP } from "../../../shared/constants/troops.js";
+import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
+
+// Resolve a troopBranch descriptor to { branchDef, tierData }
+function resolveTroopBranch(tb) {
+  if (!tb) return null;
+  const f = FACTION_TROOPS[tb.faction];
+  if (!f) return null;
+  const b = f.branches.find(b => b.key === tb.branch);
+  if (!b) return null;
+  return { branchDef: b, tierData: b.tiers[tb.tier ?? 0] ?? null, faction: f };
+}
 
 function timeAgo(ts) {
   if (!ts) return "";
@@ -60,61 +70,72 @@ function BarLegend({ start, end, wounded, isEnemy }) {
 }
 
 // ── Troop stats popup (secondary) ────────────────────────────────────────────
-function TroopPopup({ troopType, gearBonuses, onClose }) {
-  const tt = TROOP[troopType];
-  if (!tt) return null;
-  const gb      = gearBonuses || {};
-  const atkMult = 1 + (gb.gearArmyAtk || 0) / 100;
-  const focMult = 1 + (gb.gearArmyFoc || 0) / 100;
-  const spdBonus = gb.gearArmySpd || 0;
+function TroopPopup({ troopBranch, onClose }) {
+  const resolved = resolveTroopBranch(troopBranch);
+  if (!resolved) return null;
+  const { branchDef: br, tierData: td, faction: f } = resolved;
   const stats = [
-    { label:"HP",    base:tt.hp,    eff:tt.hp,                       color:"#cc4444" },
-    { label:"ATK",   base:tt.atk,   eff:Math.round(tt.atk*atkMult),  color:"#e08050" },
-    { label:"DEF",   base:tt.def,   eff:tt.def,                      color:"#5080e0" },
-    { label:"FOCUS", base:tt.focus, eff:Math.round(tt.focus*focMult),color:"#50d090" },
-    { label:"SPD",   base:tt.spd,   eff:tt.spd + spdBonus,           color:"#d0a030" },
-    { label:"SIEGE", base:tt.siege, eff:tt.siege, color:"#888888", isFloat:true },
+    { label:"HP",    val:td.hp,    color:"#cc4444" },
+    { label:"DMG",   val:`${td.dmgLo}–${td.dmgHi}`, color:"#e08050" },
+    { label:"DEF",   val:td.def,   color:"#5080e0" },
+    { label:"SPD",   val:td.spd,   color:"#d0a030" },
+    { label:"SIEGE", val:td.siege, color:"#888888" },
   ];
+  const dmgTypeColor = br.dmgType === "magical" ? "#a855f7" : "#e08050";
   return (
     <div onClick={e => e.stopPropagation()} style={{
       position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-      zIndex:620, width:200,
+      zIndex:620, width:220,
       background:"#100c06", border:"1px solid #3a2e18", borderRadius:6,
       padding:"12px 14px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
     }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          <span style={{ fontSize:18 }}>{tt.icon}</span>
-          <div>
-            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, color:"#c8a060" }}>{tt.label}</div>
-            <div style={{ fontSize:7, color:"#5a4a38", fontStyle:"italic" }}>{tt.desc}</div>
+        <div>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, color:"#c8a060" }}>
+            {br.label} — {td.label}
+          </div>
+          <div style={{ fontSize:7, color:"#5a4a38", fontStyle:"italic", marginTop:1 }}>
+            {f.quarters} · {br.size} · <span style={{ color:dmgTypeColor }}>{br.dmgType}</span>
           </div>
         </div>
-        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:12, cursor:"pointer" }}>&#x2715;</button>
+        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:12, cursor:"pointer" }}>✕</button>
       </div>
       <div style={{ fontSize:7, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".08em",
         marginBottom:6, paddingBottom:4, borderBottom:"1px solid #1e1808" }}>
-        TROOP STATS AT BATTLE START
+        TROOP STATS
       </div>
-      {stats.map(({ label, base, eff, color, isFloat }) => {
-        const boosted = eff !== base;
-        return (
-          <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-            <span style={{ fontSize:7, color:"#5a4a38", fontFamily:"'Cinzel',serif", letterSpacing:".06em" }}>{label}</span>
-            <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-              {boosted && <span style={{ fontSize:6, color:"#3a3028", textDecoration:"line-through" }}>{isFloat ? base.toFixed(1) : base}</span>}
-              <span style={{ fontSize:9, fontWeight:700, color: boosted ? "#3daa60" : color }}>{isFloat ? eff.toFixed(1) : eff}</span>
-              {boosted && <span style={{ fontSize:6, color:"#3daa60" }}>&#x2191;</span>}
-            </div>
-          </div>
-        );
-      })}
+      {stats.map(({ label, val, color }) => (
+        <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+          <span style={{ fontSize:7, color:"#5a4a38", fontFamily:"'Cinzel',serif", letterSpacing:".06em" }}>{label}</span>
+          <span style={{ fontSize:9, fontWeight:700, color }}>{val}</span>
+        </div>
+      ))}
+      {/* Size triangle */}
       <div style={{ marginTop:8, padding:"5px 8px", background:"rgba(255,255,255,.02)",
         border:"1px solid #1e1808", borderRadius:3 }}>
-        <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:3 }}>TYPE ADVANTAGE</div>
-        <div style={{ fontSize:7, color:"#60a040" }}>Strong vs: {tt.strong.join(", ") || "—"}</div>
-        <div style={{ fontSize:7, color:"#aa4040" }}>Weak vs: {tt.weak.join(", ") || "—"}</div>
+        <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:3 }}>SIZE TRIANGLE</div>
+        <div style={{ fontSize:7, color:"#60a040" }}>
+          {br.size === "small" ? "✓ Strong vs Large" : br.size === "large" ? "✓ Strong vs Medium" : "✓ Strong vs Small"}
+        </div>
+        <div style={{ fontSize:7, color:"#aa4040" }}>
+          {br.size === "small" ? "✗ Weak vs Medium" : br.size === "large" ? "✗ Weak vs Small" : "✗ Weak vs Large"}
+        </div>
+        {br.dmgType === "magical" && (
+          <div style={{ fontSize:7, color:"#a855f7", marginTop:2 }}>✦ Magical — bypasses physical DEF</div>
+        )}
       </div>
+      {/* Dragon passives */}
+      {f.factionPassives?.length > 0 && (
+        <div style={{ marginTop:6, padding:"5px 8px", background:"rgba(200,50,50,.06)",
+          border:"1px solid rgba(200,50,50,.2)", borderRadius:3 }}>
+          <div style={{ fontSize:6, color:"#8a3030", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:3 }}>FACTION PASSIVES</div>
+          {f.factionPassives.map(p => (
+            <div key={p.key} style={{ fontSize:7, color:"#aa5050", marginBottom:2 }}>
+              {p.icon} {p.name}: {p.desc}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -207,14 +228,16 @@ function GearPiecePopup({ piece, onClose }) {
 function CommanderPopup({ b, side, onClose }) {
   const [showTroop, setShowTroop] = useState(false);
   const [showGear, setShowGear] = useState(null); // index of gear slot or null
-  const isAtk     = side === "atk";
-  const name      = isAtk ? b.atkName       : b.defCmdName;
-  const icon      = isAtk ? b.atkIcon       : b.defCmdIcon;
-  const lvl       = isAtk ? b.atkLvl        : b.defLvl;
-  const troopType = isAtk ? b.atkTroopType  : b.defTroopType;
-  const troops    = isAtk ? b.atkTroopsStart : b.defTroopsStart;
-  const stats     = isAtk ? b.atkCmdStats : b.defCmdStats ?? null;
-  const tt        = troopType ? TROOP[troopType] : null;
+  const isAtk      = side === "atk";
+  const name        = isAtk ? b.atkName       : b.defCmdName;
+  const icon        = isAtk ? b.atkIcon       : b.defCmdIcon;
+  const lvl         = isAtk ? b.atkLvl        : b.defLvl;
+  const troopBranch = isAtk ? b.atkTroopBranch : b.defTroopBranch;
+  const troops      = isAtk ? b.atkTroopsStart : b.defTroopsStart;
+  const stats       = isAtk ? b.atkCmdStats : b.defCmdStats ?? null;
+  const resolved    = resolveTroopBranch(troopBranch);
+  const br          = resolved?.branchDef ?? null;
+  const td          = resolved?.tierData  ?? null;
   // Show all 3 commander stats always (even if 0)
   const cmdStats  = stats ? [
     { label:"ATK",   val:stats.atk ?? 0, color:"#e08050" },
@@ -352,20 +375,21 @@ function CommanderPopup({ b, side, onClose }) {
           letterSpacing:".08em", marginBottom:5, paddingBottom:3, borderBottom:"1px solid #1e1808" }}>
           TROOPS
         </div>
-        <div onClick={() => tt && setShowTroop(true)} style={{
+        <div onClick={() => br && setShowTroop(true)} style={{
           display:"flex", alignItems:"center", justifyContent:"space-between",
           padding:"6px 8px", borderRadius:4,
           background:"rgba(255,255,255,.03)", border:"1px solid #1e1808",
-          cursor: tt ? "pointer" : "default",
+          cursor: br ? "pointer" : "default",
         }}>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            <span style={{ fontSize:14 }}>{tt?.icon ?? "?"}</span>
             <div>
-              <div style={{ fontSize:8, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>{tt?.label ?? "Unknown"}</div>
-              <div style={{ fontSize:7, color:"#5a4a38" }}>{(troops ?? 0).toLocaleString()} troops</div>
+              <div style={{ fontSize:8, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>
+                {br ? `${br.label} — ${td?.label ?? ""}` : "Unknown"}
+              </div>
+              <div style={{ fontSize:7, color:"#5a4a38" }}>{(troops ?? 0).toLocaleString()} troops{br ? ` · ${br.size} · ${br.dmgType}` : ""}</div>
             </div>
           </div>
-          {tt && <span style={{ fontSize:7, color:"#3a3028" }}>tap for stats &#x2192;</span>}
+          {br && <span style={{ fontSize:7, color:"#3a3028" }}>tap for stats &#x2192;</span>}
         </div>
       </div>
 
@@ -376,7 +400,7 @@ function CommanderPopup({ b, side, onClose }) {
 
       {/* Secondary troop popup */}
       {showTroop && (
-        <TroopPopup troopType={troopType} gearBonuses={stats} onClose={() => setShowTroop(false)} />
+        <TroopPopup troopBranch={troopBranch} onClose={() => setShowTroop(false)} />
       )}
     </>
   );
@@ -599,8 +623,14 @@ function DetailedLog({ b }) {
             let color, indent;
             if (a.isHeal) {
               color = "#50d090"; indent = 12;
+            } else if (a.isConfused) {
+              color = "#c855f7"; indent = 12;
             } else if (a.isGear) {
               color = "#a070d0"; indent = 10;
+            } else if (a.isTroopSkill && a.isPlayer === false) {
+              color = "#d08060"; indent = 12;
+            } else if (a.isTroopSkill) {
+              color = "#60c8a0"; indent = 12;
             } else if (a.isSkill && a.isPhase0) {
               color = "#c8901a"; indent = 10;
             } else if (a.isSkill) {
@@ -625,6 +655,15 @@ function DetailedLog({ b }) {
                 fontStyle: a.actor === "SYSTEM" ? "italic" : "normal",
               }}>
                 {a.dmg > 0 && !a.isSkill ? (() => {
+                  // Confused troops/commanders hit their own side
+                  if (a.isConfused) {
+                    return (
+                      <span>
+                        {a.action}{" — "}
+                        <span style={{ color:"#c855f7" }}>{a.dmg.toLocaleString()} friendly fire damage</span>
+                      </span>
+                    );
+                  }
                   // Player attacks hit enemy troops; enemy attacks hit player troops
                   const killed    = a.isPlayer ? a.defKilled    : a.atkKilled;
                   const remaining = a.isPlayer ? a.defRemaining : a.atkRemaining;
@@ -666,6 +705,10 @@ function DetailedLog({ b }) {
                   }
 
                   if (!se || !se.type) {
+                    // Troop skills — no skillEffect block, render from action text directly
+                    if (a.isTroopSkill) {
+                      return <span style={{ fontFamily:"'Cinzel',serif" }}>{a.action}</span>;
+                    }
                     // Fallback for unrecognised skill
                     return <span>{icon} {cmdName} activates <strong>{skillName}</strong></span>;
                   }
