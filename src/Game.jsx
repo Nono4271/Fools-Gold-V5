@@ -1255,7 +1255,7 @@ export default function RiseToWar() {
       <HQMenu
         hqOpen={hqOpen} setHqOpen={setHqOpen} hqTab={hqTab} setHqTab={setHqTab}
         cmds={cmds} setCmds={setCmds} tiles={tiles} rss={rss} setRss={setRss} gems={gems} pKeys={pKeys}
-        bldgs={bldgs} barracksPool={barracksPool} setBarracks={setBarracks}
+        bldgs={bldgs} setBldgs={setBldgs} barracksPool={barracksPool} setBarracks={setBarracks}
         woundedTroops={woundedTroops} woundedQueue={woundedQueue} trainingQueue={trainingQueue}
         trainSlider={trainSlider} setTrainSlider={setTrainSlider}
         upgQueue={upgQueue} sliderVals={sliderVals} setSliderVals={setSliderVals}
@@ -1380,7 +1380,7 @@ export default function RiseToWar() {
         setGearScreenOpen={setGearScreenOpen}
         gearInventoryCount={gearInventory.length}
         playerHqKey={playerHqKey}
-        hidden={worldMapOpen}
+        hidden={worldMapOpen || hqOpen}
       />
 
     </div>
