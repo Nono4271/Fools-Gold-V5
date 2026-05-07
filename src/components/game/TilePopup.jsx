@@ -175,7 +175,7 @@ export default memo(function TilePopup({
                   <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>Lv{dc.lvl}</div><div style={{fontSize:6,color:"#5a4a40"}}>Level</div></div>
                   <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>{dc.troops.toLocaleString()}</div><div style={{fontSize:6,color:"#5a4a40"}}>Troops</div></div>
                   {/* Fog of war: never show enemy commander name or troop type */}
-                  {!isAiOwned && tt && <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto"}}><span style={{fontSize:10}}></span><span style={{fontSize:7,color:tt.color,fontFamily:"'Cinzel',serif"}}>{tt.label}</span></div>}
+                  {!isAiOwned && tt && <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto"}}><span style={{fontSize:7,color:tt.color,fontFamily:"'Cinzel',serif"}}>{tt.label}</span></div>}
                   {isAiOwned && <div style={{marginLeft:"auto",fontSize:7,color:"#5a4040",fontFamily:"'Cinzel',serif",fontStyle:"italic"}}>Enemy Commander</div>}
                 </div>
               </div>
@@ -318,7 +318,7 @@ export default memo(function TilePopup({
                 <span style={{fontSize:14}}>{cmd.icon}</span>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:"#e0d0c0",fontWeight:700}}>{cmd.n}</div>
-                  <div style={{fontSize:7,color:"#7a7a5a"}}>{cmd.troopBranch ? tbInfo(cmd.troopBranch)?.label + ' ' + (cmd.troops||0).toLocaleString() : "No troops":"No troops"}</div>
+                  <div style={{fontSize:7,color:"#7a7a5a"}}>{cmd.troopBranch ? (tbInfo(cmd.troopBranch)?.label + ' · ' + (cmd.troops||0).toLocaleString()) : "No troops"}</div>
                 </div>
                 <span style={{fontSize:8,color:"#f0c040"}}>🏰</span>
               </div>
