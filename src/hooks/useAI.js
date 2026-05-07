@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from "react";
-import { TROOP_KEYS } from "../../shared/constants/troops.js";
+import { FACTION_TROOPS, FACTION_KEYS } from "../../shared/constants/troops.js";
 import { barracksCapacity, maxAvailLevel, upgCost, cmdCommand, rssRate } from "../../shared/constants/buildings.js";
 import { AI_HQ_KEY, WIN_C, WIN_R } from "../../shared/constants/map.js";
 import { adj, bfsPath, effectiveMarchSpd, marchStepMs } from "../../shared/utils/pathfinding.js";
@@ -63,7 +63,7 @@ const tickAiMarch = useCallback(() => {
     if (!target.k) continue;
     const path = bfsPath(cmd.tk, target.k);
     if (!path || path.length < 2) continue;
-    const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopType));
+    const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
     setCmds(p => p.map(c => c.uid === cmd.uid
       ? { ...c, march: { type:"attack", path, step:0, dest:target.k, origin:cmd.tk, stepMs, lastStepTime:now } }
       : c));
@@ -126,9 +126,13 @@ const tickAiEcon = useCallback(() => {
     const leaderBonus = (cmd.cls === "leader" && (cmd.lvl || 5) >= 25) ? 500 : 0;
     const cmdCap = cmdCommand(cmd.lvl || 5, curAiBldgs.commandcenter || 0, leaderBonus);
     const assign = Math.min(cmdCap, curAiPool);
-    const tType  = TROOP_KEYS[Math.floor(Math.random() * TROOP_KEYS.length)];
+    // Pick a random faction branch for the AI commander
+    const aiFaction = FACTION_KEYS[Math.floor(Math.random() * FACTION_KEYS.length)];
+    const aiBranches = FACTION_TROOPS[aiFaction].branches;
+    const aiBranch = aiBranches[Math.floor(Math.random() * aiBranches.length)];
+    const tBranch = { faction: aiFaction, branch: aiBranch.key, tier: 0 };
     setAiBarracksPool(p => Math.max(0, p - assign));
-    setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, troops:assign, troopType:tType } : c));
+    setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, troops:assign, troopBranch:tBranch } : c));
     return;
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { TROOP, TROOP_KEYS } from "../../shared/constants/troops.js";
+import { FACTION_TROOPS, FACTION_KEYS } from "../../shared/constants/troops.js";
 import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS } from "../../shared/constants/map.js";
 import { CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
 import { barracksCapacity } from "../../shared/constants/buildings.js";
@@ -104,7 +104,7 @@ arrivedAttackers.forEach(cmd => {
   const hasFoothold = adj(dc, dr).some(k => tiles[k]?.owner === "player");
   if (!hasFoothold) {
     const boostedCmd0 = applyGearToCmd(cmd, gearInventory);
-    const stepMs = marchStepMs(effectiveMarchSpd(boostedCmd0.spd || 60, cmd.troopType, boostedCmd0.gearBonuses?.armySpd || 0));
+    const stepMs = marchStepMs(effectiveMarchSpd(boostedCmd0.spd || 60, cmd.troopBranch, boostedCmd0.gearBonuses?.armySpd || 0));
     const retreatPath = bfsPath(destKey, hqKey);
     setCmds(p => p.map(c => {
       if (c.uid !== cmd.uid) return c;
@@ -124,7 +124,7 @@ arrivedAttackers.forEach(cmd => {
   if (defTile.garrisonDefeated) {
     const newTroops  = cmd.troops || 0;
     const boostedCmd0 = applyGearToCmd(cmd, gearInventory);
-    const siegePower = calcSiegePower(newTroops, cmd.troopType, boostedCmd0.gearBonuses?.armySiege || 0);
+    const siegePower = calcSiegePower(newTroops, cmd.troopBranch, boostedCmd0.gearBonuses?.armySiege || 0);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
     let siegeCaptured = false;
     if (siegePower >= currentSiege) {
@@ -207,7 +207,7 @@ arrivedAttackers.forEach(cmd => {
     floaty("⚔ Commander routed — garrison defends!", "#d0a030", destKey);
     const plvl = defTile.powerLevel || 1;
     const pd2  = POWER_DEFS[plvl] || POWER_DEFS[1];
-    const garrisonTile = { ...defTile, defCmd:{ lvl:pd2.cmdLvl, troops:defTile.garrisonTroops||pd2.troops, troopType:defTile.troopType, atk:80+pd2.cmdLvl*8, spd:30+pd2.cmdLvl*3 } };
+    const garrisonTile = { ...defTile, defCmd:{ lvl:pd2.cmdLvl, troops:defTile.garrisonTroops||pd2.troops, troopBranch:defTile.troopBranch, atk:80+pd2.cmdLvl*8, spd:30+pd2.cmdLvl*3 } };
     res2 = simBattle({ ...boostedCmd, troops:troopsAfterS1 }, troopsAfterS1, garrisonTile, wallLvl);
     finalTroops = res2.won ? Math.max(0, troopsAfterS1 - res2.lost) : 0;
 
@@ -240,7 +240,7 @@ arrivedAttackers.forEach(cmd => {
   }
 
   // Both stages won — check siege
-  const siegePower   = calcSiegePower(finalTroops, cmd.troopType, boostedCmd.gearBonuses?.armySiege || 0);
+  const siegePower   = calcSiegePower(finalTroops, cmd.troopBranch, boostedCmd.gearBonuses?.armySiege || 0);
   const currentSiege = defTile.siege ?? SIEGE_BASE;
   let tileCaptured = false;
 
@@ -443,7 +443,7 @@ useEffect(() => {
       }
 
       // Player won all fights — attempt siege/capture
-      const siegePower   = calcSiegePower(remainingTroops, cmd.troopType, boostedCmd.gearBonuses?.armySiege || 0);
+      const siegePower   = calcSiegePower(remainingTroops, cmd.troopBranch, boostedCmd.gearBonuses?.armySiege || 0);
       const currentSiege = defTile.siege ?? SIEGE_BASE;
       if (siegePower >= currentSiege) {
         tileCaptured = true;
@@ -497,11 +497,11 @@ arrivedAI.forEach(cmd => {
   const boostedCmd2 = applyGearToCmd(cmd, gearInventory);
 
   if (defTile.garrisonDefeated) {
-    const siegePower = calcSiegePower(cmd.troops||0, cmd.troopType, boostedCmd2.gearBonuses?.armySiege || 0);
+    const siegePower = calcSiegePower(cmd.troops||0, cmd.troopBranch, boostedCmd2.gearBonuses?.armySiege || 0);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
     if (siegePower >= currentSiege) {
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
-      patchTile(destKey, { owner:"ai", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor((cmd.troops||0)*0.6), troopType:cmd.troopType||TROOP_KEYS[0], atk:cmd.atk||150, spd:cmd.spd||60 } });
+      patchTile(destKey, { owner:"ai", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor((cmd.troops||0)*0.6), troopBranch:cmd.troopBranch||{faction:'marines',branch:'regulars',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
       floaty("⚠ ENEMY CAPTURED TILE!", "#dd3322", destKey);
       if (destKey === WIN_KEY || isPlayerHQ) setWinner("ai");
       setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
@@ -518,12 +518,12 @@ arrivedAI.forEach(cmd => {
   let tileCaptured = false;
 
   if (res.won) {
-    const siegePower = calcSiegePower(newTroops, cmd.troopType, boostedCmd2.gearBonuses?.armySiege || 0);
+    const siegePower = calcSiegePower(newTroops, cmd.troopBranch, boostedCmd2.gearBonuses?.armySiege || 0);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
     if (siegePower >= currentSiege) {
       tileCaptured = true;
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
-      patchTile(destKey, { owner:"ai", garrison:0, siege:300, siegeMax:300, garrisonDefeated:false, resetAt:null, hasAiCommander:true, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor(newTroops*0.6), troopType:cmd.troopType||TROOP_KEYS[0], atk:cmd.atk||150, spd:cmd.spd||60 } });
+      patchTile(destKey, { owner:"ai", garrison:0, siege:300, siegeMax:300, garrisonDefeated:false, resetAt:null, hasAiCommander:true, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor(newTroops*0.6), troopBranch:cmd.troopBranch||{faction:'marines',branch:'regulars',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
       floaty("⚠ ENEMY CAPTURED TILE!", "#dd3322", destKey);
       if (destKey === WIN_KEY || isPlayerHQ) setWinner("ai");
     } else {
