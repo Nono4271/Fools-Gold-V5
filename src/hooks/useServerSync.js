@@ -6,7 +6,7 @@
  *
  * Responsibilities
  *   • Connect to ws://localhost:3001 when screen === "game".
- *   • On map ready, send GAME_INIT with the full tile map to seed the server.
+ *   • On map ready, send GAME_INIT with only mutable tile state (owned/HQ/keep/defeated).
  *   • Expose emitTileCapture / emitTileSiege helpers that:
  *       1. Apply the patch locally (optimistic update via patchTile).
  *       2. Send the event to the server.
@@ -23,8 +23,49 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
-const WS_URL = 'ws://localhost:3001';
+// In dev: Vite proxies /ws → ws://localhost:3001 (see vite.config.ts)
+// In prod: set VITE_WS_URL env var to your deployed server, e.g. wss://yourdomain.com
+const WS_URL = import.meta.env.VITE_WS_URL ||
+  (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
 const MAX_BACKOFF = 30_000; // 30 s
+
+
+/**
+ * Extract only the mutable subset of tile state that the server needs to track.
+ * Terrain, biome, region, geometry etc. are deterministically generated client-side
+ * from the same seed, so we never need to send them. This keeps GAME_INIT under ~50KB
+ * instead of ~200MB for a 700×700 map.
+ *
+ * Only tiles that differ from "neutral, unowned, full garrison" are included.
+ */
+function extractMutableState(tiles) {
+  const mutable = {};
+  for (const [key, t] of Object.entries(tiles)) {
+    if (key === '__ready') continue;
+    // Skip tiles that are in their default neutral state
+    const isDefault = !t.owner && !t.garrisonDefeated && !t.isHQ && !t.isHQPart &&
+                      !t.isKeep && !t.isWin && !t.hasAiCommander;
+    if (isDefault) continue;
+    // Store only the fields the server actually uses for authoritative state
+    mutable[key] = {
+      c: t.c, r: t.r, k: key,
+      owner:            t.owner            ?? null,
+      garrison:         t.garrison         ?? 0,
+      siege:            t.siege            ?? t.siegeMax ?? 50,
+      siegeMax:         t.siegeMax         ?? 50,
+      garrisonDefeated: t.garrisonDefeated ?? false,
+      resetAt:          t.resetAt          ?? null,
+      isHQ:             t.isHQ             ?? false,
+      isHQPart:         t.isHQPart         ?? false,
+      isKeep:           t.isKeep           ?? false,
+      isWin:            t.isWin            ?? false,
+      hasAiCommander:   t.hasAiCommander   ?? false,
+      defCmd:           t.defCmd           ?? null,
+      powerLevel:       t.powerLevel       ?? 1,
+    };
+  }
+  return mutable;
+}
 
 export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId }) {
   const wsRef          = useRef(null);
@@ -108,7 +149,7 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId })
           ws.send(JSON.stringify({
             type: 'GAME_INIT',
             sessionId,
-            tiles, // full tile map — server stores as authoritative state
+            tiles: extractMutableState(tiles), // mutable subset only — ~50KB not ~200MB
           }));
         } else {
           // Map not ready yet; GAME_INIT will fire from the mapReady effect below
