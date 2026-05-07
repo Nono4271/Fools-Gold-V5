@@ -230,7 +230,8 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId })
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     sentInitRef.current = true;
-    ws.send(JSON.stringify({ type: 'GAME_INIT', sessionId, tiles }));
+    const mutableTiles = extractMutableState(tiles);
+ ws.send(JSON.stringify({ type: "GAME_INIT", sessionId, tiles: mutableTiles }));
     console.log('[ServerSync] GAME_INIT sent — tiles:', Object.keys(tiles).length);
   }, [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
