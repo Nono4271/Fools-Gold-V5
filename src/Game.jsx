@@ -807,6 +807,12 @@ export default function RiseToWar() {
     selKey ? playerCmds.filter(c => c.march?.dest===selKey) : [],
   [selKey, playerCmds]);
 
+  const onEnterHQ = useCallback(() => {
+    unstable_batchedUpdates(() => {
+      setHqOpen(true); setHqTab("hub"); setSelKey(null); setPopupPos(null);
+    });
+  }, []);
+
   const panelOpen = (mode==="selectMarchDest" || mode==="reinforce") && !hqOpen;
 
   // ── Actions ──
@@ -1095,9 +1101,13 @@ export default function RiseToWar() {
     const px = Math.min(window.innerWidth-POPUP_W-8, Math.max(8, screenX-POPUP_W/2));
     const py = Math.max(46, screenY-POPUP_H-16);
 
-    unstable_batchedUpdates(() => {
-      setSelKey(k); setPopupPos({ x:px, y:py }); setPopupMode("main"); setEditArmyCmd(null);
-      setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
+    // Defer React state update to next frame — lets the touch event return
+    // immediately so the canvas stays responsive, then React renders the popup
+    requestAnimationFrame(() => {
+      unstable_batchedUpdates(() => {
+        setSelKey(k); setPopupPos({ x:px, y:py }); setPopupMode("main"); setEditArmyCmd(null);
+        setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
+      });
     });
   }, [floaty, startMarch, setHqOpen, setHqTab]);
 
@@ -1237,7 +1247,7 @@ export default function RiseToWar() {
       <TilePopup
         selKey={selKey} selTile={selTile} popupPos={popupPos}
         popupMode={popupMode} setPopupMode={setPopupMode}
-        onEnterHQ={() => { setHqOpen(true); setHqTab("hub"); setSelKey(null); setPopupPos(null); }}
+        onEnterHQ={onEnterHQ}
         cmds={cmds} cmdsOnSel={cmdsOnSel} marchingToSel={marchingToSel} canAtk={canAtk}
         barracksPool={barracksPool} editArmyCmd={editArmyCmd} setEditArmyCmd={setEditArmyCmd}
         sliderVals={sliderVals} setSliderVals={setSliderVals}

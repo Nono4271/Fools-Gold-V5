@@ -960,7 +960,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       if (e.touches.length === 1) {
         const dx = e.touches[0].clientX - tDragFrom.current.x;
         const dy = e.touches[0].clientY - tDragFrom.current.y;
-        if (Math.abs(dx)+Math.abs(dy) > 4) {
+        if (Math.abs(dx)+Math.abs(dy) > 8) {
           tDidDrag.current = true;
           isPanning.current = true;
         }
@@ -1022,12 +1022,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         const lockedPan = { ...panRef.current };
         world.x = lockedPan.x;
         world.y = lockedPan.y;
-        // Redraw at final pan position so any remaining unrendered tiles appear.
+        // Redraw at final pan position — one rAF for Pixi, notify React in the NEXT frame
+        // so the two heavy operations don't collide on the same main-thread slot.
         requestAnimationFrame(() => {
           lastBoundsRef.current = null;
           redrawRef.current?.redraw(true);
+          requestAnimationFrame(() => {
+            onPanChangeRef.current(lockedPan);
+          });
         });
-        onPanChangeRef.current(lockedPan);
       }
     };
     el.addEventListener("touchstart",  onTS, { passive: false });
