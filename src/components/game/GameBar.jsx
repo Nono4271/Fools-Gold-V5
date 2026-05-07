@@ -212,7 +212,7 @@ export default function GameBar({
 
       {/* ── RIGHT RAIL: Reports ── */}
       <div style={{
-        position: "fixed", right: 8, top: "40%", transform: "translateY(-50%)",
+        position: "fixed", right: 8, top: "50%", transform: "translateY(-50%)",
         zIndex: 300,
         display: "flex", flexDirection: "column", gap: 10, alignItems: "center",
       }}>
