@@ -65,7 +65,11 @@ setCmds, setAiCmds, setTiles, patchTile, setWounded, setBarracks,
 setBattles, setBLog, setWinner, setUnseenBattles,
 tilesRef, floaty, gearInventory,
 playerHqKey, aiHqKeys,
+emitTileCapture, emitTileSiege,
 }) {
+// Server-sync helpers — no-op if server not connected yet
+const _emitCapture = (key, patch) => emitTileCapture?.(key, patch);
+const _emitSiege   = (key, patch) => emitTileSiege?.(key, patch);
 const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
 
 // Keep a ref to cmds so the draw-timer interval can read current cmds
@@ -126,10 +130,12 @@ arrivedAttackers.forEach(cmd => {
     if (siegePower >= currentSiege) {
       siegeCaptured = true;
       patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null });
+      _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null });
       floaty("⚔ CAPTURED!", "#3daa60", destKey);
       if (destKey === WIN_KEY) setWinner("player");
     } else {
       patchTile(destKey, { siege:currentSiege-siegePower, resetAt:Date.now()+garrisonResetMs(defTile) });
+      _emitSiege(destKey, { siege:currentSiege-siegePower, garrisonDefeated:false, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
       floaty(`🔨 SIEGE ${currentSiege-siegePower}/${defTile.siegeMax??SIEGE_BASE}`, "#d0a030", destKey);
     }
     setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null, tk:siegeCaptured?destKey:originKey } : c));
@@ -217,6 +223,7 @@ arrivedAttackers.forEach(cmd => {
       const woundedS2 = Math.floor(troopsAfterS1 * 0.30);
       if (woundedS2 > 0) { setWounded(w => w + woundedS2); floaty(`🏥 +${woundedS2} wounded`, "#88aaff", destKey); }
       patchTile(destKey, { defCmd:null, hasAiCommander:false, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile) });
+      _emitSiege(destKey, { siege:defTile.siege??SIEGE_BASE, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
       setCmds(p => p.map(c => {
         if (c.uid !== cmd.uid) return c;
         const retreatPath = bfsPath(originKey, hqKey);
@@ -240,10 +247,12 @@ arrivedAttackers.forEach(cmd => {
   if (siegePower >= currentSiege) {
     tileCaptured = true;
     patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:null, hasAiCommander:false });
+    _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:null });
     floaty("⚔ CAPTURED!", "#3daa60", destKey);
     if (destKey === WIN_KEY) setWinner("player");
   } else {
     patchTile(destKey, { siege:currentSiege-siegePower, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile), defCmd:null, hasAiCommander:false });
+    _emitSiege(destKey, { siege:currentSiege-siegePower, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
     floaty(`⚔ SIEGE ${currentSiege-siegePower}/${defTile.siegeMax??SIEGE_BASE} — not captured`, "#d0a030", destKey);
   }
 
@@ -439,10 +448,12 @@ useEffect(() => {
       if (siegePower >= currentSiege) {
         tileCaptured = true;
         patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:null, hasAiCommander:false });
+        _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:null });
         floaty("⚔ CAPTURED!", "#3daa60", destKey);
         if (destKey === WIN_KEY) setWinner("player");
       } else {
         patchTile(destKey, { siege:currentSiege-siegePower, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile), defCmd:null, hasAiCommander:false });
+        _emitSiege(destKey, { siege:currentSiege-siegePower, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
         floaty(`⚔ SIEGE ${currentSiege-siegePower}/${defTile.siegeMax??SIEGE_BASE}`, "#d0a030", destKey);
       }
 
