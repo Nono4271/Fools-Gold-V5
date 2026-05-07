@@ -1,5 +1,15 @@
 import { memo } from "react";
-import { TROOP } from "../../../shared/constants/troops.js";
+import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
+
+// Resolve troopBranch to display label + color
+function tbInfo(tb) {
+  if (!tb) return null;
+  const f = FACTION_TROOPS[tb.faction];
+  const b = f?.branches.find(b => b.key === tb.branch);
+  const t = b?.tiers[tb.tier ?? 0];
+  if (!b || !t) return null;
+  return { label: `${b.label} 2014 ${t.label}`, color: "#c8a060", size: b.size, dmgType: b.dmgType };
+}
 import { TERR } from "../../../shared/constants/terrain.js";
 import { RSS, POWER_DEFS, SIEGE_BASE, HQP, TC } from "../../../shared/constants/map.js";
 import { BLDG } from "../../../shared/constants/buildings.js";
@@ -155,7 +165,7 @@ export default memo(function TilePopup({
             const aiCmdPresent = isAiOwned && cmds.some(c => c.owner==="ai" && c.tk===selKey && !c.march);
             const dc = (isAiOwned && !aiCmdPresent) ? garrisonDefCmd(selTile) : selTile.defCmd;
             if (!dc) return null;
-            const tt = (!isAiOwned && dc.troopType) ? TROOP[dc.troopType] : null;
+            const tt = tbInfo(dc.troopBranch);
             return (
               <div style={{marginBottom:4,padding:"3px 6px",background:"rgba(200,40,40,.06)",borderRadius:3,border:"1px solid rgba(200,40,40,.2)"}}>
                 <div style={{fontSize:7,color:"#8a5a4a",fontFamily:"'Cinzel',serif",letterSpacing:".06em",marginBottom:3}}>
@@ -165,7 +175,7 @@ export default memo(function TilePopup({
                   <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>Lv{dc.lvl}</div><div style={{fontSize:6,color:"#5a4a40"}}>Level</div></div>
                   <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>{dc.troops.toLocaleString()}</div><div style={{fontSize:6,color:"#5a4a40"}}>Troops</div></div>
                   {/* Fog of war: never show enemy commander name or troop type */}
-                  {!isAiOwned && tt && <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto"}}><span style={{fontSize:10}}>{tt.icon}</span><span style={{fontSize:7,color:tt.color,fontFamily:"'Cinzel',serif"}}>{tt.label}</span></div>}
+                  {!isAiOwned && tt && <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto"}}><span style={{fontSize:10}}></span><span style={{fontSize:7,color:tt.color,fontFamily:"'Cinzel',serif"}}>{tt.label}</span></div>}
                   {isAiOwned && <div style={{marginLeft:"auto",fontSize:7,color:"#5a4040",fontFamily:"'Cinzel',serif",fontStyle:"italic"}}>Enemy Commander</div>}
                 </div>
               </div>
@@ -177,7 +187,7 @@ export default memo(function TilePopup({
             <div style={{marginBottom:4}}>
               <div style={{fontSize:7,color:"#4a6a4a",fontFamily:"'Cinzel',serif",letterSpacing:".06em",marginBottom:3}}>COMMANDERS</div>
               {cmdsOnSel.map(cmd => {
-                const tt = cmd.troopType ? TROOP[cmd.troopType] : null;
+                const tt = tbInfo(cmd.troopBranch);
                 return (
                   <div key={cmd.uid} style={{display:"flex",alignItems:"center",gap:4,marginBottom:2,padding:"2px 4px",background:"rgba(60,170,80,.07)",borderRadius:3,border:"1px solid rgba(60,170,80,.2)"}}>
                     <span style={{fontSize:10}}>{cmd.icon}</span>
@@ -186,7 +196,7 @@ export default memo(function TilePopup({
                         <span style={{fontFamily:"'Cinzel',serif",fontSize:7,color:"#90c870",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cmd.n}</span>
                         <span style={{fontFamily:"'Cinzel',serif",fontSize:6,color:"#f0c040",flexShrink:0}}>Lv{cmd.lvl||5}</span>
                       </div>
-                      {tt && <div style={{fontSize:7,color:tt.color}}>{tt.icon} {(cmd.troops||0).toLocaleString()}</div>}
+                      {tt && <div style={{fontSize:7,color:tt.color}}>{tt.label} {(cmd.troops||0).toLocaleString()}</div>}
                     </div>
                     {cmd.march && <div style={{fontSize:6,color:"#f0c040",fontFamily:"'Cinzel',serif",flexShrink:0}}>→</div>}
                   </div>
@@ -247,8 +257,8 @@ export default memo(function TilePopup({
               <button className="btn" onClick={() => { setMvCmd(cmdsOnSel.filter(c=>!c.march&&(c.troops||0)>0)[0]); setMode("selectMarchDest"); }}
                 style={{flex:1,padding:"5px 3px",background:"linear-gradient(135deg,rgba(20,80,40,.6),rgba(10,60,30,.4))",border:"1px solid #2a8040",color:"#80d090",fontSize:9,fontWeight:700}}>🚶 Move</button>
             )}
-            {selTile.owner==="player" && cmdsOnSel.some(c=>c.troopType&&!c.march) && barracksPool>0 && (
-              <button className="btn" onClick={() => { setReinCmd(cmdsOnSel.find(c=>c.troopType&&!c.march)); setMode("reinforce"); }}
+            {selTile.owner==="player" && cmdsOnSel.some(c=>c.troopBranch&&!c.march) && barracksPool>0 && (
+              <button className="btn" onClick={() => { setReinCmd(cmdsOnSel.find(c=>c.troopBranch&&!c.march)); setMode("reinforce"); }}
                 style={{flex:1,padding:"5px 3px",background:"linear-gradient(135deg,rgba(20,40,120,.6),rgba(10,30,100,.4))",border:"1px solid #2a40cc",color:"#80a0ff",fontSize:9,fontWeight:700}}>🔄</button>
             )}
             {selTile.owner==="player" && cmdsOnSel.some(c=>c.march) && (
@@ -263,8 +273,8 @@ export default memo(function TilePopup({
               }}
                 style={{flex:1,padding:"5px 3px",background:"linear-gradient(135deg,rgba(100,60,20,.5),rgba(80,40,10,.3))",border:"1px solid #c89030",color:"#f0c040",fontSize:9,fontWeight:700}}>🏰</button>
             )}
-            {selTile.owner==="player" && cmdsOnSel.some(c=>c.troopType&&!c.march) && (
-              <button className="btn" onClick={() => { setEditArmyCmd(cmdsOnSel.find(c=>c.troopType&&!c.march)); setPopupMode("editArmy"); }}
+            {selTile.owner==="player" && cmdsOnSel.some(c=>c.troopBranch&&!c.march) && (
+              <button className="btn" onClick={() => { setEditArmyCmd(cmdsOnSel.find(c=>c.troopBranch&&!c.march)); setPopupMode("editArmy"); }}
                 style={{flex:"0 0 auto",padding:"5px 7px",background:"linear-gradient(135deg,rgba(60,50,20,.5),rgba(40,30,10,.3))",border:"1px solid #7a6a30",color:"#c0a840",fontSize:11,fontWeight:700}}>🔧</button>
             )}
             {selTile.owner==="player" && !selTile.isHQ && !deletingTiles[selKey] && (
@@ -308,7 +318,7 @@ export default memo(function TilePopup({
                 <span style={{fontSize:14}}>{cmd.icon}</span>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:"#e0d0c0",fontWeight:700}}>{cmd.n}</div>
-                  <div style={{fontSize:7,color:"#7a7a5a"}}>{cmd.troopType?`${TROOP[cmd.troopType].icon} ${(cmd.troops||0).toLocaleString()}`:"No troops"}</div>
+                  <div style={{fontSize:7,color:"#7a7a5a"}}>{cmd.troopBranch ? tbInfo(cmd.troopBranch)?.label + ' ' + (cmd.troops||0).toLocaleString() : "No troops":"No troops"}</div>
                 </div>
                 <span style={{fontSize:8,color:"#f0c040"}}>🏰</span>
               </div>
@@ -329,7 +339,7 @@ export default memo(function TilePopup({
                 <span style={{fontSize:16}}>{cmd.icon}</span>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:"#90c870",fontWeight:700}}>{cmd.n}</div>
-                  {cmd.troopType && <div style={{fontSize:7,color:TROOP[cmd.troopType].color}}>{TROOP[cmd.troopType].icon} {TROOP[cmd.troopType].label}</div>}
+                  {(() => { const _ti = tbInfo(cmd.troopBranch); return _ti ? <div style={{fontSize:7,color:_ti.color}}>{_ti.label}</div> : null; })()}
                 </div>
               </div>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:7,color:"#6a5a4a",fontFamily:"'Cinzel',serif",marginBottom:3}}>
@@ -343,7 +353,7 @@ export default memo(function TilePopup({
               {toRemove>0
                 ? <button className="btn" onClick={() => {
                     setBarracks(p=>p+toRemove);
-                    setCmds(p=>p.map(c=>c.uid===cmd.uid?{...c,troops:sv,troopType:sv===0?null:c.troopType}:c));
+                    setCmds(p=>p.map(c=>c.uid===cmd.uid?{...c,troops:sv,troopBranch:sv===0?null:c.troopBranch}:c));
                     setEditArmyCmd({...cmd,troops:sv});
                     setSliderVals(v=>({...v,[sk]:undefined}));
                   }}

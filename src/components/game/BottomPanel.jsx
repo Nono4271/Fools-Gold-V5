@@ -1,5 +1,6 @@
 import { memo } from "react";
-import { TROOP } from "../../../shared/constants/troops.js";
+import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
+function tbInfo(tb) { if (!tb) return null; const f = FACTION_TROOPS[tb.faction]; const b = f?.branches.find(b => b.key === tb.branch); const t = b?.tiers[tb.tier ?? 0]; if (!b || !t) return null; return { label: `${b.label} 2014 ${t.label}`, color: "#c8a060" }; }
 import { HQP } from "../../../shared/constants/map.js";
 import { cmdCommand } from "../../../shared/constants/buildings.js";
 import { bfsPath, effectiveMarchSpd, marchStepMs } from "../../../shared/utils/pathfinding.js";
@@ -49,7 +50,7 @@ export default memo(function BottomPanel({
           const maxAdd  = Math.min(room, barracksPool);
           const sk      = `rein_${reinCmd.uid}`;
           const sv      = Math.min(sliderVals[sk]??0, maxAdd);
-          const effSpd  = effectiveMarchSpd(applyGearToCmd(reinCmd, gearInventory).spd||60, reinCmd.troopType);
+          const effSpd  = effectiveMarchSpd(applyGearToCmd(reinCmd, gearInventory).spd||60, reinCmd.troopBranch);
           const stepMs  = Math.max(100, Math.floor(marchStepMs(effSpd)/2));
           const path    = bfsPath(hqKey, reinCmd.tk);
           const estSecs = path ? Math.ceil((path.length-1)*stepMs/1000) : "?";
@@ -61,11 +62,11 @@ export default memo(function BottomPanel({
                 <span style={{fontSize:26}}>{reinCmd.icon}</span>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:11,fontWeight:700,color:"#e0d0c0"}}>{reinCmd.n} <span style={{color:"#f0c040",fontSize:9}}>Lv{reinCmd.lvl||5}</span></div>
-                  {reinCmd.troopType && (
-                    <div style={{fontSize:9,color:TROOP[reinCmd.troopType].color}}>
-                      {TROOP[reinCmd.troopType].icon} {TROOP[reinCmd.troopType].label} · <strong style={{color:"#e0d0c0"}}>{(reinCmd.troops||0).toLocaleString()}</strong> troops
+                  {reinCmd.troopBranch && (() => { const _ti = tbInfo(reinCmd.troopBranch); return _ti ? (
+                    <div style={{fontSize:9,color:_ti.color}}>
+                      {_ti.label} · <strong style={{color:"#e0d0c0"}}>{(reinCmd.troops||0).toLocaleString()}</strong> troops
                     </div>
-                  )}
+                  ) : null; })()}
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
                   <div style={{fontSize:9,color:"#6a7a9a",fontFamily:"'Cinzel',serif"}}>Barracks</div>

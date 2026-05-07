@@ -1,7 +1,16 @@
-import { TROOP, troopModifier } from "../../../shared/constants/troops.js";
+import { FACTION_TROOPS, troopSizeModifier } from "../../../shared/constants/troops.js";
 import { TERR } from "../../../shared/constants/terrain.js";
 import { RC, RARITY, CLASS, SS } from "../../../shared/constants/heroes.js";
 const SC = RC;
+
+function tbInfo(tb) {
+  if (!tb) return null;
+  const f = FACTION_TROOPS[tb.faction];
+  const b = f?.branches.find(b => b.key === tb.branch);
+  const t = b?.tiers[tb.tier ?? 0];
+  if (!b || !t) return null;
+  return { label: `${b.label} — ${t.label}`, color: "#c8a060", size: b.size };
+}
 
 export default function CommanderPicker({
   atkKey, tiles, cmdsAdjToSel, pickCmd, setPick,
@@ -42,9 +51,10 @@ export default function CommanderPicker({
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {cmdsAdjToSel.map(cmd => {
               const picked = pickCmd?.uid===cmd.uid;
-              const tt = cmd.troopType ? TROOP[cmd.troopType] : null;
-              const defType = atkTile?.defCmd?.troopType || atkTile?.troopType || null;
-              const mod = troopModifier(cmd.troopType, defType);
+              const tt = tbInfo(cmd.troopBranch);
+              const atkSize = cmd.troopBranch ? (FACTION_TROOPS[cmd.troopBranch.faction]?.branches.find(b=>b.key===cmd.troopBranch.branch)?.size ?? null) : null;
+              const defSize = atkTile?.defCmd?.troopBranch ? (FACTION_TROOPS[atkTile.defCmd.troopBranch.faction]?.branches.find(b=>b.key===atkTile.defCmd.troopBranch.branch)?.size ?? null) : null;
+              const mod = troopSizeModifier(atkSize, defSize);
               const modColor = mod===1.1?"#3daa60":mod===0.9?"#cc3030":"#8a8a9a";
               const modLabel = mod===1.1?"⚔ STRONG":mod===0.9?"🛡 WEAK":"◆ NEUTRAL";
               const wp = (() => {
@@ -64,7 +74,7 @@ export default function CommanderPicker({
                     <div style={{fontFamily:"'Cinzel',serif",fontSize:11,fontWeight:700,color:picked?"#3daa60":"#e0d0c0",marginBottom:1}}>{cmd.n}</div>
                     <div style={{fontSize:8,color:SC(cmd.rarity),marginBottom:2,fontFamily:"'Cinzel',serif"}}>{SS(cmd.rarity)}{cmd.cls ? ` · ${CLASS[cmd.cls]?.icon} ${CLASS[cmd.cls]?.n}` : ''} · Lv{cmd.lvl||5}</div>
                     {tt
-                      ? <div style={{fontSize:9,color:tt.color,fontWeight:700,marginBottom:2}}>{tt.icon} {tt.label} · {cmd.troops.toLocaleString()}</div>
+                      ? <div style={{fontSize:9,color:tt.color,fontWeight:700,marginBottom:2}}>{tt.label} · {cmd.troops.toLocaleString()}</div>
                       : <div style={{fontSize:8,color:"#664a3a",fontStyle:"italic",marginBottom:2}}>No troops</div>
                     }
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
