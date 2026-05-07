@@ -838,16 +838,17 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       drawAllTiles(tg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax,
         selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z);
 
-      // Always repaint props when propsDirty — don't wait for phase 2 (buf>=10).
-      // Previously props were skipped on phase 1 (buf=4) meaning a quick pan-then-stop
-      // would leave props missing until the idle callback fired.
-      if (z >= 1.0 && propsDirty) {
+      // Repaint props whenever the viewport changes OR tiles changed.
+      // Props show at ALL zoom levels (removed z>=1.0 gate).
+      // boundsChanged covers panning into new tile areas.
+      if (propsDirty || boundsChanged) {
         const pg = propsFrontRef.current;
         pg.clear();
-        drawAllProps(pg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax);
+        // Only draw props when zoomed in enough to see them (threshold lowered to 0.5)
+        if (z >= 0.5) {
+          drawAllProps(pg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax);
+        }
         propsDirty = false;
-      } else if (z < 1.0) {
-        propsFrontRef.current?.clear();
       }
     }
 
