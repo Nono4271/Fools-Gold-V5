@@ -109,23 +109,15 @@ function tickDraw() {
   }
 }
 
-// ── Siege reset: 1000ms ────────────────────────────────────────────────────
+// ── Siege reset: disabled — server owns garrison reset timing ──────────────
+// The server schedules setTimeout per tile and pushes TILE_PATCH when it fires.
+// The client-side timer is kept as a no-op to avoid removing the interval slot,
+// but it no longer fires siegeReset messages. The tick heartbeat moves here so
+// HUD countdown timers still update every second.
 function tickSiegeReset() {
-  if (!snapshot) return;
-  const { tiles } = snapshot;
-  if (!tiles) return;
-  const now = Date.now();
-  const changedKeys = [];
-  for (const [k, tile] of Object.entries(tiles)) {
-    if (tile.garrisonDefeated && tile.resetAt && now >= tile.resetAt) {
-      changedKeys.push(k);
-    }
-  }
-  if (changedKeys.length) {
-    self.postMessage({ type: 'siegeReset', changedKeys, now });
-  }
-  // Always post nowTick so HUD timers update
-  self.postMessage({ type: 'tick', now });
+  // Server-authoritative: do NOT fire siegeReset from client.
+  // Just post the heartbeat tick so HUD timers remain accurate.
+  self.postMessage({ type: 'tick', now: Date.now() });
 }
 
 // ── Reinforcement march: 100ms ─────────────────────────────────────────────
