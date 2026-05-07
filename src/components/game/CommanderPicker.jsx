@@ -1,0 +1,102 @@
+import { TROOP, troopModifier } from "../../../shared/constants/troops.js";
+import { TERR } from "../../../shared/constants/terrain.js";
+import { RC, RARITY, CLASS, SS } from "../../../shared/constants/heroes.js";
+const SC = RC;
+
+export default function CommanderPicker({
+  atkKey, tiles, cmdsAdjToSel, pickCmd, setPick,
+  setMode, setAtkKey, setSelKey, setPopupPos, startMarch,
+}) {
+  if (!atkKey) return null;
+  const atkTile = tiles[atkKey];
+
+  return (
+    <div style={{position:"fixed",top:38,left:0,bottom:0,width:280,zIndex:9500,background:"rgba(5,7,11,.97)",borderRight:"1px solid #3a2010",boxShadow:"4px 0 32px rgba(0,0,0,.9)",display:"flex",flexDirection:"column",animation:"slideInLeft .22s ease"}}>
+
+      {/* Header */}
+      <div style={{padding:"10px 12px",borderBottom:"1px solid #221e12",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0,background:"rgba(255,255,255,.025)"}}>
+        <div>
+          <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:12,color:"#c8a060"}}>⚔ SELECT COMMANDER</div>
+          {atkTile && (
+            <div style={{fontSize:8,color:"#7a5a4a",fontFamily:"'Crimson Pro',serif",marginTop:2}}>
+              Attacking {TERR[atkTile.terrain]?.lbl}{atkTile.isHQ?" (HQ)":""} · {atkTile.garrison} garrison
+              {(TERR[atkTile.terrain]?.def||0)!==0 && (
+                <span style={{color:TERR[atkTile.terrain]?.def>0?"#e08080":"#80e090"}}>
+                  {" · DEF "}{TERR[atkTile.terrain]?.def>0?"+":""}{TERR[atkTile.terrain]?.def}%
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        <button className="btn" onClick={() => { setMode("view"); setAtkKey(null); setPick(null); }}
+          style={{background:"none",border:"1px solid #2a2a2a",color:"#555",fontSize:11,padding:"2px 8px"}}>✕</button>
+      </div>
+
+      {/* Commander list */}
+      <div className="scr" style={{flex:1,overflowY:"auto",padding:"10px 12px"}}>
+        {cmdsAdjToSel.length===0 ? (
+          <div style={{padding:"12px",background:"rgba(255,255,255,.02)",border:"1px solid #2a2020",borderRadius:5,fontSize:9,color:"#6a5a4a",fontFamily:"'Crimson Pro',serif",fontStyle:"italic",textAlign:"center"}}>
+            No eligible commanders. A commander with troops must be on a player-owned tile to attack.
+          </div>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {cmdsAdjToSel.map(cmd => {
+              const picked = pickCmd?.uid===cmd.uid;
+              const tt = cmd.troopType ? TROOP[cmd.troopType] : null;
+              const defType = atkTile?.defCmd?.troopType || atkTile?.troopType || null;
+              const mod = troopModifier(cmd.troopType, defType);
+              const modColor = mod===1.1?"#3daa60":mod===0.9?"#cc3030":"#8a8a9a";
+              const modLabel = mod===1.1?"⚔ STRONG":mod===0.9?"🛡 WEAK":"◆ NEUTRAL";
+              const wp = (() => {
+                const atkPow = (cmd.troops||0)*Math.pow(1.20,(cmd.lvl||5)-5)*mod;
+                const dc = atkTile?.defCmd;
+                const defTroops = dc ? dc.troops : (atkTile?.garrison||30);
+                const defPow = defTroops*Math.pow(1.20,Math.max(0,(dc?.lvl||2)-2))*(1+((TERR[atkTile?.terrain]?.def||0)/100));
+                if (atkPow<=0) return 1;
+                return Math.round(Math.min(99,Math.max(1,100/(1+Math.pow(Math.max(0.00001,defPow/atkPow),3.5)))));
+              })();
+
+              return (
+                <div key={cmd.uid} onClick={() => setPick(picked?null:cmd)}
+                  style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:picked?"rgba(60,170,100,.15)":"rgba(255,255,255,.03)",border:`2px solid ${picked?"#3daa60":"rgba(255,255,255,.06)"}`,borderRadius:8,cursor:"pointer",transition:"all .15s",boxShadow:picked?"0 0 12px rgba(60,170,100,.4)":"none"}}>
+                  <div style={{fontSize:28,flexShrink:0}}>{cmd.icon}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"'Cinzel',serif",fontSize:11,fontWeight:700,color:picked?"#3daa60":"#e0d0c0",marginBottom:1}}>{cmd.n}</div>
+                    <div style={{fontSize:8,color:SC(cmd.rarity),marginBottom:2,fontFamily:"'Cinzel',serif"}}>{SS(cmd.rarity)}{cmd.cls ? ` · ${CLASS[cmd.cls]?.icon} ${CLASS[cmd.cls]?.n}` : ''} · Lv{cmd.lvl||5}</div>
+                    {tt
+                      ? <div style={{fontSize:9,color:tt.color,fontWeight:700,marginBottom:2}}>{tt.icon} {tt.label} · {cmd.troops.toLocaleString()}</div>
+                      : <div style={{fontSize:8,color:"#664a3a",fontStyle:"italic",marginBottom:2}}>No troops</div>
+                    }
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:8,color:modColor,fontWeight:700}}>{modLabel}</span>
+                      <div style={{flex:1,height:3,background:"#181820",borderRadius:2,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${wp}%`,background:wp>=60?"#3daa60":wp>=40?"#d0a030":"#cc3030",borderRadius:2}}/>
+                      </div>
+                      <span style={{fontSize:8,color:wp>=60?"#3daa60":wp>=40?"#d0a030":"#cc3030",fontWeight:700,flexShrink:0}}>~{wp}%</span>
+                    </div>
+                  </div>
+                  {picked && <div style={{fontSize:10,color:"#3daa60",flexShrink:0}}>✓</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* March button */}
+      <div style={{padding:"12px",borderTop:"1px solid #221e12",flexShrink:0}}>
+        <button className="btn" disabled={!pickCmd}
+          onClick={() => {
+            if (pickCmd && atkKey) {
+              startMarch(pickCmd, atkKey);
+              setAtkKey(null); setPick(null); setMode("view");
+              setSelKey(null); setPopupPos(null);
+            }
+          }}
+          style={{width:"100%",padding:"13px",background:pickCmd?"linear-gradient(135deg,#881010,#cc2020,#881010)":"rgba(255,255,255,.02)",border:pickCmd?"2px solid #e03030":"2px solid #1a1a1a",color:pickCmd?"#f0c040":"#2a2a2a",fontSize:14,fontWeight:700,letterSpacing:".1em",boxShadow:pickCmd?"0 0 16px rgba(200,30,30,.45)":"none",transition:"all .2s",borderRadius:5}}>
+          {pickCmd ? `⚔ MARCH! — ${pickCmd.n}` : "Select a commander"}
+        </button>
+      </div>
+    </div>
+  );
+}
