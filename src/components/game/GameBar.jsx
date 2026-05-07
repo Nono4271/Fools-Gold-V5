@@ -105,12 +105,13 @@ function ActionButton({ icon, label, color = "#c8a060", onClick, badge, accent }
       onPointerLeave={() => setPressed(false)}>
 
       <div style={{
-        width: 46, height: 46,
+        width: 40, height: 40,
         borderRadius: 8,
         position: "relative",
         transform: pressed ? "scale(0.92)" : "scale(1)",
         transition: "transform .12s ease",
         flexShrink: 0,
+        filter: "drop-shadow(0 2px 8px rgba(0,0,0,.9))",
       }}>
         <div style={{
           position: "absolute", inset: 0,
@@ -133,7 +134,7 @@ function ActionButton({ icon, label, color = "#c8a060", onClick, badge, accent }
         <div style={{
           position: "absolute", inset: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 20, filter: "drop-shadow(0 1px 3px rgba(0,0,0,.8))",
+          fontSize: 18, filter: "drop-shadow(0 1px 3px rgba(0,0,0,.8))",
         }}>{icon}</div>
 
         {badge > 0 && (
@@ -211,7 +212,7 @@ export default function GameBar({
 
       {/* ── RIGHT RAIL: Reports ── */}
       <div style={{
-        position: "fixed", right: 8, top: "50%", transform: "translateY(-50%)",
+        position: "fixed", right: 8, top: "40%", transform: "translateY(-50%)",
         zIndex: 300,
         display: "flex", flexDirection: "column", gap: 10, alignItems: "center",
       }}>
@@ -225,41 +226,21 @@ export default function GameBar({
         />
       </div>
 
-      {/* ── BOTTOM BAR: HQ | Summon | Commander ── */}
+      {/* ── BOTTOM BAR: floating right-aligned, no background ── */}
       <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0,
+        position: "fixed", bottom: 0, right: 0,
         zIndex: 9100,
-        background: `
-          linear-gradient(180deg,
-            rgba(30,22,8,.0) 0%,
-            rgba(18,14,6,.97) 20%,
-            rgba(12,9,4,1) 100%
-          )
-        `,
-        borderTop: "1px solid #3a2c10",
-        boxShadow: "0 -1px 0 rgba(0,0,0,.9), 0 -8px 32px rgba(0,0,0,.8)",
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        paddingBottom: "env(safe-area-inset-bottom, 8px)",
+        paddingRight: 8,
+        pointerEvents: "none",
       }}>
-        {/* Gold top trim line */}
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: 1,
-          background: "linear-gradient(90deg, transparent, #8a6020 15%, #f0c04088 40%, #c89030 60%, #8a602088 85%, transparent)",
-        }} />
-
-        {/* Decorative corner accents */}
-        <div style={{ position: "absolute", top: 4, left: 8, width: 20, height: 20, opacity: .4,
-          borderTop: "1px solid #c8a060", borderLeft: "1px solid #c8a060" }} />
-        <div style={{ position: "absolute", top: 4, right: 8, width: 20, height: 20, opacity: .4,
-          borderTop: "1px solid #c8a060", borderRight: "1px solid #c8a060" }} />
-
         <div style={{
           display: "flex",
           alignItems: "flex-end",
-          justifyContent: "center",
-          padding: "10px 12px 8px",
-          gap: 24,
-          maxWidth: 400,
-          margin: "0 auto",
+          justifyContent: "flex-end",
+          padding: "0 0 10px 0",
+          gap: 10,
+          pointerEvents: "auto",
         }}>
           <ActionButton
             icon="🏰"
