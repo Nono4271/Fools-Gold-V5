@@ -45,13 +45,15 @@ function getOrCreateSession(id) {
   return sessions.get(id);
 }
 
-function applyAndBroadcast(session, patches) {
+function applyAndBroadcast(session, patches, senderWs = null) {
   for (const [key, patch] of Object.entries(patches)) {
     const prev = session.tiles.get(key) || {};
     session.tiles.set(key, { ...prev, ...patch, k: key });
   }
   const msg = JSON.stringify({ type: 'TILE_PATCH', patches });
   for (const client of session.clients) {
+    // Skip the originating client — it already applied optimistically
+    if (senderWs && client._clientId === senderWs._clientId) continue;
     if (client.readyState === 1) client.send(msg);
   }
 }
@@ -158,7 +160,7 @@ function handleTileCapture(ws, msg) {
     hasAiCommander:   false,
   };
 
-  applyAndBroadcast(session, { [key]: patch });
+  applyAndBroadcast(session, { [key]: patch }, ws);
   console.log('TILE_CAPTURE ' + key + ' owner=' + owner + ' session=' + sessionId);
 }
 
@@ -177,7 +179,7 @@ function handleTileSiege(ws, msg) {
     resetAt:          resetAt          ?? tile.resetAt,
   };
 
-  applyAndBroadcast(session, { [key]: patch });
+  applyAndBroadcast(session, { [key]: patch }, ws);
 
   if (garrisonDefeated && resetAt && resetAt > Date.now()) {
     scheduleGarrisonReset(
@@ -201,7 +203,8 @@ function handleViewportSub(ws, msg) {
 // ─── Connection ───────────────────────────────────────────────────────────────
 
 wss.on('connection', (ws) => {
-  console.log('Client connected');
+  ws._clientId = Math.random().toString(36).slice(2); // unique per connection
+  console.log('Client connected id=' + ws._clientId);
 
   ws.on('message', (raw) => {
     let msg;
