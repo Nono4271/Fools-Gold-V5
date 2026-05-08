@@ -9,6 +9,9 @@ import { HQP } from "../../../shared/constants/map.js";
      LEFT  — vertical stack of commander portrait icons (fixed left side)
      BOTTOM — HQ | Summon | Commander tabs
      RIGHT  — battle report / notification icons (fixed right side)
+
+   iOS note: All interactive elements use native <button> tags so iOS Safari
+   always fires click events, regardless of touch-action or canvas preventDefault.
 ───────────────────────────────────────────────────────────────────────────── */
 
 const RARITY_GLOW = {
@@ -17,18 +20,33 @@ const RARITY_GLOW = {
   champion: { ring: "#f0c040", glow: "rgba(240,192,64,0.7)"  },
 };
 
+/* Shared reset so <button> looks/behaves like the old styled divs */
+const BTN_RESET = {
+  background: "none",
+  border: "none",
+  padding: 0,
+  margin: 0,
+  cursor: "pointer",
+  WebkitAppearance: "none",
+  appearance: "none",
+  touchAction: "manipulation",
+};
+
 function PortraitButton({ cmd, onClick, active, badge }) {
   const rg = RARITY_GLOW[cmd?.rarity] ?? RARITY_GLOW.soldier;
   const [pressed, setPressed] = useState(false);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer" }}
+    <button
+      style={{
+        ...BTN_RESET,
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+      }}
       onClick={onClick}
-      onTouchEnd={e => { e.preventDefault(); e.stopPropagation(); onClick?.(); }}
       onPointerDown={() => setPressed(true)}
       onPointerUp={() => setPressed(false)}
-      onPointerLeave={() => setPressed(false)}>
-
+      onPointerLeave={() => setPressed(false)}
+    >
       {/* Outer decorative ring */}
       <div style={{
         width: 52, height: 52,
@@ -91,7 +109,7 @@ function PortraitButton({ cmd, onClick, active, badge }) {
       }}>
         {cmd?.n?.split(" ")[0] ?? ""}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -99,12 +117,16 @@ function ActionButton({ icon, label, color = "#c8a060", onClick, badge, accent }
   const [pressed, setPressed] = useState(false);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer" }}
+    <button
+      style={{
+        ...BTN_RESET,
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+      }}
       onClick={onClick}
       onPointerDown={() => setPressed(true)}
       onPointerUp={() => setPressed(false)}
-      onPointerLeave={() => setPressed(false)}>
-
+      onPointerLeave={() => setPressed(false)}
+    >
       <div style={{
         width: 40, height: 40,
         borderRadius: 8,
@@ -155,7 +177,7 @@ function ActionButton({ icon, label, color = "#c8a060", onClick, badge, accent }
         letterSpacing: ".04em", textAlign: "center",
         textShadow: `0 0 6px ${color}44`,
       }}>{label}</div>
-    </div>
+    </button>
   );
 }
 
@@ -171,7 +193,7 @@ export default memo(function GameBar({
   setGearScreenOpen, gearInventoryCount,
   playerHqKey,
   hidden,
-  onTogglePerf, perfVisible,
+  showPerf, setShowPerf,
 }) {
   if (hidden) return null;
   // All player commanders (for left rail) — only those NOT at HQ
@@ -192,7 +214,7 @@ export default memo(function GameBar({
   return (
     <>
       {/* ── LEFT RAIL: Commander portrait icons ── */}
-      <div data-ui-panel="1" style={{
+      <div style={{
         position: "fixed", left: 8, top: "50%", transform: "translateY(-50%)",
         zIndex: 300,
         display: "flex", flexDirection: "column", gap: 8, alignItems: "center",
@@ -213,7 +235,7 @@ export default memo(function GameBar({
       </div>
 
       {/* ── RIGHT RAIL: Reports ── */}
-      <div data-ui-panel="1" style={{
+      <div style={{
         position: "fixed", right: 8, top: "70%", transform: "translateY(-50%)",
         zIndex: 300,
         display: "flex", flexDirection: "column", gap: 10, alignItems: "center",
@@ -236,7 +258,7 @@ export default memo(function GameBar({
         paddingRight: 8,
         pointerEvents: "none",
       }}>
-        <div data-ui-panel="1" style={{
+        <div style={{
           display: "flex",
           alignItems: "flex-end",
           justifyContent: "flex-end",
@@ -283,9 +305,9 @@ export default memo(function GameBar({
           <ActionButton
             icon="⏱"
             label="Perf"
-            color={perfVisible ? "#28dc6e" : "#4a4a4a"}
-            accent={perfVisible ? "#0a4a20" : "#1a1a1a"}
-            onClick={() => onTogglePerf?.()}
+            color={showPerf ? "#66dd66" : "#4a4a4a"}
+            accent={showPerf ? "#1a4a1a" : "#2a2a2a"}
+            onClick={() => setShowPerf?.(v => !v)}
           />
         </div>
       </div>
