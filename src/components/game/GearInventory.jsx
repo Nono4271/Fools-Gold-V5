@@ -36,13 +36,15 @@ function GearCard({ piece, selected, onClick, compact }) {
   const slot = GEAR_SLOTS[piece.slot];
   if (compact) {
     return (
-      <div onClick={onClick} style={{
+      <button onClick={onClick} style={{
+        width: "100%", textAlign: "left",
         background: selected ? `${r.color}18` : "rgba(255,255,255,.025)",
         border: `1px solid ${selected ? r.color : r.color + "30"}`,
         borderRadius: 5, padding: "6px 8px", cursor: "pointer",
         display: "flex", alignItems: "center", gap: 7,
         boxShadow: selected ? `0 0 8px ${r.color}30` : "none",
         transition: "all .15s",
+        touchAction: "manipulation",
       }}>
         <div style={{ fontSize: 20, flexShrink: 0 }}>{piece.icon}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -61,16 +63,18 @@ function GearCard({ piece, selected, onClick, compact }) {
           <div style={{ fontSize: 7, color: "#aa4444", fontFamily: "'Cinzel',serif",
             padding: "1px 4px", border: "1px solid #aa444440", borderRadius: 2 }}>EQ</div>
         )}
-      </div>
+      </button>
     );
   }
   return (
-    <div onClick={onClick} style={{
+    <button onClick={onClick} style={{
+      width: "100%", textAlign: "left",
       background: selected ? `${r.color}15` : "rgba(255,255,255,.02)",
       border: `2px solid ${selected ? r.color : r.color + "25"}`,
       borderRadius: 7, padding: 10, cursor: "pointer",
       boxShadow: selected ? `0 0 12px ${r.color}35` : "none",
       transition: "all .15s", position: "relative",
+      touchAction: "manipulation",
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
         <div style={{ fontSize: 28 }}>{piece.icon}</div>
@@ -133,7 +137,7 @@ function GearCard({ piece, selected, onClick, compact }) {
           ))}
         </div>
       )}
-    </div>
+    </button>
   );
 }
 
