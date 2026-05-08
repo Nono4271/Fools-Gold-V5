@@ -317,6 +317,7 @@ export default function RiseToWar() {
   const [cmdScreenOpen,  setCmdScreenOpen]  = useState(false);
   const [cmdScreenUid,   setCmdScreenUid]   = useState(null);
   const [gearScreenOpen, setGearScreenOpen] = useState(false);
+  const [perfVisible,    setPerfVisible]    = useState(false);
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => { mvCmdRef.current = mvCmd; }, [mvCmd]);
@@ -1437,9 +1438,11 @@ export default function RiseToWar() {
         gearInventoryCount={gearInventory.length}
         playerHqKey={playerHqKey}
         hidden={worldMapOpen || hqOpen}
+        onTogglePerf={() => setPerfVisible(v => !v)}
+        perfVisible={perfVisible}
       />
 
-      <PerfOverlay />
+      {perfVisible && <PerfOverlay />}
 
     </div>
   );
