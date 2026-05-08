@@ -1224,6 +1224,7 @@ export default function RiseToWar() {
           * { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
           canvas { touch-action: none !important; }
           button, .btn { touch-action: manipulation; cursor: pointer; }
+          [style*="position: fixed"], [style*="position:fixed"] { touch-action: auto; }
         `}
       </style>
 
