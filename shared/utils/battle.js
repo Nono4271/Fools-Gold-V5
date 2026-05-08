@@ -249,7 +249,7 @@ export function simBattle(cmd, attackerTroops, defTile, wallLvl) {
   const defTroops = dc ? dc.troops : (defTile.garrison || defTile.garrisonTroops || 30);
   const defCmdSpd = dc ? (dc.spd || 40) : 40;
 
-  const defTerrBonusBase = 1 + (terrDef + fort) / 100;
+  const defTerrBonusBase = 1 + fort / 100;
 
   const atkTroopHpPer = atkTierData?.hp  ?? 25;
   const defTroopHpPer = defTierData?.hp  ?? 25;
@@ -258,8 +258,12 @@ export function simBattle(cmd, attackerTroops, defTile, wallLvl) {
   const atkTroopDef   = atkTierData?.def ?? 20;
   const defTroopDef   = defTierData?.def ?? 20;
 
-  const CMD_ATK_SCALE = Math.max(8, (defTroops * defTroopHpPer) / 1100);
-  const atkCmdAtk     = Math.max(cmd.atk || 150, cmd.foc || 0) * CMD_ATK_SCALE * passives.cmdAtkMult;
+  // Scale commander damage so it contributes ~65% of total output vs troops' ~35%.
+  // Derived from: cmdDmg = (65/35) × troopDmg, where troopDmg ≈ troops × avgTierDmg/round.
+  const avgAtkTroopDmg  = atkTierData ? (atkTierData.dmgLo + atkTierData.dmgHi) / 2 : 50;
+  const troopDmgEstimate = attackerTroops * avgAtkTroopDmg;
+  const CMD_ATK_SCALE   = Math.max(8, troopDmgEstimate * (65 / 35) / Math.max(cmd.atk || 150, cmd.foc || 0));
+  const atkCmdAtk       = Math.max(cmd.atk || 150, cmd.foc || 0) * CMD_ATK_SCALE * passives.cmdAtkMult;
   const atkCmdSpd     = cmd.spd || 60;
   const defCmdAtk     = (dc ? dc.atk : 80) * CMD_ATK_SCALE;
 
@@ -392,7 +396,7 @@ export function simBattle(cmd, attackerTroops, defTile, wallLvl) {
     if (blockHealRounds > 0) blockHealRounds--;
 
     const gi = Math.min(0.90, rs.garrisonIgnore);
-    const roundTerrBonus = 1 + (terrDef*(1-gi) + fort*(1-gi)) / 100;
+    const roundTerrBonus = 1 + fort*(1-gi) / 100;
 
     // Heal
     if (rs.healPct > 0 && totalAtkLostHp > 0 && !healBlocked) {
@@ -429,7 +433,7 @@ export function simBattle(cmd, attackerTroops, defTile, wallLvl) {
           const usesFoc      = (cmd.foc||0) > (cmd.atk||150);
           const effectiveDef = defTroopDef * (1 - (rs.enemyDefDown || 0));
           const red          = usesFoc ? 1.0 : Math.max(0, 1 - effectiveDef/(effectiveDef+80));
-          const raw          = atkCmdAtk * rs.cmdMult * (isCrit?1.5:1.0) * (0.85+Math.random()*0.30) * roundTerrBonus * (usesFoc ? armyFocMult : 1);
+          const raw          = atkCmdAtk * rs.cmdMult * (isCrit?1.5:1.0) * (0.85+Math.random()*0.30) * (usesFoc ? armyFocMult : 1);
           const dmg          = Math.max(1, Math.round(raw * red));
           const prevDef      = defTroopHp;
           if (rs.lifesteal > 0 && !healBlocked) {
@@ -511,7 +515,7 @@ export function simBattle(cmd, attackerTroops, defTile, wallLvl) {
         const atkRes3  = atkTroopDef * bastionDefMult * rs.troopDefMult;
         const red3     = Math.max(0, 1 - atkRes3/(atkRes3+80));
         const eMod     = (1 - rs.enemyAtkReduce) * (1 - rs.enemyDmgReduce) * (1 - rs.dmgReduce);
-        const raw3     = defCmdAtk * roundTerrBonus * (0.85+Math.random()*0.30) * 0.8 * eMod * defMod;
+        const raw3     = defCmdAtk * roundTerrBonus * (0.85+Math.random()*0.30) * eMod * defMod;
         const dmg      = Math.max(1, Math.round(raw3 * red3));
         const prevAtk  = atkTroopHp;
         atkTroopHp     = Math.max(0, atkTroopHp - dmg);
@@ -566,11 +570,11 @@ export function simBattle(cmd, attackerTroops, defTile, wallLvl) {
   const isDraw   = atkTroopHp > 0  && defTroopHp > 0;
   const defTroopsLeft   = Math.max(0, Math.round(defTroopHp / defTroopHpPer));
   const atkLostHpActual = atkHpMax - Math.max(0, atkTroopHp);
+  const troopHpDiv      = atkTroopHpPer * bastionHpMult;
+  const lostFromHp      = Math.round(atkLostHpActual / troopHpDiv);
   const finalAtkLost    = won
-    ? Math.min(attackerTroops-1, Math.max(1, Math.round(atkLostHpActual / (atkTroopHpPer * bastionHpMult))))
-    : isDraw
-      ? Math.max(0, Math.round(atkLostHpActual / (atkTroopHpPer * bastionHpMult)))
-      : Math.min(attackerTroops, Math.round(attackerTroops * (0.35 + Math.random() * 0.20)));
+    ? Math.min(attackerTroops - 1, Math.max(1, lostFromHp))
+    : Math.min(attackerTroops, Math.max(0, lostFromHp));
 
   const fullXp = POWER_DEFS[defTile.powerLevel || 1]?.xpReward || 30;
   const defKilledFraction = Math.max(0, Math.min(1, (defTroops - defTroopsLeft) / Math.max(1, defTroops)));
