@@ -128,18 +128,20 @@ export default function RiseToWar() {
 
   const setAiCmds = useCallback((updater) => {
     aiCmdsRef.current = typeof updater === "function" ? updater(aiCmdsRef.current) : updater;
-    cmdsRef.current = [...playerCmds, ...aiCmdsRef.current];
-  }, [playerCmds]);
+    cmdsRef.current = [...aiCmdsRef.current]; // will be merged with playerCmds on next render
+  }, []);
 
   const setCmds = useCallback((updater) => {
-    const merged = [...playerCmds, ...aiCmdsRef.current];
-    const next = typeof updater === "function" ? updater(merged) : updater;
-    const nextPlayer = next.filter(c => c.owner === "player");
-    const nextAi     = next.filter(c => c.owner !== "player");
-    aiCmdsRef.current = nextAi;
-    cmdsRef.current   = next;
-    setPlayerCmds(nextPlayer);
-  }, [playerCmds]);
+    setPlayerCmds(currentPlayer => {
+      const merged = [...currentPlayer, ...aiCmdsRef.current];
+      const next = typeof updater === "function" ? updater(merged) : updater;
+      const nextPlayer = next.filter(c => c.owner === "player");
+      const nextAi     = next.filter(c => c.owner !== "player");
+      aiCmdsRef.current = nextAi;
+      cmdsRef.current   = next;
+      return nextPlayer;
+    });
+  }, []);
 
   const cmds = playerCmds;
   const [coll,   setColl]    = useState([]);
@@ -1161,7 +1163,6 @@ export default function RiseToWar() {
     <div style={{
       width:"100vw", height:"100vh", position:"relative", overflow:"hidden",
       background:"#0e1014", userSelect:"none",
-      touchAction:"none",
       // Phone optimizations: eliminate tap delay and visual tap flash
       WebkitTapHighlightColor:"transparent",
       WebkitTouchCallout:"none",
