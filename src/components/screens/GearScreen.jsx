@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { CSS } from "../../constants/css.js";
 import GearInventory from "../game/GearInventory.jsx";
 
@@ -6,6 +7,11 @@ import GearInventory from "../game/GearInventory.jsx";
   Opened from GameBar gear button. No HQ chrome.
 */
 export default function GearScreen({ gearInventory, setGearInventory, cmds, setCmds, playerAlignment, onClose }) {
+  useEffect(() => {
+    document.documentElement.classList.add("gacha-open");
+    return () => document.documentElement.classList.remove("gacha-open");
+  }, []);
+
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 700,
