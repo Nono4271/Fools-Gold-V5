@@ -46,6 +46,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       position: "fixed", inset: 0, zIndex: 700,
       background: "#080704",
       display: "flex", flexDirection: "column",
+      touchAction: "auto",
     }}>
       <style>{CSS}</style>
 

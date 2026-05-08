@@ -125,6 +125,7 @@ export default function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose 
       background: `radial-gradient(ellipse at 50% 0%, #03100f 0%, #020608 55%, #010204 100%)`,
       display: "flex", flexDirection: "column",
       animation: "fadeUp .2s ease",
+      touchAction: "auto",
     }}>
       <div style={{
         position: "absolute", top: -40, left: "50%", transform: "translateX(-50%)",
