@@ -139,12 +139,14 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
         {/* Back arrow — explicit large hit area */}
         <div
           onClick={onClose}
+          onTouchEnd={(e) => { e.preventDefault(); onClose(); }}
           style={{
             position: "absolute", left: 0, top: 0,
             width: 60, height: 46,
             display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer",
             WebkitTapHighlightColor: "transparent",
+            touchAction: "manipulation",
           }}
         >
           <span style={{ fontSize: 24, color: "#c8a060", lineHeight: 1 }}>‹</span>
