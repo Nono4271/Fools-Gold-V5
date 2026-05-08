@@ -87,10 +87,12 @@ export default function RiseToWar() {
   const patchTile = useCallback((key, patch) => {
     const t = tilesMapRef.current[key];
     if (!t) return;
-    tilesMapRef.current[key] = { ...t, ...patch };
+    // Create a new root object so useMemo returns a new reference,
+    // which triggers MapRenderer's useEffect([tiles]) and redraws immediately.
+    tilesMapRef.current = { ...tilesMapRef.current, [key]: { ...t, ...patch } };
+    const updated = tilesMapRef.current[key];
     // Keep defeatedTilesRef in sync
     if ('garrisonDefeated' in patch || 'resetAt' in patch) {
-      const updated = tilesMapRef.current[key];
       if (updated.garrisonDefeated && updated.resetAt) {
         defeatedTilesRef.current[key] = { garrisonDefeated: true, resetAt: updated.resetAt };
       } else {
@@ -848,13 +850,10 @@ export default function RiseToWar() {
 
   const cmdsAdjToSel = useMemo(() => {
     if (!selAdjToPlayer || !selTile) return [];
-    const adjPlayerKeys = new Set(
-      adj(selTile.c, selTile.r).filter(ak => tiles[ak]?.owner === "player")
-    );
     return playerCmds.filter(cmd =>
-      cmd.tk && adjPlayerKeys.has(cmd.tk) && (cmd.troops||0) > 0 && !cmd.march
+      cmd.owner === "player" && (cmd.troops||0) > 0 && !cmd.march
     );
-  }, [selAdjToPlayer, selTile, playerCmds, tileVersion]);
+  }, [selAdjToPlayer, selTile, playerCmds]);
 
   const canAtk = !!(selTile && selTile.owner!=="player" && selAdjToPlayer);
 
