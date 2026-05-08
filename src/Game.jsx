@@ -110,6 +110,10 @@ export default function RiseToWar() {
       if (patch.owner === "ai") newAiSet.add(key);
       else newAiSet.delete(key);
       aiTileKeysRef.current = newAiSet;
+      // Ownership changed — redraw PIXI canvas immediately rather than waiting
+      // for the React effect chain (setTileVersion → render → useEffect → redraw).
+      // This eliminates the 1-2 frame delay where the tile shows its old colour.
+      mapRendererRef.current?.forceRedrawTiles(tilesMapRef.current);
     }
     setTileVersion(v => v + 1);
   }, []);

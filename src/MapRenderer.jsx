@@ -755,6 +755,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     redrawOverlays() {
       redrawRef.current?.redrawOverlays();
     },
+    // Called immediately from patchTile so tile color updates without waiting
+    // for the React effect chain (tiles prop → useEffect → redraw).
+    forceRedrawTiles(newTiles) {
+      tilesRef.current = newTiles;
+      lastBoundsRef.current = null;
+      redrawRef.current?.markPropsDirty();
+      redrawRef.current?.redraw(true);
+      redrawRef.current?.redrawKeeps();
+    },
   }), []);
 
   const tDragFrom      = useRef({ x: 0, y: 0 });
