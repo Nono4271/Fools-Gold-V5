@@ -1317,11 +1317,15 @@ export default function RiseToWar() {
 
       {/* ── HQ Tile Popup: shown when player taps their HQ tile ── */}
       {hqTilePopup && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 9200,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.6)",
-        }} onClick={() => setHqTilePopup(false)}>
+        <div
+          data-ui-panel="1"
+          style={{
+            position: "fixed", inset: 0, zIndex: 9200,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(0,0,0,0.6)",
+          }}
+          onClick={() => setHqTilePopup(false)}
+          onTouchEnd={e => { e.preventDefault(); e.stopPropagation(); setHqTilePopup(false); }}>
           <div style={{
             background: "linear-gradient(160deg,#1a1608,#0e0c08)",
             border: "2px solid #c8a060",
@@ -1330,7 +1334,9 @@ export default function RiseToWar() {
             minWidth: 260,
             boxShadow: "0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(200,160,64,0.15)",
             display: "flex", flexDirection: "column", alignItems: "center", gap: 20,
-          }} onClick={e => e.stopPropagation()}>
+          }}
+          onClick={e => e.stopPropagation()}
+          onTouchEnd={e => e.stopPropagation()}>
             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 18, color: "#f0c040", fontWeight: 700, letterSpacing: ".08em", textShadow: "0 0 12px rgba(240,192,64,.4)" }}>
               🏰 Headquarters
             </div>
@@ -1366,7 +1372,7 @@ export default function RiseToWar() {
                 🔔 Summon Commander
               </button>
             </div>
-            <div style={{ fontSize: 8, color: "#4a3a2a", fontFamily: "'Crimson Pro',serif", fontStyle: "italic" }}>Tap outside to dismiss</div>
+            <div style={{ fontSize: 8, color: "#4a3a2a", fontFamily: "'Crimson Pro',serif", fontStyle: "italic" }}>Tap backdrop to dismiss</div>
           </div>
         </div>
       )}
