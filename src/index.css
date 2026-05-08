@@ -19,6 +19,18 @@ body {
 }
 #root { width: 100%; height: 100%; overflow: hidden; background: #0e1014; }
 
+/* When GachaScreen is active, release the document lock so the inner
+   scroll container can receive touch events on iOS/Android.
+   position:fixed on <html> swallows all touch-based scrolling — removing
+   it (back to static) lets the .scr div's overflowY:scroll work properly. */
+html.gacha-open {
+  position: static;
+  touch-action: pan-y;
+}
+html.gacha-open body {
+  touch-action: pan-y;
+}
+
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: #0a0c10; }
 ::-webkit-scrollbar-thumb { background: #3a2a1a; border-radius: 2px; }
