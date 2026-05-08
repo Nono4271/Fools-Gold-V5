@@ -12,7 +12,7 @@
 //  Command cost by size:
 //    small  = 1 command per troop
 //    medium = 2 command per troop
-//    large  = 4 command per troop
+//    large  = 25 command per troop
 //
 //  Damage triangle (+10% damage):
 //    small  → large
@@ -40,7 +40,7 @@ export function troopSizeModifier(atkSize, defSize) {
 }
 
 // ── Command cost by size ──────────────────────────────────────────────────────
-export const COMMAND_COST = { small: 1, medium: 2, large: 4 };
+export const COMMAND_COST = { small: 1, medium: 2, large: 25 };
 
 // ── Legacy troopModifier (kept for battle.js compatibility) ──────────────────
 export function troopModifier(atkType, defType) { return 1.0; }
