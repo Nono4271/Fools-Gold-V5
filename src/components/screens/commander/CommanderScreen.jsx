@@ -161,6 +161,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           scrollbarWidth: "none",
           display: "flex", flexDirection: "column",
           paddingTop: 6, paddingBottom: 12,
+          touchAction: "pan-y", overscrollBehavior: "contain",
         }}>
           {filtered.map(cmd => (
             <RosterPortrait
@@ -178,7 +179,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", minWidth: 0, position: "relative", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ flex: 1, overflowY: "auto", minWidth: 0, position: "relative", WebkitOverflowScrolling: "touch", touchAction: "pan-y", overscrollBehavior: "contain" }}>
           {selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
             : (

@@ -144,7 +144,7 @@ export default function GearPanel({ cmd, gearInventory, setGearInventory, setCmd
                     )}
                   </div>
 
-                  <div style={{ maxHeight: 220, overflowY: "auto" }}>
+                  <div style={{ maxHeight: 220, overflowY: "auto", touchAction: "pan-y", overscrollBehavior: "contain" }}>
                     {available.length === 0 ? (
                       <div style={{ padding: "12px 10px", fontSize: 8, color: "#3a3020",
                         fontFamily: "'Crimson Pro',serif", fontStyle: "italic", textAlign: "center" }}>
@@ -218,7 +218,8 @@ export default function GearPanel({ cmd, gearInventory, setGearInventory, setCmd
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
             <div onClick={e => e.stopPropagation()} style={{
-              width: "min(320px, 90vw)",
+              width: "min(320px, 90vw)", maxHeight: "85vh", overflowY: "auto",
+              touchAction: "pan-y", overscrollBehavior: "contain",
               background: "#0d0b08", border: `2px solid ${pgRc}40`, borderRadius: 8,
               padding: "16px 18px", boxShadow: `0 8px 40px rgba(0,0,0,.95), 0 0 20px ${pgRc}15`,
             }}>
