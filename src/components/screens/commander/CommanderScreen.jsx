@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CSS } from "../../../constants/css.js";
 import { RARITY, CLASS, ALIGNMENT, SUBSPECIES } from "../../../../shared/constants/heroes.js";
 import { RARITY_ORDER } from "./factionTheme.js";
@@ -7,6 +7,11 @@ import CommanderDetail from "./CommanderDetail.jsx";
 import FilterPopup from "./FilterPopup.jsx";
 
 export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInventory, respectSchematics, setCmds, onSchematicUsed, onClose, initialUid, gems, setGems }) {
+  useEffect(() => {
+    document.documentElement.classList.add("gacha-open");
+    return () => document.documentElement.classList.remove("gacha-open");
+  }, []);
+
   const [filterClass,      setFilterClass]      = useState(null);
   const [filterAlignment,  setFilterAlignment]  = useState(null);
   const [filterSubspecies, setFilterSubspecies] = useState(null);
