@@ -1119,14 +1119,21 @@ export default function RiseToWar() {
     })();
 
     if (isPlayerHqTile || isPlayerHqPartTile) {
-      // Issue 1 fix: open HQ directly — no intermediate popup
-      unstable_batchedUpdates(() => {
-        setHqOpen(true);
-        setHqTab("hub");
-        setSelKey(null);
-        setPopupPos(null);
-        setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
-      });
+      // Show HQ popup with Enter / Summon options
+      const zoom = zoomRef.current;
+      const elev = 14;
+      const { cx, cy } = isoXY(tile.c, tile.r);
+      const screenX = cx * zoom + panRef.current.x;
+      const screenY = (cy - elev) * zoom + panRef.current.y + 38;
+      const POPUP_W = 130, POPUP_H = 120;
+      const px = Math.min(window.innerWidth - POPUP_W - 8, Math.max(8, screenX - POPUP_W / 2));
+      const py = Math.max(46, screenY - POPUP_H - 16);
+      setTimeout(() => {
+        unstable_batchedUpdates(() => {
+          setSelKey(k); setPopupPos({ x: px, y: py }); setPopupMode("hqEnter");
+          setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
+        });
+      }, 0);
       return;
     }
 
