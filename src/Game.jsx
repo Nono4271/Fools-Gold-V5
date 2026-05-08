@@ -9,7 +9,7 @@ import { HDEFS, RC, RARITY, CLASS, rollGacha, addRespect, RESPECT_DUPE_POINTS, R
 import { rollFullPull, rollGearSchematic, createRespectSchematic, GEAR_RARITY, GEAR_SLOTS, rollFullPullCmdRarity } from "../shared/constants/gear.js";
 import { HQP, AI_HQ_KEY, WIN_KEY, RKEYS, RSS, POWER_DEFS, SIEGE_BASE, SIEGE_KEEP_BASE, calcSiegePower, hqSiegeValue } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST, CMD_LVL_MAX, xpToNext } from "../shared/constants/troops.js";
-import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainRate, maxTrainBatch } from "../shared/constants/buildings.js";
+import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainRate, maxTrainBatch, tierFromBranchLevel } from "../shared/constants/buildings.js";
 import { isoXY, TW, TH, ISO_W, ISO_H } from "../shared/constants/geometry.js";
 import { FACTION_REGIONS, REGION_LIST } from "../shared/constants/regions.js";
 
@@ -224,7 +224,23 @@ export default function RiseToWar() {
 
   const [barracksPool,   setBarracks]      = useState(barracksCapacity(0));
   // unlockedBranches: { "faction:branchKey": maxTier }  (0-indexed tier)
+  // Derived from bldgs so the Army tab works without visiting quarters first
   const [unlockedBranches, setUnlockedBranches] = useState({});
+
+  // Keep unlockedBranches in sync with bldgs — this ensures Army tab shows
+  // assignable troops as long as barracks are built, without requiring the
+  // user to visit the Quarters tab first to trigger the QuarterDetail useEffect.
+  useEffect(() => {
+    const ub = {};
+    Object.entries(FACTION_TROOPS).forEach(([fKey, fDef]) => {
+      fDef.branches.forEach(br => {
+        const bKey = `b_${fKey}_${br.key}`;
+        const bLvl = bldgs[bKey] || 0;
+        if (bLvl > 0) ub[`${fKey}:${br.key}`] = tierFromBranchLevel(bLvl);
+      });
+    });
+    setUnlockedBranches(ub);
+  }, [bldgs]); // eslint-disable-line react-hooks/exhaustive-deps
   // quarterLevels: { [factionKey]: currentLevel }  — player-purchased quarter upgrades
   const [quarterLevels, setQuarterLevels] = useState({});
   const [woundedTroops,  setWounded]       = useState(0);
