@@ -230,7 +230,7 @@ function GearDetail({ piece, inventory, cmds, setCmds, setInventory, playerAlign
   };
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, touchAction: "pan-y", overscrollBehavior: "contain" }}>
       <GearCard piece={piece} selected={false} onClick={() => {}} />
 
       {/* Equip / Unequip */}
@@ -435,7 +435,7 @@ export default memo(function GearInventory({ inventory, setInventory, cmds, setC
         <div style={{
           width: "45%", overflowY: "auto", borderRight: "1px solid #1a1508",
           padding: "8px", display: "flex", flexDirection: "column", gap: 5,
-          scrollbarWidth: "thin",
+          scrollbarWidth: "thin", touchAction: "pan-y", overscrollBehavior: "contain",
         }}>
           {sorted.length === 0
             ? <div style={{ padding: 16, textAlign: "center", color: "#2a2010",
@@ -452,7 +452,7 @@ export default memo(function GearInventory({ inventory, setInventory, cmds, setC
         </div>
 
         {/* Detail */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ flex: 1, overflowY: "auto", touchAction: "pan-y", overscrollBehavior: "contain" }}>
           <GearDetail
             piece={selectedPiece}
             inventory={inventory}
