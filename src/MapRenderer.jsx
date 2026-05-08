@@ -854,19 +854,23 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     function redraw(force = false) {
       cancelIdle();
-      // Phase 1: draw visible area + tiny border immediately (fast)
-      drawPhase(4, force);
-      // Phase 2: extend buffer to 10 tiles when browser is idle
-      //          so panning reveals pre-rendered tiles rather than black.
-      //          Fallback delay raised to 200ms so it doesn't fire mid-pan on
-      //          browsers without requestIdleCallback (older iOS Safari).
-      const schedIdle = window.requestIdleCallback || (cb => setTimeout(cb, 200));
-      idleHandle = schedIdle(() => {
-        idleHandle = null;
-        // Skip if a new pan has already started — next pan-end will trigger phase 2
-        if (isPanning.current) return;
-        drawPhase(10, true);
-      }, { timeout: 400 });
+      // Draw visible area + a modest 6-tile border. This is fast and gives enough
+      // pre-render margin to hide seams during slow pans.
+      //
+      // Phase-2 expansion (buf=12) is only scheduled when requestIdleCallback is
+      // natively available (desktop Chrome/Firefox). On iOS Safari there is no
+      // native requestIdleCallback — the old setTimeout(200) fallback ran
+      // drawPhase(10) synchronously on the main thread, blocking all subsequent
+      // rAF callbacks for up to 9 seconds. We simply skip phase 2 on iOS.
+      drawPhase(6, force);
+
+      if (typeof window.requestIdleCallback === "function") {
+        idleHandle = window.requestIdleCallback(() => {
+          idleHandle = null;
+          if (isPanning.current) return;
+          drawPhase(12, true);
+        }, { timeout: 600 });
+      }
     }
 
     function redrawOverlays() {
