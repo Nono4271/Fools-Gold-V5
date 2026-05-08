@@ -720,6 +720,7 @@ export default function RiseToWar() {
   useEffect(() => {
     if (Object.keys(deletingTiles).length===0) return;
     const id = setInterval(() => {
+      if (!Object.keys(deletingTiles).length) return; // nothing deleting — skip re-render
       const now = Date.now();
       const expired = [];
       const newSecs = {};

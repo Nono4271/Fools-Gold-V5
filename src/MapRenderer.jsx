@@ -799,18 +799,84 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       };
     }
 
-    // Fix #9: Props dirty flag.
-    // Props (trees, rocks, resource icons) never change during gameplay — only tile
-    // ownership/state does. But drawAllProps was called on EVERY redraw, including
-    // every pan frame. We now only redraw props when tiles actually changed (propsDirty),
-    // or when the viewport bounds change enough to show new tiles (boundsChanged with force).
-    let propsDirty = true; // true on first draw and whenever tiles change
-    const markPropsDirty = () => { propsDirty = true; };
+    // ── Props rendering state ─────────────────────────────────────────────────
+    // Props (trees, rocks, resource icons) are purely decorative and static —
+    // they only change when tile ownership changes (a captured tile loses its
+    // resource prop). Drawing them is expensive (~2000 PixiJS draw commands for
+    // a typical viewport) because drawRssProp and drawAmbientScatter each issue
+    // many beginFill/drawPolygon/drawEllipse calls that earcut must triangulate
+    // during the next RAF render pass.
+    //
+    // For a pan-heavy game this is the primary source of jank: every pan-end
+    // triggered a full props redraw, whose triangulation blocked the RAF for
+    // 2-7 seconds on iOS (visible as the red "pixi:redraw:+Xms" entries and the
+    // 6417ms "Animation frame" in the DevTools profile).
+    //
+    // Fix: decouple props from the pan-end hot path entirely.
+    //   • Tiles redraw immediately on pan-end (fast — plain polygons, no earcut cost).
+    //   • Props redraw only after the user has stopped panning for PROPS_SETTLE_MS.
+    //     Back-to-back pans keep resetting the timer, so props only pay the cost
+    //     once the camera actually comes to rest.
+    //   • When propsDirty=true (ownership change), props redraw immediately on the
+    //     next redraw() call regardless of the settle timer, because the tile's
+    //     visual state genuinely changed (e.g. a captured tile's gold pile vanishes).
+    //   • Props are drawn at a wider buffer (PROPS_BUF) than tiles (TILE_BUF) so
+    //     short pans after the settle don't immediately expire the drawn area.
+    //   • propsDrawnBounds tracks the last region props were drawn for. If the
+    //     new viewport fits entirely within it, the settle callback skips the redraw.
+    const TILE_BUF        = 6;    // tile draw buffer — tight, redrawn on every pan-end
+    const PROPS_BUF       = 16;   // props draw buffer — wider, redrawn only after settle
+    const PROPS_SETTLE_MS = 250;  // ms of stillness before props redraw fires
 
-    // Two-phase rendering:
-    //   Phase 1 (immediate) — draw buf=4 around viewport. Fast, unblocks the UI.
-    //   Phase 2 (idle)      — extend to buf=10 so nearby tiles are pre-rendered for
-    //                         smooth panning without stalling load or input.
+    let propsDirty       = true;  // true on first draw and on ownership changes
+    let propsDrawnBounds = null;  // last bounds props were drawn at (null = never drawn)
+    let propsSettleTimer = null;
+
+    const cancelPropsSettle = () => {
+      if (propsSettleTimer !== null) { clearTimeout(propsSettleTimer); propsSettleTimer = null; }
+    };
+
+    const markPropsDirty = () => {
+      propsDirty = true;
+      propsDrawnBounds = null; // invalidate cache so next settle does a full redraw
+    };
+
+    // Unconditionally redraws props for bounds b. Always clears first because
+    // PixiJS Graphics accumulates commands — there is no partial/incremental update.
+    function flushProps(b) {
+      const pg = propsFrontRef.current;
+      if (!pg) return;
+      pg.clear();
+      if (zoomRef.current >= 0.5) {
+        drawAllProps(pg, tilesRef.current, b.rMin, b.rMax, b.cMin, b.cMax);
+      }
+      propsDirty       = false;
+      propsDrawnBounds = b;
+    }
+
+    // Schedules a props redraw to fire after the camera settles.
+    // Pass immediate=true to bypass the timer (used on ownership changes).
+    function scheduleProps(immediate) {
+      cancelPropsSettle();
+      if (immediate) {
+        flushProps(getViewBounds(PROPS_BUF));
+        return;
+      }
+      propsSettleTimer = setTimeout(() => {
+        propsSettleTimer = null;
+        if (isPanning.current) return; // user started another pan — skip
+        const b = getViewBounds(PROPS_BUF);
+        // Skip if the viewport is fully contained within what was already drawn.
+        if (propsDrawnBounds &&
+            b.rMin >= propsDrawnBounds.rMin && b.rMax <= propsDrawnBounds.rMax &&
+            b.cMin >= propsDrawnBounds.cMin && b.cMax <= propsDrawnBounds.cMax) return;
+        flushProps(b);
+      }, PROPS_SETTLE_MS);
+    }
+
+    // ── Tile-only draw phase ──────────────────────────────────────────────────
+    // Redraws only the tile layer for the given buffer. Never touches props.
+    // Must stay fast — called synchronously on every pan-end and zoom change.
     let idleHandle = null;
     const cancelIdle = () => {
       if (idleHandle !== null) {
@@ -819,7 +885,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       }
     };
 
-    function drawPhase(buf, force) {
+    function drawTilePhase(buf, force) {
       const b = getViewBounds(buf);
       const last = lastBoundsRef.current;
       const boundsChanged = !last ||
@@ -829,46 +895,31 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       if (!force && !boundsChanged) return;
       lastBoundsRef.current = b;
 
-      const curTiles = tilesRef.current;
-      const cByTile  = cByTileRef.current;
-      const z = zoomRef.current;
-
       const tg = tileFrontRef.current;
       tg.clear();
-      drawAllTiles(tg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax,
-        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z);
-
-      // Repaint props whenever the viewport changes OR tiles changed.
-      // Props show at ALL zoom levels (removed z>=1.0 gate).
-      // boundsChanged covers panning into new tile areas.
-      if (propsDirty || boundsChanged) {
-        const pg = propsFrontRef.current;
-        pg.clear();
-        // Only draw props when zoomed in enough to see them (threshold lowered to 0.5)
-        if (z >= 0.5) {
-          drawAllProps(pg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax);
-        }
-        propsDirty = false;
-      }
+      drawAllTiles(tg, tilesRef.current, b.rMin, b.rMax, b.cMin, b.cMax,
+        selRef.current, modeRef.current, cByTileRef.current, mvCmdRef.current?.uid, zoomRef.current);
     }
 
     function redraw(force = false) {
       cancelIdle();
-      // Draw visible area + a modest 6-tile border. This is fast and gives enough
-      // pre-render margin to hide seams during slow pans.
-      //
-      // Phase-2 expansion (buf=12) is only scheduled when requestIdleCallback is
-      // natively available (desktop Chrome/Firefox). On iOS Safari there is no
-      // native requestIdleCallback — the old setTimeout(200) fallback ran
-      // drawPhase(10) synchronously on the main thread, blocking all subsequent
-      // rAF callbacks for up to 9 seconds. We simply skip phase 2 on iOS.
-      drawPhase(6, force);
 
+      // Tiles: always immediate — plain polygon fills, cheap for PixiJS to triangulate.
+      drawTilePhase(TILE_BUF, force);
+
+      // Props: deferred to after the camera settles, EXCEPT when propsDirty (ownership
+      // change) where we redraw immediately so the captured tile updates right away.
+      scheduleProps(/*immediate=*/ propsDirty);
+
+      // Desktop-only phase-2 tile pre-render at a wider buffer, scheduled during
+      // idle time so it never blocks input. Skipped on iOS Safari which lacks native
+      // requestIdleCallback — the polyfill fallback (setTimeout) would run
+      // drawTilePhase synchronously on the main thread and block touch events.
       if (typeof window.requestIdleCallback === "function") {
         idleHandle = window.requestIdleCallback(() => {
           idleHandle = null;
           if (isPanning.current) return;
-          drawPhase(12, true);
+          drawTilePhase(TILE_BUF + 6, true);
         }, { timeout: 600 });
       }
     }
@@ -1143,6 +1194,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     return () => {
       cancelIdle();
+      cancelPropsSettle();
       ro.disconnect();
       el.removeEventListener("wheel",      onWheel);
       el.removeEventListener("mousedown",  onMD);
