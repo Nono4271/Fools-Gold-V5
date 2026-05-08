@@ -114,6 +114,7 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
       display: "flex", flexDirection: "column",
       overflow: "hidden",
       fontFamily: "'Cinzel',serif",
+      touchAction: "manipulation",
     }}>
       <style>{`
         @keyframes holyPulse { 0%,100%{opacity:.3} 50%{opacity:.6} }
