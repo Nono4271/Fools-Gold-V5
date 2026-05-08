@@ -191,7 +191,7 @@ export default memo(function GameBar({
   return (
     <>
       {/* ── LEFT RAIL: Commander portrait icons ── */}
-      <div style={{
+      <div data-ui-panel="1" style={{
         position: "fixed", left: 8, top: "50%", transform: "translateY(-50%)",
         zIndex: 300,
         display: "flex", flexDirection: "column", gap: 8, alignItems: "center",
@@ -212,7 +212,7 @@ export default memo(function GameBar({
       </div>
 
       {/* ── RIGHT RAIL: Reports ── */}
-      <div style={{
+      <div data-ui-panel="1" style={{
         position: "fixed", right: 8, top: "70%", transform: "translateY(-50%)",
         zIndex: 300,
         display: "flex", flexDirection: "column", gap: 10, alignItems: "center",
@@ -235,7 +235,7 @@ export default memo(function GameBar({
         paddingRight: 8,
         pointerEvents: "none",
       }}>
-        <div style={{
+        <div data-ui-panel="1" style={{
           display: "flex",
           alignItems: "flex-end",
           justifyContent: "flex-end",
