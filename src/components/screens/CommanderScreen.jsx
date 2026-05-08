@@ -176,12 +176,12 @@ function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canL
   const atMax = level >= maxLevel;
   return (
     <div style={{
-      position: "absolute", left: 0, right: 0, bottom: 0,
+      position: "fixed", left: 0, right: 0, bottom: 0,
       background: "rgba(6,4,2,.97)",
       border: `1px solid ${color}40`,
       borderRadius: "12px 12px 0 0",
       padding: "14px 16px 20px",
-      zIndex: 10,
+      zIndex: 900,
       boxShadow: `0 -8px 32px ${color}18`,
       animation: "fadeUp .18s ease",
     }}>
@@ -385,7 +385,8 @@ function BranchRow({
           return (
             <g transform={`translate(${leftX - sideSz / 2},${mainY - sideSz / 2})`}
               onClick={() => !nodeLocked && onNodeClick(sk, false, gateLocked && lvl < 5)}
-              style={{ cursor: nodeLocked ? "default" : "pointer" }}>
+              onTouchEnd={(e) => { e.preventDefault(); !nodeLocked && onNodeClick(sk, false, gateLocked && lvl < 5); }}
+              style={{ cursor: nodeLocked ? "default" : "pointer", touchAction: "manipulation" }}>
               <FactionNode faction={faction} size={sideSz}
                 filled={lvl > 0} color={color} accent={accent}
                 locked={nodeLocked} isMain={false} selected={sel} />
@@ -418,7 +419,8 @@ function BranchRow({
           return (
             <g transform={`translate(${rightX - sideSz / 2},${mainY - sideSz / 2})`}
               onClick={() => !nodeLocked && onNodeClick(sk, false, gateLocked && lvl < 5)}
-              style={{ cursor: nodeLocked ? "default" : "pointer" }}>
+              onTouchEnd={(e) => { e.preventDefault(); !nodeLocked && onNodeClick(sk, false, gateLocked && lvl < 5); }}
+              style={{ cursor: nodeLocked ? "default" : "pointer", touchAction: "manipulation" }}>
               <FactionNode faction={faction} size={sideSz}
                 filled={lvl > 0} color={color} accent={accent}
                 locked={nodeLocked} isMain={false} selected={sel} />
@@ -445,7 +447,8 @@ function BranchRow({
         {/* MAIN spine node */}
         <g transform={`translate(${spineX - mainSz / 2},${mainY - mainSz / 2})`}
           onClick={() => !locked && onNodeClick(mainSkill, true, false)}
-          style={{ cursor: locked ? "default" : "pointer" }}>
+          onTouchEnd={(e) => { e.preventDefault(); !locked && onNodeClick(mainSkill, true, false); }}
+          style={{ cursor: locked ? "default" : "pointer", touchAction: "manipulation" }}>
           <FactionNode faction={faction} size={mainSz}
             filled={mainFilled} color={color} accent={accent}
             locked={locked} isMain={true} selected={selectedKey === mainSkill.key} />
@@ -599,6 +602,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
       background: `radial-gradient(ellipse at 50% 0%, #03100f 0%, #020608 55%, #010204 100%)`,
       display: "flex", flexDirection: "column",
       animation: "fadeUp .2s ease",
+      touchAction: "auto",
     }}>
       {/* Atmospheric faction glow at top */}
       <div style={{
@@ -811,13 +815,15 @@ function RosterPortrait({ cmd, selected, onClick }) {
   const rLvl = cmd.respectLevel ?? 0;
 
   return (
-    <div onClick={onClick} style={{
+    <div onClick={onClick} onTouchEnd={(e) => { e.preventDefault(); onClick(); }} style={{
       display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
       padding: "8px 6px",
       borderRight: `2px solid ${selected ? r.color : "transparent"}`,
       background: selected ? `${r.color}10` : "transparent",
       cursor: "pointer", transition: "background .15s",
       position: "relative",
+      touchAction: "manipulation",
+      WebkitTapHighlightColor: "transparent",
     }}>
       {/* Rarity ring */}
       <div style={{
@@ -1331,6 +1337,11 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                         if (piece) { setPreviewGear({ piece, slotKey }); setShowClassPopup(null); }
                         else setShowClassPopup(isOpen ? null : slotKey);
                       }}
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        if (piece) { setPreviewGear({ piece, slotKey }); setShowClassPopup(null); }
+                        else setShowClassPopup(isOpen ? null : slotKey);
+                      }}
                       style={{
                         padding: "30px 6px 24px", textAlign: "center",
                         background: piece ? `${rc}12` : isOpen ? "rgba(255,255,255,.04)" : "rgba(255,255,255,.015)",
@@ -1338,6 +1349,8 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                         borderRadius: 5, cursor: "pointer",
                         transition: "all .15s",
                         boxShadow: piece ? `0 0 8px ${rc}20` : "none",
+                        touchAction: "manipulation",
+                        WebkitTapHighlightColor: "transparent",
                       }}>
                       <div style={{ fontSize: piece ? 46 : 34, marginBottom: 8, opacity: piece ? 1 : 0.25 }}>
                         {piece ? piece.icon : slotDef.icon}
@@ -1836,6 +1849,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       position: "fixed", inset: 0, zIndex: 700,
       background: "#080704",
       display: "flex", flexDirection: "column",
+      touchAction: "auto",
     }}>
       <style>{CSS}</style>
 
