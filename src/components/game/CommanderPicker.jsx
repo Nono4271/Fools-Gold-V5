@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { FACTION_TROOPS, troopSizeModifier } from "../../../shared/constants/troops.js";
 import { TERR } from "../../../shared/constants/terrain.js";
 import { RC, RARITY, CLASS, SS } from "../../../shared/constants/heroes.js";
@@ -12,7 +13,7 @@ function tbInfo(tb) {
   return { label: `${b.label} — ${t.label}`, color: "#c8a060", size: b.size };
 }
 
-export default function CommanderPicker({
+export default memo(function CommanderPicker({
   atkKey, tiles, cmdsAdjToSel, pickCmd, setPick,
   setMode, setAtkKey, setSelKey, setPopupPos, startMarch,
 }) {
@@ -109,4 +110,4 @@ export default function CommanderPicker({
       </div>
     </div>
   );
-}
+});

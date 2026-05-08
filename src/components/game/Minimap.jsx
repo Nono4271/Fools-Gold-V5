@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, memo } from "react";
 import { COLS, ROWS, TW, TH } from "../../../shared/constants/geometry.js";
 import { REGION_LIST } from "../../../shared/constants/regions.js";
 
@@ -19,7 +19,7 @@ function keepTri(x, y, sz) {
   return [x, y - sz, x + sz * 0.85, y + sz * 0.55, x - sz * 0.85, y + sz * 0.55];
 }
 
-export default function Minimap({ tiles, pKeys, panSt, zoom }) {
+export default memo(function Minimap({ tiles, pKeys, panSt, zoom }) {
   const canvasRef = useRef(null);
 
   const { vc, vr } = useMemo(() => {
@@ -134,4 +134,4 @@ export default function Minimap({ tiles, pKeys, panSt, zoom }) {
       />
     </div>
   );
-}
+});

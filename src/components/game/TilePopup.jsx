@@ -12,7 +12,6 @@ function tbInfo(tb) {
 }
 import { TERR } from "../../../shared/constants/terrain.js";
 import { RSS, POWER_DEFS, SIEGE_BASE, HQP, TC } from "../../../shared/constants/map.js";
-import { BLDG } from "../../../shared/constants/buildings.js";
 import { garrisonDefCmd } from "../../../shared/utils/battle.js";
 
 export default memo(function TilePopup({
@@ -131,7 +130,9 @@ export default memo(function TilePopup({
                 <span style={{fontFamily:"'Cinzel',serif",fontSize:7,color:RSS[selTile.rss].col,fontWeight:700}}>{RSS[selTile.rss].lbl}</span>
               </div>
               <span style={{fontSize:7,color:"#6a7a5a",fontFamily:"'Cinzel',serif"}}>
-                +{BLDG[selTile.rss==="stone"?"quarry":selTile.rss==="wood"?"lumber":selTile.rss==="ore"?"forge":"refinery"]?.rate||50}/s
+                +{selTile.powerLevel === 1
+                  ? "60/hr (all)"
+                  : `${({2:288,3:336,4:432}[selTile.powerLevel]??288)}/hr`}
               </span>
             </div>
           )}

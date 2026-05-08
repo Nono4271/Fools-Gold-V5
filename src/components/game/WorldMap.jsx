@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, memo } from "react";
 import { REGION_LIST } from "../../../shared/constants/regions.js";
 import { PLAYABLE_FACTIONS } from "../../../shared/constants/factions.js";
 import { ISO_W, ISO_H, TW, TH, TOP_PAD, ROWS } from "../../../shared/constants/geometry.js";
@@ -80,7 +80,7 @@ function garrisonLabel(g) {
   return "Small";
 }
 
-export default function WorldMap({ tiles, onClose, onTeleport, panRef, zoom }) {
+export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom }) {
   const [selected, setSelected] = useState(null);
   const [dotPos, setDotPos] = useState(() => panRef?.current || { x: 4, y: 4 });
 
@@ -375,4 +375,4 @@ export default function WorldMap({ tiles, onClose, onTeleport, panRef, zoom }) {
       )}
     </div>
   );
-}
+});

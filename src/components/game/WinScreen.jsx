@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { FAC } from "../../../shared/constants/factions.js";
 import { barracksCapacity } from "../../../shared/constants/buildings.js";
 
-export default function WinScreen({ winner, aiFaction, setWinner, setTiles, setCmds, setMode, setSelKey, setUpgQueue, setBldgs, setBarracks, setAiRss, setAiBldgs, setAiBarracksPool, aiLastActionRef, setScreen, setWounded, setWoundedQueue, setRss, setReinMarches, setTrainingQueue, setBLog, setBattles, setUnseenBattles, setDeletingTiles, setDeletingSecsLeft, setPlayerHqKey, setAiHqKeys }) {
+export default memo(function WinScreen({ winner, aiFaction, setWinner, setTiles, setCmds, setMode, setSelKey, setUpgQueue, setBldgs, setBarracks, setAiRss, setAiBldgs, setAiBarracksPool, aiLastActionRef, setScreen, setWounded, setWoundedQueue, setRss, setReinMarches, setTrainingQueue, setBLog, setBattles, setUnseenBattles, setDeletingTiles, setDeletingSecsLeft, setPlayerHqKey, setAiHqKeys }) {
   const isVictory = winner === "player";
   const aiName = aiFaction ? (FAC[aiFaction]?.n || aiFaction) : "Enemy";
 
@@ -56,4 +57,4 @@ export default function WinScreen({ winner, aiFaction, setWinner, setTiles, setC
       </div>
     </div>
   );
-}
+});

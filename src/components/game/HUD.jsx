@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { RKEYS, RSS } from "../../../shared/constants/map.js";
 
 /*
@@ -8,7 +9,7 @@ import { RKEYS, RSS } from "../../../shared/constants/map.js";
   The left group is absolutely centred so it stays centred regardless of
   how wide the resource panel grows.
 */
-export default function HUD({ facName, pKeys, rss, gems }) {
+export default memo(function HUD({ facName, pKeys, rss, gems }) {
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
@@ -93,4 +94,4 @@ export default function HUD({ facName, pKeys, rss, gems }) {
 
     </div>
   );
-}
+});

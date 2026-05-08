@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { RARITY, CLASS } from "../../../shared/constants/heroes.js";
 import { CSS } from "../../constants/css.js";
 import { HQP } from "../../../shared/constants/map.js";
@@ -158,7 +158,7 @@ function ActionButton({ icon, label, color = "#c8a060", onClick, badge, accent }
   );
 }
 
-export default function GameBar({
+export default memo(function GameBar({
   cmds, facName, tiles,
   onCenterHQ,
   onWorldMap,
@@ -282,4 +282,4 @@ export default function GameBar({
       </div>
     </>
   );
-}
+});

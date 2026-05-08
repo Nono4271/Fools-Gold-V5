@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { GEAR_RARITY, GEAR_SLOTS, STAT_BASE, STRENGTHEN_COST, canStrengthen, strengthen, canRefine, refine } from "../../../shared/constants/gear.js";
 import { ALIGNMENT } from "../../../shared/constants/heroes.js";
 
@@ -362,7 +362,7 @@ function GearDetail({ piece, inventory, cmds, setCmds, setInventory, playerAlign
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function GearInventory({ inventory, setInventory, cmds, setCmds, playerAlignment, filterSlot, onClose }) {
+export default memo(function GearInventory({ inventory, setInventory, cmds, setCmds, playerAlignment, filterSlot, onClose }) {
   const [selectedId, setSelectedId] = useState(null);
   const [filterR, setFilterR]       = useState(null);
   const [filterS, setFilterS]       = useState(filterSlot ?? null);
@@ -461,4 +461,4 @@ export default function GearInventory({ inventory, setInventory, cmds, setCmds, 
       </div>
     </div>
   );
-}
+});

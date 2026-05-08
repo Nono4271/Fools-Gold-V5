@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { FACTION_TROOPS, COMMAND_COST } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
 import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch } from "../../../shared/constants/buildings.js";
@@ -996,7 +996,7 @@ function MarketplaceScreen({ rss, setRss }) {
 // ─────────────────────────────────────────────────────────────────────────────
 //  ROOT HQMenu
 // ─────────────────────────────────────────────────────────────────────────────
-export default function HQMenu({
+export default memo(function HQMenu({
   hqOpen, setHqOpen, hqTab, setHqTab,
   cmds, setCmds, tiles, rss, setRss, gems, pKeys,
   bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
@@ -1088,4 +1088,4 @@ export default function HQMenu({
       </div>
     </div>
   );
-}
+});
