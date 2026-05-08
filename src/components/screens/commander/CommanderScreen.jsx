@@ -172,7 +172,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", minWidth: 0, position: "relative", touchAction: "pan-y", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ flex: 1, overflowY: "auto", minWidth: 0, position: "relative", WebkitOverflowScrolling: "touch" }}>
           {selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
             : (

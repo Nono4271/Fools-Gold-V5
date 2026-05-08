@@ -238,7 +238,7 @@ export default function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose 
         </span>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", position: "relative", touchAction: "pan-y", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ flex: 1, overflowY: "auto", position: "relative", WebkitOverflowScrolling: "touch" }}>
         <div style={{
           position: "absolute", left: "50%", top: 0, bottom: 0, width: 2,
           background: `linear-gradient(180deg, transparent 0%, ${fColor}14 15%, ${fColor}14 85%, transparent 100%)`,
