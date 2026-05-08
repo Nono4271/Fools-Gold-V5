@@ -948,7 +948,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     const onTS = e => {
       if (isUITarget(e)) return;
-      e.preventDefault();
+      // NOTE: touchstart is passive (no preventDefault) — calling preventDefault on
+      // touchstart triggers iOS Safari's gesture recognizer holdoff, delaying all
+      // subsequent touch events by 300ms-several seconds. We only need preventDefault
+      // on touchmove (to block native scroll), not touchstart.
       if (e.touches.length === 1) {
         tDragFrom.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
         tDidDrag.current = false;
@@ -1056,10 +1059,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         }
       }
     };
-    el.addEventListener("touchstart",  onTS, { passive: false });
-    el.addEventListener("touchmove",   onTM, { passive: false });
-    el.addEventListener("touchend",    onTE, { passive: false });
-    el.addEventListener("touchcancel", onTE, { passive: false });
+    el.addEventListener("touchstart",  onTS, { passive: true });  // passive: no preventDefault needed on touchstart
+    el.addEventListener("touchmove",   onTM, { passive: false }); // non-passive: prevents native scroll during pan
+    el.addEventListener("touchend",    onTE, { passive: true });   // passive: no preventDefault needed on touchend
+    el.addEventListener("touchcancel", onTE, { passive: true });   // passive: same
 
     // Returns true if the event started inside a React UI panel layered above
     // the Pixi canvas. We check composedPath() for any element that has a
