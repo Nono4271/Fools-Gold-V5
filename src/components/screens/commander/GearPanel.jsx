@@ -72,18 +72,25 @@ export default function GearPanel({ cmd, gearInventory, setGearInventory, setCmd
 
           return (
             <div key={slotKey} style={{ position: "relative" }}>
-              <div
+              <button
                 onClick={() => {
                   if (piece) { setPreviewGear({ piece, slotKey }); setOpenSlot(null); }
                   else setOpenSlot(isOpen ? null : slotKey);
                 }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  if (piece) { setPreviewGear({ piece, slotKey }); setOpenSlot(null); }
+                  else setOpenSlot(isOpen ? null : slotKey);
+                }}
                 style={{
-                  padding: "30px 6px 24px", textAlign: "center",
+                  width: "100%", padding: "30px 6px 24px", textAlign: "center",
                   background: piece ? `${rc}12` : isOpen ? "rgba(255,255,255,.04)" : "rgba(255,255,255,.015)",
                   border: `1px solid ${isOpen ? (rc ?? rarityColor)+"60" : piece ? rc+"40" : "#1e1810"}`,
                   borderRadius: 5, cursor: "pointer",
                   transition: "all .15s",
                   boxShadow: piece ? `0 0 8px ${rc}20` : "none",
+                  touchAction: "manipulation",
+                  WebkitTapHighlightColor: "transparent",
                 }}>
                 <div style={{ fontSize: piece ? 46 : 34, marginBottom: 8, opacity: piece ? 1 : 0.25 }}>
                   {piece ? piece.icon : slotDef.icon}
@@ -109,7 +116,7 @@ export default function GearPanel({ cmd, gearInventory, setGearInventory, setCmd
                 {!piece && (
                   <div style={{ fontSize: 6, color: "#2a2010", fontFamily: "'Cinzel',serif", marginTop: 2 }}>empty</div>
                 )}
-              </div>
+              </button>
 
               {isOpen && (
                 <div style={{

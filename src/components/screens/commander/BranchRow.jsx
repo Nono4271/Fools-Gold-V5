@@ -69,6 +69,7 @@ export default function BranchRow({
           return (
             <g key={side} transform={`translate(${x - sideSz / 2},${mainY - sideSz / 2})`}
               onClick={() => !nodeLocked && onNodeClick(sk, false, gateLocked && lvl < 5)}
+              onTouchEnd={(e) => { e.preventDefault(); if (!nodeLocked) onNodeClick(sk, false, gateLocked && lvl < 5); }}
               style={{ cursor: nodeLocked ? "default" : "pointer" }}>
               <FactionNode faction={faction} size={sideSz}
                 filled={lvl > 0} color={color} accent={accent}
@@ -95,6 +96,7 @@ export default function BranchRow({
 
         <g transform={`translate(${spineX - mainSz / 2},${mainY - mainSz / 2})`}
           onClick={() => !locked && onNodeClick(mainSkill, true, false)}
+          onTouchEnd={(e) => { e.preventDefault(); if (!locked) onNodeClick(mainSkill, true, false); }}
           style={{ cursor: locked ? "default" : "pointer" }}>
           <FactionNode faction={faction} size={mainSz}
             filled={mainFilled} color={color} accent={accent}
