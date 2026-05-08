@@ -1,7 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #0e1014; }
+html {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  /* position:fixed on <html> is the most reliable iOS pull-to-refresh blocker.
+     It also prevents the swipe-back-navigation rubber-band animation. */
+  position: fixed;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  background: #0e1014;
+}
+#root { width: 100%; height: 100%; overflow: hidden; background: #0e1014; }
 
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: #0a0c10; }

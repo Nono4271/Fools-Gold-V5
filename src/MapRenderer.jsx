@@ -225,6 +225,40 @@ function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
   }
 }
 
+// iOS-only ultra-simple props: one small isometric diamond per resource tile.
+// drawRssProp uses 16–38 ellipse/circle fan draws per tile (each ellipse = 54
+// triangle vertices). For 200+ resource tiles that's 95k+ triangles → 6-second
+// GPU-upload freeze on the rAF following the idle callback.
+// A 4-vertex diamond = 2 trivial triangles (EARCUT is O(1) for n=4).
+// 200 tiles → 400 triangles → <5 ms. No ellipses, no circles, no fans.
+function drawAllPropsNoScatter(gfx, tiles, rMin, rMax, cMin, cMax) {
+  gfx.clear();
+  const hw = TW * 0.18;  // diamond half-width  (pixels, world space)
+  const hh = TH * 0.18;  // diamond half-height
+  const dMin = cMin + rMin, dMax = cMax + rMax;
+  for (let d = dMin; d <= dMax; d++) {
+    const cLo = Math.max(cMin, d - rMax);
+    const cHi = Math.min(cMax, d - rMin);
+    for (let c = cLo; c <= cHi; c++) {
+      const r = d - c;
+      if (r < rMin || r > rMax) continue;
+      const tile = tiles[`${c},${r}`];
+      if (!tile || !tile.rss || tile.isHQ || tile.isWin || tile.isKeep ||
+          tile.isKeepPart || tile.isHQPart || tile.isShore) continue;
+      const { cx, cy } = isoXY(c, r);
+      const base = cy - 4 + TH * 0.5; // tile surface centre (sy + TH/2)
+      const color = tile.rss === "wood"  ? 0x2a7a20
+                  : tile.rss === "stone" ? 0x8a8a9a
+                  : tile.rss === "ore"   ? 0xd4a020
+                  :                        0x3a8a28; // gas
+      gfx.beginFill(color, 0.90);
+      // 4-vertex isometric diamond — 2 triangles, EARCUT trivial for n=4
+      gfx.drawPolygon([cx, base - hh, cx + hw, base, cx, base + hh, cx - hw, base]);
+      gfx.endFill();
+    }
+  }
+}
+
 function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   const rnd  = tileRng(c, r);
   // sy is the top of the tile face; surface center is sy + TH/2
@@ -727,9 +761,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const isPanning      = useRef(false);
   const panEndTimer    = useRef(null);
   const panNotifyTimer = useRef(null);
-  // Set true when a pan-end redraw is queued; checked on next touchstart to recover
-  // redraws lost to iOS timer/rAF suspension (thermal/battery throttle, foregrounded).
-  const pendingPanRedraw = useRef(false);
 
   /* ── INIT PIXI ── */
   useEffect(() => {
@@ -750,6 +781,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     el.appendChild(app.view);
     appRef.current = app;
 
+    // Detect iOS early — needed for both props-sprite setup and phase-2 skip.
+    // iOS 16+ has requestIdleCallback so we can't use its presence as a proxy.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
     const world = new PIXI.Container();
     app.stage.addChild(world);
     worldRef.current = world;
@@ -761,6 +797,42 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     tileFrontRef.current = tileGfx; tileBackRef.current = tileGfx;
     const propsGfx = new PIXI.Graphics(); world.addChild(propsGfx);
     propsFrontRef.current = propsGfx; propsBackRef.current = propsGfx;
+
+    // ── iOS sprite-based props ────────────────────────────────────────────────
+    // Pre-render each resource type ONCE to a RenderTexture at startup.
+    // EARCUT / fan-tessellation runs exactly once per resource type here.
+    // After that, every props update just repositions Sprite instances
+    // (textured quads = 2 trivial triangles, zero tessellation ever again).
+    // Textures are in world-pixel space; zoom is handled by the world container.
+    const TEX_W      = TW;                       // 80 px
+    const TEX_H      = Math.round(TH * 2);       // 106 px
+    const TEX_BASE_Y = Math.round(TEX_H * 0.72); // ~76 px — tile surface centre in texture
+    const TEX_SY     = TEX_BASE_Y - TH / 2;      // sy arg = top-of-tile-face in texture
+    const TEX_CX     = TEX_W / 2;                // 40 px
+
+    const rssTextures       = {};   // rss string → PIXI.RenderTexture
+    const propsSpritePool   = [];   // recycled PIXI.Sprite instances
+    const propsSpriteContainer = new PIXI.Container();
+
+    if (isIOS) {
+      propsGfx.visible = false; // Graphics layer unused on iOS
+      world.addChild(propsSpriteContainer); // sits between tiles and keeps
+      const tmpGfx = new PIXI.Graphics();
+      for (const rss of ["wood", "stone", "ore", "gas"]) {
+        // Use fixed seed (c=5, r=3) and pl=4 so all tiles share one high-detail
+        // texture per resource type — tiny visual compromise, massive perf gain.
+        const rt = PIXI.RenderTexture.create({
+          width: TEX_W, height: TEX_H,
+          resolution: app.renderer.resolution,
+        });
+        tmpGfx.clear();
+        drawRssProp(tmpGfx, rss, TEX_CX, TEX_SY, 5, 3, 4);
+        app.renderer.render(tmpGfx, { renderTexture: rt });
+        rssTextures[rss] = rt;
+      }
+      tmpGfx.destroy();
+    }
+
     const keepCont = new PIXI.Container(); 
     keepCont.interactiveChildren = true;
     world.addChild(keepCont); keepContRef.current = keepCont;
@@ -802,84 +874,102 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       };
     }
 
-    // ── Props rendering state ─────────────────────────────────────────────────
-    // Props (trees, rocks, resource icons) are purely decorative and static —
-    // they only change when tile ownership changes (a captured tile loses its
-    // resource prop). Drawing them is expensive (~2000 PixiJS draw commands for
-    // a typical viewport) because drawRssProp and drawAmbientScatter each issue
-    // many beginFill/drawPolygon/drawEllipse calls that earcut must triangulate
-    // during the next RAF render pass.
-    //
-    // For a pan-heavy game this is the primary source of jank: every pan-end
-    // triggered a full props redraw, whose triangulation blocked the RAF for
-    // 2-7 seconds on iOS (visible as the red "pixi:redraw:+Xms" entries and the
-    // 6417ms "Animation frame" in the DevTools profile).
-    //
-    // Fix: decouple props from the pan-end hot path entirely.
-    //   • Tiles redraw immediately on pan-end (fast — plain polygons, no earcut cost).
-    //   • Props redraw only after the user has stopped panning for PROPS_SETTLE_MS.
-    //     Back-to-back pans keep resetting the timer, so props only pay the cost
-    //     once the camera actually comes to rest.
-    //   • When propsDirty=true (ownership change), props redraw immediately on the
-    //     next redraw() call regardless of the settle timer, because the tile's
-    //     visual state genuinely changed (e.g. a captured tile's gold pile vanishes).
-    //   • Props are drawn at a wider buffer (PROPS_BUF) than tiles (TILE_BUF) so
-    //     short pans after the settle don't immediately expire the drawn area.
-    //   • propsDrawnBounds tracks the last region props were drawn for. If the
-    //     new viewport fits entirely within it, the settle callback skips the redraw.
-    const TILE_BUF        = 6;    // tile draw buffer — tight, redrawn on every pan-end
-    const PROPS_BUF       = 16;   // props draw buffer — wider, redrawn only after settle
-    const PROPS_SETTLE_MS = 250;  // ms of stillness before props redraw fires
+    // Props dirty flag — set true on first draw and whenever tile state changes.
+    // Props are now drawn asynchronously (idle-deferred) to avoid blocking rAF.
+    let propsDirty = true; // true on first draw and whenever tiles change
+    const markPropsDirty = () => { propsDirty = true; };
 
-    let propsDirty       = true;  // true on first draw and on ownership changes
-    let propsDrawnBounds = null;  // last bounds props were drawn at (null = never drawn)
-    let propsSettleTimer = null;
+    // ── Props are expensive: each tile spawns 5-40 complex polygon draw calls
+    // (pine tree tiers, boulder faces, ore nuggets, gas vents, ambient scatter).
+    // Pixi EARCUT-tessellates ALL of them inside renderer.render() on the next rAF
+    // after a Graphics.clear()+redraw. On iOS this blocks the main thread for 1-3s.
+    //
+    // Key insight: props live in *world space*. During/after a pan, the world
+    // container moves but props are still correct — no need to clear+redraw them.
+    // We only need to redraw props when tile *state* changes (propsDirty) or when
+    // the viewport has panned so far that new tiles are visible outside the last
+    // rendered prop buffer.
+    //
+    // Strategy:
+    //  - propsBoundsRef tracks the last bounds used for props (with a large buf=10)
+    //  - drawPhase always redraws the TILES layer (fast: convex quads, trivial EARCUT)
+    //  - drawPhase redraws props ONLY when propsDirty OR viewport exits propsBoundsRef
+    //  - When props need redrawing, defer it to requestIdleCallback (no timeout) so
+    //    it only runs when the browser is truly idle — never blocking input.
 
-    const cancelPropsSettle = () => {
-      if (propsSettleTimer !== null) { clearTimeout(propsSettleTimer); propsSettleTimer = null; }
+    const propsBoundsRef = { current: null };
+    let propsIdleHandle  = null;
+    const PROPS_BUF = 10; // pre-render 10 tiles beyond viewport for props
+
+    const cancelPropsIdle = () => {
+      if (propsIdleHandle !== null) {
+        (window.cancelIdleCallback || clearTimeout)(propsIdleHandle);
+        propsIdleHandle = null;
+      }
     };
 
-    const markPropsDirty = () => {
-      propsDirty = true;
-      propsDrawnBounds = null; // invalidate cache so next settle does a full redraw
+    const schedulePropsRedraw = () => {
+      cancelPropsIdle();
+      // Use rIC without timeout on iOS so it only runs when browser is idle.
+      // No timeout = never forces itself onto a busy frame.
+      const doProps = () => {
+        propsIdleHandle = null;
+        if (isPanning.current) return; // skip if user started panning again
+        const pb = getViewBounds(PROPS_BUF);
+
+        if (isIOS) {
+          // ── Sprite path (iOS) ────────────────────────────────────────────
+          // Return all active sprites to the pool, then reposition from pool.
+          // No tessellation: sprites are textured quads (2 triangles each).
+          while (propsSpriteContainer.children.length > 0) {
+            propsSpritePool.push(propsSpriteContainer.removeChildAt(0));
+          }
+          if (zoomRef.current >= 0.5) {
+            const tiles    = tilesRef.current;
+            const anchorY  = TEX_BASE_Y / TEX_H;
+            const dMin = pb.cMin + pb.rMin, dMax = pb.cMax + pb.rMax;
+            for (let d = dMin; d <= dMax; d++) {
+              const cLo = Math.max(pb.cMin, d - pb.rMax);
+              const cHi = Math.min(pb.cMax, d - pb.rMin);
+              for (let c = cLo; c <= cHi; c++) {
+                const r = d - c;
+                if (r < pb.rMin || r > pb.rMax) continue;
+                const tile = tiles[`${c},${r}`];
+                if (!tile || !tile.rss || tile.isHQ || tile.isWin || tile.isKeep ||
+                    tile.isKeepPart || tile.isHQPart || tile.isShore) continue;
+                const tex = rssTextures[tile.rss];
+                if (!tex) continue;
+                const { cx, cy } = isoXY(c, r);
+                const sp = propsSpritePool.pop() ?? new PIXI.Sprite();
+                sp.texture  = tex;
+                sp.anchor.set(0.5, anchorY); // anchor at base (tile surface centre)
+                sp.x = cx;
+                sp.y = cy - 4 + TH * 0.5;   // world "base" coordinate
+                propsSpriteContainer.addChild(sp);
+              }
+            }
+          }
+        } else {
+          // ── Graphics path (desktop) ──────────────────────────────────────
+          const pg = propsFrontRef.current;
+          pg.clear();
+          if (zoomRef.current >= 0.5) {
+            drawAllProps(pg, tilesRef.current, pb.rMin, pb.rMax, pb.cMin, pb.cMax);
+          }
+        }
+
+        propsBoundsRef.current = pb;
+        propsDirty = false;
+        window._perfLog?.("props:drawn");
+      };
+      if (typeof window.requestIdleCallback === "function") {
+        propsIdleHandle = window.requestIdleCallback(doProps);
+      } else {
+        // Fallback: use a long delay so it can't block an active gesture
+        propsIdleHandle = setTimeout(doProps, 800);
+      }
     };
 
-    // Unconditionally redraws props for bounds b. Always clears first because
-    // PixiJS Graphics accumulates commands — there is no partial/incremental update.
-    function flushProps(b) {
-      const pg = propsFrontRef.current;
-      if (!pg) return;
-      pg.clear();
-      if (zoomRef.current >= 0.5) {
-        drawAllProps(pg, tilesRef.current, b.rMin, b.rMax, b.cMin, b.cMax);
-      }
-      propsDirty       = false;
-      propsDrawnBounds = b;
-    }
-
-    // Schedules a props redraw to fire after the camera settles.
-    // Pass immediate=true to bypass the timer (used on ownership changes).
-    function scheduleProps(immediate) {
-      cancelPropsSettle();
-      if (immediate) {
-        flushProps(getViewBounds(PROPS_BUF));
-        return;
-      }
-      propsSettleTimer = setTimeout(() => {
-        propsSettleTimer = null;
-        if (isPanning.current) return; // user started another pan — skip
-        const b = getViewBounds(PROPS_BUF);
-        // Skip if the viewport is fully contained within what was already drawn.
-        if (propsDrawnBounds &&
-            b.rMin >= propsDrawnBounds.rMin && b.rMax <= propsDrawnBounds.rMax &&
-            b.cMin >= propsDrawnBounds.cMin && b.cMax <= propsDrawnBounds.cMax) return;
-        flushProps(b);
-      }, PROPS_SETTLE_MS);
-    }
-
-    // ── Tile-only draw phase ──────────────────────────────────────────────────
-    // Redraws only the tile layer for the given buffer. Never touches props.
-    // Must stay fast — called synchronously on every pan-end and zoom change.
     let idleHandle = null;
     const cancelIdle = () => {
       if (idleHandle !== null) {
@@ -888,7 +978,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       }
     };
 
-    function drawTilePhase(buf, force) {
+    function drawPhase(buf, force) {
       const b = getViewBounds(buf);
       const last = lastBoundsRef.current;
       const boundsChanged = !last ||
@@ -898,31 +988,48 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       if (!force && !boundsChanged) return;
       lastBoundsRef.current = b;
 
+      const curTiles = tilesRef.current;
+      const cByTile  = cByTileRef.current;
+      const z = zoomRef.current;
+
+      // ── Tiles layer: always redraw (fast — convex quads, trivial tessellation)
       const tg = tileFrontRef.current;
       tg.clear();
-      drawAllTiles(tg, tilesRef.current, b.rMin, b.rMax, b.cMin, b.cMax,
-        selRef.current, modeRef.current, cByTileRef.current, mvCmdRef.current?.uid, zoomRef.current);
+      drawAllTiles(tg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax,
+        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z);
+
+      // ── Props layer: only redraw when state changed OR viewport moved outside
+      // the previously rendered props buffer. Never block synchronously — always
+      // defer to idle so the rAF that follows pan-end stays cheap.
+      if (propsDirty) {
+        // Tile state changed → props must update. Schedule for next idle.
+        schedulePropsRedraw();
+      } else if (z >= 0.5) {
+        // Pan only: check if viewport has moved outside the last props buffer.
+        const pb = propsBoundsRef.current;
+        const vb = getViewBounds(0); // exact viewport, no margin
+        const outside = !pb ||
+          vb.rMin < pb.rMin || vb.rMax > pb.rMax ||
+          vb.cMin < pb.cMin || vb.cMax > pb.cMax;
+        if (outside) schedulePropsRedraw(); // still deferred, never synchronous
+      }
     }
 
     function redraw(force = false) {
       cancelIdle();
+      // Phase 1: draw visible area + 6-tile border. Fast on all devices.
+      drawPhase(6, force);
 
-      // Tiles: always immediate — plain polygon fills, cheap for PixiJS to triangulate.
-      drawTilePhase(TILE_BUF, force);
-
-      // Props: deferred to after the camera settles, EXCEPT when propsDirty (ownership
-      // change) where we redraw immediately so the captured tile updates right away.
-      scheduleProps(/*immediate=*/ propsDirty);
-
-      // Desktop-only phase-2 tile pre-render at a wider buffer, scheduled during
-      // idle time so it never blocks input. Skipped on iOS Safari which lacks native
-      // requestIdleCallback — the polyfill fallback (setTimeout) would run
-      // drawTilePhase synchronously on the main thread and block touch events.
-      if (typeof window.requestIdleCallback === "function") {
+      // Phase 2: extend to a 12-tile pre-render border so nearby tiles slide
+      // into view during fast pans without stalling. Only run on desktop where
+      // requestIdleCallback is available AND the hardware can finish the draw
+      // in < 50ms. On iOS the same draw takes 2+ seconds and blocks all touch
+      // input for that entire duration — so we skip it entirely on iOS.
+      if (!isIOS && typeof window.requestIdleCallback === "function") {
         idleHandle = window.requestIdleCallback(() => {
           idleHandle = null;
           if (isPanning.current) return;
-          drawTilePhase(TILE_BUF + 6, true);
+          drawPhase(12, true);
         }, { timeout: 600 });
       }
     }
@@ -1002,24 +1109,18 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     const onTS = e => {
       if (isUITarget(e)) return;
-      // NOTE: touchstart is passive (no preventDefault) — calling preventDefault on
-      // touchstart triggers iOS Safari's gesture recognizer holdoff, delaying all
-      // subsequent touch events by 300ms-several seconds. We only need preventDefault
-      // on touchmove (to block native scroll), not touchstart.
-
-      // Recovery: if the previous pan-end redraw was lost to iOS timer/rAF suspension
-      // (both setTimeout and rAF can be throttled simultaneously on a foregrounded page
-      // under battery/thermal pressure — visibilitychange never fires in that case),
-      // force a synchronous redraw now at the start of the next touch so the map is
-      // never stale when the user begins interacting again.
-      if (pendingPanRedraw.current) {
-        pendingPanRedraw.current = false;
-        lastBoundsRef.current = null;
-        redrawRef.current?.redraw(true);
-        onPanChangeRef.current(panRef.current);
-        window._perfLog?.("panRedraw:recovered");
-      }
-
+      // Cancel any pending idle draws immediately on touch so they cannot
+      // block the main thread while the user is trying to interact.
+      cancelIdle();
+      cancelPropsIdle();
+      // Call preventDefault on touchstart for canvas touches.
+      // This is the ONLY reliable way to block iOS Safari's pull-to-refresh and
+      // swipe-back-navigation gestures — iOS decides at touchstart time whether to
+      // claim the gesture, before any touchmove fires. The old concern about a 300ms
+      // delay from non-passive touchstart was for click-delay on links; it does not
+      // apply here since we use touch events directly and have no click handlers on
+      // the canvas element.
+      e.preventDefault();
       if (e.touches.length === 1) {
         tDragFrom.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
         tDidDrag.current = false;
@@ -1103,68 +1204,34 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         // hasn't changed — there's nothing new to render.
         if (wasDrag) {
           // Redraw at final pan position after a drag.
-          //
-          // Strategy: dual-trigger with a fired guard so whichever arrives first wins.
-          //
-          // • setTimeout(0) uses the macrotask queue — fast on iOS when the page is
-          //   fully foregrounded (typically fires within 0–10ms).
-          // • requestAnimationFrame is the fallback. On a normal pan it fires ~16ms
-          //   after touchend (next vsync), so setTimeout usually wins. But if iOS
-          //   suspends the timer queue — e.g. the user briefly switched apps, pulled
-          //   down Control Center, or the OS throttled timers under battery/thermal
-          //   pressure (the root cause of the +16571ms red entry) — rAF fires at the
-          //   very next display frame once the page regains foreground, recovering
-          //   within one vsync instead of waiting for the stale setTimeout to drain.
-          //
-          // Note: the original concern about rAF being delayed during momentum scroll
-          // does not apply here because by touchend the pan position is already locked
-          // and momentum scroll is finished.
-          pendingPanRedraw.current = true;
+          // IMPORTANT: Do NOT use requestAnimationFrame or setTimeout here.
+          // On iOS Safari, both rAF and macrotask timers (setTimeout) are throttled
+          // behind the gesture/scroll resolution pipeline — even with touchAction:none —
+          // causing delays of 1-2+ seconds visible as red entries in the PERF overlay.
+          // queueMicrotask() runs in the same microtask checkpoint as the touchend
+          // handler itself, before iOS can hand control back to its gesture scheduler,
+          // so it fires in <1ms regardless of iOS scroll state.
           const _panT0 = performance.now();
-          let _panFired = false;
-          const _doPanRedraw = (label) => {
-            if (_panFired) return;
-            _panFired = true;
+          queueMicrotask(() => {
             const _panDelay = performance.now() - _panT0;
-            window._perfLog?.(`panEnd→rAF:+${Math.round(_panDelay)}ms`);
-            // No stale guard here — if iOS suspended the timer queue (e.g. app-switch,
-            // Control Center, thermal throttle), _panDelay can be 10-20 seconds.
-            // Dropping the redraw in that case left the map frozen. The _panFired flag
-            // already prevents double-firing; a new touchstart resets its own closure.
+            window._perfLog?.(`panEnd→µtask:+${Math.round(_panDelay)}ms`);
             lastBoundsRef.current = null;
             redrawRef.current?.redraw(true);
             const _t2 = performance.now();
             window._perfLog?.(`pixi:redraw:+${Math.round(_t2 - _panT0 - _panDelay)}ms`);
             onPanChangeRef.current(lockedPan);
-            pendingPanRedraw.current = false;
             window._perfLog?.(`react:panNotify`);
-          };
-          const _stId = setTimeout(() => _doPanRedraw("st"), 0);
-          requestAnimationFrame(() => { clearTimeout(_stId); _doPanRedraw("raf"); });
+          });
         } else {
           // Tap with no drag — just notify pan (position unchanged, no redraw needed)
           onPanChangeRef.current(lockedPan);
         }
       }
     };
-    el.addEventListener("touchstart",  onTS, { passive: true });  // passive: no preventDefault needed on touchstart
+    el.addEventListener("touchstart",  onTS, { passive: false }); // non-passive: preventDefault blocks iOS pull-to-refresh & swipe-back
     el.addEventListener("touchmove",   onTM, { passive: false }); // non-passive: prevents native scroll during pan
     el.addEventListener("touchend",    onTE, { passive: true });   // passive: no preventDefault needed on touchend
     el.addEventListener("touchcancel", onTE, { passive: true });   // passive: same
-
-    // Recover from iOS timer suspension on app-switch / Control Center / screen lock.
-    // When the page returns to foreground after being backgrounded mid-pan, any
-    // pending setTimeout callbacks may have been delayed or dropped entirely (the
-    // +16571ms red entry in the PERF overlay). This listener fires synchronously
-    // when the page becomes visible again and forces a redraw so the map is never
-    // left stale after the user returns.
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        lastBoundsRef.current = null;
-        redrawRef.current?.redraw(true);
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
 
     // Returns true if the event started inside a React UI panel layered above
     // the Pixi canvas. We check composedPath() for any element that has a
@@ -1245,7 +1312,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     return () => {
       cancelIdle();
-      cancelPropsSettle();
+      cancelPropsIdle();
+      Object.values(rssTextures).forEach(rt => rt.destroy(true));
       ro.disconnect();
       el.removeEventListener("wheel",      onWheel);
       el.removeEventListener("mousedown",  onMD);
@@ -1256,7 +1324,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       el.removeEventListener("touchmove",   onTM);
       el.removeEventListener("touchend",    onTE);
       el.removeEventListener("touchcancel", onTE);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
       app.destroy(true);
       appRef.current = null; worldRef.current = null;
     };
