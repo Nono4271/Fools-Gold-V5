@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CSS } from "../../constants/css.js";
 import { ALIGNMENT, PLAYABLE_FACTIONS, HDEFS, RC, RARITY, CLASS, PITY, PULL_COST, RESPECT_DUPE_POINTS } from "../../../shared/constants/heroes.js";
 import { GEAR_RARITY, GEAR_SLOTS, STAT_BASE } from "../../../shared/constants/gear.js";
@@ -261,6 +261,21 @@ export default function GachaScreen({
 }) {
   const aln = ALIGNMENT[playerAlignment];
   const [activeTab, setActiveTab] = useState("summon"); // "summon" | "gear" | "collection"
+
+  // Override touch-action on html/body so pan-y scrolling works on mobile
+  // even if a parent container has touch-action: none set elsewhere.
+  useEffect(() => {
+    const prev = {
+      html: document.documentElement.style.touchAction,
+      body: document.body.style.touchAction,
+    };
+    document.documentElement.style.touchAction = "pan-y";
+    document.body.style.touchAction = "pan-y";
+    return () => {
+      document.documentElement.style.touchAction = prev.html;
+      document.body.style.touchAction = prev.body;
+    };
+  }, []);
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: "#0a0c10",
