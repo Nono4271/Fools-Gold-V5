@@ -264,7 +264,7 @@ export default function GachaScreen({
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: "#0a0c10",
-      display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      display: "flex", flexDirection: "column", overflow: "hidden", touchAction: "auto" }}>
       <style>{CSS}</style>
 
       {/* Top bar */}
@@ -314,7 +314,7 @@ export default function GachaScreen({
       </div>
 
       {/* Body */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px", touchAction: "pan-y", WebkitOverflowScrolling: "touch" }}>
 
         {/* ── SUMMON TAB ── */}
         {activeTab === "summon" && (
