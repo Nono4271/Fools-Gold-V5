@@ -273,7 +273,7 @@ export default function GachaScreen({
   }, []);
 
   return (
-    <div style={{ width: "100vw", height: "100vh", background: "#0a0c10",
+    <div style={{ position: "fixed", inset: 0, background: "#0a0c10",
       display: "flex", flexDirection: "column", overflow: "hidden", touchAction: "pan-y" }}>
       <style>{CSS}</style>
 
@@ -324,7 +324,7 @@ export default function GachaScreen({
       </div>
 
       {/* Body */}
-      <div className="scr" style={{ flex: 1, minHeight: 0, overflowY: "scroll", padding: "14px 14px", touchAction: "pan-y", WebkitOverflowScrolling: "touch" }}>
+      <div className="scr" style={{ flex: 1, minHeight: 0, overflowY: "scroll", padding: "14px 14px", touchAction: "pan-y", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
 
         {/* ── SUMMON TAB ── */}
         {activeTab === "summon" && (
