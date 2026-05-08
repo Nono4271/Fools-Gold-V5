@@ -1022,21 +1022,23 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         const lockedPan = { ...panRef.current };
         world.x = lockedPan.x;
         world.y = lockedPan.y;
-        // Redraw at final pan position — one rAF for Pixi, notify React in the NEXT frame
-        // so the two heavy operations don't collide on the same main-thread slot.
+        // Redraw at final pan position. Fire pixi redraw AND React pan notification
+        // in the SAME rAF — the nested rAF pattern caused 5-8 second stalls on iOS
+        // because the second rAF queued behind an already-busy main thread.
         const _panT0 = performance.now();
         requestAnimationFrame(() => {
           const _panDelay = performance.now() - _panT0;
           window._perfLog?.(`panEnd→rAF:+${Math.round(_panDelay)}ms`);
-          if (_panDelay > 2000) { window._perfLog?.(`skip:stale`); return; }
+          // Skip stale frames (e.g. when user pans again before this fires).
+          // Tightened from 2000ms → 500ms: anything older is already superseded.
+          if (_panDelay > 500) { window._perfLog?.(`skip:stale`); return; }
           lastBoundsRef.current = null;
           redrawRef.current?.redraw(true);
           const _t2 = performance.now();
           window._perfLog?.(`pixi:redraw:+${Math.round(_t2 - _panT0 - _panDelay)}ms`);
-          requestAnimationFrame(() => {
-            onPanChangeRef.current(lockedPan);
-            window._perfLog?.(`react:panNotify`);
-          });
+          // Notify React in the same frame — avoids a second rAF slot wait.
+          onPanChangeRef.current(lockedPan);
+          window._perfLog?.(`react:panNotify`);
         });
       }
     };
