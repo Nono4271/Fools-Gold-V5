@@ -727,6 +727,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const isPanning      = useRef(false);
   const panEndTimer    = useRef(null);
   const panNotifyTimer = useRef(null);
+  // Set true when a pan-end redraw is queued; checked on next touchstart to recover
+  // redraws lost to iOS timer/rAF suspension (thermal/battery throttle, foregrounded).
+  const pendingPanRedraw = useRef(false);
 
   /* ── INIT PIXI ── */
   useEffect(() => {
@@ -1003,6 +1006,20 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       // touchstart triggers iOS Safari's gesture recognizer holdoff, delaying all
       // subsequent touch events by 300ms-several seconds. We only need preventDefault
       // on touchmove (to block native scroll), not touchstart.
+
+      // Recovery: if the previous pan-end redraw was lost to iOS timer/rAF suspension
+      // (both setTimeout and rAF can be throttled simultaneously on a foregrounded page
+      // under battery/thermal pressure — visibilitychange never fires in that case),
+      // force a synchronous redraw now at the start of the next touch so the map is
+      // never stale when the user begins interacting again.
+      if (pendingPanRedraw.current) {
+        pendingPanRedraw.current = false;
+        lastBoundsRef.current = null;
+        redrawRef.current?.redraw(true);
+        onPanChangeRef.current(panRef.current);
+        window._perfLog?.("panRedraw:recovered");
+      }
+
       if (e.touches.length === 1) {
         tDragFrom.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
         tDidDrag.current = false;
@@ -1102,6 +1119,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           // Note: the original concern about rAF being delayed during momentum scroll
           // does not apply here because by touchend the pan position is already locked
           // and momentum scroll is finished.
+          pendingPanRedraw.current = true;
           const _panT0 = performance.now();
           let _panFired = false;
           const _doPanRedraw = (label) => {
@@ -1118,6 +1136,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
             const _t2 = performance.now();
             window._perfLog?.(`pixi:redraw:+${Math.round(_t2 - _panT0 - _panDelay)}ms`);
             onPanChangeRef.current(lockedPan);
+            pendingPanRedraw.current = false;
             window._perfLog?.(`react:panNotify`);
           };
           const _stId = setTimeout(() => _doPanRedraw("st"), 0);
