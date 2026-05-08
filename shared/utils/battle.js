@@ -1,8 +1,8 @@
-import { FACTION_TROOPS, troopSizeModifier, skillProcAtLevel } from “../constants/troops.js”;
-import { TERR  } from “../constants/terrain.js”;
-import { POWER_DEFS } from “../constants/map.js”;
-import { skillFiresOnRound, getActiveSkills, getPassiveBonuses } from “../constants/skills.js”;
-import { npcForPowerLevel } from “../constants/heroes.js”;
+import { FACTION_TROOPS, troopSizeModifier, skillProcAtLevel } from "../constants/troops.js";
+import { TERR  } from "../constants/terrain.js";
+import { POWER_DEFS } from "../constants/map.js";
+import { skillFiresOnRound, getActiveSkills, getPassiveBonuses } from "../constants/skills.js";
+import { npcForPowerLevel } from "../constants/heroes.js";
 
 // ── Resolve troopBranch → { branchDef, tierData } ────────────────────────────
 function resolveBranch(troopBranch) {
@@ -42,14 +42,14 @@ if (!b) return false;
 const skills = tier === 0 ? [b.skills.a]
 : tier === 1 ? [b.skills.b]
 : [b.skills.a, b.skills.b];
-return skills.some(s => s?.effect?.type === “immunity” && s.effect.immune?.includes(immuneType));
+return skills.some(s => s?.effect?.type === "immunity" && s.effect.immune?.includes(immuneType));
 }
 
 // ── Proc troop skills on a given trigger ──────────────────────────────────────
 // defTroopBranch: the branch RECEIVING the effect (for immunity checks)
 function procTroopSkills(troopSkills, trigger, skillLevels, rs, roundLog, actorLabel, defTroopBranch) {
 for (const skill of troopSkills) {
-if (!skill || skill.trigger !== trigger || skill.trigger === “passive”) continue;
+if (!skill || skill.trigger !== trigger || skill.trigger === "passive") continue;
 const lvl  = skillLevels?.[skill.key] ?? 1;
 const proc = skillProcAtLevel(skill, lvl);
 if (Math.random() >= proc) continue;
@@ -96,7 +96,7 @@ function dragonEarlyPenalty(troopBranch, round) {
 if (!troopBranch) return 1.0;
 const f = FACTION_TROOPS[troopBranch.faction];
 if (!f?.factionPassives) return 1.0;
-return (f.factionPassives.some(p => p.key === “slow_to_rise”) && round <= 2) ? 0.90 : 1.0;
+return (f.factionPassives.some(p => p.key === "slow_to_rise") && round <= 2) ? 0.90 : 1.0;
 }
 
 // ── Ranged vulnerability vs dragons ──────────────────────────────────────────
@@ -104,9 +104,9 @@ function rangedVulnerability(defTroopBranch, atkBranchDef) {
 if (!defTroopBranch || !atkBranchDef) return 1.0;
 const f = FACTION_TROOPS[defTroopBranch.faction];
 if (!f?.factionPassives) return 1.0;
-const hasExposed = f.factionPassives.some(p => p.key === “exposed_wings”);
+const hasExposed = f.factionPassives.some(p => p.key === "exposed_wings");
 if (!hasExposed) return 1.0;
-return (atkBranchDef.role === “ranged” || atkBranchDef.role === “siege_ranged”) ? 1.15 : 1.0;
+return (atkBranchDef.role === "ranged" || atkBranchDef.role === "siege_ranged") ? 1.15 : 1.0;
 }
 
 export function garrisonDefCmd(tile) {
@@ -123,12 +123,12 @@ n:           npc.n,
 icon:        npc.icon,
 cls:         npc.cls,
 faction:     null,
-rarity:      “soldier”,
+rarity:      "soldier",
 };
 }
 
 export function resolvedDefTile(tile) {
-if (tile.owner === “ai” && !tile.hasAiCommander)
+if (tile.owner === "ai" && !tile.hasAiCommander)
 return { ...tile, defCmd: garrisonDefCmd(tile) };
 return tile;
 }
@@ -203,13 +203,13 @@ if (durationTroopDefMult > 1) rs.troopDefMult *= durationTroopDefMult;
 // totalArmyCommand = attackerTroops x COMMAND_COST[size]; normalised so 500 cmd = 1.0 baseline.
 function calcTroopDmg(branchDef, tierData, troopDef, defMult, count, lvlMult, terrMult, atkMult, ignoreDef, isAtk, extraMult, round, troopBranch, armyAtkMult, armyFocMult, totalArmyCommand) {
 if (!tierData) return 0;
-const dmgType = branchDef?.dmgType ?? “physical”;
+const dmgType = branchDef?.dmgType ?? "physical";
 const roll    = tierData.dmgLo + Math.random() * (tierData.dmgHi - tierData.dmgLo);
 // Fix 2: resistance divisor = 60 (was 80) so higher DEF troops have a bigger damage gap
-const resist  = dmgType === “magical” || ignoreDef
+const resist  = dmgType === "magical" || ignoreDef
 ? 1.0
 : Math.max(0, 1 - (troopDef * defMult) / ((troopDef * defMult) + 60));
-const armyMult   = isAtk ? (dmgType === “magical” ? (armyFocMult||1) : (armyAtkMult||1)) : 1;
+const armyMult   = isAtk ? (dmgType === "magical" ? (armyFocMult||1) : (armyAtkMult||1)) : 1;
 const earlyMult  = dragonEarlyPenalty(troopBranch, round);
 // Fix 3: attacker uses army command scale; defender/NPC uses lvlMult as before
 const scaleMult  = (isAtk && totalArmyCommand != null)
@@ -237,7 +237,7 @@ const atkSize  = atkBranchDef?.size ?? null;
 const defSize  = defBranchDef?.size ?? null;
 const mod      = troopSizeModifier(atkSize, defSize);
 const defMod   = troopSizeModifier(defSize, atkSize);
-const modLabel = mod === 1.1 ? “⚔ STRONG” : mod === 0.9 ? “🛡 WEAK” : “◆ NEUTRAL”;
+const modLabel = mod === 1.1 ? "⚔ STRONG" : mod === 0.9 ? "🛡 WEAK" : "◆ NEUTRAL";
 
 const atkTroopSkills = getTierSkillsForBattle(cmd.troopBranch);
 const defTroopSkills = getTierSkillsForBattle(dc?.troopBranch ?? null);
@@ -268,11 +268,11 @@ const defTroopDef   = defTierData?.def ?? 20;
 
 // Fix 3: Total army command = troops x command cost per troop size. Baseline 500 = scale 1.0.
 // Small troops cost 1 cmd, medium cost 2, large cost 25 (from COMMAND_COST in troops.js).
-const atkTroopSize      = atkBranchDef?.size ?? “small”;
-const atkCmdCost        = atkTroopSize === “large” ? 25 : atkTroopSize === “medium” ? 2 : 1;
+const atkTroopSize      = atkBranchDef?.size ?? "small";
+const atkCmdCost        = atkTroopSize === "large" ? 25 : atkTroopSize === "medium" ? 2 : 1;
 const totalArmyCommand  = attackerTroops * atkCmdCost;
 
-// Scale commander damage so it contributes ~65% of total output vs troops’ ~35%.
+// Scale commander damage so it contributes ~65% of total output vs troops' ~35%.
 // Derived from: cmdDmg = (65/35) × troopDmg, where troopDmg ≈ troops × avgTierDmg/round.
 const avgAtkTroopDmg  = atkTierData ? (atkTierData.dmgLo + atkTierData.dmgHi) / 2 : 50;
 const troopDmgEstimate = attackerTroops * avgAtkTroopDmg;
@@ -291,7 +291,7 @@ const defCmdAtkStat   = dc ? (dc.atk || 80) : 80;
 const defCmdFocStat   = dc ? (dc.foc || 0) : 0;
 const defCmdAtk     = (defCmdAtkStat + defCmdFocStat * 0.5) * CMD_ATK_SCALE;
 
-const bastionActive = (cmd.cls === “defender”) && ((cmd.lvl ?? 5) >= 25);
+const bastionActive = (cmd.cls === "defender") && ((cmd.lvl ?? 5) >= 25);
 const bastionHpMult = bastionActive ? 2 : 1;
 
 let atkTroopHp     = attackerTroops * atkTroopHpPer * bastionHpMult;
@@ -304,10 +304,10 @@ const atkLvlMult = Math.pow(1.20, atkLvl - 5);
 const defLvlMult = Math.pow(1.20, Math.max(0, defLvl - 2));
 
 const report = {
-atkName:cmd.n, atkIcon:cmd.icon||“⚔”, atkLvl,
+atkName:cmd.n, atkIcon:cmd.icon||"⚔", atkLvl,
 atkTroopBranch: cmd.troopBranch || null,
 atkTroopsStart:attackerTroops, defTroopsStart:defTroops, defLvl,
-defCmdName: dc?.n ?? `Garrison Lv${defLvl}`, defCmdIcon: dc?.icon ?? “🛡”,
+defCmdName: dc?.n ?? `Garrison Lv${defLvl}`, defCmdIcon: dc?.icon ?? "🛡",
 defCmdStats: dc ? { atk:dc.atk||0, foc:dc.foc||0, spd:dc.spd||0, gearArmyAtk:0, gearArmyFoc:0, gearArmySpd:0, gearArmySiege:0 } : null,
 defCmdCls: dc?.cls ?? null,
 terrain:defTile.terrain, modLabel,
@@ -322,17 +322,17 @@ cmdCls: cmd.cls||null, cmdFaction: cmd.faction||null, cmdSubspecies: cmd.subspec
 
 // ── Phase 0: pre-battle log ───────────────────────────────────────────────
 const phase0 = { round:0, isPreBattle:true, actions:[] };
-phase0.actions.push({ actor:“SYSTEM”, action:`⚔ Battle begins — ${defTile.terrain}${defTile.isHQ?" (HQ)":""} · ${modLabel}`, dmg:0, isPhase0:true });
-phase0.actions.push({ actor:“SYSTEM”, action:`${cmd.n} (${attackerTroops.toLocaleString()} troops) vs ${report.defCmdName} (${defTroops.toLocaleString()} troops)`, dmg:0, isPhase0:true });
+phase0.actions.push({ actor:"SYSTEM", action:`⚔ Battle begins — ${defTile.terrain}${defTile.isHQ?" (HQ)":""} · ${modLabel}`, dmg:0, isPhase0:true });
+phase0.actions.push({ actor:"SYSTEM", action:`${cmd.n} (${attackerTroops.toLocaleString()} troops) vs ${report.defCmdName} (${defTroops.toLocaleString()} troops)`, dmg:0, isPhase0:true });
 
-atkTroopSkills.filter(s => s?.trigger === “passive”).forEach(s => {
-phase0.actions.push({ actor:“Troops”, action:`${s.icon} ${s.name} (passive): ${s.desc}`, dmg:0, isSkill:true, isPhase0:true });
+atkTroopSkills.filter(s => s?.trigger === "passive").forEach(s => {
+phase0.actions.push({ actor:"Troops", action:`${s.icon} ${s.name} (passive): ${s.desc}`, dmg:0, isSkill:true, isPhase0:true });
 });
 
 for (const { def, level } of getActiveSkills(cmd)) {
-if (def.type !== “passive”) continue;
+if (def.type !== "passive") continue;
 const lv = level - 1; const v = def.base + (def.perLevel ?? 0) * lv;
-let et = “”;
+let et = "";
 if (def.passiveCmdAtk)          et = `+${Math.round(v*100)}% Commander ATK`;
 else if (def.passiveCritChance)  et = `+${Math.round(v*100)}% Critical Hit Chance`;
 else if (def.passiveDmgReduce)   et = `-${Math.round(v*100)}% Incoming Damage`;
@@ -347,18 +347,18 @@ if (et) phase0.actions.push({ actor:cmd.n, action:`${cmd.n} — ${def.icon??"✦
 if (bastionActive) phase0.actions.push({ actor:cmd.n, action:`Passive: 🛡 Bastion — double HP & DEF (rounds 1-2)`, dmg:0, isSkill:true, isPhase0:true });
 
 const gb2 = cmd.gearBonuses || {};
-if (gb2.armyAtk  > 0) phase0.actions.push({ actor:“Gear”, action:`Gear: +${gb2.armyAtk}% Army ATK`,       dmg:0, isPhase0:true, isGear:true });
-if (gb2.armyFoc  > 0) phase0.actions.push({ actor:“Gear”, action:`Gear: +${gb2.armyFoc}% Army Focus DMG`, dmg:0, isPhase0:true, isGear:true });
-if (gb2.armySpd  > 0) phase0.actions.push({ actor:“Gear”, action:`Gear: +${gb2.armySpd} Army SPD`,        dmg:0, isPhase0:true, isGear:true });
-if (gb2.armySiege> 0) phase0.actions.push({ actor:“Gear”, action:`Gear: +${gb2.armySiege} Siege Power`,   dmg:0, isPhase0:true, isGear:true });
+if (gb2.armyAtk  > 0) phase0.actions.push({ actor:"Gear", action:`Gear: +${gb2.armyAtk}% Army ATK`,       dmg:0, isPhase0:true, isGear:true });
+if (gb2.armyFoc  > 0) phase0.actions.push({ actor:"Gear", action:`Gear: +${gb2.armyFoc}% Army Focus DMG`, dmg:0, isPhase0:true, isGear:true });
+if (gb2.armySpd  > 0) phase0.actions.push({ actor:"Gear", action:`Gear: +${gb2.armySpd} Army SPD`,        dmg:0, isPhase0:true, isGear:true });
+if (gb2.armySiege> 0) phase0.actions.push({ actor:"Gear", action:`Gear: +${gb2.armySiege} Siege Power`,   dmg:0, isPhase0:true, isGear:true });
 report.rounds.push(phase0);
 
 // ── Combat rounds ─────────────────────────────────────────────────────────
 for (let round = 1; round <= 10; round++) {
 const roundLog = { round, actions:[] };
 if (atkTroopHp <= 0 && defTroopHp <= 0) break;
-if (atkTroopHp <= 0) { roundLog.actions.push({ actor:“SYSTEM”, action:“Attackers routed!”, dmg:0 }); report.rounds.push(roundLog); break; }
-if (defTroopHp <= 0) { roundLog.actions.push({ actor:“SYSTEM”, action:“Defenders defeated!”, dmg:0 }); report.rounds.push(roundLog); break; }
+if (atkTroopHp <= 0) { roundLog.actions.push({ actor:"SYSTEM", action:"Attackers routed!", dmg:0 }); report.rounds.push(roundLog); break; }
+if (defTroopHp <= 0) { roundLog.actions.push({ actor:"SYSTEM", action:"Defenders defeated!", dmg:0 }); report.rounds.push(roundLog); break; }
 
 ```
 if (bastionActive && round === 1) roundLog.actions.push({ actor:cmd.n, action:"🛡 BASTION — double HP & DEF (rounds 1-2)", dmg:0, isSkill:true });
