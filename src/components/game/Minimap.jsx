@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, memo } from "react";
+import { useEffect, useRef, useMemo, memo, useCallback } from "react";
 import { COLS, ROWS, TW, TH } from "../../../shared/constants/geometry.js";
 import { REGION_LIST } from "../../../shared/constants/regions.js";
 
@@ -19,30 +19,41 @@ function keepTri(x, y, sz) {
   return [x, y - sz, x + sz * 0.85, y + sz * 0.55, x - sz * 0.85, y + sz * 0.55];
 }
 
-export default memo(function Minimap({ tiles, pKeys, panSt, zoom }) {
+function panToVC(panSt, zoom) {
+  const worldCX = (-panSt.x + window.innerWidth  / 2) / zoom;
+  const worldCY = (-panSt.y + window.innerHeight / 2) / zoom;
+  const u = worldCX - ROWS * TW / 2;
+  const v = worldCY - 60;
+  return {
+    vc: Math.max(0, Math.min(COLS - 1, Math.round((u / (TW / 2) + v / (TH / 2)) / 2))),
+    vr: Math.max(0, Math.min(ROWS - 1, Math.round((v / (TH / 2) - u / (TW / 2)) / 2))),
+  };
+}
+
+// Minimap receives panRef/zoomRef (stable refs) instead of panSt/zoom state values.
+// redrawRef is a ref passed from Game — Minimap stores its draw function into it
+// so Game.onPanChange can call it directly without any setState or re-render.
+export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef }) {
   const canvasRef = useRef(null);
+  const tilesRef  = useRef(tiles);
+  const pKeysRef  = useRef(pKeys);
+  useEffect(() => { tilesRef.current = tiles; }, [tiles]);
+  useEffect(() => { pKeysRef.current = pKeys;  }, [pKeys]);
 
-  const { vc, vr } = useMemo(() => {
-    const worldCX = (-panSt.x + window.innerWidth  / 2) / zoom;
-    const worldCY = (-panSt.y + window.innerHeight / 2) / zoom;
-    const u = worldCX - ROWS * TW / 2;
-    const v = worldCY - 60;
-    return {
-      vc: Math.max(0, Math.min(COLS - 1, Math.round((u / (TW / 2) + v / (TH / 2)) / 2))),
-      vr: Math.max(0, Math.min(ROWS - 1, Math.round((v / (TH / 2) - u / (TW / 2)) / 2))),
-    };
-  }, [panSt, zoom]);
-
-  useEffect(() => {
+  const drawMinimap = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
     const s = MM_SIZE * dpr;
     if (canvas.width !== s) { canvas.width = s; canvas.height = s; }
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     ctx.clearRect(0, 0, MM_SIZE, MM_SIZE);
+
+    const { vc, vr } = panToVC(panRef.current, zoomRef.current);
+    const curTiles = tilesRef.current;
+    const curPKeys = pKeysRef.current;
 
     // Clip to circle
     ctx.save();
@@ -56,8 +67,8 @@ export default memo(function Minimap({ tiles, pKeys, panSt, zoom }) {
 
     // Player tiles
     ctx.fillStyle = "rgba(61,170,96,0.8)";
-    for (const key of (pKeys || [])) {
-      const t = tiles[key];
+    for (const key of (curPKeys || [])) {
+      const t = curTiles[key];
       if (!t || t.isShore) continue;
       const dc = t.c - vc, dr = t.r - vr;
       if (dc * dc + dr * dr > VIEW_RADIUS * VIEW_RADIUS) continue;
@@ -70,7 +81,7 @@ export default memo(function Minimap({ tiles, pKeys, panSt, zoom }) {
     for (const reg of REGION_LIST) {
       const dc = reg.cx - vc, dr = reg.cy - vr;
       if (dc * dc + dr * dr > r2) continue;
-      const t = tiles[`${reg.cx},${reg.cy}`];
+      const t = curTiles[`${reg.cx},${reg.cy}`];
       const owner = t?.owner || null;
       const color = !owner ? "#ffffff" : owner === "player" ? "#44aaff" : "#ff4444";
       const { x, y } = tileToMM(reg.cx, reg.cy, vc, vr);
@@ -78,20 +89,14 @@ export default memo(function Minimap({ tiles, pKeys, panSt, zoom }) {
       const pts = keepTri(x, y, sz);
       const shPts = keepTri(x + 0.6, y + 0.6, sz);
 
-      // Shadow
       ctx.beginPath();
-      ctx.moveTo(shPts[0], shPts[1]);
-      ctx.lineTo(shPts[2], shPts[3]);
-      ctx.lineTo(shPts[4], shPts[5]);
+      ctx.moveTo(shPts[0], shPts[1]); ctx.lineTo(shPts[2], shPts[3]); ctx.lineTo(shPts[4], shPts[5]);
       ctx.closePath();
       ctx.fillStyle = "rgba(0,0,0,0.45)";
       ctx.fill();
 
-      // Triangle
       ctx.beginPath();
-      ctx.moveTo(pts[0], pts[1]);
-      ctx.lineTo(pts[2], pts[3]);
-      ctx.lineTo(pts[4], pts[5]);
+      ctx.moveTo(pts[0], pts[1]); ctx.lineTo(pts[2], pts[3]); ctx.lineTo(pts[4], pts[5]);
       ctx.closePath();
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.95;
@@ -119,9 +124,17 @@ export default memo(function Minimap({ tiles, pKeys, panSt, zoom }) {
     ctx.beginPath(); ctx.arc(MM_CX, MM_CY, MM_RADIUS - 0.5, 0, Math.PI * 2);
     ctx.strokeStyle = "rgba(200,160,64,0.3)"; ctx.lineWidth = 0.5; ctx.stroke();
 
-    // Reset transform for next draw
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-  }, [tiles, pKeys, vc, vr]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Register draw function into the ref so Game.onPanChange can call it directly
+  useEffect(() => {
+    if (redrawRef) redrawRef.current = drawMinimap;
+    drawMinimap();
+  }, [drawMinimap, redrawRef]);
+
+  // Redraw when tiles or pKeys change (ownership changes etc.)
+  useEffect(() => { drawMinimap(); }, [tiles, pKeys, drawMinimap]);
 
   return (
     <div style={{
