@@ -360,7 +360,6 @@ if (atkTroopHp <= 0 && defTroopHp <= 0) break;
 if (atkTroopHp <= 0) { roundLog.actions.push({ actor:"SYSTEM", action:"Attackers routed!", dmg:0 }); report.rounds.push(roundLog); break; }
 if (defTroopHp <= 0) { roundLog.actions.push({ actor:"SYSTEM", action:"Defenders defeated!", dmg:0 }); report.rounds.push(roundLog); break; }
 
-```
 if (bastionActive && round === 1) roundLog.actions.push({ actor:cmd.n, action:"🛡 BASTION — double HP & DEF (rounds 1-2)", dmg:0, isSkill:true });
 const bastionDefMult = (bastionActive && round <= 2) ? 2 : 1;
 
