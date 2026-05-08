@@ -1426,12 +1426,20 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                                   setPreviewGear({ piece: g, slotKey });
                                   setShowClassPopup(null);
                                 }}
+                                onTouchEnd={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setPreviewGear({ piece: g, slotKey });
+                                  setShowClassPopup(null);
+                                }}
                                 style={{
                                   padding: "8px 10px", display: "flex", alignItems: "center", gap: 8,
                                   background: isEquipped ? `${gc}14` : "transparent",
                                   borderBottom: "1px solid #111",
                                   cursor: "pointer", transition: "background .1s",
                                   borderLeft: isEquipped ? `2px solid ${gc}` : "2px solid transparent",
+                                  touchAction: "manipulation",
+                                  WebkitTapHighlightColor: "transparent",
                                 }}>
                                 <span style={{ fontSize: 18, flexShrink: 0 }}>{g.icon}</span>
                                 <div style={{ flex: 1, minWidth: 0 }}>
