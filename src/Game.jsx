@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { flushSync, unstable_batchedUpdates } from "react-dom";
-import { MapRenderer } from "./MapRenderer";
+import { MapRenderer, clearKeepCache } from "./MapRenderer";
 
 // Constants
 import { CSS } from "./constants/css.js";
@@ -545,6 +545,7 @@ export default function RiseToWar() {
           .map(t => t.k);
         setImpassableTiles(impassableKeys);
         initPathfinding(impassableKeys);
+        clearKeepCache();
         setTiles(rawMap);
         setTimeout(() => {
           mapRendererRef.current?.teleport(panRef.current.x, panRef.current.y);
@@ -567,6 +568,7 @@ export default function RiseToWar() {
   useEffect(() => {
     if (screen !== "game") {
       setMapReady(false);
+      clearKeepCache();
       setTiles({});
       setLoadPct(0);
       setLoadLabel("Generating world...");

@@ -549,6 +549,9 @@ function drawKeepGfx(gfx, bx, by, owner, isWin, isSelected) {
 // untouched. Each group is tagged with __keepKey for targeted lookup.
 const _keepStateCache = new Map(); // tileKey → { owner, isSelected }
 
+// Call this whenever the tile map is fully reset (e.g. new game) so keeps rebuild from scratch.
+export function clearKeepCache() { _keepStateCache.clear(); }
+
 function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI) {
   const { cx: bx, cy: worldCY } = isoXY(reg.cx, reg.cy);
   const elev = 8;
