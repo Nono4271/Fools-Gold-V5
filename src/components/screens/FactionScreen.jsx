@@ -1,12 +1,14 @@
 import { CSS } from "../../constants/css.js";
 import { ALIGNMENT, PLAYABLE_FACTIONS, getFactionAlignment } from "../../../shared/constants/factions.js";
 import { HDEFS, SC, SS } from "../../../shared/constants/heroes.js";
-import { barracksCapacity } from "../../../shared/constants/buildings.js";
+import { barracksCapacity, BRANCH_UNLOCK_Q, tierFromBranchLevel } from "../../../shared/constants/buildings.js";
+import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 
 export default function FactionScreen({
   setScreen, setFacKey, setFacName, setAiFaction,
   setAiRss, setAiBldgs, setAiBarracksPool, aiLastActionRef,
   setCmds, setColl, setTiles,
+  setUnlockedBranches, setQuarterLevels,
 }) {
   return (
     <div style={{width:"100vw",height:"100vh",background:"#0a0c10",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20,overflow:"auto"}}>
@@ -30,8 +32,7 @@ export default function FactionScreen({
               return (
                 <button key={f.key} className="btn"
                   onClick={() => {
-                    // Player commanders — HQ tile assigned later by Game.jsx once map generates
-                    const TEMP_HQK = "1,1"; // placeholder; overwritten by Game.jsx map init
+                    const TEMP_HQK = "1,1";
                     const startCmds = starters.map((h,i) => ({
                       ...h, uid:`p${i}`, owner:"player", troops:0, troopBranch:null,
                       tk:TEMP_HQK, lvl:5, xp:0, respectPoints:0, respectLevel:0,
@@ -39,11 +40,10 @@ export default function FactionScreen({
                       gear:{helmet:null,armor:null,bracers:null,accessory:null},
                     }));
 
-                    // All 5 AI factions — each gets 2 starters, HQ assigned by Game.jsx
                     const allFactions = ["pirates","merfolk","marines","orcs","bountyhunters","dragons"];
                     const aiFactions = allFactions.filter(fk => fk !== f.key);
                     const allAiCmds = [];
-                    aiFactions.forEach((aiFk, fi) => {
+                    aiFactions.forEach((aiFk) => {
                       const aiStarters = [
                         HDEFS.find(h => h.faction === aiFk && h.rarity === "soldier"),
                         HDEFS.find(h => h.faction === aiFk && h.rarity === "veteran"),
@@ -58,6 +58,27 @@ export default function FactionScreen({
                       });
                     });
 
+                    // ── Seed starting state so Army tab works immediately ──
+                    // Quarter 0 (player's own faction) starts at level 1.
+                    // Branches unlocked at Q≤1 get bldgs entries at level 1,
+                    // which the unlockedBranches useEffect in Game.jsx will pick up.
+                    const startingQuarterLevels = { [f.key]: 1 };
+
+                    const fDef = FACTION_TROOPS[f.key];
+                    const startingBldgPatch = {};
+                    const startingUB = {};
+                    if (fDef) {
+                      fDef.branches.forEach((br, idx) => {
+                        // BRANCH_UNLOCK_Q[idx]: Q level required to unlock this branch
+                        // Q1 unlocks branch 0 (BRANCH_UNLOCK_Q[0] === 1)
+                        if (BRANCH_UNLOCK_Q[idx] <= 1) {
+                          const bKey = `b_${f.key}_${br.key}`;
+                          startingBldgPatch[bKey] = 1; // branch level 1 → T1 unlocked
+                          startingUB[`${f.key}:${br.key}`] = tierFromBranchLevel(1); // tier 0
+                        }
+                      });
+                    }
+
                     setFacKey(f.key);
                     setFacName(f.n);
                     setAiRss({stone:300,wood:300,ore:300,gas:300});
@@ -70,6 +91,11 @@ export default function FactionScreen({
                       HDEFS.find(h => h.faction === f.key && h.rarity === "veteran"),
                     ].filter(Boolean));
                     setTiles({});
+
+                    // Seed quarter levels and unlocked branches before entering game
+                    if (setQuarterLevels) setQuarterLevels(startingQuarterLevels);
+                    if (setUnlockedBranches) setUnlockedBranches(startingUB);
+
                     setScreen("game");
                   }}
                   style={{background:"rgba(255,255,255,.03)",border:`1px solid ${f.c}50`,borderRadius:8,padding:"14px 12px",color:"#e0d0c0",textAlign:"left"}}>
