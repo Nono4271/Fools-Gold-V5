@@ -280,8 +280,12 @@ export default function RiseToWar() {
     const px = -cx * z + window.innerWidth / 2;
     const py = -cy * z + window.innerHeight / 2;
     panRef.current = { x: px, y: py };
-    mapRendererRef.current?.teleport(px, py);
-  }, []);
+    // Use setTimeout so MapRenderer is visible before teleporting
+    setTimeout(() => {
+      mapRendererRef.current?.teleport(px, py);
+      notifyDisplayPanZoom();
+    }, 50);
+  }, [notifyDisplayPanZoom]);
 
   const minimapRedrawRef = useRef(null);
   const panNotifyTimerRef = useRef(null);
@@ -311,6 +315,8 @@ export default function RiseToWar() {
   }, [notifyDisplayPanZoom]);
 
   const [hqOpen, setHqOpen] = useState(false);
+  const [hqTilePopup, setHqTilePopup] = useState(false); // popup shown when tapping HQ tile
+  const [recallPickerOpen, setRecallPickerOpen] = useState(false); // summon/recall commander picker
   const [worldMapOpen, setWorldMapOpen] = useState(false);
   const [worldMapPrompt, setWorldMapPrompt] = useState(false);
   const [hqTab,  setHqTab]  = useState("hub");
@@ -1091,10 +1097,9 @@ export default function RiseToWar() {
     })();
 
     if (isPlayerHqTile || isPlayerHqPartTile) {
-      // Issue 1 fix: open HQ directly — no intermediate popup
+      // Show HQ entry popup — player picks "Enter" or "Summon"
       unstable_batchedUpdates(() => {
-        setHqOpen(true);
-        setHqTab("hub");
+        setHqTilePopup(true);
         setSelKey(null);
         setPopupPos(null);
         setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
@@ -1309,6 +1314,122 @@ export default function RiseToWar() {
         />
       )}
 
+      {/* ── HQ Tile Popup: shown when player taps their HQ tile ── */}
+      {hqTilePopup && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9200,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.6)",
+        }} onClick={() => setHqTilePopup(false)}>
+          <div style={{
+            background: "linear-gradient(160deg,#1a1608,#0e0c08)",
+            border: "2px solid #c8a060",
+            borderRadius: 12,
+            padding: "28px 32px",
+            minWidth: 260,
+            boxShadow: "0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(200,160,64,0.15)",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 20,
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 18, color: "#f0c040", fontWeight: 700, letterSpacing: ".08em", textShadow: "0 0 12px rgba(240,192,64,.4)" }}>
+              🏰 Headquarters
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+              {/* Enter */}
+              <button
+                onClick={() => {
+                  setHqTilePopup(false);
+                  unstable_batchedUpdates(() => { setHqOpen(true); setHqTab("hub"); });
+                }}
+                style={{
+                  width: "100%", padding: "14px 0",
+                  background: "linear-gradient(135deg,#5a3e10,#8a6020,#5a3e10)",
+                  border: "1.5px solid #c8a060", borderRadius: 8,
+                  color: "#f0e0b0", fontFamily: "'Cinzel',serif", fontSize: 13, fontWeight: 700, letterSpacing: ".06em",
+                  cursor: "pointer", boxShadow: "0 0 12px rgba(200,160,64,0.2)",
+                }}>
+                ⚔ Enter HQ
+              </button>
+              {/* Summon / Recall */}
+              <button
+                onClick={() => {
+                  setHqTilePopup(false);
+                  setRecallPickerOpen(true);
+                }}
+                style={{
+                  width: "100%", padding: "14px 0",
+                  background: "linear-gradient(135deg,#102040,#1a4080,#102040)",
+                  border: "1.5px solid #4488cc", borderRadius: 8,
+                  color: "#aaddff", fontFamily: "'Cinzel',serif", fontSize: 13, fontWeight: 700, letterSpacing: ".06em",
+                  cursor: "pointer", boxShadow: "0 0 12px rgba(68,136,204,0.2)",
+                }}>
+                🔔 Summon Commander
+              </button>
+            </div>
+            <div style={{ fontSize: 8, color: "#4a3a2a", fontFamily: "'Crimson Pro',serif", fontStyle: "italic" }}>Tap outside to dismiss</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Recall Picker: pick a commander to recall to HQ ── */}
+      {recallPickerOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9200,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.7)",
+        }} onClick={() => setRecallPickerOpen(false)}>
+          <div style={{
+            background: "linear-gradient(160deg,#0d1220,#080c18)",
+            border: "2px solid #4488cc",
+            borderRadius: 12,
+            padding: "0",
+            minWidth: 300, maxWidth: 360,
+            maxHeight: "70vh",
+            boxShadow: "0 0 40px rgba(0,0,0,0.9), 0 0 20px rgba(68,136,204,0.15)",
+            display: "flex", flexDirection: "column",
+            overflow: "hidden",
+          }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ padding: "14px 16px", borderBottom: "1px solid #1a2a40", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,.03)" }}>
+              <div>
+                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 12, fontWeight: 700, color: "#4488cc" }}>🔔 SUMMON TO HQ</div>
+                <div style={{ fontSize: 8, color: "#4a5a7a", fontFamily: "'Crimson Pro',serif", marginTop: 2 }}>Recall a commander back to your base</div>
+              </div>
+              <button onClick={() => setRecallPickerOpen(false)} style={{ background: "none", border: "1px solid #2a2a2a", color: "#555", fontSize: 11, padding: "2px 8px", cursor: "pointer", borderRadius: 4 }}>✕</button>
+            </div>
+            {/* Commander list */}
+            <div className="scr" style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {(() => {
+                const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
+                const recallable = cmds.filter(c => c.owner === "player" && c.tk !== hqKey && !c.march);
+                if (recallable.length === 0) {
+                  return (
+                    <div style={{ padding: "16px 12px", background: "rgba(255,255,255,.02)", border: "1px solid #1a2030", borderRadius: 6, fontSize: 9, color: "#4a5a7a", fontFamily: "'Crimson Pro',serif", fontStyle: "italic", textAlign: "center" }}>
+                      All commanders are already at HQ or marching.
+                    </div>
+                  );
+                }
+                return recallable.map(cmd => (
+                  <div key={cmd.uid}
+                    onClick={() => { recallStationary(cmd.uid); setRecallPickerOpen(false); }}
+                    style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", background: "rgba(255,255,255,.03)", border: "1.5px solid rgba(68,136,204,.15)", borderRadius: 8, cursor: "pointer", transition: "all .15s" }}
+                    onPointerEnter={e => { e.currentTarget.style.borderColor = "#4488cc"; e.currentTarget.style.background = "rgba(68,136,204,.1)"; }}
+                    onPointerLeave={e => { e.currentTarget.style.borderColor = "rgba(68,136,204,.15)"; e.currentTarget.style.background = "rgba(255,255,255,.03)"; }}>
+                    <div style={{ fontSize: 28, flexShrink: 0 }}>{cmd.icon}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 11, fontWeight: 700, color: "#c0d8f0" }}>{cmd.n}</div>
+                      <div style={{ fontSize: 8, color: "#4a6a9a", fontFamily: "'Crimson Pro',serif", marginTop: 2 }}>
+                        {cmd.troops ? `${cmd.troops.toLocaleString()} troops` : "No troops"} · Lv{cmd.lvl || 5}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 9, color: "#4488cc", fontFamily: "'Cinzel',serif", fontWeight: 700, flexShrink: 0 }}>RECALL →</div>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       <HQMenu
         hqOpen={hqOpen} setHqOpen={setHqOpen} hqTab={hqTab} setHqTab={setHqTab}
         cmds={cmds} setCmds={setCmds} tiles={tiles} rss={rss} setRss={setRss} gems={gems} pKeys={pKeys}
@@ -1437,7 +1558,7 @@ export default function RiseToWar() {
         setGearScreenOpen={setGearScreenOpen}
         gearInventoryCount={gearInventory.length}
         playerHqKey={playerHqKey}
-        hidden={worldMapOpen || hqOpen}
+        hidden={worldMapOpen || hqOpen || cmdScreenOpen || gearScreenOpen || showBattleLog}
         onTogglePerf={() => setPerfVisible(v => !v)}
         perfVisible={perfVisible}
       />
