@@ -215,9 +215,11 @@ const BRANCH_LVL_BONUS = [
 
 function QuarterDetail({ fKey, fDef, slot, bldgs, setBldgs, rss, setRss, canAfford, quarterLevels, setQuarterLevels, setUnlockedBranches }) {
   const [selBranch, setSelBranch] = useState(null);
-  const qLvl    = (quarterLevels||{})[fKey] || 0;
   const hqLvl   = bldgs.hq || 1;
   const qCeil   = quarterMaxLevel(slot, hqLvl);
+  // Default to Lv1 when the slot first becomes available
+  const _stored = (quarterLevels||{})[fKey];
+  const qLvl    = _stored != null ? _stored : (qCeil > 0 ? 1 : 0);
   const qCost   = QUARTER_UPGRADE_COST(qLvl);
   const atCeil  = qLvl >= qCeil;
   const atMax   = qLvl >= 10;
@@ -515,7 +517,7 @@ function InfrastructureScreen({ bldgs, setBldgs, rss, setRss, canAfford, upgrade
     { id:"buildings", icon:"🏛", label:"Buildings", color:"#c8903a", locked:false, isYou:false, slot:-1 },
     ...factionOrder.map((fKey,i) => {
       const maxLvl = quarterMaxLevel(i, hqLvl);
-      const curLvl = (quarterLevels||{})[fKey] || 0;
+      const curLvl = (quarterLevels||{})[fKey] != null ? (quarterLevels||{})[fKey] : (maxLvl > 0 ? 1 : 0);
       return {
         id: `q_${fKey}`,
         icon:   FACTION_META[fKey]?.s || "⚑",

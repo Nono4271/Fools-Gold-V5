@@ -29,16 +29,23 @@ export default memo(function TilePopup({
 }) {
   if (!selKey || !selTile || !popupPos) return null;
 
-  // ── HQ "Enter" popup — just a single button ──
-  if (popupMode === "hqEnter") {
-    const closeHqEnter = () => { setSelKey(null); setPopupPos(null); setPopupMode("main"); };
+  // ── HQ popup — Enter or Summon ──
+  if (popupMode === "hqEnter" || popupMode === "hqSummon") {
+    const closeHqPopup = () => { setSelKey(null); setPopupPos(null); setPopupMode("main"); };
+
+    // All player commanders that are stationary (not marching) and NOT already at HQ
+    const { HQP } = (typeof window !== "undefined" && window.__GAME_CONSTS__) || {};
+    const playerHqKeyLocal = playerHqKey;
+    const stationaryCmds = cmds.filter(c =>
+      c.owner === "player" && !c.march && c.tk && c.tk !== playerHqKeyLocal
+    );
+
     return (
       <>
-      {/* Transparent backdrop — clicking outside closes the popup */}
-      <div style={{ position:"fixed", inset:0, zIndex:499 }} onClick={closeHqEnter} />
+      <div style={{ position:"fixed", inset:0, zIndex:499 }} onClick={closeHqPopup} />
       <div style={{
         position:"fixed", left:popupPos.x, top:popupPos.y,
-        width:120, zIndex:500,
+        width:130, zIndex:500,
         background:"rgba(5,7,11,.97)",
         border:"1px solid #8a6020",
         borderRadius:6,
@@ -47,31 +54,83 @@ export default memo(function TilePopup({
         pointerEvents:"auto",
         overflow:"hidden",
       }}>
+        {/* Header */}
         <div style={{
           padding:"6px 8px 4px",
           borderBottom:"1px solid #2a1e08",
           display:"flex", justifyContent:"space-between", alignItems:"center",
         }}>
-          <span style={{fontFamily:"'Cinzel',serif", fontSize:10, color:"#c8a060", letterSpacing:".05em"}}>
-            🏰 Headquarters
+          {popupMode === "hqSummon" && (
+            <button className="btn" onClick={() => setPopupMode("hqEnter")}
+              style={{background:"none",border:"none",color:"#6a5a4a",fontSize:10,padding:"0 2px",cursor:"pointer",marginRight:4}}>←</button>
+          )}
+          <span style={{fontFamily:"'Cinzel',serif", fontSize:10, color:"#c8a060", letterSpacing:".05em", flex:1}}>
+            {popupMode === "hqSummon" ? "↩ Summon Commander" : "🏰 Headquarters"}
           </span>
-          <button className="btn" onClick={() => { setSelKey(null); setPopupPos(null); setPopupMode("main"); }}
+          <button className="btn" onClick={closeHqPopup}
             style={{background:"none",border:"none",color:"#6a5a4a",fontSize:11,padding:"0 2px",cursor:"pointer"}}>✕</button>
         </div>
-        <div style={{padding:"8px"}}>
-          <button
-            onClick={() => { onEnterHQ(); setSelKey(null); setPopupPos(null); setPopupMode("main"); }}
-            style={{
-              width:"100%", padding:"7px 0",
-              background:"linear-gradient(160deg,#3a2808,#1e1404)",
-              border:"1px solid #8a6020",
-              borderRadius:4,
-              color:"#f0c060", fontFamily:"'Cinzel',serif", fontSize:11,
-              letterSpacing:".06em", cursor:"pointer",
-              boxShadow:"inset 0 1px 0 rgba(255,255,255,.08)",
-            }}
-          >Enter</button>
-        </div>
+
+        {/* Enter / Summon buttons */}
+        {popupMode === "hqEnter" && (
+          <div style={{padding:"8px", display:"flex", flexDirection:"column", gap:5}}>
+            <button
+              onClick={() => { onEnterHQ(); setSelKey(null); setPopupPos(null); setPopupMode("main"); }}
+              style={{
+                width:"100%", padding:"7px 0",
+                background:"linear-gradient(160deg,#3a2808,#1e1404)",
+                border:"1px solid #8a6020",
+                borderRadius:4,
+                color:"#f0c060", fontFamily:"'Cinzel',serif", fontSize:11,
+                letterSpacing:".06em", cursor:"pointer",
+                boxShadow:"inset 0 1px 0 rgba(255,255,255,.08)",
+              }}
+            >⚔ Enter</button>
+            <button
+              onClick={() => setPopupMode("hqSummon")}
+              style={{
+                width:"100%", padding:"7px 0",
+                background:"linear-gradient(160deg,#082838,#041824)",
+                border:"1px solid #206880",
+                borderRadius:4,
+                color:"#60c0f0", fontFamily:"'Cinzel',serif", fontSize:11,
+                letterSpacing:".06em", cursor:"pointer",
+                boxShadow:"inset 0 1px 0 rgba(255,255,255,.08)",
+              }}
+            >↩ Summon</button>
+          </div>
+        )}
+
+        {/* Summon commander picker */}
+        {popupMode === "hqSummon" && (
+          <div style={{padding:"6px 7px", maxHeight:220, overflowY:"auto"}}>
+            {stationaryCmds.length === 0 ? (
+              <div style={{fontSize:8, color:"#5a4a3a", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center", padding:"10px 0"}}>
+                No commanders available to recall
+              </div>
+            ) : stationaryCmds.map(cmd => (
+              <div key={cmd.uid}
+                onClick={() => { recallStationary(cmd.uid); closeHqPopup(); }}
+                style={{
+                  display:"flex", alignItems:"center", gap:6, marginBottom:4,
+                  padding:"4px 6px",
+                  background:"rgba(96,192,240,.06)",
+                  border:"1px solid rgba(96,192,240,.2)",
+                  borderRadius:4, cursor:"pointer",
+                }}>
+                <span style={{fontSize:14}}>{cmd.icon}</span>
+                <div style={{flex:1, minWidth:0}}>
+                  <div style={{fontFamily:"'Cinzel',serif", fontSize:8, color:"#c0e0f8", fontWeight:700,
+                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{cmd.n}</div>
+                  <div style={{fontSize:7, color:"#4a7a8a"}}>
+                    Lv{cmd.lvl||5} · {(cmd.troops||0).toLocaleString()} troops
+                  </div>
+                </div>
+                <span style={{fontSize:9, color:"#60c0f0", flexShrink:0}}>↩</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       </>
     );
