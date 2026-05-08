@@ -1086,16 +1086,30 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         // hasn't changed — there's nothing new to render.
         if (wasDrag) {
           // Redraw at final pan position after a drag.
-          // IMPORTANT: Do NOT use requestAnimationFrame here. On iOS Safari, rAF
-          // queues behind the momentum-scroll pipeline and can be delayed 2-10 seconds
-          // after touchend — this is the root cause of the red "panEnd→rAF:+Xms" entries
-          // in the PERF overlay. setTimeout(0) uses the macrotask queue instead, which
-          // iOS dispatches promptly without waiting for the display vsync pipeline.
+          //
+          // Strategy: dual-trigger with a fired guard so whichever arrives first wins.
+          //
+          // • setTimeout(0) uses the macrotask queue — fast on iOS when the page is
+          //   fully foregrounded (typically fires within 0–10ms).
+          // • requestAnimationFrame is the fallback. On a normal pan it fires ~16ms
+          //   after touchend (next vsync), so setTimeout usually wins. But if iOS
+          //   suspends the timer queue — e.g. the user briefly switched apps, pulled
+          //   down Control Center, or the OS throttled timers under battery/thermal
+          //   pressure (the root cause of the +16571ms red entry) — rAF fires at the
+          //   very next display frame once the page regains foreground, recovering
+          //   within one vsync instead of waiting for the stale setTimeout to drain.
+          //
+          // Note: the original concern about rAF being delayed during momentum scroll
+          // does not apply here because by touchend the pan position is already locked
+          // and momentum scroll is finished.
           const _panT0 = performance.now();
-          setTimeout(() => {
+          let _panFired = false;
+          const _doPanRedraw = (label) => {
+            if (_panFired) return;
+            _panFired = true;
             const _panDelay = performance.now() - _panT0;
             window._perfLog?.(`panEnd→rAF:+${Math.round(_panDelay)}ms`);
-            // Skip stale callbacks (e.g. when user starts another pan before this fires).
+            // Skip stale callbacks (e.g. user started another pan before this fires).
             if (_panDelay > 500) { window._perfLog?.(`skip:stale`); return; }
             lastBoundsRef.current = null;
             redrawRef.current?.redraw(true);
@@ -1103,7 +1117,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
             window._perfLog?.(`pixi:redraw:+${Math.round(_t2 - _panT0 - _panDelay)}ms`);
             onPanChangeRef.current(lockedPan);
             window._perfLog?.(`react:panNotify`);
-          }, 0);
+          };
+          const _stId = setTimeout(() => _doPanRedraw("st"), 0);
+          requestAnimationFrame(() => { clearTimeout(_stId); _doPanRedraw("raf"); });
         } else {
           // Tap with no drag — just notify pan (position unchanged, no redraw needed)
           onPanChangeRef.current(lockedPan);
@@ -1114,6 +1130,20 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     el.addEventListener("touchmove",   onTM, { passive: false }); // non-passive: prevents native scroll during pan
     el.addEventListener("touchend",    onTE, { passive: true });   // passive: no preventDefault needed on touchend
     el.addEventListener("touchcancel", onTE, { passive: true });   // passive: same
+
+    // Recover from iOS timer suspension on app-switch / Control Center / screen lock.
+    // When the page returns to foreground after being backgrounded mid-pan, any
+    // pending setTimeout callbacks may have been delayed or dropped entirely (the
+    // +16571ms red entry in the PERF overlay). This listener fires synchronously
+    // when the page becomes visible again and forces a redraw so the map is never
+    // left stale after the user returns.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        lastBoundsRef.current = null;
+        redrawRef.current?.redraw(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     // Returns true if the event started inside a React UI panel layered above
     // the Pixi canvas. We check composedPath() for any element that has a
@@ -1205,6 +1235,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       el.removeEventListener("touchmove",   onTM);
       el.removeEventListener("touchend",    onTE);
       el.removeEventListener("touchcancel", onTE);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       app.destroy(true);
       appRef.current = null; worldRef.current = null;
     };
