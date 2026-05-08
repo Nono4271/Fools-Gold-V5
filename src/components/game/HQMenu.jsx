@@ -1,7 +1,7 @@
-import { useState, memo } from "react";
+import { useState, useEffect, memo, useMemo } from "react";
 import { FACTION_TROOPS, COMMAND_COST } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
-import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch } from "../../../shared/constants/buildings.js";
+import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
 const SC = RC;
 
@@ -203,24 +203,65 @@ function BuildingDetail({ bKey, bldgs, rss, canAfford, upgrade, upgQueue }) {
   );
 }
 
-function QuarterDetail({ fKey, fDef, bldgs, setBldgs, rss, canAfford }) {
+// Per-level branch bonuses label
+const BRANCH_LVL_BONUS = [
+  "T1 troop unlocked",
+  "−10% train cost & time",
+  "T2 troop unlocked",
+  "−10% train cost & time",
+  "T3 troop unlocked",
+  "−10% train cost & time",
+];
+
+function QuarterDetail({ fKey, fDef, slot, bldgs, setBldgs, rss, setRss, canAfford, quarterLevels, setQuarterLevels, setUnlockedBranches }) {
   const [selBranch, setSelBranch] = useState(null);
-  const qLvl = bldgs[`q_${fKey}`] || 0;
-  const qMax = 10;
-  const qCost = QUARTER_UPGRADE_COST(qLvl);
-  const qOk = qLvl < qMax && canAfford(qCost);
+  const qLvl    = (quarterLevels||{})[fKey] || 0;
+  const hqLvl   = bldgs.hq || 1;
+  const qCeil   = quarterMaxLevel(slot, hqLvl);
+  const qCost   = QUARTER_UPGRADE_COST(qLvl);
+  const atCeil  = qLvl >= qCeil;
+  const atMax   = qLvl >= 10;
+  const canUpg  = !atMax && !atCeil && canAfford(qCost);
+
+  // Auto-initialize branches to Lv1 when the quarter reaches their unlock threshold
+  useEffect(() => {
+    const bldgUpdates = {};
+    const ubUpdates   = {};
+    fDef.branches.forEach((br, idx) => {
+      if (qLvl >= BRANCH_UNLOCK_Q[idx]) {
+        const bKey = `b_${fKey}_${br.key}`;
+        if (!(bKey in bldgs) || (bldgs[bKey] || 0) < 1) {
+          bldgUpdates[bKey] = 1;
+          ubUpdates[`${fKey}:${br.key}`] = 0; // T1 available
+        }
+      }
+    });
+    if (Object.keys(bldgUpdates).length > 0) {
+      setBldgs(b => ({ ...b, ...bldgUpdates }));
+      if (setUnlockedBranches) setUnlockedBranches(p => ({ ...p, ...ubUpdates }));
+    }
+  }, [qLvl, fKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const upgradeQuarter = () => {
-    if (!qOk) return;
-    setBldgs(b => ({ ...b, [`q_${fKey}`]: (b[`q_${fKey}`]||0) + 1 }));
+    if (!canUpg) return;
+    setQuarterLevels(prev => ({ ...prev, [fKey]: qLvl + 1 }));
+    setRss(p => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v - (qCost[k] || 0)])));
   };
 
-  const upgradeBranch = (branchKey) => {
-    const bLvl = bldgs[`b_${fKey}_${branchKey}`] || 0;
-    if (bLvl >= 10) return;
+  const upgradeBranch = (branchKey, branchIdx) => {
+    const bKey  = `b_${fKey}_${branchKey}`;
+    const bLvl  = bldgs[bKey] || 0;
+    const bCeil = branchMaxLevel(branchIdx, qLvl);
+    if (bLvl >= bCeil) return;
     const cost = BRANCH_UPGRADE_COST(bLvl);
     if (!canAfford(cost)) return;
-    setBldgs(b => ({ ...b, [`b_${fKey}_${branchKey}`]: (b[`b_${fKey}_${branchKey}`]||0) + 1 }));
+    const newBLvl = bLvl + 1;
+    setBldgs(b => ({ ...b, [bKey]: newBLvl }));
+    setRss(p => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v - (cost[k] || 0)])));
+    if (setUnlockedBranches) {
+      const newTier = tierFromBranchLevel(newBLvl);
+      setUnlockedBranches(p => ({ ...p, [`${fKey}:${branchKey}`]: newTier }));
+    }
   };
 
   return (
@@ -231,89 +272,203 @@ function QuarterDetail({ fKey, fDef, bldgs, setBldgs, rss, canAfford }) {
         <div style={{ fontSize:36 }}>{fDef.s}</div>
         <div style={{ flex:1 }}>
           <div style={{ fontFamily:P.ff, fontSize:15, fontWeight:700, color:fDef.c }}>{fDef.quarters}</div>
-          <div style={{ fontSize:9, color:P.sub, marginTop:2 }}>{fDef.n} · Quarter Lv{qLvl}/{qMax}</div>
-          <LevelBar lvl={qLvl} max={qMax} color={fDef.c} />
+          <div style={{ fontSize:9, color:P.sub, marginTop:2 }}>
+            {fDef.n} · Quarter Lv{qLvl}
+            {!atMax && <span style={{ color:P.dim }}> / {qCeil} available · 10 max</span>}
+            {atMax && <span style={{ color:fDef.c }}> / MAX</span>}
+          </div>
+          <LevelBar lvl={qLvl} max={10} color={fDef.c} />
+          {/* HQ-gate progress bar showing available ceiling */}
+          {!atMax && (
+            <div style={{ marginTop:4 }}>
+              <div style={{ fontSize:7, color:P.dim, marginBottom:2 }}>
+                HQ Lv{hqLvl} gate: {qCeil < 10 ? `upgrades available to Lv${qCeil}` : "fully unlocked"}
+              </div>
+              <div style={{ display:"flex", gap:2 }}>
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} style={{ flex:1, height:2, borderRadius:1, minWidth:2,
+                    background: i < qLvl ? fDef.c : i < qCeil ? `${fDef.c}44` : "#1e1810" }}/>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        <div style={{ textAlign:"right" }}>
-          {qLvl < qMax ? (
-            <button className="btn" disabled={!qOk} onClick={upgradeQuarter}
-              style={{ padding:"6px 14px", fontSize:10, fontWeight:700,
-                background: qOk ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
-                border: `1px solid ${qOk ? fDef.c : "#1e1810"}`,
-                color: qOk ? fDef.c : "#2a2a2a", borderRadius:4 }}>
-              ↑ Lv{qLvl+1}
-            </button>
-          ) : (
+        <div style={{ textAlign:"right", minWidth:72 }}>
+          {atMax ? (
             <div style={{ fontSize:9, color:fDef.c, fontFamily:P.ff, fontWeight:700 }}>MAX</div>
+          ) : atCeil ? (
+            <div style={{ textAlign:"center" }}>
+              <div style={{ fontSize:8, color:"#c8903a", fontFamily:P.ff, marginBottom:3 }}>🔒 HQ GATE</div>
+              <div style={{ fontSize:7, color:"#6a5040" }}>Upgrade HQ to<br/>unlock Lv{qCeil+1}</div>
+            </div>
+          ) : (
+            <div>
+              <button className="btn" disabled={!canUpg} onClick={upgradeQuarter}
+                style={{ padding:"6px 14px", fontSize:10, fontWeight:700, marginBottom:4,
+                  background: canUpg ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
+                  border: `1px solid ${canUpg ? fDef.c : "#1e1810"}`,
+                  color: canUpg ? fDef.c : "#2a2a2a", borderRadius:4 }}>
+                ↑ Lv{qLvl+1}
+              </button>
+              <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
+                {Object.entries(qCost).filter(([,v])=>v>0).map(([k,v]) => (
+                  <RssPill key={k} rssKey={k} amount={v} rss={rss} small />
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
 
       {/* Branches */}
       <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff, letterSpacing:".1em", marginBottom:10 }}>TROOP BRANCHES</div>
-      {fDef.branches.map(br => {
-        const bKey = `b_${fKey}_${br.key}`;
-        const bLvl = bldgs[bKey] || 0;
-        const bMax = 10;
-        const bCost = BRANCH_UPGRADE_COST(bLvl);
-        const bOk   = bLvl < bMax && canAfford(bCost);
+      {fDef.branches.map((br, branchIdx) => {
+        const unlockQ    = BRANCH_UNLOCK_Q[branchIdx];
+        const branchOpen = qLvl >= unlockQ;
+        const bKey       = `b_${fKey}_${br.key}`;
+        const bLvl       = branchOpen ? Math.max(1, bldgs[bKey] || 1) : 0;
+        const bCeil      = branchMaxLevel(branchIdx, qLvl);
+        const atBCeil    = bLvl >= bCeil;
+        const atBMax     = bLvl >= 6;
+        const bCost      = BRANCH_UPGRADE_COST(bLvl);
+        const bOk        = branchOpen && !atBMax && !atBCeil && canAfford(bCost);
         const isSelected = selBranch === br.key;
-        const dmgColor = br.dmgType === "magical" ? "#a855f7" : "#e08050";
+        const dmgColor   = br.dmgType === "magical" ? "#a855f7" : "#e08050";
+        const unlockedTier = tierFromBranchLevel(bLvl); // 0=T1, 1=T2, 2=T3, -1=none
+
+        if (!branchOpen) {
+          // Locked branch — show unlock requirement
+          return (
+            <div key={br.key} style={{ marginBottom:8, borderRadius:8, overflow:"hidden",
+              border:`1px solid ${P.border}`, background:"rgba(255,255,255,.01)",
+              opacity:0.5 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px" }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
+                    <span style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:"#3a3028" }}>{br.label}</span>
+                    <span style={{ fontSize:7, color:"#3a3028", background:"rgba(255,255,255,.03)",
+                      padding:"1px 5px", borderRadius:3 }}>{br.size} · {br.dmgType}</span>
+                  </div>
+                  <div style={{ fontSize:8, color:"#3a3028" }}>Locked</div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontSize:8, color:"#c8903a", fontFamily:P.ff, marginBottom:2 }}>🔒 LOCKED</div>
+                  <div style={{ fontSize:7, color:"#4a3820" }}>Upgrade quarter<br/>to Lv{unlockQ}</div>
+                </div>
+              </div>
+            </div>
+          );
+        }
 
         return (
           <div key={br.key} style={{ marginBottom:8,
             border:`1px solid ${isSelected ? fDef.c+"88" : P.border}`,
             borderRadius:8, overflow:"hidden",
             background: isSelected ? `${fDef.c}0a` : "rgba(255,255,255,.02)" }}>
-            {/* Branch header — clickable to expand */}
+
+            {/* Branch header */}
             <div onClick={() => setSelBranch(isSelected ? null : br.key)}
               style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer" }}>
               <div style={{ flex:1 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
                   <span style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:P.text }}>{br.label}</span>
-                  <span style={{ fontSize:7, color:dmgColor, background:`${dmgColor}18`, padding:"1px 5px", borderRadius:3 }}>
-                    {br.size} · {br.dmgType}
+                  <span style={{ fontSize:7, color:dmgColor, background:`${dmgColor}18`,
+                    padding:"1px 5px", borderRadius:3 }}>{br.size} · {br.dmgType}</span>
+                  {/* Active tier badge */}
+                  <span style={{ fontSize:7, color:fDef.c, background:`${fDef.c}18`,
+                    padding:"1px 5px", borderRadius:3, fontFamily:P.ff }}>
+                    T{unlockedTier + 1} active
                   </span>
                 </div>
-                <div style={{ fontSize:8, color:P.sub }}>Lv{bLvl}/{bMax}</div>
-                <LevelBar lvl={bLvl} max={bMax} color={fDef.c} />
+                <div style={{ fontSize:8, color:P.sub }}>
+                  Lv{bLvl}
+                  {!atBMax && <span style={{ color:P.dim }}> / {bCeil} available · 6 max</span>}
+                  {atBMax && <span style={{ color:fDef.c }}> / MAX</span>}
+                </div>
+                {/* 6-pip level bar with ceiling indicator */}
+                <div style={{ display:"flex", gap:2, marginTop:4 }}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} style={{ flex:1, height:3, borderRadius:2, minWidth:3,
+                      background: i < bLvl ? fDef.c : i < bCeil ? `${fDef.c}33` : "#1e1810" }}/>
+                  ))}
+                </div>
               </div>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                {bLvl < bMax ? (
-                  <button className="btn" disabled={!bOk}
-                    onClick={e => { e.stopPropagation(); upgradeBranch(br.key); }}
-                    style={{ padding:"4px 10px", fontSize:9, fontWeight:700,
-                      background: bOk ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
-                      border: `1px solid ${bOk ? fDef.c : "#1e1810"}`,
-                      color: bOk ? fDef.c : "#2a2a2a", borderRadius:4 }}>
-                    ↑ Lv{bLvl+1}
-                  </button>
-                ) : (
+
+              <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+                {atBMax ? (
                   <div style={{ fontSize:9, color:fDef.c, fontFamily:P.ff, fontWeight:700 }}>MAX</div>
+                ) : atBCeil ? (
+                  <div style={{ textAlign:"center" }}>
+                    <div style={{ fontSize:7, color:"#c8903a", fontFamily:P.ff }}>🔒 Q GATE</div>
+                    <div style={{ fontSize:6, color:"#5a4030" }}>Q Lv{bCeil+1}<br/>to unlock</div>
+                  </div>
+                ) : (
+                  <div style={{ textAlign:"right" }}>
+                    <button className="btn" disabled={!bOk}
+                      onClick={e => { e.stopPropagation(); upgradeBranch(br.key, branchIdx); }}
+                      style={{ padding:"4px 10px", fontSize:9, fontWeight:700, marginBottom:3,
+                        background: bOk ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
+                        border: `1px solid ${bOk ? fDef.c : "#1e1810"}`,
+                        color: bOk ? fDef.c : "#2a2a2a", borderRadius:4 }}>
+                      ↑ Lv{bLvl+1}
+                    </button>
+                    <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
+                      {Object.entries(bCost).filter(([,v])=>v>0).map(([k,v]) => (
+                        <RssPill key={k} rssKey={k} amount={v} rss={rss} small />
+                      ))}
+                    </div>
+                  </div>
                 )}
                 <span style={{ fontSize:10, color:P.dim }}>{isSelected ? "▲" : "▼"}</span>
               </div>
             </div>
-            {/* Expanded: show tiers */}
+
+            {/* Expanded: level milestones + tier stats */}
             {isSelected && (
-              <div style={{ padding:"0 14px 12px", borderTop:`1px solid ${P.border}` }}>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginTop:10 }}>
+              <div style={{ padding:"0 14px 14px", borderTop:`1px solid ${P.border}` }}>
+
+                {/* Level milestone strip */}
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:3, marginTop:10, marginBottom:12 }}>
+                  {BRANCH_LVL_BONUS.map((bonus, i) => {
+                    const lvNum    = i + 1;
+                    const reached  = bLvl >= lvNum;
+                    const isTroop  = lvNum % 2 === 1;
+                    const tierIdx  = Math.floor(i / 2); // 0,0→T1  1,1→T2  2,2→T3
+                    return (
+                      <div key={i} style={{ borderRadius:5, padding:"6px 4px", textAlign:"center",
+                        background: reached ? (isTroop ? `${fDef.c}20` : `${fDef.c}08`) : "rgba(255,255,255,.02)",
+                        border:`1px solid ${reached ? (isTroop ? fDef.c+"55" : fDef.c+"22") : P.border}`,
+                        opacity: lvNum <= bCeil ? 1 : 0.35 }}>
+                        <div style={{ fontSize:6, color:reached?P.dim:"#2a2020", fontFamily:P.ff,
+                          marginBottom:2 }}>Lv{lvNum}</div>
+                        {isTroop ? (
+                          <div style={{ fontSize:7, color:reached?fDef.c:"#2a2020", fontFamily:P.ff,
+                            fontWeight:700 }}>T{tierIdx+1}</div>
+                        ) : (
+                          <div style={{ fontSize:6, color:reached?"#7ac870":"#2a2020" }}>−10%<br/>cost</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Tier stat cards — only show unlocked tiers */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
                   {br.tiers.map((t, idx) => {
-                    const unlocked = bLvl > idx * 3;
+                    const tierUnlocked = unlockedTier >= idx;
+                    const needsLvl     = idx * 2 + 1; // T1=Lv1, T2=Lv3, T3=Lv5
                     return (
                       <div key={idx} style={{ padding:"8px 10px", borderRadius:6, textAlign:"center",
-                        background: unlocked ? `${fDef.c}15` : "rgba(255,255,255,.02)",
-                        border: `1px solid ${unlocked ? fDef.c+"44" : P.border}`,
-                        opacity: unlocked ? 1 : 0.4 }}>
+                        background: tierUnlocked ? `${fDef.c}15` : "rgba(255,255,255,.02)",
+                        border:`1px solid ${tierUnlocked ? fDef.c+"44" : P.border}`,
+                        opacity: tierUnlocked ? 1 : 0.4 }}>
                         <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, marginBottom:4 }}>
-                          {unlocked ? `Lv${idx+1}` : `🔒 Need Lv${idx*3+1}`}
+                          {tierUnlocked ? `T${idx+1}` : `🔒 Lv${needsLvl}`}
                         </div>
-                        <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700, color: unlocked ? fDef.c : P.dim }}>
-                          {t.label}
-                        </div>
+                        <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
+                          color: tierUnlocked ? fDef.c : P.dim }}>{t.label}</div>
                         <div style={{ fontSize:7, color:P.sub, marginTop:3, lineHeight:1.5 }}>
-                          HP {t.hp} · DEF {t.def}<br/>
-                          DMG {t.dmgLo}–{t.dmgHi}
+                          HP {t.hp} · DEF {t.def}<br/>DMG {t.dmgLo}–{t.dmgHi}
                         </div>
                       </div>
                     );
@@ -328,94 +483,191 @@ function QuarterDetail({ fKey, fDef, bldgs, setBldgs, rss, canAfford }) {
   );
 }
 
-function InfrastructureScreen({ bldgs, setBldgs, rss, canAfford, upgrade, upgQueue }) {
-  const [sel, setSel] = useState("hq");
+const FACTION_META = {
+  marines:      { n:"Marines", s:"⚓", c:"#4488cc" },
+  pirates:      { n:"Pirates", s:"🏴", c:"#d4832a" },
+  bountyhunters:{ n:"Wizards", s:"🔮", c:"#9955dd" },
+  merfolk:      { n:"MerFolk", s:"🌊", c:"#30b8c8" },
+  orcs:         { n:"Orcs",   s:"⚔️", c:"#6aa830" },
+  dragons:      { n:"Dragons", s:"🐉", c:"#cc3030" },
+};
+const ALIGN_FACTIONS = {
+  humans:   ["pirates","marines","bountyhunters"],
+  creatures:["merfolk","orcs","dragons"],
+};
+function getAlignment(fk) {
+  return ALIGN_FACTIONS.humans.includes(fk) ? "humans" : "creatures";
+}
 
-  // Left nav items: all buildings + each quarter
+function InfrastructureScreen({ bldgs, setBldgs, rss, setRss, canAfford, upgrade, upgQueue, cmds, facKey, quarterLevels, setQuarterLevels, setUnlockedBranches }) {
+  const [leftSel, setLeftSel]     = useState("buildings");
+  const [selBuilding, setSelBuilding] = useState(null);
+
   const BLDG_KEYS = ["hq","walls","quarry","lumber","forge","refinery","barracks","training","commandcenter","healingtent"];
 
-  // Get quarter data from FACTION_TROOPS
-  const quarters = Object.entries(FACTION_TROOPS).map(([fKey, fDef]) => ({
-    fKey, ...fDef,
-    n: { marines:"Marines", pirates:"Pirates", bountyhunters:"Wizards", merfolk:"MerFolk", orcs:"Orcs", dragons:"Dragons" }[fKey] || fKey,
-    s: { marines:"⚓", pirates:"🏴", bountyhunters:"🔮", merfolk:"🌊", orcs:"⚔️", dragons:"🐉" }[fKey] || "⚑",
-    c: { marines:"#4488cc", pirates:"#d4832a", bountyhunters:"#9955dd", merfolk:"#30b8c8", orcs:"#6aa830", dragons:"#cc3030" }[fKey] || "#888",
-  }));
+  const primaryFaction = facKey || "marines";
+  const myAlign        = getAlignment(primaryFaction);
+  const alignFactions  = ALIGN_FACTIONS[myAlign] || ALIGN_FACTIONS.humans;
+  const factionOrder   = [primaryFaction, ...alignFactions.filter(f=>f!==primaryFaction)];
+  const hqLvl          = bldgs.hq || 1;
 
-  const isQuarter = sel.startsWith("q_");
-  const quarterFKey = isQuarter ? sel.slice(2) : null;
-  const quarterData = quarterFKey ? quarters.find(q => q.fKey === quarterFKey) : null;
+  const LEFT_NAV = [
+    { id:"buildings", icon:"🏛", label:"Buildings", color:"#c8903a", locked:false, isYou:false, slot:-1 },
+    ...factionOrder.map((fKey,i) => {
+      const maxLvl = quarterMaxLevel(i, hqLvl);
+      const curLvl = (quarterLevels||{})[fKey] || 0;
+      return {
+        id: `q_${fKey}`,
+        icon:   FACTION_META[fKey]?.s || "⚑",
+        label:  FACTION_META[fKey]?.n || fKey,
+        color:  FACTION_META[fKey]?.c || "#888",
+        locked: maxLvl === 0,
+        isYou:  i === 0,
+        curLvl,
+        maxLvl,
+        slot:   i,
+      };
+    }),
+    { id:"unknown", icon:"❓", label:"Unknown", color:"#666", locked:true, isYou:false, slot:-1 },
+  ];
+
+  const isBuildings = leftSel === "buildings";
+  const isUnknown   = leftSel === "unknown";
+  const quarterFKey = (!isBuildings && !isUnknown) ? leftSel.slice(2) : null;
+  const fDef        = quarterFKey ? { ...FACTION_TROOPS[quarterFKey], ...FACTION_META[quarterFKey] } : null;
 
   return (
     <div style={{ display:"flex", height:"100%", gap:0 }}>
 
-      {/* ── Left sidebar ── */}
-      <div style={{ width:72, flexShrink:0, overflowY:"auto", borderRight:`1px solid ${P.border}`,
-        background:"rgba(0,0,0,.3)", display:"flex", flexDirection:"column", gap:2, padding:"6px 4px" }}>
-
-        {/* Buildings section label */}
-        <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
-          textAlign:"center", paddingBottom:4, marginBottom:2, borderBottom:`1px solid ${P.border}` }}>
-          BLDGS
-        </div>
-
-        {BLDG_KEYS.map(key => {
-          const def = BLDG[key];
-          const lvl = bldgs[key]||0;
-          const isActive = sel === key;
+      {/* ── 5-icon left sidebar ── */}
+      <div style={{ width:68, flexShrink:0, borderRight:`1px solid ${P.border}`,
+        background:"rgba(0,0,0,.4)", display:"flex", flexDirection:"column",
+        alignItems:"center", gap:4, padding:"8px 4px", overflowY:"auto" }}>
+        {LEFT_NAV.map(item => {
+          const isActive = leftSel === item.id;
+          const atCeiling = item.slot >= 0 && !item.locked && item.curLvl > 0
+            && item.curLvl >= item.maxLvl && item.maxLvl < 10;
           return (
-            <button key={key} onClick={() => setSel(key)}
-              style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2,
-                padding:"6px 4px", borderRadius:6, cursor:"pointer",
-                background: isActive ? "rgba(240,192,64,.12)" : "transparent",
-                border: `1px solid ${isActive ? P.gold+"44" : "transparent"}`,
-                transition:"all .15s" }}>
-              <div style={{ fontSize:18 }}>{def?.icon}</div>
-              <div style={{ fontSize:6, color: isActive ? P.gold : P.dim, fontFamily:P.ff,
-                textAlign:"center", lineHeight:1.2 }}>{def?.n?.split(" ")[0]}</div>
-              <div style={{ fontSize:6, color: isActive ? P.gold : "#3a3028" }}>Lv{lvl}</div>
-            </button>
-          );
-        })}
-
-        {/* Quarters section label */}
-        <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
-          textAlign:"center", paddingBottom:4, marginTop:6, marginBottom:2,
-          borderTop:`1px solid ${P.border}`, paddingTop:6 }}>
-          QUARTERS
-        </div>
-
-        {quarters.map(q => {
-          const qKey = `q_${q.fKey}`;
-          const isActive = sel === qKey;
-          const qLvl = bldgs[qKey] || 0;
-          return (
-            <button key={qKey} onClick={() => setSel(qKey)}
-              style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2,
-                padding:"6px 4px", borderRadius:6, cursor:"pointer",
-                background: isActive ? `${q.c}18` : "transparent",
-                border: `1px solid ${isActive ? q.c+"66" : "transparent"}`,
-                transition:"all .15s" }}>
-              <div style={{ fontSize:18 }}>{q.s}</div>
-              <div style={{ fontSize:6, color: isActive ? q.c : P.dim, fontFamily:P.ff,
-                textAlign:"center", lineHeight:1.2 }}>{q.n}</div>
-              <div style={{ fontSize:6, color: isActive ? q.c : "#3a3028" }}>Lv{qLvl}</div>
+            <button key={item.id}
+              onClick={() => { if (!item.locked) { setLeftSel(item.id); setSelBuilding(null); } }}
+              disabled={item.locked}
+              style={{ width:60, display:"flex", flexDirection:"column", alignItems:"center",
+                gap:3, padding:"10px 4px", borderRadius:8, cursor:item.locked?"default":"pointer",
+                background: isActive ? `${item.color}22` : "transparent",
+                border: `1px solid ${isActive ? item.color+"66" : "transparent"}`,
+                transition:"all .15s", position:"relative" }}>
+              {item.locked && (
+                <div style={{ position:"absolute", top:3, right:6, fontSize:8, opacity:.5 }}>🔒</div>
+              )}
+              {!item.locked && item.slot >= 0 && item.curLvl > 0 && (
+                <div style={{ position:"absolute", top:3, left:6, fontSize:7,
+                  color: atCeiling ? "#c8903a" : item.color, fontFamily:P.ff, fontWeight:700 }}>
+                  {item.curLvl}/{item.maxLvl}
+                </div>
+              )}
+              {isActive && (
+                <div style={{ position:"absolute", right:0, top:"50%", transform:"translateY(-50%)",
+                  width:3, height:22, background:item.color, borderRadius:"2px 0 0 2px" }}/>
+              )}
+              <div style={{ fontSize:24, filter:item.locked?"grayscale(1) brightness(.45)":"none" }}>
+                {item.icon}
+              </div>
+              <div style={{ fontSize:7, color:isActive?item.color:item.locked?"#3a3028":P.dim,
+                fontFamily:P.ff, textAlign:"center", lineHeight:1.2, letterSpacing:".04em" }}>
+                {item.label}
+              </div>
+              {item.isYou && (
+                <div style={{ fontSize:6, color:item.color, fontFamily:P.ff, fontWeight:700 }}>YOU</div>
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* ── Right detail panel ── */}
+      {/* ── Right panel ── */}
       <div style={{ flex:1, overflowY:"auto" }}>
-        {isQuarter && quarterData ? (
-          <QuarterDetail
-            fKey={quarterFKey} fDef={quarterData}
-            bldgs={bldgs} setBldgs={setBldgs}
-            rss={rss} canAfford={canAfford} />
-        ) : (
-          <BuildingDetail
-            bKey={sel} bldgs={bldgs} rss={rss}
-            canAfford={canAfford} upgrade={upgrade} upgQueue={upgQueue} />
+
+        {/* Buildings: card grid */}
+        {isBuildings && !selBuilding && (
+          <div style={{ padding:"12px 14px" }}>
+            <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff, letterSpacing:".12em", marginBottom:10 }}>
+              BUILDINGS
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              {BLDG_KEYS.map(key => {
+                const def    = BLDG[key];
+                const lvl    = bldgs[key]||0;
+                const avail  = maxAvailLevel(key, bldgs.hq||1);
+                const cost   = (lvl < (def?.max||10)) ? upgCost(key, lvl) : null;
+                const ok     = cost && canAfford(cost);
+                const inProg = upgQueue[key];
+                return (
+                  <button key={key} onClick={() => setSelBuilding(key)}
+                    style={{ padding:0, borderRadius:8, overflow:"hidden", cursor:"pointer",
+                      textAlign:"left",
+                      border:`1px solid ${inProg?"#c8903a55":ok?"rgba(240,192,64,.25)":P.border}`,
+                      background:"rgba(255,255,255,.03)", transition:"border-color .15s" }}>
+                    <div style={{ padding:"10px 12px" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
+                        <div style={{ fontSize:22 }}>{def?.icon}</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
+                            color:P.text, lineHeight:1.3 }}>{def?.n}</div>
+                          <div style={{ fontSize:7, color:P.sub }}>Lv{lvl} / {Math.min(avail,def?.max||10)}</div>
+                        </div>
+                        {inProg && <div style={{ fontSize:10, color:P.gold }}>⚙</div>}
+                        {!inProg && ok && <div style={{ fontSize:10, color:"#3daa60" }}>↑</div>}
+                      </div>
+                      <LevelBar lvl={lvl} max={Math.min(avail,10,def?.max||10)} color={P.gold} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Buildings: drill-in detail */}
+        {isBuildings && selBuilding && (
+          <div>
+            <button className="btn" onClick={() => setSelBuilding(null)}
+              style={{ margin:"10px 14px 0", padding:"4px 12px",
+                background:"rgba(255,255,255,.06)", border:`1px solid ${P.border}`,
+                color:P.sub, fontSize:9, borderRadius:4 }}>
+              ← All Buildings
+            </button>
+            <BuildingDetail bKey={selBuilding} bldgs={bldgs} rss={rss}
+              canAfford={canAfford} upgrade={upgrade} upgQueue={upgQueue} />
+          </div>
+        )}
+
+        {/* Faction quarter */}
+        {!isBuildings && !isUnknown && quarterFKey && fDef && (() => {
+          const navItem = LEFT_NAV.find(n => n.id === leftSel);
+          return (
+            <QuarterDetail
+              fKey={quarterFKey} fDef={fDef}
+              slot={navItem?.slot ?? 0}
+              bldgs={bldgs} setBldgs={setBldgs}
+              rss={rss} setRss={setRss} canAfford={canAfford}
+              quarterLevels={quarterLevels} setQuarterLevels={setQuarterLevels}
+              setUnlockedBranches={setUnlockedBranches} />
+          );
+        })()}
+
+        {/* Unknown quarter */}
+        {isUnknown && (
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center",
+            justifyContent:"center", height:"80%", padding:30, textAlign:"center" }}>
+            <div style={{ fontSize:52, marginBottom:16, filter:"grayscale(1) brightness(.35)" }}>❓</div>
+            <div style={{ fontFamily:P.ff, fontSize:13, color:"#3a3028",
+              letterSpacing:".1em", marginBottom:12 }}>UNKNOWN QUARTER</div>
+            <div style={{ fontSize:9, color:"#2a2020", fontFamily:P.ffb, fontStyle:"italic",
+              maxWidth:200, lineHeight:1.8 }}>
+              The origins of this quarter remain shrouded in mystery.<br/>
+              Perhaps in time, its secrets will be revealed…
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -481,251 +733,188 @@ function CommandCenterScreen({ cmds, pKeys, rss, gems, bldgs, bLog, tiles }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  STRIKE CRAFT (Troops / Training)
+//  TROOPS (Training)
 // ─────────────────────────────────────────────────────────────────────────────
-function StrikeCraftScreen({ bldgs, barracksPool, trainingQueue, trainSlider, setTrainSlider, canAfford, queueTraining, rss }) {
+function StrikeCraftScreen({ bldgs, barracksPool, trainingQueue, canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches }) {
+  const [activePanel, setActivePanel] = useState(null); // { key, mode:"train"|"discard" }
+  const [panelSlider, setPanelSlider] = useState(0);
+
   const cap      = barracksCapacity(bldgs.barracks||0);
   const pct      = Math.min(100, Math.round((barracksPool/cap)*100));
   const room     = cap - barracksPool;
   const maxBatch = maxTrainBatch(bldgs.training||0);
-  const sliderMax = Math.max(1, Math.min(maxBatch, room));
-  const sv       = Math.min(trainSlider, sliderMax);
-  const cost     = { stone:sv*2, wood:sv*2, ore:sv, gas:Math.floor(sv*0.5) };
-  const affordable = canAfford(cost);
   const rate     = trainRate(bldgs.training||0);
-  const estSecs  = sv > 0 ? Math.ceil(sv/rate) : 0;
-  const canQueue = !trainingQueue && sv > 0 && affordable && room > 0;
+
+  const ub = unlockedBranches || {};
+
+  const troopCards = useMemo(() => {
+    const cards = [];
+    Object.entries(FACTION_TROOPS).forEach(([fKey, fDef]) => {
+      fDef.branches.forEach(branch => {
+        const ubKey = `${fKey}:${branch.key}`;
+        if (!(ubKey in ub)) return;
+        const maxTier = ub[ubKey];
+        const tier = branch.tiers[maxTier];
+        if (!tier) return;
+        const key = `${fKey}_${branch.key}_${maxTier}`;
+        const fColor = FACTION_META[fKey]?.c || "#888";
+        const assigned = (cmds||[])
+          .filter(x=>x.owner==="player"&&x.troopBranch?.faction===fKey
+            &&x.troopBranch?.branch===branch.key)
+          .reduce((s,x)=>s+(x.troops||0),0);
+        cards.push({ key, tier, branch, fColor, assigned, fKey });
+      });
+    });
+    return cards;
+  }, [ub, cmds]);
+
   return (
     <div>
-      <SectionHeader>TRAINING</SectionHeader>
-      {/* Barracks capacity */}
-      <div style={{ marginBottom:12, padding:"10px 12px", background:"rgba(255,255,255,.03)",
+      {/* Barracks capacity bar */}
+      <div style={{ marginBottom:10, padding:"10px 12px", background:"rgba(255,255,255,.03)",
         border:`1px solid ${P.border}`, borderRadius:6 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-          <div style={{ fontFamily:P.ff, fontSize:11, color:"#c8a060", fontWeight:700 }}>🏕 BARRACKS — Lv{bldgs.barracks||0}</div>
-          <div style={{ fontFamily:P.ff, fontSize:13,
+          <div style={{ fontFamily:P.ff, fontSize:10, color:"#c8a060", fontWeight:700 }}>
+            🏕 Barracks Lv{bldgs.barracks||0}
+          </div>
+          <div style={{ fontFamily:P.ff, fontSize:12,
             color:pct>50?"#3daa60":pct>10?"#d0a030":"#cc3030", fontWeight:700 }}>
             {barracksPool.toLocaleString()} / {cap.toLocaleString()}
           </div>
         </div>
-        <div style={{ height:6, background:"#181820", borderRadius:3, overflow:"hidden" }}>
+        <div style={{ height:5, background:"#181820", borderRadius:3, overflow:"hidden" }}>
           <div style={{ height:"100%", width:`${pct}%`,
             background:pct>50?"#3daa60":pct>10?"#d0a030":"#cc3030",
             borderRadius:3, transition:"width .3s" }}/>
         </div>
+        <div style={{ fontSize:7, color:P.dim, marginTop:4, fontFamily:P.ff }}>
+          {room.toLocaleString()} space available · training {rate.toLocaleString()}/s
+        </div>
       </div>
-      {/* Active queue */}
+
+      {/* Active training progress */}
       {trainingQueue && (() => {
-        const qPct    = Math.round(((trainingQueue.total-trainingQueue.remaining)/trainingQueue.total)*100);
+        const qPct     = Math.round(((trainingQueue.total-trainingQueue.remaining)/trainingQueue.total)*100);
         const secsLeft = Math.ceil(trainingQueue.remaining/rate);
         return (
-          <div style={{ marginBottom:12, padding:"10px 12px", background:"rgba(40,80,160,.1)",
-            border:"1px solid rgba(60,120,220,.35)", borderRadius:6 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-              <div style={{ fontFamily:P.ff, fontSize:10, color:"#88aaff", fontWeight:700 }}>⚔️ TRAINING IN PROGRESS</div>
-              <div style={{ fontSize:9, color:"#6a8aaa", fontFamily:P.ff }}>{trainingQueue.remaining.toLocaleString()} left · ~{secsLeft}s</div>
+          <div style={{ marginBottom:10, padding:"8px 12px",
+            background:"rgba(40,80,160,.1)", border:"1px solid rgba(60,120,220,.3)", borderRadius:6 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+              <div style={{ fontFamily:P.ff, fontSize:9, color:"#88aaff", fontWeight:700 }}>⚔️ TRAINING IN PROGRESS</div>
+              <div style={{ fontSize:8, color:"#6a8aaa", fontFamily:P.ff }}>{trainingQueue.remaining.toLocaleString()} · ~{secsLeft}s</div>
             </div>
-            <div style={{ height:6, background:"#181820", borderRadius:3, overflow:"hidden", marginBottom:4 }}>
+            <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
               <div style={{ height:"100%", width:`${qPct}%`,
-                background:"linear-gradient(90deg,#3366cc,#88aaff)",
-                borderRadius:3, transition:"width 1s linear" }}/>
+                background:"linear-gradient(90deg,#3366cc,#88aaff)", borderRadius:2, transition:"width 1s" }}/>
             </div>
           </div>
         );
       })()}
-      {/* Queue new */}
-      <div style={{ padding:"10px 12px", background:"rgba(255,255,255,.02)",
-        border:`1px solid #1e1e2a`, borderRadius:6 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-          <div style={{ fontFamily:P.ff, fontSize:10, color:"#c8a060", fontWeight:700 }}>⚔️ TRAINING GROUNDS — Lv{bldgs.training||0}</div>
-          <div style={{ fontSize:8, color:"#6a7a9a", fontFamily:P.ff }}>{rate.toLocaleString()} troops/s</div>
-        </div>
-        {room <= 0 ? (
-          <div style={{ fontSize:9, color:"#8a6020", fontFamily:P.ffb, fontStyle:"italic", padding:"4px 0" }}>
-            Barracks full. Assign troops to commanders first.
-          </div>
-        ) : trainingQueue ? (
-          <div style={{ fontSize:9, color:"#6a7a9a", fontFamily:P.ffb, fontStyle:"italic", padding:"4px 0" }}>
-            Training in progress. Queue another batch when complete.
-          </div>
-        ) : (<>
-          <div style={{ display:"flex", justifyContent:"space-between", fontSize:8, color:"#6a5a4a", fontFamily:P.ff, marginBottom:4 }}>
-            <span>QUEUE SIZE</span>
-            <span style={{ color:"#88aaff", fontWeight:700 }}>{sv.toLocaleString()} troops</span>
-          </div>
-          <input type="range" min={1} max={sliderMax} value={sv}
-            onChange={e => setTrainSlider(+e.target.value)}
-            style={{ width:"100%", accentColor:"#3366cc", marginBottom:6 }}/>
-          <div style={{ display:"flex", justifyContent:"space-between", fontSize:7, color:"#4a4a5a", marginBottom:8 }}>
-            <span>1</span><span style={{ color:"#5a6a7a" }}>Max: {sliderMax.toLocaleString()}</span><span>{sliderMax.toLocaleString()}</span>
-          </div>
-          <div style={{ fontSize:8, marginBottom:8, flexWrap:"wrap", display:"flex", gap:6 }}>
-            {Object.entries(cost).map(([k,v]) => <RssPill key={k} rssKey={k} amount={v} rss={rss} />)}
-            <span style={{ color:"#5a6a7a" }}>· ~{estSecs}s</span>
-          </div>
-          <button className="btn" disabled={!canQueue} onClick={() => queueTraining(sv)}
-            style={{ width:"100%", padding:"10px",
-              background:canQueue?"linear-gradient(135deg,rgba(40,80,160,.5),rgba(40,80,160,.2))":"rgba(255,255,255,.02)",
-              border:`1px solid ${canQueue?"rgba(60,120,220,.6)":"#181818"}`,
-              color:canQueue?"#88aaff":"#2a2a2a", fontSize:12, fontWeight:700, letterSpacing:".08em" }}>
-            {canQueue ? `⚔ Queue ${sv.toLocaleString()} Troops` : !affordable ? "Insufficient resources" : "Training in progress"}
-          </button>
-        </>)}
-      </div>
-    </div>
-  );
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  ARMY (Army)
-// ─────────────────────────────────────────────────────────────────────────────
-function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, setBarracks, sliderVals, setSliderVals, assignTroops, returnTroops, playerHqKey }) {
-  const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
-  const playerCmds = cmds.filter(c => c.owner==="player");
-
-  return (
-    <div>
-      <SectionHeader>ARMY</SectionHeader>
-      {playerCmds.length === 0 && (
-        <div style={{ fontSize:9, color:P.sub, fontFamily:P.ffb, fontStyle:"italic", textAlign:"center", padding:20 }}>
-          No commanders available. Pull from the Gacha to recruit.
+      {/* Troop type cards */}
+      {troopCards.length === 0 && (
+        <div style={{ textAlign:"center", padding:"30px 20px", fontSize:9, color:P.dim,
+          fontFamily:P.ffb, fontStyle:"italic" }}>
+          No troop types unlocked yet. Assign troop branches to commanders in the Army tab.
         </div>
       )}
-      {playerCmds.map(cmd => {
-        const isAtHQ     = cmd.tk === hqKey;
-        const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?500:0);
 
-        // Resolve troop branch info
-        const tb = cmd.troopBranch;
-        const faction = tb ? FACTION_TROOPS[tb.faction] : null;
-        const branch  = faction ? faction.branches.find(b => b.key === tb.branch) : null;
-        const tier    = branch ? branch.tiers[tb.tier ?? 0] : null;
-
-        // Command cost per troop depends on unit size (small=1, medium=2, large=4)
-        const branchSize  = branch?.size ?? "small";
-        const cmdCost     = COMMAND_COST[branchSize] ?? 1;
-        const commandUsed = (cmd.troops||0) * cmdCost;
-        const maxTroops   = Math.floor(commandCap / cmdCost);
-        const troopPct    = Math.round((commandUsed / commandCap) * 100);
-
+      {troopCards.map(card => {
+        const isActive = activePanel?.key === card.key;
         return (
-          <div key={cmd.uid} style={{ marginBottom:12, padding:"10px 12px",
-            background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:6 }}>
-            {/* Commander header */}
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-              <div style={{ fontSize:22 }}>{cmd.icon}</div>
+          <div key={card.key} style={{ marginBottom:8, borderRadius:8, overflow:"hidden",
+            border:`1px solid ${isActive?card.fColor+"55":P.border}`,
+            background:isActive?`${card.fColor}08`:"rgba(255,255,255,.025)" }}>
+
+            {/* Card row */}
+            <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px" }}>
+              <div style={{ padding:"8px 10px", borderRadius:6, textAlign:"center", minWidth:52,
+                background:`${card.fColor}18`, border:`1px solid ${card.fColor}30` }}>
+                <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700, color:card.fColor }}>
+                  {card.branch?.label}
+                </div>
+                <div style={{ fontSize:7, color:P.sub, marginTop:1 }}>{card.tier.label}</div>
+              </div>
               <div style={{ flex:1 }}>
-                <div style={{ fontFamily:P.ff, fontSize:11, color:P.text, fontWeight:700 }}>{cmd.n}</div>
-                <div style={{ fontSize:8, color:P.sub, marginTop:1 }}>
-                  Lv{cmd.lvl} · {cmd.cls} ·{" "}
-                  {tier ? <>{branch.label} {tier.label}</> : "No troops assigned"}
+                <div style={{ fontFamily:P.ff, fontSize:10, fontWeight:700, color:P.text }}>
+                  {card.tier.label}
                 </div>
-                <div style={{ fontSize:7, color:isAtHQ?"#3daa60":"#7a5a3a", marginTop:1, fontFamily:P.ff }}>
-                  {isAtHQ ? "🏰 At HQ" : `📍 ${cmd.tk} — recall to HQ to change`}
+                <div style={{ fontSize:7, color:card.fColor }}>{card.branch?.size} · {card.branch?.dmgType}</div>
+                <div style={{ fontSize:7, color:P.dim, marginTop:1 }}>
+                  Assigned: <span style={{ color:P.text }}>{card.assigned.toLocaleString()}</span>
+                  &nbsp;· Pool: <span style={{ color:P.text }}>{barracksPool.toLocaleString()}</span>
                 </div>
               </div>
-              {(cmd.troops||0) > 0 && (
-                <button className="btn" onClick={() => returnTroops(cmd.uid)}
-                  style={{ padding:"3px 8px", background:"rgba(200,50,50,.15)",
-                    border:"1px solid rgba(200,50,50,.4)", color:"#cc5050", fontSize:8, flexShrink:0 }}>
-                  Return
+              <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+                <button className="btn"
+                  onClick={() => { setActivePanel(isActive&&activePanel.mode==="train"?null:{key:card.key,mode:"train"}); setPanelSlider(0); }}
+                  style={{ padding:"5px 12px", fontSize:9, fontWeight:700,
+                    background:"linear-gradient(135deg,rgba(40,120,60,.5),rgba(40,120,60,.2))",
+                    border:"1px solid rgba(50,160,80,.5)", color:"#5dcc80", borderRadius:4 }}>
+                  Train
                 </button>
-              )}
-            </div>
-
-            {/* Command bar */}
-            <div style={{ marginBottom:8 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:7,
-                color:"#5a5060", marginBottom:2, fontFamily:P.ff }}>
-                <span>📡 COMMAND</span>
-                <span style={{ color:troopPct>=100?"#cc3030":troopPct>=75?"#d0a030":"#3daa60" }}>
-                  {commandUsed.toLocaleString()} / {commandCap.toLocaleString()}
-                  {cmdCost > 1 && <span style={{fontSize:6,opacity:.6,marginLeft:3}}>({(cmd.troops||0)} units ×{cmdCost})</span>}
-                </span>
-              </div>
-              <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
-                <div style={{ height:"100%", width:`${troopPct}%`,
-                  background:troopPct>=100?"#cc3030":troopPct>=75?"#d0a030":"#3daa60",
-                  borderRadius:2, transition:"width .3s" }}/>
+                <button className="btn"
+                  onClick={() => { setActivePanel(isActive&&activePanel.mode==="discard"?null:{key:card.key,mode:"discard"}); setPanelSlider(0); }}
+                  style={{ padding:"5px 12px", fontSize:9, fontWeight:700,
+                    background:"linear-gradient(135deg,rgba(160,50,50,.35),rgba(160,50,50,.15))",
+                    border:"1px solid rgba(200,60,60,.4)", color:"#dd6666", borderRadius:4 }}>
+                  Discard
+                </button>
               </div>
             </div>
 
-            {/* Troop branch selection (only at HQ) */}
-            {isAtHQ && (
-              <TroopBranchSelector
-                cmd={cmd} setCmds={setCmds}
-                faction={faction} branch={branch} tier={tier} tb={tb} />
-            )}
-            {!isAtHQ && tb && tier && (
-              <div style={{ marginBottom:10, padding:"8px 10px",
-                background:"rgba(150,80,20,.08)", border:"1px solid rgba(150,80,20,.25)",
-                borderRadius:4, display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:16 }}>🔒</span>
-                <div>
-                  <div style={{ fontFamily:P.ff, fontSize:9, color:"#c8903a", fontWeight:700 }}>TROOP TYPE LOCKED</div>
-                  <div style={{ fontSize:8, color:"#7a6a4a", fontFamily:P.ffb, marginTop:1 }}>
-                    Recall to HQ to change troop assignment.
-                  </div>
-                </div>
-                <div style={{ marginLeft:"auto", textAlign:"center", flexShrink:0 }}>
-                  <div style={{ fontSize:18 }}>{branch?.label}</div>
-                  <div style={{ fontSize:7, color:P.gold, fontFamily:P.ff }}>{tier.label}</div>
-                </div>
-              </div>
-            )}
-
-            {/* Assign slider */}
-            {tb && isAtHQ && (() => {
-              const sv = sliderVals[cmd.uid] ?? (cmd.troops||0);
-              const maxSlider = Math.min(maxTroops, barracksPool+(cmd.troops||0));
-              const delta = sv - (cmd.troops||0);
-              const svCmd = sv * cmdCost;
+            {/* Expanded slider panel */}
+            {isActive && (() => {
+              const isTrain   = activePanel.mode === "train";
+              const sliderMax = isTrain
+                ? Math.max(1, Math.min(maxBatch, room))
+                : Math.max(1, barracksPool);
+              const sv        = Math.min(panelSlider, sliderMax);
+              const trainCost = isTrain ? { stone:sv*2, wood:sv*2, ore:sv, gas:Math.floor(sv*0.5) } : null;
+              const canAct    = isTrain
+                ? (!trainingQueue && sv>0 && canAfford(trainCost) && room>0)
+                : (sv>0 && barracksPool>0);
               return (
-                <div>
+                <div style={{ padding:"8px 12px 12px", borderTop:`1px solid ${P.border}` }}>
                   <div style={{ display:"flex", justifyContent:"space-between", fontSize:8,
-                    color:"#6a5a4a", letterSpacing:".1em", fontFamily:P.ff, marginBottom:4 }}>
-                    <span>ASSIGN TROOPS</span>
-                    <span style={{ color:delta>0?"#3daa60":delta<0?"#cc5050":"#5a5060" }}>
-                      {sv.toLocaleString()} troops ({svCmd.toLocaleString()} cmd)
-                      {delta!==0 && <span style={{ marginLeft:4 }}>{delta>0?`(+${delta})`:delta}</span>}
-                    </span>
+                    color:isTrain?"#5dcc80":"#dd6666", fontFamily:P.ff, marginBottom:4 }}>
+                    <span>{isTrain?"TRAIN AMOUNT":"DISCARD AMOUNT"}</span>
+                    <span style={{ fontWeight:700 }}>{sv.toLocaleString()}</span>
                   </div>
-                  <input type="range" min={0} max={maxSlider} value={sv}
-                    onChange={e => setSliderVals(v => ({ ...v, [cmd.uid]:+e.target.value }))}
-                    style={{ width:"100%", accentColor:"#3daa60", marginBottom:8 }}/>
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:7, color:"#4a4a5a", marginBottom:8 }}>
-                    <span>0</span>
-                    <span style={{ color:"#5a7a5a" }}>Barracks: {barracksPool.toLocaleString()}</span>
-                    <span>{maxTroops.toLocaleString()} troops / {commandCap.toLocaleString()} cmd</span>
-                  </div>
-                  {delta !== 0 ? (
-                    <button className="btn" onClick={() => assignTroops(cmd.uid, cmd.troopBranch, sv)}
-                      style={{ width:"100%", padding:"8px",
-                        background:delta>0?"linear-gradient(135deg,rgba(40,100,60,.5),rgba(40,100,60,.2))":"linear-gradient(135deg,rgba(150,40,40,.4),rgba(150,40,40,.15))",
-                        border:`1px solid ${delta>0?"#3daa60":"#cc4444"}`,
-                        color:delta>0?"#3dcc70":"#dd6666", fontSize:11, fontWeight:700 }}>
-                      {delta>0 ? `✓ Add ${delta} troops` : `✓ Remove ${Math.abs(delta)} troops`}
-                    </button>
-                  ) : (
-                    <div style={{ fontSize:8, color:"#4a4a5a", fontFamily:P.ffb, fontStyle:"italic", textAlign:"center" }}>
-                      Move slider to assign
+                  <input type="range" min={0} max={Math.max(1,sliderMax)} value={sv}
+                    onChange={e => setPanelSlider(+e.target.value)}
+                    style={{ width:"100%", accentColor:isTrain?"#3daa60":"#cc3030", marginBottom:6 }}/>
+                  {isTrain && trainCost && (
+                    <div style={{ fontSize:7, marginBottom:6, display:"flex", gap:5, flexWrap:"wrap" }}>
+                      {Object.entries(trainCost).map(([k,v]) => <RssPill key={k} rssKey={k} amount={v} rss={rss} small/>)}
                     </div>
                   )}
+                  {!isTrain && (
+                    <div style={{ fontSize:7, color:P.dim, fontFamily:P.ffb, marginBottom:6 }}>
+                      Permanently remove {sv.toLocaleString()} troops from your barracks pool.
+                    </div>
+                  )}
+                  <button className="btn" disabled={!canAct}
+                    onClick={() => {
+                      if (isTrain) queueTraining(sv);
+                      else if (discardTroops) discardTroops(sv);
+                      setActivePanel(null); setPanelSlider(0);
+                    }}
+                    style={{ width:"100%", padding:"8px",
+                      background:canAct
+                        ?(isTrain?"linear-gradient(135deg,rgba(40,100,60,.5),rgba(40,100,60,.2))"
+                                 :"linear-gradient(135deg,rgba(150,40,40,.4),rgba(150,40,40,.15))")
+                        :"rgba(255,255,255,.02)",
+                      border:`1px solid ${canAct?(isTrain?"#3daa60":"#cc4444"):"#181818"}`,
+                      color:canAct?(isTrain?"#5dcc80":"#dd6666"):"#2a2a2a",
+                      fontSize:10, fontWeight:700 }}>
+                    {canAct
+                      ? (isTrain ? `Train ${sv.toLocaleString()} troops` : `Discard ${sv.toLocaleString()} troops`)
+                      : (isTrain && trainingQueue ? "Training in progress" : "Select amount")}
+                  </button>
                 </div>
               );
             })()}
-            {!tb && isAtHQ && (
-              <div style={{ fontSize:8, color:"#5a5060", fontFamily:P.ffb, fontStyle:"italic" }}>
-                Select a troop branch above first.
-              </div>
-            )}
-            {!tb && !isAtHQ && (
-              <div style={{ padding:"7px 10px", background:"rgba(50,100,180,.07)",
-                border:"1px solid rgba(80,140,220,.2)", borderRadius:4,
-                fontSize:8, color:"#6a7a9a", fontFamily:P.ffb, fontStyle:"italic" }}>
-                🔄 No troops assigned. Recall to HQ to assign a troop branch.
-              </div>
-            )}
           </div>
         );
       })}
@@ -733,12 +922,239 @@ function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, setBarracks, s
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  ARMY
+// ─────────────────────────────────────────────────────────────────────────────
+function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, setBarracks, sliderVals, setSliderVals, assignTroops, returnTroops, playerHqKey, unlockedBranches }) {
+  const hqKey      = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
+  const playerCmds = cmds.filter(c => c.owner==="player");
+  const [selUid, setSelUid] = useState(null);
+  const selCmd = playerCmds.find(c=>c.uid===selUid) || playerCmds[0] || null;
+
+  return (
+    <div style={{ display:"flex", height:"100%", overflow:"hidden" }}>
+
+      {/* ── Left: Commander list ── */}
+      <div style={{ width:132, flexShrink:0, borderRight:`1px solid ${P.border}`,
+        background:"rgba(0,0,0,.3)", overflowY:"auto", padding:"6px 4px" }}>
+        <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
+          textAlign:"center", marginBottom:6 }}>COMMANDERS</div>
+        {playerCmds.length === 0 && (
+          <div style={{ fontSize:8, color:"#3a3028", fontFamily:P.ffb, fontStyle:"italic",
+            textAlign:"center", padding:"12px 6px" }}>No commanders</div>
+        )}
+        {playerCmds.map(cmd => {
+          const isActive = selCmd?.uid === cmd.uid;
+          const tb = cmd.troopBranch;
+          const faction = tb ? FACTION_TROOPS[tb.faction] : null;
+          const branch  = faction?.branches.find(b=>b.key===tb?.branch);
+          const tier    = branch?.tiers[tb?.tier??0];
+          const fColor  = FACTION_META[tb?.faction]?.c || P.gold;
+          const isAtHQ  = cmd.tk === hqKey;
+          return (
+            <button key={cmd.uid} onClick={() => setSelUid(cmd.uid)}
+              style={{ width:"100%", textAlign:"left", marginBottom:4, padding:"8px 6px",
+                borderRadius:6, cursor:"pointer",
+                background:isActive?"rgba(240,192,64,.1)":"rgba(255,255,255,.02)",
+                border:`1px solid ${isActive?P.gold+"44":P.border}`, transition:"all .12s" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                <div style={{ fontSize:18 }}>{cmd.icon}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:P.ff, fontSize:8, fontWeight:700,
+                    color:isActive?P.gold:P.text, whiteSpace:"nowrap",
+                    overflow:"hidden", textOverflow:"ellipsis" }}>{cmd.n}</div>
+                  <div style={{ fontSize:6, color:P.sub }}>Lv{cmd.lvl} · {cmd.cls}</div>
+                </div>
+              </div>
+              {tier && (
+                <div style={{ fontSize:6, color:fColor, fontFamily:P.ff,
+                  background:`${fColor}15`, padding:"2px 5px", borderRadius:3,
+                  display:"inline-block", marginBottom:2 }}>{tier.label}</div>
+              )}
+              <div style={{ fontSize:5, color:isAtHQ?"#3daa60":"#6a5a3a", fontFamily:P.ff }}>
+                {isAtHQ?"🏰 At HQ":"📍 Away"}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Right: Selected commander detail ── */}
+      <div style={{ flex:1, overflowY:"auto", padding:"10px 12px" }}>
+        {!selCmd ? (
+          <div style={{ textAlign:"center", padding:"40px 20px", color:P.dim,
+            fontFamily:P.ffb, fontStyle:"italic", fontSize:9 }}>
+            No commanders available. Pull from the Gacha to recruit.
+          </div>
+        ) : (() => {
+          const cmd = selCmd;
+          const isAtHQ     = cmd.tk === hqKey;
+          const tb         = cmd.troopBranch;
+          const faction    = tb ? FACTION_TROOPS[tb.faction] : null;
+          const branch     = faction?.branches.find(b=>b.key===tb?.branch);
+          const tier       = branch?.tiers[tb?.tier??0];
+          const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?500:0);
+          const cmdCost    = COMMAND_COST[branch?.size] ?? 1;
+          const cmdUsed    = (cmd.troops||0) * cmdCost;
+          const troopPct   = Math.round((cmdUsed / commandCap) * 100);
+          const fColor     = FACTION_META[tb?.faction]?.c || P.gold;
+
+          return (
+            <div>
+              {/* Commander header */}
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10,
+                padding:"10px 12px", background:"rgba(255,255,255,.04)",
+                border:`1px solid ${P.border}`, borderRadius:8 }}>
+                <div style={{ fontSize:28 }}>{cmd.icon}</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:P.ff, fontSize:12, fontWeight:700, color:P.gold }}>{cmd.n}</div>
+                  <div style={{ fontSize:8, color:P.sub, marginTop:1 }}>Lv{cmd.lvl} · {cmd.cls}</div>
+                  <div style={{ fontSize:7, color:isAtHQ?"#3daa60":"#7a5a3a", marginTop:1 }}>
+                    {isAtHQ ? "🏰 At HQ" : "📍 Away — recall to HQ to modify"}
+                  </div>
+                </div>
+                {(cmd.troops||0) > 0 && (
+                  <button className="btn" onClick={() => returnTroops(cmd.uid)}
+                    style={{ padding:"4px 8px", background:"rgba(200,50,50,.15)",
+                      border:"1px solid rgba(200,50,50,.4)", color:"#cc5050", fontSize:8 }}>
+                    Return
+                  </button>
+                )}
+              </div>
+
+              {/* Command bar */}
+              <div style={{ marginBottom:10 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:7,
+                  color:"#5a5060", fontFamily:P.ff, marginBottom:2 }}>
+                  <span>📡 COMMAND</span>
+                  <span style={{ color:troopPct>=100?"#cc3030":troopPct>=75?"#d0a030":"#3daa60" }}>
+                    {cmdUsed.toLocaleString()} / {commandCap.toLocaleString()}
+                  </span>
+                </div>
+                <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width:`${troopPct}%`,
+                    background:troopPct>=100?"#cc3030":troopPct>=75?"#d0a030":"#3daa60",
+                    borderRadius:2, transition:"width .3s" }}/>
+                </div>
+              </div>
+
+              {/* 3 Troop composition boxes */}
+              <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff, letterSpacing:".1em", marginBottom:6 }}>
+                TROOP COMPOSITION
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginBottom:12 }}>
+                {[0,1,2].map(slotIdx => {
+                  const isPrimary   = slotIdx === 0;
+                  const hasAssigned = isPrimary && tier;
+                  return (
+                    <div key={slotIdx} style={{ borderRadius:8, minHeight:88,
+                      border:`1px solid ${hasAssigned?fColor+"44":P.border}`,
+                      background:hasAssigned?`${fColor}0a`:"rgba(255,255,255,.02)",
+                      display:"flex", flexDirection:"column",
+                      alignItems:"center", justifyContent:"center", padding:8,
+                      opacity:!isPrimary?.4:1 }}>
+                      {hasAssigned ? (
+                        <>
+                          <div style={{ fontSize:8, fontFamily:P.ff, color:fColor,
+                            fontWeight:700, marginBottom:2, textAlign:"center" }}>{tier.label}</div>
+                          <div style={{ fontSize:7, color:P.sub }}>{branch.label}</div>
+                          <div style={{ fontSize:14, color:P.text, fontWeight:700, marginTop:4 }}>
+                            {(cmd.troops||0).toLocaleString()}
+                          </div>
+                          <div style={{ fontSize:6, color:P.dim }}>troops</div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize:7, color:"#2a2020", fontFamily:P.ff, textAlign:"center" }}>
+                          {isPrimary ? "No troops" : "—"}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Troop branch selector + assign slider (at HQ only) */}
+              {isAtHQ && (
+                <TroopBranchSelector cmd={cmd} setCmds={setCmds}
+                  faction={faction} branch={branch} tier={tier} tb={tb}
+                  unlockedBranches={unlockedBranches} />
+              )}
+              {!isAtHQ && tb && tier && (
+                <div style={{ padding:"8px 10px", background:"rgba(150,80,20,.08)",
+                  border:"1px solid rgba(150,80,20,.25)", borderRadius:4 }}>
+                  <div style={{ fontFamily:P.ff, fontSize:9, color:"#c8903a" }}>🔒 AWAY FROM HQ</div>
+                  <div style={{ fontSize:8, color:"#7a6a4a", marginTop:2 }}>
+                    Recall to HQ to modify troop assignment.
+                  </div>
+                </div>
+              )}
+              {isAtHQ && tb && (() => {
+                const sv        = sliderVals[cmd.uid] ?? (cmd.troops||0);
+                const maxSlider = Math.min(Math.floor(commandCap/cmdCost), barracksPool+(cmd.troops||0));
+                const delta     = sv - (cmd.troops||0);
+                return (
+                  <div>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:8,
+                      color:"#6a5a4a", fontFamily:P.ff, marginBottom:4 }}>
+                      <span>ASSIGN TROOPS</span>
+                      <span style={{ color:delta>0?"#3daa60":delta<0?"#cc5050":"#5a5060" }}>
+                        {(sv*cmdCost).toLocaleString()} / {commandCap.toLocaleString()}
+                        {delta!==0&&<span style={{marginLeft:4}}>{delta>0?`(+${delta})`:delta}</span>}
+                      </span>
+                    </div>
+                    <input type="range" min={0} max={maxSlider} value={sv}
+                      onChange={e => setSliderVals(v=>({...v,[cmd.uid]:+e.target.value}))}
+                      style={{ width:"100%", accentColor:"#3daa60", marginBottom:8 }}/>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:7,
+                      color:"#4a4a5a", marginBottom:8 }}>
+                      <span>0</span>
+                      <span style={{color:"#5a7a5a"}}>Pool: {barracksPool.toLocaleString()}</span>
+                      <span>{Math.floor(commandCap/cmdCost).toLocaleString()}</span>
+                    </div>
+                    {delta !== 0 ? (
+                      <button className="btn" onClick={() => assignTroops(cmd.uid, cmd.troopBranch, sv)}
+                        style={{ width:"100%", padding:"8px",
+                          background:delta>0?"linear-gradient(135deg,rgba(40,100,60,.5),rgba(40,100,60,.2))"
+                                          :"linear-gradient(135deg,rgba(150,40,40,.4),rgba(150,40,40,.15))",
+                          border:`1px solid ${delta>0?"#3daa60":"#cc4444"}`,
+                          color:delta>0?"#3dcc70":"#dd6666", fontSize:11, fontWeight:700 }}>
+                        {delta>0?`✓ Add ${delta} troops`:`✓ Remove ${Math.abs(delta)} troops`}
+                      </button>
+                    ) : (
+                      <div style={{ fontSize:8, color:"#4a4a5a", fontFamily:P.ffb,
+                        fontStyle:"italic", textAlign:"center" }}>Move slider to assign</div>
+                    )}
+                  </div>
+                );
+              })()}
+              {!tb && isAtHQ && (
+                <div style={{ fontSize:8, color:"#5a5060", fontFamily:P.ffb, fontStyle:"italic" }}>
+                  Select a troop branch above first.
+                </div>
+              )}
+              {!tb && !isAtHQ && (
+                <div style={{ fontSize:8, color:"#6a7a9a", fontFamily:P.ffb, fontStyle:"italic" }}>
+                  🔄 No troops assigned. Recall to HQ to assign a troop branch.
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  );
+}
+
 // ── Troop branch selector sub-component ──────────────────────────────────────
-function TroopBranchSelector({ cmd, setCmds, faction, branch, tier, tb }) {
+function TroopBranchSelector({ cmd, setCmds, faction, branch, tier, tb, unlockedBranches }) {
   const [expandedFaction, setExpandedFaction] = useState(tb?.faction ?? null);
   const [expandedBranch,  setExpandedBranch]  = useState(tb?.branch  ?? null);
 
-  const factions = Object.entries(FACTION_TROOPS);
+  const ub = unlockedBranches || {};
+  // Only show factions that have at least one unlocked branch
+  const factions = Object.entries(FACTION_TROOPS).filter(([fKey, fDef]) =>
+    fDef.branches.some(br => `${fKey}:${br.key}` in ub)
+  );
 
   return (
     <div style={{ marginBottom:10 }}>
@@ -760,8 +1176,9 @@ function TroopBranchSelector({ cmd, setCmds, faction, branch, tier, tb }) {
             </button>
             {isExpF && (
               <div style={{ paddingLeft:8, paddingTop:4, display:"flex", flexDirection:"column", gap:3 }}>
-                {fDef.branches.map(br => {
+                {fDef.branches.filter(br => `${fKey}:${br.key}` in ub).map(br => {
                   const isExpB = expandedBranch === br.key;
+                  const maxTier = ub[`${fKey}:${br.key}`] ?? 0;
                   return (
                     <div key={br.key}>
                       <button className="btn" onClick={() => setExpandedBranch(isExpB ? null : br.key)}
@@ -775,7 +1192,7 @@ function TroopBranchSelector({ cmd, setCmds, faction, branch, tier, tb }) {
                       </button>
                       {isExpB && (
                         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:3, padding:"4px 0 4px 8px" }}>
-                          {br.tiers.map((t, idx) => {
+                          {br.tiers.slice(0, maxTier + 1).map((t, idx) => {
                             const isActive = tb?.faction===fKey && tb?.branch===br.key && (tb?.tier??0)===idx;
                             return (
                               <button key={idx} className="btn"
@@ -812,56 +1229,143 @@ function TroopBranchSelector({ cmd, setCmds, faction, branch, tier, tb }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  HEALING TENT (Healing Tent)
+//  HEALING TENT
 // ─────────────────────────────────────────────────────────────────────────────
 function RepairBayScreen({ bldgs, woundedTroops, woundedQueue, bLog }) {
-  const rate = (bldgs.healingtent||0) * 5;
+  const [tab,        setTab]        = useState("wounded");
+  const [autoHeal,   setAutoHeal]   = useState(false);
+  const [healAmt,    setHealAmt]    = useState(0);
+  const tentLvl = bldgs.healingtent||0;
+  const tentCap = tentLvl * 200;
+  const rate    = tentLvl * 5;
+  const wounded = woundedTroops || 0;
+  const maxHeal = tentCap ? Math.min(wounded, tentCap) : wounded;
+  const sv      = Math.min(healAmt, maxHeal);
+
   return (
     <div>
-      <SectionHeader>HEALING TENT</SectionHeader>
-      <div style={{ padding:"12px 14px", background:"rgba(50,100,180,.08)",
-        border:"1px solid rgba(80,140,220,.25)", borderRadius:6, marginBottom:12 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:"#88aaff", fontWeight:700 }}>
-            ⛺ HEALING TENT — Lv{bldgs.healingtent||0}
+      {/* Capacity row */}
+      <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+        <div style={{ flex:1, padding:"8px 12px", background:"rgba(255,255,255,.03)",
+          border:`1px solid ${P.border}`, borderRadius:6 }}>
+          <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:4 }}>
+            HEALING TENT Lv{tentLvl}
           </div>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:13,
-            color:woundedTroops>0?"#88aaff":"#4a4a6a", fontWeight:700 }}>
-            {woundedTroops.toLocaleString()} wounded
+          <div style={{ fontSize:9, color:"#88aaff", fontFamily:P.ff, fontWeight:700, marginBottom:3 }}>
+            {wounded.toLocaleString()} / {Math.max(wounded,tentCap).toLocaleString()}
+          </div>
+          <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
+            <div style={{ height:"100%",
+              width:`${tentCap?Math.min(100,Math.round(wounded/tentCap*100)):0}%`,
+              background:"linear-gradient(90deg,#3366cc,#88aaff)", borderRadius:2 }}/>
           </div>
         </div>
-        {woundedTroops > 0 ? (<>
-          <div style={{ height:6, background:"#181820", borderRadius:3, overflow:"hidden", marginBottom:6 }}>
-            <div style={{ height:"100%", width:"100%",
-              background:"linear-gradient(90deg,#3366cc,#88aaff)", borderRadius:3 }}/>
+        <div style={{ flex:1, padding:"8px 12px", background:"rgba(255,255,255,.03)",
+          border:`1px solid ${P.border}`, borderRadius:6 }}>
+          <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:4 }}>
+            HEAL RATE
           </div>
-          <div style={{ fontSize:8, color:"#6a7a9a", fontFamily:"'Crimson Pro',serif" }}>
-            Healing at <strong style={{ color:"#88aaff" }}>{rate}/sec</strong> → returning to barracks
+          <div style={{ fontSize:14, color:"#5dcc80", fontFamily:P.ff, fontWeight:700 }}>
+            {rate.toLocaleString()}<span style={{ fontSize:8, color:P.dim }}>/sec</span>
           </div>
-        </>) : (
-          <div style={{ fontSize:8, color:"#4a4a6a", fontFamily:"'Crimson Pro',serif", fontStyle:"italic" }}>
-            No wounded troops. 30% of battle casualties recover here.
-          </div>
-        )}
-        {woundedQueue > 0 && (
-          <div style={{ fontSize:8, color:"#c08030", fontFamily:"'Cinzel',serif", marginTop:6 }}>
-            ⏳ {woundedQueue.toLocaleString()} healed troops queued — waiting for barracks capacity
-          </div>
-        )}
-        {(bldgs.healingtent||0) < 1 && (
-          <div style={{ fontSize:8, color:"#cc6030", fontFamily:"'Cinzel',serif", marginTop:6 }}>
-            ⚠ Build a Healing Tent in Buildings to recover wounded troops.
-          </div>
-        )}
+          <div style={{ fontSize:6, color:P.dim, marginTop:2 }}>auto-recovering</div>
+        </div>
       </div>
-      <div style={{ padding:"10px 12px", background:"rgba(255,255,255,.02)",
-        border:`1px solid ${P.border}`, borderRadius:6 }}>
-        <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:P.dim, marginBottom:6 }}>HOW IT WORKS</div>
-        <div style={{ fontSize:8, color:P.sub, fontFamily:"'Crimson Pro',serif", lineHeight:1.8 }}>
-          • 30% of troops lost in battle are wounded, not killed<br/>
-          • Wounded troops heal automatically at {rate}/sec<br/>
-          • Healed troops return to your barracks pool<br/>
-          • Upgrade the Healing Tent in Buildings to increase healing rate
+
+      {/* Tabs */}
+      <div style={{ display:"flex", marginBottom:10, borderBottom:`1px solid ${P.border}` }}>
+        {[["wounded","Wounded"],["queue","Healing Queue"]].map(([t,lbl]) => (
+          <button key={t} className="btn" onClick={() => setTab(t)}
+            style={{ flex:1, padding:"8px", fontFamily:P.ff, fontSize:9, fontWeight:700,
+              letterSpacing:".06em", textTransform:"uppercase",
+              background:tab===t?"rgba(136,170,255,.1)":"transparent",
+              border:"none", borderBottom:tab===t?"2px solid #88aaff":"2px solid transparent",
+              color:tab===t?"#88aaff":P.dim, marginBottom:-1, borderRadius:0 }}>
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", gap:10 }}>
+        {/* Left: content area */}
+        <div style={{ flex:1 }}>
+          {tab === "wounded" && (wounded === 0 ? (
+            <div style={{ fontSize:8, color:"#3a3040", fontFamily:P.ffb, fontStyle:"italic",
+              textAlign:"center", padding:"20px 0" }}>
+              No wounded troops at the moment.
+            </div>
+          ) : (
+            <div style={{ padding:"10px 12px", background:"rgba(50,100,180,.07)",
+              border:"1px solid rgba(80,140,220,.2)", borderRadius:6 }}>
+              <div style={{ fontFamily:P.ff, fontSize:11, color:"#88aaff", fontWeight:700, marginBottom:4 }}>
+                ⛺ {wounded.toLocaleString()} Wounded
+              </div>
+              <div style={{ fontSize:8, color:"#6a7a9a", fontFamily:P.ffb, lineHeight:1.7 }}>
+                Healing at <strong style={{color:"#88aaff"}}>{rate}/sec</strong> — returning to barracks.<br/>
+                30% of battle casualties recover here automatically.
+              </div>
+            </div>
+          ))}
+          {tab === "queue" && (woundedQueue > 0 ? (
+            <div style={{ padding:"10px 12px", background:"rgba(200,160,64,.06)",
+              border:"1px solid rgba(200,160,64,.2)", borderRadius:6 }}>
+              <div style={{ fontFamily:P.ff, fontSize:11, color:P.gold, fontWeight:700, marginBottom:4 }}>
+                ⏳ {woundedQueue.toLocaleString()} Queued
+              </div>
+              <div style={{ fontSize:8, color:P.sub }}>
+                Waiting for barracks capacity to accept healed troops.
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize:8, color:"#3a3040", fontFamily:P.ffb, fontStyle:"italic",
+              textAlign:"center", padding:"20px 0" }}>
+              Healing queue is empty.
+            </div>
+          ))}
+          {tentLvl < 1 && (
+            <div style={{ marginTop:8, fontSize:8, color:"#cc6030", fontFamily:P.ff }}>
+              ⚠ Build a Healing Tent in Architecture → Buildings to recover wounded troops.
+            </div>
+          )}
+        </div>
+
+        {/* Right: auto-heal panel */}
+        <div style={{ width:128, flexShrink:0, padding:"10px 12px",
+          background:"rgba(255,255,255,.02)", border:`1px solid ${P.border}`, borderRadius:8 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+            <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em" }}>AUTO HEAL</div>
+            <button className="btn" onClick={() => setAutoHeal(a=>!a)}
+              style={{ padding:"2px 8px", fontSize:8, fontWeight:700,
+                background:autoHeal?"rgba(50,150,80,.3)":"rgba(200,50,50,.2)",
+                border:`1px solid ${autoHeal?"#3daa60":"#cc4444"}`,
+                color:autoHeal?"#5dcc80":"#cc5050", borderRadius:12 }}>
+              {autoHeal?"ON":"OFF"}
+            </button>
+          </div>
+          <div style={{ textAlign:"center", marginBottom:10 }}>
+            <div style={{ fontSize:26, fontWeight:700,
+              color:wounded>0?"#88aaff":"#2a2a3a", fontFamily:P.ff }}>{wounded.toLocaleString()}</div>
+            <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em" }}>WOUNDED</div>
+          </div>
+          {wounded > 0 && tentLvl > 0 && (<>
+            <input type="range" min={0} max={Math.max(1,maxHeal)} value={sv}
+              onChange={e => setHealAmt(+e.target.value)}
+              style={{ width:"100%", accentColor:"#88aaff", marginBottom:8 }}/>
+            <button className="btn" onClick={() => setHealAmt(maxHeal)}
+              style={{ width:"100%", marginBottom:5, padding:"6px",
+                background:"rgba(255,255,255,.05)", border:`1px solid ${P.border}`,
+                color:P.sub, fontSize:8, fontFamily:P.ff, fontWeight:700, borderRadius:4 }}>
+              MAX
+            </button>
+            <button className="btn" disabled={sv===0}
+              style={{ width:"100%", padding:"6px",
+                background:sv>0?"linear-gradient(135deg,rgba(60,120,220,.4),rgba(60,120,220,.2))":"rgba(255,255,255,.02)",
+                border:`1px solid ${sv>0?"rgba(80,140,255,.5)":"#181818"}`,
+                color:sv>0?"#88aaff":"#2a2a3a",
+                fontSize:8, fontFamily:P.ff, fontWeight:700, borderRadius:4 }}>
+              CONFIRM
+            </button>
+          </>)}
         </div>
       </div>
     </div>
@@ -1012,6 +1516,8 @@ export default memo(function HQMenu({
   upgQueue, sliderVals, setSliderVals, bLog,
   upgrade, canAfford, assignTroops, returnTroops, queueTraining,
   recallMarch, setScreen, gearInventory, playerHqKey,
+  facKey, unlockedBranches, setUnlockedBranches,
+  quarterLevels, setQuarterLevels,
 }) {
   if (!hqOpen) return null;
 
@@ -1053,47 +1559,56 @@ export default memo(function HQMenu({
       </div>
 
       {/* Content — fills remaining screen */}
-      <div className="scr" style={{ flex:1, overflowY: hqTab === "buildings" ? "hidden" : "auto",
-        minHeight:0, padding: (isHub || hqTab === "buildings") ? 0 : 14,
-        display: hqTab === "buildings" ? "flex" : "block", flexDirection:"column" }}>
+      {(() => {
+        const splitLayout = hqTab === "buildings" || hqTab === "army";
+        return (
+          <div className="scr" style={{ flex:1, overflowY: splitLayout ? "hidden" : "auto",
+            minHeight:0, padding: (isHub || splitLayout) ? 0 : 14,
+            display: splitLayout ? "flex" : "block", flexDirection:"column" }}>
 
-        {hqTab === "hub" && (
-          <HubScreen setHqTab={setHqTab} />
-        )}
-        {hqTab === "buildings" && (
-          <InfrastructureScreen
-            bldgs={bldgs} setBldgs={setBldgs} rss={rss} canAfford={canAfford}
-            upgrade={upgrade} upgQueue={upgQueue} />
-        )}
-        {hqTab === "commandcenter" && (
-          <CommandCenterScreen
-            cmds={cmds} pKeys={pKeys} rss={rss} gems={gems}
-            bldgs={bldgs} bLog={bLog} tiles={tiles} />
-        )}
-        {hqTab === "troops" && (
-          <StrikeCraftScreen
-            bldgs={bldgs} barracksPool={barracksPool}
-            trainingQueue={trainingQueue} trainSlider={trainSlider}
-            setTrainSlider={setTrainSlider} canAfford={canAfford}
-            queueTraining={queueTraining} rss={rss} />
-        )}
-        {hqTab === "army" && (
-          <BattleGroupsScreen
-            cmds={cmds} setCmds={setCmds} bldgs={bldgs}
-            barracksPool={barracksPool} setBarracks={setBarracks}
-            sliderVals={sliderVals} setSliderVals={setSliderVals}
-            assignTroops={assignTroops} returnTroops={returnTroops}
-            playerHqKey={playerHqKey} />
-        )}
-        {hqTab === "repairbay" && (
-          <RepairBayScreen
-            bldgs={bldgs} woundedTroops={woundedTroops}
-            woundedQueue={woundedQueue} bLog={bLog} />
-        )}
-        {hqTab === "marketplace" && (
-          <MarketplaceScreen rss={rss} setRss={setRss} />
-        )}
-      </div>
+            {hqTab === "hub" && (
+              <HubScreen setHqTab={setHqTab} />
+            )}
+            {hqTab === "buildings" && (
+              <InfrastructureScreen
+                bldgs={bldgs} setBldgs={setBldgs} rss={rss} setRss={setRss} canAfford={canAfford}
+                upgrade={upgrade} upgQueue={upgQueue} cmds={cmds} facKey={facKey}
+                quarterLevels={quarterLevels} setQuarterLevels={setQuarterLevels}
+                setUnlockedBranches={setUnlockedBranches} />
+            )}
+            {hqTab === "commandcenter" && (
+              <CommandCenterScreen
+                cmds={cmds} pKeys={pKeys} rss={rss} gems={gems}
+                bldgs={bldgs} bLog={bLog} tiles={tiles} />
+            )}
+            {hqTab === "troops" && (
+              <StrikeCraftScreen
+                bldgs={bldgs} barracksPool={barracksPool}
+                trainingQueue={trainingQueue} canAfford={canAfford}
+                queueTraining={queueTraining} rss={rss} cmds={cmds}
+                unlockedBranches={unlockedBranches}
+                discardTroops={n => setBarracks(p => Math.max(0, p - n))} />
+            )}
+            {hqTab === "army" && (
+              <BattleGroupsScreen
+                cmds={cmds} setCmds={setCmds} bldgs={bldgs}
+                barracksPool={barracksPool} setBarracks={setBarracks}
+                sliderVals={sliderVals} setSliderVals={setSliderVals}
+                assignTroops={assignTroops} returnTroops={returnTroops}
+                playerHqKey={playerHqKey}
+                unlockedBranches={unlockedBranches} />
+            )}
+            {hqTab === "repairbay" && (
+              <RepairBayScreen
+                bldgs={bldgs} woundedTroops={woundedTroops}
+                woundedQueue={woundedQueue} bLog={bLog} />
+            )}
+            {hqTab === "marketplace" && (
+              <MarketplaceScreen rss={rss} setRss={setRss} />
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 });
