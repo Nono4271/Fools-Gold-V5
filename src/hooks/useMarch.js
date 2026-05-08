@@ -270,7 +270,7 @@ arrivedAttackers.forEach(cmd => {
   setBLog(p => [`✅ ${cmd.n} Lv${cmd.lvl||5}${stageLabel} ${tileCaptured?"captured":"siege dealt"} · ${res.modLabel}`, ...p].slice(0, 99));
 });
 
-}, [cmds, screen]);
+}, [cmds, screen, tileVersion]);
 
 // ── Draw rematch timer tick ───────────────────────────────────────────────────
 // Every second: check if any player commander's drawTimer has expired.
