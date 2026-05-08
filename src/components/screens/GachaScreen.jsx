@@ -314,7 +314,7 @@ export default function GachaScreen({
       </div>
 
       {/* Body */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px", touchAction: "pan-y", WebkitOverflowScrolling: "touch" }}>
+      <div className="scr" style={{ flex: 1, overflowY: "auto", padding: "14px 14px", touchAction: "pan-y", WebkitOverflowScrolling: "touch" }}>
 
         {/* ── SUMMON TAB ── */}
         {activeTab === "summon" && (
