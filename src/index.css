@@ -3,36 +3,14 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html {
   width: 100%; height: 100%;
-  overflow: hidden;
-  /* position:fixed on <html> is the most reliable iOS pull-to-refresh blocker.
-     It also prevents the swipe-back-navigation rubber-band animation. */
-  position: fixed;
-  overscroll-behavior: none;
-  touch-action: none;
+  background: #0e1014;
 }
 body {
   width: 100%; height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
-  touch-action: none;
   background: #0e1014;
 }
-#root { width: 100%; height: 100%; overflow: hidden; background: #0e1014; }
-
-/* When GachaScreen is active, release the document lock so the inner
-   scroll container can receive touch events on iOS/Android.
-   position:fixed on <html> swallows all touch-based scrolling — removing
-   it (back to static) lets the .scr div's overflowY:scroll work properly. */
-/* gacha-open: applied by GachaScreen, CommanderScreen, GearScreen on mount.
-   Releases the position:fixed / touch-action:none locks so inner scroll
-   containers can receive touch pan events on iOS/Android. */
-html.gacha-open,
-html.gacha-open body {
-  touch-action: pan-y;
-}
-html.gacha-open #root {
-  overflow: visible;
-}
+/* #root fills viewport; overflow is managed per-screen via inline styles */
+#root { width: 100%; height: 100%; background: #0e1014; }
 
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: #0a0c10; }
