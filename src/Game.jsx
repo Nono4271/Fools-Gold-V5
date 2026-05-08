@@ -1224,6 +1224,7 @@ export default function RiseToWar() {
           canvas { touch-action: none !important; }
           button, .btn { touch-action: manipulation; cursor: pointer; }
           [style*="position: fixed"], [style*="position:fixed"] { touch-action: auto; }
+          .scr, [style*="overflow-y: auto"], [style*="overflowY: auto"] { touch-action: pan-y !important; }
         `}
       </style>
 
