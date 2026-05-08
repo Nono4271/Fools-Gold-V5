@@ -3,12 +3,12 @@ export default function SkillInfoPanel({ skillDef, isMain, level, maxLevel, colo
   const atMax = level >= maxLevel;
   return (
     <div style={{
-      position: "absolute", left: 0, right: 0, bottom: 0,
+      position: "fixed", left: 0, right: 0, bottom: 0,
       background: "rgba(6,4,2,.97)",
       border: `1px solid ${color}40`,
       borderRadius: "12px 12px 0 0",
       padding: "14px 16px 20px",
-      zIndex: 10,
+      zIndex: 900,
       boxShadow: `0 -8px 32px ${color}18`,
       animation: "fadeUp .18s ease",
     }}>

@@ -374,9 +374,8 @@ export default function CommanderDetail({ cmd, bldgs, gearInventory, setGearInve
         rarityColor={r.color}
       />
 
-      <div style={{ flex: 1 }} />
-
       {/* ── Skill Trees button ── */}
+      <div style={{ flex: 1, minHeight: 16 }} />
       <div style={{ padding: "12px 18px 28px", flexShrink: 0 }}>
         <button onClick={() => setShowSkills(true)} style={{
           width: "100%", padding: "13px 0",
