@@ -261,16 +261,15 @@ export default function RiseToWar() {
   const mvCmdRef = useRef(null);
   const ZOOM_LEVELS = useMemo(() => [0.75, 1.0, 1.25, 1.5], []);
 
-  // ── Display-only pan/zoom state ──────────────────────────────────────────
-  const [displayPanZoom, setDisplayPanZoom] = useState(() => ({
-    pan: { x: -_initHQ.cx * _initZ + window.innerWidth / 2, y: -_initHQ.cy * _initZ + window.innerHeight / 2 },
-    zoom: _initZ,
-  }));
-  const panSt = displayPanZoom.pan;
-  const zoom  = displayPanZoom.zoom;
+  // ── Display-only zoom state (pan NEVER causes re-renders) ────────────────
+  // Pan is read from panRef directly everywhere. Only zoom changes (rare: pinch)
+  // need a re-render. Removing pan from state eliminates the Game re-render that
+  // was freezing the UI for 2-7 seconds on every pan-end.
+  const [zoomState, setZoomState] = useState(_initZ);
 
   const notifyDisplayPanZoom = useCallback(() => {
-    setDisplayPanZoom({ pan: { ...panRef.current }, zoom: zoomRef.current });
+    setZoomState(zoomRef.current);
+    minimapRedrawRef.current?.();
   }, []);
 
   const centerOnHQ = useCallback(() => {
@@ -284,17 +283,17 @@ export default function RiseToWar() {
     mapRendererRef.current?.teleport(px, py);
   }, []);
 
+  const minimapRedrawRef = useRef(null);
   const panNotifyTimerRef = useRef(null);
   const onPanChange = useCallback(np => {
     panRef.current = np;
-    // Throttle minimap/HUD pan updates. 150ms is imperceptible to users while
-    // still batching rapid successive calls. Previously 500ms — that stacked
-    // with MapRenderer's rAF delay to produce visible minimap lag.
+    // Redraw minimap directly via ref — no setState, no Game re-render.
+    // Throttle to 100ms so we don't overdraw during fast pans.
     if (!panNotifyTimerRef.current) {
       panNotifyTimerRef.current = setTimeout(() => {
         panNotifyTimerRef.current = null;
-        setDisplayPanZoom(prev => ({ ...prev, pan: { ...panRef.current } }));
-      }, 150);
+        minimapRedrawRef.current?.();
+      }, 100);
     }
   }, []);
 
@@ -462,7 +461,7 @@ export default function RiseToWar() {
           const py = -cy * initZoom + window.innerHeight / 2;
           panRef.current = { x: px, y: py };
           zoomRef.current = initZoom;
-          setDisplayPanZoom({ pan: { x: px, y: py }, zoom: initZoom });
+          setZoomState(initZoom);
         }
 
         // Place AI HQs
@@ -1339,7 +1338,7 @@ export default function RiseToWar() {
         />
       )}
 
-      <Minimap tiles={tiles} pKeys={pKeys} panSt={panSt} zoom={zoom} />
+      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} />
 
       {gearScreenOpen && (
         <GearScreen
@@ -1417,7 +1416,7 @@ export default function RiseToWar() {
           onClose={() => setWorldMapOpen(false)}
           onTeleport={teleportTo}
           panRef={panRef}
-          zoom={zoom}
+          zoom={zoomState}
         />
       )}
 
