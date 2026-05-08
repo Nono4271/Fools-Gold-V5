@@ -1012,6 +1012,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
             onTileClickRef.current(key, e);
           }
         }
+        const wasDrag = tDidDrag.current; // capture before reset
         isPanning.current = false;
         tDidDrag.current = false;
         // Clear any in-flight throttle timers
@@ -1026,24 +1027,33 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         const lockedPan = { ...panRef.current };
         world.x = lockedPan.x;
         world.y = lockedPan.y;
-        // Redraw at final pan position. Fire pixi redraw AND React pan notification
-        // in the SAME rAF — the nested rAF pattern caused 5-8 second stalls on iOS
-        // because the second rAF queued behind an already-busy main thread.
-        const _panT0 = performance.now();
-        requestAnimationFrame(() => {
-          const _panDelay = performance.now() - _panT0;
-          window._perfLog?.(`panEnd→rAF:+${Math.round(_panDelay)}ms`);
-          // Skip stale frames (e.g. when user pans again before this fires).
-          // Tightened from 2000ms → 500ms: anything older is already superseded.
-          if (_panDelay > 500) { window._perfLog?.(`skip:stale`); return; }
-          lastBoundsRef.current = null;
-          redrawRef.current?.redraw(true);
-          const _t2 = performance.now();
-          window._perfLog?.(`pixi:redraw:+${Math.round(_t2 - _panT0 - _panDelay)}ms`);
-          // Notify React in the same frame — avoids a second rAF slot wait.
+        // On a pure tap (no drag), skip the pan-end redraw entirely.
+        // drawSelection already ran synchronously above, and the pan position
+        // hasn't changed — there's nothing new to render.
+        if (wasDrag) {
+          // Redraw at final pan position after a drag.
+          // IMPORTANT: Do NOT use requestAnimationFrame here. On iOS Safari, rAF
+          // queues behind the momentum-scroll pipeline and can be delayed 2-10 seconds
+          // after touchend — this is the root cause of the red "panEnd→rAF:+Xms" entries
+          // in the PERF overlay. setTimeout(0) uses the macrotask queue instead, which
+          // iOS dispatches promptly without waiting for the display vsync pipeline.
+          const _panT0 = performance.now();
+          setTimeout(() => {
+            const _panDelay = performance.now() - _panT0;
+            window._perfLog?.(`panEnd→rAF:+${Math.round(_panDelay)}ms`);
+            // Skip stale callbacks (e.g. when user starts another pan before this fires).
+            if (_panDelay > 500) { window._perfLog?.(`skip:stale`); return; }
+            lastBoundsRef.current = null;
+            redrawRef.current?.redraw(true);
+            const _t2 = performance.now();
+            window._perfLog?.(`pixi:redraw:+${Math.round(_t2 - _panT0 - _panDelay)}ms`);
+            onPanChangeRef.current(lockedPan);
+            window._perfLog?.(`react:panNotify`);
+          }, 0);
+        } else {
+          // Tap with no drag — just notify pan (position unchanged, no redraw needed)
           onPanChangeRef.current(lockedPan);
-          window._perfLog?.(`react:panNotify`);
-        });
+        }
       }
     };
     el.addEventListener("touchstart",  onTS, { passive: false });
