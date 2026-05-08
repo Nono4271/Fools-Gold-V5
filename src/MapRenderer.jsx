@@ -1109,8 +1109,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
             _panFired = true;
             const _panDelay = performance.now() - _panT0;
             window._perfLog?.(`panEnd→rAF:+${Math.round(_panDelay)}ms`);
-            // Skip stale callbacks (e.g. user started another pan before this fires).
-            if (_panDelay > 500) { window._perfLog?.(`skip:stale`); return; }
+            // No stale guard here — if iOS suspended the timer queue (e.g. app-switch,
+            // Control Center, thermal throttle), _panDelay can be 10-20 seconds.
+            // Dropping the redraw in that case left the map frozen. The _panFired flag
+            // already prevents double-firing; a new touchstart resets its own closure.
             lastBoundsRef.current = null;
             redrawRef.current?.redraw(true);
             const _t2 = performance.now();
