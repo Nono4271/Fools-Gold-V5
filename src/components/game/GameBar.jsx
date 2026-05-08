@@ -170,6 +170,7 @@ export default memo(function GameBar({
   setGearScreenOpen, gearInventoryCount,
   playerHqKey,
   hidden,
+  onTogglePerf, perfVisible,
 }) {
   if (hidden) return null;
   // All player commanders (for left rail) — only those NOT at HQ
@@ -277,6 +278,13 @@ export default memo(function GameBar({
             accent="#7a5010"
             badge={0}
             onClick={() => setGearScreenOpen(true)}
+          />
+          <ActionButton
+            icon="⏱"
+            label="Perf"
+            color={perfVisible ? "#28dc6e" : "#4a4a4a"}
+            accent={perfVisible ? "#0a4a20" : "#1a1a1a"}
+            onClick={() => onTogglePerf?.()}
           />
         </div>
       </div>
