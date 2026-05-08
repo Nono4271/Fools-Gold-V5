@@ -31,7 +31,11 @@ export default memo(function TilePopup({
 
   // ── HQ "Enter" popup — just a single button ──
   if (popupMode === "hqEnter") {
+    const closeHqEnter = () => { setSelKey(null); setPopupPos(null); setPopupMode("main"); };
     return (
+      <>
+      {/* Transparent backdrop — clicking outside closes the popup */}
+      <div style={{ position:"fixed", inset:0, zIndex:499 }} onClick={closeHqEnter} />
       <div style={{
         position:"fixed", left:popupPos.x, top:popupPos.y,
         width:120, zIndex:500,
@@ -69,6 +73,7 @@ export default memo(function TilePopup({
           >Enter</button>
         </div>
       </div>
+      </>
     );
   }
 
