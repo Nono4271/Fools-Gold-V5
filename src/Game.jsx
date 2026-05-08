@@ -153,7 +153,10 @@ export default function RiseToWar() {
   const [upgQueue, setUpgQueue] = useState({});
 
   const [aiFaction,      setAiFaction]      = useState(null);
-  const [aiRss,          setAiRss]          = useState({ stone:300, wood:300, ore:300, gas:300 });
+  // aiRss is only consumed via aiRssRef during gameplay — never passed as a prop
+  // to any rendered component. Removing the useState eliminates ~1 re-render/sec
+  // from tickAiRss. setAiRss now writes directly to the ref; a no-op state shim
+  // is kept so FactionScreen/WinScreen callers compile without changes.
   const [aiBldgs,        setAiBldgs]        = useState({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 });
   const [aiBarracksPool, setAiBarracksPool] = useState(barracksCapacity(0));
   const aiLastActionRef = useRef(0);
@@ -161,11 +164,15 @@ export default function RiseToWar() {
 
   const tilesRef   = tilesMapRef;
   const aiRssRef   = useRef({ stone:300, wood:300, ore:300, gas:300 });
+  // setAiRss: writes directly to ref, no setState → no re-render during gameplay.
+  // Accepts both plain objects and updater functions (same API as useState setter).
+  const setAiRss = useCallback((updater) => {
+    aiRssRef.current = typeof updater === "function" ? updater(aiRssRef.current) : updater;
+  }, []);
   const aiBldgsRef = useRef({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 });
   const aiPoolRef  = useRef(barracksCapacity(0));
   const playerHqRef = useRef(null);
 
-  useEffect(() => { aiRssRef.current   = aiRss;          }, [aiRss]);
   useEffect(() => { aiBldgsRef.current = aiBldgs;        }, [aiBldgs]);
   useEffect(() => { aiPoolRef.current  = aiBarracksPool; }, [aiBarracksPool]);
   useEffect(() => { playerHqRef.current = playerHqKey;   }, [playerHqKey]);
@@ -280,13 +287,14 @@ export default function RiseToWar() {
   const panNotifyTimerRef = useRef(null);
   const onPanChange = useCallback(np => {
     panRef.current = np;
-    // Throttle minimap updates to 500ms — canvas redraw is fast but
-    // React reconciliation of props still costs ~1ms, no need for more.
+    // Throttle minimap/HUD pan updates. 150ms is imperceptible to users while
+    // still batching rapid successive calls. Previously 500ms — that stacked
+    // with MapRenderer's rAF delay to produce visible minimap lag.
     if (!panNotifyTimerRef.current) {
       panNotifyTimerRef.current = setTimeout(() => {
         panNotifyTimerRef.current = null;
         setDisplayPanZoom(prev => ({ ...prev, pan: { ...panRef.current } }));
-      }, 500);
+      }, 150);
     }
   }, []);
 
@@ -559,7 +567,7 @@ export default function RiseToWar() {
   }, []);
 
   // ── Hooks ──
-  useResources({ screen, tilesRef, bldgs, setRss });
+  useResources({ screen, tilesRef, setRss });
 
   const { initPathfinding, findPath, findPathBatch } = usePathfinding();
 
@@ -1102,17 +1110,19 @@ export default function RiseToWar() {
     const px = Math.min(window.innerWidth-POPUP_W-8, Math.max(8, screenX-POPUP_W/2));
     const py = Math.max(46, screenY-POPUP_H-16);
 
-    // Defer React state update to next frame — lets the touch event return
-    // immediately so the canvas stays responsive, then React renders the popup
+    // Defer React state update with setTimeout(0) rather than rAF.
+    // rAF joins the render queue — when the rAF queue is busy after a pan gesture,
+    // this caused 5-8 second tap delays (visible as "tap:574,627 +7838ms" in PERF).
+    // setTimeout(0) yields to the event loop without queuing behind pending frames.
     perfLog(`rAF:schedule`);
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       perfLog(`rAF:fire`);
       unstable_batchedUpdates(() => {
         setSelKey(k); setPopupPos({ x:px, y:py }); setPopupMode("main"); setEditArmyCmd(null);
         setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
       });
       perfLog(`setState:done`);
-    });
+    }, 0);
   }, [floaty, startMarch, setHqOpen, setHqTab]);
 
   // ── Screen routing ──
