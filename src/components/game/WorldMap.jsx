@@ -16,49 +16,23 @@ function keepColor(owner) {
 // ── Design space: 700×700 ────────────────────────────────────────────────────
 const DW = 700, DH = 700;
 
-// v11 polygon layout — zero-gap, all borders verified
-// Shallows rendered as 3 sub-polygons (same fill) to avoid self-intersection around HG notch
 const POLYS = {
   saltmere:          [[0,0],[206,0],[171,113],[192,192],[0,192]],
   brinefields:       [[206,0],[350,0],[350,120],[170,120]],
   coralfen:          [[350,0],[494,0],[530,120],[350,120]],
   tidesreach:        [[494,0],[700,0],[700,192],[508,192],[529,113]],
   emberpeak:         [[0,192],[205,192],[205,280],[188,381],[0,381]],
-  // shallows as one polygon — U-shape tracing around the HolyGrail notch
-  // Fixed: left leg [197,280]→[205,280]; right leg uses [508,192],[508,280] to match Ironhaven
   shatteredShallows: [[173,120],[530,120],[508,192],[508,259],[390,259],[390,280],[310,280],[310,252],[205,252],[205,192],[192,192],[173,120]],
-  // Fixed: left top [495,192]→[508,192]; added [508,280] to close cleanly against Shallows/Bloodmarch
   ironhaven:         [[508,192],[700,192],[700,381],[512,381],[508,280]],
   cinderplain:       [[0,381],[175,381],[175,496],[0,496]],
   stormwatch:        [[525,381],[700,381],[700,496],[525,496]],
-  // Fixed: starts at [175,381]; top-left uses [205,280] to align with Shallows' corrected left leg
   ashenRift:         [[175,381],[188,381],[205,252],[310,252],[310,479],[350,479],[350,580],[175,580],[175,381]],
   holyGrail:         [[310,280],[390,280],[390,479],[310,479]],
-  // Fixed: top-right uses [508,192],[508,280] to follow Ironhaven's left boundary
   bloodmarch:        [[390,259],[508,259],[512,381],[525,381],[525,580],[350,580],[350,479],[390,479],[390,259]],
   runemarks:         [[175,580],[350,580],[350,700],[200,700],[175,630]],
   boneridge:         [[350,580],[525,580],[525,630],[500,700],[350,700]],
   ashenveil:         [[0,496],[175,496],[175,580],[175,630],[200,700],[0,700]],
   grimhold:          [[525,496],[700,496],[700,700],[500,700],[525,630]],
-};
-
-const REGION_TERRAIN = {
-  saltmere:          { base: "#1e1e14", dark: "#141410" },
-  tidesreach:        { base: "#101e28", dark: "#081418" },
-  brinefields:       { base: "#241e0e", dark: "#181208" },
-  coralfen:          { base: "#102028", dark: "#081418" },
-  emberpeak:         { base: "#1e1010", dark: "#140808" },
-  ironhaven:         { base: "#081428", dark: "#040c18" },
-  shatteredShallows: { base: "#1e2e18", dark: "#141e10" },
-  cinderplain:       { base: "#1e1408", dark: "#140e04" },
-  stormwatch:        { base: "#081828", dark: "#040e18" },
-  holyGrail:         { base: "#1e3018", dark: "#142010" },
-  ashenRift:         { base: "#281808", dark: "#1c1004" },
-  bloodmarch:        { base: "#220808", dark: "#180404" },
-  runemarks:         { base: "#141820", dark: "#0c1018" },
-  boneridge:         { base: "#18140c", dark: "#100e08" },
-  ashenveil:         { base: "#120e1e", dark: "#0c0814" },
-  grimhold:          { base: "#0e1808", dark: "#080e04" },
 };
 
 function scalePts(pts, sx, sy) {
@@ -107,6 +81,39 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
   const sx = 1, sy = 1;
   const iconMult = ICON_SCALE;
 
+  // Handle tap on SVG — convert client coords to viewBox coords and hit-test polygons
+  const handleSvgClick = (e) => {
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    // Use changedTouches for touch events, otherwise clientX/Y
+    const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    const svgX = ((clientX - rect.left) / rect.width)  * DW;
+    const svgY = ((clientY - rect.top)  / rect.height) * DH;
+
+    // Point-in-polygon test
+    function pointInPoly(px, py, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, yi] = poly[i];
+        const [xj, yj] = poly[j];
+        if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+          inside = !inside;
+        }
+      }
+      return inside;
+    }
+
+    for (const [key, poly] of Object.entries(POLYS)) {
+      if (pointInPoly(svgX, svgY, poly)) {
+        setSelected(prev => prev === key ? null : key);
+        return;
+      }
+    }
+    // Clicked empty space — deselect
+    setSelected(null);
+  };
+
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 9999,
@@ -114,7 +121,7 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
       display: "flex", flexDirection: "column",
       overflow: "hidden",
       fontFamily: "'Cinzel',serif",
-      touchAction: "manipulation",
+      // Do NOT set touchAction here — let clicks through
     }}>
       <style>{`
         @keyframes holyPulse { 0%,100%{opacity:.3} 50%{opacity:.6} }
@@ -127,19 +134,40 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
         borderBottom: "1px solid rgba(200,160,64,0.25)",
         display: "flex", alignItems: "center", justifyContent: "center",
         position: "relative",
+        zIndex: 10,
       }}>
-        <div style={{ cursor: "pointer", position: "absolute", left: 4,
-          padding: "4px 10px", fontSize: 20, color: "#c8a060" }}
-          onClick={onClose}>‹</div>
+        {/* Back arrow — explicit large hit area */}
+        <div
+          onClick={onClose}
+          style={{
+            position: "absolute", left: 0, top: 0,
+            width: 60, height: 46,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer",
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          <span style={{ fontSize: 24, color: "#c8a060", lineHeight: 1 }}>‹</span>
+        </div>
         <span style={{ color: "#c8a060", fontSize: 15, fontFamily: "'Cinzel',serif", letterSpacing: ".14em" }}>
           WORLD MAP
         </span>
       </div>
 
-      {/* Map area */}
-      <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-        <svg viewBox={`0 0 ${DW} ${DH}`} preserveAspectRatio="none"
-          style={{ display: "block", width: "100%", height: "100%" }}>
+      {/* Map area — use position:relative, no overflow:hidden so events aren't clipped */}
+      <div style={{ flex: 1, position: "relative" }}>
+        <svg
+          viewBox={`0 0 ${DW} ${DH}`}
+          preserveAspectRatio="none"
+          style={{
+            display: "block", width: "100%", height: "100%",
+            cursor: "pointer",
+            // Ensure SVG itself receives pointer events
+            pointerEvents: "all",
+          }}
+          onClick={handleSvgClick}
+          onTouchEnd={handleSvgClick}
+        >
           <defs>
             <filter id="wm-drop">
               <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="rgba(0,0,0,0.9)"/>
@@ -164,8 +192,7 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
             const isHG   = key === "holyGrail";
 
             return (
-              <g key={key} style={{ cursor: "pointer" }}
-                onClick={() => setSelected(isSel ? null : key)}>
+              <g key={key} style={{ pointerEvents: "none" }}>
                 <polygon points={scalePts(poly, sx, sy)}
                   fill={isHG ? "rgba(240,192,64,0.08)" : facCol ? facCol : "#1e1e1e"}
                   opacity={isHG ? 1 : facCol ? 0.35 : 0.7}
@@ -196,13 +223,13 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
                 <circle cx={cx * sx} cy={cy * sy} r={38 * sx}
                   fill="rgba(240,192,64,0.1)"
                   clipPath="url(#hg-clip)"
-                  style={{ animation: "holyPulse 2.5s ease-in-out infinite" }}/>
+                  style={{ animation: "holyPulse 2.5s ease-in-out infinite", pointerEvents: "none" }}/>
               </>
             );
           })()}
 
           {/* Vignette */}
-          <rect width={DW} height={DH} fill="url(#wm-vig)"/>
+          <rect width={DW} height={DH} fill="url(#wm-vig)" style={{ pointerEvents: "none" }}/>
 
           {/* ── Player viewport dot ── */}
           {dotPos && zoom && (() => {
@@ -223,13 +250,11 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
             );
           })()}
 
-          {/* ── Region labels (one per logical region) ── */}
+          {/* ── Region labels ── */}
           {keeps.map(reg => {
             if (reg.key === "holyGrail") return null;
-
             const poly = POLYS[reg.key];
             if (!poly) return null;
-
             const owned = reg.owner;
             const col = owned
               ? (owned === "player" ? "#88ccff" : (FAC_COLOR[owned] || "#ddaa66"))
@@ -248,25 +273,21 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
             );
           })}
 
-          {/* ── Keep icons (one per logical region) ── */}
+          {/* ── Keep icons ── */}
           {keeps.map(reg => {
             const poly = POLYS[reg.key];
             if (!poly) return null;
-
             const cx = reg.cx * sx, cy = reg.cy * sy;
             if (cy > DH - 15) return null;
-
             const owned  = reg.owner;
             const col    = keepColor(owned);
             const isHG   = reg.key === "holyGrail";
             const sz     = (isHG ? 14 * sx : reg.layer === "conflict" ? 11 * sx : 10 * sx) * iconMult;
             const isSel  = selected === reg.key;
             const by     = cy - sz * 1.2;
-            const hitPad = HIT_PAD * sx;
 
             if (isHG) return (
-              <g key={`icon_${reg.key}`} style={{ cursor: "pointer" }}
-                onClick={() => setSelected(isSel ? null : reg.key)}>
+              <g key={`icon_${reg.key}`} style={{ pointerEvents: "none" }}>
                 {isSel && <circle cx={cx} cy={cy} r={sz * 2.5} fill="none" stroke="#f0c040" strokeWidth={1.5} opacity={0.7}/>}
                 <circle cx={cx} cy={cy} r={sz * 1.8} fill="rgba(240,192,64,0.12)" stroke="#f0c040" strokeWidth={0.8} opacity={0.7}/>
                 <path d={`M${cx-sz*.5},${cy-sz*.5} L${cx+sz*.5},${cy-sz*.5} L${cx+sz*.35},${cy+sz*.15} L${cx-sz*.35},${cy+sz*.15}Z`}
@@ -280,9 +301,7 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
             );
 
             return (
-              <g key={`icon_${reg.key}`} style={{ cursor: "pointer" }}
-                onClick={() => setSelected(isSel ? null : reg.key)}>
-                <rect x={cx - sz - hitPad} y={by - sz * 1.4 - hitPad} width={sz * 2 + hitPad * 2} height={sz * 2.8 + hitPad * 2} fill="transparent"/>
+              <g key={`icon_${reg.key}`} style={{ pointerEvents: "none" }}>
                 {owned && <circle cx={cx} cy={by} r={sz * 1.6} fill={col} opacity={0.15}/>}
                 {isSel && <circle cx={cx} cy={by} r={sz * 2.1} fill="none" stroke={col} strokeWidth={1.4} opacity={0.8}/>}
                 <rect x={cx - sz * .58} y={by} width={sz * 1.16} height={sz} rx={1}
@@ -312,6 +331,7 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
           background: "rgba(4,6,10,0.98)",
           borderTop: "1px solid rgba(200,160,64,0.2)",
           padding: "10px 14px 14px",
+          zIndex: 10,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
             <div>
@@ -330,16 +350,26 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={() => { onClose(); requestAnimationFrame(() => onTeleport(selectedKeep.cx, selectedKeep.cy)); }}
+              <button
+                onClick={() => {
+                  onClose();
+                  requestAnimationFrame(() => onTeleport(selectedKeep.cx, selectedKeep.cy));
+                }}
                 style={{
                   padding: "7px 18px",
                   background: "linear-gradient(160deg,#2a1e08,#100c02)",
                   border: "1px solid #8a6020", borderRadius: 4,
                   color: "#f0c060", fontFamily: "'Cinzel',serif",
                   fontSize: 11, letterSpacing: ".06em", cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
                 }}>Go →</button>
-              <button onClick={() => setSelected(null)}
-                style={{ background: "none", border: "none", color: "#4a4030", fontSize: 16, cursor: "pointer", padding: 0 }}>
+              <button
+                onClick={() => setSelected(null)}
+                style={{
+                  background: "none", border: "none", color: "#4a4030",
+                  fontSize: 16, cursor: "pointer", padding: "8px",
+                  WebkitTapHighlightColor: "transparent",
+                }}>
                 ✕
               </button>
             </div>
