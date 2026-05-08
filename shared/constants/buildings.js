@@ -65,3 +65,48 @@ return newLevel * (isMilitary ? 30000 : 20000);
 export function cmdCommand(lvl, ccLvl, leaderBonus = 0) {
 return (lvl || 5) * 120 + (ccLvl || 0) * 300 + leaderBonus;
 }
+
+// Quarter level gates — indexed by HQ level (0-10)
+const Q1_MAX = [0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10]; // 1:1 with HQ
+const Q2_MAX = [0,  0,  0,  0,  1,  3,  5,  6,  7,  8, 10]; // unlocks HQ4, hits 8 at HQ9
+const Q3_MAX = [0,  0,  0,  0,  0,  0,  1,  3,  5,  7, 10]; // unlocks HQ6, hits 7 at HQ9, 8-10 at HQ10
+
+export function quarterMaxLevel(slot, hqLvl) {
+  const h = Math.min(10, Math.max(0, hqLvl || 1));
+  if (slot === 0) return Q1_MAX[h];
+  if (slot === 1) return Q2_MAX[h];
+  if (slot === 2) return Q3_MAX[h];
+  return 0;
+}
+
+export function quarterUpgCost(currentLvl) {
+  const base = { stone: 200, wood: 150, ore: 100, gas: 50 };
+  const m = Math.pow(2.0, currentLvl);
+  return Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.round(v * m)]));
+}
+
+// Branch level gates — indexed by quarter level (0-10)
+// B1 unlocks at Q1, hits Lv5 at Q7, max Lv6 at Q9
+// B2 unlocks at Q2, hits Lv5 at Q8, max Lv6 at Q10
+// B3 unlocks at Q5, hits Lv5 at Q9, max Lv6 at Q10
+const B1_MAX = [0, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6];
+const B2_MAX = [0, 0, 1, 1, 2, 3, 4, 4, 5, 5, 6];
+const B3_MAX = [0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6];
+
+// Quarter level at which each branch (0-indexed) unlocks
+export const BRANCH_UNLOCK_Q = [1, 2, 5];
+
+export function branchMaxLevel(branchIdx, quarterLvl) {
+  const q = Math.min(10, Math.max(0, quarterLvl || 0));
+  if (branchIdx === 0) return B1_MAX[q];
+  if (branchIdx === 1) return B2_MAX[q];
+  if (branchIdx === 2) return B3_MAX[q];
+  return 0;
+}
+
+// Which troop tier (0-indexed) a branch level unlocks
+// Lv1-2 → T1 (tier 0), Lv3-4 → T2 (tier 1), Lv5-6 → T3 (tier 2)
+export function tierFromBranchLevel(bLvl) {
+  if (bLvl <= 0) return -1;
+  return Math.min(2, Math.floor((bLvl - 1) / 2));
+}
