@@ -66,16 +66,20 @@ export default function BranchRow({
           const sel = selectedKey === sk.key;
           const gateLocked = lvl >= cap;
           const x = side === 0 ? leftX : rightX;
+          const handleTap = () => { if (!nodeLocked) onNodeClick(sk, false, gateLocked && lvl < 5); };
           return (
             <g key={side} transform={`translate(${x - sideSz / 2},${mainY - sideSz / 2})`}
-              onClick={() => !nodeLocked && onNodeClick(sk, false, gateLocked && lvl < 5)}
-              onTouchEnd={(e) => { e.preventDefault(); if (!nodeLocked) onNodeClick(sk, false, gateLocked && lvl < 5); }}
+              onClick={handleTap}
+              onTouchEnd={(e) => { e.preventDefault(); handleTap(); }}
               style={{ cursor: nodeLocked ? "default" : "pointer" }}>
               <FactionNode faction={faction} size={sideSz}
                 filled={lvl > 0} color={color} accent={accent}
                 locked={nodeLocked} isMain={false} selected={sel} />
               <LevelPips cx={sideSz/2} cy={sideSz/2} r={sideSz*0.42}
                 level={lvl} maxLevel={5} color={color} accent={accent} />
+              {/* Invisible full-size hit rect for reliable mobile touch */}
+              <rect x={0} y={-15} width={sideSz} height={sideSz + 30}
+                fill="transparent" style={{ touchAction: "manipulation" }} />
               {!nodeLocked && (
                 <>
                   <text x={sideSz / 2} y={-8} textAnchor="middle"
@@ -103,6 +107,9 @@ export default function BranchRow({
             locked={locked} isMain={true} selected={selectedKey === mainSkill.key} />
           <LevelPips cx={mainSz/2} cy={mainSz/2} r={mainSz*0.42}
             level={mainLvl} maxLevel={10} color={color} accent={accent} />
+          {/* Invisible full-size hit rect for reliable mobile touch */}
+          <rect x={0} y={-15} width={mainSz} height={mainSz + 30}
+            fill="transparent" style={{ touchAction: "manipulation" }} />
           {!locked && (
             <>
               <text x={mainSz / 2} y={mainSz / 2 + 7} textAnchor="middle"
