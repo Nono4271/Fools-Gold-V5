@@ -723,7 +723,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
       </div>
 
       {/* ── Vertical spine layout ── */}
-      <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "scroll", position: "relative", WebkitOverflowScrolling: "touch" }}>
 
         {/* Decorative centre spine line */}
         <div style={{
