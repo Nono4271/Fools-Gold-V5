@@ -33,11 +33,12 @@ export default function FactionScreen({
                 <button key={f.key} className="btn"
                   onClick={() => {
                     const TEMP_HQK = "1,1";
-                    const startCmds = starters.map((h,i) => ({
-                      ...h, uid:`p${i}`, owner:"player", troops:0, troopBranch:null,
-                      tk:TEMP_HQK, lvl:5, xp:0, respectPoints:0, respectLevel:0,
-                      skillPoints:{}, unspentSkillPoints:5,
-                      gear:{helmet:null,armor:null,bracers:null,accessory:null},
+                    const seed = Date.now();
+                    const startCmds = starters.map((h, i) => ({
+                      ...h, uid: `p_${seed}_${i}`, owner: "player", troops: 0, troopBranch: null,
+                      tk: TEMP_HQK, lvl: 5, xp: 0, respectPoints: 0, respectLevel: 0,
+                      skillPoints: {}, unspentSkillPoints: 5,
+                      gear: { helmet: null, armor: null, bracers: null, accessory: null },
                     }));
 
                     const allFactions = ["pirates","merfolk","marines","orcs","bountyhunters","dragons"];
@@ -50,9 +51,9 @@ export default function FactionScreen({
                       ].filter(Boolean);
                       aiStarters.forEach((h, i) => {
                         allAiCmds.push({
-                          ...h, uid:`ai_${aiFk}_${i}`, owner:"ai", troops:0, troopBranch:null,
-                          tk:TEMP_HQK, lvl:5, xp:0, respectPoints:0, respectLevel:0,
-                          skillPoints:{}, unspentSkillPoints:5,
+                          ...h, uid: `ai_${seed}_${aiFk}_${i}`, owner: "ai", troops: 0, troopBranch: null,
+                          tk: TEMP_HQK, lvl: 5, xp: 0, respectPoints: 0, respectLevel: 0,
+                          skillPoints: {}, unspentSkillPoints: 5,
                           gear:{helmet:null,armor:null,bracers:null,accessory:null},
                         });
                       });
