@@ -423,7 +423,7 @@ export function simBattle(cmd, attackerTroops, defTile, wallLvl) {
     ].sort((a,b) => b.spd - a.spd || (a.side==="atk" ? -1 : 1));
 
     for (const ent of order) {
-      if (atkTroopHp <= 0 && defTroopHp <= 0) break;
+      if (atkTroopHp <= 0 || defTroopHp <= 0) break;
 
       // ── Attacker commander ────────────────────────────────────────────────
       if (ent.id === "atkCmd") {
@@ -579,8 +579,9 @@ export function simBattle(cmd, attackerTroops, defTile, wallLvl) {
   const fullXp = POWER_DEFS[defTile.powerLevel || 1]?.xpReward || 30;
   const defKilledFraction = Math.max(0, Math.min(1, (defTroops - defTroopsLeft) / Math.max(1, defTroops)));
   const xpGain = won ? fullXp : isDraw ? Math.max(1, Math.round(fullXp * defKilledFraction)) : 0;
-  const atkPow     = attackerTroops * Math.pow(1.20, atkLvl-5) * mod;
-  const defPow     = defTroops      * Math.pow(1.20, Math.max(0, defLvl-2)) * defTerrBonusBase;
+  // Both sides scaled relative to level 1 so level advantage is reflected symmetrically
+  const atkPow     = attackerTroops * Math.pow(1.20, atkLvl - 1) * mod;
+  const defPow     = defTroops      * Math.pow(1.20, Math.max(0, defLvl - 1)) * defTerrBonusBase;
   const powerRatio = atkPow / Math.max(1, defPow);
   const pct        = Math.round(Math.min(99, Math.max(1, 100 / (1 + Math.pow(Math.max(0.00001, 1/powerRatio), 3.5)))));
 
