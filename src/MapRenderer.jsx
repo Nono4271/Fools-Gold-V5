@@ -1237,12 +1237,26 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     // the Pixi canvas. We check composedPath() for any element that has a
     // data-ui-panel attribute OR a z-index higher than the canvas container.
     const isUITarget = e => {
+      // Check event path for elements inside the canvas container
       const path = e.composedPath ? e.composedPath() : [];
       for (const node of path) {
-        if (node === el) break; // reached canvas container — stop
+        if (node === el) break;
         if (node.dataset?.uiPanel) return true;
         const z = node.style?.zIndex ? parseInt(node.style.zIndex, 10) : 0;
         if (z >= 100) return true;
+      }
+      // Hit-test touch coords against data-ui-panel elements (e.g. GameBar buttons
+      // which are fixed-position OUTSIDE the canvas container and never appear in path)
+      const touch = e.touches?.[0] ?? e.changedTouches?.[0];
+      if (touch) {
+        const panels = document.querySelectorAll('[data-ui-panel]');
+        for (const panel of panels) {
+          const r = panel.getBoundingClientRect();
+          if (touch.clientX >= r.left && touch.clientX <= r.right &&
+              touch.clientY >= r.top  && touch.clientY <= r.bottom) {
+            return true;
+          }
+        }
       }
       return false;
     };
