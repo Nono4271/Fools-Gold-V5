@@ -24,6 +24,7 @@ function PortraitButton({ cmd, onClick, active, badge }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer" }}
       onClick={onClick}
+      onTouchEnd={e => { e.preventDefault(); e.stopPropagation(); onClick?.(); }}
       onPointerDown={() => setPressed(true)}
       onPointerUp={() => setPressed(false)}
       onPointerLeave={() => setPressed(false)}>

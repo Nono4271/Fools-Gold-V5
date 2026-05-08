@@ -594,13 +594,19 @@ function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, setBarracks, s
       {playerCmds.map(cmd => {
         const isAtHQ     = cmd.tk === hqKey;
         const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?500:0);
-        const troopPct   = Math.round(((cmd.troops||0)/commandCap)*100);
 
         // Resolve troop branch info
         const tb = cmd.troopBranch;
         const faction = tb ? FACTION_TROOPS[tb.faction] : null;
         const branch  = faction ? faction.branches.find(b => b.key === tb.branch) : null;
         const tier    = branch ? branch.tiers[tb.tier ?? 0] : null;
+
+        // Command cost per troop depends on unit size (small=1, medium=2, large=4)
+        const branchSize  = branch?.size ?? "small";
+        const cmdCost     = COMMAND_COST[branchSize] ?? 1;
+        const commandUsed = (cmd.troops||0) * cmdCost;
+        const maxTroops   = Math.floor(commandCap / cmdCost);
+        const troopPct    = Math.round((commandUsed / commandCap) * 100);
 
         return (
           <div key={cmd.uid} style={{ marginBottom:12, padding:"10px 12px",
@@ -633,7 +639,8 @@ function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, setBarracks, s
                 color:"#5a5060", marginBottom:2, fontFamily:P.ff }}>
                 <span>📡 COMMAND</span>
                 <span style={{ color:troopPct>=100?"#cc3030":troopPct>=75?"#d0a030":"#3daa60" }}>
-                  {(cmd.troops||0).toLocaleString()} / {commandCap.toLocaleString()}
+                  {commandUsed.toLocaleString()} / {commandCap.toLocaleString()}
+                  {cmdCost > 1 && <span style={{fontSize:6,opacity:.6,marginLeft:3}}>({(cmd.troops||0)} units ×{cmdCost})</span>}
                 </span>
               </div>
               <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
@@ -670,15 +677,16 @@ function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, setBarracks, s
             {/* Assign slider */}
             {tb && isAtHQ && (() => {
               const sv = sliderVals[cmd.uid] ?? (cmd.troops||0);
-              const maxSlider = Math.min(commandCap, barracksPool+(cmd.troops||0));
+              const maxSlider = Math.min(maxTroops, barracksPool+(cmd.troops||0));
               const delta = sv - (cmd.troops||0);
+              const svCmd = sv * cmdCost;
               return (
                 <div>
                   <div style={{ display:"flex", justifyContent:"space-between", fontSize:8,
                     color:"#6a5a4a", letterSpacing:".1em", fontFamily:P.ff, marginBottom:4 }}>
                     <span>ASSIGN TROOPS</span>
                     <span style={{ color:delta>0?"#3daa60":delta<0?"#cc5050":"#5a5060" }}>
-                      {sv.toLocaleString()} / {commandCap.toLocaleString()}
+                      {sv.toLocaleString()} troops ({svCmd.toLocaleString()} cmd)
                       {delta!==0 && <span style={{ marginLeft:4 }}>{delta>0?`(+${delta})`:delta}</span>}
                     </span>
                   </div>
@@ -688,7 +696,7 @@ function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, setBarracks, s
                   <div style={{ display:"flex", justifyContent:"space-between", fontSize:7, color:"#4a4a5a", marginBottom:8 }}>
                     <span>0</span>
                     <span style={{ color:"#5a7a5a" }}>Barracks: {barracksPool.toLocaleString()}</span>
-                    <span>{commandCap.toLocaleString()}</span>
+                    <span>{maxTroops.toLocaleString()} troops / {commandCap.toLocaleString()} cmd</span>
                   </div>
                   {delta !== 0 ? (
                     <button className="btn" onClick={() => assignTroops(cmd.uid, cmd.troopBranch, sv)}
