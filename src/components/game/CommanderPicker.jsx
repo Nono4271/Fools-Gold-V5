@@ -2,6 +2,7 @@ import { memo } from "react";
 import { FACTION_TROOPS, troopSizeModifier } from "../../../shared/constants/troops.js";
 import { TERR } from "../../../shared/constants/terrain.js";
 import { RC, RARITY, CLASS, SS } from "../../../shared/constants/heroes.js";
+import { effectiveMarchSpd, marchStepMs } from "../../../shared/utils/pathfinding.js";
 const SC = RC;
 
 function tbInfo(tb) {
@@ -59,17 +60,39 @@ export default memo(function CommanderPicker({
               const modColor = mod===1.1?"#3daa60":mod===0.9?"#cc3030":"#8a8a9a";
               const modLabel = mod===1.1?"⚔ STRONG":mod===0.9?"🛡 WEAK":"◆ NEUTRAL";
               const wp = (() => {
-                const atkPow = (cmd.troops||0)*Math.pow(1.20,(cmd.lvl||5)-5)*mod;
+                // Use per-troop tier stats (hp × avg_dmg geometric mean) so large
+                // troops with high individual stats aren't under-rated vs small counts.
+                const atkBranch = cmd.troopBranch
+                  ? FACTION_TROOPS[cmd.troopBranch.faction]?.branches.find(b => b.key === cmd.troopBranch.branch)
+                  : null;
+                const atkTier = atkBranch?.tiers[cmd.troopBranch?.tier ?? 0];
+                const atkStatMult = atkTier
+                  ? Math.sqrt(((atkTier.dmgLo + atkTier.dmgHi) / 2) * atkTier.hp)
+                  : 35;
+                const atkPow = (cmd.troops||0) * atkStatMult * Math.pow(1.20,(cmd.lvl||5)-5) * mod;
+
                 const dc = atkTile?.defCmd;
                 const defTroops = dc ? dc.troops : (atkTile?.garrison||30);
-                const defPow = defTroops*Math.pow(1.20,Math.max(0,(dc?.lvl||2)-2))*(1+((TERR[atkTile?.terrain]?.def||0)/100));
+                const defBranch = dc?.troopBranch
+                  ? FACTION_TROOPS[dc.troopBranch.faction]?.branches.find(b => b.key === dc.troopBranch.branch)
+                  : null;
+                const defTier = defBranch?.tiers[dc?.troopBranch?.tier ?? 0];
+                const defStatMult = defTier
+                  ? Math.sqrt(((defTier.dmgLo + defTier.dmgHi) / 2) * defTier.hp)
+                  : 35;
+                const defPow = defTroops * defStatMult * Math.pow(1.20,Math.max(0,(dc?.lvl||2)-2)) * (1+((TERR[atkTile?.terrain]?.def||0)/100));
+
                 if (atkPow<=0) return 1;
                 return Math.round(Math.min(99,Math.max(1,100/(1+Math.pow(Math.max(0.00001,defPow/atkPow),3.5)))));
               })();
 
+              const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
+              const etaS   = Math.ceil(stepMs / 1000);
+              const etaStr = etaS < 60 ? `${etaS}s` : `${Math.floor(etaS/60)}m ${etaS%60}s`;
+
               return (
-                <div key={cmd.uid} onClick={() => setPick(picked?null:cmd)}
-                  style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:picked?"rgba(60,170,100,.15)":"rgba(255,255,255,.03)",border:`2px solid ${picked?"#3daa60":"rgba(255,255,255,.06)"}`,borderRadius:8,cursor:"pointer",transition:"all .15s",boxShadow:picked?"0 0 12px rgba(60,170,100,.4)":"none"}}>
+                <button key={cmd.uid} onClick={() => setPick(picked?null:cmd)}
+                  style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:picked?"rgba(60,170,100,.15)":"rgba(255,255,255,.03)",border:`2px solid ${picked?"#3daa60":"rgba(255,255,255,.06)"}`,borderRadius:8,cursor:"pointer",transition:"all .15s",boxShadow:picked?"0 0 12px rgba(60,170,100,.4)":"none",width:"100%",textAlign:"left",fontFamily:"inherit",color:"inherit"}}>
                   <div style={{fontSize:28,flexShrink:0}}>{cmd.icon}</div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontFamily:"'Cinzel',serif",fontSize:11,fontWeight:700,color:picked?"#3daa60":"#e0d0c0",marginBottom:1}}>{cmd.n}</div>
@@ -85,9 +108,12 @@ export default memo(function CommanderPicker({
                       </div>
                       <span style={{fontSize:8,color:wp>=60?"#3daa60":wp>=40?"#d0a030":"#cc3030",fontWeight:700,flexShrink:0}}>~{wp}%</span>
                     </div>
+                    <div style={{marginTop:4,fontSize:7,color:"#4488ff",fontFamily:"'Cinzel',serif",letterSpacing:".05em"}}>
+                      🚶 {etaStr} march
+                    </div>
                   </div>
                   {picked && <div style={{fontSize:10,color:"#3daa60",flexShrink:0}}>✓</div>}
-                </div>
+                </button>
               );
             })}
           </div>
