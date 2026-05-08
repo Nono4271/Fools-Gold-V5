@@ -262,18 +262,13 @@ export default function GachaScreen({
   const aln = ALIGNMENT[playerAlignment];
   const [activeTab, setActiveTab] = useState("summon"); // "summon" | "gear" | "collection"
 
-  // Override touch-action on html/body so pan-y scrolling works on mobile
-  // even if a parent container has touch-action: none set elsewhere.
+  // Add a class to <html> that overrides the global position:fixed / touch-action:none
+  // rules in index.css. Inline styles can't win against stylesheet rules on the same
+  // element, but a more-specific selector (.gacha-open html) can.
   useEffect(() => {
-    const prev = {
-      html: document.documentElement.style.touchAction,
-      body: document.body.style.touchAction,
-    };
-    document.documentElement.style.touchAction = "pan-y";
-    document.body.style.touchAction = "pan-y";
+    document.documentElement.classList.add("gacha-open");
     return () => {
-      document.documentElement.style.touchAction = prev.html;
-      document.body.style.touchAction = prev.body;
+      document.documentElement.classList.remove("gacha-open");
     };
   }, []);
 
