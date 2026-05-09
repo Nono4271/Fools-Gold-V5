@@ -11,6 +11,8 @@ export const FACTION_THEME = {
   merfolk:       { color: "#30b8c8", accent: "#70eef5" },
   orcs:          { color: "#6aa830", accent: "#aaff66" },
   dragons:       { color: "#cc3030", accent: "#ff8855" },
+  holyknights:   { color: "#d4af37", accent: "#fff5a0" },
+  nightcreatures:{ color: "#a030c0", accent: "#e080ff" },
 };
 
 export function getRespectInfo(cmd) {
