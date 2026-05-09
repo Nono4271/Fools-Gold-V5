@@ -9,6 +9,9 @@ import "./index.css";
 document.addEventListener(
   "touchstart",
   (e) => {
+    // When a scrollable overlay screen is active, let the browser handle
+    // touch naturally so pan gestures reach the scroll containers.
+    if (document.documentElement.classList.contains("gacha-open")) return;
     const target = e.target as Element | null;
     if (!target) return;
     const interactive = target.closest(
