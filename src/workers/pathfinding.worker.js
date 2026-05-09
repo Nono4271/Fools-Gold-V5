@@ -15,19 +15,14 @@
 //   { type: 'pathResult',      requestId, path }       — null path = unreachable
 //   { type: 'pathResultBatch', results: [{requestId, path}] }
 
-const COLS = 700;
-const ROWS = 700;
+const COLS = 1400;
+const ROWS = 1000;
 const IMPASSABLE = new Set();
-
-function isShore(c, r) {
-  return c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1;
-}
 
 function adj(c, r) {
   return [[c-1,r],[c+1,r],[c,r-1],[c,r+1]]
     .filter(([tc, tr]) => {
       if (tc < 0 || tr < 0 || tc >= COLS || tr >= ROWS) return false;
-      if (isShore(tc, tr)) return false;
       if (IMPASSABLE.has(`${tc},${tr}`)) return false;
       return true;
     })

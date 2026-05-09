@@ -19,8 +19,8 @@ const POWER_DEFS = {
 };
 const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 };
 
-const TERRAIN_ENC = { grass:0, forest:1, mountain:2, desert:3, shore:4 };
-const TERRAIN_DEC = ["grass","forest","mountain","desert","shore"];
+const TERRAIN_ENC = { grass:0, forest:1, mountain:2, desert:3 };
+const TERRAIN_DEC = ["grass","forest","mountain","desert"];
 const RSS_ENC     = { stone:1, wood:2, ore:3, gas:4 };
 const RSS_DEC     = [null,"stone","wood","ore","gas"];
 const TROOP_ENC   = { infantry:1, mage:2, spearmen:3, horsemen:4 };
@@ -28,7 +28,6 @@ const TROOP_DEC   = [null,"infantry","mage","spearmen","horsemen"];
 const OWNER_ENC   = { player:1, ai:2, pirates:3, merfolk:4, marines:5, orcs:6, bountyhunters:7, dragons:8, holyknights:9, nightcreatures:10 };
 const OWNER_DEC   = [null,"player","ai","pirates","merfolk","marines","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
 
-const F_SHORE    = 1<<0;
 const F_KEEP     = 1<<1;
 const F_KEEPPART = 1<<2;
 const F_HQ       = 1<<3;
@@ -128,10 +127,6 @@ const POLYS = {
 function buildLookups() {
   const TERRAIN_MAP = new Uint8Array(SIZE);
   const REGION_MAP  = new Uint8Array(SIZE);
-  const SHORE_MAP   = new Uint8Array(SIZE);
-
-  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++)
-    if (c===0||r===0||c===COLS-1||r===ROWS-1) SHORE_MAP[r*COLS+c]=1;
 
   // Voronoi terrain via BFS flood-fill
   {
@@ -187,7 +182,7 @@ function buildLookups() {
     // Fallback: tiles not covered by any polygon → nearest centroid
     const regionCentroids=REGION_LIST.map(reg=>({idx:REGION_KEY_TO_IDX[reg.key],cx:reg.cx,cy:reg.cy}));
     for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
-      if (REGION_MAP[r*COLS+c]===0 && !SHORE_MAP[r*COLS+c]) {
+      if (REGION_MAP[r*COLS+c]===0) {
         let bestD=Infinity,bestIdx=0;
         for (const rc of regionCentroids) {
           const d=(c-rc.cx)**2+(r-rc.cy)**2;
@@ -198,10 +193,10 @@ function buildLookups() {
     }
   }
 
-  return {TERRAIN_MAP,REGION_MAP,SHORE_MAP};
+  return {TERRAIN_MAP,REGION_MAP};
 }
 
-function randomSpawn(regionKey, SHORE_MAP, usedKeys) {
+function randomSpawn(regionKey, usedKeys) {
   const reg=REGION_LIST.find(r=>r.key===regionKey);
   if (!reg) return null;
   for (let attempt=0;attempt<200;attempt++) {
@@ -209,7 +204,7 @@ function randomSpawn(regionKey, SHORE_MAP, usedKeys) {
     const r=reg.cy+Math.floor((Math.random()-0.5)*70);
     if (c<1||c>=COLS-1||r<1||r>=ROWS-1) continue;
     const k=`${c},${r}`;
-    if (KEEP_FOOTPRINT_SET.has(k)||usedKeys.has(k)||SHORE_MAP[r*COLS+c]) continue;
+    if (KEEP_FOOTPRINT_SET.has(k)||usedKeys.has(k)) continue;
     return k;
   }
   return `${reg.cx+5},${reg.cy+5}`;
@@ -219,7 +214,7 @@ self.onmessage = function(e) {
   const { facKey } = e.data;
 
   postMessage({ type:"progress", pct:5,  label:"Building terrain..." });
-  const { TERRAIN_MAP, REGION_MAP, SHORE_MAP } = buildLookups();
+  const { TERRAIN_MAP, REGION_MAP } = buildLookups();
   postMessage({ type:"progress", pct:20, label:"Packing tiles..." });
 
   const terrainArr  = new Uint8Array(SIZE);
@@ -239,12 +234,6 @@ self.onmessage = function(e) {
   for (let r=0;r<ROWS;r++) {
     for (let c=0;c<COLS;c++) {
       const idx=r*COLS+c;
-
-      if (SHORE_MAP[idx]) {
-        terrainArr[idx]  = TERRAIN_ENC.shore;
-        flagArr[idx]    |= F_SHORE;
-        continue;
-      }
 
       const regIdx  = REGION_MAP[idx];
       const reg     = regIdx ? REGION_LIST[regIdx-1] : null;
@@ -275,7 +264,7 @@ self.onmessage = function(e) {
 
   for (const reg of REGION_LIST) {
     const idx = reg.cy*COLS + reg.cx;
-    if (flagArr[idx] & F_SHORE) continue;
+    if (flagArr[idx] & (F_HQ | F_HQPART)) continue;
 
     terrainArr[idx]  = TERRAIN_ENC.grass;
     rssArr[idx]      = 0;
@@ -302,7 +291,6 @@ self.onmessage = function(e) {
         const fc=reg.cx+dc, fr=reg.cy+dr;
         if (fc<0||fr<0||fc>=COLS||fr>=ROWS) continue;
         const fi=fr*COLS+fc;
-        if (flagArr[fi]&F_SHORE) continue;
         terrainArr[fi]  = TERRAIN_ENC.grass;
         rssArr[fi]      = 0;
         regionArr[fi]   = REGION_KEY_TO_IDX[reg.key];
@@ -350,7 +338,7 @@ self.onmessage = function(e) {
   for (const fk of ["pirates","merfolk","marines","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
     const startRegion=FACTION_REGIONS[fk]?.start;
     if (!startRegion) continue;
-    const key=randomSpawn(startRegion,SHORE_MAP,usedKeys);
+    const key=randomSpawn(startRegion,usedKeys);
     if (key){spawnKeys[fk]=key;usedKeys.add(key);}
   }
 
@@ -382,7 +370,7 @@ self.onmessage = function(e) {
       regionList: REGION_LIST,
       keepMeta,
       TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
-      F_SHORE, F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED,
+      F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED,
     },
     spawnKeys,
   }, transferables);
