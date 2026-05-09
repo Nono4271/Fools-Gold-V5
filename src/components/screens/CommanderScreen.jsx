@@ -1421,12 +1421,12 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                   />
                   {/* Slide-in panel — fixed, anchored to left edge of right panel */}
                   <div style={{
-                    position: "fixed", top: 0, left: 76, bottom: 0,
+                    position: "fixed", top: 0, left: 76, bottom: 0, height: "100%",
                     width: 200, zIndex: 756,
                     background: "#0d0b08",
                     borderRight: `1px solid ${r.color}35`,
                     boxShadow: "4px 0 24px rgba(0,0,0,.85)",
-                    display: "flex", flexDirection: "column",
+                    display: "flex", flexDirection: "column", overflow: "hidden",
                     animation: "slideInLeft .15s ease",
                   }}>
                     {/* Header */}
@@ -1455,7 +1455,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                     </div>
 
                     {/* Scrollable gear list */}
-                    <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+                    <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", touchAction: "pan-y", minHeight: 0 }}>
                       {available2.length === 0 ? (
                         <div style={{
                           padding: "20px 12px", fontSize: 8, color: "#3a3020",
@@ -1476,19 +1476,13 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                               setPreviewGear({ piece: g, slotKey: openSlot });
                               setShowClassPopup(null);
                             }}
-                            onTouchEnd={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setPreviewGear({ piece: g, slotKey: openSlot });
-                              setShowClassPopup(null);
-                            }}
+
                             style={{
                               padding: "9px 12px", display: "flex", alignItems: "center", gap: 9,
                               background: isEquipped ? `${gc}14` : "transparent",
                               borderBottom: "1px solid #111",
                               borderLeft: isEquipped ? `3px solid ${gc}` : "3px solid transparent",
                               cursor: "pointer", transition: "background .1s",
-                              touchAction: "manipulation",
                               WebkitTapHighlightColor: "transparent",
                             }}>
                             <span style={{ fontSize: 22, flexShrink: 0 }}>{g.icon}</span>
