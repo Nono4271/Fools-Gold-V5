@@ -445,10 +445,242 @@ function PreBattle({ passiveSummary, cmdName }) {
   );
 }
 
+// ── Compute aggregate battle stats from round log ─────────────────────────────
+function computeBattleStats(b) {
+  let atkCmdDmg = 0, atkTroopDmg = 0, atkDmgReceived = 0, atkHealing = 0;
+  let defCmdDmg = 0, defTroopDmg = 0, defDmgReceived = 0;
+  for (const rd of b.rounds ?? []) {
+    for (const a of rd.actions ?? []) {
+      if (!a.dmg) continue;
+      if (a.isHeal) {
+        // healing restores attacker troops; dmg is negative (troops back)
+        atkHealing += Math.abs(a.dmg);
+        continue;
+      }
+      if (a.dmg <= 0) continue;
+      if (a.isPlayer) {
+        // player-side actors dealing damage to defenders
+        if (a.actor === "Troops") atkTroopDmg += a.dmg;
+        else atkCmdDmg += a.dmg; // commander + skills
+      } else if (!a.isConfused) {
+        // enemy-side actors dealing damage to attacker
+        if (a.actor === "Defenders") defTroopDmg += a.dmg;
+        else if (a.actor === "Enemy Cmd") defCmdDmg += a.dmg;
+        atkDmgReceived += a.dmg;
+      }
+    }
+  }
+  // Estimate enemy totals (defender side doesn't track separately, derive from atk losses)
+  defDmgReceived = (atkTroopsStart => atkTroopsStart)(b.atkTroopsStart); // placeholder — use computed
+  return { atkCmdDmg, atkTroopDmg, atkDmgReceived, atkHealing, defCmdDmg, defTroopDmg };
+}
+
+// ── Battle Stats Popup — side-by-side view like LOTR RTW ─────────────────────
+function BattleStatsPopup({ b, onClose }) {
+  const [subPopup, setSubPopup] = useState(null); // "atkCmd"|"defCmd"|"atkTroop"|"defTroop"
+  const oc = outcomeOf(b);
+
+  // Compute aggregate stats from round log
+  const stats = computeBattleStats(b);
+
+  const atkResolved = resolveTroopBranch(b.atkTroopBranch);
+  const defResolved = resolveTroopBranch(b.defTroopBranch);
+
+  const statRows = [
+    { label:"Heavily Wounded", atkVal: b.atkTroopsWounded?.toLocaleString() ?? "0", defVal:"—" },
+    { label:"Dead",            atkVal: (Math.max(0, b.atkTroopsStart - b.atkTroopsEnd)).toLocaleString(), defVal: (Math.max(0, (b.defTroopsStart??0) - (b.defTroopsEnd??0))).toLocaleString() },
+    { label:"Commander Damage",atkVal: stats.atkCmdDmg.toLocaleString(), defVal: stats.defCmdDmg.toLocaleString() },
+    { label:"Soldier Damage",  atkVal: stats.atkTroopDmg.toLocaleString(), defVal: stats.defTroopDmg.toLocaleString() },
+    { label:"Damage Received", atkVal: stats.atkDmgReceived.toLocaleString(), defVal:"—" },
+    { label:"Total Healing",   atkVal: stats.atkHealing > 0 ? stats.atkHealing.toLocaleString() : "0", defVal:"0" },
+  ];
+
+  return (
+    <>
+      <div onClick={e => e.stopPropagation()} style={{
+        position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
+        zIndex:610, width:"min(420px, 94vw)",
+        background:"#0c0904", border:"1px solid #3a2e18", borderRadius:7,
+        boxShadow:"0 12px 60px rgba(0,0,0,.97)",
+        overflow:"hidden",
+      }}>
+
+        {/* Header bar */}
+        <div style={{
+          background:"linear-gradient(180deg,#151008,#0c0904)",
+          borderBottom:"1px solid #2a1e08",
+          padding:"8px 14px",
+          display:"flex", justifyContent:"space-between", alignItems:"center",
+          position:"relative",
+        }}>
+          <div style={{ position:"absolute", top:0, left:0, right:0, height:1,
+            background:"linear-gradient(90deg,transparent,#8a6020 30%,#f0c04055 50%,#8a6020 70%,transparent)" }} />
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#8a6030", letterSpacing:".12em" }}>
+            BATTLE REPORT
+          </span>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700,
+              color:oc.color, border:`1px solid ${oc.color}55`, borderRadius:3,
+              padding:"2px 7px", background:`${oc.color}11` }}>
+              {oc.text}
+            </span>
+            <button onClick={onClose} style={{ background:"transparent", border:"none",
+              color:"#6a5a4a", fontSize:13, cursor:"pointer", lineHeight:1 }}>✕</button>
+          </div>
+        </div>
+
+        {/* Commander row */}
+        <div style={{
+          display:"grid", gridTemplateColumns:"1fr auto 1fr",
+          gap:6, padding:"10px 12px 6px",
+          borderBottom:"1px solid #1a1508",
+        }}>
+          {/* Attacker commander */}
+          <div onClick={() => setSubPopup(p => p==="atkCmd" ? null : "atkCmd")}
+            style={{ cursor:"pointer", padding:"6px 8px", borderRadius:4,
+              background:"rgba(200,160,96,.06)", border:"1px solid #2a1e08",
+              transition:"background .15s",
+            }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{ fontSize:18 }}>{b.atkIcon || "⚔"}</span>
+              <div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, color:"#c8a060",
+                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:100 }}>
+                  {b.atkName}
+                </div>
+                <div style={{ fontSize:6, color:"#5a4a30" }}>Lv{b.atkLvl} · tap for stats</div>
+              </div>
+            </div>
+          </div>
+
+          {/* VS */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
+            fontSize:7, color:"#3a2e18", fontFamily:"'Cinzel',serif", letterSpacing:".1em" }}>
+            VS
+          </div>
+
+          {/* Defender commander */}
+          <div onClick={() => setSubPopup(p => p==="defCmd" ? null : "defCmd")}
+            style={{ cursor:"pointer", padding:"6px 8px", borderRadius:4,
+              background:"rgba(150,80,80,.06)", border:"1px solid #2a1e08",
+              transition:"background .15s", textAlign:"right",
+            }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:6 }}>
+              <div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, color:"#aa7070",
+                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:100 }}>
+                  {b.defCmdName}
+                </div>
+                <div style={{ fontSize:6, color:"#5a4a30" }}>Lv{b.defLvl} · tap for stats</div>
+              </div>
+              <span style={{ fontSize:18 }}>{b.defCmdIcon || "🛡"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Troop bars */}
+        <div style={{
+          display:"grid", gridTemplateColumns:"1fr 36px 1fr",
+          gap:6, padding:"8px 12px",
+          borderBottom:"1px solid #1a1508",
+        }}>
+          {/* Attacker troops */}
+          <div onClick={() => atkResolved && setSubPopup(p => p==="atkTroop" ? null : "atkTroop")}
+            style={{ cursor: atkResolved ? "pointer" : "default" }}>
+            <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
+              letterSpacing:".06em", marginBottom:2 }}>YOUR TROOPS</div>
+            <div style={{ fontSize:8, color:"#4488ff", fontFamily:"'Cinzel',serif", fontWeight:700,
+              marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              {atkResolved ? `${atkResolved.branchDef.label} · ${atkResolved.tierData?.label ?? ""}` : "Unknown"}
+            </div>
+            <div style={{ fontSize:7, color:"#6a8060", marginBottom:3 }}>
+              {b.atkTroopsStart.toLocaleString()} → {b.atkTroopsEnd.toLocaleString()}
+            </div>
+            <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+            {atkResolved && (
+              <div style={{ fontSize:6, color:"#2a2820", marginTop:2 }}>tap for troop stats →</div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ width:1, height:"100%", background:"#1e1808" }} />
+          </div>
+
+          {/* Defender troops */}
+          <div onClick={() => defResolved && setSubPopup(p => p==="defTroop" ? null : "defTroop")}
+            style={{ cursor: defResolved ? "pointer" : "default", textAlign:"right" }}>
+            <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
+              letterSpacing:".06em", marginBottom:2 }}>ENEMY TROOPS</div>
+            <div style={{ fontSize:8, color:"#cc4444", fontFamily:"'Cinzel',serif", fontWeight:700,
+              marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              {defResolved ? `${defResolved.branchDef.label} · ${defResolved.tierData?.label ?? ""}` : "Unknown"}
+            </div>
+            <div style={{ fontSize:7, color:"#7a4040", marginBottom:3 }}>
+              {(b.defTroopsStart ?? 0).toLocaleString()} → {(b.defTroopsEnd ?? 0).toLocaleString()}
+            </div>
+            <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+            {defResolved && (
+              <div style={{ fontSize:6, color:"#2a2820", marginTop:2 }}>← tap for troop stats</div>
+            )}
+          </div>
+        </div>
+
+        {/* Stats table */}
+        <div style={{ padding:"8px 12px 12px" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto",
+            fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
+            letterSpacing:".07em", marginBottom:5, paddingBottom:4,
+            borderBottom:"1px solid #1e1808",
+          }}>
+            <span style={{ color:"#4488ff55" }}>YOU</span>
+            <span style={{ textAlign:"center" }}>STAT</span>
+            <span style={{ textAlign:"right", color:"#cc444455" }}>ENEMY</span>
+          </div>
+
+          {statRows.map(({ label, atkVal, defVal }) => (
+            <div key={label} style={{
+              display:"grid", gridTemplateColumns:"auto 1fr auto",
+              alignItems:"center", marginBottom:5,
+              padding:"4px 6px", borderRadius:3,
+              background:"rgba(255,255,255,.015)",
+            }}>
+              <span style={{ fontSize:9, fontWeight:700, color:"#c8a060",
+                fontFamily:"'Cinzel',serif", minWidth:60 }}>
+                {atkVal}
+              </span>
+              <span style={{ fontSize:6, color:"#5a4a38", textAlign:"center",
+                fontFamily:"'Cinzel',serif", letterSpacing:".05em" }}>
+                {label}
+              </span>
+              <span style={{ fontSize:9, fontWeight:700, color:"#aa6060",
+                fontFamily:"'Cinzel',serif", textAlign:"right", minWidth:60 }}>
+                {defVal}
+              </span>
+            </div>
+          ))}
+
+          {/* Footer hint */}
+          <div style={{ marginTop:8, fontSize:6, color:"#2a2010", textAlign:"center",
+            fontFamily:"'Cinzel',serif", letterSpacing:".06em" }}>
+            {b.terrain} · {b.modLabel} · {b.rounds?.length ?? 0} rounds
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-popups */}
+      {subPopup === "atkCmd" && <CommanderPopup b={b} side="atk" onClose={() => setSubPopup(null)} />}
+      {subPopup === "defCmd" && <CommanderPopup b={b} side="def" onClose={() => setSubPopup(null)} />}
+      {subPopup === "atkTroop" && <TroopPopup troopBranch={b.atkTroopBranch} onClose={() => setSubPopup(null)} />}
+      {subPopup === "defTroop" && <TroopPopup troopBranch={b.defTroopBranch} onClose={() => setSubPopup(null)} />}
+    </>
+  );
+}
+
 // ── Simple battle summary card ────────────────────────────────────────────────
 function BattleCard({ b, onClick }) {
   const oc   = outcomeOf(b);
-  const [popup, setPopup] = useState(null); // "atk"|"def"|null
+  const [popup, setPopup] = useState(null); // "stats"|null
 
   return (
     <div onClick={() => { if (!popup) onClick(); }} style={{
@@ -460,8 +692,7 @@ function BattleCard({ b, onClick }) {
       borderRadius:5, transition:"background .15s",
     }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-        <div onClick={e => { e.stopPropagation(); setPopup(p => p==="atk" ? null : "atk"); }}
-          style={{ display:"flex", alignItems:"center", gap:7, cursor:"pointer" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
           <span style={{ fontSize:16 }}>{b.atkIcon || "⚔"}</span>
           <div>
             <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, color:"#c8a060" }}>
@@ -473,13 +704,11 @@ function BattleCard({ b, onClick }) {
                 </span>
               )}
             </div>
-            <div style={{ fontSize:7, color:"#4a3a28" }}>Lv{b.atkLvl} · {b.terrain} · {b.modLabel} · tap for stats</div>
+            <div style={{ fontSize:7, color:"#4a3a28" }}>Lv{b.atkLvl} · {b.terrain} · {b.modLabel}</div>
           </div>
         </div>
         <div style={{ textAlign:"right" }}>
-          <div onClick={e => { e.stopPropagation(); setPopup(p => p==="def" ? null : "def"); }}
-            style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700,
-              color:"#9a5050", cursor:"pointer", marginBottom:2 }}>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, color:"#9a5050", marginBottom:2 }}>
             {b.defCmdIcon} {b.defCmdName}
           </div>
           <div style={{ fontSize:7, color:"#3a3028" }}>{timeAgo(b.timestamp)}</div>
@@ -497,13 +726,19 @@ function BattleCard({ b, onClick }) {
           <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
         </div>
 
-        {/* Center: outcome */}
+        {/* Center: outcome + tap hint */}
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, flexShrink:0 }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, color:oc.color,
-            border:`1px solid ${oc.color}55`, borderRadius:3, padding:"3px 8px", background:`${oc.color}11` }}>
+          <div onClick={e => { e.stopPropagation(); setPopup(p => p ? null : "stats"); }}
+            style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, color:oc.color,
+              border:`1px solid ${oc.color}55`, borderRadius:3, padding:"3px 8px",
+              background:`${oc.color}11`, cursor:"pointer" }}>
             {oc.text}
           </div>
-          <div style={{ fontSize:6, color:"#2a2010", fontFamily:"'Cinzel',serif" }}>VS</div>
+          <div onClick={e => { e.stopPropagation(); setPopup(p => p ? null : "stats"); }}
+            style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif", cursor:"pointer",
+              letterSpacing:".05em" }}>
+            tap for stats
+          </div>
         </div>
 
         {/* Right: defender */}
@@ -533,9 +768,8 @@ function BattleCard({ b, onClick }) {
         </span>
       </div>
 
-      {/* Commander popups */}
-      {popup === "atk" && <CommanderPopup b={b} side="atk" onClose={() => setPopup(null)} />}
-      {popup === "def" && <CommanderPopup b={b} side="def" onClose={() => setPopup(null)} />}
+      {/* Battle stats popup */}
+      {popup === "stats" && <BattleStatsPopup b={b} onClose={() => setPopup(null)} />}
     </div>
   );
 }
