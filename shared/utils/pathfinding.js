@@ -22,16 +22,11 @@ export function setImpassableTiles(keys) {
   for (const k of keys) IMPASSABLE.add(k);
 }
 
-export function isShore(c, r) {
-  return c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1;
-}
-
 export function adj(c, r) {
   const nbrs = [[c-1,r],[c+1,r],[c,r-1],[c,r+1]];
   return nbrs
     .filter(([tc,tr]) => {
       if (tc < 0 || tr < 0 || tc >= COLS || tr >= ROWS) return false;
-      if (isShore(tc, tr)) return false;
       if (IMPASSABLE.has(`${tc},${tr}`)) return false;
       return true;
     })
