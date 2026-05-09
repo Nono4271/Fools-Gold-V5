@@ -699,6 +699,221 @@ export const FACTION_TROOPS = {
       },
     ],
   },
+
+  // ── HOLY KNIGHTS ────────────────────────────────────────────────────────────
+  holyknights: {
+    quarters: "The Sanctum",
+    branches: [
+      {
+        key: "zealots",
+        label: "Zealots",
+        size: "small",
+        dmgType: "magical",
+        role: "tanky",
+        skills: {
+          a: {
+            key: "divine_fervor",
+            name: "Divine Fervor",
+            icon: "✝️",
+            trigger: "round_start",
+            desc: "On round start, 15%–75% chance to increase own damage by 25% for 2 rounds.",
+            procBase: 0.15, procMax: 0.75,
+            effect: { type: "self_dmg_up", value: 0.25, duration: 2 },
+          },
+          b: {
+            key: "martyrs_resolve",
+            name: "Martyr's Resolve",
+            icon: "🩸",
+            trigger: "on_hit_received",
+            desc: "On hit received, 25%–75% chance to reduce damage taken by 20% for 2 rounds.",
+            procBase: 0.25, procMax: 0.75,
+            effect: { type: "dmg_reduce", value: 0.20, duration: 2 },
+          },
+        },
+        tiers: [
+          { label: "Initiate",   desc: "A fresh recruit of the faith, burning with holy conviction.",   dmgLo: 10, dmgHi: 13, def:  55, hp: 30, siege: 13, spd: 54 },
+          { label: "Crusader",   desc: "A seasoned warrior of the light, fearless and unyielding.",     dmgLo: 12, dmgHi: 16, def:  80, hp: 36, siege: 16, spd: 54 },
+          { label: "Inquisitor", desc: "A relentless purifier — the wrath of the divine made flesh.",   dmgLo: 15, dmgHi: 20, def: 105, hp: 43, siege: 20, spd: 54 },
+        ],
+      },
+      {
+        key: "paladins",
+        label: "Paladins",
+        size: "medium",
+        dmgType: "physical",
+        role: "tanky",
+        skills: {
+          a: {
+            key: "holy_charge",
+            name: "Holy Charge",
+            icon: "⚔️",
+            trigger: "on_hit",
+            desc: "On hit, 15%–50% chance to stun target for 1 round.",
+            procBase: 0.15, procMax: 0.50,
+            effect: { type: "stun", duration: 1 },
+          },
+          b: {
+            key: "consecrated_ground",
+            name: "Consecrated Ground",
+            icon: "🛡",
+            trigger: "round_start",
+            desc: "On round start, 20%–65% chance to increase all allied troops defense by 25% for 2 rounds.",
+            procBase: 0.20, procMax: 0.65,
+            effect: { type: "ally_def_up", value: 0.25, duration: 2 },
+          },
+        },
+        tiers: [
+          { label: "Templar Scout", desc: "A mounted holy warrior scouting ahead of the crusade.",          dmgLo: 16, dmgHi: 20, def: 32, hp:  66, siege: 14, spd:  96 },
+          { label: "Paladin",       desc: "A divine knight in blessed plate, unstoppable in righteousness.", dmgLo: 22, dmgHi: 28, def: 44, hp:  86, siege: 17, spd: 114 },
+          { label: "Lightbringer",  desc: "A radiant champion whose very presence breaks enemy morale.",    dmgLo: 28, dmgHi: 34, def: 62, hp: 100, siege: 20, spd: 126 },
+        ],
+      },
+      {
+        key: "seraphim",
+        label: "Seraphim",
+        size: "large",
+        dmgType: "magical",
+        role: "tanky",
+        skills: {
+          a: {
+            key: "divine_judgment",
+            name: "Divine Judgment",
+            icon: "☀️",
+            trigger: "on_hit",
+            desc: "On hit, 15%–55% chance to apply 35% DMG down to target for 2 rounds.",
+            procBase: 0.15, procMax: 0.55,
+            effect: { type: "dmg_down", value: 0.35, duration: 2 },
+          },
+          b: {
+            key: "holy_aegis",
+            name: "Holy Aegis",
+            icon: "🌟",
+            trigger: "on_hit_received",
+            desc: "Stun immunity. On hit received, 20%–70% chance to reduce damage taken by 25% for 2 rounds.",
+            procBase: 0.20, procMax: 0.70,
+            effect: { type: "dmg_reduce", value: 0.25, duration: 2, stunImmune: true },
+          },
+        },
+        tiers: [
+          { label: "Celestial Ward", desc: "A towering divine construct clad in heavenly fire.",          dmgLo: 260, dmgHi: 280, def: 58, hp:  980, siege: 360, spd: 34 },
+          { label: "Archangel",      desc: "A winged behemoth of holy retribution and sacred fury.",      dmgLo: 318, dmgHi: 338, def: 70, hp: 1200, siege: 460, spd: 44 },
+          { label: "Seraphim",       desc: "A living avatar of divine wrath — the sky itself bows down.", dmgLo: 395, dmgHi: 415, def: 90, hp: 1550, siege: 565, spd: 55 },
+        ],
+      },
+    ],
+  },
+
+  // ── CREATURES OF THE NIGHT ───────────────────────────────────────────────────
+  nightcreatures: {
+    quarters: "The Shroud",
+    factionPassives: [
+      {
+        key: "children_of_darkness",
+        name: "Children of Darkness",
+        icon: "🌑",
+        desc: "Deal 10% bonus damage during rounds 1–2. Take 10% bonus damage from holy factions.",
+        effect: { type: "dmg_up_early", value: 0.10, rounds: [1, 2] },
+      },
+    ],
+    branches: [
+      {
+        key: "vampires",
+        label: "Vampires",
+        size: "small",
+        dmgType: "magical",
+        role: "glass_cannon",
+        skills: {
+          a: {
+            key: "blood_drain",
+            name: "Blood Drain",
+            icon: "🧛",
+            trigger: "on_hit",
+            desc: "On hit, 20%–70% chance to heal own troops by 30% of damage dealt.",
+            procBase: 0.20, procMax: 0.70,
+            effect: { type: "lifesteal", value: 0.30 },
+          },
+          b: {
+            key: "mesmerize",
+            name: "Mesmerize",
+            icon: "🌀",
+            trigger: "on_hit",
+            desc: "On hit, 15%–55% chance to apply confusion to target for 2 rounds.",
+            procBase: 0.15, procMax: 0.55,
+            effect: { type: "confusion", target: "single", duration: 2 },
+          },
+        },
+        tiers: [
+          { label: "Thrall",     desc: "A freshly turned vampire — fast, hungry, and reckless.",          dmgLo: 18, dmgHi: 23, def:  8, hp: 19, siege:  8, spd: 73 },
+          { label: "Bloodbound", desc: "A seasoned vampire who hunts with cold, lethal precision.",       dmgLo: 22, dmgHi: 28, def: 13, hp: 25, siege: 11, spd: 73 },
+          { label: "Nightlord",  desc: "An ancient vampire of terrible power — death made elegant.",      dmgLo: 27, dmgHi: 34, def: 19, hp: 32, siege: 14, spd: 73 },
+        ],
+      },
+      {
+        key: "werewolves",
+        label: "Werewolves",
+        size: "medium",
+        dmgType: "physical",
+        role: "glass_cannon",
+        skills: {
+          a: {
+            key: "feral_frenzy",
+            name: "Feral Frenzy",
+            icon: "🐺",
+            trigger: "on_hit",
+            desc: "On hit, 20%–70% chance to attack twice in one round.",
+            procBase: 0.20, procMax: 0.70,
+            effect: { type: "double_attack" },
+          },
+          b: {
+            key: "pack_instinct",
+            name: "Pack Instinct",
+            icon: "🌕",
+            trigger: "on_hit_received",
+            desc: "On hit received, 30%–75% chance to increase damage dealt by 6% per hit, max 30%.",
+            procBase: 0.30, procMax: 0.75,
+            effect: { type: "atk_stack", valuePerStack: 0.06, maxStacks: 5 },
+          },
+        },
+        tiers: [
+          { label: "Wolfkin",     desc: "A half-turned beast-man tearing at enemies with savage hunger.",   dmgLo: 22, dmgHi: 26, def: 20, hp:  52, siege: 10, spd: 108 },
+          { label: "Moonstalker", desc: "A full werewolf in its prime — brutal, fast, near-unstoppable.",   dmgLo: 30, dmgHi: 38, def: 28, hp:  68, siege: 14, spd: 125 },
+          { label: "Dreadwolf",   desc: "An apex werewolf of terrifying size, rage, and killing efficiency.", dmgLo: 38, dmgHi: 46, def: 40, hp:  80, siege: 18, spd: 138 },
+        ],
+      },
+      {
+        key: "broodspiders",
+        label: "Broodspiders",
+        size: "large",
+        dmgType: "physical",
+        role: "normal",
+        skills: {
+          a: {
+            key: "venom_sac",
+            name: "Venom Sac",
+            icon: "🕷️",
+            trigger: "on_hit",
+            desc: "On hit, 15%–55% chance to poison target, dealing continuous damage each round for 2 rounds.",
+            procBase: 0.15, procMax: 0.55,
+            effect: { type: "poison", tickDmgPct: 0.08, duration: 2 },
+          },
+          b: {
+            key: "web_trap",
+            name: "Web Trap",
+            icon: "🕸️",
+            trigger: "on_hit",
+            desc: "On hit, 10%–45% chance to blanket all enemies in webs, applying 30% speed down to all enemy troops for 2 rounds.",
+            procBase: 0.10, procMax: 0.45,
+            effect: { type: "spd_down", value: 0.30, target: "all_enemies", duration: 2 },
+          },
+        },
+        tiers: [
+          { label: "Webspinner",   desc: "A dog-sized spider that ensnares enemies and drains them dry.",   dmgLo: 270, dmgHi: 290, def: 34, hp:  780, siege: 310, spd: 38 },
+          { label: "Broodmother",  desc: "A massive spider commanding a swarm — legs, fangs, and silk.",    dmgLo: 330, dmgHi: 350, def: 46, hp:  980, siege: 400, spd: 50 },
+          { label: "Arachnofiend", desc: "A colossal nightmare spider — ancient, venomous, and ravenous.",  dmgLo: 410, dmgHi: 430, def: 62, hp: 1250, siege: 490, spd: 63 },
+        ],
+      },
+    ],
+  },
 };
 
 // ── Convenience lookups ───────────────────────────────────────────────────────

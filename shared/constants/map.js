@@ -16,17 +16,17 @@ bountyhunters:{ base:"#12101e", bdr:"#503878", dot:"#9955dd", hq:"#0e0b18" },
 merfolk:      { base:"#081a28", bdr:"#105a78", dot:"#30b8c8", hq:"#041018" },
 orcs:         { base:"#0e1e08", bdr:"#304a10", dot:"#6aa830", hq:"#081004" },
 dragons:      { base:"#1e0808", bdr:"#701010", dot:"#cc3030", hq:"#140404" },
+holyknights:  { base:"#1a1408", bdr:"#6a5010", dot:"#d4af37", hq:"#100c04" },
+nightcreatures:{ base:"#0d0010", bdr:"#3a0848", dot:"#a030c0", hq:"#080008" },
 };
 
-// HQP is now dynamic — player/AI HQs are placed randomly inside their faction's starting region.
-// This object is kept for backwards compat but should not be used for spawn positioning.
-// Actual HQ keys are passed at game start via genMap().
-export const HQP = { player:{ c:87, r:254 }, ai:{ c:613, r:254 } };
+// HQP fallback — actual spawn is random inside faction start region
+export const HQP = { player:{ c:363, r:200 }, ai:{ c:1037, r:200 } };
 export const AI_HQ_KEY = `${HQP.ai.c},${HQP.ai.r}`;
 
-// The Holy Grail — center of 700x700 map
-export const WIN_C = 350;
-export const WIN_R = 350;
+// Win tile — center of 1400x1000 map
+export const WIN_C = 700;
+export const WIN_R = 500;
 export const WIN_KEY = `${WIN_C},${WIN_R}`;
 
 export const POWER_DEFS = {
@@ -38,28 +38,25 @@ export const POWER_DEFS = {
 
 export const SIEGE_BASE          = 50;
 export const SIEGE_HQ_BASE       = 50000;
-export const SIEGE_KEEP_BASE     = 5000;   // keep tiles
-export const SIEGE_RESET_MS      = 60000;  // regular tiles
-export const KEEP_GARRISON_RESET_MS = 600000; // keeps: 10 min garrison revival
+export const SIEGE_KEEP_BASE     = 5000;
+export const SIEGE_RESET_MS      = 60000;
+export const KEEP_GARRISON_RESET_MS = 600000;
 
 export function hqSiegeValue(wallLvl) {
 return SIEGE_HQ_BASE + (wallLvl || 0) * 10000;
 }
 
-// tilePowerLevel is now driven by region layer — see regions.js
-// This fallback uses distance from center for tiles not in any region
 export function tilePowerLevel(c, r) {
-const cx = 350, cy = 350;
+const cx = 700, cy = 500;
 const dist = Math.max(Math.abs(c - cx), Math.abs(r - cy));
-if (dist <= 60)  return 4;
-if (dist <= 120) return 3;
-if (dist <= 220) return 2;
+if (dist <= 80)  return 4;
+if (dist <= 180) return 3;
+if (dist <= 320) return 2;
 return 1;
 }
 
 export function calcSiegePower(troops, troopBranch, armySiegeBonus = 0, troopTierData = null) {
   if (!troops || troops <= 0) return 0;
-  // Use the tier's siege stat if available, otherwise default to 0.5 rate
   const siegeRate = troopTierData ? (troopTierData.siege / troops) : 0.5;
   return Math.round(troops * siegeRate + (armySiegeBonus || 0));
 }

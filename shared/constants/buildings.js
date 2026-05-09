@@ -69,13 +69,15 @@ return (lvl || 5) * 120 + (ccLvl || 0) * 300 + leaderBonus;
 // Quarter level gates — indexed by HQ level (0-10)
 const Q1_MAX = [0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10]; // 1:1 with HQ
 const Q2_MAX = [0,  0,  0,  0,  1,  3,  5,  6,  7,  8, 10]; // unlocks HQ4, hits 8 at HQ9
-const Q3_MAX = [0,  0,  0,  0,  0,  0,  1,  3,  5,  7, 10]; // unlocks HQ6, hits 7 at HQ9, 8-10 at HQ10
+const Q3_MAX = [0,  0,  0,  0,  0,  0,  1,  3,  5,  7, 10];
+const Q4_MAX = [0,  0,  0,  0,  0,  0,  0,  1,  3,  6, 10]; // unlocks HQ7, max at HQ10
 
 export function quarterMaxLevel(slot, hqLvl) {
   const h = Math.min(10, Math.max(0, hqLvl || 1));
   if (slot === 0) return Q1_MAX[h];
   if (slot === 1) return Q2_MAX[h];
   if (slot === 2) return Q3_MAX[h];
+  if (slot === 3) return Q4_MAX[h];
   return 0;
 }
 
