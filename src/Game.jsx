@@ -373,6 +373,11 @@ export default function RiseToWar() {
   const [gearScreenOpen, setGearScreenOpen] = useState(false);
   const [showPerf,       setShowPerf]       = useState(false);
 
+  // ── Hooks ──
+  useResources({ screen, tilesRef, setRss });
+
+  const { initPathfinding, findPath, findPathBatch } = usePathfinding();
+
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => { mvCmdRef.current = mvCmd; }, [mvCmd]);
 
@@ -621,11 +626,6 @@ export default function RiseToWar() {
     setFloats(f => [...f, { id, txt, col, x:screenX, y:screenY }]);
     setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), 1800);
   }, []);
-
-  // ── Hooks ──
-  useResources({ screen, tilesRef, setRss });
-
-  const { initPathfinding, findPath, findPathBatch } = usePathfinding();
 
 
   // ── Server sync — authoritative tile state ──
