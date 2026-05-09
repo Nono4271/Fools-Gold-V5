@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, useMemo } from "react";
-import { FACTION_TROOPS, COMMAND_COST } from "../../../shared/constants/troops.js";
+import { FACTION_TROOPS, COMMAND_COST, getTierSkills } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
 import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
@@ -330,279 +330,398 @@ const BRANCH_LVL_BONUS = [
 "-10% train cost & time",
 ];
 
-function QuarterDetail({ fKey, fDef, slot, bldgs, setBldgs, rss, setRss, canAfford, quarterLevels, setQuarterLevels, setUnlockedBranches }) {
-const [selBranch, setSelBranch] = useState(null);
-const hqLvl   = bldgs.hq || 1;
-const qCeil   = quarterMaxLevel(slot, hqLvl);
-// Default to Lv1 when the slot first becomes available
-const _stored = (quarterLevels||{})[fKey];
-const qLvl    = _stored != null ? _stored : (qCeil > 0 ? 1 : 0);
-const qCost   = QUARTER_UPGRADE_COST(qLvl);
-const atCeil  = qLvl >= qCeil;
-const atMax   = qLvl >= 10;
-const canUpg  = !atMax && !atCeil && canAfford(qCost);
 
-// Auto-initialize branches to Lv1 when the quarter reaches their unlock threshold
-useEffect(() => {
-const bldgUpdates = {};
-const ubUpdates   = {};
-fDef.branches.forEach((br, idx) => {
-if (qLvl >= BRANCH_UNLOCK_Q[idx]) {
-const bKey = `b_${fKey}_${br.key}`;
-if (!(bKey in bldgs) || (bldgs[bKey] || 0) < 1) {
-bldgUpdates[bKey] = 1;
-ubUpdates[`${fKey}:${br.key}`] = 0; // T1 available
-}
-}
-});
-if (Object.keys(bldgUpdates).length > 0) {
-setBldgs(b => ({ ...b, ...bldgUpdates }));
-if (setUnlockedBranches) setUnlockedBranches(p => ({ ...p, ...ubUpdates }));
-}
-}, [qLvl, fKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // -- Troop stat modal ----------------------------------------------------------
+  function TroopStatModal({ troop, fColor, fDef, onClose }) {
+  const { branch, tierIdx, tier } = troop;
+  const cmdCost = COMMAND_COST[branch.size] ?? 1;
+  const dmgColor = branch.dmgType === "magical" ? "#a855f7" : "#e08050";
+  const roman = ["I","II","III"];
+  const skills = getTierSkills(branch, tierIdx);
+  const conscriptCost = { stone:2, wood:2, ore:1, gas:0.5 };
+  const conscriptBase = [30, 60, 120][tierIdx];
+  const TRIGGER_LABEL = {
+  round_start: "Round Start", on_hit: "On Hit",
+  on_hit_received: "On Hit Taken", on_kill: "On Kill", passive: "Passive",
+  };
+  const RSS_COL = { stone:["🪨","#aaaaaa"], wood:["🪵","#c8903a"], ore:["⚙️","#88aaff"], gas:["⛽","#5dcc80"] };
+  return (
+  <div onClick={onClose}
+  style={{ position:"fixed", inset:0, zIndex:200, background:"rgba(0,0,0,.72)",
+  display:"flex", alignItems:"center", justifyContent:"center" }}>
+  <div onClick={e => e.stopPropagation()}
+  style={{ background:"#0f1018", border:`1px solid ${fColor}55`,
+  borderRadius:12, padding:20, width:288, position:"relative",
+  boxShadow:`0 8px 32px rgba(0,0,0,.7), 0 0 0 1px ${fColor}22`,
+  maxHeight:"88vh", overflowY:"auto" }}>
+  {/* close */}
+  <button onClick={onClose}
+  style={{ position:"absolute", top:8, right:10, background:"none", border:"none",
+  color:P.dim, fontSize:16, cursor:"pointer", lineHeight:1 }}>x</button>
+  {/* header */}
+  <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+  <div style={{ width:44, height:44, borderRadius:8, background:`${fColor}22`,
+  border:`1px solid ${fColor}55`, display:"flex", alignItems:"center",
+  justifyContent:"center", flexDirection:"column" }}>
+  <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:fColor }}>{roman[tierIdx]}</div>
+  <div style={{ fontSize:16 }}>{fDef.s}</div>
+  </div>
+  <div>
+  <div style={{ fontFamily:P.ff, fontSize:13, fontWeight:700, color:P.text }}>{tier.label}</div>
+  <div style={{ fontSize:8, color:dmgColor, marginTop:1 }}>{branch.label} / {branch.size} / {branch.dmgType}</div>
+  </div>
+  </div>
+  {/* stat grid */}
+  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, marginBottom:12 }}>
+  {[
+  { lbl:"HP",    val:tier.hp,                         col:"#5dcc80" },
+  { lbl:"DEF",   val:tier.def,                        col:"#88aaff" },
+  { lbl:"DMG",   val:`${tier.dmgLo} - ${tier.dmgHi}`, col:"#e08050" },
+  { lbl:"CMD",   val:`${cmdCost} / troop`,            col:P.sub    },
+  ].map(({ lbl, val, col }) => (
+  <div key={lbl} style={{ padding:"8px 10px", background:"rgba(255,255,255,.03)",
+  border:`1px solid ${P.border}`, borderRadius:6 }}>
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".06em", marginBottom:3 }}>{lbl}</div>
+  <div style={{ fontSize:13, fontWeight:700, color:col, fontFamily:P.ff }}>{val}</div>
+  </div>
+  ))}
+  </div>
+  {/* skills */}
+  <div style={{ marginBottom:12 }}>
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:6 }}>SKILLS</div>
+  {skills.map(skill => (
+  <div key={skill.key} style={{ padding:"8px 10px", background:"rgba(255,255,255,.02)",
+  border:`1px solid ${P.border}`, borderRadius:6, marginBottom:5 }}>
+  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+  <span style={{ fontSize:15, lineHeight:1 }}>{skill.icon}</span>
+  <div style={{ flex:1 }}>
+  <div style={{ fontFamily:P.ff, fontSize:10, fontWeight:700, color:fColor }}>{skill.name}</div>
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ffb, letterSpacing:".03em", marginTop:1 }}>
+  {TRIGGER_LABEL[skill.trigger] || skill.trigger}
+  {" · "}
+  <span style={{ color:"#88aaff" }}>
+  {Math.round(skill.procBase*100)}%–{Math.round(skill.procMax*100)}% proc
+  </span>
+  </div>
+  </div>
+  </div>
+  <div style={{ fontSize:8, color:P.sub, fontFamily:P.ffb, lineHeight:1.65 }}>{skill.desc}</div>
+  </div>
+  ))}
+  </div>
+  {/* conscription */}
+  <div style={{ padding:"8px 10px", background:"rgba(255,255,255,.02)",
+  border:`1px solid ${P.border}`, borderRadius:6 }}>
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:7 }}>CONSCRIPTION</div>
+  {/* cost per troop */}
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".05em", marginBottom:4 }}>COST PER TROOP</div>
+  <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:8 }}>
+  {Object.entries(conscriptCost).map(([k, v]) => {
+  const [icon, col] = RSS_COL[k] || ["", P.sub];
+  return (
+  <span key={k} style={{ fontSize:9, fontFamily:P.ff, color:col }}>
+  {icon} {v}
+  </span>
+  );
+  })}
+  </div>
+  {/* time */}
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".05em", marginBottom:4 }}>TRAIN TIME</div>
+  <div style={{ fontSize:9, fontFamily:P.ff, color:"#e8a840", marginBottom:7 }}>
+  ⏱ {conscriptBase}s per troop <span style={{ fontSize:7, color:P.dim }}>(base)</span>
+  </div>
+  {/* unlock note */}
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ffb, lineHeight:1.65 }}>
+  Tier <strong style={{color:fColor}}>{roman[tierIdx]}</strong> unlocked at branch Lv{tierIdx*2+1}.
+  Train speed scales with Barracks level.
+  </div>
+  </div>
+  </div>
+  </div>
+  );
+  }
 
-const upgradeQuarter = () => {
-if (!canUpg) return;
-setQuarterLevels(prev => ({ ...prev, [fKey]: qLvl + 1 }));
-setRss(p => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v - (qCost[k] || 0)])));
-};
+  function QuarterDetail({ fKey, fDef, slot, bldgs, setBldgs, rss, setRss, canAfford, quarterLevels, setQuarterLevels, setUnlockedBranches }) {
+  const [selTroop, setSelTroop] = useState(null); // { branch, tierIdx, tier }
+  const hqLvl   = bldgs.hq || 1;
+  const qCeil   = quarterMaxLevel(slot, hqLvl);
+  const _stored = (quarterLevels||{})[fKey];
+  const qLvl    = _stored != null ? _stored : (qCeil > 0 ? 1 : 0);
+  const qCost   = QUARTER_UPGRADE_COST(qLvl);
+  const atCeil  = qLvl >= qCeil;
+  const atMax   = qLvl >= 10;
+  const canUpg  = !atMax && !atCeil && canAfford(qCost);
 
-const upgradeBranch = (branchKey, branchIdx) => {
-const bKey  = `b_${fKey}_${branchKey}`;
-const bLvl  = bldgs[bKey] || 0;
-const bCeil = branchMaxLevel(branchIdx, qLvl);
-if (bLvl >= bCeil) return;
-const cost = BRANCH_UPGRADE_COST(bLvl);
-if (!canAfford(cost)) return;
-const newBLvl = bLvl + 1;
-setBldgs(b => ({ ...b, [bKey]: newBLvl }));
-setRss(p => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v - (cost[k] || 0)])));
-if (setUnlockedBranches) {
-const newTier = tierFromBranchLevel(newBLvl);
-setUnlockedBranches(p => ({ ...p, [`${fKey}:${branchKey}`]: newTier }));
-}
-};
+  useEffect(() => {
+  const bldgUpdates = {};
+  const ubUpdates   = {};
+  fDef.branches.forEach((br, idx) => {
+  if (qLvl >= BRANCH_UNLOCK_Q[idx]) {
+  const bKey = `b_${fKey}_${br.key}`;
+  if (!(bKey in bldgs) || (bldgs[bKey] || 0) < 1) {
+  bldgUpdates[bKey] = 1;
+  ubUpdates[`${fKey}:${br.key}`] = 0;
+  }
+  }
+  });
+  if (Object.keys(bldgUpdates).length > 0) {
+  setBldgs(b => ({ ...b, ...bldgUpdates }));
+  if (setUnlockedBranches) setUnlockedBranches(p => ({ ...p, ...ubUpdates }));
+  }
+  }, [qLvl, fKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-return (
-<div style={{ padding:"16px 20px" }}>
-{/* Quarter header */}
-<div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16,
-padding:"12px 14px", background:`${fDef.c}11`, border:`1px solid ${fDef.c}44`, borderRadius:8 }}>
-<div style={{ fontSize:36 }}>{fDef.s}</div>
-<div style={{ flex:1 }}>
-<div style={{ fontFamily:P.ff, fontSize:15, fontWeight:700, color:fDef.c }}>{fDef.quarters}</div>
-<div style={{ fontSize:9, color:P.sub, marginTop:2 }}>
-{fDef.n} . Quarter Lv{qLvl}
-{!atMax && <span style={{ color:P.dim }}> / {qCeil} available . 10 max</span>}
-{atMax && <span style={{ color:fDef.c }}> / MAX</span>}
-</div>
-<LevelBar lvl={qLvl} max={10} color={fDef.c} />
-{/* HQ-gate progress bar showing available ceiling */}
-{!atMax && (
-<div style={{ marginTop:4 }}>
-<div style={{ fontSize:7, color:P.dim, marginBottom:2 }}>
-HQ Lv{hqLvl} gate: {qCeil < 10 ? `upgrades available to Lv${qCeil}` : "fully unlocked"}
-</div>
-<div style={{ display:"flex", gap:2 }}>
-{Array.from({ length: 10 }).map((_, i) => (
-<div key={i} style={{ flex:1, height:2, borderRadius:1, minWidth:2,
-background: i < qLvl ? fDef.c : i < qCeil ? `${fDef.c}44` : "#1e1810" }}/>
-))}
-</div>
-</div>
-)}
-</div>
-<div style={{ textAlign:"right", minWidth:72 }}>
-{atMax ? (
-<div style={{ fontSize:9, color:fDef.c, fontFamily:P.ff, fontWeight:700 }}>MAX</div>
-) : atCeil ? (
-<div style={{ textAlign:"center" }}>
-<div style={{ fontSize:8, color:"#c8903a", fontFamily:P.ff, marginBottom:3 }}>🔒 HQ GATE</div>
-<div style={{ fontSize:7, color:"#6a5040" }}>Upgrade HQ to<br/>unlock Lv{qCeil+1}</div>
-</div>
-) : (
-<div>
-<button className="btn" disabled={!canUpg} onClick={upgradeQuarter}
-style={{ padding:"6px 14px", fontSize:10, fontWeight:700, marginBottom:4,
-background: canUpg ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
-border: `1px solid ${canUpg ? fDef.c : "#1e1810"}`,
-color: canUpg ? fDef.c : "#2a2a2a", borderRadius:4 }}>
-↑ Lv{qLvl+1}
-</button>
-<div style={{ display:"flex", flexDirection:"column", gap:1 }}>
-{Object.entries(qCost).filter(([,v])=>v>0).map(([k,v]) => (
-<RssPill key={k} rssKey={k} amount={v} rss={rss} small />
-))}
-</div>
-</div>
-)}
-</div>
-</div>
+  const upgradeQuarter = () => {
+  if (!canUpg) return;
+  setQuarterLevels(prev => ({ ...prev, [fKey]: qLvl + 1 }));
+  setRss(p => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v - (qCost[k] || 0)])));
+  };
 
-  {/* Branches */}
+  const upgradeBranch = (branchKey, branchIdx) => {
+  const bKey  = `b_${fKey}_${branchKey}`;
+  const bLvl  = bldgs[bKey] || 0;
+  const bCeil = branchMaxLevel(branchIdx, qLvl);
+  if (bLvl >= bCeil) return;
+  const cost = BRANCH_UPGRADE_COST(bLvl);
+  if (!canAfford(cost)) return;
+  const newBLvl = bLvl + 1;
+  setBldgs(b => ({ ...b, [bKey]: newBLvl }));
+  setRss(p => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v - (cost[k] || 0)])));
+  if (setUnlockedBranches) {
+  const newTier = tierFromBranchLevel(newBLvl);
+  setUnlockedBranches(p => ({ ...p, [`${fKey}:${branchKey}`]: newTier }));
+  }
+  };
+
+  const roman = ["I","II","III"];
+
+  return (
+  <div style={{ overflowY:"auto", height:"100%", padding:"14px 16px" }}>
+
+  {/* Quarter header */}
+  <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16,
+  padding:"12px 14px", background:`${fDef.c}11`, border:`1px solid ${fDef.c}44`, borderRadius:8 }}>
+  <div style={{ fontSize:36 }}>{fDef.s}</div>
+  <div style={{ flex:1 }}>
+  <div style={{ fontFamily:P.ff, fontSize:15, fontWeight:700, color:fDef.c }}>{fDef.quarters}</div>
+  <div style={{ fontSize:9, color:P.sub, marginTop:2 }}>
+  {fDef.n} . Quarter Lv{qLvl}
+  {!atMax && <span style={{ color:P.dim }}> / {qCeil} available . 10 max</span>}
+  {atMax && <span style={{ color:fDef.c }}> / MAX</span>}
+  </div>
+  <LevelBar lvl={qLvl} max={10} color={fDef.c} />
+  {!atMax && (
+  <div style={{ marginTop:4 }}>
+  <div style={{ fontSize:7, color:P.dim, marginBottom:2 }}>
+  HQ Lv{hqLvl} gate: {qCeil < 10 ? `upgrades available to Lv${qCeil}` : "fully unlocked"}
+  </div>
+  <div style={{ display:"flex", gap:2 }}>
+  {Array.from({ length: 10 }).map((_, i) => (
+  <div key={i} style={{ flex:1, height:2, borderRadius:1, minWidth:2,
+  background: i < qLvl ? fDef.c : i < qCeil ? `${fDef.c}44` : "#1e1810" }}/>
+  ))}
+  </div>
+  </div>
+  )}
+  </div>
+  <div style={{ textAlign:"right", minWidth:72 }}>
+  {atMax ? (
+  <div style={{ fontSize:9, color:fDef.c, fontFamily:P.ff, fontWeight:700 }}>MAX</div>
+  ) : atCeil ? (
+  <div style={{ textAlign:"center" }}>
+  <div style={{ fontSize:8, color:"#c8903a", fontFamily:P.ff, marginBottom:3 }}>🔒 HQ GATE</div>
+  <div style={{ fontSize:7, color:"#6a5040" }}>Upgrade HQ to<br/>unlock Lv{qCeil+1}</div>
+  </div>
+  ) : (
+  <div>
+  <button className="btn" disabled={!canUpg} onClick={upgradeQuarter}
+  style={{ padding:"6px 14px", fontSize:10, fontWeight:700, marginBottom:4,
+  background: canUpg ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
+  border: `1px solid ${canUpg ? fDef.c : "#1e1810"}`,
+  color: canUpg ? fDef.c : "#2a2a2a", borderRadius:4 }}>
+  ^ Lv{qLvl+1}
+  </button>
+  <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
+  {Object.entries(qCost).filter(([,v])=>v>0).map(([k,v]) => (
+  <RssPill key={k} rssKey={k} amount={v} rss={rss} small />
+  ))}
+  </div>
+  </div>
+  )}
+  </div>
+  </div>
+
+  {/* Branch rows */}
   <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff, letterSpacing:".1em", marginBottom:10 }}>TROOP BRANCHES</div>
   {fDef.branches.map((br, branchIdx) => {
-    const unlockQ    = BRANCH_UNLOCK_Q[branchIdx];
-    const branchOpen = qLvl >= unlockQ;
-    const bKey       = `b_${fKey}_${br.key}`;
-    const bLvl       = branchOpen ? Math.max(1, bldgs[bKey] || 1) : 0;
-    const bCeil      = branchMaxLevel(branchIdx, qLvl);
-    const atBCeil    = bLvl >= bCeil;
-    const atBMax     = bLvl >= 6;
-    const bCost      = BRANCH_UPGRADE_COST(bLvl);
-    const bOk        = branchOpen && !atBMax && !atBCeil && canAfford(bCost);
-    const isSelected = selBranch === br.key;
-    const dmgColor   = br.dmgType === "magical" ? "#a855f7" : "#e08050";
-    const unlockedTier = tierFromBranchLevel(bLvl); // 0=T1, 1=T2, 2=T3, -1=none
+  const unlockQ    = BRANCH_UNLOCK_Q[branchIdx];
+  const branchOpen = qLvl >= unlockQ;
+  const bKey       = `b_${fKey}_${br.key}`;
+  const bLvl       = branchOpen ? Math.max(1, bldgs[bKey] || 1) : 0;
+  const bCeil      = branchMaxLevel(branchIdx, qLvl);
+  const atBCeil    = bLvl >= bCeil;
+  const atBMax     = bLvl >= 6;
+  const bCost      = BRANCH_UPGRADE_COST(bLvl);
+  const bOk        = branchOpen && !atBMax && !atBCeil && canAfford(bCost);
+  const unlockedTier = tierFromBranchLevel(bLvl);
+  const dmgColor   = br.dmgType === "magical" ? "#a855f7" : "#e08050";
 
-    if (!branchOpen) {
-      // Locked branch -- show unlock requirement
-      return (
-        <div key={br.key} style={{ marginBottom:8, borderRadius:8, overflow:"hidden",
-          border:`1px solid ${P.border}`, background:"rgba(255,255,255,.01)",
-          opacity:0.5 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px" }}>
-            <div style={{ flex:1 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
-                <span style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:"#3a3028" }}>{br.label}</span>
-                <span style={{ fontSize:7, color:"#3a3028", background:"rgba(255,255,255,.03)",
-                  padding:"1px 5px", borderRadius:3 }}>{br.size} . {br.dmgType}</span>
-              </div>
-              <div style={{ fontSize:8, color:"#3a3028" }}>Locked</div>
-            </div>
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontSize:8, color:"#c8903a", fontFamily:P.ff, marginBottom:2 }}>🔒 LOCKED</div>
-              <div style={{ fontSize:7, color:"#4a3820" }}>Upgrade quarter<br/>to Lv{unlockQ}</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
+  return (
+  <div key={br.key} style={{ display:"flex", gap:8, marginBottom:12, alignItems:"stretch" }}>
 
-    return (
-      <div key={br.key} style={{ marginBottom:8,
-        border:`1px solid ${isSelected ? fDef.c+"88" : P.border}`,
-        borderRadius:8, overflow:"hidden",
-        background: isSelected ? `${fDef.c}0a` : "rgba(255,255,255,.02)" }}>
+  {/* LEFT: branch upgrade card */}
+  <div style={{ width:110, flexShrink:0, borderRadius:8, overflow:"hidden",
+  border:`1px solid ${branchOpen ? fDef.c+"55" : P.border}`,
+  background: branchOpen ? `${fDef.c}0d` : "rgba(255,255,255,.01)",
+  display:"flex", flexDirection:"column", position:"relative",
+  opacity: branchOpen ? 1 : 0.55 }}>
+  {/* lock overlay */}
+  {!branchOpen && (
+  <div style={{ position:"absolute", inset:0, zIndex:3,
+  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+  background:"rgba(6,6,8,.6)", borderRadius:8 }}>
+  <div style={{ fontSize:20, marginBottom:4 }}>🔒</div>
+  <div style={{ fontSize:7, color:"#5a4020", fontFamily:P.ff, textAlign:"center", lineHeight:1.4 }}>
+  Quarter<br/>Lv{unlockQ}
+  </div>
+  </div>
+  )}
+  <div style={{ flex:1, padding:"10px 8px 8px", display:"flex", flexDirection:"column", gap:5 }}>
+  {/* faction symbol + label */}
+  <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
+  <div style={{ fontSize:18, lineHeight:1 }}>{fDef.s}</div>
+  <div style={{ fontFamily:P.ff, fontSize:8, fontWeight:700,
+  color: branchOpen ? fDef.c : "#3a3028", lineHeight:1.2 }}>{br.label}</div>
+  </div>
+  {/* size / dmg type badges */}
+  <div style={{ display:"flex", gap:3, flexWrap:"wrap" }}>
+  <span style={{ fontSize:6, color:dmgColor, background:`${dmgColor}18`,
+  padding:"1px 4px", borderRadius:3 }}>{br.dmgType}</span>
+  <span style={{ fontSize:6, color:P.dim, background:"rgba(255,255,255,.04)",
+  padding:"1px 4px", borderRadius:3 }}>{br.size}</span>
+  </div>
+  {/* level pips */}
+  {branchOpen && (
+  <div>
+  <div style={{ fontSize:7, color:P.dim, marginBottom:3 }}>
+  Lv{bLvl}
+  {!atBMax && <span style={{color:"#3a3028"}}> / {bCeil} avail</span>}
+  {atBMax && <span style={{color:fDef.c}}> MAX</span>}
+  </div>
+  <div style={{ display:"flex", gap:2 }}>
+  {Array.from({length:6}).map((_,i) => (
+  <div key={i} style={{ flex:1, height:3, borderRadius:2, minWidth:3,
+  background: i < bLvl ? fDef.c : i < bCeil ? `${fDef.c}33` : "#1e1810" }}/>
+  ))}
+  </div>
+  </div>
+  )}
+  </div>
+  {/* upgrade button at bottom of card */}
+  {branchOpen && (
+  <div style={{ borderTop:`1px solid ${P.border}`, padding:"6px 8px" }}>
+  {atBMax ? (
+  <div style={{ fontSize:7, color:fDef.c, fontFamily:P.ff, fontWeight:700,
+  textAlign:"center" }}>MAX</div>
+  ) : atBCeil ? (
+  <div style={{ fontSize:6, color:"#7a5030", fontFamily:P.ff,
+  textAlign:"center", lineHeight:1.5 }}>Q Lv{bCeil+1}<br/>to unlock</div>
+  ) : (
+  <>
+  <button className="btn" disabled={!bOk}
+  onClick={() => upgradeBranch(br.key, branchIdx)}
+  style={{ width:"100%", padding:"4px 0", fontSize:8, fontWeight:700,
+  background: bOk ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
+  border:`1px solid ${bOk ? fDef.c : "#1e1810"}`,
+  color: bOk ? fDef.c : "#2a2a2a", borderRadius:4, marginBottom:4 }}>
+  {bOk ? `^ Lv${bLvl+1}` : "^"}
+  </button>
+  <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
+  {Object.entries(bCost).filter(([,v])=>v>0).map(([k,v]) => (
+  <RssPill key={k} rssKey={k} amount={v} rss={rss} small />
+  ))}
+  </div>
+  </>
+  )}
+  </div>
+  )}
+  </div>
 
-        {/* Branch header */}
-        <div onClick={() => setSelBranch(isSelected ? null : br.key)}
-          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer" }}>
-          <div style={{ flex:1 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
-              <span style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:P.text }}>{br.label}</span>
-              <span style={{ fontSize:7, color:dmgColor, background:`${dmgColor}18`,
-                padding:"1px 5px", borderRadius:3 }}>{br.size} . {br.dmgType}</span>
-              {/* Active tier badge */}
-              <span style={{ fontSize:7, color:fDef.c, background:`${fDef.c}18`,
-                padding:"1px 5px", borderRadius:3, fontFamily:P.ff }}>
-                T{unlockedTier + 1} active
-              </span>
-            </div>
-            <div style={{ fontSize:8, color:P.sub }}>
-              Lv{bLvl}
-              {!atBMax && <span style={{ color:P.dim }}> / {bCeil} available . 6 max</span>}
-              {atBMax && <span style={{ color:fDef.c }}> / MAX</span>}
-            </div>
-            {/* 6-pip level bar with ceiling indicator */}
-            <div style={{ display:"flex", gap:2, marginTop:4 }}>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} style={{ flex:1, height:3, borderRadius:2, minWidth:3,
-                  background: i < bLvl ? fDef.c : i < bCeil ? `${fDef.c}33` : "#1e1810" }}/>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-            {atBMax ? (
-              <div style={{ fontSize:9, color:fDef.c, fontFamily:P.ff, fontWeight:700 }}>MAX</div>
-            ) : atBCeil ? (
-              <div style={{ textAlign:"center" }}>
-                <div style={{ fontSize:7, color:"#c8903a", fontFamily:P.ff }}>🔒 Q GATE</div>
-                <div style={{ fontSize:6, color:"#5a4030" }}>Q Lv{bCeil+1}<br/>to unlock</div>
-              </div>
-            ) : (
-              <div style={{ textAlign:"right" }}>
-                <button className="btn" disabled={!bOk}
-                  onClick={e => { e.stopPropagation(); upgradeBranch(br.key, branchIdx); }}
-                  style={{ padding:"4px 10px", fontSize:9, fontWeight:700, marginBottom:3,
-                    background: bOk ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
-                    border: `1px solid ${bOk ? fDef.c : "#1e1810"}`,
-                    color: bOk ? fDef.c : "#2a2a2a", borderRadius:4 }}>
-                  ↑ Lv{bLvl+1}
-                </button>
-                <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
-                  {Object.entries(bCost).filter(([,v])=>v>0).map(([k,v]) => (
-                    <RssPill key={k} rssKey={k} amount={v} rss={rss} small />
-                  ))}
-                </div>
-              </div>
-            )}
-            <span style={{ fontSize:10, color:P.dim }}>{isSelected ? "^" : "v"}</span>
-          </div>
-        </div>
-
-        {/* Expanded: level milestones + tier stats */}
-        {isSelected && (
-          <div style={{ padding:"0 14px 14px", borderTop:`1px solid ${P.border}` }}>
-
-            {/* Level milestone strip */}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:3, marginTop:10, marginBottom:12 }}>
-              {BRANCH_LVL_BONUS.map((bonus, i) => {
-                const lvNum    = i + 1;
-                const reached  = bLvl >= lvNum;
-                const isTroop  = lvNum % 2 === 1;
-                const tierIdx  = Math.floor(i / 2); // 0,0→T1  1,1→T2  2,2→T3
-                return (
-                  <div key={i} style={{ borderRadius:5, padding:"6px 4px", textAlign:"center",
-                    background: reached ? (isTroop ? `${fDef.c}20` : `${fDef.c}08`) : "rgba(255,255,255,.02)",
-                    border:`1px solid ${reached ? (isTroop ? fDef.c+"55" : fDef.c+"22") : P.border}`,
-                    opacity: lvNum <= bCeil ? 1 : 0.35 }}>
-                    <div style={{ fontSize:6, color:reached?P.dim:"#2a2020", fontFamily:P.ff,
-                      marginBottom:2 }}>Lv{lvNum}</div>
-                    {isTroop ? (
-                      <div style={{ fontSize:7, color:reached?fDef.c:"#2a2020", fontFamily:P.ff,
-                        fontWeight:700 }}>T{tierIdx+1}</div>
-                    ) : (
-                      <div style={{ fontSize:6, color:reached?"#7ac870":"#2a2020" }}>-10%<br/>cost</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Tier stat cards -- only show unlocked tiers */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }}>
-              {br.tiers.map((t, idx) => {
-                const tierUnlocked = unlockedTier >= idx;
-                const needsLvl     = idx * 2 + 1; // T1=Lv1, T2=Lv3, T3=Lv5
-                return (
-                  <div key={idx} style={{ padding:"8px 10px", borderRadius:6, textAlign:"center",
-                    background: tierUnlocked ? `${fDef.c}15` : "rgba(255,255,255,.02)",
-                    border:`1px solid ${tierUnlocked ? fDef.c+"44" : P.border}`,
-                    opacity: tierUnlocked ? 1 : 0.4 }}>
-                    <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, marginBottom:4 }}>
-                      {tierUnlocked ? `T${idx+1}` : `🔒 Lv${needsLvl}`}
-                    </div>
-                    <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
-                      color: tierUnlocked ? fDef.c : P.dim }}>{t.label}</div>
-                    <div style={{ fontSize:7, color:P.sub, marginTop:3, lineHeight:1.5 }}>
-                      HP {t.hp} . DEF {t.def}<br/>DMG {t.dmgLo}-{t.dmgHi}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    );
+  {/* RIGHT: 3 troop tier cards */}
+  <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", gap:6 }}>
+  {/* connector line */}
+  <div style={{ position:"relative", display:"flex", alignItems:"center", gap:5 }}>
+  {/* background connector */}
+  <div style={{ position:"absolute", top:"50%", left:16, right:16, height:2,
+  background:`linear-gradient(90deg,${fDef.c}22,${fDef.c}44,${fDef.c}22)`,
+  transform:"translateY(-50%)", zIndex:0 }}/>
+  {br.tiers.map((tier, idx) => {
+  const needsLvl = idx * 2 + 1;
+  const tierUnlocked = branchOpen && unlockedTier >= idx;
+  const canView = tierUnlocked;
+  return (
+  <button key={idx}
+  onClick={() => canView && setSelTroop({ branch: br, tierIdx: idx, tier, fColor: fDef.c, fDef })}
+  style={{ flex:1, minHeight:90, padding:"8px 6px", position:"relative", zIndex:1,
+  borderRadius:8, cursor: canView ? "pointer" : "default",
+  background: tierUnlocked ? `${fDef.c}15` : "rgba(255,255,255,.02)",
+  border:`1px solid ${tierUnlocked ? fDef.c+"55" : P.border}`,
+  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3,
+  opacity: !branchOpen ? 0.25 : !tierUnlocked ? 0.45 : 1,
+  transition:"all .15s",
+  boxShadow: canView ? `0 2px 8px ${fDef.c}22` : "none" }}>
+  {/* tier roman numeral badge */}
+  <div style={{ fontSize:7, fontFamily:P.ff, fontWeight:700,
+  color: tierUnlocked ? fDef.c : "#3a3028",
+  background: tierUnlocked ? `${fDef.c}22` : "rgba(255,255,255,.03)",
+  padding:"1px 5px", borderRadius:3 }}>{roman[idx]}</div>
+  {/* faction icon */}
+  <div style={{ fontSize:20, filter: tierUnlocked ? "none" : "grayscale(1) brightness(.35)" }}>
+  {fDef.s}
+  </div>
+  {/* label */}
+  <div style={{ fontSize:7, fontFamily:P.ff, fontWeight:700,
+  color: tierUnlocked ? P.text : "#2a2020",
+  textAlign:"center", lineHeight:1.2 }}>
+  {tier.label}
+  </div>
+  {/* mini stats or lock reason */}
+  {tierUnlocked ? (
+  <div style={{ fontSize:6, color:P.dim, textAlign:"center", lineHeight:1.5 }}>
+  {tier.hp}hp / {tier.def}def<br/>{tier.dmgLo}-{tier.dmgHi} dmg
+  </div>
+  ) : branchOpen ? (
+  <div style={{ fontSize:6, color:"#4a3820", fontFamily:P.ff }}>Lv{needsLvl}</div>
+  ) : null}
+  {/* tap hint */}
+  {tierUnlocked && (
+  <div style={{ fontSize:5, color:`${fDef.c}88`, fontFamily:P.ff,
+  letterSpacing:".06em", marginTop:1 }}>TAP FOR INFO</div>
+  )}
+  </button>
+  );
   })}
-</div>
+  </div>
+  </div>
 
-);
-}
+  </div>
+  );
+  })}
 
+  {/* Troop stat modal */}
+  {selTroop && (
+  <TroopStatModal
+  troop={selTroop}
+  fColor={selTroop.fColor}
+  fDef={selTroop.fDef}
+  onClose={() => setSelTroop(null)}
+  />
+  )}
+
+  </div>
+  );
+  }
+
+  
 const FACTION_META = {
 marines:      { n:"Marines", s:"⚓", c:"#4488cc" },
 pirates:      { n:"Pirates", s:"🏴", c:"#d4832a" },
