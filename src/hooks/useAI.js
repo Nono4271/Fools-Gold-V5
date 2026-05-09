@@ -53,7 +53,7 @@ const tickAiMarch = useCallback(() => {
   const idleWithTroops = aiCmds.filter(c => !c.march && (c.troops || 0) > 0);
   for (const cmd of idleWithTroops) {
     const [cc, cr] = cmd.tk.split(",").map(Number);
-    const adjTiles = adj(cc, cr).filter(k => !aiTileKeys.has(k) && curTiles[k] && !curTiles[k].isShore);
+    const adjTiles = adj(cc, cr).filter(k => !aiTileKeys.has(k) && curTiles[k]);
     if (!adjTiles.length) continue;
     const target = adjTiles.reduce((best, k) => {
       const [tc, tr] = k.split(",").map(Number);
