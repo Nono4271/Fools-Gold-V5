@@ -723,16 +723,18 @@ const BRANCH_LVL_BONUS = [
 
   
 const FACTION_META = {
-marines:      { n:"Marines", s:"⚓", c:"#4488cc" },
-pirates:      { n:"Pirates", s:"🏴", c:"#d4832a" },
-bountyhunters:{ n:"Wizards", s:"🔮", c:"#9955dd" },
-merfolk:      { n:"MerFolk", s:"🌊", c:"#30b8c8" },
-orcs:         { n:"Orcs",   s:"⚔️", c:"#6aa830" },
-dragons:      { n:"Dragons", s:"🐉", c:"#cc3030" },
+marines:       { n:"Marines",               s:"⚓",  c:"#4488cc" },
+pirates:       { n:"Pirates",               s:"🏴", c:"#d4832a" },
+bountyhunters: { n:"Wizards",               s:"🔮", c:"#9955dd" },
+merfolk:       { n:"MerFolk",               s:"🌊",  c:"#30b8c8" },
+orcs:          { n:"Orcs",                  s:"⚔️",  c:"#6aa830" },
+dragons:       { n:"Dragons",               s:"🐉",  c:"#cc3030" },
+holyknights:   { n:"Holy Knights",          s:"✝️",  c:"#d4af37" },
+nightcreatures:{ n:"Creatures of the Night",s:"🌑",  c:"#a030c0" },
 };
 const ALIGN_FACTIONS = {
-humans:   ["pirates","marines","bountyhunters"],
-creatures:["merfolk","orcs","dragons"],
+humans:   ["pirates","marines","bountyhunters","holyknights"],
+creatures:["merfolk","orcs","dragons","nightcreatures"],
 };
 function getAlignment(fk) {
 return ALIGN_FACTIONS.humans.includes(fk) ? "humans" : "creatures";
@@ -747,7 +749,11 @@ const BLDG_KEYS = ["hq","walls","quarry","lumber","forge","refinery","barracks",
 const primaryFaction = facKey || "marines";
 const myAlign        = getAlignment(primaryFaction);
 const alignFactions  = ALIGN_FACTIONS[myAlign] || ALIGN_FACTIONS.humans;
-const factionOrder   = [primaryFaction, ...alignFactions.filter(f=>f!==primaryFaction)];
+// Sidebar shows only: player's faction first, then the other 3 in same alignment
+const factionOrder   = [
+  primaryFaction,
+  ...alignFactions.filter(f => f !== primaryFaction),
+];
 const hqLvl          = bldgs.hq || 1;
 
 const LEFT_NAV = [
