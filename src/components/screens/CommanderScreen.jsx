@@ -1378,102 +1378,148 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                       )}
                     </div>
 
-                    {/* Inline picker dropdown */}
+                    {/* Slot open indicator */}
                     {isOpen && (
                       <div style={{
-                        position: "absolute", top: "calc(100% + 5px)",
-                        left: slotKey === "bracers" || slotKey === "accessory" ? "auto" : 0,
-                        right: slotKey === "bracers" || slotKey === "accessory" ? 0 : "auto",
-                        zIndex: 60, width: 170,
-                        background: "#0d0b08", border: `1px solid ${r.color}35`,
-                        borderRadius: 6, boxShadow: "0 6px 24px rgba(0,0,0,.8)",
-                        overflow: "hidden", animation: "fadeUp .12s ease",
-                      }}>
-                        {/* Picker header */}
-                        <div style={{
-                          padding: "7px 10px", borderBottom: "1px solid #1a1510",
-                          display: "flex", justifyContent: "space-between", alignItems: "center",
-                        }}>
-                          <span style={{ fontSize: 7, color: r.color, fontFamily: "'Cinzel',serif", letterSpacing: ".07em" }}>
-                            {slotDef.icon} {slotDef.n.toUpperCase()}
-                          </span>
-                          {piece && (
-                            <button onClick={(e) => { e.stopPropagation(); handleUnequip(slotKey); setShowClassPopup(null); }} style={{
-                              padding: "2px 6px", borderRadius: 3, fontSize: 6,
-                              background: "rgba(180,60,60,.12)", border: "1px solid rgba(180,60,60,.3)",
-                              color: "#aa5050", fontFamily: "'Cinzel',serif", cursor: "pointer",
-                            }}>Unequip</button>
-                          )}
-                        </div>
-
-                        {/* Gear list */}
-                        <div style={{ maxHeight: 220, overflowY: "auto" }}>
-                          {available.length === 0 ? (
-                            <div style={{ padding: "12px 10px", fontSize: 8, color: "#3a3020",
-                              fontFamily: "'Crimson Pro',serif", fontStyle: "italic", textAlign: "center" }}>
-                              No {slotDef.n.toLowerCase()}s available
-                            </div>
-                          ) : available.map(g => {
-                            const gc = GEAR_RARITY_COLORS[g.rarity] ?? "#888";
-                            const isEquipped = g.instanceId === equippedId;
-                            const gRarityMult = { common:1, rare:1.4, epic:2.0, legendary:3.0 }[g.rarity] ?? 1;
-                            const gPval = Math.round((pBase[g.primaryStat] ?? 7) * gRarityMult * (1 + (g.stars ?? 0) * 0.12));
-                            return (
-                              <div
-                                key={g.instanceId}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPreviewGear({ piece: g, slotKey });
-                                  setShowClassPopup(null);
-                                }}
-                                onTouchEnd={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setPreviewGear({ piece: g, slotKey });
-                                  setShowClassPopup(null);
-                                }}
-                                style={{
-                                  padding: "8px 10px", display: "flex", alignItems: "center", gap: 8,
-                                  background: isEquipped ? `${gc}14` : "transparent",
-                                  borderBottom: "1px solid #111",
-                                  cursor: "pointer", transition: "background .1s",
-                                  borderLeft: isEquipped ? `2px solid ${gc}` : "2px solid transparent",
-                                  touchAction: "manipulation",
-                                  WebkitTapHighlightColor: "transparent",
-                                }}>
-                                <span style={{ fontSize: 18, flexShrink: 0 }}>{g.icon}</span>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: 8, fontFamily: "'Cinzel',serif", color: gc,
-                                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {g.n}
-                                  </div>
-                                  <div style={{ fontSize: 7, color: "#5a4a30", fontFamily: "'Cinzel',serif", marginTop: 1 }}>
-                                    {STAT_ICONS[g.primaryStat]} +{gPval}
-                                    {g.secStats?.length > 0 && (
-                                      <span style={{ color: "#3a3020", marginLeft: 4 }}>
-                                        +{g.secStats.length} sec
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div style={{ display: "flex", gap: 1, marginTop: 2 }}>
-                                    {Array.from({length:5}).map((_,i)=>(
-                                      <span key={i} style={{fontSize:4, color:i<(g.stars??0)?"#aaa":"#1a1a1a"}}>★</span>
-                                    ))}
-                                  </div>
-                                </div>
-                                {isEquipped && (
-                                  <span style={{ fontSize: 7, color: gc, fontFamily: "'Cinzel',serif", flexShrink: 0 }}>✓</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                        position: "absolute", bottom: -3, left: "50%", transform: "translateX(-50%)",
+                        width: 6, height: 6, borderRadius: "50%",
+                        background: r.color, boxShadow: `0 0 6px ${r.color}`,
+                        zIndex: 2,
+                      }} />
                     )}
                   </div>
                 );
               })}
             </div>
+
+            {/* ── Gear slot slide-in picker (from left) ── */}
+            {(() => {
+              const openSlot = ["helmet","armor","bracers","accessory"].find(s => showClassPopup === s);
+              if (!openSlot) return null;
+              const SLOT_DEFS2 = { helmet:{n:"Helmet",icon:"⛑"}, armor:{n:"Armor",icon:"🛡"}, bracers:{n:"Bracers",icon:"🥊"}, accessory:{n:"Accessory",icon:"💍"} };
+              const STAT_ICONS2 = { ATK:"⚔", FOC:"✦", SPD:"💨", ARMY_ATK:"⚔🛡", ARMY_FOC:"✦🛡", ARMY_SPD:"💨🛡", ARMY_SIEGE:"🪨🛡" };
+              const pBase2 = { ATK:7, FOC:7, SPD:7 };
+              const slotDef2 = SLOT_DEFS2[openSlot];
+              const equippedId2 = cmd.gear?.[openSlot];
+              const piece2 = equippedId2 ? (gearInventory ?? []).find(g => g.instanceId === equippedId2) : null;
+              const rc2 = piece2 ? (GEAR_RARITY_COLORS[piece2.rarity] ?? "#888") : r.color;
+              const available2 = (gearInventory ?? []).filter(g =>
+                g.slot === openSlot && (!g.equippedBy || g.equippedBy === cmd.uid)
+              ).sort((a,b) => {
+                const ro = { legendary:0, epic:1, rare:2, common:3 };
+                return (ro[a.rarity]??4) - (ro[b.rarity]??4);
+              });
+              return (
+                <>
+                  {/* Backdrop — fixed so it covers visible right panel regardless of scroll */}
+                  <div
+                    onClick={() => setShowClassPopup(null)}
+                    style={{
+                      position: "fixed", top: 0, left: 76, right: 0, bottom: 0, zIndex: 755,
+                      background: "rgba(0,0,0,.45)",
+                    }}
+                  />
+                  {/* Slide-in panel — fixed, anchored to left edge of right panel */}
+                  <div style={{
+                    position: "fixed", top: 0, left: 76, bottom: 0,
+                    width: 200, zIndex: 756,
+                    background: "#0d0b08",
+                    borderRight: `1px solid ${r.color}35`,
+                    boxShadow: "4px 0 24px rgba(0,0,0,.85)",
+                    display: "flex", flexDirection: "column",
+                    animation: "slideInLeft .15s ease",
+                  }}>
+                    {/* Header */}
+                    <div style={{
+                      padding: "10px 12px 8px",
+                      borderBottom: "1px solid #1a1510",
+                      flexShrink: 0,
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                    }}>
+                      <span style={{ fontSize: 9, color: rc2, fontFamily: "'Cinzel',serif", letterSpacing: ".07em", fontWeight: 700 }}>
+                        {slotDef2.icon} {slotDef2.n.toUpperCase()}
+                      </span>
+                      <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                        {piece2 && (
+                          <button onClick={(e) => { e.stopPropagation(); handleUnequip(openSlot); setShowClassPopup(null); }} style={{
+                            padding: "2px 7px", borderRadius: 3, fontSize: 6,
+                            background: "rgba(180,60,60,.12)", border: "1px solid rgba(180,60,60,.3)",
+                            color: "#aa5050", fontFamily: "'Cinzel',serif", cursor: "pointer",
+                          }}>Unequip</button>
+                        )}
+                        <button onClick={() => setShowClassPopup(null)} style={{
+                          background: "none", border: "none", color: "#4a4030",
+                          fontSize: 14, cursor: "pointer", lineHeight: 1, padding: "0 2px",
+                        }}>✕</button>
+                      </div>
+                    </div>
+
+                    {/* Scrollable gear list */}
+                    <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+                      {available2.length === 0 ? (
+                        <div style={{
+                          padding: "20px 12px", fontSize: 8, color: "#3a3020",
+                          fontFamily: "'Crimson Pro',serif", fontStyle: "italic", textAlign: "center",
+                        }}>
+                          No {slotDef2.n.toLowerCase()}s available
+                        </div>
+                      ) : available2.map(g => {
+                        const gc = GEAR_RARITY_COLORS[g.rarity] ?? "#888";
+                        const isEquipped = g.instanceId === equippedId2;
+                        const gRarityMult = { common:1, rare:1.4, epic:2.0, legendary:3.0 }[g.rarity] ?? 1;
+                        const gPval = Math.round((pBase2[g.primaryStat] ?? 7) * gRarityMult * (1 + (g.stars ?? 0) * 0.12));
+                        return (
+                          <div
+                            key={g.instanceId}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewGear({ piece: g, slotKey: openSlot });
+                              setShowClassPopup(null);
+                            }}
+                            onTouchEnd={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setPreviewGear({ piece: g, slotKey: openSlot });
+                              setShowClassPopup(null);
+                            }}
+                            style={{
+                              padding: "9px 12px", display: "flex", alignItems: "center", gap: 9,
+                              background: isEquipped ? `${gc}14` : "transparent",
+                              borderBottom: "1px solid #111",
+                              borderLeft: isEquipped ? `3px solid ${gc}` : "3px solid transparent",
+                              cursor: "pointer", transition: "background .1s",
+                              touchAction: "manipulation",
+                              WebkitTapHighlightColor: "transparent",
+                            }}>
+                            <span style={{ fontSize: 22, flexShrink: 0 }}>{g.icon}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 8, fontFamily: "'Cinzel',serif", color: gc,
+                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {g.n}
+                              </div>
+                              <div style={{ fontSize: 7, color: "#5a4a30", fontFamily: "'Cinzel',serif", marginTop: 2 }}>
+                                {STAT_ICONS2[g.primaryStat]} +{gPval}
+                                {g.secStats?.length > 0 && (
+                                  <span style={{ color: "#3a3020", marginLeft: 4 }}>+{g.secStats.length} sec</span>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", gap: 1, marginTop: 3 }}>
+                                {Array.from({length:5}).map((_,i)=>(
+                                  <span key={i} style={{fontSize:5, color:i<(g.stars??0)?"#aaa":"#1a1a1a"}}>★</span>
+                                ))}
+                              </div>
+                            </div>
+                            {isEquipped && (
+                              <span style={{ fontSize: 8, color: gc, fontFamily: "'Cinzel',serif", flexShrink: 0 }}>✓</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
 
             {/* ── Gear preview popup — inside IIFE so handleEquip/handleUnequip are in scope ── */}
             {previewGear && (() => {
