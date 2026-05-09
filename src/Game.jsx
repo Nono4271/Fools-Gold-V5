@@ -431,7 +431,7 @@ export default function RiseToWar() {
           COLS: C, ROWS: R,
           regionList, keepMeta,
           TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
-          F_SHORE, F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED,
+          F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED,
         } = meta;
 
         // Build region lookup by index
@@ -449,7 +449,6 @@ export default function RiseToWar() {
             const k     = `${c},${r}`;
             const reg   = regionByIdx[regionArr[idx]] || null;
 
-            const isShore   = !!(flags & F_SHORE);
             const isKeep    = !!(flags & F_KEEP);
             const isKeepPart= !!(flags & F_KEEPPART);
             const isHQ      = !!(flags & F_HQ);
@@ -472,7 +471,7 @@ export default function RiseToWar() {
 
             rawMap[k] = {
               c, r, k,
-              terrain:    isShore ? "shore" : TERRAIN_DEC[terrainArr[idx]] || "grass",
+              terrain:    TERRAIN_DEC[terrainArr[idx]] || "grass",
               rss:        RSS_DEC[rssArr[idx]] || null,
               troopBranch: null, // assigned per-commander, not per-tile
               powerLevel: powerArr[idx],
@@ -487,7 +486,7 @@ export default function RiseToWar() {
               siegeMax:   siegeMaxArr[idx],
               garrisonDefeated: !!(flags & F_DEFEATED),
               resetAt:    null,
-              isShore, isKeep, isKeepPart, isHQ, isHQPart, isWin,
+              isKeep, isKeepPart, isHQ, isHQPart, isWin,
               keepPrimaryKey,
               defCmd:     km?.defCmd || null,
             };
@@ -509,7 +508,7 @@ export default function RiseToWar() {
           const [hc, hr] = playerSpawn.split(",").map(Number);
           [[1,0],[0,1],[1,1]].forEach(([dc,dr]) => {
             const fk = `${hc+dc},${hr+dr}`;
-            if (rawMap[fk] && !rawMap[fk].isShore) {
+            if (rawMap[fk]) {
               rawMap[fk] = { ...rawMap[fk], isHQPart: true, hqPrimaryKey: playerSpawn,
                 terrain: "grass", rss: null, owner: "player" };
             }
@@ -541,7 +540,7 @@ export default function RiseToWar() {
             const [ahc, ahr] = spawn.split(",").map(Number);
             [[1,0],[0,1],[1,1]].forEach(([dc,dr]) => {
               const fk = `${ahc+dc},${ahr+dr}`;
-              if (rawMap[fk] && !rawMap[fk].isShore) {
+              if (rawMap[fk]) {
                 rawMap[fk] = { ...rawMap[fk], isHQPart: true, hqPrimaryKey: spawn,
                   terrain: "grass", rss: null, owner: "ai" };
               }
@@ -572,12 +571,9 @@ export default function RiseToWar() {
         }));
 
         rawMap.__ready = true;
-        const impassableKeys = Object.values(rawMap)
-          .filter(t => t.isShore)
-          .map(t => t.k);
-        setImpassableTiles(impassableKeys);
-        initPathfinding(impassableKeys);
-        perfLog(`impass: ${impassableKeys.length} shore tiles sent`);
+        setImpassableTiles([]);
+        initPathfinding([]);
+        perfLog(`impass: bounds-only (no shore tiles)`);
         clearKeepCache();
         setTiles(rawMap);
         setTimeout(() => {
@@ -1148,7 +1144,6 @@ export default function RiseToWar() {
     if (e?.stopPropagation) e.stopPropagation();
     const tile = tilesRef.current[k];
     if (!tile) return;
-    if (tile.isShore) return;
 
     const mode = modeRef.current;
     const mvCmd = mvCmdRef.current;
