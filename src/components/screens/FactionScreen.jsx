@@ -41,7 +41,7 @@ export default function FactionScreen({
                       gear: { helmet: null, armor: null, bracers: null, accessory: null },
                     }));
 
-                    const allFactions = ["pirates","merfolk","marines","orcs","bountyhunters","dragons"];
+                    const allFactions = ["pirates","merfolk","marines","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
                     const aiFactions = allFactions.filter(fk => fk !== f.key);
                     const allAiCmds = [];
                     aiFactions.forEach((aiFk) => {
