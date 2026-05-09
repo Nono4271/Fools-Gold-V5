@@ -738,13 +738,13 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
             const tree = SKILL_TREES[treeKey];
             if (!tree) return null;
             const locked     = rLvl < unlocksAt;
-            const mainSkill  = getBranchMainSkill(treeKey, branchIdx);
-            const sideSkills = getBranchSideSkills(treeKey, branchIdx);
+            const mainSkill  = getBranchMainSkill(treeKey, branchIdx, cmd);
+            const sideSkills = getBranchSideSkills(treeKey, branchIdx, cmd);
             const mainLvl    = liveSkillPts[mainSkill.key] ?? 0;
             const sideLvls   = sideSkills.map(s => liveSkillPts[s.key] ?? 0);
             const sideCaps   = sideSkills.map(() => getSideCap(mainSkill.key));
             const prevActive = idx > 0 && (liveSkillPts[getBranchMainSkill(
-              treeEntries[idx - 1].treeKey, treeEntries[idx - 1].branchIdx).key] ?? 0) > 0;
+              treeEntries[idx - 1].treeKey, treeEntries[idx - 1].branchIdx, cmd).key] ?? 0) > 0;
 
             return (
               <div key={`tree_${idx}`}>
