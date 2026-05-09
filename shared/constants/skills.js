@@ -1,3 +1,5 @@
+import { HOLYKNIGHTS_SKILLS, HOLYKNIGHTS_BRANCH_SKILL_MAP } from "./holyknights_skills.js";
+
 /* ─────────────────────────────────────────────────────────────────────────────
    skills.js — V5 Skill System
 
@@ -410,6 +412,7 @@ export const ALL_SKILLS = {
   ...DEFENDER_SKILLS,
   ...SUPPORT_SKILLS,
   ...LEADER_SKILLS,
+  ...HOLYKNIGHTS_SKILLS,
 };
 
 // ── Branch layout for skill tree UI ──────────────────────────────────────────
@@ -446,17 +449,24 @@ const BRANCH_SKILL_MAP = {
 // Map tree key (from heroes.js SKILL_TREES) to cls key (used in BRANCH_SKILL_MAP)
 const TREE_TO_CLS = { combat:"attacker", defense:"defender", tactics:"support", command:"leader" };
 
-export function getBranchMainSkill(treeOrCls, branchIndex) {
-  const cls      = TREE_TO_CLS[treeOrCls] ?? treeOrCls;
-  const branches = BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
+// Resolve the correct branch map for a commander — Holy Knights use per-commander maps keyed by id
+function resolveBranchMap(cmdOrCls, treeOrCls) {
+  const cls = TREE_TO_CLS[treeOrCls] ?? treeOrCls;
+  if (cmdOrCls && typeof cmdOrCls === "object" && cmdOrCls.faction === "holyknights") {
+    return HOLYKNIGHTS_BRANCH_SKILL_MAP[cmdOrCls.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
+  }
+  return BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
+}
+
+export function getBranchMainSkill(treeOrCls, branchIndex, cmd) {
+  const branches = resolveBranchMap(cmd, treeOrCls);
   const branch   = branches[branchIndex % branches.length];
   const key      = branch.main;
   return { key, ...(ALL_SKILLS[key] ?? {}) };
 }
 
-export function getBranchSideSkills(treeOrCls, branchIndex) {
-  const cls      = TREE_TO_CLS[treeOrCls] ?? treeOrCls;
-  const branches = BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
+export function getBranchSideSkills(treeOrCls, branchIndex, cmd) {
+  const branches = resolveBranchMap(cmd, treeOrCls);
   const branch   = branches[branchIndex % branches.length];
   return branch.sides.map(key => ({ key, ...(ALL_SKILLS[key] ?? {}) }));
 }
@@ -479,7 +489,9 @@ export function skillFiresOnRound(skillDef, round) {
 export function getActiveSkills(cmd) {
   const sp   = cmd.skillPoints || {};
   const cls  = cmd.cls;
-  const branches = BRANCH_SKILL_MAP[cls] ?? [];
+  const branches = cmd.faction === "holyknights"
+    ? (HOLYKNIGHTS_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? [])
+    : (BRANCH_SKILL_MAP[cls] ?? []);
   const keys = branches.flatMap(b => [b.main, ...b.sides]);
   return keys
     .map(key => ({ key, def: ALL_SKILLS[key], level: sp[key] ?? 0 }))
@@ -540,6 +552,10 @@ export const TREE_DISPLAY_NAMES = {
   dragons_defender:       ["Scale Armor",         "Flame Ward",        "Dragon Hide",      "Fear Aura"        ],
   dragons_leader:         ["Draconic Banner",     "Dragon Council",    "Wing March",       "Elder Command"    ],
   dragons_support:        ["Healing Ember",       "Clutch Line",       "Ancient Restore",  "Hoard Arts"       ],
+  holyknights_attacker:   ["Warden's Judgment",   "Holy Frenzy",       "Inquisitor's Edge","Divine Purge"     ],
+  holyknights_defender:   ["Templar's Oath",      "Sacred Wall",       "Bastion of Faith", "Ghost of the Lord"],
+  holyknights_leader:     ["Vayne's Edict",       "Templar's Roar",    "Holy Strategy",    "Crusader's March" ],
+  holyknights_support:    ["Brennan's Blessing",  "Mending Light",     "Friar's Supply",   "Guardian's Aura"  ],
 };
 
 export function getTreeDisplayNames(faction, cls) {

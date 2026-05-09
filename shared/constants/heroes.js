@@ -141,6 +141,8 @@ export const SUBSPECIES = {
   merfolk:       { tier1: "Fry",         tier2: "Warden",      tier3: "Leviathan" },
   orcs:          { tier1: "Raider",      tier2: "Marauder",    tier3: "Warlord"   },
   dragons:       { tier1: "Hatchling",   tier2: "Adult",       tier3: "Elder"     },
+  holyknights:   { tier1: "Templar",     tier2: "BattlePriest",tier3: "Inquisitor"},
+  nightcreatures:{ tier1: "Fledgling",   tier2: "Risen",       tier3: "Ancient"   },
 };
 
 const RARITY_TO_TIER = { soldier: "tier1", veteran: "tier2", champion: "tier3" };
