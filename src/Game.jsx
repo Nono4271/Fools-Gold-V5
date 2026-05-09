@@ -6,7 +6,7 @@ import { MapRenderer, clearKeepCache } from "./MapRenderer";
 import { CSS } from "./constants/css.js";
 import { ALIGNMENT, getFactionAlignment, PLAYABLE_FACTIONS } from "../shared/constants/factions.js";
 import { HDEFS, RC, RARITY, CLASS, rollGacha, addRespect, RESPECT_DUPE_POINTS, RESPECT_OVERFLOW_POINTS, RESPECT_MAX, npcForPowerLevel } from "../shared/constants/heroes.js";
-import { rollFullPull, rollGearSchematic, createRespectSchematic, GEAR_RARITY, GEAR_SLOTS, rollFullPullCmdRarity } from "../shared/constants/gear.js";
+import { rollFullPull, rollGearSchematic, createRespectSchematic, createGearInstance, GEAR_RARITY, GEAR_SLOTS, GEAR_PIECES, rollFullPullCmdRarity } from "../shared/constants/gear.js";
 import { HQP, AI_HQ_KEY, WIN_KEY, RKEYS, RSS, POWER_DEFS, SIEGE_BASE, SIEGE_KEEP_BASE, calcSiegePower, hqSiegeValue } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST, CMD_LVL_MAX, xpToNext } from "../shared/constants/troops.js";
 import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainRate, maxTrainBatch, tierFromBranchLevel } from "../shared/constants/buildings.js";
@@ -125,7 +125,7 @@ export default function RiseToWar() {
   const [loadLabel,setLoadLabel]= useState("Generating world...");
   const [playerHqKey, setPlayerHqKey] = useState(null);
   const [rss,    setRss]     = useState({ stone:300, wood:300, ore:300, gas:300 });
-  const [gems,   setGems]    = useState(4400);
+  const [gems,   setGems]    = useState(20000);
 
   const [playerCmds, setPlayerCmds] = useState([]);
   const aiCmdsRef = useRef([]);
@@ -157,7 +157,28 @@ export default function RiseToWar() {
   const cmds = playerCmds;
   const [coll,   setColl]    = useState([]);
   const [pityCounters,   setPityCounters]   = useState({ soldier:0, veteran:0, champion:0 });
-  const [gearInventory,       setGearInventory]       = useState([]);
+  const [gearInventory,       setGearInventory]       = useState(() => {
+    // Starter gear — enough to make all 4 slots scrollable
+    const slots = ["helmet","armor","bracers","accessory"];
+    const rarities = ["common","rare","epic","legendary"];
+    const pieces = [];
+    let t = Date.now();
+    slots.forEach(slot => {
+      rarities.forEach(rarity => {
+        const pool = GEAR_PIECES.filter(p => p.slot === slot && p.rarity === rarity);
+        const count = rarity === "legendary" ? 3 : rarity === "epic" ? 4 : rarity === "rare" ? 4 : 5;
+        for (let i = 0; i < count; i++) {
+          const def = pool[i % pool.length];
+          if (!def) continue;
+          const inst = createGearInstance(def.id);
+          inst.instanceId = `starter_${slot}_${rarity}_${i}_${t++}`;
+          inst.stars = Math.min(i, 5);
+          pieces.push(inst);
+        }
+      });
+    });
+    return pieces;
+  });
   const [respectSchematics,   setRespectSchematics]   = useState([]);
   const [pullResults,         setPullResults]         = useState([]);
   const [lastFreePull,   setLastFreePull]   = useState(null);
