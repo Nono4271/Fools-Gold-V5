@@ -39,8 +39,13 @@ export default memo(function CommanderPicker({
             </div>
           )}
         </div>
-        <button className="btn" onClick={() => { setMode("view"); setAtkKey(null); setPick(null); }}
-          style={{background:"none",border:"1px solid #2a2a2a",color:"#555",fontSize:11,padding:"2px 8px"}}>✕</button>
+        <button className="btn"
+          onClick={() => { setMode("view"); setAtkKey(null); setPick(null); }}
+          onTouchEnd={e => { e.preventDefault(); setMode("view"); setAtkKey(null); setPick(null); }}
+          style={{background:"none",border:"1px solid #2a2a2a",color:"#777",fontSize:16,
+            minWidth:36,minHeight:36,display:"flex",alignItems:"center",justifyContent:"center",
+            cursor:"pointer",touchAction:"manipulation",WebkitTapHighlightColor:"transparent",
+            borderRadius:4,flexShrink:0}}>✕</button>
       </div>
 
       {/* Commander list */}

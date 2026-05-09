@@ -68,7 +68,8 @@ export default memo(function TilePopup({
             {popupMode === "hqSummon" ? "↩ Summon Commander" : "🏰 Headquarters"}
           </span>
           <button className="btn" onClick={closeHqPopup}
-            style={{background:"none",border:"none",color:"#6a5a4a",fontSize:11,padding:"0 2px",cursor:"pointer"}}>✕</button>
+            onTouchEnd={e => { e.preventDefault(); closeHqPopup(); }}
+            style={{background:"none",border:"none",color:"#6a5a4a",fontSize:16,minWidth:36,minHeight:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",touchAction:"manipulation",WebkitTapHighlightColor:"transparent",margin:"-6px -4px"}}>✕</button>
         </div>
 
         {/* Enter / Summon buttons */}
@@ -177,7 +178,9 @@ export default memo(function TilePopup({
               {selTile.c},{selTile.r}
             </span>
           )}
-          <button className="btn" onClick={close} style={{background:"none",border:"none",color:"#4a4040",fontSize:11,padding:"0 2px",lineHeight:1}}>✕</button>
+          <button className="btn" onClick={close}
+            onTouchEnd={e => { e.preventDefault(); close(); }}
+            style={{background:"none",border:"none",color:"#4a4040",fontSize:16,minWidth:36,minHeight:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",touchAction:"manipulation",WebkitTapHighlightColor:"transparent",margin:"-6px -4px"}}>✕</button>
         </div>
       </div>
 
