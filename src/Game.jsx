@@ -1522,7 +1522,7 @@ export default function RiseToWar() {
         setGearScreenOpen={setGearScreenOpen}
         gearInventoryCount={gearInventory.length}
         playerHqKey={playerHqKey}
-        hidden={worldMapOpen || hqOpen}
+        hidden={worldMapOpen || hqOpen || cmdScreenOpen || gearScreenOpen}
         showPerf={showPerf}
         setShowPerf={setShowPerf}
       />
