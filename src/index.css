@@ -67,4 +67,5 @@ html.gacha-open #root {
 .btn:disabled  { opacity: .25; cursor: not-allowed; pointer-events: none; }
 
 .panel { background: rgba(5,7,11,.97); border: 1px solid #221e12; }
-.scr   { overflow-y: auto; scrollbar-width: thin; }
+.scr   { overflow-y: auto; scrollbar-width: thin; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+.gear-picker-list { touch-action: pan-y !important; -webkit-overflow-scrolling: touch; }
