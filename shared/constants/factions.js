@@ -1,23 +1,22 @@
 export const FAC = {
-  player:        { n:"Your Faction",          s:"⚑",  key:"player"        },
-  pirates:       { n:"Pirates",               s:"🏴", key:"pirates"       },
-  marines:       { n:"Marines",               s:"⚓",  key:"marines"       },
-  bountyhunters: { n:"Wizards",               s:"🔮", key:"bountyhunters" },
-  merfolk:       { n:"MerFolk",               s:"🌊",  key:"merfolk"       },
-  orcs:          { n:"Orcs",                  s:"⚔️",  key:"orcs"          },
-  dragons:       { n:"Dragons",               s:"🐉",  key:"dragons"       },
-  holyknights:   { n:"Holy Knights",          s:"✝️",  key:"holyknights"   },
-  nightcreatures:{ n:"Creatures of the Night",s:"🌑",  key:"nightcreatures"},
+  player:        { n:"Your Faction",           s:"⚑",  key:"player"         },
+  pirates:       { n:"Pirates",                s:"🏴", key:"pirates"        },
+  marines:       { n:"Marines",                s:"⚓",  key:"marines"        },
+  bountyhunters: { n:"Wizards",                s:"🔮", key:"bountyhunters"  },
+  merfolk:       { n:"MerFolk",                s:"🌊",  key:"merfolk"        },
+  orcs:          { n:"Orcs",                   s:"⚔️",  key:"orcs"           },
+  dragons:       { n:"Dragons",                s:"🐉",  key:"dragons"        },
+  holyknights:   { n:"Holy Knights",           s:"✝️",  key:"holyknights"    },
+  nightcreatures:{ n:"Creatures of the Night", s:"🌑",  key:"nightcreatures" },
 };
 
 export const AI_FACTIONS = [
-  "pirates","marines","bountyhunters","merfolk","orcs","dragons",
-  "holyknights","nightcreatures",
+  "pirates","marines","bountyhunters","merfolk","orcs","dragons","holyknights","nightcreatures"
 ];
 
 export const ALIGNMENT = {
-  humans:   { n:"Humans",    icon:"🛡", factions:["pirates","marines","bountyhunters","holyknights"],          color:"#c8a060" },
-  creatures:{ n:"Creatures", icon:"🦎", factions:["merfolk","orcs","dragons","nightcreatures"],                color:"#7aaa40" },
+  humans:   { n:"Humans",   icon:"🛡", factions:["pirates","marines","bountyhunters","holyknights"],  color:"#c8a060" },
+  creatures:{ n:"Creatures",icon:"🦎", factions:["merfolk","orcs","dragons","nightcreatures"],         color:"#7aaa40" },
 };
 
 export function getFactionAlignment(fk) {
@@ -25,12 +24,12 @@ export function getFactionAlignment(fk) {
 }
 
 export const PLAYABLE_FACTIONS = [
-  { key:"pirates",        n:"Pirates",               s:"🏴‍☠️", desc:"Masters of the sea and ambush.",             c:"#d4832a" },
-  { key:"marines",        n:"Marines",               s:"⚓",   desc:"Disciplined naval enforcers.",                c:"#4488cc" },
-  { key:"bountyhunters",  n:"Wizards",               s:"🔮",  desc:"Ancient wielders of arcane & healing arts.",  c:"#9955dd" },
-  { key:"merfolk",        n:"MerFolk",               s:"🌊",   desc:"Ancient rulers of the deep.",                 c:"#30b8c8" },
-  { key:"orcs",           n:"Orcs",                  s:"⚔️",   desc:"Relentless warriors of the wilds.",           c:"#6aa830" },
-  { key:"dragons",        n:"Dragons",               s:"🐉",   desc:"Feared overlords of fire and sky.",           c:"#cc3030" },
-  { key:"holyknights",    n:"Holy Knights",          s:"✝️",   desc:"Zealous warriors of divine retribution.",     c:"#d4af37" },
-  { key:"nightcreatures", n:"Creatures of the Night",s:"🌑",   desc:"Predators of darkness — vampire, wolf, spider.", c:"#a030c0" },
+  { key:"pirates",        n:"Pirates",               s:"🏴‍☠️", desc:"Masters of the sea and ambush.",            c:"#d4832a" },
+  { key:"marines",        n:"Marines",               s:"⚓",  desc:"Disciplined naval enforcers.",               c:"#4488cc" },
+  { key:"bountyhunters",  n:"Wizards",               s:"🔮", desc:"Ancient wielders of arcane & healing arts.", c:"#9955dd" },
+  { key:"merfolk",        n:"MerFolk",               s:"🌊",  desc:"Ancient rulers of the deep.",                c:"#30b8c8" },
+  { key:"orcs",           n:"Orcs",                  s:"⚔️",  desc:"Relentless warriors of the wilds.",          c:"#6aa830" },
+  { key:"dragons",        n:"Dragons",               s:"🐉",  desc:"Feared overlords of fire and sky.",          c:"#cc3030" },
+  { key:"holyknights",    n:"Holy Knights",          s:"✝️",  desc:"Sacred paladins sworn to divine order.",     c:"#d4af37" },
+  { key:"nightcreatures", n:"Creatures of the Night",s:"🌑",  desc:"Shadow beings of the ancient dark.",         c:"#a030c0" },
 ];

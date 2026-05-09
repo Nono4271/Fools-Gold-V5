@@ -141,8 +141,6 @@ export const SUBSPECIES = {
   merfolk:       { tier1: "Fry",         tier2: "Warden",      tier3: "Leviathan" },
   orcs:          { tier1: "Raider",      tier2: "Marauder",    tier3: "Warlord"   },
   dragons:       { tier1: "Hatchling",   tier2: "Adult",       tier3: "Elder"     },
-  holyknights:   { tier1: "Initiate",   tier2: "Crusader",   tier3: "Inquisitor" },
-  nightcreatures:{ tier1: "Thrall",     tier2: "Bloodbound", tier3: "Nightlord"  },
 };
 
 const RARITY_TO_TIER = { soldier: "tier1", veteran: "tier2", champion: "tier3" };
@@ -196,8 +194,22 @@ export const HDEFS = [
   { id:"h12", n:"Scaleveil Dusk",       faction:"dragons",        rarity:"veteran",  cls:"support",  atk:50,  foc:140, spd:80, icon:"🔥",          subspecies:"Adult"       },
   { id:"h23", n:"Ashen Kraul",          faction:"dragons",        rarity:"soldier",  cls:"leader",   atk:78,  foc:0,   spd:68, icon:"🦎",          subspecies:"Hatchling"   },
   { id:"h24", n:"Cinderfang",           faction:"dragons",        rarity:"soldier",  cls:"defender", atk:100, foc:0,   spd:58, icon:"🪨",          subspecies:"Hatchling"   },
-  { id:"h35", n:"Pyrewing Skar",        faction:"dragons",        rarity:"champion", cls:"attacker", atk:180, foc:0,   spd:78, icon:"🌋",          subspecies:"Elder"       },
-  { id:"h36", n:"Voidscale Nyxara",     faction:"dragons",        rarity:"champion", cls:"support",  atk:60,  foc:175, spd:82, icon:"🌑",          subspecies:"Elder"       },
+  { id:"h35", n:"Pyrewing Skar",        faction:"dragons",         rarity:"champion", cls:"attacker", atk:180, foc:0,   spd:78, icon:"🌋", subspecies:"Elder"     },
+  { id:"h36", n:"Voidscale Nyxara",     faction:"dragons",         rarity:"champion", cls:"support",  atk:60,  foc:175, spd:82, icon:"🌑", subspecies:"Elder"     },
+
+  { id:"h37", n:"Brother Aldric",          faction:"holyknights",     rarity:"soldier",  cls:"defender", atk:78,  foc:20,  spd:48, icon:"🛡", subspecies:"Templar"      },
+  { id:"h38", n:"Commander Vayne",         faction:"holyknights",     rarity:"veteran",  cls:"leader",   atk:130, foc:30,  spd:55, icon:"⚔️", subspecies:"Templar"      },
+  { id:"h39", n:"Friar Brennan",           faction:"holyknights",     rarity:"soldier",  cls:"support",  atk:40,  foc:120, spd:52, icon:"✝️", subspecies:"BattlePriest" },
+  { id:"h40", n:"High Warden Seraph",      faction:"holyknights",     rarity:"champion", cls:"attacker", atk:178, foc:40,  spd:60, icon:"☀️", subspecies:"BattlePriest" },
+  { id:"h41", n:"Sister Vivara",           faction:"holyknights",     rarity:"veteran",  cls:"support",  atk:45,  foc:145, spd:62, icon:"🌟", subspecies:"Inquisitor"   },
+  { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"attacker", atk:182, foc:20,  spd:58, icon:"🌑", subspecies:"Inquisitor"   },
+
+  { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"attacker", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire"      },
+  { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"support",  atk:65,  foc:170, spd:72, icon:"🩸", subspecies:"Vampire"      },
+  { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"attacker", atk:92,  foc:0,   spd:80, icon:"🐺", subspecies:"Werewolf"     },
+  { id:"h46", n:"Alpha Korrax",         faction:"nightcreatures",  rarity:"champion", cls:"leader",   atk:185, foc:0,   spd:85, icon:"🌕", subspecies:"Werewolf"     },
+  { id:"h47", n:"Skitter Vex",          faction:"nightcreatures",  rarity:"soldier",  cls:"defender", atk:70,  foc:20,  spd:60, icon:"🕷", subspecies:"Spider"       },
+  { id:"h48", n:"Widow Nyxara",         faction:"nightcreatures",  rarity:"veteran",  cls:"support",  atk:40,  foc:145, spd:65, icon:"🕸", subspecies:"Spider"       },
 ];
 
 
@@ -252,23 +264,7 @@ export function rollGacha(n, alignFactions, pityCounters = { soldier:0, veteran:
 const RARITY_MULT = { soldier: 1.0, veteran: 1.25, champion: 1.55 };
 
 export function promotedStats(cmd, toRarity) {
-  const m = RARITY_MULT[toRarity
-  // ── Holy Knights ── (leader, attacker, support, defender + extras: attacker, defender)
-  { id:"h37", n:"Confessor Aldric",     faction:"holyknights",   rarity:"veteran",  cls:"attacker", atk:132, foc:0,   spd:72, icon:"⚔️",  subspecies:"Crusader"    },
-  { id:"h38", n:"Sister Vael the Pure", faction:"holyknights",   rarity:"veteran",  cls:"support",  atk:45,  foc:155, spd:66, icon:"✨",   subspecies:"Crusader"    },
-  { id:"h39", n:"Prior Ormund",         faction:"holyknights",   rarity:"soldier",  cls:"leader",   atk:90,  foc:0,   spd:63, icon:"📜",   subspecies:"Initiate"    },
-  { id:"h40", n:"Warden Brynn",         faction:"holyknights",   rarity:"soldier",  cls:"defender", atk:98,  foc:0,   spd:57, icon:"🛡",   subspecies:"Initiate"    },
-  { id:"h41", n:"Grand Inquisitor Sael",faction:"holyknights",   rarity:"champion", cls:"attacker", atk:178, foc:0,   spd:75, icon:"☀️",  subspecies:"Inquisitor"  },
-  { id:"h42", n:"Archpaladin Thyra",    faction:"holyknights",   rarity:"champion", cls:"defender", atk:128, foc:50,  spd:62, icon:"🌟",   subspecies:"Inquisitor"  },
-  // ── Creatures of the Night ── Spider(sol+vet), Werewolf(sol+champ), Vampire(vet+champ)
-  { id:"h43", n:"Skittershanks",        faction:"nightcreatures", rarity:"soldier",  cls:"attacker", atk:102, foc:0,   spd:70, icon:"🕷️",  subspecies:"Thrall"      },
-  { id:"h44", n:"Arachne Vel",          faction:"nightcreatures", rarity:"veteran",  cls:"support",  atk:40,  foc:145, spd:65, icon:"🕸️",  subspecies:"Bloodbound"  },
-  { id:"h45", n:"Greymantle",           faction:"nightcreatures", rarity:"soldier",  cls:"leader",   atk:85,  foc:0,   spd:68, icon:"🌕",   subspecies:"Thrall"      },
-  { id:"h46", n:"Duskfang Rael",        faction:"nightcreatures", rarity:"champion", cls:"attacker", atk:188, foc:0,   spd:82, icon:"🐺",   subspecies:"Nightlord"   },
-  { id:"h47", n:"Countess Vyrra",       faction:"nightcreatures", rarity:"veteran",  cls:"support",  atk:55,  foc:145, spd:62, icon:"🧛",   subspecies:"Bloodbound"  },
-  { id:"h48", n:"The Pale Sovereign",   faction:"nightcreatures", rarity:"champion", cls:"attacker", atk:192, foc:0,   spd:72, icon:"🌑",   subspecies:"Nightlord"   },
-];
-
+  const m = RARITY_MULT[toRarity];
   return {
     atk: Math.round(cmd.atk * m),
     foc: cmd.foc > 0 ? Math.round(cmd.foc * m) : 0,
