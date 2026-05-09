@@ -577,6 +577,7 @@ export default function RiseToWar() {
           .map(t => t.k);
         setImpassableTiles(impassableKeys);
         initPathfinding(impassableKeys);
+        perfLog(`impass: ${impassableKeys.length} shore tiles sent`);
         clearKeepCache();
         setTiles(rawMap);
         setTimeout(() => {
@@ -907,10 +908,11 @@ export default function RiseToWar() {
     const boostedSpd = applyGearToCmd(freshCmd, gearInventory).spd || 60;
     const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, freshCmd.troopBranch));
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null);
+    perfLog(`march: from ${freshCmd.tk} → ${destKey}`);
     findPath(freshCmd.tk, destKey).then(path => {
-      console.log('[march] from:', freshCmd.tk, 'to:', destKey, 'path length:', path?.length ?? 'null', 'workerRef alive:', !!path);
+      perfLog(`path: ${path?.length ?? 'NULL'} steps | impass sent earlier`);
       if (!path || path.length < 2) {
-        console.warn('[march] NO PATH — from tk:', freshCmd.tk, 'dest:', destKey, 'freshCmd uid:', freshCmd.uid);
+        perfLog(`FAIL: no path ${freshCmd.tk}→${destKey}`);
         floaty("⚠ No path to target!", "#cc4040", freshCmd.tk);
         return;
       }
@@ -1536,6 +1538,7 @@ export default function RiseToWar() {
       />
 
       {showPerf && <PerfOverlay />}
+      <PerfOverlay />
 
     </div>
   );
