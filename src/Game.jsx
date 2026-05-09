@@ -875,10 +875,11 @@ export default function RiseToWar() {
 
   const cmdsAdjToSel = useMemo(() => {
     if (!selAdjToPlayer || !selTile) return [];
+    const adjKeys = new Set(adj(selTile.c, selTile.r).filter(ak => tiles[ak]?.owner === "player"));
     return playerCmds.filter(cmd =>
-      cmd.owner === "player" && (cmd.troops||0) > 0 && !cmd.march
+      cmd.owner === "player" && (cmd.troops||0) > 0 && !cmd.march && adjKeys.has(cmd.tk)
     );
-  }, [selAdjToPlayer, selTile, playerCmds]);
+  }, [selAdjToPlayer, selTile, playerCmds, tileVersion]);
 
   const canAtk = !!(selTile && selTile.owner!=="player" && selAdjToPlayer);
 
@@ -905,7 +906,10 @@ export default function RiseToWar() {
     const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, cmd.troopBranch));
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null);
     findPath(cmd.tk, destKey).then(path => {
-      if (!path || path.length < 2) return;
+      if (!path || path.length < 2) {
+        floaty("⚠ No path to target!", "#cc4040", cmd.tk);
+        return;
+      }
       setCmds(p => p.map(c => c.uid===cmd.uid ? { ...c, march:{ type, path, step:0, dest:destKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() } } : c));
     });
   }, [floaty, gearInventory, findPath]);
