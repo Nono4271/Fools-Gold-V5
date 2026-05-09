@@ -129,19 +129,34 @@ export default function GearPanel({ cmd, gearInventory, setGearInventory, setCmd
                   overflow: "hidden", animation: "fadeUp .12s ease",
                 }}>
                   <div style={{
-                    padding: "7px 10px", borderBottom: "1px solid #1a1510",
+                    padding: "7px 10px 7px 10px", borderBottom: "1px solid #1a1510",
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                   }}>
                     <span style={{ fontSize: 7, color: rarityColor, fontFamily: "'Cinzel',serif", letterSpacing: ".07em" }}>
                       {slotDef.icon} {slotDef.n.toUpperCase()}
                     </span>
-                    {piece && (
-                      <button onClick={(e) => { e.stopPropagation(); handleUnequip(slotKey); setOpenSlot(null); }} style={{
-                        padding: "2px 6px", borderRadius: 3, fontSize: 6,
-                        background: "rgba(180,60,60,.12)", border: "1px solid rgba(180,60,60,.3)",
-                        color: "#aa5050", fontFamily: "'Cinzel',serif", cursor: "pointer",
-                      }}>Unequip</button>
-                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      {piece && (
+                        <button onClick={(e) => { e.stopPropagation(); handleUnequip(slotKey); setOpenSlot(null); }} style={{
+                          padding: "2px 6px", borderRadius: 3, fontSize: 6,
+                          background: "rgba(180,60,60,.12)", border: "1px solid rgba(180,60,60,.3)",
+                          color: "#aa5050", fontFamily: "'Cinzel',serif", cursor: "pointer",
+                          touchAction: "manipulation", WebkitTapHighlightColor: "transparent",
+                        }}>Unequip</button>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setOpenSlot(null); }}
+                        onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); setOpenSlot(null); }}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          minWidth: 36, minHeight: 36, margin: "-8px -6px -8px 2px",
+                          background: "transparent", border: "none",
+                          color: "#8a7060", fontSize: 18, cursor: "pointer",
+                          touchAction: "manipulation", WebkitTapHighlightColor: "transparent",
+                          flexShrink: 0,
+                        }}
+                      >✕</button>
+                    </div>
                   </div>
 
                   <div style={{ maxHeight: 220, overflowY: "auto", touchAction: "pan-y", overscrollBehavior: "contain" }}>
@@ -238,10 +253,16 @@ export default function GearPanel({ cmd, gearInventory, setGearInventory, setCmd
                     </span>
                   </div>
                 </div>
-                <button onClick={() => setPreviewGear(null)} style={{
-                  background:"transparent", border:"none", color:"#6a5a4a",
-                  fontSize:16, cursor:"pointer", flexShrink:0, lineHeight:1,
-                }}>✕</button>
+                <button
+                  onClick={() => setPreviewGear(null)}
+                  onTouchEnd={e => { e.preventDefault(); setPreviewGear(null); }}
+                  style={{
+                    background:"transparent", border:"none", color:"#6a5a4a",
+                    fontSize:18, cursor:"pointer", flexShrink:0, lineHeight:1,
+                    minWidth:36, minHeight:36, display:"flex", alignItems:"center", justifyContent:"center",
+                    margin:"-8px -6px -8px 0",
+                    touchAction:"manipulation", WebkitTapHighlightColor:"transparent",
+                  }}>✕</button>
               </div>
 
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
@@ -291,33 +312,39 @@ export default function GearPanel({ cmd, gearInventory, setGearInventory, setCmd
                 {isEquipped ? (
                   <button
                     onClick={() => { handleUnequip(pgSlot); setPreviewGear(null); }}
+                    onTouchEnd={e => { e.preventDefault(); handleUnequip(pgSlot); setPreviewGear(null); }}
                     style={{
                       flex:1, padding:"10px 0", borderRadius:5, cursor:"pointer",
                       background:"rgba(180,60,60,.12)", border:"1px solid rgba(180,60,60,.4)",
                       color:"#cc5050", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700,
                       letterSpacing:".06em",
+                      touchAction:"manipulation", WebkitTapHighlightColor:"transparent",
                     }}>
                     Unequip
                   </button>
                 ) : (
                   <button
                     onClick={() => { handleEquip(pg); setPreviewGear(null); }}
+                    onTouchEnd={e => { e.preventDefault(); handleEquip(pg); setPreviewGear(null); }}
                     style={{
                       flex:1, padding:"10px 0", borderRadius:5, cursor:"pointer",
                       background:`linear-gradient(135deg,${pgRc}22,rgba(0,0,0,.3))`,
                       border:`1px solid ${pgRc}55`,
                       color:pgRc, fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700,
                       letterSpacing:".06em", boxShadow:`0 0 12px ${pgRc}20`,
+                      touchAction:"manipulation", WebkitTapHighlightColor:"transparent",
                     }}>
                     Equip
                   </button>
                 )}
                 <button
                   onClick={() => setPreviewGear(null)}
+                  onTouchEnd={e => { e.preventDefault(); setPreviewGear(null); }}
                   style={{
                     padding:"10px 16px", borderRadius:5, cursor:"pointer",
                     background:"rgba(255,255,255,.03)", border:"1px solid #2a2010",
                     color:"#4a3a28", fontFamily:"'Cinzel',serif", fontSize:10,
+                    touchAction:"manipulation", WebkitTapHighlightColor:"transparent",
                   }}>
                   Cancel
                 </button>
