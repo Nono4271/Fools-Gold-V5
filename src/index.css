@@ -3,14 +3,31 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html {
   width: 100%; height: 100%;
-  background: #0e1014;
+  overflow: hidden;
+  position: fixed;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 body {
   width: 100%; height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
   background: #0e1014;
 }
-/* #root fills viewport; overflow is managed per-screen via inline styles */
-#root { width: 100%; height: 100%; background: #0e1014; }
+#root { width: 100%; height: 100%; overflow: hidden; background: #0e1014; }
+
+/* Scrollable overlay screens add this class on mount so the touchstart
+   handler in main.tsx bails out, and position:static lets inner scroll
+   containers receive pan gestures on iOS. */
+html.gacha-open,
+html.gacha-open body {
+  position: static;
+  touch-action: pan-y;
+}
+html.gacha-open #root {
+  overflow: visible;
+}
 
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: #0a0c10; }
