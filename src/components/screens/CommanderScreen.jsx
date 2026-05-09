@@ -181,7 +181,7 @@ function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canL
       border: `1px solid ${color}40`,
       borderRadius: "12px 12px 0 0",
       padding: "14px 16px 20px",
-      zIndex: 900,
+      zIndex: 9300,
       boxShadow: `0 -8px 32px ${color}18`,
       animation: "fadeUp .18s ease",
     }}>
@@ -598,7 +598,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
 
   return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 800,
+      position: "fixed", inset: 0, zIndex: 9200,
       background: `radial-gradient(ellipse at 50% 0%, #03100f 0%, #020608 55%, #010204 100%)`,
       display: "flex", flexDirection: "column",
       animation: "fadeUp .2s ease",
@@ -1774,7 +1774,7 @@ function FilterPopup({ filterClass, setFilterClass, filterAlignment, setFilterAl
 
   return (
     <div onClick={onClose} style={{
-      position: "fixed", inset: 0, zIndex: 800,
+      position: "fixed", inset: 0, zIndex: 9200,
       background: "rgba(0,0,0,.7)", display: "flex", alignItems: "flex-end",
     }}>
       <div onClick={e => e.stopPropagation()} style={{
@@ -1906,7 +1906,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
 
   return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 700,
+      position: "fixed", inset: 0, zIndex: 9200,
       background: "#080704",
       display: "flex", flexDirection: "column",
       touchAction: "auto",

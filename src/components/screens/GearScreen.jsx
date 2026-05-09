@@ -14,7 +14,7 @@ export default function GearScreen({ gearInventory, setGearInventory, cmds, setC
 
   return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 700,
+      position: "fixed", inset: 0, zIndex: 9200,
       background: "#080704",
       display: "flex", flexDirection: "column",
     }}>
