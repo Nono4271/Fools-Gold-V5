@@ -1,4 +1,5 @@
 import { HOLYKNIGHTS_SKILLS, HOLYKNIGHTS_BRANCH_SKILL_MAP } from "./holyknights_skills.js";
+import { NIGHTCREATURES_SKILLS, NIGHTCREATURES_BRANCH_SKILL_MAP } from "./nightcreatures_skills.js";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    skills.js — V5 Skill System
@@ -413,6 +414,7 @@ export const ALL_SKILLS = {
   ...SUPPORT_SKILLS,
   ...LEADER_SKILLS,
   ...HOLYKNIGHTS_SKILLS,
+  ...NIGHTCREATURES_SKILLS,
 };
 
 // ── Branch layout for skill tree UI ──────────────────────────────────────────
@@ -455,6 +457,9 @@ function resolveBranchMap(cmdOrCls, treeOrCls) {
   if (cmdOrCls && typeof cmdOrCls === "object" && cmdOrCls.faction === "holyknights") {
     return HOLYKNIGHTS_BRANCH_SKILL_MAP[cmdOrCls.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
   }
+  if (cmdOrCls && typeof cmdOrCls === "object" && cmdOrCls.faction === "nightcreatures") {
+    return NIGHTCREATURES_BRANCH_SKILL_MAP[cmdOrCls.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
+  }
   return BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
 }
 
@@ -491,6 +496,8 @@ export function getActiveSkills(cmd) {
   const cls  = cmd.cls;
   const branches = cmd.faction === "holyknights"
     ? (HOLYKNIGHTS_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? [])
+    : cmd.faction === "nightcreatures"
+    ? (NIGHTCREATURES_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? [])
     : (BRANCH_SKILL_MAP[cls] ?? []);
   const keys = branches.flatMap(b => [b.main, ...b.sides]);
   return keys
@@ -556,6 +563,11 @@ export const TREE_DISPLAY_NAMES = {
   holyknights_defender:   ["Templar's Oath",      "Sacred Wall",       "Bastion of Faith", "Ghost of the Lord"],
   holyknights_leader:     ["Vayne's Edict",       "Templar's Roar",    "Holy Strategy",    "Crusader's March" ],
   holyknights_support:    ["Brennan's Blessing",  "Mending Light",     "Friar's Supply",   "Guardian's Aura"  ],
+
+  nightcreatures_attacker:["Bloodlust Ascendant", "Crimson Frenzy",    "Fang & Shadow",    "Predator's End"   ],
+  nightcreatures_defender:["Exoskeleton Stance",  "Web Shield Wall",   "Spider's Bastion", "Phantom Step"     ],
+  nightcreatures_leader:  ["Alpha's Call",        "Pack Roar",         "Feral Strategy",   "Moon-Tide Surge"  ],
+  nightcreatures_support: ["Dark Communion",      "Widow's Mending",   "Dark Rally",       "Venom Snare"      ],
 };
 
 export function getTreeDisplayNames(faction, cls) {
