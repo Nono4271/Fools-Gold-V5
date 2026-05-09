@@ -63,9 +63,7 @@ self.onmessage = (e) => {
 
   if (type === 'findPath') {
     const { requestId, from, to } = e.data;
-    console.log('[pathworker] findPath from:', from, 'to:', to, 'impassable count:', IMPASSABLE.size);
     const path = bfsPath(from, to);
-    console.log('[pathworker] result length:', path?.length ?? 'null');
     self.postMessage({ type: 'pathResult', requestId, path });
     return;
   }
