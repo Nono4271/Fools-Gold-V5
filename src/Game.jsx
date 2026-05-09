@@ -908,7 +908,9 @@ export default function RiseToWar() {
     const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, freshCmd.troopBranch));
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null);
     findPath(freshCmd.tk, destKey).then(path => {
+      console.log('[march] from:', freshCmd.tk, 'to:', destKey, 'path length:', path?.length ?? 'null', 'workerRef alive:', !!path);
       if (!path || path.length < 2) {
+        console.warn('[march] NO PATH — from tk:', freshCmd.tk, 'dest:', destKey, 'freshCmd uid:', freshCmd.uid);
         floaty("⚠ No path to target!", "#cc4040", freshCmd.tk);
         return;
       }
