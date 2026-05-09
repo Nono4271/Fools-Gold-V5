@@ -875,11 +875,10 @@ export default function RiseToWar() {
 
   const cmdsAdjToSel = useMemo(() => {
     if (!selAdjToPlayer || !selTile) return [];
-    const adjKeys = new Set(adj(selTile.c, selTile.r).filter(ak => tiles[ak]?.owner === "player"));
     return playerCmds.filter(cmd =>
-      cmd.owner === "player" && (cmd.troops||0) > 0 && !cmd.march && adjKeys.has(cmd.tk)
+      cmd.owner === "player" && (cmd.troops||0) > 0 && !cmd.march
     );
-  }, [selAdjToPlayer, selTile, playerCmds, tileVersion]);
+  }, [selAdjToPlayer, selTile, playerCmds]);
 
   const canAtk = !!(selTile && selTile.owner!=="player" && selAdjToPlayer);
 
@@ -897,20 +896,23 @@ export default function RiseToWar() {
 
   // ── Actions ──
   const startMarch = useCallback((cmd, destKey) => {
-    if (!cmd || !destKey || cmd.march) return;
-    if (!cmd.troops || cmd.troops < 1) { floaty("⚠ Assign troops first!", "#cc8030", cmd.tk); return; }
+    if (!cmd || !destKey) return;
+    // Re-read from ref to get the freshest tk (React state cmd may be one render behind)
+    const freshCmd = cmdsRef.current?.find(c => c.uid === cmd.uid) ?? cmd;
+    if (freshCmd.march) return;
+    if (!freshCmd.troops || freshCmd.troops < 1) { floaty("⚠ Assign troops first!", "#cc8030", freshCmd.tk); return; }
     const destTile = tilesMapRef.current[destKey];
     const type = destTile?.owner==="player" ? "move" : "attack";
     if (type==="move" && destTile?.owner!=="player") return;
-    const boostedSpd = applyGearToCmd(cmd, gearInventory).spd || 60;
-    const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, cmd.troopBranch));
+    const boostedSpd = applyGearToCmd(freshCmd, gearInventory).spd || 60;
+    const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, freshCmd.troopBranch));
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null);
-    findPath(cmd.tk, destKey).then(path => {
+    findPath(freshCmd.tk, destKey).then(path => {
       if (!path || path.length < 2) {
-        floaty("⚠ No path to target!", "#cc4040", cmd.tk);
+        floaty("⚠ No path to target!", "#cc4040", freshCmd.tk);
         return;
       }
-      setCmds(p => p.map(c => c.uid===cmd.uid ? { ...c, march:{ type, path, step:0, dest:destKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() } } : c));
+      setCmds(p => p.map(c => c.uid===freshCmd.uid ? { ...c, march:{ type, path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, lastStepTime:Date.now() } } : c));
     });
   }, [floaty, gearInventory, findPath]);
 
