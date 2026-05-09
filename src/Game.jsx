@@ -1557,36 +1557,57 @@ function perfLog(label) { window._perfLog(label); }
 
 function PerfOverlay() {
   const [logs, setLogs] = useState([]);
-  const [visible, setVisible] = useState(true);
+  const [open, setOpen] = useState(false);
   _perfSetLog = setLogs;
 
   return (
     <div style={{
-      position:"fixed", top:100, left:8, zIndex:99999, width:260,
-      background:"rgba(0,0,0,.92)", border:"1px solid #555",
-      borderRadius:6, padding:"6px 8px",
-      fontSize:10, fontFamily:"monospace", color:"#ccc",
-      pointerEvents:"auto",
+      position:"fixed", top:8, right:8, zIndex:99999,
+      fontFamily:"monospace", pointerEvents:"auto",
     }}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,alignItems:"center"}}>
-        <span style={{color:"#f0c040",fontWeight:700,fontSize:11}}>⏱ PERF</span>
-        <span onTouchEnd={e=>{e.stopPropagation();window._perfLogs=[];setLogs([]);}}
-          style={{color:"#aaa",padding:"2px 8px",background:"#333",borderRadius:3}}>CLR</span>
+      {/* Toggle button — always visible */}
+      <div
+        onTouchEnd={e=>{ e.stopPropagation(); setOpen(o=>!o); }}
+        onClick={e=>{ e.stopPropagation(); setOpen(o=>!o); }}
+        style={{
+          background:"rgba(0,0,0,.85)", border:"1px solid #555",
+          borderRadius:6, padding:"4px 10px", fontSize:11,
+          color:"#f0c040", fontWeight:700, cursor:"pointer",
+          textAlign:"right", userSelect:"none",
+        }}>
+        ⏱ PERF {open ? "▲" : "▼"}
       </div>
-      {logs.length === 0
-        ? <div style={{color:"#666",fontSize:9}}>tap a tile or pan to record...</div>
-        : logs.map((l,i) => (
-          <div key={i} style={{
-            display:"flex",justifyContent:"space-between",
-            borderBottom:"1px solid #222",padding:"2px 0",
-            color: l.dt > 100 ? "#ff5050" : l.dt > 33 ? "#f0c040" : "#66dd66"
-          }}>
-            <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{l.label}</span>
-            <span style={{marginLeft:8,flexShrink:0,fontWeight:700}}>+{l.dt}ms</span>
+      {/* Panel — only when open */}
+      {open && (
+        <div style={{
+          marginTop:4, width:260,
+          background:"rgba(0,0,0,.92)", border:"1px solid #555",
+          borderRadius:6, padding:"6px 8px",
+          fontSize:10, color:"#ccc",
+        }}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,alignItems:"center"}}>
+            <span style={{color:"#f0c040",fontWeight:700,fontSize:11}}>⏱ PERF LOG</span>
+            <span
+              onTouchEnd={e=>{e.stopPropagation();window._perfLogs=[];setLogs([]);}}
+              onClick={e=>{e.stopPropagation();window._perfLogs=[];setLogs([]);}}
+              style={{color:"#aaa",padding:"2px 8px",background:"#333",borderRadius:3,cursor:"pointer"}}>CLR</span>
           </div>
-        ))
-      }
-      <div style={{fontSize:8,color:"#555",marginTop:3}}>🔴&gt;100ms 🟡&gt;33ms 🟢fast</div>
+          {logs.length === 0
+            ? <div style={{color:"#666",fontSize:9}}>tap a tile or pan to record...</div>
+            : logs.map((l,i) => (
+              <div key={i} style={{
+                display:"flex",justifyContent:"space-between",
+                borderBottom:"1px solid #222",padding:"2px 0",
+                color: l.dt > 100 ? "#ff5050" : l.dt > 33 ? "#f0c040" : "#66dd66"
+              }}>
+                <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{l.label}</span>
+                <span style={{marginLeft:8,flexShrink:0,fontWeight:700}}>+{l.dt}ms</span>
+              </div>
+            ))
+          }
+          <div style={{fontSize:8,color:"#555",marginTop:3}}>🔴&gt;100ms 🟡&gt;33ms 🟢fast</div>
+        </div>
+      )}
     </div>
   );
 }
