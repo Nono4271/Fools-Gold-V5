@@ -262,14 +262,9 @@ export default function GachaScreen({
   const aln = ALIGNMENT[playerAlignment];
   const [activeTab, setActiveTab] = useState("summon"); // "summon" | "gear" | "collection"
 
-  // Add a class to <html> that overrides the global position:fixed / touch-action:none
-  // rules in index.css. Inline styles can't win against stylesheet rules on the same
-  // element, but a more-specific selector (.gacha-open html) can.
   useEffect(() => {
     document.documentElement.classList.add("gacha-open");
-    return () => {
-      document.documentElement.classList.remove("gacha-open");
-    };
+    return () => document.documentElement.classList.remove("gacha-open");
   }, []);
 
   return (
