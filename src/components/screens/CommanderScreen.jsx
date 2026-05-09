@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { applyGearToCmd } from "../../../shared/utils/gearStats.js";
 import { CSS } from "../../constants/css.js";
 import {
@@ -898,6 +898,18 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
   const [showSchematics, setShowSchematics] = useState(false);
   const [showClassPopup, setShowClassPopup] = useState(null);
   const [previewGear, setPreviewGear] = useState(null); // { piece, slotKey } — gear stat preview before equip
+
+  // Enable pan-y scrolling on the gear picker (same pattern as GachaScreen)
+  const gearSlots = ["helmet","armor","bracers","accessory"];
+  const isGearPickerOpen = gearSlots.includes(showClassPopup);
+  useEffect(() => {
+    if (isGearPickerOpen) {
+      document.documentElement.classList.add("gacha-open");
+    } else {
+      document.documentElement.classList.remove("gacha-open");
+    }
+    return () => document.documentElement.classList.remove("gacha-open");
+  }, [isGearPickerOpen]);
   const r = RARITY[cmd.rarity] ?? RARITY.soldier;
   const cls = CLASS[cmd.cls];
   const faction = PLAYABLE_FACTIONS.find(f => f.key === cmd.faction);
@@ -1455,7 +1467,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                     </div>
 
                     {/* Scrollable gear list */}
-                    <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", touchAction: "pan-y", minHeight: 0 }}>
+                    <div className="scr gear-picker-list" style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", touchAction: "pan-y", minHeight: 0 }}>
                       {available2.length === 0 ? (
                         <div style={{
                           padding: "20px 12px", fontSize: 8, color: "#3a3020",
