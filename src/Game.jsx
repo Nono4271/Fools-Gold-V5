@@ -524,7 +524,7 @@ export default function RiseToWar() {
         }
 
         // Place AI HQs
-        const allFactions = ["pirates","merfolk","marines","orcs","bountyhunters","dragons"];
+        const allFactions = ["pirates","merfolk","marines","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
         const aiFactions  = allFactions.filter(f => f !== facKey);
         const newAiHqKeys = {};
         aiFactions.forEach(aiFk => {
@@ -553,8 +553,8 @@ export default function RiseToWar() {
         const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
         const primaryAiFk = aiFactions.find(f =>
           (oppAlign === "humans"
-            ? ["pirates","marines","bountyhunters"]
-            : ["merfolk","orcs","dragons"]).includes(f)
+            ? ["pirates","marines","bountyhunters","holyknights"]
+            : ["merfolk","orcs","dragons","nightcreatures"]).includes(f)
         ) || aiFactions[0];
         setAiFaction(primaryAiFk);
 
