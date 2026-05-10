@@ -6,9 +6,7 @@ export const GEAR_RARITY_COLORS = { common: "#8a8a8a", rare: "#4488cc", epic: "#
 
 export const FACTION_THEME = {
   pirates:       { color: "#d4832a", accent: "#ffc060" },
-  marines:       { color: "#4488cc", accent: "#80c0ff" },
   bountyhunters: { color: "#9955dd", accent: "#cc88ff" },
-  merfolk:       { color: "#30b8c8", accent: "#70eef5" },
   orcs:          { color: "#6aa830", accent: "#aaff66" },
   dragons:       { color: "#cc3030", accent: "#ff8855" },
   holyknights:   { color: "#d4af37", accent: "#fff5a0" },
