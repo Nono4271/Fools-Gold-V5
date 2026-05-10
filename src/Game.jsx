@@ -455,6 +455,8 @@ export default function RiseToWar() {
             const isHQ      = !!(flags & F_HQ);
             const isHQPart  = !!(flags & F_HQPART);
             const isWin     = !!(flags & F_WIN);
+            const isGate    = !!(flags & F_GATE);
+            const isBorder  = !!(flags & F_BORDER);
 
             const owner = OWNER_DEC[ownerArr[idx]] || null;
 
@@ -488,6 +490,8 @@ export default function RiseToWar() {
               garrisonDefeated: !!(flags & F_DEFEATED),
               resetAt:    null,
               isKeep, isKeepPart, isHQ, isHQPart, isWin,
+              isGate, isBorder,
+              crossingType: km?.type || null,
               keepPrimaryKey,
               defCmd:     km?.defCmd || null,
             };
