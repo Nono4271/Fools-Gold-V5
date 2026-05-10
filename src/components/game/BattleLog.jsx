@@ -1,5 +1,4 @@
-import { useState, memo, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useState, memo } from "react";
 import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 
 // Resolve a troopBranch descriptor to { branchDef, tierData }
@@ -496,7 +495,7 @@ function BattleStatsPopup({ b, onClose }) {
     { label:"Total Healing",   atkVal: stats.atkHealing > 0 ? stats.atkHealing.toLocaleString() : "0", defVal:"0" },
   ];
 
-  return createPortal(
+  return (
     <>
       {/* Backdrop — catches outside clicks and closes popup without bubbling to card */}
       <div onClick={e => { e.stopPropagation(); onClose(); }} style={{
@@ -679,8 +678,7 @@ function BattleStatsPopup({ b, onClose }) {
       {subPopup === "defCmd" && <CommanderPopup b={b} side="def" onClose={() => setSubPopup(null)} />}
       {subPopup === "atkTroop" && <TroopPopup troopBranch={b.atkTroopBranch} onClose={() => setSubPopup(null)} />}
       {subPopup === "defTroop" && <TroopPopup troopBranch={b.defTroopBranch} onClose={() => setSubPopup(null)} />}
-    </>,
-    document.body
+    </>
   );
 }
 
