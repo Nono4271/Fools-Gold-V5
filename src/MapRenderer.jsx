@@ -420,22 +420,59 @@ function drawAmbientScatter(gfx, tile, cx, sy) {
 ══════════════════════════════════════════════════════════════════════════ */
 
 const KEEP_REGION_LIST = [
-  { key:"holyGrail",         cx:350, cy:360, isWin:true  },
-  { key:"shatteredShallows", cx:350, cy:190, isWin:false },
-  { key:"bloodmarch",        cx:460, cy:425, isWin:false },
-  { key:"ashenRift",         cx:240, cy:425, isWin:false },
-  { key:"brinefields",       cx:269, cy: 60, isWin:false },
-  { key:"coralfen",          cx:431, cy: 60, isWin:false },
-  { key:"stormwatch",        cx:612, cy:438, isWin:false },
-  { key:"boneridge",         cx:450, cy:638, isWin:false },
-  { key:"runemarks",         cx:250, cy:638, isWin:false },
-  { key:"cinderplain",       cx: 88, cy:438, isWin:false },
-  { key:"saltmere",          cx:114, cy:100, isWin:false },
-  { key:"tidesreach",        cx:586, cy:100, isWin:false },
-  { key:"ironhaven",         cx:602, cy:287, isWin:false },
-  { key:"grimhold",          cx:590, cy:600, isWin:false },
-  { key:"ashenveil",         cx:110, cy:600, isWin:false },
-  { key:"emberpeak",         cx: 98, cy:287, isWin:false },
+  // Holy Grail
+  { key:"holyGrail",       cx: 788, cy: 407, isWin:true  },
+  // Pirates
+  { key:"saltmere",        cx: 229, cy: 141, isWin:false },
+  { key:"plunderMaw",      cx: 215, cy:  42, isWin:false },
+  { key:"brineHollow",     cx: 427, cy: 141, isWin:false },
+  { key:"deadAnchor",      cx: 229, cy: 274, isWin:false },
+  // Night Creatures
+  { key:"shadowmere",      cx:1173, cy: 274, isWin:false },
+  { key:"theShroud",       cx:1334, cy: 288, isWin:false },
+  { key:"crimsonVeil",     cx: 975, cy: 141, isWin:false },
+  { key:"paleCourt",       cx:1173, cy: 141, isWin:false },
+  { key:"duskHollow",      cx: 975, cy: 274, isWin:false },
+  { key:"bloodfen",        cx:1173, cy: 407, isWin:false },
+  // Dragons
+  { key:"emberpeak",       cx: 229, cy: 407, isWin:false },
+  { key:"smolderingMaw",   cx:  55, cy: 437, isWin:false },
+  { key:"ashcrag",         cx: 460, cy: 375, isWin:false },
+  { key:"cinderPass",      cx: 390, cy: 432, isWin:false },
+  { key:"scorchveil",      cx: 229, cy: 540, isWin:false },
+  // Orcs
+  { key:"grimhold",        cx:1173, cy: 540, isWin:false },
+  { key:"theWarground",    cx:1334, cy: 563, isWin:false },
+  { key:"warbend",         cx: 975, cy: 407, isWin:false },
+  { key:"bloodfield",      cx: 975, cy: 540, isWin:false },
+  { key:"bonepile",        cx:1173, cy: 673, isWin:false },
+  // Wizards (Bounty Hunters)
+  { key:"ashenveil",       cx: 613, cy: 794, isWin:false },
+  { key:"arcaneDeep",      cx: 628, cy: 910, isWin:false },
+  { key:"hexmire",         cx: 427, cy: 673, isWin:false },
+  { key:"ruinwatch",       cx: 613, cy: 673, isWin:false },
+  { key:"ashenFen",        cx: 229, cy: 794, isWin:false },
+  { key:"cursemoor",       cx: 427, cy: 794, isWin:false },
+  // Holy Knights
+  { key:"sanctumhold",     cx: 788, cy: 794, isWin:false },
+  { key:"blessedShore",    cx: 795, cy: 910, isWin:false },
+  { key:"hallowedGround",  cx: 788, cy: 540, isWin:false },
+  { key:"pilgrimsRest",    cx: 975, cy: 673, isWin:false },
+  { key:"sacredVale",      cx: 975, cy: 794, isWin:false },
+  { key:"dawnmarch",       cx:1173, cy: 794, isWin:false },
+  // Neutral / Conflict
+  { key:"gallowsReach",    cx: 613, cy: 141, isWin:false },
+  { key:"greyExpanse",     cx: 788, cy: 141, isWin:false },
+  { key:"mistfall",        cx: 460, cy: 242, isWin:false },
+  { key:"thornveil",       cx: 390, cy: 308, isWin:false },
+  { key:"wanderingWastes", cx: 613, cy: 274, isWin:false },
+  { key:"dreadmoor",       cx: 788, cy: 274, isWin:false },
+  { key:"theHollow",       cx: 613, cy: 407, isWin:false },
+  { key:"grimward",        cx: 427, cy: 540, isWin:false },
+  { key:"shatteredPass",   cx: 648, cy: 510, isWin:false },
+  { key:"sunkenRoad",      cx: 580, cy: 578, isWin:false },
+  { key:"paleMarch",       cx: 788, cy: 673, isWin:false },
+  { key:"forsakenMarch",   cx: 229, cy: 673, isWin:false },
 ];
 
 function drawKeepGfx(gfx, bx, by, owner, isWin, isSelected) {
