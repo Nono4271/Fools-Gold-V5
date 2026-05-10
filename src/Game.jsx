@@ -651,6 +651,26 @@ export default function RiseToWar() {
 
   useUpgrades({ screen, setUpgQueue, setBldgs, setBarracks });
 
+  // Build gatePartners: for each crossing, map gateA key ↔ gateB key so that
+  // a commander on gateA is treated as adjacent to gateB (and vice versa).
+  // BORDER_HALF = 2, so gateA is at offset -2 and gateB at offset +1 from bCoord.
+  const gatePartners = useMemo(() => {
+    const map = {};
+    for (const cr of crossingsState) {
+      let aKey, bKey;
+      if (cr.axis === 'H') {
+        aKey = `${cr.gCoord},${cr.bCoord - 2}`;
+        bKey = `${cr.gCoord},${cr.bCoord + 1}`;
+      } else {
+        aKey = `${cr.bCoord - 2},${cr.gCoord}`;
+        bKey = `${cr.bCoord + 1},${cr.gCoord}`;
+      }
+      map[aKey] = bKey;
+      map[bKey] = aKey;
+    }
+    return map;
+  }, [crossingsState]);
+
   useMarch({
     screen, tiles, tileVersion, bldgs,
     cmds: cmdsRef.current,
@@ -662,6 +682,7 @@ export default function RiseToWar() {
     playerHqKey: playerHqKey || playerHqRef.current || `${HQP.player.c},${HQP.player.r}`,
     aiHqKeys,
     emitTileCapture, emitTileSiege,
+    gatePartners,
   });
 
   useGameLoop({
