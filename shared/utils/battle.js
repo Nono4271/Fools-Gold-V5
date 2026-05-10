@@ -1,6 +1,6 @@
 import { FACTION_TROOPS, troopSizeModifier, skillProcAtLevel } from "../constants/troops.js";
 import { TERR  } from "../constants/terrain.js";
-import { POWER_DEFS } from "../constants/map.js";
+import { POWER_DEFS, XP_PER_COMMAND } from "../constants/map.js";
 import { skillFiresOnRound, getActiveSkills, getPassiveBonuses } from "../constants/skills.js";
 import { npcForPowerLevel } from "../constants/heroes.js";
 
@@ -605,8 +605,12 @@ const finalAtkLost    = won
 ? Math.min(attackerTroops - 1, Math.max(1, lostFromHp))
 : Math.min(attackerTroops, Math.max(0, lostFromHp));
 
-const fullXp = POWER_DEFS[defTile.powerLevel || 1]?.xpReward || 30;
-const defKilledFraction = Math.max(0, Math.min(1, (defTroops - defTroopsLeft) / Math.max(1, defTroops)));
+// XP = command consumed × rate for troop tier
+const defTroopTierIdx = dc?.troopBranch?.tier ?? 0;
+const xpRate = XP_PER_COMMAND[defTroopTierIdx] ?? XP_PER_COMMAND[0];
+const defTroopsKilled = Math.max(0, defTroops - defTroopsLeft);
+const fullXp = Math.round(defTroops * xpRate);
+const defKilledFraction = Math.max(0, Math.min(1, defTroopsKilled / Math.max(1, defTroops)));
 const xpGain = won ? fullXp : isDraw ? Math.max(1, Math.round(fullXp * defKilledFraction)) : 0;
 // Fix 4: Win-chance % now uses the same stats that actually drive combat:
 //   - Attacker: total army command capacity (not raw troop count) + level as a multiplier
