@@ -37,37 +37,68 @@ const F_DEFEATED = 1<<6;
 
 // ── Region list — v12 coordinates, 1400x1000 design space ────────────────────
 const REGION_LIST = [
-  { key:"holyGrail",         name:"The Holy Grail",          layer:"ring",     keepName:"The Holy Grail",              cx: 700, cy: 500 },
-  { key:"shatteredShallows", name:"The Shattered Shallows",  layer:"conflict", keepName:"The Shattered Shallows Keep", cx: 689, cy: 280 },
-  { key:"bloodmarch",        name:"Bloodmarch",              layer:"conflict", keepName:"Bloodmarch Keep",             cx: 929, cy: 500 },
-  { key:"ashenRift",         name:"The Ashen Rift",          layer:"conflict", keepName:"The Ashen Rift Keep",         cx: 453, cy: 500 },
-  { key:"brinefields",       name:"Brinefields",             layer:"farm",     keepName:"Brinefields Keep",            cx: 480, cy: 260 },
-  { key:"coralfen",          name:"Coralfen",                layer:"farm",     keepName:"Coralfen Keep",               cx: 920, cy: 260 },
-  { key:"stormwatch",        name:"Stormwatch",              layer:"farm",     keepName:"Stormwatch Keep",             cx:1020, cy: 295 },
-  { key:"boneridge",         name:"Boneridge",               layer:"farm",     keepName:"Boneridge Keep",              cx:1020, cy: 710 },
-  { key:"runemarks",         name:"Runemarks",               layer:"farm",     keepName:"Runemarks Keep",              cx: 380, cy: 710 },
-  { key:"cinderplain",       name:"Cinderplain",             layer:"farm",     keepName:"Cinderplain Keep",            cx: 380, cy: 295 },
-  { key:"saltmere",          name:"Saltmere",                layer:"start",    keepName:"Saltmere Keep",               cx: 200, cy: 100, factions:["pirates"]        },
-  { key:"tidesreach",        name:"Tidesreach",              layer:"start",    keepName:"Tidesreach Keep",             cx:1200, cy: 100, factions:["merfolk"]         },
-  { key:"ironhaven",         name:"Ironhaven",               layer:"start",    keepName:"Ironhaven Keep",              cx:1280, cy: 360, factions:["marines"]         },
-  { key:"grimhold",          name:"Grimhold",                layer:"start",    keepName:"Grimhold Keep",               cx:1280, cy: 650, factions:["orcs"]            },
-  { key:"ashenveil",         name:"Ashenveil",               layer:"start",    keepName:"Ashenveil Keep",              cx: 120, cy: 650, factions:["bountyhunters"]   },
-  { key:"emberpeak",         name:"Emberpeak",               layer:"start",    keepName:"Emberpeak Keep",              cx: 120, cy: 360, factions:["dragons"]         },
-  { key:"sanctumhold",       name:"Sanctumhold",             layer:"start",    keepName:"Sanctumhold Keep",            cx: 220, cy: 920, factions:["holyknights"]     },
-  { key:"pilgrimfields",     name:"Pilgrimfields",           layer:"farm",     keepName:"Pilgrimfields Keep",          cx: 460, cy: 830, factions:["holyknights"]     },
-  { key:"shadowmere",        name:"Shadowmere",              layer:"start",    keepName:"Shadowmere Keep",             cx:1180, cy: 920, factions:["nightcreatures"]  },
-  { key:"darkfen",           name:"Darkfen",                 layer:"farm",     keepName:"Darkfen Keep",                cx: 940, cy: 830, factions:["nightcreatures"]  },
+  // Holy Grail
+  { key:"holyGrail",       name:"Holy Grail",          layer:"ring",     keepName:"The Holy Grail",            cx: 788, cy: 407 },
+  // Pirates
+  { key:"saltmere",        name:"Saltmere",            layer:"start",    keepName:"Saltmere Keep",             cx: 229, cy: 141, factions:["pirates"] },
+  { key:"plunderMaw",      name:"The Plunder Maw",     layer:"farm",     keepName:"The Plunder Maw Keep",      cx: 215, cy:  42, factions:["pirates"] },
+  { key:"brineHollow",     name:"Brine Hollow",        layer:"farm",     keepName:"Brine Hollow Keep",         cx: 427, cy: 141, factions:["pirates"] },
+  { key:"deadAnchor",      name:"Dead Anchor",         layer:"farm",     keepName:"Dead Anchor Keep",          cx: 229, cy: 274, factions:["pirates"] },
+  // Night Creatures
+  { key:"shadowmere",      name:"Shadowmere",          layer:"start",    keepName:"Shadowmere Keep",           cx:1173, cy: 274, factions:["nightcreatures"] },
+  { key:"theShroud",       name:"The Shroud",          layer:"farm",     keepName:"The Shroud Keep",           cx:1334, cy: 288, factions:["nightcreatures"] },
+  { key:"crimsonVeil",     name:"Crimson Veil",        layer:"farm",     keepName:"Crimson Veil Keep",         cx: 975, cy: 141, factions:["nightcreatures"] },
+  { key:"paleCourt",       name:"The Pale Court",      layer:"farm",     keepName:"The Pale Court Keep",       cx:1173, cy: 141, factions:["nightcreatures"] },
+  { key:"duskHollow",      name:"Dusk Hollow",         layer:"farm",     keepName:"Dusk Hollow Keep",          cx: 975, cy: 274, factions:["nightcreatures"] },
+  { key:"bloodfen",        name:"Bloodfen",            layer:"farm",     keepName:"Bloodfen Keep",             cx:1173, cy: 407, factions:["nightcreatures"] },
+  // Dragons
+  { key:"emberpeak",       name:"Emberpeak",           layer:"start",    keepName:"Emberpeak Keep",            cx: 229, cy: 407, factions:["dragons"] },
+  { key:"smolderingMaw",   name:"Smoldering Maw",      layer:"farm",     keepName:"Smoldering Maw Keep",       cx:  55, cy: 437, factions:["dragons"] },
+  { key:"ashcrag",         name:"Ashcrag",             layer:"farm",     keepName:"Ashcrag Keep",              cx: 460, cy: 375, factions:["dragons"] },
+  { key:"cinderPass",      name:"Cinder Pass",         layer:"farm",     keepName:"Cinder Pass Keep",          cx: 390, cy: 432, factions:["dragons"] },
+  { key:"scorchveil",      name:"Scorchveil",          layer:"farm",     keepName:"Scorchveil Keep",           cx: 229, cy: 540, factions:["dragons"] },
+  // Orcs
+  { key:"grimhold",        name:"Grimhold",            layer:"start",    keepName:"Grimhold Keep",             cx:1173, cy: 540, factions:["orcs"] },
+  { key:"theWarground",    name:"The Warground",       layer:"farm",     keepName:"The Warground Keep",        cx:1334, cy: 563, factions:["orcs"] },
+  { key:"warbend",         name:"Warbend",             layer:"farm",     keepName:"Warbend Keep",              cx: 975, cy: 407, factions:["orcs"] },
+  { key:"bloodfield",      name:"Bloodfield",          layer:"farm",     keepName:"Bloodfield Keep",           cx: 975, cy: 540, factions:["orcs"] },
+  { key:"bonepile",        name:"Bonepile",            layer:"farm",     keepName:"Bonepile Keep",             cx:1173, cy: 673, factions:["orcs"] },
+  // Wizards (Bounty Hunters)
+  { key:"ashenveil",       name:"Ashenveil",           layer:"start",    keepName:"Ashenveil Keep",            cx: 613, cy: 794, factions:["bountyhunters"] },
+  { key:"arcaneDeep",      name:"The Arcane Deep",     layer:"farm",     keepName:"The Arcane Deep Keep",      cx: 628, cy: 910, factions:["bountyhunters"] },
+  { key:"hexmire",         name:"Hexmire",             layer:"farm",     keepName:"Hexmire Keep",              cx: 427, cy: 673, factions:["bountyhunters"] },
+  { key:"ruinwatch",       name:"Ruinwatch",           layer:"farm",     keepName:"Ruinwatch Keep",            cx: 613, cy: 673, factions:["bountyhunters"] },
+  { key:"ashenFen",        name:"The Ashen Fen",       layer:"farm",     keepName:"The Ashen Fen Keep",        cx: 229, cy: 794, factions:["bountyhunters"] },
+  { key:"cursemoor",       name:"Cursemoor",           layer:"farm",     keepName:"Cursemoor Keep",            cx: 427, cy: 794, factions:["bountyhunters"] },
+  // Holy Knights
+  { key:"sanctumhold",     name:"Sanctumhold",         layer:"start",    keepName:"Sanctumhold Keep",          cx: 788, cy: 794, factions:["holyknights"] },
+  { key:"blessedShore",    name:"The Blessed Shore",   layer:"farm",     keepName:"The Blessed Shore Keep",    cx: 795, cy: 910, factions:["holyknights"] },
+  { key:"hallowedGround",  name:"Hallowed Ground",     layer:"farm",     keepName:"Hallowed Ground Keep",      cx: 788, cy: 540, factions:["holyknights"] },
+  { key:"pilgrimsRest",    name:"Pilgrim's Rest",      layer:"farm",     keepName:"Pilgrim's Rest Keep",       cx: 975, cy: 673, factions:["holyknights"] },
+  { key:"sacredVale",      name:"Sacred Vale",         layer:"farm",     keepName:"Sacred Vale Keep",          cx: 975, cy: 794, factions:["holyknights"] },
+  { key:"dawnmarch",       name:"Dawnmarch",           layer:"farm",     keepName:"Dawnmarch Keep",            cx:1173, cy: 794, factions:["holyknights"] },
+  // Neutral / Conflict
+  { key:"gallowsReach",    name:"Gallows Reach",       layer:"conflict", keepName:"Gallows Reach Keep",        cx: 613, cy: 141 },
+  { key:"greyExpanse",     name:"The Grey Expanse",    layer:"conflict", keepName:"The Grey Expanse Keep",     cx: 788, cy: 141 },
+  { key:"mistfall",        name:"Mistfall",            layer:"conflict", keepName:"Mistfall Keep",             cx: 460, cy: 242 },
+  { key:"thornveil",       name:"Thornveil",           layer:"conflict", keepName:"Thornveil Keep",            cx: 390, cy: 308 },
+  { key:"wanderingWastes", name:"Wandering Wastes",    layer:"conflict", keepName:"Wandering Wastes Keep",     cx: 613, cy: 274 },
+  { key:"dreadmoor",       name:"Dreadmoor",           layer:"conflict", keepName:"Dreadmoor Keep",            cx: 788, cy: 274 },
+  { key:"theHollow",       name:"The Hollow",          layer:"conflict", keepName:"The Hollow Keep",           cx: 613, cy: 407 },
+  { key:"grimward",        name:"Grimward",            layer:"conflict", keepName:"Grimward Keep",             cx: 427, cy: 540 },
+  { key:"shatteredPass",   name:"Shattered Pass",      layer:"conflict", keepName:"Shattered Pass Keep",       cx: 648, cy: 510 },
+  { key:"sunkenRoad",      name:"Sunken Road",         layer:"conflict", keepName:"Sunken Road Keep",          cx: 580, cy: 578 },
+  { key:"paleMarch",       name:"The Pale March",      layer:"conflict", keepName:"The Pale March Keep",       cx: 788, cy: 673 },
+  { key:"forsakenMarch",   name:"Forsaken March",      layer:"conflict", keepName:"Forsaken March Keep",       cx: 229, cy: 673 },
 ];
 
 const FACTION_REGIONS = {
-  pirates:        { start:"saltmere",    farm:"brinefields"   },
-  merfolk:        { start:"tidesreach",  farm:"coralfen"      },
-  marines:        { start:"ironhaven",   farm:"stormwatch"    },
-  orcs:           { start:"grimhold",    farm:"boneridge"     },
-  bountyhunters:  { start:"ashenveil",   farm:"runemarks"     },
-  dragons:        { start:"emberpeak",   farm:"cinderplain"   },
-  holyknights:    { start:"sanctumhold", farm:"pilgrimfields" },
-  nightcreatures: { start:"shadowmere",  farm:"darkfen"       },
+  pirates:        { start:"saltmere",    farm:"brineHollow"   },
+  nightcreatures: { start:"shadowmere",  farm:"crimsonVeil"   },
+  dragons:        { start:"emberpeak",   farm:"scorchveil"    },
+  orcs:           { start:"grimhold",    farm:"bloodfield"    },
+  bountyhunters:  { start:"ashenveil",   farm:"ruinwatch"     },
+  holyknights:    { start:"sanctumhold", farm:"pilgrimsRest"  },
 };
 
 const KEEP_SET = new Set(REGION_LIST.map(r => `${r.cx},${r.cy}`));
@@ -99,29 +130,59 @@ const BIOME_SEEDS = (() => {
 const TERRAIN_NAMES = ["grass","forest","mountain","desert"];
 
 const POLYS = {
-  // ── Faction peninsulas ─────────────────────────────────────────────────────
-  saltmere:          [[0,0],[550,0],[550,50],[580,150],[300,150],[180,260],[0,260]],
-  tidesreach:        [[850,0],[1400,0],[1400,260],[1220,260],[1100,150],[820,150],[850,50]],
-  emberpeak:         [[0,200],[300,200],[300,510],[170,510],[0,510]],
-  ironhaven:         [[1100,200],[1400,200],[1400,510],[1230,510],[1100,510]],
-  ashenveil:         [[0,490],[170,490],[300,490],[300,810],[0,810]],
-  grimhold:          [[1100,490],[1230,490],[1400,490],[1400,810],[1100,810]],
-  sanctumhold:       [[0,790],[300,790],[300,850],[620,850],[620,1000],[0,1000]],
-  shadowmere:        [[780,850],[1100,850],[1100,790],[1400,790],[1400,1000],[780,1000]],
-  // ── Farm regions ──────────────────────────────────────────────────────────
-  brinefields:       [[300,150],[580,150],[580,390],[460,390],[300,350]],
-  coralfen:          [[820,150],[1100,150],[1100,350],[940,390],[820,390]],
-  cinderplain:       [[300,200],[460,200],[460,390],[300,390]],
-  stormwatch:        [[940,200],[1100,200],[1100,390],[940,390]],
-  runemarks:         [[300,610],[460,610],[460,810],[300,810]],
-  boneridge:         [[940,610],[1100,610],[1100,810],[940,810]],
-  pilgrimfields:     [[300,810],[620,810],[620,850],[300,850]],
-  darkfen:           [[780,810],[1100,810],[1100,850],[780,850]],
-  // ── Conflict + Ring ────────────────────────────────────────────────────────
-  shatteredShallows: [[460,150],[840,150],[1100,350],[940,390],[820,390],[700,350],[580,390],[460,390],[300,350]],
-  ashenRift:         [[300,390],[460,390],[580,390],[620,610],[460,610],[300,610]],
-  bloodmarch:        [[820,390],[940,390],[1100,390],[1100,610],[940,610],[780,610],[820,390]],
-  holyGrail:         [[580,390],[820,390],[780,610],[620,610]],
+  // Holy Grail
+  holyGrail:       [[701,341],[876,341],[876,474],[701,474]],
+  // Pirates
+  saltmere:        [[130,75],[328,75],[328,208],[130,208]],
+  plunderMaw:      [[130,75],[300,75],[295,25],[255,0],[200,4],[148,22],[130,75]],
+  brineHollow:     [[328,75],[526,75],[526,208],[328,208]],
+  deadAnchor:      [[130,208],[328,208],[328,341],[130,341]],
+  // Night Creatures
+  shadowmere:      [[1074,208],[1272,208],[1272,341],[1074,341]],
+  theShroud:       [[1272,222],[1348,238],[1396,275],[1400,315],[1362,340],[1325,355],[1272,345]],
+  crimsonVeil:     [[876,75],[1074,75],[1074,208],[876,208]],
+  paleCourt:       [[1074,75],[1272,75],[1272,208],[1074,208]],
+  duskHollow:      [[876,208],[1074,208],[1074,341],[876,341]],
+  bloodfen:        [[1074,341],[1272,341],[1272,474],[1074,474]],
+  // Dragons
+  emberpeak:       [[130,341],[328,341],[328,474],[130,474]],
+  smolderingMaw:   [[130,355],[58,368],[8,418],[0,465],[38,498],[72,518],[130,508]],
+  ashcrag:         [[328,341],[526,341],[526,474]],
+  cinderPass:      [[328,341],[526,474],[328,474]],
+  scorchveil:      [[130,474],[328,474],[328,607],[130,607]],
+  // Orcs
+  grimhold:        [[1074,474],[1272,474],[1272,607],[1074,607]],
+  theWarground:    [[1272,488],[1348,505],[1396,558],[1400,608],[1355,635],[1318,650],[1272,638]],
+  warbend:         [[876,341],[1074,341],[1074,474],[876,474]],
+  bloodfield:      [[876,474],[1074,474],[1074,607],[876,607]],
+  bonepile:        [[1074,607],[1272,607],[1272,740],[1074,740]],
+  // Wizards (Bounty Hunters)
+  ashenveil:       [[526,740],[701,740],[701,848],[526,848]],
+  arcaneDeep:      [[548,848],[562,898],[590,935],[622,968],[660,972],[695,970],[706,945],[712,920],[700,848]],
+  hexmire:         [[328,607],[526,607],[526,740],[328,740]],
+  ruinwatch:       [[526,607],[701,607],[701,740],[526,740]],
+  ashenFen:        [[130,740],[328,740],[328,848],[130,848]],
+  cursemoor:       [[328,740],[526,740],[526,848],[328,848]],
+  // Holy Knights
+  sanctumhold:     [[701,740],[876,740],[876,848],[701,848]],
+  blessedShore:    [[728,848],[740,895],[762,932],[788,968],[822,972],[852,970],[862,945],[868,920],[854,848]],
+  hallowedGround:  [[701,474],[876,474],[876,607],[701,607]],
+  pilgrimsRest:    [[876,607],[1074,607],[1074,740],[876,740]],
+  sacredVale:      [[876,740],[1074,740],[1074,848],[876,848]],
+  dawnmarch:       [[1074,740],[1272,740],[1272,848],[1074,848]],
+  // Neutral / Conflict
+  gallowsReach:    [[526,75],[701,75],[701,208],[526,208]],
+  greyExpanse:     [[701,75],[876,75],[876,208],[701,208]],
+  mistfall:        [[328,208],[526,208],[526,341]],
+  thornveil:       [[328,208],[526,341],[328,341]],
+  wanderingWastes: [[526,208],[701,208],[701,341],[526,341]],
+  dreadmoor:       [[701,208],[876,208],[876,341],[701,341]],
+  theHollow:       [[526,341],[701,341],[701,474],[526,474]],
+  grimward:        [[328,474],[526,474],[526,607],[328,607]],
+  shatteredPass:   [[526,474],[701,474],[701,607]],
+  sunkenRoad:      [[526,474],[701,607],[526,607]],
+  paleMarch:       [[701,607],[876,607],[876,740],[701,740]],
+  forsakenMarch:   [[130,607],[328,607],[328,740],[130,740]],
 };
 
 function buildLookups() {
