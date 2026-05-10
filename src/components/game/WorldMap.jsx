@@ -185,18 +185,20 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
       return inside;
     }
 
-    for (const [key, poly] of Object.entries(POLYS)) {
-      if (pointInPoly(svgX, svgY, poly)) {
-        setSelected(prev => prev === key ? null : key);
-        return;
-      }
-    }
-    // Hit-test gate icons (small circles around their cx,cy)
-    const GATE_HIT_R = 18;
+    // ── Gate hit-test FIRST (smaller targets, must take priority over keep polys) ──
+    const GATE_HIT_R = 14;
     for (const gate of gates) {
       const dx = svgX - gate.cx, dy = svgY - gate.cy;
       if (dx*dx + dy*dy < GATE_HIT_R*GATE_HIT_R) {
         setSelected(prev => prev === gate.key ? null : gate.key);
+        return;
+      }
+    }
+
+    // ── Region polygon hit-test ──
+    for (const [key, poly] of Object.entries(POLYS)) {
+      if (pointInPoly(svgX, svgY, poly)) {
+        setSelected(prev => prev === key ? null : key);
         return;
       }
     }
