@@ -957,60 +957,65 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       }
     };
 
-    const schedulePropsRedraw = () => {
-      cancelPropsIdle();
-      // Use rIC without timeout on iOS so it only runs when browser is idle.
-      // No timeout = never forces itself onto a busy frame.
-      const doProps = () => {
-        propsIdleHandle = null;
-        if (isPanning.current) return; // skip if user started panning again
-        const pb = getViewBounds(PROPS_BUF);
+    const doProps = (forceSync = false) => {
+      propsIdleHandle = null;
+      if (!forceSync && isPanning.current) return; // skip if user started panning again
+      const pb = getViewBounds(PROPS_BUF);
 
-        if (isIOS) {
-          // ── Sprite path (iOS) ────────────────────────────────────────────
-          // Return all active sprites to the pool, then reposition from pool.
-          // No tessellation: sprites are textured quads (2 triangles each).
-          while (propsSpriteContainer.children.length > 0) {
-            propsSpritePool.push(propsSpriteContainer.removeChildAt(0));
-          }
-          if (zoomRef.current >= 0.5) {
-            const tiles    = tilesRef.current;
-            const anchorY  = TEX_BASE_Y / TEX_H;
-            const dMin = pb.cMin + pb.rMin, dMax = pb.cMax + pb.rMax;
-            for (let d = dMin; d <= dMax; d++) {
-              const cLo = Math.max(pb.cMin, d - pb.rMax);
-              const cHi = Math.min(pb.cMax, d - pb.rMin);
-              for (let c = cLo; c <= cHi; c++) {
-                const r = d - c;
-                if (r < pb.rMin || r > pb.rMax) continue;
-                const tile = tiles[`${c},${r}`];
-                if (!tile || !tile.rss || tile.isHQ || tile.isWin || tile.isKeep ||
-                    tile.isKeepPart || tile.isHQPart || tile.isShore) continue;
-                const tex = rssTextures[tile.rss];
-                if (!tex) continue;
-                const { cx, cy } = isoXY(c, r);
-                const sp = propsSpritePool.pop() ?? new PIXI.Sprite();
-                sp.texture  = tex;
-                sp.anchor.set(0.5, anchorY); // anchor at base (tile surface centre)
-                sp.x = cx;
-                sp.y = cy - 4 + TH * 0.5;   // world "base" coordinate
-                propsSpriteContainer.addChild(sp);
-              }
+      if (isIOS) {
+        // ── Sprite path (iOS) ────────────────────────────────────────────
+        // Return all active sprites to the pool, then reposition from pool.
+        // No tessellation: sprites are textured quads (2 triangles each).
+        while (propsSpriteContainer.children.length > 0) {
+          propsSpritePool.push(propsSpriteContainer.removeChildAt(0));
+        }
+        if (zoomRef.current >= 0.5) {
+          const tiles    = tilesRef.current;
+          const anchorY  = TEX_BASE_Y / TEX_H;
+          const dMin = pb.cMin + pb.rMin, dMax = pb.cMax + pb.rMax;
+          for (let d = dMin; d <= dMax; d++) {
+            const cLo = Math.max(pb.cMin, d - pb.rMax);
+            const cHi = Math.min(pb.cMax, d - pb.rMin);
+            for (let c = cLo; c <= cHi; c++) {
+              const r = d - c;
+              if (r < pb.rMin || r > pb.rMax) continue;
+              const tile = tiles[`${c},${r}`];
+              if (!tile || !tile.rss || tile.isHQ || tile.isWin || tile.isKeep ||
+                  tile.isKeepPart || tile.isHQPart || tile.isShore) continue;
+              const tex = rssTextures[tile.rss];
+              if (!tex) continue;
+              const { cx, cy } = isoXY(c, r);
+              const sp = propsSpritePool.pop() ?? new PIXI.Sprite();
+              sp.texture  = tex;
+              sp.anchor.set(0.5, anchorY); // anchor at base (tile surface centre)
+              sp.x = cx;
+              sp.y = cy - 4 + TH * 0.5;   // world "base" coordinate
+              propsSpriteContainer.addChild(sp);
             }
           }
-        } else {
-          // ── Graphics path (desktop) ──────────────────────────────────────
-          const pg = propsFrontRef.current;
-          pg.clear();
-          if (zoomRef.current >= 0.5) {
-            drawAllProps(pg, tilesRef.current, pb.rMin, pb.rMax, pb.cMin, pb.cMax);
-          }
         }
+      } else {
+        // ── Graphics path (desktop) ──────────────────────────────────────
+        const pg = propsFrontRef.current;
+        pg.clear();
+        if (zoomRef.current >= 0.5) {
+          drawAllProps(pg, tilesRef.current, pb.rMin, pb.rMax, pb.cMin, pb.cMax);
+        }
+      }
 
-        propsBoundsRef.current = pb;
-        propsDirty = false;
-        window._perfLog?.("props:drawn");
-      };
+      propsBoundsRef.current = pb;
+      propsDirty = false;
+      window._perfLog?.("props:drawn");
+    };
+
+    let firstPropsDraw = true;
+    const schedulePropsRedraw = () => {
+      cancelPropsIdle();
+      if (firstPropsDraw) {
+        firstPropsDraw = false;
+        doProps(true); // draw synchronously on very first render
+        return;
+      }
       if (typeof window.requestIdleCallback === "function") {
         propsIdleHandle = window.requestIdleCallback(doProps);
       } else {
