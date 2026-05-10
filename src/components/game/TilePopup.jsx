@@ -171,7 +171,7 @@ export default memo(function TilePopup({
           )}
           {popupMode==="main" && selTile.powerLevel && !selTile.isHQ && (
             <span style={{fontSize:7,color:POWER_DEFS[selTile.powerLevel]?.color,fontFamily:"'Cinzel',serif",fontWeight:700,background:`${POWER_DEFS[selTile.powerLevel]?.color}18`,padding:"1px 4px",borderRadius:3,border:`1px solid ${POWER_DEFS[selTile.powerLevel]?.color}40`}}>
-              P{POWER_DEFS[selTile.powerLevel]?.label}
+              ⚡ {POWER_DEFS[selTile.powerLevel]?.label}
             </span>
           )}
         </div>
