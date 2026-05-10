@@ -85,7 +85,7 @@ function TroopPopup({ troopBranch, onClose }) {
   return (
     <div onClick={e => e.stopPropagation()} style={{
       position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-      zIndex:5002, width:220,
+      zIndex:5011, width:220,
       background:"#100c06", border:"1px solid #3a2e18", borderRadius:6,
       padding:"12px 14px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
     }}>
@@ -198,7 +198,7 @@ function GearPiecePopup({ piece, onClose }) {
   return (
     <div onClick={e => e.stopPropagation()} style={{
       position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-      zIndex:5002, width:210,
+      zIndex:5012, width:210,
       background:"#0d0b08", border:`2px solid ${rc}40`, borderRadius:7,
       padding:"12px 14px", boxShadow:"0 8px 40px rgba(0,0,0,.98)",
     }}>
@@ -302,7 +302,7 @@ function CommanderPopup({ b, side, onClose }) {
     <>
       <div onClick={e => e.stopPropagation()} style={{
         position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-        zIndex:5002, width:220,
+        zIndex:5011, width:220,
         background:"#100c06", border:"1px solid #3a2e18", borderRadius:6,
         padding:"12px 14px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
       }}>
@@ -605,7 +605,17 @@ function BattleStatsPopup({ b, onClose }) {
         }}>
           <div style={{ position:"absolute", top:0, left:0, right:0, height:1,
             background:"linear-gradient(90deg,transparent,#8a6020 30%,#f0c04055 50%,#8a6020 70%,transparent)" }} />
-          <span style={{ fontFamily:"'Cinzel',serif", fontSize:14, color:"#8a6030", letterSpacing:".12em" }}>
+          {/* Back arrow */}
+          <button onClick={onClose} style={{
+            background:"transparent", border:"1px solid #2a1e08", borderRadius:5,
+            color:"#8a7050", fontSize:16, cursor:"pointer", lineHeight:1,
+            padding:"4px 10px", display:"flex", alignItems:"center", gap:6,
+            fontFamily:"'Cinzel',serif", letterSpacing:".06em",
+          }}>
+            <span style={{ fontSize:18, lineHeight:1 }}>←</span>
+          </button>
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:14, color:"#8a6030", letterSpacing:".12em",
+            position:"absolute", left:"50%", transform:"translateX(-50%)" }}>
             BATTLE REPORT
           </span>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -614,8 +624,6 @@ function BattleStatsPopup({ b, onClose }) {
               padding:"4px 12px", background:`${oc.color}11` }}>
               {oc.text}
             </span>
-            <button onClick={onClose} style={{ background:"transparent", border:"none",
-              color:"#6a5a4a", fontSize:22, cursor:"pointer", lineHeight:1 }}>✕</button>
           </div>
         </div>
 
@@ -795,7 +803,15 @@ function BattleStatsPopup({ b, onClose }) {
         </div>{/* end scrollable */}
       </div>
 
-      {/* Sub-popups */}
+      {/* Sub-popup backdrop — renders above BattleStatsPopup */}
+      {subPopup && (
+        <div onClick={e => { e.stopPropagation(); setSubPopup(null); }} style={{
+          position:"fixed", inset:0, zIndex:5010,
+          background:"rgba(0,0,0,.6)",
+        }} />
+      )}
+
+      {/* Sub-popups — rendered at top level, above everything */}
       {subPopup === "atkCmd" && <CommanderPopup b={b} side="atk" onClose={() => setSubPopup(null)} />}
       {subPopup === "defCmd" && <CommanderPopup b={b} side="def" onClose={() => setSubPopup(null)} />}
       {subPopup === "atkTroop" && <TroopPopup troopBranch={b.atkTroopBranch} onClose={() => setSubPopup(null)} />}
