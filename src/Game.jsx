@@ -1144,8 +1144,16 @@ export default function RiseToWar() {
   const onTileClick = useCallback((k, e) => {
     perfLog(`tap:${k}`);
     if (e?.stopPropagation) e.stopPropagation();
-    const tile = tilesRef.current[k];
+    let tile = tilesRef.current[k];
     if (!tile) return;
+
+    // ── keepPart fix: redirect to primary keep tile ──────────────────────────
+    // Clicking any tile in the keep footprint should open the keep itself,
+    // not the keepPart tile which has no defCmd/keepName and causes a black screen.
+    if (tile.isKeepPart && tile.keepPrimaryKey) {
+      const primaryTile = tilesRef.current[tile.keepPrimaryKey];
+      if (primaryTile) { k = tile.keepPrimaryKey; tile = primaryTile; }
+    }
 
     const mode = modeRef.current;
     const mvCmd = mvCmdRef.current;
