@@ -481,14 +481,18 @@ function CommanderPopup({ b, side, onClose }) {
 
       {/* Gear piece popup */}
       {showGear !== null && gearSlots?.[showGear] && createPortal(
-        <GearPiecePopup piece={gearSlots[showGear]} onClose={() => setShowGear(null)} />,
-        document.body
+        <div style={{ pointerEvents:"auto" }}>
+          <GearPiecePopup piece={gearSlots[showGear]} onClose={() => setShowGear(null)} />
+        </div>,
+        document.getElementById("portal-root")
       )}
 
       {/* Secondary troop popup */}
       {showTroop && createPortal(
-        <TroopPopup troopBranch={troopBranch} onClose={() => setShowTroop(false)} />,
-        document.body
+        <div style={{ pointerEvents:"auto" }}>
+          <TroopPopup troopBranch={troopBranch} onClose={() => setShowTroop(false)} />
+        </div>,
+        document.getElementById("portal-root")
       )}
     </>
   );
@@ -1309,13 +1313,15 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
 
       {/* ── All popups via portal — completely outside DOM hierarchy, no overflow clipping ── */}
       {activeBattle && createPortal(
-        <BattleStatsPopup
-          b={activeBattle}
-          subPopup={subPopup}
-          setSubPopup={setSubPopup}
-          onClose={() => { setActiveBattle(null); setSubPopup(null); }}
-        />,
-        document.body
+        <div style={{ pointerEvents:"auto" }}>
+          <BattleStatsPopup
+            b={activeBattle}
+            subPopup={subPopup}
+            setSubPopup={setSubPopup}
+            onClose={() => { setActiveBattle(null); setSubPopup(null); }}
+          />
+        </div>,
+        document.getElementById("portal-root")
       )}
     </div>
   );
