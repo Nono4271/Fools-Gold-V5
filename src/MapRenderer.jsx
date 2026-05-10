@@ -144,7 +144,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const tile = tiles[`${c},${r}`];
       if (!tile) continue;
 
-      const { terrain, owner, isHQ, isWin, isKeep, isKeepPart, isHQPart, isShore, isGate } = tile;
+      const { terrain, owner, isHQ, isWin, isKeep, isKeepPart, isHQPart, isShore, isGate, crossingType } = tile;
 
       if (isShore) {
         const { cx, cy } = isoXY(c, r);
@@ -163,6 +163,97 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         const mid = cy + TH / 2;
         const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
         gfx.beginFill(getTileBaseColor(c, r, "grass")); gfx.drawPolygon(TOP); gfx.endFill();
+        continue;
+      }
+
+      // ── Gate tiles: crossing / tollbridge / tunnel — distinct visuals ──────
+      if (isGate) {
+        const { cx, cy } = isoXY(c, r);
+        const sy  = cy - 4;
+        const mid = sy + TH / 2;
+        const TOP = [cx, sy, cx+TW/2, mid, cx, sy+TH, cx-TW/2, mid];
+        const ct  = crossingType;
+        const key = `${c},${r}`;
+        const isSel   = selKey === key;
+        const hasCmds = Boolean(cByTile[key]?.length);
+
+        if (ct === "crossing") {
+          // River crossing: deep blue water base + light wooden dock planks
+          gfx.beginFill(0x1a4a80); gfx.drawPolygon(TOP); gfx.endFill();
+          // Water shimmer overlay
+          gfx.beginFill(0x2a6aaa, 0.4); gfx.drawPolygon(TOP); gfx.endFill();
+          // Wooden plank strips across the tile (3 horizontal bands)
+          if (zoom >= 0.6) {
+            const pw = TW * 0.38, ph = TH * 0.11;
+            for (let pi = 0; pi < 3; pi++) {
+              const px = cx;
+              const py = sy + TH * (0.22 + pi * 0.22);
+              gfx.beginFill(0x8a6030, 0.88);
+              gfx.drawPolygon([px, py-ph, px+pw, py-ph*0.5+ph*0.5, px, py+ph, px-pw, py+ph*0.5-ph*0.5]);
+              gfx.endFill();
+              gfx.lineStyle(0.8, 0x5a3810, 0.7);
+              gfx.drawPolygon([px, py-ph, px+pw, py-ph*0.5+ph*0.5, px, py+ph, px-pw, py+ph*0.5-ph*0.5]);
+              gfx.lineStyle(0);
+            }
+          }
+          // Outline
+          gfx.lineStyle(2, 0x4a9adc, 0.85); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+        } else if (ct === "tollbridge") {
+          // Toll bridge: ravine dark base + stone arch + rope/chain detail
+          gfx.beginFill(0x2a1a0c); gfx.drawPolygon(TOP); gfx.endFill();
+          // Stone bridge deck
+          if (zoom >= 0.6) {
+            const bw = TW * 0.3, bh = TH * 0.28;
+            gfx.beginFill(0x7a6a50, 0.95);
+            gfx.drawPolygon([cx, sy+TH*0.1, cx+bw, sy+TH*0.38, cx, sy+TH*0.66, cx-bw, sy+TH*0.38]);
+            gfx.endFill();
+            // Arch stone shading
+            gfx.beginFill(0xa08860, 0.5);
+            gfx.drawPolygon([cx, sy+TH*0.1, cx+bw, sy+TH*0.38, cx+bw, sy+TH*0.46, cx, sy+TH*0.18]);
+            gfx.endFill();
+            // Rope lines at sides
+            if (zoom >= 0.75) {
+              gfx.lineStyle(1.2, 0xc09040, 0.8);
+              gfx.moveTo(cx-bw*0.85, sy+TH*0.28); gfx.lineTo(cx-bw*0.85, sy+TH*0.52);
+              gfx.moveTo(cx+bw*0.85, sy+TH*0.28); gfx.lineTo(cx+bw*0.85, sy+TH*0.52);
+              gfx.lineStyle(0);
+            }
+          }
+          gfx.lineStyle(2, 0xc09040, 0.85); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+        } else {
+          // Tunnel: rocky mountain dark base + dark arch entrance
+          gfx.beginFill(0x3a3630); gfx.drawPolygon(TOP); gfx.endFill();
+          // Rocky face overlay
+          gfx.beginFill(0x4e4a42, 0.5); gfx.drawPolygon(TOP); gfx.endFill();
+          if (zoom >= 0.6) {
+            // Dark tunnel mouth — ellipse-like opening
+            const aw = TW * 0.2, ah = TH * 0.22;
+            gfx.beginFill(0x080808, 0.95);
+            gfx.drawEllipse(cx, mid - ah * 0.2, aw, ah);
+            gfx.endFill();
+            // Stone arch rim
+            gfx.lineStyle(2, 0x6a6258, 0.85);
+            gfx.drawEllipse(cx, mid - ah * 0.2, aw, ah);
+            gfx.lineStyle(0);
+          }
+          gfx.lineStyle(2, 0x706a60, 0.85); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+        }
+
+        // Owner tint (same as regular tiles)
+        if (owner) {
+          const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+          gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
+          if (!isSel) { gfx.lineStyle(2, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
+        }
+        if (mode === "selectMarchDest" && owner !== "player") {
+          gfx.beginFill(0x000000, 0.45); gfx.drawPolygon(TOP); gfx.endFill();
+        }
+        if (hasCmds && !isSel) {
+          gfx.lineStyle(2, 0xf0dc3c, 0.9); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+        }
+        if (isSel) {
+          gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+        }
         continue;
       }
 
@@ -656,7 +747,7 @@ const _keepStateCache = new Map(); // tileKey → { owner, isSelected }
 // Call this whenever the tile map is fully reset (e.g. new game) so keeps rebuild from scratch.
 export function clearKeepCache() { _keepStateCache.clear(); }
 
-function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI) {
+function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningRef) {
   const { cx: bx, cy: worldCY } = isoXY(reg.cx, reg.cy);
   const elev = 8;
   const by   = worldCY - elev - 10;
@@ -696,6 +787,9 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI) {
   hit.buttonMode  = true;
   hit.cursor      = "pointer";
   hit.on("pointerdown", (e) => {
+    // Do not fire a keep click if the user is panning — the finger touching the
+    // keep's hit area during a pan gesture should not open a popup.
+    if (isPanningRef?.current) return;
     e.stopPropagation();
     onKeepClick(tileKey, e.data?.originalEvent || e);
   });
@@ -703,7 +797,7 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI) {
   return group;
 }
 
-function buildKeepLayer(keepCont, tiles, selKey, onKeepClick, PIXI) {
+function buildKeepLayer(keepCont, tiles, selKey, onKeepClick, PIXI, isPanningRef) {
   for (const reg of KEEP_REGION_LIST) {
     const tileKey = `${reg.cx},${reg.cy}`;
     const tile    = tiles[tileKey];
@@ -726,7 +820,7 @@ function buildKeepLayer(keepCont, tiles, selKey, onKeepClick, PIXI) {
       }
     }
 
-    keepCont.addChild(_buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI));
+    keepCont.addChild(_buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningRef));
     _keepStateCache.set(tileKey, { owner, isSelected });
   }
 }
@@ -1168,7 +1262,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI);
+      }, PIXI, isPanning);
     }
 
     redrawRef.current = {
