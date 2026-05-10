@@ -24,9 +24,9 @@ nightcreatures:{ base:"#0d0010", bdr:"#3a0848", dot:"#a030c0", hq:"#080008" },
 export const HQP = { player:{ c:363, r:200 }, ai:{ c:1037, r:200 } };
 export const AI_HQ_KEY = `${HQP.ai.c},${HQP.ai.r}`;
 
-// Win tile — center of 1400x1000 map
-export const WIN_C = 700;
-export const WIN_R = 500;
+// Win tile — Holy Grail keep (cx:788, cy:407 from regions.js)
+export const WIN_C = 788;
+export const WIN_R = 407;
 export const WIN_KEY = `${WIN_C},${WIN_R}`;
 
 export const POWER_DEFS = {
@@ -47,7 +47,7 @@ return SIEGE_HQ_BASE + (wallLvl || 0) * 10000;
 }
 
 export function tilePowerLevel(c, r) {
-const cx = 700, cy = 500;
+const cx = 788, cy = 407;
 const dist = Math.max(Math.abs(c - cx), Math.abs(r - cy));
 if (dist <= 80)  return 4;
 if (dist <= 180) return 3;
