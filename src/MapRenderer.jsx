@@ -15,12 +15,16 @@ const hc = h => parseInt(h.slice(1), 16);
 
 /* ─── Terrain palette ────────────────────────────────────────────────────── */
 const TV = {
-  grass:    { base: hc('#4a6838'), lite: hc('#5a7a44'), shad: hc('#3a5428') },
-  forest:   { base: hc('#2a5e2c'), lite: hc('#327034'), shad: hc('#1e4a20') },
-  mountain: { base: hc('#7a6e58'), lite: hc('#948264'), shad: hc('#5e5444') },
-  desert:   { base: hc('#c4a85a'), lite: hc('#d4b86a'), shad: hc('#a88e44') },
-  ruin:     { base: hc('#4a4440'), lite: hc('#585050'), shad: hc('#363030') },
-  shore:    { base: hc('#b09868'), lite: hc('#c0a878'), shad: hc('#907850') },
+  grass:        { base: hc('#4a6838'), lite: hc('#5a7a44'), shad: hc('#3a5428') },
+  forest:       { base: hc('#2a5e2c'), lite: hc('#327034'), shad: hc('#1e4a20') },
+  mountain:     { base: hc('#7a6e58'), lite: hc('#948264'), shad: hc('#5e5444') },
+  desert:       { base: hc('#c4a85a'), lite: hc('#d4b86a'), shad: hc('#a88e44') },
+  ruin:         { base: hc('#4a4440'), lite: hc('#585050'), shad: hc('#363030') },
+  shore:        { base: hc('#b09868'), lite: hc('#c0a878'), shad: hc('#907850') },
+  // Border terrain
+  river:        { base: hc('#0e2e58'), lite: hc('#1a4a80'), shad: hc('#081a38') },
+  ravine:       { base: hc('#2a1a0c'), lite: hc('#3c2610'), shad: hc('#180e06') },
+  rockymountain:{ base: hc('#3a3630'), lite: hc('#4e4a42'), shad: hc('#1e1c18') },
 };
 const TV_DEF = TV.grass;
 
@@ -55,7 +59,9 @@ function worldToKey(wx, wy, tiles) {
     if (c >= 0 && r >= 0 && c < COLS && r < ROWS) {
       const key = `${c},${r}`;
       const tile = tiles[key];
-      if (tile && !tile.isKeep && !tile.isKeepPart) {
+      // Gate tiles (crossings/tunnels/toll bridges) have isKeep=true but are NOT
+      // in KEEP_REGION_LIST, so allow clicking them via the tile layer.
+      if (tile && (!tile.isKeep || tile.isGate) && !tile.isKeepPart) {
         const { cx, cy } = isoXY(c, r);
         const elev = tile.isHQ ? 14 : tile.isWin ? 10 : 4;
         const sy = cy - elev;
@@ -73,7 +79,8 @@ function worldToKey(wx, wy, tiles) {
       const key = `${c},${r}`;
       if (!tiles[key]) continue;
       const tile = tiles[key];
-      if (tile.isKeep || tile.isKeepPart) continue; // keep layer handles these
+      // Gate tiles are clickable even though isKeep=true
+      if ((tile.isKeep && !tile.isGate) || tile.isKeepPart) continue; // keep layer handles non-gate keeps
       const { cx, cy } = isoXY(c, r);
       const elev = tile.isHQ ? 14 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
       const sy = cy - elev;
@@ -391,7 +398,64 @@ function drawAmbientScatter(gfx, tile, cx, sy) {
   const rnd = tileRng(c, r);
   const cy2 = sy + TH / 2;
   const v = TV[terrain] || TV_DEF;
-  if (terrain === "grass" || terrain === "forest") {
+  if (terrain === "river") {
+    // Flowing water: horizontal ripple lines across the tile
+    const n = 3 + Math.floor(rnd() * 2);
+    for (let i = 0; i < n; i++) {
+      const dy = (rnd() - 0.5) * TH * 0.5;
+      const w  = TW * (0.25 + rnd() * 0.35);
+      const dx = (rnd() - 0.5) * TW * 0.3;
+      gfx.beginFill(hc('#2a6aaa'), 0.45 + rnd() * 0.25);
+      gfx.drawEllipse(cx + dx, cy2 + dy, w, TH * 0.06);
+      gfx.endFill();
+      // highlight crest
+      gfx.beginFill(0xb8e0ff, 0.18 + rnd() * 0.15);
+      gfx.drawEllipse(cx + dx - w * 0.1, cy2 + dy - TH * 0.015, w * 0.55, TH * 0.025);
+      gfx.endFill();
+    }
+  } else if (terrain === "ravine") {
+    // Cracked earth: dark V-crack shapes radiating from center
+    const n = 3 + Math.floor(rnd() * 2);
+    for (let i = 0; i < n; i++) {
+      const angle = (i / n) * Math.PI * 2 + rnd() * 0.6;
+      const len   = TW * (0.15 + rnd() * 0.22);
+      const x1 = cx + Math.cos(angle) * len * 0.15;
+      const y1 = cy2 + Math.sin(angle) * len * 0.08;
+      const x2 = cx + Math.cos(angle) * len;
+      const y2 = cy2 + Math.sin(angle) * len * 0.5;
+      gfx.lineStyle(0.8 + rnd() * 1.2, 0x080402, 0.75);
+      gfx.moveTo(x1, y1); gfx.lineTo(x2, y2);
+      gfx.lineStyle(0);
+      // crack shadow
+      gfx.beginFill(0x100804, 0.5); gfx.drawEllipse(x2, y2, 1.2, 0.7); gfx.endFill();
+    }
+    // dark pit in center
+    gfx.beginFill(0x0a0604, 0.65); gfx.drawEllipse(cx, cy2, TW * 0.12, TH * 0.06); gfx.endFill();
+  } else if (terrain === "rockymountain") {
+    // Jagged rocky peaks: sharp isometric rock spires
+    const n = 2 + Math.floor(rnd() * 2);
+    // shadow base
+    gfx.beginFill(0x000000, 0.30); gfx.drawEllipse(cx, cy2 + TH * 0.04, TW * 0.35, TH * 0.10); gfx.endFill();
+    for (let i = 0; i < n; i++) {
+      const dx  = (rnd() - 0.5) * TW * 0.42;
+      const dy  = (rnd() - 0.5) * TH * 0.28;
+      const h   = TH * (0.55 + rnd() * 0.60);
+      const hw  = TW * (0.08 + rnd() * 0.08);
+      const bx  = cx + dx, by = cy2 + dy;
+      // left dark face
+      gfx.beginFill(0x1a1814);
+      gfx.drawPolygon([bx, by - h, bx - hw, by, bx + hw * 0.1, by]);
+      gfx.endFill();
+      // right slightly lighter face
+      gfx.beginFill(0x2e2a24);
+      gfx.drawPolygon([bx, by - h, bx + hw * 0.1, by, bx + hw * 0.9, by - h * 0.35]);
+      gfx.endFill();
+      // snow cap highlight on peak
+      gfx.beginFill(0xdde0e8, 0.55);
+      gfx.drawPolygon([bx, by - h, bx - hw * 0.35, by - h * 0.72, bx + hw * 0.45, by - h * 0.68]);
+      gfx.endFill();
+    }
+  } else if (terrain === "grass" || terrain === "forest") {
     const n = 4 + Math.floor(rnd() * 3);
     for (let i = 0; i < n; i++) {
       const dx = (rnd()-0.5)*TW*0.72, dy = (rnd()-0.5)*TH*0.55, sz = 1.5+rnd()*2.5;
