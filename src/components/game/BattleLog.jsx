@@ -86,7 +86,7 @@ function TroopPopup({ troopBranch, onClose }) {
   return (
     <div onClick={e => e.stopPropagation()} style={{
       position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-      zIndex:620, width:220,
+      zIndex:5002, width:220,
       background:"#100c06", border:"1px solid #3a2e18", borderRadius:6,
       padding:"12px 14px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
     }}>
@@ -156,7 +156,7 @@ function GearPiecePopup({ piece, onClose }) {
   return (
     <div onClick={e => e.stopPropagation()} style={{
       position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-      zIndex:650, width:210,
+      zIndex:5002, width:210,
       background:"#0d0b08", border:`2px solid ${rc}40`, borderRadius:7,
       padding:"12px 14px", boxShadow:"0 8px 40px rgba(0,0,0,.98)",
     }}>
@@ -260,7 +260,7 @@ function CommanderPopup({ b, side, onClose }) {
     <>
       <div onClick={e => e.stopPropagation()} style={{
         position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-        zIndex:610, width:220,
+        zIndex:5002, width:220,
         background:"#100c06", border:"1px solid #3a2e18", borderRadius:6,
         padding:"12px 14px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
       }}>
@@ -500,12 +500,12 @@ function BattleStatsPopup({ b, onClose }) {
     <>
       {/* Backdrop — catches outside clicks and closes popup without bubbling to card */}
       <div onClick={e => { e.stopPropagation(); onClose(); }} style={{
-        position:"fixed", inset:0, zIndex:609,
+        position:"fixed", inset:0, zIndex:5000,
         background:"rgba(0,0,0,.55)",
       }} />
       <div onClick={e => e.stopPropagation()} style={{
         position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-        zIndex:610, width:"min(420px, 94vw)",
+        zIndex:5001, width:"min(420px, 94vw)",
         background:"#0c0904", border:"1px solid #3a2e18", borderRadius:7,
         boxShadow:"0 12px 60px rgba(0,0,0,.97)",
         overflow:"hidden",
