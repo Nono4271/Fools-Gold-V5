@@ -178,65 +178,193 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         const hasCmds = Boolean(cByTile[key]?.length);
 
         if (ct === "crossing") {
-          // River crossing: deep blue water base + light wooden dock planks
-          gfx.beginFill(0x1a4a80); gfx.drawPolygon(TOP); gfx.endFill();
-          // Water shimmer overlay
-          gfx.beginFill(0x2a6aaa, 0.4); gfx.drawPolygon(TOP); gfx.endFill();
-          // Wooden plank strips across the tile (3 horizontal bands)
+          // ── River Crossing Option B: Stone Arches ──
+          // Dark deep-water base with radial glow
+          gfx.beginFill(0x081828); gfx.drawPolygon(TOP); gfx.endFill();
+          // Radial water glow in centre
+          gfx.beginFill(0x1a6aaa, 0.28); gfx.drawPolygon(TOP); gfx.endFill();
           if (zoom >= 0.6) {
-            const pw = TW * 0.38, ph = TH * 0.11;
-            for (let pi = 0; pi < 3; pi++) {
-              const px = cx;
-              const py = sy + TH * (0.22 + pi * 0.22);
-              gfx.beginFill(0x8a6030, 0.88);
-              gfx.drawPolygon([px, py-ph, px+pw, py-ph*0.5+ph*0.5, px, py+ph, px-pw, py+ph*0.5-ph*0.5]);
-              gfx.endFill();
-              gfx.lineStyle(0.8, 0x5a3810, 0.7);
-              gfx.drawPolygon([px, py-ph, px+pw, py-ph*0.5+ph*0.5, px, py+ph, px-pw, py+ph*0.5-ph*0.5]);
-              gfx.lineStyle(0);
-            }
-          }
-          // Outline
-          gfx.lineStyle(2, 0x4a9adc, 0.85); gfx.drawPolygon(TOP); gfx.lineStyle(0);
-        } else if (ct === "tollbridge") {
-          // Toll bridge: ravine dark base + stone arch + rope/chain detail
-          gfx.beginFill(0x2a1a0c); gfx.drawPolygon(TOP); gfx.endFill();
-          // Stone bridge deck
-          if (zoom >= 0.6) {
-            const bw = TW * 0.3, bh = TH * 0.28;
-            gfx.beginFill(0x7a6a50, 0.95);
-            gfx.drawPolygon([cx, sy+TH*0.1, cx+bw, sy+TH*0.38, cx, sy+TH*0.66, cx-bw, sy+TH*0.38]);
+            // Raised stone landing platform (inner diamond, inset from edges)
+            const sw = TW * 0.32, sh = TH * 0.30;
+            const px = cx, py = mid - sh * 0.15;
+            // Platform top face
+            gfx.beginFill(0x505860, 0.95);
+            gfx.drawPolygon([px, py - sh, px + sw, py, px, py + sh, px - sw, py]);
             gfx.endFill();
-            // Arch stone shading
-            gfx.beginFill(0xa08860, 0.5);
-            gfx.drawPolygon([cx, sy+TH*0.1, cx+bw, sy+TH*0.38, cx+bw, sy+TH*0.46, cx, sy+TH*0.18]);
+            // Bevel highlight on top-right face
+            gfx.beginFill(0x8a9098, 0.5);
+            gfx.drawPolygon([px, py - sh, px + sw, py, px + sw * 0.88, py + sh * 0.08, px, py - sh * 0.85]);
             gfx.endFill();
-            // Rope lines at sides
+            // Cobblestone lines across platform
             if (zoom >= 0.75) {
-              gfx.lineStyle(1.2, 0xc09040, 0.8);
-              gfx.moveTo(cx-bw*0.85, sy+TH*0.28); gfx.lineTo(cx-bw*0.85, sy+TH*0.52);
-              gfx.moveTo(cx+bw*0.85, sy+TH*0.28); gfx.lineTo(cx+bw*0.85, sy+TH*0.52);
+              gfx.lineStyle(0.7, 0x3a4048, 0.65);
+              gfx.moveTo(px - sw * 0.45, py - sh * 0.30); gfx.lineTo(px + sw * 0.55, py + sh * 0.18);
+              gfx.moveTo(px - sw * 0.75, py + sh * 0.05); gfx.lineTo(px + sw * 0.75, py + sh * 0.10);
               gfx.lineStyle(0);
             }
-          }
-          gfx.lineStyle(2, 0xc09040, 0.85); gfx.drawPolygon(TOP); gfx.lineStyle(0);
-        } else {
-          // Tunnel: rocky mountain dark base + dark arch entrance
-          gfx.beginFill(0x3a3630); gfx.drawPolygon(TOP); gfx.endFill();
-          // Rocky face overlay
-          gfx.beginFill(0x4e4a42, 0.5); gfx.drawPolygon(TOP); gfx.endFill();
-          if (zoom >= 0.6) {
-            // Dark tunnel mouth — ellipse-like opening
-            const aw = TW * 0.2, ah = TH * 0.22;
-            gfx.beginFill(0x080808, 0.95);
-            gfx.drawEllipse(cx, mid - ah * 0.2, aw, ah);
+            // Iron chain posts (circles at left & right platform tips)
+            const postL = { x: cx - sw * 0.98, y: mid };
+            const postR = { x: cx + sw * 0.98, y: mid - sh * 0.05 };
+            gfx.beginFill(0x606878, 0.9);
+            gfx.drawCircle(postL.x, postL.y, TW * 0.045);
+            gfx.drawCircle(postR.x, postR.y, TW * 0.045);
             gfx.endFill();
-            // Stone arch rim
-            gfx.lineStyle(2, 0x6a6258, 0.85);
-            gfx.drawEllipse(cx, mid - ah * 0.2, aw, ah);
+            gfx.lineStyle(1.2, 0xa0a8b0, 0.8);
+            gfx.drawCircle(postL.x, postL.y, TW * 0.045);
+            gfx.drawCircle(postR.x, postR.y, TW * 0.045);
+            gfx.lineStyle(0);
+            // Heavy dashed iron chain between posts
+            gfx.lineStyle(2.2, 0x6a7888, 0.85);
+            gfx.moveTo(postL.x, postL.y - TH * 0.12);
+            gfx.bezierCurveTo(
+              cx, mid - sh * 0.55,
+              cx, mid - sh * 0.55,
+              postR.x, postR.y - TH * 0.12
+            );
+            gfx.lineStyle(0);
+            // Water sparkles in corners
+            if (zoom >= 0.9) {
+              [[0.18, 0.72], [0.78, 0.62], [0.50, 0.85]].forEach(([fx, fy]) => {
+                gfx.beginFill(0x4aaad0, 0.45);
+                gfx.drawCircle(cx - TW/2 + fx * TW, sy + fy * TH, 1.2);
+                gfx.endFill();
+              });
+            }
+          }
+          // Outline — steel blue
+          gfx.lineStyle(2, 0x4a8ab0, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+
+        } else if (ct === "tollbridge") {
+          // ── Toll Bridge Option A: Timber Trestle ──
+          // Deep near-black ravine base
+          gfx.beginFill(0x1a100a); gfx.drawPolygon(TOP); gfx.endFill();
+          // Ravine crack shadow at bottom
+          gfx.lineStyle(1.5, 0x080402, 0.85);
+          gfx.moveTo(cx, mid + TH * 0.18); gfx.lineTo(cx - TW * 0.22, mid + TH * 0.40);
+          gfx.moveTo(cx, mid + TH * 0.18); gfx.lineTo(cx + TW * 0.18, mid + TH * 0.38);
+          gfx.lineStyle(0);
+          if (zoom >= 0.6) {
+            // Timber bridge deck — warm amber planks
+            const bw = TW * 0.28, bh = TH * 0.30;
+            const bpy = mid - bh * 0.12;
+            gfx.beginFill(0x9a7048, 0.95);
+            gfx.drawPolygon([cx, bpy - bh, cx + bw, bpy, cx, bpy + bh, cx - bw, bpy]);
+            gfx.endFill();
+            // Plank grain lines
+            if (zoom >= 0.75) {
+              gfx.lineStyle(1.1, 0x4a2e10, 0.65);
+              gfx.moveTo(cx - bw * 0.55, bpy - bh * 0.35); gfx.lineTo(cx + bw * 0.55, bpy + bh * 0.22);
+              gfx.moveTo(cx - bw * 0.80, bpy + bh * 0.02); gfx.lineTo(cx + bw * 0.80, bpy + bh * 0.05);
+              gfx.moveTo(cx - bw * 0.55, bpy + bh * 0.32); gfx.lineTo(cx + bw * 0.55, bpy - bh * 0.22);
+              gfx.lineStyle(0);
+            }
+            // Side railing posts (left & right uprights)
+            const railY0 = bpy - bh * 0.52, railY1 = bpy + bh * 0.08;
+            gfx.lineStyle(2.2, 0xa07040, 0.92);
+            gfx.moveTo(cx - bw * 0.98, bpy); gfx.lineTo(cx - bw * 0.98, railY0);
+            gfx.moveTo(cx + bw * 0.98, bpy - bh * 0.05); gfx.lineTo(cx + bw * 0.98, railY0 - TH * 0.04);
+            gfx.lineStyle(0);
+            // Top horizontal rail
+            gfx.lineStyle(1.6, 0xa07040, 0.88);
+            gfx.moveTo(cx - bw * 0.98, railY0); gfx.lineTo(cx + bw * 0.98, railY0 - TH * 0.04);
+            gfx.lineStyle(0);
+            // X-brace crosses on each post
+            if (zoom >= 0.75) {
+              gfx.lineStyle(1.0, 0x7a5030, 0.72);
+              // left X
+              gfx.moveTo(cx - bw * 0.98, railY0); gfx.lineTo(cx - bw * 0.72, bpy);
+              gfx.moveTo(cx - bw * 0.72, railY0); gfx.lineTo(cx - bw * 0.98, bpy);
+              // right X
+              gfx.moveTo(cx + bw * 0.98, railY0 - TH * 0.04); gfx.lineTo(cx + bw * 0.72, bpy - bh * 0.05);
+              gfx.moveTo(cx + bw * 0.72, railY0 - TH * 0.04); gfx.lineTo(cx + bw * 0.98, bpy - bh * 0.05);
+              gfx.lineStyle(0);
+            }
+            // Toll lantern — small glowing box above deck centre
+            if (zoom >= 0.85) {
+              const lx = cx, ly = bpy - bh - TH * 0.08;
+              gfx.beginFill(0xd09030, 0.92);
+              gfx.drawRect(lx - TW * 0.04, ly, TW * 0.08, TH * 0.12);
+              gfx.endFill();
+              // lantern roof triangle
+              gfx.beginFill(0xa06820, 1.0);
+              gfx.drawPolygon([lx, ly - TH * 0.05, lx + TW * 0.045, ly, lx - TW * 0.045, ly]);
+              gfx.endFill();
+              // glow halo
+              gfx.beginFill(0xf0c040, 0.22);
+              gfx.drawEllipse(lx, ly + TH * 0.03, TW * 0.10, TH * 0.07);
+              gfx.endFill();
+            }
+          }
+          // Outline — warm amber
+          gfx.lineStyle(2, 0xb07828, 0.88); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+
+        } else {
+          // ── Mountain Tunnel Option A: Stone Portal ──
+          // Craggy rock base — dark granite
+          gfx.beginFill(0x3a3630); gfx.drawPolygon(TOP); gfx.endFill();
+          // Top-right bevel highlight
+          gfx.beginFill(0x4a4640, 0.42); gfx.drawPolygon(TOP); gfx.endFill();
+          if (zoom >= 0.6) {
+            // Jagged rock shards (3 small angular shapes scattered on face)
+            gfx.beginFill(0x2a2824, 0.72);
+            gfx.drawPolygon([cx - TW * 0.38, mid + TH * 0.04, cx - TW * 0.22, mid - TH * 0.17, cx - TW * 0.30, mid + TH * 0.20]);
+            gfx.drawPolygon([cx + TW * 0.28, mid - TH * 0.22, cx + TW * 0.38, mid - TH * 0.36, cx + TW * 0.34, mid - TH * 0.08]);
+            gfx.drawPolygon([cx - TW * 0.05, sy + TH * 0.04, cx + TW * 0.06, sy, cx + TH * 0.02, sy + TH * 0.18]);
+            gfx.endFill();
+            // Stone arch pillars — left & right columns
+            const pilW = TW * 0.09, pilH = TH * 0.38;
+            const pilLx = cx - TW * 0.15, pilRx = cx + TW * 0.15;
+            const pilTopY = mid - TH * 0.26;
+            gfx.beginFill(0x5a5650, 0.95);
+            gfx.drawPolygon([
+              pilLx - pilW, pilTopY + pilH, pilLx - pilW, pilTopY,
+              pilLx + pilW * 0.2, pilTopY, pilLx + pilW * 0.2, pilTopY + pilH
+            ]);
+            gfx.endFill();
+            gfx.beginFill(0x4a4640, 0.95);
+            gfx.drawPolygon([
+              pilRx - pilW * 0.2, pilTopY, pilRx + pilW, pilTopY,
+              pilRx + pilW, pilTopY + pilH, pilRx - pilW * 0.2, pilTopY + pilH
+            ]);
+            gfx.endFill();
+            // Lintel (horizontal beam across top of arch)
+            gfx.beginFill(0x6a6660, 0.9);
+            gfx.drawPolygon([
+              pilLx - pilW, pilTopY, pilRx + pilW, pilTopY - TH * 0.02,
+              pilRx + pilW, pilTopY + TH * 0.05, pilLx - pilW, pilTopY + TH * 0.05
+            ]);
+            gfx.endFill();
+            // Keystone — wedge at top-centre of lintel
+            gfx.beginFill(0x8a8478, 1.0);
+            gfx.drawPolygon([
+              cx, pilTopY - TH * 0.08,
+              cx + TW * 0.06, pilTopY + TH * 0.01,
+              cx - TW * 0.06, pilTopY + TH * 0.01
+            ]);
+            gfx.endFill();
+            // Dark tunnel mouth — oval opening between pillars
+            const mw = TW * 0.19, mh = TH * 0.20;
+            const mcy = mid - TH * 0.04;
+            gfx.beginFill(0x050404, 0.96);
+            gfx.drawEllipse(cx, mcy, mw, mh);
+            gfx.endFill();
+            // Deeper darkness inside
+            gfx.beginFill(0x020101, 0.92);
+            gfx.drawEllipse(cx, mcy, mw * 0.82, mh * 0.82);
+            gfx.endFill();
+            // Faint ember/torch glow deep inside tunnel
+            if (zoom >= 0.85) {
+              gfx.beginFill(0xc86020, 0.10);
+              gfx.drawEllipse(cx, mcy, mw * 0.42, mh * 0.42);
+              gfx.endFill();
+            }
+            // Stone arch rim around the mouth
+            gfx.lineStyle(2, 0x6a6258, 0.88);
+            gfx.arc(cx, mcy + mh * 0.12, mw * 1.02, Math.PI, 0, false);
             gfx.lineStyle(0);
           }
-          gfx.lineStyle(2, 0x706a60, 0.85); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          // Outline — cool slate
+          gfx.lineStyle(2, 0x706a60, 0.88); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         }
 
         // Owner tint (same as regular tiles)
