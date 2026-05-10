@@ -503,10 +503,10 @@ function BattleStatsPopup({ b, onClose }) {
         background:"rgba(0,0,0,.55)",
       }} />
       <div onClick={e => e.stopPropagation()} style={{
-        position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-        zIndex:5001, width:"min(420px, 94vw)",
-        background:"#0c0904", border:"1px solid #3a2e18", borderRadius:7,
-        boxShadow:"0 12px 60px rgba(0,0,0,.97)",
+        position:"fixed", inset:0,
+        zIndex:5001,
+        background:"#0c0904",
+        display:"flex", flexDirection:"column",
         overflow:"hidden",
       }}>
 
@@ -514,96 +514,99 @@ function BattleStatsPopup({ b, onClose }) {
         <div style={{
           background:"linear-gradient(180deg,#151008,#0c0904)",
           borderBottom:"1px solid #2a1e08",
-          padding:"8px 14px",
+          padding:"14px 20px",
           display:"flex", justifyContent:"space-between", alignItems:"center",
-          position:"relative",
+          position:"relative", flexShrink:0,
         }}>
           <div style={{ position:"absolute", top:0, left:0, right:0, height:1,
             background:"linear-gradient(90deg,transparent,#8a6020 30%,#f0c04055 50%,#8a6020 70%,transparent)" }} />
-          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#8a6030", letterSpacing:".12em" }}>
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:14, color:"#8a6030", letterSpacing:".12em" }}>
             BATTLE REPORT
           </span>
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700,
-              color:oc.color, border:`1px solid ${oc.color}55`, borderRadius:3,
-              padding:"2px 7px", background:`${oc.color}11` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <span style={{ fontFamily:"'Cinzel',serif", fontSize:14, fontWeight:700,
+              color:oc.color, border:`1px solid ${oc.color}55`, borderRadius:4,
+              padding:"4px 12px", background:`${oc.color}11` }}>
               {oc.text}
             </span>
             <button onClick={onClose} style={{ background:"transparent", border:"none",
-              color:"#6a5a4a", fontSize:13, cursor:"pointer", lineHeight:1 }}>✕</button>
+              color:"#6a5a4a", fontSize:22, cursor:"pointer", lineHeight:1 }}>✕</button>
           </div>
         </div>
+
+        {/* Scrollable content */}
+        <div className="scr" style={{ flex:1, overflowY:"auto", padding:"0 0 24px" }}>
 
         {/* Commander row */}
         <div style={{
           display:"grid", gridTemplateColumns:"1fr auto 1fr",
-          gap:6, padding:"10px 12px 6px",
+          gap:10, padding:"16px 20px 12px",
           borderBottom:"1px solid #1a1508",
         }}>
           {/* Attacker commander */}
           <div onClick={() => setSubPopup(p => p==="atkCmd" ? null : "atkCmd")}
-            style={{ cursor:"pointer", padding:"6px 8px", borderRadius:4,
+            style={{ cursor:"pointer", padding:"10px 12px", borderRadius:6,
               background:"rgba(200,160,96,.06)", border:"1px solid #2a1e08",
               transition:"background .15s",
             }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <span style={{ fontSize:18 }}>{b.atkIcon || "⚔"}</span>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:28 }}>{b.atkIcon || "⚔"}</span>
               <div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, color:"#c8a060",
-                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:100 }}>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, fontWeight:700, color:"#c8a060",
+                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:120 }}>
                   {b.atkName}
                 </div>
-                <div style={{ fontSize:6, color:"#5a4a30" }}>Lv{b.atkLvl} · tap for stats</div>
+                <div style={{ fontSize:11, color:"#5a4a30" }}>Lv{b.atkLvl} · tap for stats</div>
               </div>
             </div>
           </div>
 
           {/* VS */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
-            fontSize:7, color:"#3a2e18", fontFamily:"'Cinzel',serif", letterSpacing:".1em" }}>
+            fontSize:12, color:"#3a2e18", fontFamily:"'Cinzel',serif", letterSpacing:".1em" }}>
             VS
           </div>
 
           {/* Defender commander */}
           <div onClick={() => setSubPopup(p => p==="defCmd" ? null : "defCmd")}
-            style={{ cursor:"pointer", padding:"6px 8px", borderRadius:4,
+            style={{ cursor:"pointer", padding:"10px 12px", borderRadius:6,
               background:"rgba(150,80,80,.06)", border:"1px solid #2a1e08",
               transition:"background .15s", textAlign:"right",
             }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:6 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:8 }}>
               <div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, color:"#aa7070",
-                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:100 }}>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, fontWeight:700, color:"#aa7070",
+                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:120 }}>
                   {b.defCmdName}
                 </div>
-                <div style={{ fontSize:6, color:"#5a4a30" }}>Lv{b.defLvl} · tap for stats</div>
+                <div style={{ fontSize:11, color:"#5a4a30" }}>Lv{b.defLvl} · tap for stats</div>
               </div>
-              <span style={{ fontSize:18 }}>{b.defCmdIcon || "🛡"}</span>
+              <span style={{ fontSize:28 }}>{b.defCmdIcon || "🛡"}</span>
             </div>
           </div>
         </div>
 
         {/* Troop bars */}
         <div style={{
-          display:"grid", gridTemplateColumns:"1fr 36px 1fr",
-          gap:6, padding:"8px 12px",
+          display:"grid", gridTemplateColumns:"1fr 24px 1fr",
+          gap:10, padding:"14px 20px",
           borderBottom:"1px solid #1a1508",
         }}>
           {/* Attacker troops */}
           <div onClick={() => atkResolved && setSubPopup(p => p==="atkTroop" ? null : "atkTroop")}
             style={{ cursor: atkResolved ? "pointer" : "default" }}>
-            <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".06em", marginBottom:2 }}>YOUR TROOPS</div>
-            <div style={{ fontSize:8, color:"#4488ff", fontFamily:"'Cinzel',serif", fontWeight:700,
-              marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            <div style={{ fontSize:10, color:"#3a3028", fontFamily:"'Cinzel',serif",
+              letterSpacing:".06em", marginBottom:4 }}>YOUR TROOPS</div>
+            <div style={{ fontSize:13, color:"#4488ff", fontFamily:"'Cinzel',serif", fontWeight:700,
+              marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {atkResolved ? `${atkResolved.branchDef.label} · ${atkResolved.tierData?.label ?? ""}` : "Unknown"}
             </div>
-            <div style={{ fontSize:7, color:"#6a8060", marginBottom:3 }}>
+            <div style={{ fontSize:12, color:"#6a8060", marginBottom:5 }}>
               {b.atkTroopsStart.toLocaleString()} → {b.atkTroopsEnd.toLocaleString()}
             </div>
             <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
             {atkResolved && (
-              <div style={{ fontSize:6, color:"#2a2820", marginTop:2 }}>tap for troop stats →</div>
+              <div style={{ fontSize:10, color:"#2a2820", marginTop:4 }}>tap for troop stats →</div>
             )}
           </div>
 
@@ -615,62 +618,64 @@ function BattleStatsPopup({ b, onClose }) {
           {/* Defender troops */}
           <div onClick={() => defResolved && setSubPopup(p => p==="defTroop" ? null : "defTroop")}
             style={{ cursor: defResolved ? "pointer" : "default", textAlign:"right" }}>
-            <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".06em", marginBottom:2 }}>ENEMY TROOPS</div>
-            <div style={{ fontSize:8, color:"#cc4444", fontFamily:"'Cinzel',serif", fontWeight:700,
-              marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            <div style={{ fontSize:10, color:"#3a3028", fontFamily:"'Cinzel',serif",
+              letterSpacing:".06em", marginBottom:4 }}>ENEMY TROOPS</div>
+            <div style={{ fontSize:13, color:"#cc4444", fontFamily:"'Cinzel',serif", fontWeight:700,
+              marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {defResolved ? `${defResolved.branchDef.label} · ${defResolved.tierData?.label ?? ""}` : "Unknown"}
             </div>
-            <div style={{ fontSize:7, color:"#7a4040", marginBottom:3 }}>
+            <div style={{ fontSize:12, color:"#7a4040", marginBottom:5 }}>
               {(b.defTroopsStart ?? 0).toLocaleString()} → {(b.defTroopsEnd ?? 0).toLocaleString()}
             </div>
             <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
             {defResolved && (
-              <div style={{ fontSize:6, color:"#2a2820", marginTop:2 }}>← tap for troop stats</div>
+              <div style={{ fontSize:10, color:"#2a2820", marginTop:4 }}>← tap for troop stats</div>
             )}
           </div>
         </div>
 
         {/* Stats table */}
-        <div style={{ padding:"8px 12px 12px" }}>
+        <div style={{ padding:"14px 20px 20px" }}>
           <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto",
-            fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
-            letterSpacing:".07em", marginBottom:5, paddingBottom:4,
+            fontSize:11, color:"#3a3028", fontFamily:"'Cinzel',serif",
+            letterSpacing:".07em", marginBottom:8, paddingBottom:6,
             borderBottom:"1px solid #1e1808",
           }}>
-            <span style={{ color:"#4488ff55" }}>YOU</span>
+            <span style={{ color:"#4488ff88" }}>YOU</span>
             <span style={{ textAlign:"center" }}>STAT</span>
-            <span style={{ textAlign:"right", color:"#cc444455" }}>ENEMY</span>
+            <span style={{ textAlign:"right", color:"#cc444488" }}>ENEMY</span>
           </div>
 
           {statRows.map(({ label, atkVal, defVal }) => (
             <div key={label} style={{
               display:"grid", gridTemplateColumns:"auto 1fr auto",
-              alignItems:"center", marginBottom:5,
-              padding:"4px 6px", borderRadius:3,
+              alignItems:"center", marginBottom:8,
+              padding:"8px 10px", borderRadius:4,
               background:"rgba(255,255,255,.015)",
             }}>
-              <span style={{ fontSize:9, fontWeight:700, color:"#c8a060",
-                fontFamily:"'Cinzel',serif", minWidth:60 }}>
+              <span style={{ fontSize:15, fontWeight:700, color:"#c8a060",
+                fontFamily:"'Cinzel',serif", minWidth:80 }}>
                 {atkVal}
               </span>
-              <span style={{ fontSize:6, color:"#5a4a38", textAlign:"center",
+              <span style={{ fontSize:11, color:"#5a4a38", textAlign:"center",
                 fontFamily:"'Cinzel',serif", letterSpacing:".05em" }}>
                 {label}
               </span>
-              <span style={{ fontSize:9, fontWeight:700, color:"#aa6060",
-                fontFamily:"'Cinzel',serif", textAlign:"right", minWidth:60 }}>
+              <span style={{ fontSize:15, fontWeight:700, color:"#aa6060",
+                fontFamily:"'Cinzel',serif", textAlign:"right", minWidth:80 }}>
                 {defVal}
               </span>
             </div>
           ))}
 
-          {/* Footer hint */}
-          <div style={{ marginTop:8, fontSize:6, color:"#2a2010", textAlign:"center",
+          {/* Footer */}
+          <div style={{ marginTop:12, fontSize:11, color:"#2a2010", textAlign:"center",
             fontFamily:"'Cinzel',serif", letterSpacing:".06em" }}>
             {b.terrain} · {b.modLabel} · {b.rounds?.length ?? 0} rounds
           </div>
         </div>
+
+        </div>{/* end scrollable */}
       </div>
 
       {/* Sub-popups */}
