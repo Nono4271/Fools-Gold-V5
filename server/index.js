@@ -141,7 +141,7 @@ function handleTileCapture(ws, msg) {
   if (!tile)    return sendError(ws, 'Tile not found: ' + key);
 
   const VALID_OWNERS = new Set([
-    'player','ai','pirates','marines','bountyhunters','merfolk','orcs','dragons','neutral',null
+    'player','ai','pirates','bountyhunters','orcs','dragons','neutral',null
   ]);
   if (!VALID_OWNERS.has(owner)) return sendError(ws, 'Invalid owner: ' + owner);
 
