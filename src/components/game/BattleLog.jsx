@@ -683,7 +683,7 @@ function BattleCard({ b, onClick }) {
   const [popup, setPopup] = useState(null); // "stats"|null
 
   return (
-    <div onClick={() => { if (!popup) onClick(); }} style={{
+    <div onClick={e => { e.stopPropagation(); setPopup(p => p ? null : "stats"); }} style={{
       position:"relative",
       padding:"10px 14px", marginBottom:8, cursor:"pointer",
       background:"rgba(255,255,255,.02)",
@@ -726,18 +726,12 @@ function BattleCard({ b, onClick }) {
           <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
         </div>
 
-        {/* Center: outcome + tap hint */}
+        {/* Center: outcome */}
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, flexShrink:0 }}>
-          <div onClick={e => { e.stopPropagation(); setPopup(p => p ? null : "stats"); }}
-            style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, color:oc.color,
-              border:`1px solid ${oc.color}55`, borderRadius:3, padding:"3px 8px",
-              background:`${oc.color}11`, cursor:"pointer" }}>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, color:oc.color,
+            border:`1px solid ${oc.color}55`, borderRadius:3, padding:"3px 8px",
+            background:`${oc.color}11` }}>
             {oc.text}
-          </div>
-          <div onClick={e => { e.stopPropagation(); setPopup(p => p ? null : "stats"); }}
-            style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif", cursor:"pointer",
-              letterSpacing:".05em" }}>
-            tap for stats
           </div>
         </div>
 
@@ -764,7 +758,7 @@ function BattleCard({ b, onClick }) {
           )}
         </div>
         <span style={{ fontSize:7, color:"#2a2018", fontFamily:"'Cinzel',serif" }}>
-          {b.rounds?.length ?? 0} rounds · tap for details →
+          {b.rounds?.length ?? 0} rounds
         </span>
       </div>
 
