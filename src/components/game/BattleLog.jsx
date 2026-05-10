@@ -497,6 +497,11 @@ function BattleStatsPopup({ b, onClose }) {
 
   return (
     <>
+      {/* Backdrop — catches outside clicks and closes popup without bubbling to card */}
+      <div onClick={e => { e.stopPropagation(); onClose(); }} style={{
+        position:"fixed", inset:0, zIndex:609,
+        background:"rgba(0,0,0,.55)",
+      }} />
       <div onClick={e => e.stopPropagation()} style={{
         position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
         zIndex:610, width:"min(420px, 94vw)",
@@ -683,7 +688,7 @@ function BattleCard({ b, onClick }) {
   const [popup, setPopup] = useState(null); // "stats"|null
 
   return (
-    <div onClick={e => { e.stopPropagation(); setPopup(p => p ? null : "stats"); }} style={{
+    <div onClick={e => { e.stopPropagation(); setPopup("stats"); }} style={{
       position:"relative",
       padding:"10px 14px", marginBottom:8, cursor:"pointer",
       background:"rgba(255,255,255,.02)",
