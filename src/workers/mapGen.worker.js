@@ -12,10 +12,10 @@ const RKEYS      = ["stone","wood","ore","gas"];
 const TROOP_KEYS = ["infantry","mage","spearmen","horsemen"];
 
 const POWER_DEFS = {
-  1: { cmdLvl:2,  troops:200  },
-  2: { cmdLvl:6,  troops:600  },
-  3: { cmdLvl:10, troops:1000 },
-  4: { cmdLvl:15, troops:1500 },
+  1: { cmdLvl:1,  troops:36  },
+  2: { cmdLvl:4,  troops:300 },
+  3: { cmdLvl:6,  troops:480 },
+  4: { cmdLvl:8,  troops:960 },
 };
 const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 };
 
