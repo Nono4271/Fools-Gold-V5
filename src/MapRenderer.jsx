@@ -102,9 +102,9 @@ function buildCByTile(cmds) {
    map (COLS × ROWS). Entries start at 0 (sentinel = not yet computed).
    First access computes and stores; every subsequent access is a single array
    index. Memory is bounded and constant regardless of session length.          */
-const TILE_COLOR_CACHE = new Uint32Array(700 * 700); // 0 = uncomputed sentinel
+const TILE_COLOR_CACHE = new Uint32Array(COLS * ROWS); // 0 = uncomputed sentinel
 function getTileBaseColor(c, r, terrain) {
-  const idx = r * 700 + c;
+  const idx = r * COLS + c;
   if (TILE_COLOR_CACHE[idx] !== 0) return TILE_COLOR_CACHE[idx];
   const v = TV[terrain] || TV_DEF;
   const rng = tileRng(c, r);
