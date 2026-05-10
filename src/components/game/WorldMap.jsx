@@ -91,7 +91,7 @@ function garrisonLabel(g) {
   return "Small";
 }
 
-export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom }) {
+export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom, crossings }) {
   const [selected, setSelected] = useState(null);
   const [dotPos, setDotPos] = useState(() => panRef?.current || { x: 4, y: 4 });
 
@@ -108,12 +108,56 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
   const keeps = useMemo(() => {
     return REGION_LIST.map(reg => {
       const t = tiles[`${reg.cx},${reg.cy}`];
-      return { ...reg, owner: t?.owner || null, garrison: t?.garrison || 0,
-               siege: t?.siege || 0, siegeMax: t?.siegeMax || 0 };
+      const defaultOwner = (reg.layer === 'start' || reg.layer === 'peninsula')
+        ? (reg.factions?.[0] || null) : null;
+      return { ...reg,
+        owner:    t?.owner ?? defaultOwner,
+        garrison: t?.garrison || 0,
+        siege:    t?.siege    || 0,
+        siegeMax: t?.siegeMax || 0 };
     });
   }, [tiles]);
 
-  const selectedKeep = selected ? keeps.find(k => k.key === selected) : null;
+  // Build gate list from crossings prop
+  const gates = useMemo(() => {
+    if (!crossings) return [];
+    const result = [];
+    for (const cr of crossings) {
+      const gx = cr.axis === 'H' ? cr.gCoord : cr.bCoord;
+      const gy = cr.axis === 'H' ? cr.bCoord : cr.gCoord;
+      // Gate A position in WorldMap design space
+      const axA = cr.axis === 'H' ? gx      : cr.bCoord - 2;
+      const ayA = cr.axis === 'H' ? cr.bCoord - 2 : gy;
+      // Gate B position
+      const axB = cr.axis === 'H' ? gx      : cr.bCoord + 2;
+      const ayB = cr.axis === 'H' ? cr.bCoord + 2 : gy;
+      const typeIcon = cr.type === 'crossing' ? '🌊' : cr.type === 'tollbridge' ? '⌒' : '⛰';
+      const t = tiles[`${axA},${ayA}`];
+      result.push({
+        key: cr.id + '_A', id: cr.id, side: 'A', type: cr.type,
+        cx: axA, cy: ayA, icon: typeIcon,
+        owner:    t?.owner    || null,
+        garrison: t?.garrison || 0,
+        siege:    t?.siege    || 0,
+        siegeMax: t?.siegeMax || 0,
+        name: `${cr.type === 'crossing' ? 'Crossing' : cr.type === 'tollbridge' ? 'Toll Bridge' : 'Tunnel'} Gate A`,
+      });
+      const t2 = tiles[`${axB},${ayB}`];
+      result.push({
+        key: cr.id + '_B', id: cr.id, side: 'B', type: cr.type,
+        cx: axB, cy: ayB, icon: typeIcon,
+        owner:    t2?.owner    || null,
+        garrison: t2?.garrison || 0,
+        siege:    t2?.siege    || 0,
+        siegeMax: t2?.siegeMax || 0,
+        name: `${cr.type === 'crossing' ? 'Crossing' : cr.type === 'tollbridge' ? 'Toll Bridge' : 'Tunnel'} Gate B`,
+      });
+    }
+    return result;
+  }, [crossings, tiles]);
+
+  const allClickable = useMemo(() => [...keeps, ...gates], [keeps, gates]);
+  const selectedItem = selected ? allClickable.find(k => k.key === selected) : null;
 
   const sx = 1, sy = 1;
   const iconMult = ICON_SCALE;
@@ -147,7 +191,15 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
         return;
       }
     }
-    // Clicked empty space — deselect
+    // Hit-test gate icons (small circles around their cx,cy)
+    const GATE_HIT_R = 18;
+    for (const gate of gates) {
+      const dx = svgX - gate.cx, dy = svgY - gate.cy;
+      if (dx*dx + dy*dy < GATE_HIT_R*GATE_HIT_R) {
+        setSelected(prev => prev === gate.key ? null : gate.key);
+        return;
+      }
+    }
     setSelected(null);
   };
 
@@ -344,13 +396,13 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
                 {owned && <circle cx={cx} cy={by} r={sz * 1.6} fill={col} opacity={0.15}/>}
                 {isSel && <circle cx={cx} cy={by} r={sz * 2.1} fill="none" stroke={col} strokeWidth={1.4} opacity={0.8}/>}
                 <rect x={cx - sz * .58} y={by} width={sz * 1.16} height={sz} rx={1}
-                  fill={owned ? col : "#5a4a30"} opacity={0.92}/>
+                  fill={col} opacity={owned ? 0.92 : 0.45}/>
                 {[-0.4, -0.13, 0.13, 0.4].map((dx, i) => (
                   <rect key={i} x={cx + dx * sz * 2 - sz * .13} y={by - sz * .48} width={sz * .24} height={sz * .52} rx={1}
-                    fill={owned ? col : "#5a4a30"} opacity={0.92}/>
+                    fill={col} opacity={owned ? 0.92 : 0.45}/>
                 ))}
                 <path d={`M${cx-sz*.2},${by+sz} L${cx-sz*.2},${by+sz*.5} Q${cx},${by+sz*.28} ${cx+sz*.2},${by+sz*.5} L${cx+sz*.2},${by+sz}Z`}
-                  fill={owned ? "rgba(0,0,0,0.55)" : "#1e1408"}/>
+                  fill={owned ? "rgba(0,0,0,0.55)" : "#111"}/>
                 {owned && <>
                   <line x1={cx} y1={by - sz * .48} x2={cx} y2={by - sz * 1.4} stroke={col} strokeWidth={1.3}/>
                   <polygon points={`${cx},${by-sz*1.4} ${cx+sz*.5},${by-sz*1.18} ${cx},${by-sz*.95}`}
@@ -360,11 +412,51 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
             );
           })}
 
+          {/* ── Crossing / Gate icons ── */}
+          {gates.map(gate => {
+            const cx = gate.cx * sx, cy = gate.cy * sy;
+            if (cx < 0 || cx > DW || cy < 0 || cy > DH) return null;
+            const owned = gate.owner;
+            const col   = owned ? (owned === "player" ? "#44aaff" : (FAC_COLOR[owned] || "#cc8844")) : "#484858";
+            const isSel = selected === gate.key;
+            const sz    = 7 * iconMult;
+            // Color by type
+            const typeCol = gate.type === 'crossing' ? '#4ab8d8'
+                          : gate.type === 'tollbridge' ? '#c8a030' : '#6a6a8a';
+
+            return (
+              <g key={`gate_${gate.key}`} style={{ pointerEvents: "none" }}>
+                {isSel && <circle cx={cx} cy={cy} r={sz*2.2} fill="none" stroke={typeCol} strokeWidth={1.5} opacity={0.8}/>}
+                {/* Gate background */}
+                <rect x={cx-sz*.9} y={cy-sz*.6} width={sz*1.8} height={sz*1.2} rx={2}
+                  fill="#0a0e18" stroke={typeCol} strokeWidth={1} opacity={0.9}/>
+                {/* Type icon */}
+                {gate.type === 'crossing' && <>
+                  <path d={`M${cx-sz*.7},${cy-sz*.1} Q${cx-sz*.35},${cy-sz*.4} ${cx},${cy-sz*.1} Q${cx+sz*.35},${cy+sz*.2} ${cx+sz*.7},${cy-sz*.1}`}
+                    fill="none" stroke={typeCol} strokeWidth={1.2} strokeLinecap="round"/>
+                  <path d={`M${cx-sz*.7},${cy+sz*.3} Q${cx-sz*.35},${cy} ${cx},${cy+sz*.3} Q${cx+sz*.35},${cy+sz*.6} ${cx+sz*.7},${cy+sz*.3}`}
+                    fill="none" stroke={typeCol} strokeWidth={1.2} strokeLinecap="round"/>
+                </>}
+                {gate.type === 'tollbridge' && <>
+                  <path d={`M${cx-sz*.7},${cy+sz*.4} L${cx-sz*.7},${cy} Q${cx},${cy-sz*.7} ${cx+sz*.7},${cy} L${cx+sz*.7},${cy+sz*.4}`}
+                    fill="none" stroke={typeCol} strokeWidth={1.2}/>
+                </>}
+                {gate.type === 'tunnel' && <>
+                  <ellipse cx={cx} cy={cy+sz*.1} rx={sz*.65} ry={sz*.45} fill="#050810" stroke={typeCol} strokeWidth={1.2}/>
+                  <ellipse cx={cx} cy={cy+sz*.1} rx={sz*.3} ry={sz*.2} fill="#020204" stroke="#3a3a5a" strokeWidth={0.8}/>
+                </>}
+                {/* Side label */}
+                <text x={cx} y={cy-sz*.75} textAnchor="middle" fontSize={5}
+                  fill={typeCol} fontFamily="monospace" opacity={0.8}>{gate.side}</text>
+              </g>
+            );
+          })}
+
         </svg>
       </div>
 
       {/* ── Detail panel ── */}
-      {selectedKeep && (
+      {selectedItem && (
         <div style={{
           flexShrink: 0,
           background: "rgba(4,6,10,0.98)",
@@ -375,24 +467,24 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
             <div>
               <div style={{ color: "#c8a060", fontSize: 12, letterSpacing: ".06em" }}>
-                {selectedKeep.keepName}
+                {selectedItem.keepName || selectedItem.name || selectedItem.key}
               </div>
               <div style={{
-                color: selectedKeep.owner
-                  ? (selectedKeep.owner === "player" ? "#88ccff" : (FAC_COLOR[selectedKeep.owner] || "#cc8844"))
+                color: selectedItem.owner
+                  ? (selectedItem.owner === "player" ? "#88ccff" : (FAC_COLOR[selectedItem.owner] || "#cc8844"))
                   : "#7a6a50",
                 fontSize: 10, marginTop: 2,
               }}>
-                {!selectedKeep.owner ? "Unoccupied"
-                  : selectedKeep.owner === "player" ? "Your Faction" : "Enemy"}
-                {selectedKeep.garrison > 0 && ` · ${garrisonLabel(selectedKeep.garrison)} garrison`}
+                {!selectedItem.owner ? "Unoccupied"
+                  : selectedItem.owner === "player" ? "Your Faction" : "Enemy"}
+                {selectedItem.garrison > 0 && ` · ${garrisonLabel(selectedItem.garrison)} garrison`}
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button
                 onClick={() => {
                   onClose();
-                  requestAnimationFrame(() => onTeleport(selectedKeep.cx, selectedKeep.cy));
+                  requestAnimationFrame(() => onTeleport(selectedItem.cx, selectedItem.cy));
                 }}
                 style={{
                   padding: "7px 18px",
@@ -415,27 +507,41 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
           </div>
           <div style={{
             padding: "3px 8px", borderRadius: 3, display: "inline-block",
-            background: selectedKeep.layer === "ring"     ? "rgba(240,192,64,0.12)"
-                      : selectedKeep.layer === "conflict" ? "rgba(220,60,40,0.12)"
+            background: selectedItem.layer === "ring"     ? "rgba(240,192,64,0.12)"
+                      : selectedItem.layer === "conflict" ? "rgba(220,60,40,0.12)"
+                      : selectedItem.type === "crossing"  ? "rgba(30,100,160,0.15)"
+                      : selectedItem.type === "tollbridge"? "rgba(160,120,20,0.15)"
+                      : selectedItem.type === "tunnel"    ? "rgba(60,60,80,0.15)"
                       : "rgba(60,80,60,0.12)",
             border: `1px solid ${
-              selectedKeep.layer === "ring" ? "#7a5010"
-              : selectedKeep.layer === "conflict" ? "#6a2010" : "#2a3a2a"
+              selectedItem.layer === "ring" ? "#7a5010"
+              : selectedItem.layer === "conflict" ? "#6a2010"
+              : selectedItem.type === "crossing" ? "#1a5080"
+              : selectedItem.type === "tollbridge" ? "#806010"
+              : selectedItem.type === "tunnel" ? "#404058"
+              : "#2a3a2a"
             }`,
-            color: selectedKeep.layer === "ring" ? "#c8a040"
-                 : selectedKeep.layer === "conflict" ? "#cc5040" : "#4a6a4a",
+            color: selectedItem.layer === "ring" ? "#c8a040"
+                 : selectedItem.layer === "conflict" ? "#cc5040"
+                 : selectedItem.type === "crossing" ? "#4ab8d8"
+                 : selectedItem.type === "tollbridge" ? "#c8a030"
+                 : selectedItem.type === "tunnel" ? "#8a8aaa"
+                 : "#4a6a4a",
             fontSize: 8,
           }}>
-            {selectedKeep.layer === "ring"     ? "⚜ Holy Ring"
-             : selectedKeep.layer === "conflict" ? "⚔ Conflict Zone"
-             : selectedKeep.layer === "farm"     ? "🌾 Farm Region" : "🏰 Starting Region"}
+            {selectedItem.type === "crossing"   ? "🌊 River Crossing"
+             : selectedItem.type === "tollbridge"? "⌒ Toll Bridge"
+             : selectedItem.type === "tunnel"    ? "⛰ Tunnel Gate"
+             : selectedItem.layer === "ring"     ? "⚜ Holy Ring"
+             : selectedItem.layer === "conflict" ? "⚔ Conflict Zone"
+             : selectedItem.layer === "farm"     ? "🌾 Farm Region" : "🏰 Starting Region"}
           </div>
-          {selectedKeep.siegeMax > 0 && (
+          {selectedItem.siegeMax > 0 && (
             <div style={{ marginTop: 6 }}>
               <div style={{ background: "#0a0c10", borderRadius: 2, height: 5, overflow: "hidden" }}>
                 <div style={{
                   height: "100%",
-                  width: `${Math.round((selectedKeep.siege / selectedKeep.siegeMax) * 100)}%`,
+                  width: `${Math.round((selectedItem.siege / selectedItem.siegeMax) * 100)}%`,
                   background: "linear-gradient(90deg,#882020,#dd3030)", borderRadius: 2,
                 }}/>
               </div>
