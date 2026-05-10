@@ -509,6 +509,7 @@ self.onmessage = function(e) {
       keepName: reg.keepName,
       defCmd: {
         n:reg.keepName, icon:"🏰", cls:"defender", faction:null, rarity:"veteran",
+        lvl:KEEP_CMD_LVL, troops:KEEP_TROOPS,
         atk:120*KEEP_CMD_LVL, spd:40+KEEP_CMD_LVL*2,
       },
     };
@@ -607,6 +608,7 @@ self.onmessage = function(e) {
           n: `${typeName} Gate A Defender`,
           icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
           cls:'defender', faction:null, rarity:'veteran',
+          lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
           atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
         },
       };
@@ -630,6 +632,7 @@ self.onmessage = function(e) {
           n: `${typeName} Gate B Defender`,
           icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
           cls:'defender', faction:null, rarity:'veteran',
+          lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
           atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
         },
       };
