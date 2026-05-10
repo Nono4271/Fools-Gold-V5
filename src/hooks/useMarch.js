@@ -8,7 +8,7 @@ import { simBattle, garrisonDefCmd } from "../../shared/utils/battle.js";
 import { calcSiegePower } from "../../shared/constants/map.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
-import { getPassiveBonuses } from "../../shared/constants/skills.js";
+import { getPassiveBonuses, getActiveSkills } from "../../shared/constants/skills.js";
 
 // Per-class stat growth per level
 const CLASS_GROWTH = {
@@ -162,7 +162,8 @@ arrivedAttackers.forEach(cmd => {
         if (!piece) return null;
         return { ...piece, primaryStatValue: gearStatValue(piece.primaryStat, piece.rarity, piece.stars ?? 0) };
       });
-      const enriched = { ...res.report, timestamp: Date.now(), cmdCls: cmd.cls, passiveSummary, atkGearSnapshot };
+      const atkSkillsSnapshot = getActiveSkills(boostedCmd).map(({ key, def, level }) => ({ key, level, name: def.name, icon: def.icon, type: def.type, desc: def.desc, cooldown: def.cooldown, tree: def.tree }));
+      const enriched = { ...res.report, timestamp: Date.now(), cmdCls: cmd.cls, passiveSummary, atkGearSnapshot, atkSkillsSnapshot };
       setBattles(p => [enriched, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
     }
 
