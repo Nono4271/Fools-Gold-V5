@@ -1,4 +1,5 @@
-import { useState, memo } from "react";
+import { useState, memo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 
 // Resolve a troopBranch descriptor to { branchDef, tierData }
@@ -479,13 +480,15 @@ function CommanderPopup({ b, side, onClose }) {
       </div>
 
       {/* Gear piece popup */}
-      {showGear !== null && gearSlots?.[showGear] && (
-        <GearPiecePopup piece={gearSlots[showGear]} onClose={() => setShowGear(null)} />
+      {showGear !== null && gearSlots?.[showGear] && createPortal(
+        <GearPiecePopup piece={gearSlots[showGear]} onClose={() => setShowGear(null)} />,
+        document.body
       )}
 
       {/* Secondary troop popup */}
-      {showTroop && (
-        <TroopPopup troopBranch={troopBranch} onClose={() => setShowTroop(false)} />
+      {showTroop && createPortal(
+        <TroopPopup troopBranch={troopBranch} onClose={() => setShowTroop(false)} />,
+        document.body
       )}
     </>
   );
@@ -1304,14 +1307,15 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
 
       </div>
 
-      {/* ── All popups rendered HERE at top level, outside every scroll/overflow container ── */}
-      {activeBattle && (
+      {/* ── All popups via portal — completely outside DOM hierarchy, no overflow clipping ── */}
+      {activeBattle && createPortal(
         <BattleStatsPopup
           b={activeBattle}
           subPopup={subPopup}
           setSubPopup={setSubPopup}
           onClose={() => { setActiveBattle(null); setSubPopup(null); }}
-        />
+        />,
+        document.body
       )}
     </div>
   );
