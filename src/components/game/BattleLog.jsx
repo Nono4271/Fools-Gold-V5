@@ -688,14 +688,19 @@ function BattleCard({ b, onClick }) {
   const [popup, setPopup] = useState(null); // "stats"|null
 
   return (
-    <div onClick={e => { e.stopPropagation(); setPopup("stats"); }} style={{
-      position:"relative",
-      padding:"10px 14px", marginBottom:8, cursor:"pointer",
-      background:"rgba(255,255,255,.02)",
-      border:`1px solid #221e12`,
-      borderLeft:`3px solid ${oc.color}`,
-      borderRadius:5, transition:"background .15s",
-    }}>
+    <div
+      onClick={e => { e.stopPropagation(); setPopup("stats"); }}
+      onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); setPopup("stats"); }}
+      style={{
+        position:"relative",
+        padding:"10px 14px", marginBottom:8, cursor:"pointer",
+        background:"rgba(255,255,255,.02)",
+        border:`1px solid #221e12`,
+        borderLeft:`3px solid ${oc.color}`,
+        borderRadius:5, transition:"background .15s",
+        touchAction:"manipulation",
+        WebkitTapHighlightColor:"transparent",
+      }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
         <div style={{ display:"flex", alignItems:"center", gap:7 }}>
           <span style={{ fontSize:16 }}>{b.atkIcon || "⚔"}</span>
@@ -1114,7 +1119,7 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
 
         ) : view === "simple" ? (
           /* ── Summary: card list ── */
-          <div style={{ flex:1, overflowY:"auto", padding:"12px 14px" }}>
+          <div className="scr" style={{ flex:1, overflowY:"auto", padding:"12px 14px", touchAction:"pan-y" }}>
             {battles.map((b, i) => (
               <BattleCard
                 key={i} b={b}
