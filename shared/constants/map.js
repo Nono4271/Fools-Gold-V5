@@ -28,11 +28,14 @@ export const WIN_R = 407;
 export const WIN_KEY = `${WIN_C},${WIN_R}`;
 
 export const POWER_DEFS = {
-1: { label:"I",   color:"#6a9a6a", cmdLvl:2,  troops:200,  xpReward:30  },
-2: { label:"II",  color:"#9a8a30", cmdLvl:6,  troops:600,  xpReward:80  },
-3: { label:"III", color:"#9a5a30", cmdLvl:10, troops:1000, xpReward:180 },
-4: { label:"IV",  color:"#9a3030", cmdLvl:15, troops:1500, xpReward:350 },
+1: { label:"1/hr",  color:"#6a9a6a", cmdLvl:1,  troops:36,  ringPower:1  },
+2: { label:"10/hr", color:"#9a8a30", cmdLvl:4,  troops:300, ringPower:10 },
+3: { label:"15/hr", color:"#9a5a30", cmdLvl:6,  troops:480, ringPower:15 },
+4: { label:"30/hr", color:"#9a3030", cmdLvl:8,  troops:960, ringPower:30 },
 };
+
+// XP per command point consumed, by troop tier (0-indexed)
+export const XP_PER_COMMAND = { 0: 4.8, 1: 7.2, 2: 10.2 };
 
 export const SIEGE_BASE          = 50;
 export const SIEGE_HQ_BASE       = 50000;
