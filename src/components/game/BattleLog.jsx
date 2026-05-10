@@ -1178,7 +1178,7 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
   const hasBattles = battles.length > 0;
 
   return (
-    <div style={{
+    <div className="battle-popup" style={{
       position:"fixed", inset:0, zIndex:500,
       background:"rgba(0,0,0,.7)",
       display:"flex", alignItems:"center", justifyContent:"center",
@@ -1313,7 +1313,7 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
 
       {/* ── All popups via portal — completely outside DOM hierarchy, no overflow clipping ── */}
       {activeBattle && createPortal(
-        <div style={{ pointerEvents:"auto" }}>
+        <div className="battle-popup" style={{ pointerEvents:"auto" }}>
           <BattleStatsPopup
             b={activeBattle}
             subPopup={subPopup}
