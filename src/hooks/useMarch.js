@@ -66,11 +66,28 @@ setBattles, setBLog, setWinner, setUnseenBattles,
 tilesRef, floaty, gearInventory,
 playerHqKey, aiHqKeys,
 emitTileCapture, emitTileSiege,
+gatePartners,
 }) {
 // Server-sync helpers — no-op if server not connected yet
 const _emitCapture = (key, patch) => emitTileCapture?.(key, patch);
 const _emitSiege   = (key, patch) => emitTileSiege?.(key, patch);
 const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
+
+// Gate A ↔ Gate B foothold: a commander on gateA is treated as adjacent to
+// gateB (and vice versa), so you can attack straight across without owning
+// any other tiles near the border.
+const hasPlayerFoothold = (destKey, originKey, tileMap) => {
+  const [dc, dr] = destKey.split(",").map(Number);
+  if (adj(dc, dr).some(k => tileMap[k]?.owner === "player")) return true;
+  if (gatePartners?.[originKey] === destKey) return true;
+  return false;
+};
+const hasAiFoothold = (destKey, originKey, tileMap) => {
+  const [dc, dr] = destKey.split(",").map(Number);
+  if (adj(dc, dr).some(k => tileMap[k]?.owner === "ai")) return true;
+  if (gatePartners?.[originKey] === destKey) return true;
+  return false;
+};
 
 // Keep a ref to cmds so the draw-timer interval can read current cmds
 // without depending on them in its effect deps (avoids interval restart
@@ -100,9 +117,8 @@ arrivedAttackers.forEach(cmd => {
     return;
   }
 
-  const [dc, dr] = destKey.split(",").map(Number);
-  const hasFoothold = adj(dc, dr).some(k => tiles[k]?.owner === "player");
-  if (!hasFoothold) {
+  const originKey = cmd.march?.origin || hqKey;
+  if (!hasPlayerFoothold(destKey, originKey, tiles)) {
     const boostedCmd0 = applyGearToCmd(cmd, gearInventory);
     const stepMs = marchStepMs(effectiveMarchSpd(boostedCmd0.spd || 60, cmd.troopBranch, boostedCmd0.gearBonuses?.armySpd || 0));
     const retreatPath = bfsPath(destKey, hqKey);
@@ -117,7 +133,6 @@ arrivedAttackers.forEach(cmd => {
     return;
   }
 
-  const originKey = cmd.march?.origin || hqKey;
   const wallLvl   = bldgs.walls || 0;
 
   // Garrison-defeated path: apply siege only
@@ -302,9 +317,8 @@ useEffect(() => {
       }
 
       // Clear draw if adjacency no longer valid
-      const [dc, dr] = destKey.split(",").map(Number);
-      const hasFoothold = adj(dc, dr).some(k => tilesRef.current?.[k]?.owner === "player");
-      if (!hasFoothold) {
+      // originKey for a draw is the tile they fought from (drawOrigin)
+      if (!hasPlayerFoothold(destKey, cmd.drawOrigin || hqKey, tilesRef.current)) {
         setCmds(p => p.map(c => c.uid === cmd.uid
           ? { ...c, drawTimer:null, drawTile:null, drawOrigin:null } : c));
         floaty("⚠ Foothold lost — draw cancelled", "#cc8030", destKey);
@@ -487,14 +501,13 @@ arrivedAI.forEach(cmd => {
     setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
     return;
   }
-  const [dc2, dr2] = destKey.split(",").map(Number);
-  const hasFoothold = adj(dc2, dr2).some(k => tiles[k]?.owner === "ai");
-  if (!hasFoothold) {
+  const aiOriginKey = cmd.march?.origin || getAiHqKey(cmd);
+  if (!hasAiFoothold(destKey, aiOriginKey, tiles)) {
     setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null, tk:getAiHqKey(cmd) } : c));
     return;
   }
 
-  const originKey = cmd.march?.origin || getAiHqKey(cmd);
+  const originKey = aiOriginKey;
   const boostedCmd2 = applyGearToCmd(cmd, gearInventory);
 
   if (defTile.garrisonDefeated) {
