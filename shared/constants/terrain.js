@@ -1,19 +1,27 @@
 export const TERR_VIS = {
-  grass:   { top:"#3a4e2e", topL:"#4a6038", lWall:"#242e1c", rWall:"#1c2416", elev:4 },
-  forest:  { top:"#1e4a22", topL:"#2a6030", lWall:"#0e2810", rWall:"#0a200c", elev:4 },
-  mountain:{ top:"#6a5c48", topL:"#8a7860", lWall:"#3a3028", rWall:"#2c2420", elev:4 },
-  desert:  { top:"#8a7840", topL:"#a09050", lWall:"#5a4c28", rWall:"#443a20", elev:4 },
-  ruin:    { top:"#3a3430", topL:"#504846", lWall:"#1e1c1a", rWall:"#181614", elev:4 },
-  shore:   { top:"#b09060", topL:"#c8a870", lWall:"#7a6040", rWall:"#5a4830", elev:4 },
+  grass:        { top:"#3a4e2e", topL:"#4a6038", lWall:"#242e1c", rWall:"#1c2416", elev:4 },
+  forest:       { top:"#1e4a22", topL:"#2a6030", lWall:"#0e2810", rWall:"#0a200c", elev:4 },
+  mountain:     { top:"#6a5c48", topL:"#8a7860", lWall:"#3a3028", rWall:"#2c2420", elev:4 },
+  desert:       { top:"#8a7840", topL:"#a09050", lWall:"#5a4c28", rWall:"#443a20", elev:4 },
+  ruin:         { top:"#3a3430", topL:"#504846", lWall:"#1e1c1a", rWall:"#181614", elev:4 },
+  shore:        { top:"#b09060", topL:"#c8a870", lWall:"#7a6040", rWall:"#5a4830", elev:4 },
+  // Border terrain — impassable except at gate/crossing tiles
+  river:        { top:"#0a1e3a", topL:"#1a3a60", lWall:"#041228", rWall:"#030e1e", elev:0 },
+  ravine:       { top:"#1e100a", topL:"#2e1808", lWall:"#120808", rWall:"#0c0604", elev:0 },
+  rockymountain:{ top:"#1a1818", topL:"#282624", lWall:"#0e0c0c", rWall:"#0a0808", elev:8 },
 };
 
 export const TERR = {
-  grass:   { lbl:"Grassland", icon:"",   def:0,  w:40 },
-  forest:  { lbl:"Forest",    icon:"🌲", def:15, w:25 },
-  mountain:{ lbl:"Mountain",  icon:"⛰",  def:25, w:20 },
-  desert:  { lbl:"Desert",    icon:"🏜",  def:0,  w:15 },
-  ruin:    { lbl:"Ruin",      icon:"🏚",  def:20, w:0  },
-  shore:   { lbl:"Shoreline", icon:"🏖",  def:0,  w:0  },
+  grass:        { lbl:"Grassland",    icon:"",   def:0,  w:40, impassable:false },
+  forest:       { lbl:"Forest",       icon:"🌲", def:15, w:25, impassable:false },
+  mountain:     { lbl:"Mountain",     icon:"⛰",  def:25, w:20, impassable:false },
+  desert:       { lbl:"Desert",       icon:"🏜",  def:0,  w:15, impassable:false },
+  ruin:         { lbl:"Ruin",         icon:"🏚",  def:20, w:0,  impassable:false },
+  shore:        { lbl:"Shoreline",    icon:"🏖",  def:0,  w:0,  impassable:false },
+  // Border terrain
+  river:        { lbl:"River",        icon:"🌊", def:0,  w:0,  impassable:true  },
+  ravine:       { lbl:"Ravine",       icon:"🏔",  def:0,  w:0,  impassable:true  },
+  rockymountain:{ lbl:"Rocky Mountain",icon:"⛰", def:0,  w:0,  impassable:true  },
 };
 
 export const BIOME_SEEDS = (() => {
