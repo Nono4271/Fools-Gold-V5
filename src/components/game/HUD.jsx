@@ -1,5 +1,5 @@
-import { memo } from "react";
-import { RKEYS, RSS } from "../../../shared/constants/map.js";
+import { memo, useMemo } from "react";
+import { RKEYS, RSS, POWER_DEFS } from "../../../shared/constants/map.js";
 
 /*
   HUD — top bar
@@ -9,7 +9,17 @@ import { RKEYS, RSS } from "../../../shared/constants/map.js";
   The left group is absolutely centred so it stays centred regardless of
   how wide the resource panel grows.
 */
-export default memo(function HUD({ facName, pKeys, rss, gems }) {
+export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
+  const ringPowerPerHr = useMemo(() => {
+    if (!tiles) return 0;
+    let total = 0;
+    for (const key of pKeys) {
+      const t = tiles[key];
+      if (t && t.powerLevel) total += POWER_DEFS[t.powerLevel]?.ringPower ?? 0;
+    }
+    return total;
+  }, [tiles, pKeys]);
+
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
@@ -24,6 +34,22 @@ export default memo(function HUD({ facName, pKeys, rss, gems }) {
         position: "absolute", bottom: 0, left: 0, right: 0, height: 1,
         background: "linear-gradient(90deg, transparent, #8a6020 15%, #f0c04066 40%, #c89030 60%, #8a602066 85%, transparent)",
       }} />
+
+      {/* ── Ring Power bar — bottom-left ── */}
+      <div style={{
+        position: "absolute", top: 6, left: 10,
+        display: "flex", alignItems: "center", gap: 4,
+        padding: "2px 7px",
+        background: "rgba(180,120,40,.10)",
+        border: "1px solid rgba(200,160,50,.28)",
+        borderRadius: 3,
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,.04), 0 1px 4px rgba(0,0,0,.5)",
+      }}>
+        <span style={{ fontSize: 10 }}>💍</span>
+        <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#d4af37", whiteSpace: "nowrap" }}>
+          {ringPowerPerHr.toLocaleString()}<span style={{ fontSize: 7, color: "#8a7840", marginLeft: 1 }}>/hr</span>
+        </span>
+      </div>
 
       {/* Corner accents */}
       <div style={{ position:"absolute", bottom:4, left:8,  width:16, height:16, opacity:.35, borderBottom:"1px solid #c8a060", borderLeft:"1px solid #c8a060" }} />
