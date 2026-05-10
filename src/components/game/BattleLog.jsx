@@ -86,52 +86,53 @@ function TroopPopup({ troopBranch, onClose }) {
   return (
     <div onClick={e => e.stopPropagation()} style={{
       position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-      zIndex:5011, width:220,
-      background:"#100c06", border:"1px solid #3a2e18", borderRadius:6,
-      padding:"12px 14px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
+      zIndex:5011, width:440,
+      background:"#100c06", border:"1px solid #3a2e18", borderRadius:10,
+      padding:"24px 28px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
+      maxHeight:"90vh", overflowY:"auto",
     }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <div>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, color:"#c8a060" }}>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:20, fontWeight:700, color:"#c8a060" }}>
             {br.label} — {td.label}
           </div>
-          <div style={{ fontSize:7, color:"#5a4a38", fontStyle:"italic", marginTop:1 }}>
+          <div style={{ fontSize:14, color:"#5a4a38", fontStyle:"italic", marginTop:2 }}>
             {f.quarters} · {br.size} · <span style={{ color:dmgTypeColor }}>{br.dmgType}</span>
           </div>
         </div>
-        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:12, cursor:"pointer" }}>✕</button>
+        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:24, cursor:"pointer" }}>✕</button>
       </div>
-      <div style={{ fontSize:7, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".08em",
-        marginBottom:6, paddingBottom:4, borderBottom:"1px solid #1e1808" }}>
+      <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".08em",
+        marginBottom:12, paddingBottom:8, borderBottom:"1px solid #1e1808" }}>
         TROOP STATS
       </div>
       {stats.map(({ label, val, color }) => (
-        <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-          <span style={{ fontSize:7, color:"#5a4a38", fontFamily:"'Cinzel',serif", letterSpacing:".06em" }}>{label}</span>
-          <span style={{ fontSize:9, fontWeight:700, color }}>{val}</span>
+        <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <span style={{ fontSize:14, color:"#5a4a38", fontFamily:"'Cinzel',serif", letterSpacing:".06em" }}>{label}</span>
+          <span style={{ fontSize:18, fontWeight:700, color }}>{val}</span>
         </div>
       ))}
       {/* Size triangle */}
-      <div style={{ marginTop:8, padding:"5px 8px", background:"rgba(255,255,255,.02)",
-        border:"1px solid #1e1808", borderRadius:3 }}>
-        <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:3 }}>SIZE TRIANGLE</div>
-        <div style={{ fontSize:7, color:"#60a040" }}>
+      <div style={{ marginTop:16, padding:"10px 16px", background:"rgba(255,255,255,.02)",
+        border:"1px solid #1e1808", borderRadius:6 }}>
+        <div style={{ fontSize:12, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:6 }}>SIZE TRIANGLE</div>
+        <div style={{ fontSize:14, color:"#60a040" }}>
           {br.size === "small" ? "✓ Strong vs Large" : br.size === "large" ? "✓ Strong vs Medium" : "✓ Strong vs Small"}
         </div>
-        <div style={{ fontSize:7, color:"#aa4040" }}>
+        <div style={{ fontSize:14, color:"#aa4040" }}>
           {br.size === "small" ? "✗ Weak vs Medium" : br.size === "large" ? "✗ Weak vs Small" : "✗ Weak vs Large"}
         </div>
         {br.dmgType === "magical" && (
-          <div style={{ fontSize:7, color:"#a855f7", marginTop:2 }}>✦ Magical — bypasses physical DEF</div>
+          <div style={{ fontSize:14, color:"#a855f7", marginTop:4 }}>✦ Magical — bypasses physical DEF</div>
         )}
       </div>
       {/* Dragon passives */}
       {f.factionPassives?.length > 0 && (
-        <div style={{ marginTop:6, padding:"5px 8px", background:"rgba(200,50,50,.06)",
-          border:"1px solid rgba(200,50,50,.2)", borderRadius:3 }}>
-          <div style={{ fontSize:6, color:"#8a3030", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:3 }}>FACTION PASSIVES</div>
+        <div style={{ marginTop:12, padding:"10px 16px", background:"rgba(200,50,50,.06)",
+          border:"1px solid rgba(200,50,50,.2)", borderRadius:6 }}>
+          <div style={{ fontSize:12, color:"#8a3030", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:6 }}>FACTION PASSIVES</div>
           {f.factionPassives.map(p => (
-            <div key={p.key} style={{ fontSize:7, color:"#aa5050", marginBottom:2 }}>
+            <div key={p.key} style={{ fontSize:14, color:"#aa5050", marginBottom:4 }}>
               {p.icon} {p.name}: {p.desc}
             </div>
           ))}
@@ -144,32 +145,32 @@ function TroopPopup({ troopBranch, onClose }) {
         const validSkills = skillsForTier.filter(Boolean);
         if (!validSkills.length) return null;
         return (
-          <div style={{ marginTop:6 }}>
-            <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".06em", marginBottom:5, paddingTop:5, borderTop:"1px solid #1e1808" }}>
+          <div style={{ marginTop:12 }}>
+            <div style={{ fontSize:12, color:"#3a3028", fontFamily:"'Cinzel',serif",
+              letterSpacing:".06em", marginBottom:10, paddingTop:10, borderTop:"1px solid #1e1808" }}>
               TROOP SKILLS
             </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {validSkills.map((sk) => (
                 <div key={sk.key} style={{
-                  display:"flex", alignItems:"flex-start", gap:7,
-                  padding:"5px 7px", borderRadius:4,
+                  display:"flex", alignItems:"flex-start", gap:14,
+                  padding:"10px 14px", borderRadius:6,
                   background:"rgba(200,160,64,.05)", border:"1px solid rgba(200,160,64,.18)",
                 }}>
-                  <span style={{ fontSize:14, flexShrink:0 }}>{sk.icon}</span>
+                  <span style={{ fontSize:28, flexShrink:0 }}>{sk.icon}</span>
                   <div style={{ flex:1 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
-                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, fontWeight:700, color:"#c8a060" }}>{sk.name}</span>
+                    <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:16, fontWeight:700, color:"#c8a060" }}>{sk.name}</span>
                       {sk.trigger && (
-                        <span style={{ fontSize:6, color:"#5a4a38", background:"rgba(255,255,255,.04)",
-                          border:"1px solid #2a2010", borderRadius:2, padding:"0 4px" }}>
+                        <span style={{ fontSize:12, color:"#5a4a38", background:"rgba(255,255,255,.04)",
+                          border:"1px solid #2a2010", borderRadius:3, padding:"0 8px" }}>
                           {sk.trigger.replace(/_/g," ")}
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize:7, color:"#5a4a38", lineHeight:1.4 }}>{sk.desc}</div>
+                    <div style={{ fontSize:14, color:"#5a4a38", lineHeight:1.4 }}>{sk.desc}</div>
                     {sk.procBase != null && (
-                      <div style={{ fontSize:6, color:"#3a3028", marginTop:2 }}>
+                      <div style={{ fontSize:12, color:"#3a3028", marginTop:4 }}>
                         Proc: {Math.round(sk.procBase*100)}% → {Math.round(sk.procMax*100)}% (scales with level)
                       </div>
                     )}
@@ -303,44 +304,45 @@ function CommanderPopup({ b, side, onClose }) {
     <>
       <div onClick={e => e.stopPropagation()} style={{
         position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-        zIndex:5011, width:220,
-        background:"#100c06", border:"1px solid #3a2e18", borderRadius:6,
-        padding:"12px 14px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
+        zIndex:5011, width:440,
+        background:"#100c06", border:"1px solid #3a2e18", borderRadius:10,
+        padding:"24px 28px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
+        maxHeight:"90vh", overflowY:"auto",
       }}>
         {/* Header */}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            <div style={{ width:36, height:36, borderRadius:"50%",
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+            <div style={{ width:72, height:72, borderRadius:"50%",
               background:"rgba(255,255,255,.05)", border:"1px solid #2a1e08",
-              display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>
+              display:"flex", alignItems:"center", justifyContent:"center", fontSize:40 }}>
               {icon}
             </div>
             <div>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, color:"#c8a060" }}>{name}</div>
-              <div style={{ fontSize:7, color:"#5a4a38" }}>Level {lvl}</div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:20, fontWeight:700, color:"#c8a060" }}>{name}</div>
+              <div style={{ fontSize:14, color:"#5a4a38" }}>Level {lvl}</div>
               {(isAtk ? b.cmdCls : b.defCmdCls) && (
-                <span style={{ fontSize:7, color: CLS_COLOR[b.cmdCls] ?? "#888",
-                  background:"rgba(255,255,255,.04)", padding:"1px 5px",
-                  borderRadius:2, display:"inline-block", marginTop:2 }}>
+                <span style={{ fontSize:14, color: CLS_COLOR[b.cmdCls] ?? "#888",
+                  background:"rgba(255,255,255,.04)", padding:"2px 10px",
+                  borderRadius:3, display:"inline-block", marginTop:4 }}>
                   {isAtk ? b.cmdCls : b.defCmdCls}
                 </span>
               )}
             </div>
           </div>
-          <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:12, cursor:"pointer" }}>&#x2715;</button>
+          <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:24, cursor:"pointer" }}>&#x2715;</button>
         </div>
 
         {/* Commander stats — always shown, even if 0 */}
         {cmdStats.length > 0 && <>
-          <div style={{ fontSize:7, color:"#3a3028", fontFamily:"'Cinzel',serif",
-            letterSpacing:".08em", marginBottom:5, paddingBottom:3, borderBottom:"1px solid #1e1808" }}>
+          <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif",
+            letterSpacing:".08em", marginBottom:10, paddingBottom:6, borderBottom:"1px solid #1e1808" }}>
             COMMANDER STATS
           </div>
-          <div style={{ display:"flex", gap:16, marginBottom:10 }}>
+          <div style={{ display:"flex", gap:32, marginBottom:20 }}>
             {cmdStats.map(({ label, val, color }) => (
               <div key={label} style={{ textAlign:"center" }}>
-                <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".06em" }}>{label}</div>
-                <div style={{ fontSize:13, fontWeight:700, color }}>{val}</div>
+                <div style={{ fontSize:12, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".06em" }}>{label}</div>
+                <div style={{ fontSize:26, fontWeight:700, color }}>{val}</div>
               </div>
             ))}
           </div>
@@ -348,15 +350,15 @@ function CommanderPopup({ b, side, onClose }) {
 
         {/* Gear bonuses */}
         {gearStats.length > 0 && <>
-          <div style={{ fontSize:7, color:"#3a3028", fontFamily:"'Cinzel',serif",
-            letterSpacing:".08em", marginBottom:5, paddingBottom:3, borderBottom:"1px solid #1e1808" }}>
+          <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif",
+            letterSpacing:".08em", marginBottom:10, paddingBottom:6, borderBottom:"1px solid #1e1808" }}>
             GEAR BONUSES
           </div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 12px", marginBottom:10 }}>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:"8px 24px", marginBottom:20 }}>
             {gearStats.map(({ label, val }) => (
               <div key={label}>
-                <span style={{ fontSize:6, color:"#5a4a38" }}>{label}: </span>
-                <span style={{ fontSize:7, color:"#3daa60", fontWeight:700 }}>{val}</span>
+                <span style={{ fontSize:12, color:"#5a4a38" }}>{label}: </span>
+                <span style={{ fontSize:14, color:"#3daa60", fontWeight:700 }}>{val}</span>
               </div>
             ))}
           </div>
@@ -364,11 +366,11 @@ function CommanderPopup({ b, side, onClose }) {
 
         {/* Equipped gear slots — matches CommanderScreen slot card style */}
         {gearSlots && <>
-          <div style={{ fontSize:7, color:"#3a3028", fontFamily:"'Cinzel',serif",
-            letterSpacing:".08em", marginBottom:6, paddingBottom:3, borderBottom:"1px solid #1e1808" }}>
+          <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif",
+            letterSpacing:".08em", marginBottom:12, paddingBottom:6, borderBottom:"1px solid #1e1808" }}>
             EQUIPPED GEAR
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:5, marginBottom:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:20 }}>
             {SLOT_KEYS.map((slot, i) => {
               const piece = gearSlots[i];
               const rc = piece ? (GEAR_RC[piece.rarity] ?? "#888") : null;
@@ -379,34 +381,34 @@ function CommanderPopup({ b, side, onClose }) {
                 <div key={slot}
                   onClick={e => { e.stopPropagation(); setShowGear(piece ? i : null); }}
                   style={{
-                    padding:"20px 4px 14px", textAlign:"center",
+                    padding:"28px 8px 20px", textAlign:"center",
                     background: piece ? `${rc}12` : "rgba(255,255,255,.015)",
                     border:`1px solid ${piece ? rc+"40" : "#1e1810"}`,
-                    borderRadius:5, cursor: piece ? "pointer" : "default",
+                    borderRadius:8, cursor: piece ? "pointer" : "default",
                     boxShadow: piece ? `0 0 8px ${rc}20` : "none",
                     transition:"all .15s",
                   }}>
-                  <div style={{ fontSize: piece ? 28 : 20, marginBottom:5, opacity: piece ? 1 : 0.2 }}>
+                  <div style={{ fontSize: piece ? 40 : 32, marginBottom:8, opacity: piece ? 1 : 0.2 }}>
                     {piece ? piece.icon : GEAR_SLOT_ICONS[slot]}
                   </div>
-                  <div style={{ fontSize:6, fontFamily:"'Cinzel',serif",
+                  <div style={{ fontSize:12, fontFamily:"'Cinzel',serif",
                     color: piece ? rc : "#2a2010",
                     overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
-                    marginBottom: piece ? 2 : 0 }}>
+                    marginBottom: piece ? 4 : 0 }}>
                     {piece ? piece.n.split(" ")[0] : GEAR_SLOT_NAMES[slot]}
                   </div>
                   {piece && <>
-                    <div style={{ fontSize:6, color:"#6a5a40", fontFamily:"'Cinzel',serif", marginBottom:2 }}>
+                    <div style={{ fontSize:12, color:"#6a5a40", fontFamily:"'Cinzel',serif", marginBottom:4 }}>
                       {STAT_ICN[piece.primaryStat]} +{pVal}
                     </div>
-                    <div style={{ display:"flex", justifyContent:"center", gap:1 }}>
+                    <div style={{ display:"flex", justifyContent:"center", gap:2 }}>
                       {Array.from({length:5}).map((_,si) => (
-                        <span key={si} style={{ fontSize:4, color:si<(piece.stars??0)?"#aaa":"#222" }}>★</span>
+                        <span key={si} style={{ fontSize:8, color:si<(piece.stars??0)?"#aaa":"#222" }}>★</span>
                       ))}
                     </div>
                   </>}
                   {!piece && (
-                    <div style={{ fontSize:5, color:"#2a2010", fontFamily:"'Cinzel',serif", marginTop:2 }}>empty</div>
+                    <div style={{ fontSize:10, color:"#2a2010", fontFamily:"'Cinzel',serif", marginTop:4 }}>empty</div>
                   )}
                 </div>
               );
@@ -415,25 +417,25 @@ function CommanderPopup({ b, side, onClose }) {
         </>}
 
         {/* Troop row */}
-        <div style={{ fontSize:7, color:"#3a3028", fontFamily:"'Cinzel',serif",
-          letterSpacing:".08em", marginBottom:5, paddingBottom:3, borderBottom:"1px solid #1e1808" }}>
+        <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif",
+          letterSpacing:".08em", marginBottom:10, paddingBottom:6, borderBottom:"1px solid #1e1808" }}>
           TROOPS
         </div>
         <div onClick={() => br && setShowTroop(true)} style={{
           display:"flex", alignItems:"center", justifyContent:"space-between",
-          padding:"6px 8px", borderRadius:4,
+          padding:"12px 16px", borderRadius:6,
           background:"rgba(255,255,255,.03)", border:"1px solid #1e1808",
           cursor: br ? "pointer" : "default",
         }}>
-          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div>
-              <div style={{ fontSize:8, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>
+              <div style={{ fontSize:16, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>
                 {br ? `${br.label} — ${td?.label ?? ""}` : "Unknown"}
               </div>
-              <div style={{ fontSize:7, color:"#5a4a38" }}>{(troops ?? 0).toLocaleString()} troops{br ? ` · ${br.size} · ${br.dmgType}` : ""}</div>
+              <div style={{ fontSize:14, color:"#5a4a38" }}>{(troops ?? 0).toLocaleString()} troops{br ? ` · ${br.size} · ${br.dmgType}` : ""}</div>
             </div>
           </div>
-          {br && <span style={{ fontSize:7, color:"#3a3028" }}>tap for stats &#x2192;</span>}
+          {br && <span style={{ fontSize:14, color:"#3a3028" }}>tap for stats &#x2192;</span>}
         </div>
 
         {/* Commander Skills — attacker from snapshot, defender from defSkillsSnapshot */}
@@ -441,33 +443,33 @@ function CommanderPopup({ b, side, onClose }) {
           const skillSnap = isAtk ? (b.atkSkillsSnapshot ?? []) : (b.defSkillsSnapshot ?? []);
           if (!skillSnap.length) return null;
           return <>
-            <div style={{ fontSize:7, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".08em", marginTop:10, marginBottom:5, paddingBottom:3, borderBottom:"1px solid #1e1808" }}>
+            <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif",
+              letterSpacing:".08em", marginTop:20, marginBottom:10, paddingBottom:6, borderBottom:"1px solid #1e1808" }}>
               SKILLS
             </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {skillSnap.map((sk) => (
                 <div key={sk.key} style={{
-                  display:"flex", alignItems:"flex-start", gap:7,
-                  padding:"5px 7px", borderRadius:4,
+                  display:"flex", alignItems:"flex-start", gap:14,
+                  padding:"10px 14px", borderRadius:6,
                   background: sk.type === "passive" ? "rgba(80,208,144,.05)" : "rgba(240,192,64,.05)",
                   border:`1px solid ${sk.type === "passive" ? "rgba(80,208,144,.18)" : "rgba(240,192,64,.18)"}`,
                 }}>
-                  <span style={{ fontSize:14, flexShrink:0 }}>{sk.icon}</span>
+                  <span style={{ fontSize:28, flexShrink:0 }}>{sk.icon}</span>
                   <div style={{ flex:1 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
-                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, fontWeight:700,
+                    <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
+                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:16, fontWeight:700,
                         color: sk.type === "passive" ? "#50d090" : "#f0c040" }}>{sk.name}</span>
-                      <span style={{ fontSize:6, color:"#3a3028", background:"rgba(255,255,255,.04)",
-                        border:"1px solid #2a2010", borderRadius:2, padding:"0 4px" }}>
+                      <span style={{ fontSize:12, color:"#3a3028", background:"rgba(255,255,255,.04)",
+                        border:"1px solid #2a2010", borderRadius:3, padding:"0 8px" }}>
                         Lv{sk.level}
                       </span>
-                      <span style={{ fontSize:6, color: sk.type === "passive" ? "#50d090" : "#f0c040",
+                      <span style={{ fontSize:12, color: sk.type === "passive" ? "#50d090" : "#f0c040",
                         opacity:.6 }}>{sk.type}</span>
                     </div>
-                    <div style={{ fontSize:7, color:"#5a4a38", lineHeight:1.4 }}>{sk.desc}</div>
+                    <div style={{ fontSize:14, color:"#5a4a38", lineHeight:1.4 }}>{sk.desc}</div>
                     {sk.type === "active" && sk.cooldown && (
-                      <div style={{ fontSize:6, color:"#3a3028", marginTop:2 }}>
+                      <div style={{ fontSize:12, color:"#3a3028", marginTop:4 }}>
                         Every {sk.cooldown} rounds
                       </div>
                     )}
@@ -658,22 +660,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
                 <div style={{ fontSize:11, color:"#5a4a30" }}>Lv{b.atkLvl} · tap for stats</div>
               </div>
             </div>
-            {atkResolved && (
-              <div onClick={e => { e.stopPropagation(); setSubPopup(p => p==="atkTroop" ? null : "atkTroop"); }}
-                style={{ marginTop:8, display:"flex", alignItems:"center", gap:6,
-                  padding:"5px 7px", borderRadius:4,
-                  background:"rgba(68,136,255,.07)", border:"1px solid rgba(68,136,255,.18)",
-                  cursor:"pointer",
-                }}>
-                <span style={{ fontSize:16 }}>{atkResolved.branchDef.skills?.a?.icon ?? (atkResolved.branchDef.size === "large" ? "🗿" : atkResolved.branchDef.size === "medium" ? "🐴" : "⚔")}</span>
-                <div>
-                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#4488ff", fontWeight:700 }}>
-                    {atkResolved.branchDef.label} · {atkResolved.tierData?.label ?? ""}
-                  </div>
-                  <div style={{ fontSize:9, color:"#3a5840" }}>{b.atkTroopsStart.toLocaleString()} troops · tap for stats</div>
-                </div>
-              </div>
-            )}
+
           </div>
 
           {/* VS */}
@@ -698,22 +685,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
               </div>
               <span style={{ fontSize:28 }}>{b.defCmdIcon || "🛡"}</span>
             </div>
-            {defResolved && (
-              <div onClick={e => { e.stopPropagation(); setSubPopup(p => p==="defTroop" ? null : "defTroop"); }}
-                style={{ marginTop:8, display:"flex", alignItems:"center", justifyContent:"flex-end", gap:6,
-                  padding:"5px 7px", borderRadius:4,
-                  background:"rgba(204,68,68,.07)", border:"1px solid rgba(204,68,68,.18)",
-                  cursor:"pointer",
-                }}>
-                <div style={{ textAlign:"right" }}>
-                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#cc4444", fontWeight:700 }}>
-                    {defResolved.branchDef.label} · {defResolved.tierData?.label ?? ""}
-                  </div>
-                  <div style={{ fontSize:9, color:"#5a3838" }}>{(b.defTroopsStart ?? 0).toLocaleString()} troops · tap for stats</div>
-                </div>
-                <span style={{ fontSize:16 }}>{defResolved.branchDef.skills?.a?.icon ?? (defResolved.branchDef.size === "large" ? "🗿" : defResolved.branchDef.size === "medium" ? "🐴" : "🛡")}</span>
-              </div>
-            )}
+
           </div>
         </div>
 
