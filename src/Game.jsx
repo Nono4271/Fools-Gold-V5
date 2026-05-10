@@ -61,6 +61,7 @@ export default function RiseToWar() {
   // ── Tiles — stored in a mutable ref to avoid 490k React reconciliation ──
   const [tileVersion, setTileVersion] = useState(0);
   const tilesMapRef = useRef({});
+  const [crossingsState, setCrossingsState] = useState([]);
   // useMemo gives a stable object identity between tileVersion bumps so
   // MapRenderer's memo() wrapper and every other consumer only re-renders
   // when tiles actually changed, not on every unrelated Game re-render.
@@ -421,7 +422,7 @@ export default function RiseToWar() {
         const troopArr    = new Uint8Array(buffers.troop);
         const powerArr    = new Uint8Array(buffers.power);
         const regionArr   = new Uint8Array(buffers.region);
-        const flagArr     = new Uint8Array(buffers.flags);
+        const flagArr     = new Uint16Array(buffers.flags);
         const garrisonArr = new Uint32Array(buffers.garrison);
         const siegeArr    = new Uint32Array(buffers.siege);
         const siegeMaxArr = new Uint32Array(buffers.siegeMax);
@@ -429,9 +430,9 @@ export default function RiseToWar() {
 
         const {
           COLS: C, ROWS: R,
-          regionList, keepMeta,
+          regionList, keepMeta, crossings, impassKeys,
           TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
-          F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED,
+          F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER,
         } = meta;
 
         // Build region lookup by index
@@ -571,9 +572,10 @@ export default function RiseToWar() {
         }));
 
         rawMap.__ready = true;
-        setImpassableTiles([]);
-        initPathfinding([]);
-        perfLog(`impass: bounds-only (no shore tiles)`);
+        setImpassableTiles(impassKeys || []);
+        initPathfinding(impassKeys || []);
+        setCrossingsState(crossings || []);
+        perfLog(`impass: ${(impassKeys||[]).length} border tiles sent`);
         clearKeepCache();
         setTiles(rawMap);
         setTimeout(() => {
@@ -1505,6 +1507,7 @@ export default function RiseToWar() {
       {worldMapOpen && (
         <WorldMap
           tiles={tiles}
+          crossings={crossingsState}
           onClose={() => setWorldMapOpen(false)}
           onTeleport={teleportTo}
           panRef={panRef}
