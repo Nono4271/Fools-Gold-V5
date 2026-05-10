@@ -136,9 +136,7 @@ const _MAIN_BRANCH_NAMES_UNUSED = {
 // Maps loosely to rarity: soldier→tier1, veteran→tier2, champion→tier3.
 export const SUBSPECIES = {
   pirates:       { tier1: "First Mate",  tier2: "Shipwright",  tier3: "Captain"   },
-  marines:       { tier1: "Newbie",      tier2: "Experienced", tier3: "Admiral"   },
   bountyhunters: { tier1: "Apprentice",  tier2: "Sage",        tier3: "Warlock"   },
-  merfolk:       { tier1: "Fry",         tier2: "Warden",      tier3: "Leviathan" },
   orcs:          { tier1: "Raider",      tier2: "Marauder",    tier3: "Warlord"   },
   dragons:       { tier1: "Hatchling",   tier2: "Adult",       tier3: "Elder"     },
   holyknights:   { tier1: "Templar",     tier2: "BattlePriest",tier3: "Inquisitor"},
@@ -164,12 +162,11 @@ export const HDEFS = [
   { id:"h25", n:"Ironjaw Reck",         faction:"pirates",        rarity:"champion", cls:"attacker", atk:175, foc:0,   spd:90, icon:"💀",          subspecies:"Captain"    },
   { id:"h26", n:"Navigator Seyne",      faction:"pirates",        rarity:"champion", cls:"leader",   atk:110, foc:60,  spd:80, icon:"🧭",          subspecies:"Captain"    },
   // ── Marines ── (leader, attacker, support, defender covered; extras: defender+support)
-  { id:"h3",  n:"Lieutenant Stonewall", faction:"marines",        rarity:"veteran",  cls:"defender", atk:115, foc:0,   spd:60, icon:"⚓",          subspecies:"Experienced" },
-  { id:"h4",  n:"Sergeant Vael",        faction:"marines",        rarity:"veteran",  cls:"attacker", atk:120, foc:0,   spd:72, icon:"🪖",          subspecies:"Experienced" },
-  { id:"h15", n:"Ensign Merrow",        faction:"marines",        rarity:"soldier",  cls:"leader",   atk:88,  foc:0,   spd:62, icon:"🛡",          subspecies:"Newbie"      },
-  { id:"h16", n:"Field Medic Asha",     faction:"marines",        rarity:"soldier",  cls:"support",  atk:40,  foc:90,  spd:68, icon:"⛑",          subspecies:"Newbie"      },
-  { id:"h27", n:"Bulwark Trane",        faction:"marines",        rarity:"champion", cls:"defender", atk:130, foc:0,   spd:62, icon:"🏰",          subspecies:"Admiral"     },
-  { id:"h28", n:"Tactician Orel",       faction:"marines",        rarity:"champion", cls:"support",  atk:70,  foc:160, spd:74, icon:"📋",          subspecies:"Admiral"     },
+
+
+
+
+
   // ── Bounty Hunters / Wizards ── (leader, attacker, support, defender covered; extras: support+attacker)
   { id:"h5",  n:"Solarius Vex",         faction:"bountyhunters",  rarity:"veteran",  cls:"support",  atk:20,  foc:180, spd:62, icon:"🔮",          subspecies:"Sage"        },
   { id:"h6",  n:"Mira Ashveil",         faction:"bountyhunters",  rarity:"veteran",  cls:"attacker", atk:120, foc:100, spd:70, icon:"✨",          subspecies:"Sage"        },
@@ -178,12 +175,11 @@ export const HDEFS = [
   { id:"h29", n:"Archmage Thessaly",    faction:"bountyhunters",  rarity:"champion", cls:"support",  atk:40,  foc:210, spd:65, icon:"🌟",          subspecies:"Warlock"     },
   { id:"h30", n:"Spellblade Ryn",       faction:"bountyhunters",  rarity:"champion", cls:"attacker", atk:155, foc:130, spd:72, icon:"⚡",          subspecies:"Warlock"     },
   // ── MerFolk ── (leader, attacker, support, defender covered; extras: attacker+defender)
-  { id:"h7",  n:"Tidalborn Cael",       faction:"merfolk",        rarity:"veteran",  cls:"attacker", atk:135, foc:0,   spd:78, icon:"🌊",          subspecies:"Warden"      },
-  { id:"h8",  n:"Coralspine Nyra",      faction:"merfolk",        rarity:"veteran",  cls:"support",  atk:60,  foc:120, spd:68, icon:"🐚",          subspecies:"Warden"      },
-  { id:"h19", n:"Riptide Kael",         faction:"merfolk",        rarity:"soldier",  cls:"defender", atk:85,  foc:0,   spd:55, icon:"🪸",          subspecies:"Fry"         },
-  { id:"h20", n:"Deepwarden Syla",      faction:"merfolk",        rarity:"soldier",  cls:"leader",   atk:70,  foc:0,   spd:62, icon:"🐠",          subspecies:"Fry"         },
-  { id:"h31", n:"Abyssal Thren",        faction:"merfolk",        rarity:"champion", cls:"attacker", atk:165, foc:0,   spd:80, icon:"🦑",          subspecies:"Leviathan"   },
-  { id:"h32", n:"Tidecaller Mara",      faction:"merfolk",        rarity:"champion", cls:"defender", atk:120, foc:40,  spd:58, icon:"🧜",          subspecies:"Leviathan"   },
+
+
+
+
+
   // ── Orcs ── (leader, attacker, support, defender covered; extras: attacker+defender)
   { id:"h9",  n:"Grimtusk",             faction:"orcs",           rarity:"veteran",  cls:"attacker", atk:155, foc:0,   spd:60, icon:"⚔️",         subspecies:"Marauder"    },
   { id:"h10", n:"Ashgrip",              faction:"orcs",           rarity:"veteran",  cls:"defender", atk:115, foc:0,   spd:65, icon:"🪓",          subspecies:"Marauder"    },
@@ -220,7 +216,7 @@ export const HDEFS = [
 // Stats are ~50% of average soldier-rarity playable commanders.
 // Power level mapping: P1 → Skirmisher, P2 → Raider, P3/P4 → Outlaw
 export const NPC_COMMANDERS = {
-  skirmisher: { id:"npc1", n:"Skirmisher", icon:"⚔",  faction:null, rarity:"soldier", cls:"attacker", atk:45, foc:0,  spd:35, troopBranch:{ faction:"marines",  branch:"regulars",   tier:0 } },
+  skirmisher: { id:"npc1", n:"Skirmisher", icon:"⚔",  faction:null, rarity:"soldier", cls:"attacker", atk:45, foc:0,  spd:35, troopBranch:{ faction:"pirates",  branch:"cutthroats",   tier:0 } },
   raider:     { id:"npc2", n:"Raider",     icon:"🗡",  faction:null, rarity:"soldier", cls:"attacker", atk:50, foc:0,  spd:38, troopBranch:{ faction:"orcs",     branch:"grunts",     tier:0 } },
   outlaw:     { id:"npc3", n:"Outlaw",     icon:"💀",  faction:null, rarity:"soldier", cls:"attacker", atk:55, foc:10, spd:40, troopBranch:{ faction:"pirates",   branch:"swashbucklers", tier:0 } },
 };
