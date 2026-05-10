@@ -25,8 +25,8 @@ const RSS_ENC     = { stone:1, wood:2, ore:3, gas:4 };
 const RSS_DEC     = [null,"stone","wood","ore","gas"];
 const TROOP_ENC   = { infantry:1, mage:2, spearmen:3, horsemen:4 };
 const TROOP_DEC   = [null,"infantry","mage","spearmen","horsemen"];
-const OWNER_ENC   = { player:1, ai:2, pirates:3, merfolk:4, marines:5, orcs:6, bountyhunters:7, dragons:8, holyknights:9, nightcreatures:10 };
-const OWNER_DEC   = [null,"player","ai","pirates","merfolk","marines","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
+const OWNER_ENC   = { player:1, ai:2, pirates:3, orcs:4, bountyhunters:5, dragons:6, holyknights:7, nightcreatures:8 };
+const OWNER_DEC   = [null,"player","ai","pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
 
 const F_KEEP     = 1<<1;
 const F_KEEPPART = 1<<2;
@@ -341,7 +341,6 @@ self.onmessage = function(e) {
       keepName: reg.keepName,
       defCmd: {
         n:reg.keepName, icon:"🏰", cls:"defender", faction:null, rarity:"veteran",
-        troopBranch:{ faction:"marines", branch:"wardens", tier:2 }, lvl:KEEP_CMD_LVL, troops:KEEP_TROOPS,
         atk:120*KEEP_CMD_LVL, spd:40+KEEP_CMD_LVL*2,
       },
     };
@@ -364,8 +363,6 @@ self.onmessage = function(e) {
   // Pre-own starter keeps
   const STARTER_CMDS = {
     pirates:        { n:"Saltmere Captain",       icon:"⚓"  },
-    merfolk:        { n:"Tidesreach Warden",       icon:"🌊"  },
-    marines:        { n:"Ironhaven Commander",     icon:"⚔"   },
     orcs:           { n:"Grimhold Warchief",       icon:"💀"  },
     bountyhunters:  { n:"Ashenveil Ranger",        icon:"🏹"  },
     dragons:        { n:"Emberpeak Drake",         icon:"🔥"  },
@@ -396,7 +393,7 @@ self.onmessage = function(e) {
   postMessage({ type:"progress", pct:92, label:"Finding spawn points..." });
 
   const spawnKeys={}, usedKeys=new Set();
-  for (const fk of ["pirates","merfolk","marines","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
+  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
     const startRegion=FACTION_REGIONS[fk]?.start;
     if (!startRegion) continue;
     const key=randomSpawn(startRegion,usedKeys);
