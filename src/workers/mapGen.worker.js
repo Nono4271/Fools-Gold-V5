@@ -201,14 +201,13 @@ function crossingTerrain(type) {
 
 // Build set of all gate tiles and border tiles for a crossing
 // ── Border width ─────────────────────────────────────────────────────────────
-const BORDER_W = 3; // tiles wide/tall for each border strip
-const BORDER_HALF = Math.floor(BORDER_W / 2); // = 1
+const BORDER_W = 4; // tiles wide/tall for each border strip
+const BORDER_HALF = Math.floor(BORDER_W / 2); // = 2
 
-// For a 3-tile border centered on the grid boundary:
-//   offset -1, 0, +1 from the boundary coordinate
-// Gate A = 1 tile thick × 4 tall, hugging region A side (offset -1 for V, -1 for H)
-// Gate B = 1 tile thick × 4 tall, hugging region B side (offset +1 for V, +1 for H)
-// Path   = 1 tile wide through center (offset 0), at the gate center coord
+// For a 4-tile border: offsets -2, -1, 0, +1 from the boundary coordinate
+// Gate A = 1 tile at offset -2 (hugging region A), x/y === gate center coord
+// Path   = 2 tiles at offsets -1 and 0, x/y === gate center coord
+// Gate B = 1 tile at offset +1 (hugging region B), x/y === gate center coord
 
 // Map region bounds — only paint inside the actual region mass
 const MAP_X0 = 130, MAP_X1 = 1272;
@@ -250,45 +249,48 @@ function buildBorderLine(axis, bCoord, crossingsOnBorder) {
   });
 
   if (axis === 'H') {
-    // Horizontal border: strip of rows bCoord-1, bCoord, bCoord+1
+    // Horizontal border: strip of rows bCoord-2, bCoord-1, bCoord, bCoord+1
     // Runs full width MAP_X0..MAP_X1
-    for (let offset = -BORDER_HALF; offset <= BORDER_HALF; offset++) {
+    for (let offset = -BORDER_HALF; offset < BORDER_HALF; offset++) {
       const y = bCoord + offset;
       if (y < MAP_Y0 || y > MAP_Y1) continue;
       for (let x = MAP_X0; x <= MAP_X1; x++) {
-        // Check if this x is within any gate window on this border
+        // Check if this x is the gate center coord on this border
         let isGateA = false, isGateB = false, isPath = false;
         for (const gw of gateWindows) {
           const gx = gw.gCoord;
-          // Gate A: offset=-1, x in [gx-1, gx+2] (4 tiles wide)
-          if (offset === -BORDER_HALF && x >= gx-1 && x <= gx+2) { isGateA = true; break; }
-          // Gate B: offset=+1, x in [gx-1, gx+2] (4 tiles wide)
-          if (offset === +BORDER_HALF && x >= gx-1 && x <= gx+2) { isGateB = true; break; }
-          // Path: offset=0 (center), x === gx (1 tile wide)
-          if (offset === 0 && x === gx) { isPath = true; break; }
+          // Gate A: offset=-2 (outermost region A row), x === gx (1 tile)
+          if (offset === -BORDER_HALF && x === gx) { isGateA = true; break; }
+          // Gate B: offset=+1 (outermost region B row), x === gx (1 tile)
+          if (offset === BORDER_HALF - 1 && x === gx) { isGateB = true; break; }
+          // Path: offsets -1 and 0 (two center rows), x === gx (1 tile each)
+          if ((offset === -BORDER_HALF + 1 || offset === 0) && x === gx) { isPath = true; break; }
         }
-        if      (isGateA) { const gw = gateWindows.find(g=>{ const gx=g.gCoord; return x>=gx-1&&x<=gx+2; }); gateA.push({x,y,id:gw.id+'_A',type:gw.type}); }
-        else if (isGateB) { const gw = gateWindows.find(g=>{ const gx=g.gCoord; return x>=gx-1&&x<=gx+2; }); gateB.push({x,y,id:gw.id+'_B',type:gw.type}); }
+        if      (isGateA) { const gw = gateWindows.find(g => x === g.gCoord); gateA.push({x,y,id:gw.id+'_A',type:gw.type}); }
+        else if (isGateB) { const gw = gateWindows.find(g => x === g.gCoord); gateB.push({x,y,id:gw.id+'_B',type:gw.type}); }
         else if (isPath)  pathTiles.push({x,y});
         else              impassable.push({x,y});
       }
     }
   } else {
-    // Vertical border: strip of cols bCoord-1, bCoord, bCoord+1
+    // Vertical border: strip of cols bCoord-2, bCoord-1, bCoord, bCoord+1
     // Runs full height MAP_Y0..MAP_Y1
-    for (let offset = -BORDER_HALF; offset <= BORDER_HALF; offset++) {
+    for (let offset = -BORDER_HALF; offset < BORDER_HALF; offset++) {
       const x = bCoord + offset;
       if (x < MAP_X0 || x > MAP_X1) continue;
       for (let y = MAP_Y0; y <= MAP_Y1; y++) {
         let isGateA = false, isGateB = false, isPath = false;
         for (const gw of gateWindows) {
           const gy = gw.gCoord;
-          if (offset === -BORDER_HALF && y >= gy-1 && y <= gy+2) { isGateA = true; break; }
-          if (offset === +BORDER_HALF && y >= gy-1 && y <= gy+2) { isGateB = true; break; }
-          if (offset === 0 && y === gy) { isPath = true; break; }
+          // Gate A: offset=-2 (outermost region A col), y === gy (1 tile)
+          if (offset === -BORDER_HALF && y === gy) { isGateA = true; break; }
+          // Gate B: offset=+1 (outermost region B col), y === gy (1 tile)
+          if (offset === BORDER_HALF - 1 && y === gy) { isGateB = true; break; }
+          // Path: offsets -1 and 0 (two center cols), y === gy (1 tile each)
+          if ((offset === -BORDER_HALF + 1 || offset === 0) && y === gy) { isPath = true; break; }
         }
-        if      (isGateA) { const gw = gateWindows.find(g=>{ const gy=g.gCoord; return y>=gy-1&&y<=gy+2; }); gateA.push({x,y,id:gw.id+'_A',type:gw.type}); }
-        else if (isGateB) { const gw = gateWindows.find(g=>{ const gy=g.gCoord; return y>=gy-1&&y<=gy+2; }); gateB.push({x,y,id:gw.id+'_B',type:gw.type}); }
+        if      (isGateA) { const gw = gateWindows.find(g => y === g.gCoord); gateA.push({x,y,id:gw.id+'_A',type:gw.type}); }
+        else if (isGateB) { const gw = gateWindows.find(g => y === g.gCoord); gateB.push({x,y,id:gw.id+'_B',type:gw.type}); }
         else if (isPath)  pathTiles.push({x,y});
         else              impassable.push({x,y});
       }
