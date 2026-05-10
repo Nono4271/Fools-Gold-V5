@@ -19,8 +19,8 @@ const POWER_DEFS = {
 };
 const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 };
 
-const TERRAIN_ENC = { grass:0, forest:1, mountain:2, desert:3 };
-const TERRAIN_DEC = ["grass","forest","mountain","desert"];
+const TERRAIN_ENC = { grass:0, forest:1, mountain:2, desert:3, river:4, ravine:5, rockymountain:6 };
+const TERRAIN_DEC = ["grass","forest","mountain","desert","river","ravine","rockymountain"];
 const RSS_ENC     = { stone:1, wood:2, ore:3, gas:4 };
 const RSS_DEC     = [null,"stone","wood","ore","gas"];
 const TROOP_ENC   = { infantry:1, mage:2, spearmen:3, horsemen:4 };
@@ -34,6 +34,8 @@ const F_HQ       = 1<<3;
 const F_HQPART   = 1<<4;
 const F_WIN      = 1<<5;
 const F_DEFEATED = 1<<6;
+const F_GATE     = 1<<7;  // crossing/tunnel/tollbridge gate tile (passable border)
+const F_BORDER   = 1<<8;  // border terrain tile (impassable, not a gate)
 
 // ── Region list — v12 coordinates, 1400x1000 design space ────────────────────
 const REGION_LIST = [
@@ -127,7 +129,120 @@ const BIOME_SEEDS = (() => {
   });
   return seeds;
 })();
-const TERRAIN_NAMES = ["grass","forest","mountain","desert"];
+const TERRAIN_NAMES = ["grass","forest","mountain","desert","river","ravine","rockymountain"];
+
+// ── Border crossings — active gates between regions ───────────────────────────
+// Each entry: { axis:'H'|'V', bCoord, gCoord, type:'crossing'|'tunnel'|'tollbridge', id }
+// H = horizontal border (strip of rows at bCoord y, gate centered at gCoord x)
+// V = vertical border   (strip of cols at bCoord x, gate centered at gCoord y)
+// Border terrain: H→river, V→rockymountain, tollbridge→ravine on either axis
+const GATE_GARRISON = 2100;
+const GATE_SIEGE    = 200000;
+const GATE_CMD_LVL  = 20;
+
+const CROSSINGS = [
+  // ── HORIZONTAL borders (y-strips) ──
+  {axis:'H',bCoord:208,gCoord:229, type:'crossing',   id:'h229_208'},
+  {axis:'H',bCoord:208,gCoord:427, type:'crossing',   id:'h427_208'},
+  {axis:'H',bCoord:208,gCoord:613, type:'tollbridge', id:'h613_208'},
+  {axis:'H',bCoord:208,gCoord:788, type:'crossing',   id:'h788_208'},
+  {axis:'H',bCoord:208,gCoord:975, type:'crossing',   id:'h975_208'},
+  {axis:'H',bCoord:208,gCoord:1173,type:'tunnel',     id:'h1173_208'},
+  {axis:'H',bCoord:341,gCoord:613, type:'tollbridge', id:'h613_341'},
+  {axis:'H',bCoord:341,gCoord:788, type:'tollbridge', id:'h788_341'},
+  {axis:'H',bCoord:341,gCoord:975, type:'tunnel',     id:'h975_341'},
+  {axis:'H',bCoord:474,gCoord:229, type:'tunnel',     id:'h229_474'},
+  {axis:'H',bCoord:474,gCoord:427, type:'tunnel',     id:'h427_474'},
+  {axis:'H',bCoord:474,gCoord:613, type:'tollbridge', id:'h613_474'},
+  {axis:'H',bCoord:474,gCoord:788, type:'tollbridge', id:'h788_474'},
+  {axis:'H',bCoord:474,gCoord:975, type:'tunnel',     id:'h975_474'},
+  {axis:'H',bCoord:474,gCoord:1173,type:'tunnel',     id:'h1173_474'},
+  {axis:'H',bCoord:607,gCoord:229, type:'tunnel',     id:'h229_607'},
+  {axis:'H',bCoord:607,gCoord:613, type:'tollbridge', id:'h613_607'},
+  {axis:'H',bCoord:607,gCoord:788, type:'tollbridge', id:'h788_607'},
+  {axis:'H',bCoord:607,gCoord:1173,type:'tunnel',     id:'h1173_607'},
+  {axis:'H',bCoord:740,gCoord:427, type:'crossing',   id:'h427_740'},
+  {axis:'H',bCoord:740,gCoord:613, type:'tollbridge', id:'h613_740'},
+  {axis:'H',bCoord:740,gCoord:788, type:'crossing',   id:'h788_740'},
+  {axis:'H',bCoord:740,gCoord:975, type:'crossing',   id:'h975_740'},
+  // ── VERTICAL borders (x-strips) ──
+  {axis:'V',bCoord:328,gCoord:141, type:'tunnel',     id:'v328_141'},
+  {axis:'V',bCoord:328,gCoord:274, type:'tunnel',     id:'v328_274'},
+  {axis:'V',bCoord:328,gCoord:407, type:'tunnel',     id:'v328_407'},
+  {axis:'V',bCoord:328,gCoord:540, type:'tunnel',     id:'v328_540'},
+  {axis:'V',bCoord:328,gCoord:794, type:'tunnel',     id:'v328_794'},
+  {axis:'V',bCoord:526,gCoord:141, type:'crossing',   id:'v526_141'},
+  {axis:'V',bCoord:526,gCoord:274, type:'crossing',   id:'v526_274'},
+  {axis:'V',bCoord:526,gCoord:407, type:'crossing',   id:'v526_407'},
+  {axis:'V',bCoord:526,gCoord:673, type:'crossing',   id:'v526_673'},
+  {axis:'V',bCoord:526,gCoord:794, type:'crossing',   id:'v526_794'},
+  {axis:'V',bCoord:701,gCoord:141, type:'tollbridge', id:'v701_141'},
+  {axis:'V',bCoord:701,gCoord:274, type:'tollbridge', id:'v701_274'},
+  {axis:'V',bCoord:701,gCoord:407, type:'tollbridge', id:'v701_407'},
+  {axis:'V',bCoord:701,gCoord:540, type:'tollbridge', id:'v701_540'},
+  {axis:'V',bCoord:876,gCoord:141, type:'tollbridge', id:'v876_141'},
+  {axis:'V',bCoord:876,gCoord:274, type:'tollbridge', id:'v876_274'},
+  {axis:'V',bCoord:876,gCoord:407, type:'tollbridge', id:'v876_407'},
+  {axis:'V',bCoord:876,gCoord:540, type:'tollbridge', id:'v876_540'},
+  {axis:'V',bCoord:876,gCoord:794, type:'tollbridge', id:'v876_794'},
+  {axis:'V',bCoord:1074,gCoord:141,type:'tunnel',     id:'v1074_141'},
+  {axis:'V',bCoord:1074,gCoord:274,type:'tunnel',     id:'v1074_274'},
+  {axis:'V',bCoord:1074,gCoord:407,type:'tunnel',     id:'v1074_407'},
+  {axis:'V',bCoord:1074,gCoord:540,type:'tunnel',     id:'v1074_540'},
+  {axis:'V',bCoord:1074,gCoord:794,type:'tunnel',     id:'v1074_794'},
+];
+
+// Terrain type per crossing type
+function crossingTerrain(type) {
+  if (type === 'crossing')   return TERRAIN_ENC.river;
+  if (type === 'tollbridge') return TERRAIN_ENC.ravine;
+  return TERRAIN_ENC.rockymountain; // tunnel
+}
+
+// Build set of all gate tiles and border tiles for a crossing
+function crossingTiles(c) {
+  const gates = [], border = [], path = [];
+  // Only paint a ±HALF window around the gate center on the non-border axis
+  // This keeps each crossing to a small local footprint (~15×5 or 5×15 tiles)
+  const HALF = 7; // tiles either side of gate center on the non-border axis
+
+  if (c.axis === 'H') {
+    // Horizontal border: strip of rows by-2..by+2, centered at gCoord x
+    const by = c.bCoord, gx = c.gCoord;
+    for (let dy = -2; dy <= 2; dy++) {
+      const y = by + dy;
+      if (y < 0 || y >= ROWS) continue;
+      for (let x = gx - HALF; x <= gx + HALF; x++) {
+        if (x < 0 || x >= COLS) continue;
+        const isGateA = dy === -2 && x >= gx - 1 && x <= gx + 2;
+        const isGateB = dy ===  2 && x >= gx - 1 && x <= gx + 2;
+        const isPath  = dy > -2 && dy < 2 && x === gx;
+        if      (isGateA) gates.push({ x, y, side: 'A', id: c.id + '_A' });
+        else if (isGateB) gates.push({ x, y, side: 'B', id: c.id + '_B' });
+        else if (isPath)  path.push({ x, y });
+        else              border.push({ x, y });
+      }
+    }
+  } else {
+    // Vertical border: strip of cols bx-2..bx+2, centered at gCoord y
+    const bx = c.bCoord, gy = c.gCoord;
+    for (let dx = -2; dx <= 2; dx++) {
+      const x = bx + dx;
+      if (x < 0 || x >= COLS) continue;
+      for (let y = gy - HALF; y <= gy + HALF; y++) {
+        if (y < 0 || y >= ROWS) continue;
+        const isGateA = dx === -2 && y >= gy - 1 && y <= gy + 2;
+        const isGateB = dx ===  2 && y >= gy - 1 && y <= gy + 2;
+        const isPath  = dx > -2 && dx < 2 && y === gy;
+        if      (isGateA) gates.push({ x, y, side: 'A', id: c.id + '_A' });
+        else if (isGateB) gates.push({ x, y, side: 'B', id: c.id + '_B' });
+        else if (isPath)  path.push({ x, y });
+        else              border.push({ x, y });
+      }
+    }
+  }
+  return { gates, border, path };
+}
 
 const POLYS = {
   // Holy Grail
@@ -284,7 +399,7 @@ self.onmessage = function(e) {
   const troopArr    = new Uint8Array(SIZE);
   const powerArr    = new Uint8Array(SIZE);
   const regionArr   = new Uint8Array(SIZE);
-  const flagArr     = new Uint8Array(SIZE);
+  const flagArr     = new Uint16Array(SIZE);
   const garrisonArr = new Uint32Array(SIZE);
   const siegeArr    = new Uint32Array(SIZE);
   const siegeMaxArr = new Uint32Array(SIZE);
@@ -390,6 +505,67 @@ self.onmessage = function(e) {
     }
   }
 
+  postMessage({ type:"progress", pct:88, label:"Painting borders..." });
+
+  // ── Paint border terrain and place crossing gate structures ──────────────────
+  const gateMeta = {}; // key → { crossingId, side, type, keepName }
+  const impassKeys = []; // all border tile keys (not gates/path)
+
+  for (const cr of CROSSINGS) {
+    const terrEnc = crossingTerrain(cr.type);
+    const { gates, border, path } = crossingTiles(cr);
+
+    // Paint impassable border tiles
+    for (const {x,y} of border) {
+      const idx = y*COLS+x;
+      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue; // don't overwrite keeps
+      terrainArr[idx] = terrEnc;
+      flagArr[idx] = (flagArr[idx] & ~(F_GATE)) | F_BORDER;
+      rssArr[idx] = 0;
+      impassKeys.push(`${x},${y}`);
+    }
+
+    // Paint path tiles — passable, same terrain for visuals
+    for (const {x,y} of path) {
+      const idx = y*COLS+x;
+      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
+      terrainArr[idx] = terrEnc;
+      flagArr[idx] = (flagArr[idx] & ~F_BORDER) | F_GATE;
+      rssArr[idx] = 0;
+    }
+
+    // Place gate structures (A and B)
+    for (const {x, y, side, id} of gates) {
+      const idx = y*COLS+x;
+      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
+      terrainArr[idx] = terrEnc;
+      flagArr[idx]    = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
+      garrisonArr[idx] = GATE_GARRISON;
+      siegeArr[idx]    = GATE_SIEGE;
+      siegeMaxArr[idx] = GATE_SIEGE;
+      rssArr[idx] = 0;
+
+      const typeName = cr.type === 'crossing' ? 'Crossing' : cr.type === 'tollbridge' ? 'Toll Bridge' : 'Tunnel';
+      const sideName = side === 'A' ? 'Approach' : 'Passage';
+      const keepName = `${typeName} Gate ${side}`;
+      gateMeta[`${x},${y}`] = {
+        crossingId: cr.id,
+        side,
+        type: cr.type,
+        keepName,
+        cx: x, cy: y,
+        defCmd: {
+          n: `${keepName} Defender`, icon: cr.type==='crossing'?'🌊':cr.type==='tollbridge'?'⌒':'🪨',
+          cls:'defender', faction:null, rarity:'veteran',
+          atk:120*GATE_CMD_LVL, spd:40+GATE_CMD_LVL*2,
+        },
+      };
+    }
+  }
+
+  // Merge gateMeta into keepMeta
+  Object.assign(keepMeta, gateMeta);
+
   postMessage({ type:"progress", pct:92, label:"Finding spawn points..." });
 
   const spawnKeys={}, usedKeys=new Set();
@@ -427,8 +603,10 @@ self.onmessage = function(e) {
       COLS, ROWS,
       regionList: REGION_LIST,
       keepMeta,
+      crossings: CROSSINGS,
+      impassKeys,
       TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
-      F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED,
+      F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER,
     },
     spawnKeys,
   }, transferables);
