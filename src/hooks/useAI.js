@@ -93,9 +93,11 @@ const tickAiEcon = useCallback(() => {
     let skillToSpend = null;
     outer: for (const pass of ["main", "side"]) {
       for (let b = 0; b < NUM_BRANCHES; b++) {
-        const keys = pass === "main"
-          ? [getBranchMainSkill(cmd.cls, b)]
-          : getBranchSideSkills(cmd.cls, b);
+        const rawKeys = pass === "main"
+          ? [getBranchMainSkill(cmd.cls, b, cmd)]
+          : getBranchSideSkills(cmd.cls, b, cmd);
+        // getBranchMainSkill returns { key, ...skillDef } objects; extract just the key string
+        const keys = rawKeys.map(k => (typeof k === "object" && k !== null) ? k.key : k);
         for (const key of keys) {
           if (!key) continue;
           if ((sp[key] ?? 0) < MAX_SKILL_LVL) { skillToSpend = key; break outer; }
