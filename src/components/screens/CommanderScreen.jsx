@@ -40,9 +40,7 @@ function getRespectInfo(cmd) {
 // ── Faction colour + shape map ────────────────────────────────────────────────
 const FACTION_THEME = {
   pirates:       { color: "#d4832a", accent: "#ffc060" },
-  marines:       { color: "#4488cc", accent: "#80c0ff" },
   bountyhunters: { color: "#9955dd", accent: "#cc88ff" },
-  merfolk:       { color: "#30b8c8", accent: "#70eef5" },
   orcs:          { color: "#6aa830", accent: "#aaff66" },
   dragons:       { color: "#cc3030", accent: "#ff8855" },
 };
@@ -84,11 +82,6 @@ function FactionNode({ faction, size, filled, color, accent, locked, isMain, sel
         );
       }
 
-      case "marines": { // military shield
-        const d = `M ${cx} ${cy-r} L ${cx+r*.92} ${cy-r*.28} Q ${cx+r*.92} ${cy+r*.55} ${cx} ${cy+r} Q ${cx-r*.92} ${cy+r*.55} ${cx-r*.92} ${cy-r*.28} Z`;
-        return <path d={d} {...shapeProps} />;
-      }
-
       case "bountyhunters": { // cauldron
         const bRx = r*.90, bRy = r*.72, bCy = cy + r*.12;
         const rimCy = bCy - bRy + r*.08, baseY = bCy + bRy*.82;
@@ -105,26 +98,6 @@ function FactionNode({ faction, size, filled, color, accent, locked, isMain, sel
         );
       }
 
-      case "merfolk": { // squid
-        const mRx = r*.72, mRy = r*.58, mCy = cy - r*.18;
-        const tipBase = mCy + mRy*.85;
-        const tips = [r*.88,r*1.02,r*1.10,r*1.05,r*1.10,r*1.02,r*.88,r*.72];
-        return (
-          <g>
-            {tips.map((tip, i) => {
-              const xf = (i / 7) - 0.5;
-              const tx = cx + xf * r * 1.55;
-              return <path key={i}
-                d={`M ${cx+xf*mRx*1.6} ${tipBase} Q ${tx+xf*r*.18} ${tipBase+tip*.55} ${tx} ${tipBase+tip}`}
-                fill="none" stroke={shapeProps.stroke} strokeWidth={shapeProps.strokeWidth*(1.1-i*.04)}
-                strokeLinecap="round" opacity={0.85} />;
-            })}
-            <ellipse cx={cx} cy={mCy} rx={mRx} ry={mRy} {...shapeProps} />
-            <polygon points={`${cx},${mCy-mRy-r*.22} ${cx-r*.18},${mCy-mRy+r*.08} ${cx+r*.18},${mCy-mRy+r*.08}`}
-              fill={shapeProps.fill} stroke={shapeProps.stroke} strokeWidth={shapeProps.strokeWidth*.8} />
-          </g>
-        );
-      }
 
       case "orcs": { // jagged starburst
         const offsets=[1.0,.62,.95,.58,1.0,.65,.88,.55,1.0,.60,.92,.63,.97,.57,1.0,.61];
