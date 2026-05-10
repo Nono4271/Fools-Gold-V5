@@ -561,8 +561,7 @@ function computeBattleStats(b) {
 }
 
 // ── Battle Stats Popup — side-by-side view like LOTR RTW ─────────────────────
-function BattleStatsPopup({ b, onClose }) {
-  const [subPopup, setSubPopup] = useState(null); // "atkCmd"|"defCmd"|"atkTroop"|"defTroop"
+function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
   const oc = outcomeOf(b);
 
   // Compute aggregate stats from round log
@@ -821,14 +820,13 @@ function BattleStatsPopup({ b, onClose }) {
 }
 
 // ── Simple battle summary card ────────────────────────────────────────────────
-function BattleCard({ b, onClick }) {
-  const oc   = outcomeOf(b);
-  const [popup, setPopup] = useState(null); // "stats"|null
+function BattleCard({ b, onOpen }) {
+  const oc = outcomeOf(b);
 
   return (
     <div
-      onClick={e => { e.stopPropagation(); setPopup("stats"); }}
-      onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); setPopup("stats"); }}
+      onClick={e => { e.stopPropagation(); onOpen(b); }}
+      onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onOpen(b); }}
       style={{
         position:"relative",
         padding:"10px 14px", marginBottom:8, cursor:"pointer",
@@ -909,9 +907,6 @@ function BattleCard({ b, onClick }) {
           {b.rounds?.length ?? 0} rounds
         </span>
       </div>
-
-      {/* Battle stats popup */}
-      {popup === "stats" && <BattleStatsPopup b={b} onClose={() => setPopup(null)} />}
     </div>
   );
 }
@@ -1170,6 +1165,8 @@ function DetailedLog({ b }) {
 export default memo(function BattleLog({ battles, bLog, onClose }) {
   const [view,     setView]     = useState("simple");
   const [selected, setSelected] = useState(0);
+  const [activeBattle, setActiveBattle] = useState(null); // battle open in BattleStatsPopup
+  const [subPopup, setSubPopup] = useState(null); // "atkCmd"|"defCmd"|"atkTroop"|"defTroop"
 
   const hasBattles = battles.length > 0;
 
@@ -1261,7 +1258,7 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
             {battles.map((b, i) => (
               <BattleCard
                 key={i} b={b}
-                onClick={() => { setSelected(i); setView("detailed"); }}
+                onOpen={(battle) => setActiveBattle(battle)}
               />
             ))}
           </div>
@@ -1306,6 +1303,16 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
         )}
 
       </div>
+
+      {/* ── All popups rendered HERE at top level, outside every scroll/overflow container ── */}
+      {activeBattle && (
+        <BattleStatsPopup
+          b={activeBattle}
+          subPopup={subPopup}
+          setSubPopup={setSubPopup}
+          onClose={() => { setActiveBattle(null); setSubPopup(null); }}
+        />
+      )}
     </div>
   );
 });
