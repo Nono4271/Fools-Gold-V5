@@ -1532,8 +1532,7 @@ export default function RiseToWar() {
         setShowPerf={setShowPerf}
       />
 
-      {showPerf && <PerfOverlay />}
-      <PerfOverlay />
+      {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
 
     </div>
   );
@@ -1550,32 +1549,19 @@ window._perfLog = function(label) {
 };
 function perfLog(label) { window._perfLog(label); }
 
-function PerfOverlay() {
+function PerfOverlay({ open, onToggle }) {
   const [logs, setLogs] = useState([]);
-  const [open, setOpen] = useState(false);
   _perfSetLog = setLogs;
+
+  if (!open) return null;
 
   return (
     <div style={{
       position:"fixed", top:8, right:8, zIndex:99999,
       fontFamily:"monospace", pointerEvents:"auto",
     }}>
-      {/* Toggle button — always visible */}
-      <div
-        onTouchEnd={e=>{ e.stopPropagation(); setOpen(o=>!o); }}
-        onClick={e=>{ e.stopPropagation(); setOpen(o=>!o); }}
-        style={{
-          background:"rgba(0,0,0,.85)", border:"1px solid #555",
-          borderRadius:6, padding:"4px 10px", fontSize:11,
-          color:"#f0c040", fontWeight:700, cursor:"pointer",
-          textAlign:"right", userSelect:"none",
-        }}>
-        ⏱ PERF {open ? "▲" : "▼"}
-      </div>
-      {/* Panel — only when open */}
-      {open && (
-        <div style={{
-          marginTop:4, width:260,
+      <div style={{
+          width:260,
           background:"rgba(0,0,0,.92)", border:"1px solid #555",
           borderRadius:6, padding:"6px 8px",
           fontSize:10, color:"#ccc",
@@ -1602,7 +1588,6 @@ function PerfOverlay() {
           }
           <div style={{fontSize:8,color:"#555",marginTop:3}}>🔴&gt;100ms 🟡&gt;33ms 🟢fast</div>
         </div>
-      )}
     </div>
   );
 }
