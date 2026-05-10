@@ -144,7 +144,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const tile = tiles[`${c},${r}`];
       if (!tile) continue;
 
-      const { terrain, owner, isHQ, isWin, isKeep, isKeepPart, isHQPart, isShore } = tile;
+      const { terrain, owner, isHQ, isWin, isKeep, isKeepPart, isHQPart, isShore, isGate } = tile;
 
       if (isShore) {
         const { cx, cy } = isoXY(c, r);
@@ -156,7 +156,9 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
       // Keep and keepPart tiles — render as plain ground only.
       // The keep layer (buildKeepLayer) handles all visuals and interaction.
-      if (isKeep || isKeepPart) {
+      // Exception: gate tiles (crossings/tunnels/toll bridges) have isKeep=true but
+      // are NOT in KEEP_REGION_LIST — render them with their actual terrain color.
+      if ((isKeep && !isGate) || isKeepPart) {
         const { cx, cy } = isoXY(c, r);
         const mid = cy + TH / 2;
         const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
@@ -168,7 +170,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const isSel    = selKey === key;
       const isMvTgt  = mode === "selectMarchDest" && mvCmdUid && owner === "player";
       const hasCmds  = Boolean(cByTile[key]?.length);
-      const elev     = (isHQ||isHQPart) ? 14 : isWin ? 10 : (isKeep||isKeepPart) ? 8 : 4;
+      const elev     = (isHQ||isHQPart) ? 14 : isWin ? 10 : (isKeep && !isGate) ? 8 : 4;
       const { cx, cy } = isoXY(c, r);
       const sy  = cy - elev;
       const mid = sy + TH / 2;
@@ -220,7 +222,8 @@ function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
       const r = d - c;
       if (r < rMin || r > rMax) continue;
       const tile = tiles[`${c},${r}`];
-      if (!tile || tile.isHQ || tile.isWin || tile.isKeep || tile.isKeepPart || tile.isHQPart || tile.isShore) continue;
+      // Gate tiles (crossings/tunnels/toll bridges) have isKeep=true but need terrain scatter drawn.
+      if (!tile || tile.isHQ || tile.isWin || (tile.isKeep && !tile.isGate) || tile.isKeepPart || tile.isHQPart || tile.isShore) continue;
       const { cx, cy } = isoXY(c, r);
       const sy = cy - 4;
       if (tile.rss) {
@@ -250,7 +253,7 @@ function drawAllPropsNoScatter(gfx, tiles, rMin, rMax, cMin, cMax) {
       const r = d - c;
       if (r < rMin || r > rMax) continue;
       const tile = tiles[`${c},${r}`];
-      if (!tile || !tile.rss || tile.isHQ || tile.isWin || tile.isKeep ||
+      if (!tile || !tile.rss || tile.isHQ || tile.isWin || (tile.isKeep && !tile.isGate) ||
           tile.isKeepPart || tile.isHQPart || tile.isShore) continue;
       const { cx, cy } = isoXY(c, r);
       const base = cy - 4 + TH * 0.5; // tile surface centre (sy + TH/2)
@@ -959,7 +962,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       if (!key) return;
       const [sc, sr] = key.split(",").map(Number);
       const tile = tilesRef.current[key];
-      if (!tile || tile.isKeep || tile.isKeepPart) return; // keep layer handles its own selection
+      if (!tile || (tile.isKeep && !tile.isGate) || tile.isKeepPart) return; // keep layer handles its own selection
       const elev = (tile.isHQ||tile.isHQPart) ? 14 : tile.isWin ? 10 : (tile.isKeep||tile.isKeepPart) ? 8 : 4;
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
@@ -1044,7 +1047,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
               const r = d - c;
               if (r < pb.rMin || r > pb.rMax) continue;
               const tile = tiles[`${c},${r}`];
-              if (!tile || !tile.rss || tile.isHQ || tile.isWin || tile.isKeep ||
+              if (!tile || !tile.rss || tile.isHQ || tile.isWin || (tile.isKeep && !tile.isGate) ||
                   tile.isKeepPart || tile.isHQPart || tile.isShore) continue;
               const tex = rssTextures[tile.rss];
               if (!tex) continue;
