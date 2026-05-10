@@ -136,6 +136,49 @@ function TroopPopup({ troopBranch, onClose }) {
           ))}
         </div>
       )}
+      {/* Troop skills for this tier */}
+      {(() => {
+        const tier = troopBranch?.tier ?? 0;
+        const skillsForTier = tier === 0 ? [br.skills?.a] : tier === 1 ? [br.skills?.b] : [br.skills?.a, br.skills?.b];
+        const validSkills = skillsForTier.filter(Boolean);
+        if (!validSkills.length) return null;
+        return (
+          <div style={{ marginTop:6 }}>
+            <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
+              letterSpacing:".06em", marginBottom:5, paddingTop:5, borderTop:"1px solid #1e1808" }}>
+              TROOP SKILLS
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+              {validSkills.map((sk) => (
+                <div key={sk.key} style={{
+                  display:"flex", alignItems:"flex-start", gap:7,
+                  padding:"5px 7px", borderRadius:4,
+                  background:"rgba(200,160,64,.05)", border:"1px solid rgba(200,160,64,.18)",
+                }}>
+                  <span style={{ fontSize:14, flexShrink:0 }}>{sk.icon}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
+                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, fontWeight:700, color:"#c8a060" }}>{sk.name}</span>
+                      {sk.trigger && (
+                        <span style={{ fontSize:6, color:"#5a4a38", background:"rgba(255,255,255,.04)",
+                          border:"1px solid #2a2010", borderRadius:2, padding:"0 4px" }}>
+                          {sk.trigger.replace(/_/g," ")}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize:7, color:"#5a4a38", lineHeight:1.4 }}>{sk.desc}</div>
+                    {sk.procBase != null && (
+                      <div style={{ fontSize:6, color:"#3a3028", marginTop:2 }}>
+                        Proc: {Math.round(sk.procBase*100)}% → {Math.round(sk.procMax*100)}% (scales with level)
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -391,6 +434,48 @@ function CommanderPopup({ b, side, onClose }) {
           </div>
           {br && <span style={{ fontSize:7, color:"#3a3028" }}>tap for stats &#x2192;</span>}
         </div>
+
+        {/* Commander Skills — attacker from snapshot, defender from defSkillsSnapshot */}
+        {(() => {
+          const skillSnap = isAtk ? (b.atkSkillsSnapshot ?? []) : (b.defSkillsSnapshot ?? []);
+          if (!skillSnap.length) return null;
+          return <>
+            <div style={{ fontSize:7, color:"#3a3028", fontFamily:"'Cinzel',serif",
+              letterSpacing:".08em", marginTop:10, marginBottom:5, paddingBottom:3, borderBottom:"1px solid #1e1808" }}>
+              SKILLS
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+              {skillSnap.map((sk) => (
+                <div key={sk.key} style={{
+                  display:"flex", alignItems:"flex-start", gap:7,
+                  padding:"5px 7px", borderRadius:4,
+                  background: sk.type === "passive" ? "rgba(80,208,144,.05)" : "rgba(240,192,64,.05)",
+                  border:`1px solid ${sk.type === "passive" ? "rgba(80,208,144,.18)" : "rgba(240,192,64,.18)"}`,
+                }}>
+                  <span style={{ fontSize:14, flexShrink:0 }}>{sk.icon}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
+                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, fontWeight:700,
+                        color: sk.type === "passive" ? "#50d090" : "#f0c040" }}>{sk.name}</span>
+                      <span style={{ fontSize:6, color:"#3a3028", background:"rgba(255,255,255,.04)",
+                        border:"1px solid #2a2010", borderRadius:2, padding:"0 4px" }}>
+                        Lv{sk.level}
+                      </span>
+                      <span style={{ fontSize:6, color: sk.type === "passive" ? "#50d090" : "#f0c040",
+                        opacity:.6 }}>{sk.type}</span>
+                    </div>
+                    <div style={{ fontSize:7, color:"#5a4a38", lineHeight:1.4 }}>{sk.desc}</div>
+                    {sk.type === "active" && sk.cooldown && (
+                      <div style={{ fontSize:6, color:"#3a3028", marginTop:2 }}>
+                        Every {sk.cooldown} rounds
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>;
+        })()}
       </div>
 
       {/* Gear piece popup */}
@@ -559,6 +644,22 @@ function BattleStatsPopup({ b, onClose }) {
                 <div style={{ fontSize:11, color:"#5a4a30" }}>Lv{b.atkLvl} · tap for stats</div>
               </div>
             </div>
+            {atkResolved && (
+              <div onClick={e => { e.stopPropagation(); setSubPopup(p => p==="atkTroop" ? null : "atkTroop"); }}
+                style={{ marginTop:8, display:"flex", alignItems:"center", gap:6,
+                  padding:"5px 7px", borderRadius:4,
+                  background:"rgba(68,136,255,.07)", border:"1px solid rgba(68,136,255,.18)",
+                  cursor:"pointer",
+                }}>
+                <span style={{ fontSize:16 }}>{atkResolved.branchDef.skills?.a?.icon ?? (atkResolved.branchDef.size === "large" ? "🗿" : atkResolved.branchDef.size === "medium" ? "🐴" : "⚔")}</span>
+                <div>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#4488ff", fontWeight:700 }}>
+                    {atkResolved.branchDef.label} · {atkResolved.tierData?.label ?? ""}
+                  </div>
+                  <div style={{ fontSize:9, color:"#3a5840" }}>{b.atkTroopsStart.toLocaleString()} troops · tap for stats</div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* VS */}
@@ -583,6 +684,22 @@ function BattleStatsPopup({ b, onClose }) {
               </div>
               <span style={{ fontSize:28 }}>{b.defCmdIcon || "🛡"}</span>
             </div>
+            {defResolved && (
+              <div onClick={e => { e.stopPropagation(); setSubPopup(p => p==="defTroop" ? null : "defTroop"); }}
+                style={{ marginTop:8, display:"flex", alignItems:"center", justifyContent:"flex-end", gap:6,
+                  padding:"5px 7px", borderRadius:4,
+                  background:"rgba(204,68,68,.07)", border:"1px solid rgba(204,68,68,.18)",
+                  cursor:"pointer",
+                }}>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#cc4444", fontWeight:700 }}>
+                    {defResolved.branchDef.label} · {defResolved.tierData?.label ?? ""}
+                  </div>
+                  <div style={{ fontSize:9, color:"#5a3838" }}>{(b.defTroopsStart ?? 0).toLocaleString()} troops · tap for stats</div>
+                </div>
+                <span style={{ fontSize:16 }}>{defResolved.branchDef.skills?.a?.icon ?? (defResolved.branchDef.size === "large" ? "🗿" : defResolved.branchDef.size === "medium" ? "🐴" : "🛡")}</span>
+              </div>
+            )}
           </div>
         </div>
 
