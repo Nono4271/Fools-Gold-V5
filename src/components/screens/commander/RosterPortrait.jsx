@@ -70,6 +70,23 @@ export default function RosterPortrait({ cmd, selected, onClick }) {
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         transition: "color .15s",
       }}>{cmd.n.split(" ")[0]}</div>
+
+      {/* Stamina bar */}
+      {(() => {
+        const stam = cmd.stamina ?? 200;
+        const pct  = Math.max(0, Math.min(100, (stam / 200) * 100));
+        const sc   = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
+        return (
+          <div style={{ width: 52, marginTop: 1 }}>
+            <div style={{ height: 3, background: "rgba(0,0,0,.5)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${pct}%`, background: sc, borderRadius: 2, transition: "width .3s" }} />
+            </div>
+            <div style={{ textAlign: "center", fontSize: 5, color: sc, fontFamily: "'Cinzel',serif", marginTop: 1 }}>
+              ⚡{Math.floor(stam)}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
