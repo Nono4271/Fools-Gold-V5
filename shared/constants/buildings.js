@@ -6,7 +6,7 @@ quarry:        { n:"Quarry",           icon:"🪨", max:20, desc:"Produces Stone
 lumber:        { n:"Lumber Mill",      icon:"🪵", max:20, desc:"Produces Wood. Lv0=0/hr, Lv1=+300/hr, Lv20=+6000/hr.",                         cost:{ stone:30,  wood:50,  ore:10,  gas:0  }, rss:"wood"  },
 forge:         { n:"Ore Forge",        icon:"⛏",  max:20, desc:"Produces Ore. Lv0=0/hr, Lv1=+300/hr, Lv20=+6000/hr.",                          cost:{ stone:40,  wood:20,  ore:0,   gas:0  }, rss:"ore"   },
 refinery:      { n:"Refinery",         icon:"⚗",  max:20, desc:"Produces Gas. Lv0=0/hr, Lv1=+300/hr, Lv20=+6000/hr.",                          cost:{ stone:60,  wood:40,  ore:30,  gas:0  }, rss:"gas"   },
-storage:       { n:"Storage",          icon:"🏦", max:20, desc:"Increases max resource capacity for all 4 resources. Lv0=200k, Lv20=5M.",       cost:{ stone:100, wood:80,  ore:40,  gas:20 } },
+storage:       { n:"Storage",          icon:"🏦", max:20, desc:"Increases max resource capacity for all 4 resources. Lv0=200k, Lv20=2M.",       cost:{ stone:100, wood:80,  ore:40,  gas:20 } },
 barracks:      { n:"Barracks",         icon:"🏕",  max:10, desc:"Increases max troop capacity. Lv1=2k, Lv10=90k.",                              cost:{ stone:80,  wood:80,  ore:40,  gas:20 } },
 training:      { n:"Training Grounds", icon:"⚔️",  max:10, desc:"Increases max training batch size. Always trainable even at Lv0.",             cost:{ stone:60,  wood:60,  ore:30,  gas:10 } },
 commandcenter: { n:"Command Center",   icon:"📡", max:10, desc:"+300 Command to all commanders per level.",                                      cost:{ stone:150, wood:120, ore:80,  gas:60 } },
@@ -44,10 +44,10 @@ if (lvl <= 0) return 0;
 return Math.round(300 + (lvl - 1) * (5700 / 19));
 }
 
-// Storage building: Lv0 = 200,000 max, Lv20 = 5,000,000 max — linear
+// Storage building: Lv0 = 200,000 max, Lv20 = 2,000,000 max — linear
 export function storageMax(lvl) {
 const l = Math.max(0, Math.min(20, lvl || 0));
-return Math.round(200_000 + l * (4_800_000 / 20));
+return Math.round(200_000 + l * (1_800_000 / 20));
 }
 
 export function maxAvailLevel(type, hqLvl) {
