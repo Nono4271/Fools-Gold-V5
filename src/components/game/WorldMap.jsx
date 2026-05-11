@@ -83,16 +83,10 @@ function centroid(pts) {
   ];
 }
 
-function garrisonLabel(g) {
-  if (!g)        return "Empty";
-  if (g >= 5000) return "Massive";
-  if (g >= 2000) return "Large";
-  if (g >= 500)  return "Medium";
-  return "Small";
-}
 
 export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom, crossings }) {
   const [selected, setSelected] = useState(null);
+  const [clickPos, setClickPos] = useState(null); // { x, y } in screen px
   const [dotPos, setDotPos] = useState(() => panRef?.current || { x: 4, y: 4 });
 
   useEffect(() => {
@@ -120,10 +114,15 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
       const defaultOwner = (reg.layer === 'start' || reg.layer === 'peninsula')
         ? (reg.factions?.[0] || null) : null;
       return { ...reg,
-        owner:    t?.owner ?? defaultOwner,
-        garrison: t?.garrison || 0,
-        siege:    t?.siege    || 0,
-        siegeMax: t?.siegeMax || 0 };
+        owner:          t?.owner ?? defaultOwner,
+        garrison:       t?.garrison || 0,
+        garrisonTroops: t?.garrisonTroops || 0,
+        garrisonWaves:  t?.garrisonWaves ?? 20,
+        defeatedWaves:  t?.defeatedWaves ?? [],
+        siege:          t?.siege    || 0,
+        siegeMax:       t?.siegeMax || 0,
+        defCmd:         t?.defCmd   || null,
+      };
     });
   }, [tiles]);
 
@@ -199,7 +198,9 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
     for (const gate of gates) {
       const dx = svgX - gate.cx, dy = svgY - gate.cy;
       if (dx*dx + dy*dy < GATE_HIT_R*GATE_HIT_R) {
-        setSelected(prev => prev === gate.key ? null : gate.key);
+        const isToggleOff = selected === gate.key;
+        setSelected(isToggleOff ? null : gate.key);
+        setClickPos(isToggleOff ? null : { x: clientX, y: clientY });
         return;
       }
     }
@@ -213,12 +214,15 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
     if (!nearGate) {
       for (const [key, poly] of Object.entries(POLYS)) {
         if (pointInPoly(svgX, svgY, poly)) {
-          setSelected(prev => prev === key ? null : key);
+          const isToggleOff = selected === key;
+          setSelected(isToggleOff ? null : key);
+          setClickPos(isToggleOff ? null : { x: clientX, y: clientY });
           return;
         }
       }
     }
     setSelected(null);
+    setClickPos(null);
   };
 
   return (
@@ -471,100 +475,176 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
 
         </svg>
 
-        {/* ── Detail panel — absolute overlay at bottom so SVG never reshapes ── */}
-        {selectedItem && (
-          <div style={{
-            position: "absolute", left: 0, right: 0, bottom: 0,
-            background: "rgba(4,6,10,0.97)",
-            borderTop: "1px solid rgba(200,160,64,0.2)",
-            padding: "10px 14px 14px",
-            zIndex: 10,
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-              <div>
-                <div style={{ color: "#c8a060", fontSize: 12, letterSpacing: ".06em" }}>
-                  {selectedItem.keepName || selectedItem.name || selectedItem.key}
-                </div>
-                <div style={{
-                  color: selectedItem.owner
-                    ? (selectedItem.owner === "player" ? "#88ccff" : (FAC_COLOR[selectedItem.owner] || "#cc8844"))
-                    : "#7a6a50",
-                  fontSize: 10, marginTop: 2,
-                }}>
-                  {!selectedItem.owner ? "Unoccupied"
-                    : selectedItem.owner === "player" ? "Your Faction" : "Enemy"}
-                  {selectedItem.garrison > 0 && ` · ${garrisonLabel(selectedItem.garrison)} garrison`}
+        {/* ── Floating popup — anchored near click, flips left/right based on screen edge ── */}
+        {selectedItem && clickPos && (() => {
+          const POPUP_W = 220;
+          const POPUP_MAX_H = 260;
+          const PAD = 10; // gap from click point
+          const flipLeft = clickPos.x > screenW * 0.55;
+          const popupLeft = flipLeft
+            ? Math.max(8, clickPos.x - POPUP_W - PAD)
+            : Math.min(screenW - POPUP_W - 8, clickPos.x + PAD);
+          const popupTop = Math.min(
+            Math.max(8, clickPos.y - 40),
+            screenH - POPUP_MAX_H - 8
+          );
+
+          const si = selectedItem;
+          const ownerCol = si.owner
+            ? (si.owner === "player" ? "#44aaff" : (FAC_COLOR[si.owner] || "#cc8844"))
+            : "#7a6a50";
+          const wavesTotal    = si.garrisonWaves ?? 20;
+          const wavesDefeated = si.defeatedWaves?.length ?? 0;
+          const wavesLeft     = Math.max(0, wavesTotal - wavesDefeated);
+          const siegePct      = si.siegeMax > 0 ? Math.round((si.siege / si.siegeMax) * 100) : 0;
+          const defLvl        = si.defCmd?.lvl ?? 20;
+          const troops        = si.garrisonTroops || si.garrison || 0;
+          const isGate        = !!si.type;
+          const typeCol       = si.type === "crossing" ? "#4ab8d8"
+                              : si.type === "tollbridge" ? "#c8a030"
+                              : si.type === "tunnel" ? "#8a8aaa" : null;
+
+          return (
+            <div
+              style={{
+                position: "absolute",
+                left: popupLeft, top: popupTop,
+                width: POPUP_W,
+                background: "rgba(6,8,14,0.97)",
+                border: "1px solid rgba(200,160,64,0.25)",
+                borderRadius: 8,
+                boxShadow: "0 4px 24px rgba(0,0,0,0.8)",
+                zIndex: 20,
+                fontFamily: "'Cinzel',serif",
+                overflow: "hidden",
+                pointerEvents: "all",
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{
+                padding: "10px 12px 8px",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                background: `linear-gradient(160deg, ${ownerCol}12, transparent)`,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#e8dcc8", lineHeight: 1.2,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {si.keepName || si.name || si.key}
+                    </div>
+                    <div style={{ fontSize: 8, color: ownerCol, marginTop: 3, letterSpacing: ".04em" }}>
+                      {!si.owner ? "Unoccupied"
+                        : si.owner === "player" ? "Your Faction" : "Enemy Controlled"}
+                    </div>
+                  </div>
+                  <button onClick={() => { setSelected(null); setClickPos(null); }} style={{
+                    background: "none", border: "none", color: "#4a4030",
+                    fontSize: 14, cursor: "pointer", padding: "0 0 0 8px", flexShrink: 0,
+                    WebkitTapHighlightColor: "transparent",
+                  }}>✕</button>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+
+              {/* Body */}
+              <div style={{ padding: "10px 12px" }}>
+
+                {/* Gate type badge */}
+                {isGate && (
+                  <div style={{
+                    marginBottom: 8, padding: "3px 7px", borderRadius: 3, display: "inline-block",
+                    background: `${typeCol}18`, border: `1px solid ${typeCol}50`,
+                    fontSize: 8, color: typeCol,
+                  }}>
+                    {si.type === "crossing" ? "🌊 River Crossing"
+                     : si.type === "tollbridge" ? "⌒ Toll Bridge" : "⛰ Tunnel Gate"}
+                    {" · Gate "}{si.side}
+                  </div>
+                )}
+
+                {/* Siege bar */}
+                {si.siegeMax > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                      <span style={{ fontSize: 7, color: "#6a5a3a", letterSpacing: ".06em" }}>SIEGE</span>
+                      <span style={{ fontSize: 7, color: "#cc4040", fontWeight: 700 }}>
+                        {si.siege.toLocaleString()}/{si.siegeMax.toLocaleString()}
+                      </span>
+                    </div>
+                    <div style={{ height: 6, background: "#0a0c10", borderRadius: 3, overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%", borderRadius: 3, transition: "width .3s",
+                        width: `${siegePct}%`,
+                        background: siegePct > 60 ? "linear-gradient(90deg,#3a8830,#4db840)"
+                                  : siegePct > 25 ? "linear-gradient(90deg,#8a7010,#c8a820)"
+                                  : "linear-gradient(90deg,#882020,#dd3030)",
+                      }}/>
+                    </div>
+                  </div>
+                )}
+
+                {/* Garrison waves */}
+                {!isGate && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 7, color: "#6a5a3a", letterSpacing: ".06em" }}>GARRISON</span>
+                      <span style={{ fontSize: 7, color: "#c8a060" }}>{wavesLeft}/{wavesTotal} waves left</span>
+                    </div>
+                    {/* Wave pip bar */}
+                    <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                      {Array.from({ length: wavesTotal }).map((_, i) => (
+                        <div key={i} style={{
+                          width: Math.max(6, Math.min(10, (POPUP_W - 40) / wavesTotal - 2)),
+                          height: 6, borderRadius: 2,
+                          background: i < wavesDefeated ? "#2a1a1a" : ownerCol,
+                          opacity: i < wavesDefeated ? 0.3 : 0.85,
+                        }}/>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Defender level + troops */}
+                {!isGate && (
+                  <div style={{
+                    display: "flex", gap: 8,
+                    padding: "6px 8px",
+                    background: "rgba(255,255,255,0.03)",
+                    borderRadius: 5, border: "1px solid rgba(255,255,255,0.06)",
+                  }}>
+                    <div style={{ flex: 1, textAlign: "center" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#c8a060" }}>Lv{defLvl}</div>
+                      <div style={{ fontSize: 6, color: "#4a3a28", letterSpacing: ".06em", marginTop: 1 }}>DEFENDER</div>
+                    </div>
+                    <div style={{ width: 1, background: "rgba(255,255,255,0.06)" }}/>
+                    <div style={{ flex: 1, textAlign: "center" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#c8a060" }}>
+                        {troops >= 1000 ? `${(troops/1000).toFixed(1)}k` : troops}
+                      </div>
+                      <div style={{ fontSize: 6, color: "#4a3a28", letterSpacing: ".06em", marginTop: 1 }}>TROOPS</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer — Go button */}
+              <div style={{ padding: "0 12px 10px" }}>
                 <button
-                  onClick={() => {
-                    onClose();
-                    requestAnimationFrame(() => onTeleport(selectedItem.cx, selectedItem.cy));
-                  }}
+                  onClick={() => { onClose(); requestAnimationFrame(() => onTeleport(si.cx, si.cy)); }}
                   style={{
-                    padding: "7px 18px",
+                    width: "100%", padding: "8px 0",
                     background: "linear-gradient(160deg,#2a1e08,#100c02)",
-                    border: "1px solid #8a6020", borderRadius: 4,
+                    border: "1px solid #8a6020", borderRadius: 5,
                     color: "#f0c060", fontFamily: "'Cinzel',serif",
-                    fontSize: 11, letterSpacing: ".06em", cursor: "pointer",
-                    WebkitTapHighlightColor: "transparent",
-                  }}>Go →</button>
-                <button
-                  onClick={() => setSelected(null)}
-                  style={{
-                    background: "none", border: "none", color: "#4a4030",
-                    fontSize: 16, cursor: "pointer", padding: "8px",
+                    fontSize: 10, letterSpacing: ".08em", cursor: "pointer",
                     WebkitTapHighlightColor: "transparent",
                   }}>
-                  ✕
+                  GO →
                 </button>
               </div>
             </div>
-            <div style={{
-              padding: "3px 8px", borderRadius: 3, display: "inline-block",
-              background: selectedItem.layer === "ring"     ? "rgba(240,192,64,0.12)"
-                        : selectedItem.layer === "conflict" ? "rgba(220,60,40,0.12)"
-                        : selectedItem.type === "crossing"  ? "rgba(30,100,160,0.15)"
-                        : selectedItem.type === "tollbridge"? "rgba(160,120,20,0.15)"
-                        : selectedItem.type === "tunnel"    ? "rgba(60,60,80,0.15)"
-                        : "rgba(60,80,60,0.12)",
-              border: `1px solid ${
-                selectedItem.layer === "ring" ? "#7a5010"
-                : selectedItem.layer === "conflict" ? "#6a2010"
-                : selectedItem.type === "crossing" ? "#1a5080"
-                : selectedItem.type === "tollbridge" ? "#806010"
-                : selectedItem.type === "tunnel" ? "#404058"
-                : "#2a3a2a"
-              }`,
-              color: selectedItem.layer === "ring" ? "#c8a040"
-                   : selectedItem.layer === "conflict" ? "#cc5040"
-                   : selectedItem.type === "crossing" ? "#4ab8d8"
-                   : selectedItem.type === "tollbridge" ? "#c8a030"
-                   : selectedItem.type === "tunnel" ? "#8a8aaa"
-                   : "#4a6a4a",
-              fontSize: 8,
-            }}>
-              {selectedItem.type === "crossing"   ? "🌊 River Crossing"
-               : selectedItem.type === "tollbridge"? "⌒ Toll Bridge"
-               : selectedItem.type === "tunnel"    ? "⛰ Tunnel Gate"
-               : selectedItem.layer === "ring"     ? "⚜ Holy Ring"
-               : selectedItem.layer === "conflict" ? "⚔ Conflict Zone"
-               : selectedItem.layer === "farm"     ? "🌾 Farm Region" : "🏰 Starting Region"}
-            </div>
-            {selectedItem.siegeMax > 0 && (
-              <div style={{ marginTop: 6 }}>
-                <div style={{ background: "#0a0c10", borderRadius: 2, height: 5, overflow: "hidden" }}>
-                  <div style={{
-                    height: "100%",
-                    width: `${Math.round((selectedItem.siege / selectedItem.siegeMax) * 100)}%`,
-                    background: "linear-gradient(90deg,#882020,#dd3030)", borderRadius: 2,
-                  }}/>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
