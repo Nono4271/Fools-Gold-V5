@@ -145,6 +145,7 @@ export default memo(function TilePopup({
   const titleLabel = popupMode==="editArmy" ? "🔧 Edit Army"
     : popupMode==="recallPick" ? "↩ Recall Commander"
     : selTile.isWin   ? "⚜ The Holy Grail"
+    : selTile.isPeninsulaGate ? `🚧 ${selTile.keepName || "Peninsula Gate"}`
     : selTile.isGate && selTile.crossingType === "crossing"   ? `🌊 ${selTile.keepName || "River Crossing"}`
     : selTile.isGate && selTile.crossingType === "tollbridge" ? `⌒ ${selTile.keepName || "Toll Bridge"}`
     : selTile.isGate && selTile.crossingType === "tunnel"     ? `⛰ ${selTile.keepName || "Tunnel Gate"}`
@@ -172,6 +173,11 @@ export default memo(function TilePopup({
           {popupMode==="main" && selTile.powerLevel && !selTile.isHQ && (
             <span style={{fontSize:7,color:POWER_DEFS[selTile.powerLevel]?.color,fontFamily:"'Cinzel',serif",fontWeight:700,background:`${POWER_DEFS[selTile.powerLevel]?.color}18`,padding:"1px 4px",borderRadius:3,border:`1px solid ${POWER_DEFS[selTile.powerLevel]?.color}40`}}>
               ⚡ {POWER_DEFS[selTile.powerLevel]?.label}
+            </span>
+          )}
+          {popupMode==="main" && selTile.isPeninsulaGate && selTile.homeFaction && (
+            <span style={{fontSize:7,color:"#c8a060",fontFamily:"'Cinzel',serif",fontWeight:700,background:"rgba(200,160,60,.12)",padding:"1px 4px",borderRadius:3,border:"1px solid rgba(200,160,60,.35)"}}>
+              🔒 {selTile.homeFaction} only
             </span>
           )}
         </div>
