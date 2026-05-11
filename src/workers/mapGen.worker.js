@@ -32,21 +32,22 @@ const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 }; // kept for keeps 
 // P10–P13 use weight 1 each but are converted to 2×2 structures after the main
 // tile pass — any tile that rolled P10-P13 becomes the top-left of a 2×2 block.
 const POWER_WEIGHTS = [
-  { pl:1, w:480 },
-  { pl:2, w:280 },
-  { pl:3, w:140 },
-  { pl:4, w: 64 },
-  { pl:5, w: 24 },
-  { pl:6, w:  9 },
-  { pl:7, w:  3 },
-  { pl:8, w:  2 },
-  { pl:9, w:  1 },
-  { pl:10,w:  1 },
-  { pl:11,w:  1 },
-  { pl:12,w:  1 },
-  { pl:13,w:  1 },
+  { pl:1,  w:226400 },
+  { pl:2,  w:230000 },
+  { pl:3,  w:210000 },
+  { pl:4,  w:210000 },
+  { pl:5,  w:170000 },
+  { pl:6,  w:150000 },
+  { pl:7,  w:100000 },
+  { pl:8,  w: 48000 },
+  { pl:9,  w: 32000 },
+  { pl:10, w:  9200 },
+  { pl:11, w:  6000 },
+  { pl:12, w:  4800 },
+  { pl:13, w:  3600 },
 ];
-const POWER_TOTAL = POWER_WEIGHTS.reduce((s, e) => s + e.w, 0); // 1000
+// Weights sum exactly to 1,400,000 (= COLS × ROWS) so expected count = weight for each level.
+const POWER_TOTAL = POWER_WEIGHTS.reduce((s, e) => s + e.w, 0);
 
 // Fast per-tile RNG seeded from coords — deterministic, no global state
 function tileRng(c, r) {
@@ -564,14 +565,15 @@ self.onmessage = function(e) {
       const pl2  = powerArr[idx2];
       if (pl2 < 10) continue;
 
-      // All 4 cells must be clear
+      // All 4 cells must be clear of flags AND outside static keep footprints
       const cells = [[c2,r2],[c2+1,r2],[c2,r2+1],[c2+1,r2+1]];
       let blocked = false;
       for (const [tc, tr] of cells) {
         const ti = tr * COLS + tc;
         if (flagArr[ti] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { blocked = true; break; }
+        if (KEEP_FOOTPRINT_SET.has(`${tc},${tr}`)) { blocked = true; break; }
       }
-      if (blocked) { powerArr[idx2] = 9; continue; } // downgrade so it renders as P9
+      if (blocked) { powerArr[idx2] = 9; continue; }
 
       const siege2 = P10_SIEGE[pl2] ?? 8000;
 
