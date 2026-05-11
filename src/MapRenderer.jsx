@@ -54,47 +54,44 @@ function worldToKey(wx, wy, tiles) {
   const cEst = Math.round((u / (TW / 2) + v / (TH / 2)) / 2);
   const rEst = Math.round((v / (TH / 2) - u / (TW / 2)) / 2);
 
-  // Fast path: try the exact estimate first (hits ~80% of clicks without looping)
-  {
-    const c = cEst, r = rEst;
-    if (c >= 0 && r >= 0 && c < COLS && r < ROWS) {
-      const key = `${c},${r}`;
-      const tile = tiles[key];
-      // Gate tiles (crossings/tunnels/toll bridges) have isKeep=true but are NOT
-      // in KEEP_REGION_LIST, so allow clicking them via the tile layer.
-      // P10-13 structures (powerLevel >= 10) are also dynamic keeps not in
-      // KEEP_REGION_LIST — allow tile-layer clicks for all 4 of their cells.
-      const pl10 = (tile?.powerLevel ?? 0) >= 10;
-      const isStaticKeep = tile?.isKeep && !tile?.isGate && !pl10;
-      const isStaticPart = tile?.isKeepPart && !pl10;
-      if (tile && !isStaticKeep && !isStaticPart) {
-        const { cx, cy } = isoXY(c, r);
-        const elev = tile.isHQ ? 14 : tile.isWin ? 10 : 4;
-        const sy = cy - elev;
-        if (Math.abs(wx - cx) / (TW / 2) + Math.abs(wy - (sy + TH / 2)) / (TH / 2) <= 1.08) return key;
-      }
-    }
+  // Check if point is inside a single iso-diamond tile
+  function inTile(wx, wy, c, r, elev) {
+    const { cx, cy } = isoXY(c, r);
+    const sy = cy - elev;
+    return Math.abs(wx - cx) / (TW / 2) + Math.abs(wy - (sy + TH / 2)) / (TH / 2) <= 1.08;
   }
 
-  // Slow path: ±2 scan for edge/elevation cases
+  // Check if point is inside the full 2×2 outer diamond for a P10+ structure.
+  // The 2×2 diamond center is at (cx, cy+TH), half-widths are TW and TH.
+  function inP10Footprint(wx, wy, pc, pr) {
+    const { cx, cy } = isoXY(pc, pr);
+    return Math.abs(wx - cx) / TW + Math.abs(wy - (cy + TH)) / TH <= 1.05;
+  }
+
+  // Scan ±2 tiles around estimate, checking P10+ footprints first
   for (let dr = -2; dr <= 2; dr++) {
     for (let dc = -2; dc <= 2; dc++) {
-      if (dr === 0 && dc === 0) continue; // already checked above
       const c = cEst + dc, r = rEst + dr;
       if (c < 0 || r < 0 || c >= COLS || r >= ROWS) continue;
       const key = `${c},${r}`;
-      if (!tiles[key]) continue;
       const tile = tiles[key];
-      // Gate tiles are clickable even though isKeep=true
-      // P10-13 dynamic structures (powerLevel >= 10) — all 4 cells are tile-layer clickable
-      const pl10b = (tile.powerLevel ?? 0) >= 10;
-      const isStaticKeep2 = tile.isKeep && !tile.isGate && !pl10b;
-      const isStaticPart2 = tile.isKeepPart && !pl10b;
-      if (isStaticKeep2 || isStaticPart2) continue; // keep layer handles static keeps
-      const { cx, cy } = isoXY(c, r);
+      if (!tile) continue;
+
+      const pl = tile.powerLevel ?? 0;
+      const isStaticKeep = tile.isKeep && !tile.isGate && pl < 10;
+      const isStaticPart = tile.isKeepPart && pl < 10;
+      if (isStaticKeep || isStaticPart) continue;
+
+      if (pl >= 10 && (tile.isKeep || tile.isKeepPart)) {
+        // Use full 2×2 footprint hitbox; always return the primary key
+        const primKey = tile.isKeepPart ? tile.keepPrimaryKey : key;
+        const [pc, pr2] = (primKey || key).split(",").map(Number);
+        if (inP10Footprint(wx, wy, pc, pr2)) return primKey || key;
+        continue;
+      }
+
       const elev = tile.isHQ ? 14 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
-      const sy = cy - elev;
-      if (Math.abs(wx - cx) / (TW / 2) + Math.abs(wy - (sy + TH / 2)) / (TH / 2) <= 1.08) return key;
+      if (inTile(wx, wy, c, r, elev)) return key;
     }
   }
   return null;
@@ -178,12 +175,14 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           const { cx, cy } = isoXY(c, r);
           const baseColor = getTileBaseColor(c, r, "grass");
           // Outer hull of the 2×2 block: N, E, S, W corners
+          // Expanded by 1px outward on each axis to eliminate sub-pixel gap artifacts
           const MERGED = [
-            cx,        cy,            // N — top of (c,r)
-            cx + TW,   cy + TH,       // E — right of (c+1,r)
-            cx,        cy + TH * 2,   // S — bottom of (c+1,r+1)
-            cx - TW,   cy + TH,       // W — left of (c,r+1)
+            cx,        cy - 1,          // N
+            cx + TW+1, cy + TH,         // E
+            cx,        cy + TH * 2 + 1, // S
+            cx - TW-1, cy + TH,         // W
           ];
+          gfx.lineStyle(0);
           gfx.beginFill(baseColor); gfx.drawPolygon(MERGED); gfx.endFill();
         } else {
           const { cx, cy } = isoXY(c, r);
