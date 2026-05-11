@@ -113,6 +113,21 @@ export default memo(function CommanderPicker({
                       </div>
                       <span style={{fontSize:8,color:wp>=60?"#3daa60":wp>=40?"#d0a030":"#cc3030",fontWeight:700,flexShrink:0}}>~{wp}%</span>
                     </div>
+                    {/* Stamina */}
+                    {(() => {
+                      const stam = cmd.stamina ?? 200;
+                      const sc   = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
+                      const pct  = Math.max(0, Math.min(100, (stam / 200) * 100));
+                      return (
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
+                          <span style={{fontSize:7,color:sc,fontFamily:"'Cinzel',serif",flexShrink:0}}>⚡{Math.floor(stam)}/200</span>
+                          <div style={{flex:1,height:3,background:"#181820",borderRadius:2,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:`${pct}%`,background:sc,borderRadius:2}}/>
+                          </div>
+                          {stam < 20 && <span style={{fontSize:6,color:"#cc4040",fontFamily:"'Cinzel',serif",flexShrink:0}}>LOW</span>}
+                        </div>
+                      );
+                    })()}
                     <div style={{marginTop:4,fontSize:7,color:"#4488ff",fontFamily:"'Cinzel',serif",letterSpacing:".05em"}}>
                       🚶 {etaStr} march
                     </div>
@@ -136,7 +151,7 @@ export default memo(function CommanderPicker({
             }
           }}
           style={{width:"100%",padding:"13px",background:pickCmd?"linear-gradient(135deg,#881010,#cc2020,#881010)":"rgba(255,255,255,.02)",border:pickCmd?"2px solid #e03030":"2px solid #1a1a1a",color:pickCmd?"#f0c040":"#2a2a2a",fontSize:14,fontWeight:700,letterSpacing:".1em",boxShadow:pickCmd?"0 0 16px rgba(200,30,30,.45)":"none",transition:"all .2s",borderRadius:5}}>
-          {pickCmd ? `⚔ MARCH! — ${pickCmd.n}` : "Select a commander"}
+          {pickCmd ? `⚔ MARCH! — ${pickCmd.n}  ·  20⚡` : "Select a commander"}
         </button>
       </div>
     </div>
