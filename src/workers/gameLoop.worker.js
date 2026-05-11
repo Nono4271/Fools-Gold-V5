@@ -109,15 +109,26 @@ function tickDraw() {
   }
 }
 
-// ── Siege reset: disabled — server owns garrison reset timing ──────────────
-// The server schedules setTimeout per tile and pushes TILE_PATCH when it fires.
-// The client-side timer is kept as a no-op to avoid removing the interval slot,
-// but it no longer fires siegeReset messages. The tick heartbeat moves here so
-// HUD countdown timers still update every second.
+// ── Siege reset: client-side timer for offline play ────────────────────────
+// Fires siegeReset for any tile whose resetAt has passed.
+// When online, the server will also push TILE_PATCH which onSiegeReset handles —
+// double-firing is safe because onSiegeReset is idempotent (clears to []).
 function tickSiegeReset() {
-  // Server-authoritative: do NOT fire siegeReset from client.
-  // Just post the heartbeat tick so HUD timers remain accurate.
+  // Always post the heartbeat tick so HUD countdown timers stay accurate.
   self.postMessage({ type: 'tick', now: Date.now() });
+
+  if (!snapshot) return;
+  const { tiles } = snapshot;
+  if (!tiles || !Object.keys(tiles).length) return;
+
+  const now = Date.now();
+  const changedKeys = [];
+  for (const [k, t] of Object.entries(tiles)) {
+    if (t.resetAt && now >= t.resetAt) changedKeys.push(k);
+  }
+  if (changedKeys.length) {
+    self.postMessage({ type: 'siegeReset', changedKeys, now });
+  }
 }
 
 // ── Reinforcement march: 100ms ─────────────────────────────────────────────

@@ -556,6 +556,7 @@ self.onmessage = function(e) {
 
     keepMeta[`${reg.cx},${reg.cy}`] = {
       keepName: reg.keepName,
+      garrisonWaves: 20,
       defCmd: {
         n:reg.keepName, icon:"🏰", cls:"defender", faction:null, rarity:"veteran",
         lvl:KEEP_CMD_LVL, troops:KEEP_TROOPS,
@@ -652,6 +653,7 @@ self.onmessage = function(e) {
       const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
       gateMeta[`${x},${y}`] = {
         keepName: `${typeName} Gate A`,
+        garrisonWaves: 2,
         cx: x, cy: y, side: 'A', type,
         defCmd: {
           n: `${typeName} Gate A Defender`,
@@ -676,6 +678,7 @@ self.onmessage = function(e) {
       const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
       gateMeta[`${x},${y}`] = {
         keepName: `${typeName} Gate B`,
+        garrisonWaves: 2,
         cx: x, cy: y, side: 'B', type,
         defCmd: {
           n: `${typeName} Gate B Defender`,
@@ -777,6 +780,7 @@ self.onmessage = function(e) {
       rssArr[gidx]      = 0;
       keepMeta[`${gc},${gr}`] = {
         keepName:    pb.keepName,
+        garrisonWaves: 2,
         homeFaction: pb.faction,
         cx: gc, cy: gr,
         isPeninsulaGate: true,
