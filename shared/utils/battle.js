@@ -2,7 +2,7 @@ import { FACTION_TROOPS, troopSizeModifier, skillProcAtLevel } from "../constant
 import { TERR  } from "../constants/terrain.js";
 import { POWER_DEFS, XP_PER_COMMAND } from "../constants/map.js";
 import { skillFiresOnRound, getActiveSkills, getPassiveBonuses } from "../constants/skills.js";
-import { npcForPowerLevel } from "../constants/heroes.js";
+import { npcForPowerLevel, factionDefCmdForTile } from "../constants/heroes.js";
 
 // ── Resolve troopBranch → { branchDef, tierData } ────────────────────────────
 function resolveBranch(troopBranch) {
@@ -109,13 +109,24 @@ if (!hasExposed) return 1.0;
 return (atkBranchDef.role === "ranged" || atkBranchDef.role === "siege_ranged") ? 1.15 : 1.0;
 }
 
-export function garrisonDefCmd(tile) {
+export function garrisonDefCmd(tile, playerFaction) {
 const plvl = tile.powerLevel || 1;
 const pd   = POWER_DEFS[plvl] || POWER_DEFS[1];
 const npc  = npcForPowerLevel(plvl);
+
+// Tier 4-7 tiles get a named faction commander from the opposite alignment
+if (plvl >= 4 && playerFaction) {
+  const fc = factionDefCmdForTile(tile.c ?? 0, tile.r ?? 0, playerFaction, plvl);
+  if (fc) return {
+    ...fc,
+    troops: tile.garrisonTroops || pd.command,
+    // troopBranch already set by factionDefCmdForTile to commander's own faction
+  };
+}
+
 return {
 lvl:         pd.cmdLvl,
-troops:      tile.garrisonTroops || pd.troops,
+troops:      tile.garrisonTroops || pd.command,
 troopBranch: npc.troopBranch || null,
 atk:         npc.atk * pd.cmdLvl,
 spd:         npc.spd + pd.cmdLvl * 2,
@@ -127,9 +138,9 @@ rarity:      "soldier",
 };
 }
 
-export function resolvedDefTile(tile) {
+export function resolvedDefTile(tile, playerFaction) {
 if (tile.owner === "ai" && !tile.hasAiCommander)
-return { ...tile, defCmd: garrisonDefCmd(tile) };
+return { ...tile, defCmd: garrisonDefCmd(tile, playerFaction) };
 return tile;
 }
 
