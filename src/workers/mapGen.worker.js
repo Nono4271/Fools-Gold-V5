@@ -530,10 +530,38 @@ self.onmessage = function(e) {
 
       const regIdx  = REGION_MAP[idx];
       const reg     = regIdx ? REGION_LIST[regIdx-1] : null;
-      const pl      = rollPowerLevel(c, r);   // global weighted random, same odds everywhere
+      const pl      = rollPowerLevel(c, r);
       const pd      = POWER_DEFS[pl];
-      const rssKey  = RKEYS[Math.floor(Math.random()*4)];
       const trpKey  = TROOP_KEYS[Math.floor(Math.random()*4)];
+
+      // RSS pool per power level:
+      // P1 (1/hr)   — all 4 resources (shown as "all" in UI, no individual props)
+      // P2 (10/hr)  — ore, gas only
+      // P3 (15/hr)  — wood, stone only
+      // P4 (30/hr)  — ore, gas only
+      // P5 (40/hr)  — wood, stone only
+      // P6 (60/hr)  — ore, gas only
+      // P7 (90/hr)  — wood, stone only
+      // P8 (130/hr) — ore, gas only
+      // P9 (150/hr) — wood, stone only
+      // P10-P13     — all 4 resources
+      const RSS_POOL = {
+        1:  ["stone","wood","ore","gas"],
+        2:  ["ore","gas"],
+        3:  ["wood","stone"],
+        4:  ["ore","gas"],
+        5:  ["wood","stone"],
+        6:  ["ore","gas"],
+        7:  ["wood","stone"],
+        8:  ["ore","gas"],
+        9:  ["wood","stone"],
+        10: ["stone","wood","ore","gas"],
+        11: ["stone","wood","ore","gas"],
+        12: ["stone","wood","ore","gas"],
+        13: ["stone","wood","ore","gas"],
+      };
+      const pool   = RSS_POOL[pl] || ["stone","wood","ore","gas"];
+      const rssKey = pool[Math.floor(Math.random() * pool.length)];
 
       terrainArr[idx]  = TERRAIN_ENC[TERRAIN_NAMES[TERRAIN_MAP[idx]]] ?? 0;
       rssArr[idx]      = RSS_ENC[rssKey] ?? 0;
@@ -577,19 +605,15 @@ self.onmessage = function(e) {
 
       const siege2 = P10_SIEGE[pl2] ?? 8000;
 
-      // Primary tile
-      terrainArr[idx2]  = TERRAIN_ENC.grass ?? 0;
-      rssArr[idx2]      = 0;
+      // Primary tile — preserve natural terrain and rss for prop rendering
       flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
       garrisonArr[idx2] = POWER_DEFS[pl2].command;
       siegeArr[idx2]    = siege2;
       siegeMaxArr[idx2] = siege2;
 
-      // 3 KEEPPART tiles
+      // 3 KEEPPART tiles — preserve natural terrain and rss
       for (const [tc, tr] of [[c2+1,r2],[c2,r2+1],[c2+1,r2+1]]) {
         const ti = tr * COLS + tc;
-        terrainArr[ti]  = TERRAIN_ENC.grass ?? 0;
-        rssArr[ti]      = 0;
         powerArr[ti]    = pl2;
         regionArr[ti]   = regionArr[idx2];
         flagArr[ti]     = (flagArr[ti] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
