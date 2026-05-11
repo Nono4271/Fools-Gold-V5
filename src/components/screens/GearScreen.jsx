@@ -17,6 +17,8 @@ export default function GearScreen({ gearInventory, setGearInventory, cmds, setC
       position: "fixed", inset: 0, zIndex: 9200,
       background: "#080704",
       display: "flex", flexDirection: "column",
+      height: "100dvh",
+      overflow: "hidden",
     }}>
       <style>{CSS}</style>
 
@@ -58,7 +60,7 @@ export default function GearScreen({ gearInventory, setGearInventory, cmds, setC
       </div>
 
       {/* Gear inventory fills remaining space */}
-      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
         <GearInventory
           inventory={gearInventory ?? []}
           setInventory={setGearInventory}

@@ -252,7 +252,74 @@ function SchematicStrip({ schematics, cmds, setCmds, onSchematicUsed }) {
   );
 }
 
-/* ── Main screen ── */
+/* ── Summon results modal popup ── */
+function SummonResultsModal({ pullResults, coll, onClose }) {
+  if (!pullResults?.length) return null;
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9999,
+      background: "rgba(0,0,0,0.82)",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "flex-start",
+    }} onClick={onClose}>
+      <div style={{
+        width: "100%", maxWidth: 560,
+        maxHeight: "90dvh",
+        marginTop: "5dvh",
+        background: "#0d0b14",
+        border: "1px solid #3a2a4a",
+        borderRadius: 10,
+        display: "flex", flexDirection: "column",
+        overflow: "hidden",
+      }} onClick={e => e.stopPropagation()}>
+        {/* Modal header */}
+        <div style={{
+          flexShrink: 0,
+          padding: "10px 14px",
+          borderBottom: "1px solid #1a1820",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <span style={{ fontFamily: "'Cinzel',serif", fontSize: 11, color: "#bb88ee", letterSpacing: ".08em" }}>
+            ✦ SUMMONED — {pullResults.length} pull{pullResults.length !== 1 ? "s" : ""}
+          </span>
+          <button onClick={onClose} style={{
+            background: "none", border: "none", color: "#5a4a6a",
+            fontSize: 18, cursor: "pointer", padding: "4px 8px",
+          }}>✕</button>
+        </div>
+        {/* Scrollable results */}
+        <div style={{
+          flex: 1, overflowY: "auto",
+          padding: "12px 14px 20px",
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y",
+          overscrollBehavior: "contain",
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[...pullResults].reverse().map((pr, pi) => (
+              <div key={pr.id} style={{
+                background: "rgba(255,255,255,.015)", border: "1px solid #1a1810",
+                borderRadius: 6, padding: "8px 10px",
+              }}>
+                <div style={{ fontSize: 7, color: "#3a2e18", fontFamily: "'Cinzel',serif",
+                  marginBottom: 6, letterSpacing: ".06em" }}>
+                  PULL {pullResults.length - pi} — 3 ITEMS
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {pr.slots.map((slot, si) => (
+                    <SlotCard key={si} slot={slot} index={si} coll={coll} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function GachaScreen({
   screen, tiles, gems, pull,
   pullResults, coll, gearInventory, respectSchematics,
@@ -261,15 +328,21 @@ export default function GachaScreen({
 }) {
   const aln = ALIGNMENT[playerAlignment];
   const [activeTab, setActiveTab] = useState("summon"); // "summon" | "gear" | "collection"
+  const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.add("gacha-open");
     return () => document.documentElement.classList.remove("gacha-open");
   }, []);
 
+  // Auto-open results modal whenever a new pull lands
+  useEffect(() => {
+    if (pullResults?.length) setShowResults(true);
+  }, [pullResults?.length]);
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "#0a0c10",
-      display: "flex", flexDirection: "column", overflow: "hidden", touchAction: "pan-y" }}>
+      display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
       <style>{CSS}</style>
 
       {/* Top bar */}
@@ -319,14 +392,13 @@ export default function GachaScreen({
       </div>
 
       {/* Body */}
-      <div className="scr" style={{ flex: 1, minHeight: 0, overflowY: "scroll", padding: "14px 14px", touchAction: "pan-y", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
+      <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
-        {/* ── SUMMON TAB ── */}
+        {/* ── SUMMON TAB — static, fits screen ── */}
         {activeTab === "summon" && (
-          <>
-            {/* Alignment badge + rates */}
-            <div style={{ display: "flex", justifyContent: "space-between",
-              alignItems: "center", marginBottom: 10 }}>
+          <div style={{ flex: 1, minHeight: 0, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, overflow: "hidden" }}>
+            {/* Rates + alignment badge */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
               <div>
                 <p style={{ fontSize: 8, color: "#6a5a7a", letterSpacing: ".08em",
                   fontFamily: "'Crimson Pro',serif" }}>
@@ -340,7 +412,7 @@ export default function GachaScreen({
               </div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "2px 8px", background: `${aln.color}15`,
-                border: `1px solid ${aln.color}40`, borderRadius: 3 }}>
+                border: `1px solid ${aln.color}40`, borderRadius: 3, flexShrink: 0 }}>
                 <span style={{ fontSize: 10 }}>{aln.icon}</span>
                 <span style={{ fontSize: 7, color: aln.color, fontFamily: "'Cinzel',serif" }}>
                   {aln.n} pool
@@ -349,7 +421,7 @@ export default function GachaScreen({
             </div>
 
             {/* Pity bars */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 12, padding: "8px 10px",
+            <div style={{ display: "flex", gap: 6, padding: "8px 10px", flexShrink: 0,
               background: "rgba(255,255,255,.02)", border: "1px solid #1a1a22", borderRadius: 6 }}>
               {[
                 { rarity: "soldier",  label: "Soldier",  pityAt: PITY.soldier,  color: "#4488cc" },
@@ -376,16 +448,16 @@ export default function GachaScreen({
             </div>
 
             {/* Pull buttons */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
               {(() => {
                 const singleFree = isFreeAvailable;
                 const singleColor = singleFree ? "#3daa60" : "#9940cc";
                 const singleAffordable = singleFree || gems >= (isHalfAvailable ? 200 : 400);
                 const singleLabel = singleFree ? "💚 FREE" : isHalfAvailable ? "💎 200" : "💎 400";
                 return (<>
-                  <button className="btn" onClick={() => pull(1)} disabled={!singleAffordable}
+                  <button className="btn" onClick={() => { pull(1); }} disabled={!singleAffordable}
                     style={{
-                      flex: 1, minWidth: 120, padding: "11px 8px",
+                      flex: 1, padding: "clamp(8px,2vh,14px) 8px",
                       background: singleAffordable
                         ? singleFree
                           ? "linear-gradient(135deg,rgba(40,140,80,.35),rgba(40,140,80,.12))"
@@ -411,9 +483,9 @@ export default function GachaScreen({
                     )}
                   </button>
 
-                  <button className="btn" onClick={() => pull(10)} disabled={gems < 4000}
+                  <button className="btn" onClick={() => { pull(10); }} disabled={gems < 4000}
                     style={{
-                      flex: 1, minWidth: 120, padding: "11px 8px",
+                      flex: 1, padding: "clamp(8px,2vh,14px) 8px",
                       background: gems >= 4000
                         ? "linear-gradient(135deg,rgba(120,50,150,.3),rgba(120,50,150,.1))"
                         : "rgba(255,255,255,.02)",
@@ -429,17 +501,30 @@ export default function GachaScreen({
               })()}
             </div>
 
-            {/* Pull results */}
-            <PullResults pullResults={pullResults} coll={coll} />
+            {/* View results button */}
+            {pullResults?.length > 0 && (
+              <button onClick={() => setShowResults(true)} style={{
+                width: "100%", flexShrink: 0, padding: "9px 0",
+                background: "rgba(120,50,150,.15)", border: "1px solid #4a2060",
+                color: "#bb88ee", fontFamily: "'Cinzel',serif", fontSize: 9,
+                borderRadius: 5, cursor: "pointer", letterSpacing: ".06em",
+              }}>
+                ✦ View Summoned ({pullResults.length} pull{pullResults.length !== 1 ? "s" : ""})
+              </button>
+            )}
 
-            {/* Respect schematics */}
-            <SchematicStrip schematics={respectSchematics} cmds={cmds} setCmds={setCmds} onSchematicUsed={onSchematicUsed} />
-          </>
+            {/* Schematics — scrollable strip at bottom if any exist */}
+            {respectSchematics?.length > 0 && (
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+                <SchematicStrip schematics={respectSchematics} cmds={cmds} setCmds={setCmds} onSchematicUsed={onSchematicUsed} />
+              </div>
+            )}
+          </div>
         )}
 
-        {/* ── COLLECTION TAB ── */}
+        {/* ── COLLECTION TAB — scrollable grid ── */}
         {activeTab === "collection" && (
-          <>
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 14px", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
               <span style={{ fontSize: 14 }}>{aln.icon}</span>
               <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: aln.color,
@@ -480,9 +565,18 @@ export default function GachaScreen({
                 </div>
               </div>
             ))}
-          </>
+          </div>
         )}
       </div>
+
+      {/* Summon results modal */}
+      {showResults && (
+        <SummonResultsModal
+          pullResults={pullResults}
+          coll={coll}
+          onClose={() => setShowResults(false)}
+        />
+      )}
     </div>
   );
 }
