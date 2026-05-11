@@ -1493,7 +1493,7 @@ onClick={() => setCmds(p => p.map(c => {
     troopBranch: newBranch,
     troopSlots: newSlots,
   };
-}))
+}))}
 style={{ padding:"6px 4px", textAlign:"center",
 background:isActive?"rgba(240,192,64,.15)":"rgba(255,255,255,.02)",
 border:`1px solid ${isActive?P.gold:P.border}`,
