@@ -894,7 +894,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
   const cmdCap = cmdCommand(lvl, bldgs?.commandcenter ?? 0, (cmd.cls==="leader"&&lvl>=25)?500:0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y" }}>
       {showSkills && <SkillTreeOverlay cmd={cmd} setCmds={setCmds} gems={gems} setGems={setGems} onClose={() => setShowSkills(false)} />}
 
       {/* ── Name + identity ── */}
@@ -1867,6 +1867,12 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
   const [filterSubspecies, setFilterSubspecies] = useState(null);
   const [sortBy,           setSortBy]           = useState("rarity");
   const [showFilter,       setShowFilter]       = useState(false);
+
+  // Allow touch scroll events through the main.tsx touchstart guard
+  useEffect(() => {
+    document.documentElement.classList.add("gacha-open");
+    return () => document.documentElement.classList.remove("gacha-open");
+  }, []);
 
   const allPlayer = cmds.filter(c => c.owner === "player");
   const activeFilterCount = [filterClass, filterAlignment, filterSubspecies].filter(Boolean).length;
