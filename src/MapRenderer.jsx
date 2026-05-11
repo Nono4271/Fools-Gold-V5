@@ -62,7 +62,10 @@ function worldToKey(wx, wy, tiles) {
       const tile = tiles[key];
       // Gate tiles (crossings/tunnels/toll bridges) have isKeep=true but are NOT
       // in KEEP_REGION_LIST, so allow clicking them via the tile layer.
-      if (tile && (!tile.isKeep || tile.isGate) && !tile.isKeepPart) {
+      // P10-13 structures (powerLevel >= 10) are also dynamic keeps not in
+      // KEEP_REGION_LIST — allow tile-layer clicks for them too.
+      const isStaticKeep = tile?.isKeep && !tile?.isGate && (tile?.powerLevel ?? 0) < 10;
+      if (tile && !isStaticKeep && !tile.isKeepPart) {
         const { cx, cy } = isoXY(c, r);
         const elev = tile.isHQ ? 14 : tile.isWin ? 10 : 4;
         const sy = cy - elev;
@@ -81,7 +84,9 @@ function worldToKey(wx, wy, tiles) {
       if (!tiles[key]) continue;
       const tile = tiles[key];
       // Gate tiles are clickable even though isKeep=true
-      if ((tile.isKeep && !tile.isGate) || tile.isKeepPart) continue; // keep layer handles non-gate keeps
+      // P10-13 dynamic structures (powerLevel >= 10) are also tile-layer clickable
+      const isStaticKeep2 = tile.isKeep && !tile.isGate && (tile.powerLevel ?? 0) < 10;
+      if (isStaticKeep2 || tile.isKeepPart) continue; // keep layer handles static keeps
       const { cx, cy } = isoXY(c, r);
       const elev = tile.isHQ ? 14 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
       const sy = cy - elev;
