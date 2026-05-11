@@ -207,7 +207,9 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
     const matches = [];
     for (const [key, tile] of Object.entries(tiles)) {
       if (!selected.has(tile.powerLevel)) continue;
-      if (tile.isKeep || tile.isHQ || tile.isGate || tile.isBorder) continue;
+      // Exclude static keeps, HQs, gates and border tiles — but include P10-13 structures
+      if (tile.isHQ || tile.isGate || tile.isBorder || tile.isKeepPart) continue;
+      if (tile.isKeep && tile.powerLevel < 10) continue;
       const dc = tile.c - hc, dr = tile.r - hr;
       matches.push({ key, c: tile.c, r: tile.r, pl: tile.powerLevel, dist: Math.sqrt(dc*dc + dr*dr) });
     }
