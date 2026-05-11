@@ -232,9 +232,9 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
       <div style={{ position:"fixed", inset:0, zIndex:9200, pointerEvents:"auto" }} onClick={onClose} />
 
       {/* Panel */}
-      <div style={{
+      <div className="find-tiles-popup" style={{
         position:"fixed", bottom:90, right:8, zIndex:9201,
-        width:230,
+        width:280,
         pointerEvents:"auto",
         background:"rgba(5,7,11,.97)",
         border:"1px solid #2a2010",
@@ -253,11 +253,13 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
           <div style={{ fontSize:7, color:"#5a4a30", fontFamily:"'Cinzel',serif", marginBottom:6, letterSpacing:".05em" }}>SELECT POWER LEVELS</div>
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             {PL_LIST.map(({ pl, label, color }) => (
-              <label key={pl} style={{ display:"flex", alignItems:"center", gap:7, cursor:"pointer" }}>
+              <label key={pl} style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"4px 2px" }}>
                 <div
+                  role="checkbox"
+                  aria-checked={selected.has(pl)}
                   onClick={() => togglePl(pl)}
                   style={{
-                    width:14, height:14, borderRadius:3, flexShrink:0,
+                    width:20, height:20, borderRadius:3, flexShrink:0,
                     border:`1px solid ${color}88`,
                     background: selected.has(pl) ? color : "rgba(0,0,0,.4)",
                     boxShadow: selected.has(pl) ? `0 0 6px ${color}66` : "none",
@@ -266,9 +268,9 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
                     cursor:"pointer",
                   }}
                 >
-                  {selected.has(pl) && <span style={{ fontSize:9, color:"#fff", lineHeight:1 }}>✓</span>}
+                  {selected.has(pl) && <span style={{ fontSize:13, color:"#fff", lineHeight:1 }}>✓</span>}
                 </div>
-                <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color, letterSpacing:".04em" }}>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color, letterSpacing:".04em" }}>
                   ⚡ {label}
                 </span>
               </label>
@@ -282,13 +284,13 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
             onClick={doSearch}
             disabled={!selected.size}
             style={{
-              width:"100%", padding:"7px 0",
+              width:"100%", padding:"12px 0",
               background: selected.size
                 ? "linear-gradient(160deg,#3a2808,#1e1404)"
                 : "rgba(20,15,8,.6)",
               border:`1px solid ${selected.size ? "#8a6020" : "#2a2010"}`,
               borderRadius:4, color: selected.size ? "#f0c060" : "#4a3820",
-              fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:".06em",
+              fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:".06em",
               cursor: selected.size ? "pointer" : "default",
               boxShadow: selected.size ? "inset 0 1px 0 rgba(255,255,255,.08)" : "none",
             }}
@@ -317,7 +319,7 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
                       onClick={() => jumpTo(c, r)}
                       style={{
                         display:"flex", alignItems:"center", justifyContent:"space-between",
-                        width:"100%", padding:"5px 6px", marginBottom:2,
+                        width:"100%", padding:"10px 8px", marginBottom:3,
                         background:"rgba(255,255,255,.03)", border:"1px solid #1e1810",
                         borderRadius:4, cursor:"pointer",
                         textAlign:"left",

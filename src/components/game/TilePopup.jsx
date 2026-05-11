@@ -208,7 +208,7 @@ export default memo(function TilePopup({
               <span style={{fontSize:7,color:"#6a7a5a",fontFamily:"'Cinzel',serif"}}>
                 +{selTile.powerLevel === 1
                   ? "60/hr (all)"
-                  : `${({2:288,3:336,4:432}[selTile.powerLevel]??288)}/hr`}
+                  : `${({2:288,3:336,4:432,5:504,6:672,7:768,8:864,9:960}[selTile.powerLevel]??288)}/hr`}
               </span>
             </div>
           )}
