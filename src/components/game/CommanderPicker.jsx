@@ -74,10 +74,19 @@ export default memo(function CommanderPicker({
                 const atkStatMult = atkTier
                   ? Math.sqrt(((atkTier.dmgLo + atkTier.dmgHi) / 2) * atkTier.hp)
                   : 35;
-                const atkPow = (cmd.troops||0) * atkStatMult * Math.pow(1.20,(cmd.lvl||5)-5) * mod;
+                // cmd.troops is the raw command budget; use actual unit count from slots.
+                const atkUnits = cmd.troopSlots?.length > 0
+                  ? cmd.troopSlots.reduce((s, sl) => s + (sl.troops || 0), 0)
+                  : (cmd.troops || 0);
+                const atkPow = atkUnits * atkStatMult * Math.pow(1.20,(cmd.lvl||5)-5) * mod;
 
                 const dc = atkTile?.defCmd;
-                const defTroops = dc ? dc.troops : (atkTile?.garrison||30);
+                // dc.troops is the raw command budget for garrison commanders; sum slots instead.
+                const defTroops = dc
+                  ? (dc.troopSlots?.length > 0
+                      ? dc.troopSlots.reduce((s, sl) => s + (sl.troops || 0), 0)
+                      : (dc.troops || 0))
+                  : (atkTile?.garrison || 30);
                 const defBranch = dc?.troopBranch
                   ? FACTION_TROOPS[dc.troopBranch.faction]?.branches.find(b => b.key === dc.troopBranch.branch)
                   : null;
