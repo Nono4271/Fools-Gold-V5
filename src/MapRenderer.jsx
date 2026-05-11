@@ -1114,17 +1114,20 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       propsGfx.visible = false; // Graphics layer unused on iOS
       world.addChild(propsSpriteContainer); // sits between tiles and keeps
       const tmpGfx = new PIXI.Graphics();
+      // Bake one texture per (rss, powerLevel) pair so size scaling works on iOS.
+      // P1 tiles have no props so skip pl=1. 52 textures total (4 rss × 13 pl).
       for (const rss of ["wood", "stone", "ore", "gas"]) {
-        // Use fixed seed (c=5, r=3) and pl=4 so all tiles share one high-detail
-        // texture per resource type — tiny visual compromise, massive perf gain.
-        const rt = PIXI.RenderTexture.create({
-          width: TEX_W, height: TEX_H,
-          resolution: app.renderer.resolution,
-        });
-        tmpGfx.clear();
-        drawRssProp(tmpGfx, rss, TEX_CX, TEX_SY, 5, 3, 4);
-        app.renderer.render(tmpGfx, { renderTexture: rt });
-        rssTextures[rss] = rt;
+        rssTextures[rss] = {}; // keyed by pl
+        for (let pl = 2; pl <= 13; pl++) {
+          const rt = PIXI.RenderTexture.create({
+            width: TEX_W, height: TEX_H,
+            resolution: app.renderer.resolution,
+          });
+          tmpGfx.clear();
+          drawRssProp(tmpGfx, rss, TEX_CX, TEX_SY, 5, 3, pl);
+          app.renderer.render(tmpGfx, { renderTexture: rt });
+          rssTextures[rss][pl] = rt;
+        }
       }
       tmpGfx.destroy();
     }
@@ -1233,8 +1236,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
       if (isIOS) {
         // ── Sprite path (iOS) ────────────────────────────────────────────
-        // Return all active sprites to the pool, then reposition from pool.
-        // No tessellation: sprites are textured quads (2 triangles each).
         while (propsSpriteContainer.children.length > 0) {
           propsSpritePool.push(propsSpriteContainer.removeChildAt(0));
         }
@@ -1249,16 +1250,22 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
               const r = d - c;
               if (r < pb.rMin || r > pb.rMax) continue;
               const tile = tiles[`${c},${r}`];
-              if (!tile || !tile.rss || tile.isHQ || tile.isWin || (tile.isKeep && !tile.isGate) ||
-                  tile.isKeepPart || tile.isHQPart || tile.isShore) continue;
-              const tex = rssTextures[tile.rss];
+              if (!tile || !tile.rss || tile.isHQ || tile.isWin || tile.isHQPart || tile.isShore) continue;
+              // Skip P1 (no individual props) and static keeps/keepparts
+              const pl = tile.powerLevel || 1;
+              if (pl === 1) continue;
+              const isStaticKeep = (tile.isKeep && !tile.isGate) && pl < 10;
+              const isStaticPart = tile.isKeepPart && pl < 10;
+              if (isStaticKeep || isStaticPart) continue;
+              const texMap = rssTextures[tile.rss];
+              const tex = texMap?.[pl] ?? texMap?.[2];
               if (!tex) continue;
               const { cx, cy } = isoXY(c, r);
               const sp = propsSpritePool.pop() ?? new PIXI.Sprite();
               sp.texture  = tex;
-              sp.anchor.set(0.5, anchorY); // anchor at base (tile surface centre)
+              sp.anchor.set(0.5, anchorY);
               sp.x = cx;
-              sp.y = cy - 4 + TH * 0.5;   // world "base" coordinate
+              sp.y = cy - 4 + TH * 0.5;
               propsSpriteContainer.addChild(sp);
             }
           }
@@ -1640,7 +1647,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     return () => {
       cancelIdle();
       cancelPropsIdle();
-      Object.values(rssTextures).forEach(rt => rt.destroy(true));
+      Object.values(rssTextures).forEach(texMap => {
+        if (texMap && typeof texMap === 'object') {
+          Object.values(texMap).forEach(rt => rt?.destroy?.(true));
+        }
+      });
       ro.disconnect();
       el.removeEventListener("wheel",      onWheel);
       el.removeEventListener("mousedown",  onMD);
