@@ -230,7 +230,7 @@ function GearDetail({ piece, inventory, cmds, setCmds, setInventory, playerAlign
   };
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, touchAction: "pan-y", overscrollBehavior: "contain" }}>
+    <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px 32px", display: "flex", flexDirection: "column", gap: 10, touchAction: "pan-y", overscrollBehavior: "contain" }}>
       <GearCard piece={piece} selected={false} onClick={() => {}} />
 
       {/* Equip / Unequip */}
@@ -378,7 +378,7 @@ export default memo(function GearInventory({ inventory, setInventory, cmds, setC
   const selectedPiece = inventory.find(g => g.instanceId === selectedId) ?? null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
       {/* Filter bar */}
       <div style={{
         padding: "10px 12px", borderBottom: "1px solid #1a1508",

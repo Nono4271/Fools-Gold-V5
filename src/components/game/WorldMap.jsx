@@ -210,9 +210,9 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
       position: "fixed", inset: 0, zIndex: 9999,
       background: "#080c10",
       display: "flex", flexDirection: "column",
+      height: "100dvh",
       overflow: "hidden",
       fontFamily: "'Cinzel',serif",
-      // Do NOT set touchAction here — let clicks through
     }}>
       <style>{`
         @keyframes holyPulse { 0%,100%{opacity:.3} 50%{opacity:.6} }
@@ -247,17 +247,14 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
         </span>
       </div>
 
-      {/* Map area — scrollable so the full map is always reachable on any screen size */}
-      <div style={{ flex: 1, position: "relative", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch" }}>
+      {/* Map area — fills remaining height, SVG letterboxed to fit entirely on screen */}
+      <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
         <svg
           viewBox={`0 0 ${DW} ${DH}`}
           preserveAspectRatio="xMidYMid meet"
           style={{
-            display: "block", width: "100%",
-            /* Maintain aspect ratio: height scales with width so southern border is never clipped */
-            height: "auto", minHeight: "100%",
+            display: "block", width: "100%", height: "100%",
             cursor: "pointer",
-            // Ensure SVG itself receives pointer events
             pointerEvents: "all",
           }}
           onClick={handleSvgClick}
