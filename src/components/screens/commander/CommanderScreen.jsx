@@ -51,6 +51,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       position: "fixed", inset: 0, zIndex: 700,
       background: "#080704",
       display: "flex", flexDirection: "column",
+      minHeight: 0,
     }}>
       <style>{CSS}</style>
 
@@ -151,7 +152,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       )}
 
       {/* ── Body ── */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
         <div style={{
           width: 76, flexShrink: 0,
           overflowY: "auto", overflowX: "hidden",
@@ -178,7 +179,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", minWidth: 0, position: "relative", WebkitOverflowScrolling: "touch", touchAction: "pan-y", overscrollBehavior: "contain" }}>
+        <div style={{ flex: 1, overflowY: "auto", minWidth: 0, minHeight: 0, position: "relative", WebkitOverflowScrolling: "touch", touchAction: "pan-y", overscrollBehavior: "contain" }}>
           {selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
             : (

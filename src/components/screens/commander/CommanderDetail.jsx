@@ -27,7 +27,7 @@ export default function CommanderDetail({ cmd, bldgs, gearInventory, setGearInve
   const cmdCap = cmdCommand(lvl, bldgs?.commandcenter ?? 0, (cmd.cls==="leader"&&lvl>=25)?500:0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
       {showSkills && <SkillTreeOverlay cmd={cmd} setCmds={setCmds} gems={gems} setGems={setGems} onClose={() => setShowSkills(false)} />}
 
       {/* ── Name + identity ── */}
