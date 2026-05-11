@@ -1,4 +1,4 @@
-export const RSS_BLDGS = new Set(["quarry", "lumber", "forge", "refinery"]);
+export const RSS_BLDGS = new Set(["quarry", "lumber", "forge", "refinery", "storage"]);
 
 export const BLDG = {
 hq:            { n:"HQ",               icon:"🏰", max:10, desc:"Seat of power. Gates all other building upgrades. Most costly to upgrade.",    cost:{ stone:800, wood:600, ore:400, gas:300 } },
