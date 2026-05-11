@@ -16,7 +16,8 @@ import { FACTION_REGIONS, REGION_LIST } from "../shared/constants/regions.js";
 // Utils
 import { bfsPath, adj, effectiveMarchSpd, marchStepMs, setImpassableTiles } from "../shared/utils/pathfinding.js";
 import { applyGearToCmd } from "../shared/utils/gearStats.js";
-import { garrisonDefCmd, normaliseTroopSlots } from "../shared/utils/battle.js";
+import { garrisonDefCmd } from "../shared/utils/battle.js";
+import { normaliseTroopSlots } from "../shared/utils/pathfinding.js";
 
 // Hooks
 import { useResources } from "./hooks/useResources.js";
