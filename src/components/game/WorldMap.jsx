@@ -102,8 +102,17 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
     return () => clearInterval(id);
   }, [panRef]);
 
-  const screenW = typeof window !== "undefined" ? window.innerWidth  : 390;
-  const screenH = typeof window !== "undefined" ? window.innerHeight : 844;
+  const [screenSize, setScreenSize] = useState(() => ({
+    w: typeof window !== "undefined" ? window.innerWidth  : 390,
+    h: typeof window !== "undefined" ? window.innerHeight : 844,
+  }));
+  useEffect(() => {
+    const onResize = () => setScreenSize({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const screenW = screenSize.w;
+  const screenH = screenSize.h;
 
   const keeps = useMemo(() => {
     return REGION_LIST.map(reg => {
@@ -185,8 +194,8 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
       return inside;
     }
 
-    // ── Gate hit-test FIRST (smaller targets, must take priority over keep polys) ──
-    const GATE_HIT_R = 14;
+    // ── Gate hit-test FIRST — larger radius, always wins over keep polys ──
+    const GATE_HIT_R = 22;
     for (const gate of gates) {
       const dx = svgX - gate.cx, dy = svgY - gate.cy;
       if (dx*dx + dy*dy < GATE_HIT_R*GATE_HIT_R) {
@@ -195,11 +204,18 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
       }
     }
 
-    // ── Region polygon hit-test ──
-    for (const [key, poly] of Object.entries(POLYS)) {
-      if (pointInPoly(svgX, svgY, poly)) {
-        setSelected(prev => prev === key ? null : key);
-        return;
+    // ── Region polygon hit-test — skip if near any gate ──
+    const GATE_EXCLUSION_R = 28;
+    const nearGate = gates.some(gate => {
+      const dx = svgX - gate.cx, dy = svgY - gate.cy;
+      return dx*dx + dy*dy < GATE_EXCLUSION_R*GATE_EXCLUSION_R;
+    });
+    if (!nearGate) {
+      for (const [key, poly] of Object.entries(POLYS)) {
+        if (pointInPoly(svgX, svgY, poly)) {
+          setSelected(prev => prev === key ? null : key);
+          return;
+        }
       }
     }
     setSelected(null);
@@ -251,7 +267,7 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
         <svg
           viewBox={`0 0 ${DW} ${DH}`}
-          preserveAspectRatio="xMidYMid meet"
+          preserveAspectRatio="none"
           style={{
             display: "block", width: "100%", height: "100%",
             cursor: "pointer",
