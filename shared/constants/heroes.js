@@ -258,7 +258,7 @@ const FACTION_CMD_SECOND_SKILL = {
 };
 
 // Branch keys per faction — must stay in sync with FACTION_TROOPS in troops.js
-const FACTION_BRANCHES = {
+export const FACTION_BRANCHES_EXPORT = {
   pirates:        ["swashbucklers", "gunners",       "sea_beasts"   ],
   bountyhunters:  ["spellblades",   "acolytes",      "golems"       ],
   orcs:           ["grunts",        "warg_riders",   "trolls"       ],
@@ -266,6 +266,7 @@ const FACTION_BRANCHES = {
   holyknights:    ["templars",      "battlepriests", "inquisitors"  ],
   nightcreatures: ["vampires",      "werewolves",    "spiders"      ],
 };
+const FACTION_BRANCHES = FACTION_BRANCHES_EXPORT;
 
 // Per power-level garrison commander config
 const FACTION_CMD_CONFIG = {

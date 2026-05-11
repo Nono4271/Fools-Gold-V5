@@ -45,8 +45,9 @@ export const XP_PER_COMMAND = { 0: 4.8, 1: 7.2, 2: 10.2 };
 export const SIEGE_BASE          = 50;
 export const SIEGE_HQ_BASE       = 50000;
 export const SIEGE_KEEP_BASE     = 5000;
-export const SIEGE_RESET_MS      = 60000;
-export const KEEP_GARRISON_RESET_MS = 600000;
+export const SIEGE_RESET_MS         = 900000;   // 15 min — regular tiles
+export const KEEP_GARRISON_RESET_MS = 3600000;  // 1 hr  — keeps
+export const GATE_GARRISON_RESET_MS = 3600000;  // 1 hr  — crossings/tunnels/toll bridges
 
 export function hqSiegeValue(wallLvl) {
 return SIEGE_HQ_BASE + (wallLvl || 0) * 10000;
