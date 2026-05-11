@@ -5,7 +5,7 @@ import { MapRenderer, clearKeepCache } from "./MapRenderer";
 // Constants
 import { CSS } from "./constants/css.js";
 import { ALIGNMENT, getFactionAlignment, PLAYABLE_FACTIONS } from "../shared/constants/factions.js";
-import { HDEFS, RC, RARITY, CLASS, rollGacha, addRespect, RESPECT_DUPE_POINTS, RESPECT_OVERFLOW_POINTS, RESPECT_MAX, npcForPowerLevel } from "../shared/constants/heroes.js";
+import { HDEFS, RC, RARITY, CLASS, rollGacha, addRespect, RESPECT_DUPE_POINTS, RESPECT_OVERFLOW_POINTS, RESPECT_MAX, npcForPowerLevel, factionDefCmdForTile } from "../shared/constants/heroes.js";
 import { rollFullPull, rollGearSchematic, createRespectSchematic, createGearInstance, GEAR_RARITY, GEAR_SLOTS, GEAR_PIECES, rollFullPullCmdRarity } from "../shared/constants/gear.js";
 import { HQP, AI_HQ_KEY, WIN_KEY, RKEYS, RSS, POWER_DEFS, SIEGE_BASE, SIEGE_KEEP_BASE, calcSiegePower, hqSiegeValue } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST, CMD_LVL_MAX, xpToNext } from "../shared/constants/troops.js";
@@ -683,6 +683,7 @@ export default function RiseToWar() {
     aiHqKeys,
     emitTileCapture, emitTileSiege,
     gatePartners,
+    facKey,
   });
 
   useGameLoop({
@@ -830,7 +831,17 @@ export default function RiseToWar() {
           const pl = t.powerLevel || 1;
           const pd = POWER_DEFS[pl];
           const npc2 = npcForPowerLevel(pl);
-          patchTile(key, { owner:null, garrison:pd?pd.troops:50, siege:t.siegeMax??SIEGE_BASE, siegeMax:t.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:pd?{n:npc2.n,icon:npc2.icon,cls:npc2.cls,faction:null,rarity:'soldier',lvl:pd.cmdLvl,troops:pd.troops,troopBranch:npc2.troopBranch,atk:npc2.atk*pd.cmdLvl,spd:npc2.spd+pd.cmdLvl*2}:null });
+          const [tc, tr] = key.split(",").map(Number);
+          const resetDefCmd = pd
+            ? (pl >= 4
+                ? (() => {
+                    const fc = factionDefCmdForTile(tc, tr, facKey, pl);
+                    if (!fc) return { n:npc2.n, icon:npc2.icon, cls:npc2.cls, faction:null, rarity:'soldier', lvl:pd.cmdLvl, troops:pd.command, troopBranch:npc2.troopBranch, atk:npc2.atk*pd.cmdLvl, spd:npc2.spd+pd.cmdLvl*2 };
+                    return { ...fc, troops: pd.command };
+                  })()
+                : { n:npc2.n, icon:npc2.icon, cls:npc2.cls, faction:null, rarity:'soldier', lvl:pd.cmdLvl, troops:pd.command, troopBranch:npc2.troopBranch, atk:npc2.atk*pd.cmdLvl, spd:npc2.spd+pd.cmdLvl*2 })
+            : null;
+          patchTile(key, { owner:null, garrison:pd?pd.command:50, siege:t.siegeMax??SIEGE_BASE, siegeMax:t.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:resetDefCmd });
         });
         const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
         // Fix #6: offload retreat BFS to worker. Collect all affected cmds,
@@ -1397,6 +1408,7 @@ export default function RiseToWar() {
         setBarracks={setBarracks} setCmds={setCmds}
         nowTick={nowTick}
         playerHqKey={playerHqKey}
+        facKey={facKey}
       />
 
       {showBattleLog && (
