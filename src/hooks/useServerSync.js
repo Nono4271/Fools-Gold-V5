@@ -43,7 +43,7 @@ function extractMutableState(tiles) {
   for (const [key, t] of Object.entries(tiles)) {
     if (key === '__ready') continue;
     // Skip tiles that are in their default neutral state
-    const isDefault = !t.owner && !t.garrisonDefeated && !t.isHQ && !t.isHQPart &&
+    const isDefault = !t.owner && !(t.defeatedWaves?.length) && !t.isHQ && !t.isHQPart &&
                       !t.isKeep && !t.isWin && !t.hasAiCommander;
     if (isDefault) continue;
     // Store only the fields the server actually uses for authoritative state
@@ -53,7 +53,8 @@ function extractMutableState(tiles) {
       garrison:         t.garrison         ?? 0,
       siege:            t.siege            ?? t.siegeMax ?? 50,
       siegeMax:         t.siegeMax         ?? 50,
-      garrisonDefeated: t.garrisonDefeated ?? false,
+      garrisonWaves:    t.garrisonWaves    ?? 1,
+      defeatedWaves:    t.defeatedWaves    ?? [],
       resetAt:          t.resetAt          ?? null,
       isHQ:             t.isHQ             ?? false,
       isHQPart:         t.isHQPart         ?? false,

@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import { FACTION_TROOPS, FACTION_KEYS } from "../../shared/constants/troops.js";
-import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS } from "../../shared/constants/map.js";
+import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS, GATE_GARRISON_RESET_MS } from "../../shared/constants/map.js";
 import { CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
 import { barracksCapacity } from "../../shared/constants/buildings.js";
 import { adj, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
-import { simBattle, garrisonDefCmd } from "../../shared/utils/battle.js";
+import { simBattle, garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/battle.js";
 import { calcSiegePower } from "../../shared/constants/map.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
@@ -55,9 +55,13 @@ function clearSlots(cmd) {
   return { troops: 0, troopBranch: null };
 }
 
-// Returns the garrison reset delay for a tile — keeps use a much longer timer
+// Returns the garrison reset delay for a tile
+// Keeps and gates: 1 hr. Regular tiles: 15 min (both from map.js constants).
 function garrisonResetMs(tile) {
-  return (tile?.isKeep || tile?.isHQ) ? KEEP_GARRISON_RESET_MS : 60000;
+  if (tile?.isHQ) return KEEP_GARRISON_RESET_MS;
+  if (tile?.isGate) return GATE_GARRISON_RESET_MS;
+  if (tile?.isKeep) return KEEP_GARRISON_RESET_MS;
+  return 900000; // 15 min for regular tiles (SIEGE_RESET_MS)
 }
 
 function applyXp(cmd, xpGain, floaty) {
@@ -171,157 +175,210 @@ arrivedAttackers.forEach(cmd => {
     return;
   }
 
-  const wallLvl   = bldgs.walls || 0;
+  const wallLvl = bldgs.walls || 0;
+  const boostedCmd = applyGearToCmd(cmd, gearInventory);
+  const SLOT_KEYS = ["helmet", "armor", "bracers", "accessory"];
+  const atkGearSnapshot = SLOT_KEYS.map(slot => {
+    const instanceId = cmd.gear?.[slot];
+    if (!instanceId) return null;
+    const piece = gearInventory.find(g => g.instanceId === instanceId);
+    if (!piece) return null;
+    return { ...piece, primaryStatValue: gearStatValue(piece.primaryStat, piece.rarity, piece.stars ?? 0) };
+  });
+  const atkSkillsSnapshot = getActiveSkills(boostedCmd).map(({ key, def, level }) => ({ key, level, name: def.name, icon: def.icon, type: def.type, desc: def.desc, cooldown: def.cooldown, tree: def.tree }));
 
-  // Garrison-defeated path: apply siege only
-  if (defTile.garrisonDefeated) {
-    const boostedCmd0 = applyGearToCmd(cmd, gearInventory);
-    const siegePower = cmdSiegePower(cmd, boostedCmd0);
+  // ── All-garrison-defeated: siege only ────────────────────────────────────
+  const allWavesDefeated = (defTile.defeatedWaves?.length ?? 0) >= garrisonWaveCount(defTile);
+  if (allWavesDefeated) {
+    const siegePower = cmdSiegePower(cmd, boostedCmd);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
     let siegeCaptured = false;
     if (siegePower >= currentSiege) {
       siegeCaptured = true;
-      patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null });
-      _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null });
+      patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null });
+      _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null });
       floaty("⚔ CAPTURED!", "#3daa60", destKey);
       if (destKey === WIN_KEY) setWinner("player");
     } else {
       patchTile(destKey, { siege:currentSiege-siegePower, resetAt:Date.now()+garrisonResetMs(defTile) });
-      _emitSiege(destKey, { siege:currentSiege-siegePower, garrisonDefeated:false, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
+      _emitSiege(destKey, { siege:currentSiege-siegePower, defeatedWaves:defTile.defeatedWaves, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
       floaty(`🔨 SIEGE ${currentSiege-siegePower}/${defTile.siegeMax??SIEGE_BASE}`, "#d0a030", destKey);
     }
     setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null, tk:siegeCaptured?destKey:originKey } : c));
     return;
   }
 
-  // Check live AI commander presence
+  // ── Live AI commander check (fight them first, then waves) ────────────────
   const hasAiCmd = cmds.some(c => c.owner === "ai" && c.tk === destKey && !c.march);
-  const effectiveDefTile = hasAiCmd ? defTile : { ...defTile, defCmd:garrisonDefCmd(defTile, facKey) };
+  if (hasAiCmd) {
+    // Stage 1: fight AI commander
+    const res = simBattle(boostedCmd, cmdTroops(cmd), defTile, wallLvl);
+    if (res.report) {
+      const enriched = { ...res.report, timestamp: Date.now(), cmdCls: cmd.cls,
+        passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot };
+      setBattles(p => [enriched, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
+    }
+    if (!res.won && !res.isDraw) {
+      floaty("💀 DEFEATED — retreating", "#cc3030", destKey);
+      const wl = Math.floor(res.lost * 0.30);
+      if (wl > 0) { setWounded(w => w + wl); floaty(`🏥 +${wl} wounded`, "#88aaff", destKey); }
+      setCmds(p => p.map(c => {
+        if (c.uid !== cmd.uid) return c;
+        const rp = bfsPath(originKey, hqKey);
+        const sm = marchStepMs(effectiveMarchSpd(boostedCmd.spd||60, null, boostedCmd.gearBonuses?.armySpd||0));
+        let u = { ...c, ...clearSlots(c), tk:originKey, march:null, drawTimer:null, drawTile:null, drawOrigin:null };
+        if (rp?.length >= 2) u = { ...u, march:{ type:"move", path:rp, step:0, dest:hqKey, origin:originKey, stepMs:sm, lastStepTime:Date.now() } };
+        else u = { ...u, tk:hqKey };
+        return { ...u, ...applyXp(u, res.xpGain, floaty) };
+      }));
+      setBLog(p => [`❌ ${cmd.n} Lv${cmd.lvl||5} defeated — retreating · ${res.modLabel}`, ...p].slice(0, 99));
+      return;
+    }
+    if (res.isDraw) {
+      floaty("⚔ DRAW — rematch in 5 min", "#c0a020", destKey);
+      setCmds(p => p.map(c => {
+        if (c.uid !== cmd.uid) return c;
+        return { ...c, troops: Math.max(1, cmdTroops(cmd) - res.lost), ...applySlotLosses(c, res.lost),
+          tk:destKey, march:null, drawTimer:Date.now()+5*60*1000, drawOrigin:originKey, drawTile:destKey };
+      }));
+      setBLog(p => [`⚔ DRAW — ${cmd.n} holds position, rematch in 5min · ${res.modLabel}`, ...p].slice(0, 99));
+      return;
+    }
+    // Won vs AI commander — continue to garrison waves below with remaining troops
+    const troopsAfterAi = Math.max(0, cmdTroops(cmd) - res.lost);
+    const wcAi = Math.floor(res.lost * 0.30);
+    if (wcAi > 0) { setWounded(w => w + wcAi); floaty(`🏥 +${wcAi} wounded`, "#88aaff", destKey); }
+    floaty("⚔ Commander routed — garrison defends!", "#d0a030", destKey);
+    setCmds(p => p.map(c => c.uid === cmd.uid
+      ? { ...c, troops:troopsAfterAi, ...applySlotLosses(c, res.lost), ...applyXp(c, res.xpGain, floaty) }
+      : c));
+    // Fall through to wave loop with updated troops
+  }
 
-  // Stage 1 battle
-  const boostedCmd = applyGearToCmd(cmd, gearInventory);
-  const res = simBattle(boostedCmd, cmdTroops(cmd), effectiveDefTile, wallLvl);
-  const troopsAfterS1 = res.won ? Math.max(0, cmdTroops(cmd) - res.lost) : 0;
+  // ── Multi-wave garrison loop ──────────────────────────────────────────────
+  // Re-read cmd after potential setCmds above (use snapshot value for troop count).
+  const totalWaves   = garrisonWaveCount(defTile);
+  const alreadyDone  = [...(defTile.defeatedWaves ?? [])];
+  let nextWave       = alreadyDone.length;
+  let currentTroops  = cmdTroops(cmd) - (hasAiCmd ? (() => {
+    // Recalculate what was lost vs AI cmd; we patched cmds above but cmd is stale.
+    // Safe to re-read from the current cmd object passed into forEach.
+    return 0; // troops already adjusted via setCmds; we'll read updated value from ref
+  })() : 0);
+  // Simpler: just use cmdTroops(cmd) and subtract AI losses inline
+  // Re-derive: if hasAiCmd, we already applied slot losses to cmd state; use defTile snapshot troops
+  // Actually safest: track remaining separately from cmd state
+  let remainingTroops = cmdTroops(cmd); // will track across waves
+  const newlyDefeated = [...alreadyDone];
+  let totalXp = 0;
+  let totalWounded = 0;
+  let playerDefeated = false;
+  let drewOnWave = false;
 
-  if (res.report) {
-      const passiveSummary = getPassiveBonuses(boostedCmd);
-      // Snapshot equipped gear instances for display in battle log
-      const SLOT_KEYS = ["helmet", "armor", "bracers", "accessory"];
-      const atkGearSnapshot = SLOT_KEYS.map(slot => {
-        const instanceId = cmd.gear?.[slot];
-        if (!instanceId) return null;
-        const piece = gearInventory.find(g => g.instanceId === instanceId);
-        if (!piece) return null;
-        return { ...piece, primaryStatValue: gearStatValue(piece.primaryStat, piece.rarity, piece.stars ?? 0) };
-      });
-      const atkSkillsSnapshot = getActiveSkills(boostedCmd).map(({ key, def, level }) => ({ key, level, name: def.name, icon: def.icon, type: def.type, desc: def.desc, cooldown: def.cooldown, tree: def.tree }));
-      const enriched = { ...res.report, timestamp: Date.now(), cmdCls: cmd.cls, passiveSummary, atkGearSnapshot, atkSkillsSnapshot };
+  for (let wi = nextWave; wi < totalWaves; wi++) {
+    if (remainingTroops <= 0) { playerDefeated = true; break; }
+
+    const waveCmd = garrisonWaveDefCmd(defTile, wi, facKey);
+    const waveTile = { ...defTile, defCmd: waveCmd };
+    const wres = simBattle({ ...boostedCmd, troops: remainingTroops, troopSlots: cmd.troopSlots
+      ? applySlotLosses(cmd, cmdTroops(cmd) - remainingTroops).troopSlots
+      : undefined }, remainingTroops, waveTile, wallLvl);
+
+    if (wres.report) {
+      const enriched = { ...wres.report, timestamp: Date.now(), cmdCls: cmd.cls,
+        passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot,
+        waveIndex: wi, totalWaves, isWaveBattle: true };
       setBattles(p => [enriched, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
     }
 
-  if (!res.won && !res.isDraw) {
+    if (wres.isDraw) {
+      drewOnWave = true;
+      remainingTroops = Math.max(1, remainingTroops - wres.lost);
+      totalXp += wres.xpGain;
+      totalWounded += Math.floor(wres.lost * 0.30);
+      // Patch partial progress so it persists through the draw timer
+      patchTile(destKey, { defeatedWaves: newlyDefeated, resetAt: Date.now()+garrisonResetMs(defTile) });
+      _emitSiege(destKey, { defeatedWaves: newlyDefeated, resetAt: Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE, siege:defTile.siege??SIEGE_BASE });
+      floaty(`⚔ DRAW on wave ${wi+1}/${totalWaves} — rematch in 5min`, "#c0a020", destKey);
+      setBLog(p => [`⚔ DRAW — ${cmd.n} on wave ${wi+1}/${totalWaves}, rematch in 5min · ${wres.modLabel}`, ...p].slice(0, 99));
+      break;
+    }
+
+    totalXp += wres.xpGain;
+    totalWounded += Math.floor(wres.lost * 0.30);
+
+    if (!wres.won) {
+      playerDefeated = true;
+      remainingTroops = 0;
+      // Partial wave progress persists until reset fires
+      patchTile(destKey, { defeatedWaves: newlyDefeated, resetAt: Date.now()+garrisonResetMs(defTile) });
+      _emitSiege(destKey, { defeatedWaves: newlyDefeated, resetAt: Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE, siege:defTile.siege??SIEGE_BASE });
+      setBLog(p => [`❌ ${cmd.n} defeated on wave ${wi+1}/${totalWaves} · ${wres.modLabel}`, ...p].slice(0, 99));
+      break;
+    }
+
+    // Wave won
+    remainingTroops = Math.max(0, remainingTroops - wres.lost);
+    newlyDefeated.push(wi);
+    // Patch each wave win immediately so other players see progress
+    patchTile(destKey, { defeatedWaves: [...newlyDefeated], resetAt: Date.now()+garrisonResetMs(defTile) });
+    _emitSiege(destKey, { defeatedWaves: [...newlyDefeated], resetAt: Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE, siege:defTile.siege??SIEGE_BASE });
+    floaty(`⚔ Wave ${wi+1}/${totalWaves} cleared!`, "#3daa60", destKey);
+  }
+
+  if (totalWounded > 0) { setWounded(w => w + totalWounded); floaty(`🏥 +${totalWounded} wounded`, "#88aaff", destKey); }
+
+  if (playerDefeated) {
     floaty("💀 DEFEATED — retreating", "#cc3030", destKey);
-    // Bug 23 fix: 30% of lost troops go to wounded on defeat (same as win path)
-    const woundedOnLoss = Math.floor(res.lost * 0.30);
-    if (woundedOnLoss > 0) { setWounded(w => w + woundedOnLoss); floaty(`🏥 +${woundedOnLoss} wounded`, "#88aaff", destKey); }
     setCmds(p => p.map(c => {
       if (c.uid !== cmd.uid) return c;
-      const retreatPath = bfsPath(originKey, hqKey);
-      const stepMs = marchStepMs(effectiveMarchSpd(boostedCmd.spd||60, null, boostedCmd.gearBonuses?.armySpd || 0));
-      let updated = { ...c, ...clearSlots(c), tk:originKey, march:null, drawTimer:null, drawTile:null, drawOrigin:null };
-      if (retreatPath && retreatPath.length >= 2) {
-        updated = { ...updated, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:originKey, stepMs, lastStepTime:Date.now() } };
-      } else { updated = { ...updated, tk:hqKey }; }
-      return { ...updated, ...applyXp(updated, res.xpGain, floaty) };
+      const rp = bfsPath(originKey, hqKey);
+      const sm = marchStepMs(effectiveMarchSpd(boostedCmd.spd||60, null, boostedCmd.gearBonuses?.armySpd||0));
+      let u = { ...c, ...clearSlots(c), tk:originKey, march:null, drawTimer:null, drawTile:null, drawOrigin:null };
+      if (rp?.length >= 2) u = { ...u, march:{ type:"move", path:rp, step:0, dest:hqKey, origin:originKey, stepMs:sm, lastStepTime:Date.now() } };
+      else u = { ...u, tk:hqKey };
+      return { ...u, ...applyXp(u, totalXp, floaty) };
     }));
-    setBLog(p => [`❌ ${cmd.n} Lv${cmd.lvl||5} defeated — retreating · ${res.modLabel}`, ...p].slice(0, 99));
     return;
   }
 
-  if (res.isDraw) {
-    const troopsAfterDraw = Math.max(1, cmdTroops(cmd) - res.lost);
-    floaty("⚔ DRAW — rematch in 5 min", "#c0a020", destKey);
+  if (drewOnWave) {
     setCmds(p => p.map(c => {
       if (c.uid !== cmd.uid) return c;
-      return { ...c, troops:troopsAfterDraw, ...applySlotLosses(c, res.lost), tk:destKey, march:null,
-        drawTimer:  Date.now() + 5 * 60 * 1000,
-        drawOrigin: originKey,
-        drawTile:   destKey,
-      };
+      return { ...c, troops:remainingTroops, ...applySlotLosses(c, cmdTroops(cmd) - remainingTroops),
+        tk:destKey, march:null,
+        drawTimer:Date.now()+5*60*1000, drawOrigin:originKey, drawTile:destKey,
+        ...applyXp(c, totalXp, floaty) };
     }));
-    setBLog(p => [`⚔ DRAW — ${cmd.n} holds position, rematch in 5min · ${res.modLabel}`, ...p].slice(0, 99));
     return;
   }
 
-  // Stage 2: if AI commander was present, fight garrison
-  let finalTroops = troopsAfterS1;
-  let res2 = null;
-  if (hasAiCmd) {
-    floaty("⚔ Commander routed — garrison defends!", "#d0a030", destKey);
-    const plvl = defTile.powerLevel || 1;
-    const pd2  = POWER_DEFS[plvl] || POWER_DEFS[1];
-    const garrisonTile = { ...defTile, defCmd:{ lvl:pd2.cmdLvl, troops:defTile.garrisonTroops||pd2.troops, troopBranch:defTile.troopBranch, atk:80+pd2.cmdLvl*8, spd:30+pd2.cmdLvl*3 } };
-    res2 = simBattle({ ...boostedCmd, troops:troopsAfterS1 }, troopsAfterS1, garrisonTile, wallLvl);
-    finalTroops = res2.won ? Math.max(0, troopsAfterS1 - res2.lost) : 0;
-
-    if (res2.report) {
-      const passiveSummary2 = getPassiveBonuses(boostedCmd);
-      const enriched2 = { ...res2.report, timestamp: Date.now(), cmdCls: cmd.cls, passiveSummary: passiveSummary2, isStage2: true };
-      setBattles(p => [enriched2, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
-    }
-
-    if (!res2.won) {
-      floaty("💀 DEFEATED by garrison — retreating", "#cc3030", destKey);
-      // Bug 23 fix: wounded on stage-2 defeat
-      const woundedS2 = Math.floor(troopsAfterS1 * 0.30);
-      if (woundedS2 > 0) { setWounded(w => w + woundedS2); floaty(`🏥 +${woundedS2} wounded`, "#88aaff", destKey); }
-      patchTile(destKey, { defCmd:null, hasAiCommander:false, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile) });
-      _emitSiege(destKey, { siege:defTile.siege??SIEGE_BASE, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
-      setCmds(p => p.map(c => {
-        if (c.uid !== cmd.uid) return c;
-        const retreatPath = bfsPath(originKey, hqKey);
-        const stepMs = marchStepMs(effectiveMarchSpd(boostedCmd.spd||60, null, boostedCmd.gearBonuses?.armySpd || 0));
-        let updated = { ...c, troops:0, tk:originKey, march:null };
-        if (retreatPath && retreatPath.length >= 2) {
-          updated = { ...updated, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:originKey, stepMs, lastStepTime:Date.now() } };
-        } else { updated = { ...updated, tk:hqKey }; }
-        return { ...updated, ...applyXp(updated, res2.xpGain, floaty) };
-      }));
-      setBLog(p => [`❌ ${cmd.n} defeated by garrison · ${res2.modLabel}`, ...p].slice(0, 99));
-      return;
-    }
-  }
-
-  // Both stages won — check siege
-  const siegePower   = cmdSiegePower({ ...cmd, troops: finalTroops, troopSlots: cmd.troopSlots ? applySlotLosses(cmd, cmdTroops(cmd) - finalTroops).troopSlots : undefined }, boostedCmd);
+  // All waves cleared — siege phase
+  const siegePower   = cmdSiegePower({ ...cmd, troops:remainingTroops,
+    troopSlots: cmd.troopSlots ? applySlotLosses(cmd, cmdTroops(cmd)-remainingTroops).troopSlots : undefined }, boostedCmd);
   const currentSiege = defTile.siege ?? SIEGE_BASE;
   let tileCaptured = false;
 
   if (siegePower >= currentSiege) {
     tileCaptured = true;
-    patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:null, hasAiCommander:false });
-    _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:null });
+    patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:null, hasAiCommander:false });
+    _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:null });
     floaty("⚔ CAPTURED!", "#3daa60", destKey);
     if (destKey === WIN_KEY) setWinner("player");
   } else {
-    patchTile(destKey, { siege:currentSiege-siegePower, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile), defCmd:null, hasAiCommander:false });
-    _emitSiege(destKey, { siege:currentSiege-siegePower, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
+    patchTile(destKey, { siege:currentSiege-siegePower, defeatedWaves:newlyDefeated, resetAt:Date.now()+garrisonResetMs(defTile), defCmd:null, hasAiCommander:false });
+    _emitSiege(destKey, { siege:currentSiege-siegePower, defeatedWaves:newlyDefeated, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
     floaty(`⚔ SIEGE ${currentSiege-siegePower}/${defTile.siegeMax??SIEGE_BASE} — not captured`, "#d0a030", destKey);
   }
 
-  const wc = Math.floor((cmdTroops(cmd) - finalTroops) * 0.30);
-  if (wc > 0) { setWounded(w => w + wc); floaty(`🏥 +${wc} wounded`, "#88aaff", destKey); }
-
-  const finalTk   = tileCaptured ? destKey : originKey;
-  const xpSrc     = res2 || res;
+  const finalTk = tileCaptured ? destKey : originKey;
   setCmds(p => p.map(c => {
     if (c.uid !== cmd.uid) return c;
-    const lostTotal = cmdTroops(c) - finalTroops;
-      const updated = { ...c, troops:finalTroops, ...applySlotLosses(c, lostTotal), tk:finalTk, march:null };
-    return { ...updated, ...applyXp(updated, xpSrc.xpGain, floaty) };
+    const lostTotal = cmdTroops(c) - remainingTroops;
+    const updated = { ...c, troops:remainingTroops, ...applySlotLosses(c, lostTotal), tk:finalTk, march:null };
+    return { ...updated, ...applyXp(updated, totalXp, floaty) };
   }));
-  const stageLabel = hasAiCmd ? " (2-stage)" : "";
-  setBLog(p => [`✅ ${cmd.n} Lv${cmd.lvl||5}${stageLabel} ${tileCaptured?"captured":"siege dealt"} · ${res.modLabel}`, ...p].slice(0, 99));
+  setBLog(p => [`✅ ${cmd.n} Lv${cmd.lvl||5} cleared all ${totalWaves} wave(s) ${tileCaptured?"captured":"siege dealt"}`, ...p].slice(0, 99));
 });
 
 }, [cmds, screen, tileVersion]);
@@ -424,30 +481,49 @@ useEffect(() => {
         setBLog(p => [`⚔ ${cmd.n} defeated ${aiCmd.n} in rematch`, ...p].slice(0, 99));
       }
 
-      // If player is still standing and no new draw, fight NPC garrison
+      // If player is still standing and no new draw, run garrison wave loop from current progress
       if (!playerDefeated && !newDrawTimer && remainingTroops > 0) {
-        const garrisonTile = { ...defTile, defCmd: garrisonDefCmd(defTile, facKey) };
-        const resG = simBattle({ ...boostedCmd, troops: remainingTroops }, remainingTroops, garrisonTile, wallLvl);
-        if (resG.report) {
-          const enriched = { ...resG.report, timestamp: Date.now(), cmdCls: cmd.cls,
-            passiveSummary: getPassiveBonuses(boostedCmd), isRematch: true, isGarrison: true };
-          setBattles(p => [enriched, ...p].slice(0, 99));
-          setUnseenBattles(n => n + 1);
-        }
-        if (resG.isDraw) {
-          remainingTroops = Math.max(1, remainingTroops - resG.lost);
-          newDrawTimer = Date.now() + 5 * 60 * 1000;
-          setBLog(p => [`⚔ DRAW vs garrison — ${cmd.n} holds, rematch in 5min`, ...p].slice(0, 99));
-        } else {
+        const totalWaves  = garrisonWaveCount(defTile);
+        const doneSoFar   = [...(defTile.defeatedWaves ?? [])];
+        const newlyDefeated = [...doneSoFar];
+
+        for (let wi = doneSoFar.length; wi < totalWaves; wi++) {
+          if (remainingTroops <= 0) { playerDefeated = true; break; }
+          const waveCmd  = garrisonWaveDefCmd(defTile, wi, facKey);
+          const waveTile = { ...defTile, defCmd: waveCmd };
+          const resG = simBattle({ ...boostedCmd, troops: remainingTroops }, remainingTroops, waveTile, wallLvl);
+          if (resG.report) {
+            const enriched = { ...resG.report, timestamp: Date.now(), cmdCls: cmd.cls,
+              passiveSummary: getPassiveBonuses(boostedCmd), isRematch: true, isGarrison: true,
+              waveIndex: wi, totalWaves, isWaveBattle: true };
+            setBattles(p => [enriched, ...p].slice(0, 99));
+            setUnseenBattles(n => n + 1);
+          }
+          if (resG.isDraw) {
+            remainingTroops = Math.max(1, remainingTroops - resG.lost);
+            totalWounded += Math.floor(resG.lost * 0.30);
+            totalXp += resG.xpGain;
+            newDrawTimer = Date.now() + 5 * 60 * 1000;
+            patchTile(destKey, { defeatedWaves: newlyDefeated, resetAt: Date.now()+garrisonResetMs(defTile) });
+            _emitSiege(destKey, { defeatedWaves: newlyDefeated, resetAt: Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE, siege:defTile.siege??SIEGE_BASE });
+            setBLog(p => [`⚔ DRAW on wave ${wi+1}/${totalWaves} — ${cmd.n} holds, rematch in 5min`, ...p].slice(0, 99));
+            break;
+          }
           totalWounded += Math.floor(resG.lost * 0.30);
           totalXp      += resG.xpGain;
           if (!resG.won) {
             remainingTroops = 0;
             playerDefeated = true;
-            setBLog(p => [`❌ ${cmd.n} defeated by garrison in rematch`, ...p].slice(0, 99));
-          } else {
-            remainingTroops = Math.max(0, remainingTroops - resG.lost);
+            patchTile(destKey, { defeatedWaves: newlyDefeated, resetAt: Date.now()+garrisonResetMs(defTile) });
+            _emitSiege(destKey, { defeatedWaves: newlyDefeated, resetAt: Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE, siege:defTile.siege??SIEGE_BASE });
+            setBLog(p => [`❌ ${cmd.n} defeated on wave ${wi+1}/${totalWaves} in rematch`, ...p].slice(0, 99));
+            break;
           }
+          remainingTroops = Math.max(0, remainingTroops - resG.lost);
+          newlyDefeated.push(wi);
+          patchTile(destKey, { defeatedWaves: [...newlyDefeated], resetAt: Date.now()+garrisonResetMs(defTile) });
+          _emitSiege(destKey, { defeatedWaves: [...newlyDefeated], resetAt: Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE, siege:defTile.siege??SIEGE_BASE });
+          floaty(`⚔ Wave ${wi+1}/${totalWaves} cleared!`, "#3daa60", destKey);
         }
       }
 
@@ -500,13 +576,14 @@ useEffect(() => {
       const currentSiege = defTile.siege ?? SIEGE_BASE;
       if (siegePower >= currentSiege) {
         tileCaptured = true;
-        patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:null, hasAiCommander:false });
-        _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:null });
+        patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:null, hasAiCommander:false });
+        _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:null });
         floaty("⚔ CAPTURED!", "#3daa60", destKey);
         if (destKey === WIN_KEY) setWinner("player");
       } else {
-        patchTile(destKey, { siege:currentSiege-siegePower, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile), defCmd:null, hasAiCommander:false });
-        _emitSiege(destKey, { siege:currentSiege-siegePower, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
+        const nowDefeated = defTile.defeatedWaves ?? [];
+        patchTile(destKey, { siege:currentSiege-siegePower, defeatedWaves:nowDefeated, resetAt:Date.now()+garrisonResetMs(defTile), defCmd:null, hasAiCommander:false });
+        _emitSiege(destKey, { siege:currentSiege-siegePower, defeatedWaves:nowDefeated, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
         floaty(`⚔ SIEGE ${currentSiege-siegePower}/${defTile.siegeMax??SIEGE_BASE}`, "#d0a030", destKey);
       }
 
@@ -548,12 +625,12 @@ arrivedAI.forEach(cmd => {
   const originKey = aiOriginKey;
   const boostedCmd2 = applyGearToCmd(cmd, gearInventory);
 
-  if (defTile.garrisonDefeated) {
+  if ((defTile.defeatedWaves?.length ?? 0) >= garrisonWaveCount(defTile)) {
     const siegePower = cmdSiegePower(cmd, boostedCmd2);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
     if (siegePower >= currentSiege) {
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
-      patchTile(destKey, { owner:"ai", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor((cmd.troops||0)*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
+      patchTile(destKey, { owner:"ai", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor((cmd.troops||0)*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
       floaty("⚠ ENEMY CAPTURED TILE!", "#dd3322", destKey);
       if (destKey === WIN_KEY || isPlayerHQ) setWinner("ai");
       setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
@@ -575,11 +652,11 @@ arrivedAI.forEach(cmd => {
     if (siegePower >= currentSiege) {
       tileCaptured = true;
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
-      patchTile(destKey, { owner:"ai", garrison:0, siege:300, siegeMax:300, garrisonDefeated:false, resetAt:null, hasAiCommander:true, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor(newTroops*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
+      patchTile(destKey, { owner:"ai", garrison:0, siege:300, siegeMax:300, defeatedWaves:[], resetAt:null, hasAiCommander:true, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor(newTroops*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
       floaty("⚠ ENEMY CAPTURED TILE!", "#dd3322", destKey);
       if (destKey === WIN_KEY || isPlayerHQ) setWinner("ai");
     } else {
-      patchTile(destKey, { siege:currentSiege-siegePower, garrisonDefeated:true, resetAt:Date.now()+garrisonResetMs(defTile) });
+      patchTile(destKey, { siege:currentSiege-siegePower, defeatedWaves: defTile.defeatedWaves ?? [], resetAt:Date.now()+garrisonResetMs(defTile) });
     }
   }
 
