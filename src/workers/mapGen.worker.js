@@ -156,7 +156,7 @@ const FACTION_REGIONS = {
 };
 
 const KEEP_SET = new Set(REGION_LIST.map(r => `${r.cx},${r.cy}`));
-const KEEP_FOOTPRINT_RADIUS = 5;
+const KEEP_FOOTPRINT_RADIUS = 2;
 const KEEP_FOOTPRINT_SET = new Set();
 for (const r of REGION_LIST) {
   for (let dc=-KEEP_FOOTPRINT_RADIUS; dc<=KEEP_FOOTPRINT_RADIUS; dc++)
@@ -630,7 +630,7 @@ self.onmessage = function(e) {
     }
   }
 
-  const KEEP_CMD_LVL=20, KEEP_TROOPS=2000, KEEP_SIEGE=5000, KEEP_RADIUS=5;
+  const KEEP_CMD_LVL=20, KEEP_TROOPS=2000, KEEP_SIEGE=5000, KEEP_RADIUS=2;
 
   for (const reg of REGION_LIST) {
     const idx = reg.cy*COLS + reg.cx;
