@@ -4,6 +4,18 @@ import { POWER_DEFS, XP_PER_COMMAND } from "../constants/map.js";
 import { skillFiresOnRound, getActiveSkills, getPassiveBonuses } from "../constants/skills.js";
 import { npcForPowerLevel, factionDefCmdForTile } from "../constants/heroes.js";
 
+// ── Normalize a commander to troopSlots array (backward compat) ──────────────
+function normaliseTroopSlots(cmd) {
+  if (cmd?.troopSlots && cmd.troopSlots.length > 0) return cmd.troopSlots;
+  if (cmd?.troopBranch) return [{ branch: cmd.troopBranch, troops: cmd.troops ?? 0 }];
+  return [];
+}
+
+// ── Total troops across all slots ─────────────────────────────────────────────
+function totalSlotTroops(slots) {
+  return slots.reduce((s, sl) => s + (sl.troops || 0), 0);
+}
+
 // ── Resolve troopBranch → { branchDef, tierData } ────────────────────────────
 function resolveBranch(troopBranch) {
 if (!troopBranch) return null;
@@ -236,9 +248,34 @@ const terrDef = TERR[defTile.terrain]?.def || 0;
 const fort    = defTile.isHQ ? (wallLvl || 0) * 10 : 0;
 const dc      = defTile.defCmd;
 
-const atkRes = resolveBranch(cmd.troopBranch);
-const atkBranchDef = atkRes?.branchDef ?? null;
-const atkTierData  = atkRes?.tierData   ?? null;
+// ── Multi-slot attacker setup ─────────────────────────────────────────────
+const atkSlots = normaliseTroopSlots(cmd);
+// Total troops across all slots (authoritative — overrides passed attackerTroops
+// when using troopSlots; legacy callers pass attackerTroops directly).
+const totalAtkTroops = atkSlots.length > 0
+  ? totalSlotTroops(atkSlots)
+  : (attackerTroops || 0);
+
+// Primary slot (fastest, or first) for legacy fields still used in report/log
+const primarySlot    = atkSlots.length > 0 ? atkSlots[0] : null;
+const atkRes         = resolveBranch(primarySlot?.branch ?? cmd.troopBranch ?? null);
+const atkBranchDef   = atkRes?.branchDef ?? null;
+const atkTierData    = atkRes?.tierData   ?? null;
+
+// Per-slot resolved data
+const atkSlotResolved = atkSlots.map(sl => {
+  const res = resolveBranch(sl.branch);
+  return {
+    branch:    sl.branch,
+    troops:    sl.troops || 0,
+    branchDef: res?.branchDef ?? null,
+    tierData:  res?.tierData  ?? null,
+    skills:    getTierSkillsForBattle(sl.branch),
+    hpPer:     res?.tierData?.hp  ?? 25,
+    spd:       res?.tierData?.spd ?? 50,
+    def:       res?.tierData?.def ?? 20,
+  };
+});
 
 const defRes = resolveBranch(dc?.troopBranch ?? null);
 const defBranchDef = defRes?.branchDef ?? null;
@@ -250,7 +287,7 @@ const mod      = troopSizeModifier(atkSize, defSize);
 const defMod   = troopSizeModifier(defSize, atkSize);
 const modLabel = mod === 1.1 ? "⚔ STRONG" : mod === 0.9 ? "🛡 WEAK" : "◆ NEUTRAL";
 
-const atkTroopSkills = getTierSkillsForBattle(cmd.troopBranch);
+const atkTroopSkills = atkSlotResolved[0]?.skills ?? getTierSkillsForBattle(cmd.troopBranch);
 const defTroopSkills = getTierSkillsForBattle(dc?.troopBranch ?? null);
 const atkSkillLevels = cmd.troopSkillLevels || {};
 const defSkillLevels = dc?.troopSkillLevels || {};
@@ -270,23 +307,32 @@ const defCmdSpd = dc ? (dc.spd || 40) : 40;
 
 const defTerrBonusBase = 1 + fort / 100;
 
+// For display/rounding purposes use primary-slot stats; per-slot HP tracked separately
 const atkTroopHpPer = atkTierData?.hp  ?? 25;
 const defTroopHpPer = defTierData?.hp  ?? 25;
+// atkTroopSpd unused (per-slot spd is in atkSlotResolved); keep for compat
 const atkTroopSpd   = atkTierData?.spd ?? 50;
 const defTroopSpd   = defTierData?.spd ?? 50;
 const atkTroopDef   = atkTierData?.def ?? 20;
 const defTroopDef   = defTierData?.def ?? 20;
 
-// Fix 3: Total army command = troops x command cost per troop size. Baseline 500 = scale 1.0.
-// Small troops cost 1 cmd, medium cost 2, large cost 25 (from COMMAND_COST in troops.js).
-const atkTroopSize      = atkBranchDef?.size ?? "small";
-const atkCmdCost        = atkTroopSize === "large" ? 25 : atkTroopSize === "medium" ? 2 : 1;
-const totalArmyCommand  = attackerTroops * atkCmdCost;
+// Fix 3: Total army command = sum of (troops × cmd cost) across all slots.
+// Small=1, medium=2, large=25. Baseline 500 = scale 1.0.
+const totalArmyCommand = atkSlotResolved.length > 0
+  ? atkSlotResolved.reduce((sum, sl) => {
+      const size = sl.branchDef?.size ?? "small";
+      const cost = size === "large" ? 25 : size === "medium" ? 2 : 1;
+      return sum + (sl.troops || 0) * cost;
+    }, 0)
+  : (() => {
+      const sz = atkBranchDef?.size ?? "small";
+      return (sz === "large" ? 25 : sz === "medium" ? 2 : 1) * totalAtkTroops;
+    })();
 
 // Scale commander damage so it contributes ~65% of total output vs troops' ~35%.
 // Derived from: cmdDmg = (65/35) × troopDmg, where troopDmg ≈ troops × avgTierDmg/round.
 const avgAtkTroopDmg  = atkTierData ? (atkTierData.dmgLo + atkTierData.dmgHi) / 2 : 50;
-const troopDmgEstimate = attackerTroops * avgAtkTroopDmg;
+const troopDmgEstimate = totalAtkTroops * avgAtkTroopDmg;
 // Fix 1: Commander damage uses both atk and foc — physical dmg scales off atk, magical/focus off foc.
 // Scale factor is derived from the combined stat so both matter regardless of dmgType.
 const cmdAtkStat      = cmd.atk || 150;
@@ -305,9 +351,11 @@ const defCmdAtk     = (defCmdAtkStat + defCmdFocStat * 0.5) * CMD_ATK_SCALE;
 const bastionActive = (cmd.cls === "defender") && ((cmd.lvl ?? 5) >= 25);
 const bastionHpMult = bastionActive ? 2 : 1;
 
-let atkTroopHp     = attackerTroops * atkTroopHpPer * bastionHpMult;
+let atkTroopHp     = totalAtkTroops * atkTroopHpPer * bastionHpMult;
 let defTroopHp     = defTroops      * defTroopHpPer;
 const atkHpMax     = atkTroopHp;
+// Per-slot HP tracking for loss distribution
+let atkSlotHp = atkSlotResolved.map(sl => sl.troops * sl.hpPer * bastionHpMult);
 let totalAtkLostHp = 0;
 let blockHealRounds= 0;
 
@@ -316,8 +364,9 @@ const defLvlMult = Math.pow(1.20, Math.max(0, defLvl - 2));
 
 const report = {
 atkName:cmd.n, atkIcon:cmd.icon||"⚔", atkLvl,
-atkTroopBranch: cmd.troopBranch || null,
-atkTroopsStart:attackerTroops, defTroopsStart:defTroops, defLvl,
+atkTroopBranch: primarySlot?.branch ?? cmd.troopBranch ?? null,
+atkTroopSlots: atkSlotResolved.map(sl => ({ branch: sl.branch, troops: sl.troops })),
+atkTroopsStart:totalAtkTroops, defTroopsStart:defTroops, defLvl,
 defCmdName: dc?.n ?? `Garrison Lv${defLvl}`, defCmdIcon: dc?.icon ?? "🛡",
 defCmdStats: dc ? { atk:dc.atk||0, foc:dc.foc||0, spd:dc.spd||0, gearArmyAtk:0, gearArmyFoc:0, gearArmySpd:0, gearArmySiege:0 } : null,
 defCmdCls: dc?.cls ?? null,
@@ -325,7 +374,7 @@ defSkillsSnapshot: dc ? getActiveSkills(dc).map(({ key, def, level }) => ({ key,
 terrain:defTile.terrain, modLabel,
 defPowerLevel:defTile.powerLevel || 1,
 defTroopBranch: dc?.troopBranch || null,
-rounds:[], atkTroopsEnd:attackerTroops, defTroopsEnd:defTroops, won:false, xpGain:0,
+rounds:[], atkTroopsEnd:totalAtkTroops, defTroopsEnd:defTroops, won:false, xpGain:0,
 bastionActive,
 atkTroopsWounded: 0,
 atkCmdStats: { atk:cmd.atk||150, foc:cmd.foc||0, spd:cmd.spd||60, gearArmyAtk:gb.armyAtk||0, gearArmyFoc:gb.armyFoc||0, gearArmySpd:gb.armySpd||0, gearArmySiege:gb.armySiege||0 },
@@ -335,10 +384,13 @@ cmdCls: cmd.cls||null, cmdFaction: cmd.faction||null, cmdSubspecies: cmd.subspec
 // ── Phase 0: pre-battle log ───────────────────────────────────────────────
 const phase0 = { round:0, isPreBattle:true, actions:[] };
 phase0.actions.push({ actor:"SYSTEM", action:`⚔ Battle begins — ${defTile.terrain}${defTile.isHQ?" (HQ)":""} · ${modLabel}`, dmg:0, isPhase0:true });
-phase0.actions.push({ actor:"SYSTEM", action:`${cmd.n} (${attackerTroops.toLocaleString()} troops) vs ${report.defCmdName} (${defTroops.toLocaleString()} troops)`, dmg:0, isPhase0:true });
+phase0.actions.push({ actor:"SYSTEM", action:`${cmd.n} (${totalAtkTroops.toLocaleString()} troops) vs ${report.defCmdName} (${defTroops.toLocaleString()} troops)`, dmg:0, isPhase0:true });
 
-atkTroopSkills.filter(s => s?.trigger === "passive").forEach(s => {
-phase0.actions.push({ actor:"Troops", action:`${s.icon} ${s.name} (passive): ${s.desc}`, dmg:0, isSkill:true, isPhase0:true });
+atkSlotResolved.forEach(sl => {
+  sl.skills.filter(s => s?.trigger === "passive").forEach(s => {
+    const lbl = sl.branchDef?.label || "Troops";
+    phase0.actions.push({ actor:lbl, action:`${s.icon} ${s.name} (passive): ${s.desc}`, dmg:0, isSkill:true, isPhase0:true });
+  });
 });
 
 for (const { def, level } of getActiveSkills(cmd)) {
@@ -393,8 +445,10 @@ const rs = {
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
 applyInstantEffects(atkHeroSkills, round, rs);
 
-// round_start troop skills — attacker applies to enemy, pass defTroopBranch for immunity
-procTroopSkills(atkTroopSkills, "round_start", atkSkillLevels, rs, roundLog, "Troops", dc?.troopBranch ?? null);
+// round_start troop skills — all atk slots apply to enemy
+for (const sl of atkSlotResolved) {
+  procTroopSkills(sl.skills, "round_start", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", dc?.troopBranch ?? null);
+}
 
 // Log hero skills
 const uniqNames = [...new Set(rs.skillFiredNames)];
@@ -437,9 +491,18 @@ const roundTerrBonus = 1 + fort*(1-gi) / 100;
 // Heal
 if (rs.healPct > 0 && totalAtkLostHp > 0 && !healBlocked) {
   const restored   = Math.min(totalAtkLostHp, Math.round(totalAtkLostHp * rs.healPct));
-  atkTroopHp       = Math.min(atkHpMax, atkTroopHp + restored);
-  totalAtkLostHp   = Math.max(0, totalAtkLostHp - restored);
-  const troopsBack = Math.round(restored / atkTroopHpPer);
+  // Distribute healed HP across slots proportionally by their max HP
+  let healLeft = restored;
+  for (let si = 0; si < atkSlotHp.length && healLeft > 0; si++) {
+    const sl = atkSlotResolved[si];
+    const slMax = sl.troops * sl.hpPer * bastionHpMult;
+    const portion = Math.min(healLeft, Math.max(0, slMax - atkSlotHp[si]));
+    atkSlotHp[si] = Math.min(slMax, atkSlotHp[si] + portion);
+    healLeft -= portion;
+  }
+  atkTroopHp     = Math.min(atkHpMax, atkTroopHp + restored - healLeft);
+  totalAtkLostHp = Math.max(0, totalAtkLostHp - (restored - healLeft));
+  const troopsBack = Math.round((restored - healLeft) / atkTroopHpPer);
   if (troopsBack > 0) roundLog.actions.push({ actor:cmd.n, action:`💚 ${troopsBack} troops restored`, dmg:-troopsBack, isSkill:true, isHeal:true, troopsBack, atkRemaining:Math.round(atkTroopHp/atkTroopHpPer) });
 }
 
@@ -451,9 +514,10 @@ if (rs.cmdPctDmg > 0 && defTroopHp > 0) {
   roundLog.actions.push({ actor:cmd.n, action:`💀 % HP strike${isCrit?" (CRIT!)":""}`, dmg, isPlayer:true, isSkill:true });
 }
 
+// Build speed-ordered list: atk cmd + one entry per slot + def cmd + def troop
 const order = [
   { id:"atkCmd",   spd:atkCmdSpd,   side:"atk" },
-  { id:"atkTroop", spd:atkTroopSpd, side:"atk" },
+  ...atkSlotResolved.map((sl, idx) => ({ id:`atkSlot_${idx}`, slotIdx:idx, spd:sl.spd, side:"atk" })),
   { id:"defCmd",   spd:defCmdSpd,   side:"def" },
   { id:"defTroop", spd:defTroopSpd, side:"def" },
 ].sort((a,b) => b.spd - a.spd || (a.side==="atk" ? -1 : 1));
@@ -486,39 +550,44 @@ for (const ent of order) {
       roundLog.actions.push({ actor:cmd.n, action:`${cmd.n} strikes${isCrit?" (CRIT!)":""}`, dmg, defKilled:Math.max(0,Math.round((prevDef-defTroopHp)/defTroopHpPer)), defRemaining:Math.max(0,Math.round(defTroopHp/defTroopHpPer)), isPlayer:true });
     }
 
-  // ── Attacker troops ───────────────────────────────────────────────────
-  } else if (ent.id === "atkTroop") {
-    if (!atkTierData || atkTroopHp <= 0 || defTroopHp <= 0) continue;
+  // ── Attacker slot ─────────────────────────────────────────────────────
+  } else if (ent.id?.startsWith("atkSlot_")) {
+    const slotIdx = ent.slotIdx;
+    const sl      = atkSlotResolved[slotIdx];
+    if (!sl || !sl.tierData || atkSlotHp[slotIdx] <= 0 || defTroopHp <= 0) continue;
 
-    // on_hit troop skills — targeting enemy so pass defTroopBranch for immunity
-    procTroopSkills(atkTroopSkills, "on_hit", atkSkillLevels, rs, roundLog, "Troops", dc?.troopBranch ?? null);
+    // on_hit troop skills from this slot — pass defTroopBranch for immunity
+    procTroopSkills(sl.skills, "on_hit", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", dc?.troopBranch ?? null);
 
-    const count    = Math.ceil(atkTroopHp / atkTroopHpPer);
-    const vulnMult = rangedVulnerability(dc?.troopBranch ?? null, atkBranchDef);
+    const count    = Math.ceil(atkSlotHp[slotIdx] / sl.hpPer);
+    const vulnMult = rangedVulnerability(dc?.troopBranch ?? null, sl.branchDef);
     const defDown  = 1 - (rs.enemyDefDown || 0);
     const hits     = rs.troopDoubleAtk ? 2 : 1;
+    const slotLabel = sl.branchDef?.label || `Slot ${slotIdx+1}`;
 
     for (let hi = 0; hi < hits; hi++) {
       if (defTroopHp <= 0) break;
-      let dmg = calcTroopDmg(atkBranchDef, atkTierData, defTroopDef, defDown, count, atkLvlMult, 1, rs.troopAtkMult, false, true, vulnMult * mod, round, cmd.troopBranch, armyAtkMult, armyFocMult, totalArmyCommand);
+      let dmg = calcTroopDmg(sl.branchDef, sl.tierData, defTroopDef, defDown, count, atkLvlMult, 1, rs.troopAtkMult, false, true, vulnMult * mod, round, sl.branch, armyAtkMult, armyFocMult, totalArmyCommand);
       if (rs.troopBonusDmgMult > 0) {
         const bonus = Math.round(dmg * rs.troopBonusDmgMult);
         dmg += bonus;
-        roundLog.actions.push({ actor:"Troops", action:`💥 Bonus strike +${bonus} dmg`, dmg:bonus, isPlayer:true, isTroopSkill:true });
+        roundLog.actions.push({ actor:slotLabel, action:`💥 Bonus strike +${bonus} dmg`, dmg:bonus, isPlayer:true, isTroopSkill:true });
       }
       const prevDef = defTroopHp;
       defTroopHp = Math.max(0, defTroopHp - dmg);
-      roundLog.actions.push({ actor:"Troops", action:`${atkBranchDef?.label||"Troops"} attack${hits>1?` (hit ${hi+1}/2)`:""}`, dmg, defKilled:Math.max(0,Math.round((prevDef-defTroopHp)/defTroopHpPer)), defRemaining:Math.max(0,Math.round(defTroopHp/defTroopHpPer)), isPlayer:true });
+      roundLog.actions.push({ actor:slotLabel, action:`${slotLabel} attack${hits>1?` (hit ${hi+1}/2)`:""}`, dmg, defKilled:Math.max(0,Math.round((prevDef-defTroopHp)/defTroopHpPer)), defRemaining:Math.max(0,Math.round(defTroopHp/defTroopHpPer)), isPlayer:true });
     }
 
-    // Counter attack
+    // Counter attack — distribute counter damage proportionally across slots
     if (rs.troopCounterAtk && defTroopHp > 0) {
       const cCount = Math.ceil(defTroopHp / defTroopHpPer);
-      const cDmg   = calcTroopDmg(defBranchDef, defTierData, atkTroopDef, bastionDefMult * rs.troopDefMult, cCount, defLvlMult, roundTerrBonus, 1, false, false, defMod, round, dc?.troopBranch, 1, 1);
+      const cDmg   = calcTroopDmg(defBranchDef, defTierData, sl.def, bastionDefMult * rs.troopDefMult, cCount, defLvlMult, roundTerrBonus, 1, false, false, defMod, round, dc?.troopBranch, 1, 1);
       const cFinal = Math.max(1, Math.round(cDmg * 0.50 * (1 - rs.enemyDmgReduce) * (1 - rs.dmgReduce)));
-      const prevAtk= atkTroopHp;
-      atkTroopHp   = Math.max(0, atkTroopHp - cFinal);
-      totalAtkLostHp += (prevAtk - atkTroopHp);
+      const prevSlotHp = atkSlotHp[slotIdx];
+      atkSlotHp[slotIdx] = Math.max(0, atkSlotHp[slotIdx] - cFinal);
+      const hpLost = prevSlotHp - atkSlotHp[slotIdx];
+      atkTroopHp = Math.max(0, atkTroopHp - hpLost);
+      totalAtkLostHp += hpLost;
       roundLog.actions.push({ actor:"Defenders", action:`⚡ Counter attack!`, dmg:cFinal, isPlayer:false, isTroopSkill:true });
     }
 
@@ -580,28 +649,43 @@ for (const ent of order) {
     if (Math.random() < rs.enemyMissChance) { roundLog.actions.push({ actor:"Defenders", action:"Enemy troops missed!", dmg:0 }); continue; }
 
     // on_hit troop skills — defenders targeting attacker, pass atkTroopBranch for immunity
-    procTroopSkills(defTroopSkills, "on_hit", defSkillLevels, rs, roundLog, "Defenders", cmd.troopBranch ?? null);
+    procTroopSkills(defTroopSkills, "on_hit", defSkillLevels, rs, roundLog, "Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null);
 
     const eMod     = (1 - rs.enemyDmgReduce) * (1 - rs.troopDmgReduce) * (1 - rs.dmgReduce);
     const count    = Math.ceil(defTroopHp / defTroopHpPer);
-    const vulnMult = rangedVulnerability(cmd.troopBranch ?? null, defBranchDef);
+    const vulnMult = rangedVulnerability(primarySlot?.branch ?? cmd.troopBranch ?? null, defBranchDef);
     const dmg      = Math.max(1, Math.round(
       calcTroopDmg(defBranchDef, defTierData, atkTroopDef, bastionDefMult * rs.troopDefMult, count, defLvlMult, roundTerrBonus, 1, false, false, vulnMult * defMod, round, dc?.troopBranch, 1, 1) * eMod
     ));
-    const prevAtk  = atkTroopHp;
-    atkTroopHp     = Math.max(0, atkTroopHp - dmg);
-    totalAtkLostHp += (prevAtk - atkTroopHp);
+    // Distribute defender damage proportionally across alive atk slots
+    const prevAtkTotal = atkTroopHp;
+    let dmgLeft = dmg;
+    const totalSlotHpAlive = atkSlotHp.reduce((s,h) => s+h, 0);
+    if (totalSlotHpAlive > 0) {
+      for (let si = 0; si < atkSlotHp.length && dmgLeft > 0; si++) {
+        if (atkSlotHp[si] <= 0) continue;
+        const frac = atkSlotHp[si] / totalSlotHpAlive;
+        const portion = Math.min(atkSlotHp[si], Math.round(dmgLeft * frac));
+        atkSlotHp[si] = Math.max(0, atkSlotHp[si] - portion);
+        dmgLeft -= portion;
+      }
+    }
+    const newAtkTotalHp = atkSlotHp.reduce((s,h) => s+h, 0);
+    atkTroopHp     = newAtkTotalHp;
+    totalAtkLostHp += (prevAtkTotal - newAtkTotalHp);
 
-    // on_hit_received — attacker's troops react to being hit
-    procTroopSkills(atkTroopSkills, "on_hit_received", atkSkillLevels, rs, roundLog, "Troops", dc?.troopBranch ?? null);
+    // on_hit_received — attacker's primary slot reacts
+    procTroopSkills(atkSlotResolved[0]?.skills ?? atkTroopSkills, "on_hit_received", atkSkillLevels, rs, roundLog, "Troops", dc?.troopBranch ?? null);
 
-    roundLog.actions.push({ actor:"Defenders", action:`${defBranchDef?.label||"Defenders"} attack`, dmg, atkKilled:Math.max(0,Math.round((prevAtk-atkTroopHp)/atkTroopHpPer)), atkRemaining:Math.max(0,Math.round(atkTroopHp/atkTroopHpPer)), isPlayer:false });
+    roundLog.actions.push({ actor:"Defenders", action:`${defBranchDef?.label||"Defenders"} attack`, dmg, atkKilled:Math.max(0,Math.round((prevAtkTotal-atkTroopHp)/atkTroopHpPer)), atkRemaining:Math.max(0,Math.round(atkTroopHp/atkTroopHpPer)), isPlayer:false });
   }
 }
 
-// round_end troop skills
-procTroopSkills(atkTroopSkills, "round_end", atkSkillLevels, rs, roundLog, "Troops", dc?.troopBranch ?? null);
-procTroopSkills(defTroopSkills, "round_end", defSkillLevels, rs, roundLog, "Defenders", cmd.troopBranch ?? null);
+// round_end troop skills (all atk slots)
+for (const sl of atkSlotResolved) {
+  procTroopSkills(sl.skills, "round_end", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", dc?.troopBranch ?? null);
+}
+procTroopSkills(defTroopSkills, "round_end", defSkillLevels, rs, roundLog, "Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null);
 report.rounds.push(roundLog);
 
 }
@@ -613,14 +697,16 @@ const atkLostHpActual = atkHpMax - Math.max(0, atkTroopHp);
 const troopHpDiv      = atkTroopHpPer * bastionHpMult;
 const lostFromHp      = Math.round(atkLostHpActual / troopHpDiv);
 const finalAtkLost    = won
-? Math.min(attackerTroops - 1, Math.max(1, lostFromHp))
-: Math.min(attackerTroops, Math.max(0, lostFromHp));
+? Math.min(totalAtkTroops - 1, Math.max(1, lostFromHp))
+: Math.min(totalAtkTroops, Math.max(0, lostFromHp));
 
 // XP = command consumed × rate for troop tier
 const defTroopTierIdx = dc?.troopBranch?.tier ?? 0;
 const xpRate = XP_PER_COMMAND[defTroopTierIdx] ?? XP_PER_COMMAND[0];
 const defTroopsKilled = Math.max(0, defTroops - defTroopsLeft);
 const fullXp = Math.round(defTroops * xpRate);
+// Update per-slot troops proportionally based on final losses
+const atkLostFraction = totalAtkTroops > 0 ? finalAtkLost / totalAtkTroops : 0;
 const defKilledFraction = Math.max(0, Math.min(1, defTroopsKilled / Math.max(1, defTroops)));
 const xpGain = won ? fullXp : isDraw ? Math.max(1, Math.round(fullXp * defKilledFraction)) : 0;
 // Fix 4: Win-chance % now uses the same stats that actually drive combat:
@@ -628,19 +714,25 @@ const xpGain = won ? fullXp : isDraw ? Math.max(1, Math.round(fullXp * defKilled
 //   - Defender: raw troops + level + terrain bonus
 //   - Sigmoid sharpness = 2.5 (was 3.5) so a 3-level / 3x troop advantage actually shows >90%
 //   - Commander atk/foc contribution folded in so stat-heavy commanders show correctly
-const cmdStatBonus  = 1 + (cmdAtkStat + cmdFocStat) / 2000; // small boost from cmd stats
-const atkPow     = totalArmyCommand * Math.pow(1.15, atkLvl - 1) * mod * cmdStatBonus;
+const cmdStatBonus  = 1 + (cmdAtkStat + cmdFocStat) / 2000;
+const atkPow     = Math.max(1, totalArmyCommand) * Math.pow(1.15, atkLvl - 1) * mod * cmdStatBonus;
 const defPow     = defTroops        * Math.pow(1.15, Math.max(0, defLvl - 1)) * defTerrBonusBase;
 const powerRatio = atkPow / Math.max(1, defPow);
 const pct        = Math.round(Math.min(99, Math.max(1, 100 / (1 + Math.pow(Math.max(0.00001, 1/powerRatio), 2.5)))));
 
 report.won           = won;
 report.isDraw        = isDraw;
-report.atkTroopsEnd  = Math.max(0, attackerTroops - finalAtkLost);
+report.atkTroopsEnd  = Math.max(0, totalAtkTroops - finalAtkLost);
+// Track per-slot troop counts after battle (proportional losses)
+report.atkSlotTroopsEnd = atkSlotResolved.map((sl, idx) => {
+  const lost = Math.min(sl.troops, Math.round(sl.troops * atkLostFraction));
+  return Math.max(0, sl.troops - lost);
+});
 report.defTroopsEnd  = defTroopsLeft;
 report.xpGain        = xpGain;
 report.pct           = pct;
 report.atkTroopsWounded = Math.floor(finalAtkLost * 0.30);
+report.totalAtkTroops = totalAtkTroops;
 
 return { won, isDraw, lost:finalAtkLost, atk:Math.round(atkPow), def:Math.round(defPow), pct, mod, modLabel, xpGain, report };
 }

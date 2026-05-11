@@ -51,10 +51,35 @@ export function bfsPath(fromKey, toKey) {
   return null;
 }
 
-export function effectiveMarchSpd(cmdSpd, troopBranch, armySpdBonus = 0) {
-  const tSpd = resolveTroopSpd(troopBranch);
-  if (!tSpd) return (cmdSpd || 60) + armySpdBonus;
-  return Math.round(tSpd * 0.80 + ((cmdSpd || 60) + armySpdBonus) * 0.20);
+// Normalise a commander to troopSlots array (backward compat with single troopBranch)
+export function normaliseTroopSlots(cmd) {
+  if (cmd?.troopSlots) return cmd.troopSlots;
+  if (cmd?.troopBranch) return [{ branch: cmd.troopBranch, troops: cmd.troops ?? 0 }];
+  return [];
+}
+
+export function effectiveMarchSpd(cmdSpd, troopBranchOrSlots, armySpdBonus = 0) {
+  // Accept either a legacy troopBranch object or a troopSlots array
+  let slots = null;
+  if (Array.isArray(troopBranchOrSlots)) {
+    slots = troopBranchOrSlots;
+  } else if (troopBranchOrSlots) {
+    slots = [{ branch: troopBranchOrSlots }];
+  }
+  if (!slots || slots.length === 0) return (cmdSpd || 60) + armySpdBonus;
+  // Use slowest troop speed across all slots.
+  // Each entry may be a slot object { branch, troops } or a raw branch object { faction, branch, tier }.
+  let slowest = null;
+  for (const sl of slots) {
+    // If sl has a .branch sub-key it's a slot; otherwise treat sl itself as the branch descriptor
+    const branchDesc = (sl && typeof sl === 'object' && 'faction' in sl) ? sl : sl?.branch;
+    const spd = resolveTroopSpd(branchDesc);
+    if (spd != null) {
+      if (slowest == null || spd < slowest) slowest = spd;
+    }
+  }
+  if (slowest == null) return (cmdSpd || 60) + armySpdBonus;
+  return Math.round(slowest * 0.80 + ((cmdSpd || 60) + armySpdBonus) * 0.20);
 }
 
 export function marchStepMs(effSpd) {
