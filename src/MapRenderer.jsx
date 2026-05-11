@@ -907,7 +907,7 @@ export function clearKeepCache() { _keepStateCache.clear(); }
 function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningRef) {
   const { cx: bx, cy: worldCY } = isoXY(reg.cx, reg.cy);
   const elev = 8;
-  const by   = worldCY - elev - 10;
+  const by   = worldCY + 26.5 - elev - 10;  // centered on 5×5 footprint midpoint (gy+26.5)
   const gy   = worldCY;
   const FOOTPRINT = [
      bx,        gy - 100,
