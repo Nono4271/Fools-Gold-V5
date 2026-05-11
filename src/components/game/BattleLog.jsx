@@ -283,6 +283,8 @@ function CommanderPopup({ b, side, onClose }) {
   const resolved    = resolveTroopBranch(troopBranch);
   const br          = resolved?.branchDef ?? null;
   const td          = resolved?.tierData  ?? null;
+  // Multi-slot support: atkTroopSlots array from report
+  const atkSlots    = isAtk ? (b.atkTroopSlots ?? (troopBranch ? [{ branch: troopBranch, troops }] : [])) : null;
   // Show all 3 commander stats always (even if 0)
   const cmdStats  = stats ? [
     { label:"ATK",   val:stats.atk ?? 0, color:"#e08050" },
@@ -425,17 +427,35 @@ function CommanderPopup({ b, side, onClose }) {
           display:"flex", alignItems:"center", justifyContent:"space-between",
           padding:"12px 16px", borderRadius:6,
           background:"rgba(255,255,255,.03)", border:"1px solid #1e1808",
-          cursor: br ? "pointer" : "default",
+          cursor: (br || (isAtk && atkSlots?.length)) ? "pointer" : "default",
         }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div>
-              <div style={{ fontSize:16, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>
-                {br ? `${br.label} — ${td?.label ?? ""}` : "Unknown"}
-              </div>
-              <div style={{ fontSize:14, color:"#5a4a38" }}>{(troops ?? 0).toLocaleString()} troops{br ? ` · ${br.size} · ${br.dmgType}` : ""}</div>
+          <div style={{ display:"flex", alignItems:"center", gap:12, flex:1 }}>
+            <div style={{ flex:1 }}>
+              {isAtk && atkSlots && atkSlots.length > 0 ? (
+                atkSlots.map((sl, i) => {
+                  const slRes = resolveTroopBranch(sl.branch);
+                  const slBr  = slRes?.branchDef;
+                  const slTd  = slRes?.tierData;
+                  return (
+                    <div key={i} style={{ marginBottom: i < atkSlots.length-1 ? 4 : 0 }}>
+                      <div style={{ fontSize:14, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>
+                        {slBr ? `${slBr.label} — ${slTd?.label ?? ""}` : "Unknown"}
+                      </div>
+                      <div style={{ fontSize:12, color:"#5a4a38" }}>{(sl.troops ?? 0).toLocaleString()} troops{slBr ? ` · ${slBr.size} · ${slBr.dmgType}` : ""}</div>
+                    </div>
+                  );
+                })
+              ) : (
+                <>
+                  <div style={{ fontSize:16, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>
+                    {br ? `${br.label} — ${td?.label ?? ""}` : "Unknown"}
+                  </div>
+                  <div style={{ fontSize:14, color:"#5a4a38" }}>{(troops ?? 0).toLocaleString()} troops{br ? ` · ${br.size} · ${br.dmgType}` : ""}</div>
+                </>
+              )}
             </div>
           </div>
-          {br && <span style={{ fontSize:14, color:"#3a3028" }}>tap for stats &#x2192;</span>}
+          {br && !isAtk && <span style={{ fontSize:14, color:"#3a3028" }}>tap for stats &#x2192;</span>}
         </div>
 
         {/* Commander Skills — attacker from snapshot, defender from defSkillsSnapshot */}

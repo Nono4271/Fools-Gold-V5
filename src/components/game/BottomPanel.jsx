@@ -50,7 +50,8 @@ export default memo(function BottomPanel({
           const maxAdd  = Math.min(room, barracksPool);
           const sk      = `rein_${reinCmd.uid}`;
           const sv      = Math.min(sliderVals[sk]??0, maxAdd);
-          const effSpd  = effectiveMarchSpd(applyGearToCmd(reinCmd, gearInventory).spd||60, reinCmd.troopBranch);
+          const _rSlots = reinCmd.troopSlots?.length ? reinCmd.troopSlots : (reinCmd.troopBranch ? [{ branch: reinCmd.troopBranch }] : []);
+          const effSpd  = effectiveMarchSpd(applyGearToCmd(reinCmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : reinCmd.troopBranch);
           const stepMs  = Math.max(100, Math.floor(marchStepMs(effSpd)/2));
           const path    = bfsPath(hqKey, reinCmd.tk);
           const estSecs = path ? Math.ceil((path.length-1)*stepMs/1000) : "?";
@@ -62,11 +63,14 @@ export default memo(function BottomPanel({
                 <span style={{fontSize:26}}>{reinCmd.icon}</span>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:11,fontWeight:700,color:"#e0d0c0"}}>{reinCmd.n} <span style={{color:"#f0c040",fontSize:9}}>Lv{reinCmd.lvl||5}</span></div>
-                  {reinCmd.troopBranch && (() => { const _ti = tbInfo(reinCmd.troopBranch); return _ti ? (
-                    <div style={{fontSize:9,color:_ti.color}}>
-                      {_ti.label} · <strong style={{color:"#e0d0c0"}}>{(reinCmd.troops||0).toLocaleString()}</strong> troops
+                  {(() => {
+                  const slots = reinCmd.troopSlots?.length ? reinCmd.troopSlots : (reinCmd.troopBranch ? [{ branch: reinCmd.troopBranch, troops: reinCmd.troops||0 }] : []);
+                  return slots.map((sl, i) => { const _ti = tbInfo(sl.branch); return _ti ? (
+                    <div key={i} style={{fontSize:9,color:_ti.color}}>
+                      {_ti.label} · <strong style={{color:"#e0d0c0"}}>{(sl.troops||0).toLocaleString()}</strong>
                     </div>
-                  ) : null; })()}
+                  ) : null; });
+                })()}
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
                   <div style={{fontSize:9,color:"#6a7a9a",fontFamily:"'Cinzel',serif"}}>Barracks</div>
@@ -130,7 +134,7 @@ export default memo(function BottomPanel({
                       style={{background:mvCmd.uid===cmd.uid?"rgba(40,160,80,.2)":"rgba(255,255,255,.04)",border:`2px solid ${mvCmd.uid===cmd.uid?"#3daa60":"rgba(255,255,255,.08)"}`,borderRadius:7,padding:"8px 10px",cursor:"pointer",textAlign:"center",minWidth:80}}>
                       <div style={{fontSize:22}}>{cmd.icon}</div>
                       <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:"#e0d0c0",fontWeight:700}}>{cmd.n}</div>
-                      <div style={{fontSize:8,color:"#3daa60"}}>{(cmd.troops||0).toLocaleString()} troops</div>
+                      <div style={{fontSize:8,color:"#3daa60"}}>{((cmd.troopSlots?.reduce((s,sl)=>s+(sl.troops||0),0)) || cmd.troops||0).toLocaleString()} troops</div>
                       {mvCmd.uid===cmd.uid && <div style={{fontSize:7,color:"#3daa60",marginTop:2}}>✓ SELECTED</div>}
                     </div>
                   ))}
