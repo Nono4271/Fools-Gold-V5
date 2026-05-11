@@ -1258,7 +1258,7 @@ return (
   </div>
 
   {/* -- Right: Selected commander detail -- */}
-  <div style={{ flex:1, overflowY:"auto", padding:"10px 12px" }}>
+  <div style={{ flex:1, overflowY:"auto", padding:"10px 12px 32px" }}>
     {!selCmd ? (
       <div style={{ textAlign:"center", padding:"40px 20px", color:P.dim,
         fontFamily:P.ffb, fontStyle:"italic", fontSize:9 }}>
@@ -1408,7 +1408,7 @@ return (
                 </div>
                 <input type="range" min={0} max={maxSlider} value={sv}
                   onChange={e => setSliderVals(v=>({...v,[cmd.uid]:+e.target.value}))}
-                  style={{ width:"100%", accentColor:"#3daa60", marginBottom:8 }}/>
+                  style={{ width:"100%", accentColor:"#3daa60", marginBottom:8, boxSizing:"border-box", paddingRight:4 }}/>
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:7,
                   color:"#4a4a5a", marginBottom:8 }}>
                   <span>0</span>

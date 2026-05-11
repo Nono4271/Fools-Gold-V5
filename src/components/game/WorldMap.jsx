@@ -247,13 +247,15 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
         </span>
       </div>
 
-      {/* Map area — use position:relative, no overflow:hidden so events aren't clipped */}
-      <div style={{ flex: 1, position: "relative" }}>
+      {/* Map area — scrollable so the full map is always reachable on any screen size */}
+      <div style={{ flex: 1, position: "relative", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch" }}>
         <svg
           viewBox={`0 0 ${DW} ${DH}`}
-          preserveAspectRatio="none"
+          preserveAspectRatio="xMidYMid meet"
           style={{
-            display: "block", width: "100%", height: "100%",
+            display: "block", width: "100%",
+            /* Maintain aspect ratio: height scales with width so southern border is never clipped */
+            height: "auto", minHeight: "100%",
             cursor: "pointer",
             // Ensure SVG itself receives pointer events
             pointerEvents: "all",
