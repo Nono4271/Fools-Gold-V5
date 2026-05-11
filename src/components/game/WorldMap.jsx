@@ -478,8 +478,8 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
         {/* ── Floating popup — anchored near click, flips left/right based on screen edge ── */}
         {selectedItem && clickPos && (() => {
           const POPUP_W = 220;
-          const POPUP_MAX_H = 260;
-          const PAD = 10; // gap from click point
+          const POPUP_MAX_H = 280;
+          const PAD = 32;
           const flipLeft = clickPos.x > screenW * 0.55;
           const popupLeft = flipLeft
             ? Math.max(8, clickPos.x - POPUP_W - PAD)
@@ -493,12 +493,11 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
           const ownerCol = si.owner
             ? (si.owner === "player" ? "#44aaff" : (FAC_COLOR[si.owner] || "#cc8844"))
             : "#7a6a50";
-          const wavesTotal    = si.garrisonWaves ?? 20;
+          const wavesTotal    = si.garrisonWaves ?? (si.type ? 2 : 20);
           const wavesDefeated = si.defeatedWaves?.length ?? 0;
           const wavesLeft     = Math.max(0, wavesTotal - wavesDefeated);
           const siegePct      = si.siegeMax > 0 ? Math.round((si.siege / si.siegeMax) * 100) : 0;
           const defLvl        = si.defCmd?.lvl ?? 20;
-          const troops        = si.garrisonTroops || si.garrison || 0;
           const isGate        = !!si.type;
           const typeCol       = si.type === "crossing" ? "#4ab8d8"
                               : si.type === "tollbridge" ? "#c8a030"
@@ -583,48 +582,34 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
                   </div>
                 )}
 
-                {/* Garrison waves */}
-                {!isGate && (
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <span style={{ fontSize: 7, color: "#6a5a3a", letterSpacing: ".06em" }}>GARRISON</span>
-                      <span style={{ fontSize: 7, color: "#c8a060" }}>{wavesLeft}/{wavesTotal} waves left</span>
-                    </div>
-                    {/* Wave pip bar */}
-                    <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                      {Array.from({ length: wavesTotal }).map((_, i) => (
-                        <div key={i} style={{
-                          width: Math.max(6, Math.min(10, (POPUP_W - 40) / wavesTotal - 2)),
-                          height: 6, borderRadius: 2,
-                          background: i < wavesDefeated ? "#2a1a1a" : ownerCol,
-                          opacity: i < wavesDefeated ? 0.3 : 0.85,
-                        }}/>
-                      ))}
-                    </div>
+                {/* Garrison waves — shown for all (gates have 2, keeps have 20) */}
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 7, color: "#6a5a3a", letterSpacing: ".06em" }}>GARRISON</span>
+                    <span style={{ fontSize: 7, color: "#c8a060" }}>{wavesLeft}/{wavesTotal} waves left</span>
                   </div>
-                )}
+                  <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                    {Array.from({ length: wavesTotal }).map((_, i) => (
+                      <div key={i} style={{
+                        width: Math.max(6, Math.min(10, (POPUP_W - 40) / wavesTotal - 2)),
+                        height: 6, borderRadius: 2,
+                        background: i < wavesDefeated ? "#2a1a1a" : ownerCol,
+                        opacity: i < wavesDefeated ? 0.3 : 0.85,
+                      }}/>
+                    ))}
+                  </div>
+                </div>
 
-                {/* Defender level + troops */}
-                {!isGate && (
-                  <div style={{
-                    display: "flex", gap: 8,
-                    padding: "6px 8px",
-                    background: "rgba(255,255,255,0.03)",
-                    borderRadius: 5, border: "1px solid rgba(255,255,255,0.06)",
-                  }}>
-                    <div style={{ flex: 1, textAlign: "center" }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#c8a060" }}>Lv{defLvl}</div>
-                      <div style={{ fontSize: 6, color: "#4a3a28", letterSpacing: ".06em", marginTop: 1 }}>DEFENDER</div>
-                    </div>
-                    <div style={{ width: 1, background: "rgba(255,255,255,0.06)" }}/>
-                    <div style={{ flex: 1, textAlign: "center" }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#c8a060" }}>
-                        {troops >= 1000 ? `${(troops/1000).toFixed(1)}k` : troops}
-                      </div>
-                      <div style={{ fontSize: 6, color: "#4a3a28", letterSpacing: ".06em", marginTop: 1 }}>TROOPS</div>
-                    </div>
-                  </div>
-                )}
+                {/* Defender level */}
+                <div style={{
+                  padding: "6px 8px",
+                  background: "rgba(255,255,255,0.03)",
+                  borderRadius: 5, border: "1px solid rgba(255,255,255,0.06)",
+                  textAlign: "center",
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#c8a060" }}>Lv{defLvl}</div>
+                  <div style={{ fontSize: 6, color: "#4a3a28", letterSpacing: ".06em", marginTop: 1 }}>WAVE DEFENDER LEVEL</div>
+                </div>
               </div>
 
               {/* Footer — Go button */}
