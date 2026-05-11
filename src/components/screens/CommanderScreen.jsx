@@ -897,35 +897,17 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
       {showSkills && <SkillTreeOverlay cmd={cmd} setCmds={setCmds} gems={gems} setGems={setGems} onClose={() => setShowSkills(false)} />}
 
-      {/* ── Name + identity ── */}
+      {/* ── Identity chips + bars ── */}
       <div style={{
         padding: "8px 14px 6px",
         background: `linear-gradient(160deg, ${r.color}0c 0%, transparent 55%)`,
         borderBottom: "1px solid #1c1610",
         flexShrink: 0,
       }}>
-        {/* Row 1: name + portrait */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 5 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 13,
-              color: "#ede0c8", letterSpacing: ".01em", lineHeight: 1.1,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>{cmd.n}</div>
-          </div>
-          {/* Portrait circle */}
-          <div style={{
-            width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-            background: `radial-gradient(circle at 38% 32%, ${r.color}22, #0c0a07)`,
-            border: `2px solid ${r.color}55`,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
-          }}>{cmd.icon}</div>
-        </div>
-
-        {/* Row 2: chips — single nowrap scrollable line */}
+        {/* Chips — single nowrap scrollable line */}
         <div style={{ display: "flex", gap: 4, overflowX: "auto", flexWrap: "nowrap",
           scrollbarWidth: "none", WebkitOverflowScrolling: "touch", position: "relative",
-          msOverflowStyle: "none" }}>
+          msOverflowStyle: "none", marginBottom: 6 }}>
           {cls && (
             <div
               onClick={() => setShowClassPopup(showClassPopup === "class" ? null : "class")}
@@ -1895,10 +1877,10 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
         />
       )}
 
-      {/* ── Body: portrait list + detail ── */}
+      {/* ── Body: 3 columns ── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
 
-        {/* Left — back arrow + filter + portrait roster */}
+        {/* ── Col 1: back arrow + filter + scrollable roster ── */}
         <div style={{
           width: 76, flexShrink: 0,
           overflowY: "auto", overflowX: "hidden",
@@ -1908,7 +1890,6 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           display: "flex", flexDirection: "column",
           touchAction: "pan-y", overscrollBehavior: "contain",
         }}>
-          {/* Back arrow + filter icon — fixed at top of column */}
           <div style={{
             display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
             padding: "10px 0 8px", flexShrink: 0,
@@ -1943,7 +1924,6 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
               )}
             </button>
           </div>
-
           {filtered.map(cmd => (
             <RosterPortrait
               key={cmd.uid}
@@ -1960,12 +1940,59 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           )}
         </div>
 
-        {/* Right — detail panel (CommanderDetail self-scrolls) */}
+        {/* ── Col 2: commander portrait / art area ── */}
+        {selectedCmd && (() => {
+          const r2 = RARITY[selectedCmd.rarity] ?? RARITY.soldier;
+          const faction2 = PLAYABLE_FACTIONS.find(f => f.key === selectedCmd.faction);
+          const fCol = faction2?.c ?? r2.color;
+          return (
+            <div style={{
+              width: "28%", flexShrink: 0,
+              borderRight: "1px solid #1e1508",
+              background: `radial-gradient(ellipse at 50% 30%, ${fCol}18 0%, #04030a 65%)`,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              position: "relative", overflow: "hidden",
+            }}>
+              {/* Atmospheric glow */}
+              <div style={{
+                position: "absolute", top: "15%", left: "50%", transform: "translateX(-50%)",
+                width: 120, height: 120, borderRadius: "50%",
+                background: `radial-gradient(circle, ${fCol}28 0%, transparent 70%)`,
+                pointerEvents: "none",
+              }}/>
+              {/* Commander icon — large */}
+              <div style={{
+                fontSize: 72, lineHeight: 1,
+                filter: `drop-shadow(0 0 24px ${fCol}88)`,
+                marginBottom: 12,
+              }}>{selectedCmd.icon}</div>
+              {/* Name */}
+              <div style={{
+                fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 10,
+                color: "#c8b890", letterSpacing: ".04em", textAlign: "center",
+                padding: "0 8px",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                maxWidth: "100%",
+              }}>{selectedCmd.n}</div>
+              {/* Faction */}
+              {faction2 && (
+                <div style={{
+                  marginTop: 5, fontSize: 9,
+                  color: fCol, fontFamily: "'Cinzel',serif",
+                  opacity: 0.8,
+                }}>{faction2.s} {faction2.n}</div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ── Col 3: all commander info (CommanderDetail) ── */}
         <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}>
           {selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
             : (
-              <div style={{ height: "100%", minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center",
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center",
                 color: "#2a2020", fontFamily: "'Cinzel',serif", fontSize: 11, fontStyle: "italic" }}>
                 Select a commander
               </div>
