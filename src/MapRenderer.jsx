@@ -21,6 +21,7 @@ const TV = {
   desert:       { base: hc('#c4a85a'), lite: hc('#d4b86a'), shad: hc('#a88e44') },
   ruin:         { base: hc('#4a4440'), lite: hc('#585050'), shad: hc('#363030') },
   shore:        { base: hc('#b09868'), lite: hc('#c0a878'), shad: hc('#907850') },
+  road:         { base: hc('#7a6a50'), lite: hc('#8a7a60'), shad: hc('#5a4e38') },
   // Border terrain
   river:        { base: hc('#0e2e58'), lite: hc('#1a4a80'), shad: hc('#081a38') },
   ravine:       { base: hc('#2a1a0c'), lite: hc('#3c2610'), shad: hc('#180e06') },

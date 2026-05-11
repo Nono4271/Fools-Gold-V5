@@ -432,7 +432,7 @@ export default function RiseToWar() {
           COLS: C, ROWS: R,
           regionList, keepMeta, crossings, impassKeys,
           TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
-          F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER,
+          F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER, F_PGGATE,
         } = meta;
 
         // Build region lookup by index
@@ -457,6 +457,7 @@ export default function RiseToWar() {
             const isWin     = !!(flags & F_WIN);
             const isGate    = !!(flags & F_GATE);
             const isBorder  = !!(flags & F_BORDER);
+            const isPGGate  = !!(flags & F_PGGATE);
 
             const owner = OWNER_DEC[ownerArr[idx]] || null;
 
@@ -491,6 +492,8 @@ export default function RiseToWar() {
               resetAt:    null,
               isKeep, isKeepPart, isHQ, isHQPart, isWin,
               isGate, isBorder,
+              isPeninsulaGate: isPGGate,
+              homeFaction:     km?.homeFaction || null,
               crossingType: km?.type || null,
               keepPrimaryKey,
               defCmd:     km?.defCmd || null,
@@ -915,7 +918,9 @@ export default function RiseToWar() {
     );
   }, [selAdjToPlayer, selTile, playerCmds]);
 
-  const canAtk = !!(selTile && selTile.owner!=="player" && selAdjToPlayer);
+  const canAtk = !!(selTile && selTile.owner!=="player" && selAdjToPlayer &&
+    // Peninsula gates can only be attacked by their home faction
+    (!selTile.isPeninsulaGate || !selTile.homeFaction || selTile.homeFaction === facKey));
 
   const marchingToSel = useMemo(() =>
     selKey ? playerCmds.filter(c => c.march?.dest===selKey) : [],
@@ -939,6 +944,11 @@ export default function RiseToWar() {
     const destTile = tilesMapRef.current[destKey];
     const type = destTile?.owner==="player" ? "move" : "attack";
     if (type==="move" && destTile?.owner!=="player") return;
+    // Peninsula gates can only be attacked by their home faction
+    if (type==="attack" && destTile?.isPeninsulaGate && destTile?.homeFaction && destTile.homeFaction !== facKey) {
+      floaty("⚠ Only " + destTile.homeFaction + " can attack this gate!", "#cc8030", freshCmd.tk);
+      return;
+    }
     const boostedSpd = applyGearToCmd(freshCmd, gearInventory).spd || 60;
     const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, freshCmd.troopBranch));
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null);
