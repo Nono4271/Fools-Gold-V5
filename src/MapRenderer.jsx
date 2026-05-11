@@ -63,9 +63,11 @@ function worldToKey(wx, wy, tiles) {
       // Gate tiles (crossings/tunnels/toll bridges) have isKeep=true but are NOT
       // in KEEP_REGION_LIST, so allow clicking them via the tile layer.
       // P10-13 structures (powerLevel >= 10) are also dynamic keeps not in
-      // KEEP_REGION_LIST — allow tile-layer clicks for them too.
-      const isStaticKeep = tile?.isKeep && !tile?.isGate && (tile?.powerLevel ?? 0) < 10;
-      if (tile && !isStaticKeep && !tile.isKeepPart) {
+      // KEEP_REGION_LIST — allow tile-layer clicks for all 4 of their cells.
+      const pl10 = (tile?.powerLevel ?? 0) >= 10;
+      const isStaticKeep = tile?.isKeep && !tile?.isGate && !pl10;
+      const isStaticPart = tile?.isKeepPart && !pl10;
+      if (tile && !isStaticKeep && !isStaticPart) {
         const { cx, cy } = isoXY(c, r);
         const elev = tile.isHQ ? 14 : tile.isWin ? 10 : 4;
         const sy = cy - elev;
@@ -84,9 +86,11 @@ function worldToKey(wx, wy, tiles) {
       if (!tiles[key]) continue;
       const tile = tiles[key];
       // Gate tiles are clickable even though isKeep=true
-      // P10-13 dynamic structures (powerLevel >= 10) are also tile-layer clickable
-      const isStaticKeep2 = tile.isKeep && !tile.isGate && (tile.powerLevel ?? 0) < 10;
-      if (isStaticKeep2 || tile.isKeepPart) continue; // keep layer handles static keeps
+      // P10-13 dynamic structures (powerLevel >= 10) — all 4 cells are tile-layer clickable
+      const pl10b = (tile.powerLevel ?? 0) >= 10;
+      const isStaticKeep2 = tile.isKeep && !tile.isGate && !pl10b;
+      const isStaticPart2 = tile.isKeepPart && !pl10b;
+      if (isStaticKeep2 || isStaticPart2) continue; // keep layer handles static keeps
       const { cx, cy } = isoXY(c, r);
       const elev = tile.isHQ ? 14 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
       const sy = cy - elev;
@@ -164,11 +168,26 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // The keep layer (buildKeepLayer) handles all visuals and interaction.
       // Exception: gate tiles (crossings/tunnels/toll bridges) have isKeep=true but
       // are NOT in KEEP_REGION_LIST — render them with their actual terrain color.
+      // P10–P13 dynamic structures are also handled here with selection outline.
       if ((isKeep && !isGate) || isKeepPart) {
         const { cx, cy } = isoXY(c, r);
         const mid = cy + TH / 2;
         const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
         gfx.beginFill(getTileBaseColor(c, r, "grass")); gfx.drawPolygon(TOP); gfx.endFill();
+
+        // P10–P13: subtle power-level tinted border + selection outline
+        if ((isKeep || isKeepPart) && (tiles[key]?.powerLevel ?? 0) >= 10) {
+          const pl  = tiles[key]?.powerLevel ?? 10;
+          // Subtle dim border — muted purple/pink tint, low opacity
+          const borderColor = pl >= 13 ? 0x6a1840 : pl >= 12 ? 0x581448 : pl >= 11 ? 0x401050 : 0x2a0c38;
+          gfx.lineStyle(1.5, borderColor, 0.55); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+
+          // Selection outline — white on whichever cell was tapped (primary or part)
+          const primaryKey = isKeepPart ? tiles[key]?.keepPrimaryKey : key;
+          if (selKey === key || selKey === primaryKey) {
+            gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          }
+        }
         continue;
       }
 
