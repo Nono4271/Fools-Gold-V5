@@ -25,7 +25,7 @@ export default memo(function TilePopup({
   setAtkKey, setMode, setPick, setMvCmd, setReinCmd,
   recallMarch, recallStationary,
   setBarracks, setCmds,
-  nowTick, playerHqKey,
+  nowTick, playerHqKey, facKey,
 }) {
   if (!selKey || !selTile || !popupPos) return null;
 
@@ -234,7 +234,7 @@ export default memo(function TilePopup({
           {selTile.owner !== "player" && (selTile.defCmd || selTile.owner==="ai") && (() => {
             const isAiOwned = selTile.owner==="ai";
             const aiCmdPresent = isAiOwned && cmds.some(c => c.owner==="ai" && c.tk===selKey && !c.march);
-            const dc = (isAiOwned && !aiCmdPresent) ? garrisonDefCmd(selTile) : selTile.defCmd;
+            const dc = (isAiOwned && !aiCmdPresent) ? garrisonDefCmd(selTile, facKey) : selTile.defCmd;
             if (!dc) return null;
             const tt = tbInfo(dc.troopBranch);
             return (
