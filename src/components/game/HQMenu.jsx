@@ -1,7 +1,7 @@
 import { useState, useEffect, memo, useMemo } from "react";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
-import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax } from "../../../shared/constants/buildings.js";
+import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
 const SC = RC;
 
@@ -243,10 +243,19 @@ const isMax   = lvl >= maxLvl;
 const ok      = !isMax && !inProg && canAfford(cost||{});
 const gated   = !isMax && !inProg && !ok;
 
+// Self-contained 1-second ticker so the countdown re-renders while in progress
+const [now, setNow] = useState(() => Date.now());
+useEffect(() => {
+  if (!inProg) return;
+  setNow(Date.now());
+  const id = setInterval(() => setNow(Date.now()), 1000);
+  return () => clearInterval(id);
+}, [inProg?.endsAt]);
+
 if (isMax) return <div style={{ fontSize:9, color:P.gold, fontFamily:P.ff, fontWeight:700 }}>MAX</div>;
 if (inProg) {
-const pct = Math.max(0, Math.min(100, ((Date.now()-inProg.startedAt)/inProg.dur)*100));
-const secsLeft = Math.max(0, Math.ceil((inProg.endsAt-Date.now())/1000));
+const pct = Math.max(0, Math.min(100, ((now-inProg.startedAt)/inProg.dur)*100));
+const secsLeft = Math.max(0, Math.ceil((inProg.endsAt-now)/1000));
 const mm = Math.floor(secsLeft/60), ss = secsLeft%60;
 return (
 <div style={{ textAlign:"right" }}>
