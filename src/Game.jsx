@@ -633,8 +633,11 @@ export default function RiseToWar() {
   }, [screen]);
 
   // ── Reset mapReady when leaving game ──
+  // Only wipe tiles when navigating to a new-game flow (title/faction).
+  // Overlay screens (gacha, commander, gear) keep the map alive so
+  // returning to "game" doesn't trigger a full world regeneration.
   useEffect(() => {
-    if (screen !== "game") {
+    if (screen === "title" || screen === "faction") {
       setMapReady(false);
       clearKeepCache();
       setTiles({});
