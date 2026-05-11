@@ -183,7 +183,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
             const [pc, pr] = primKey.split(",").map(Number);
             const isOuter = Math.abs(c - pc) === 2 || Math.abs(r - pr) === 2;
             if (isOuter) {
-              const OD = 2.2;
+              const OD = 2.8;
               gfx.lineStyle(OD * 2, baseColor, 1);
               gfx.beginFill(baseColor); gfx.drawPolygon(TOP); gfx.endFill();
               gfx.lineStyle(0);
