@@ -51,7 +51,8 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       position: "fixed", inset: 0, zIndex: 700,
       background: "#080704",
       display: "flex", flexDirection: "column",
-      minHeight: 0,
+      height: "100dvh",
+      overflow: "hidden",
     }}>
       <style>{CSS}</style>
 
@@ -179,7 +180,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", minWidth: 0, minHeight: 0, position: "relative", WebkitOverflowScrolling: "touch", touchAction: "pan-y", overscrollBehavior: "contain" }}>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: "relative" }}>
           {selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
             : (

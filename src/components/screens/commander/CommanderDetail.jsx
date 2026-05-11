@@ -27,7 +27,7 @@ export default function CommanderDetail({ cmd, bldgs, gearInventory, setGearInve
   const cmdCap = cmdCommand(lvl, bldgs?.commandcenter ?? 0, (cmd.cls==="leader"&&lvl>=25)?500:0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
       {showSkills && <SkillTreeOverlay cmd={cmd} setCmds={setCmds} gems={gems} setGems={setGems} onClose={() => setShowSkills(false)} />}
 
       {/* ── Name + identity ── */}
@@ -395,8 +395,7 @@ export default function CommanderDetail({ cmd, bldgs, gearInventory, setGearInve
         rarityColor={r.color}
       />
 
-      {/* ── Skill Trees button ── */}
-      <div style={{ flex: 1, minHeight: 16 }} />
+      <div style={{ height: 16, flexShrink: 0 }} />
       <div style={{ padding: "12px 18px 28px", flexShrink: 0 }}>
         <button onClick={() => setShowSkills(true)} style={{
           width: "100%", padding: "13px 0",
