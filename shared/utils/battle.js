@@ -168,8 +168,21 @@ function buildTroopSlots(faction, tierSplit, seed) {
 }
 
 // Returns the tier split for a given power level.
-// P1–P5: all T1 (index 0). P6–P9: half T1 half T2 (indices 0 and 1).
+// P1–P5:  all T1 (index 0)
+// P6–P9:  50% T1 / 50% T2 (indices 0 and 1)
+// P10:    50% T2 / 50% T3 (indices 1 and 2)
+// P11–P13: all T3 (index 2)
 function tierSplitForPowerLevel(plvl, budget) {
+  if (plvl >= 11) {
+    return [{ tier: 2, budget }];
+  }
+  if (plvl === 10) {
+    const half = Math.floor(budget / 2);
+    return [
+      { tier: 1, budget: half },
+      { tier: 2, budget: budget - half },
+    ];
+  }
   if (plvl >= 6) {
     const half = Math.floor(budget / 2);
     return [
@@ -192,10 +205,12 @@ if (plvl >= 4 && playerFaction) {
     const seed  = (((( tile.c ?? 0) + 1) * 73856093) ^ (((tile.r ?? 0) + 1) * 19349663)) >>> 0;
     const split = tierSplitForPowerLevel(plvl, budget);
     const slots = buildTroopSlots(fc.faction, split, seed);
+    const totalTroops = slots.reduce((s, sl) => s + sl.troops, 0);
     return {
       ...fc,
-      troops:     budget,
-      troopSlots: slots.length > 0 ? slots : undefined,
+      troops:      totalTroops,
+      commandBudget: budget,
+      troopSlots:  slots.length > 0 ? slots : undefined,
       troopBranch: slots[0]?.branch ?? fc.troopBranch,
     };
   }
@@ -248,17 +263,19 @@ export function garrisonWaveDefCmd(tile, waveIndex, playerFaction) {
   const waveC      = (c + waveIndex * 997) | 0;
   const waveR      = (r + waveIndex * 1009) | 0;
   const powerLevel = Math.max(4, tile.powerLevel || 4);
-  const baseCmd    = factionDefCmdForTile(waveC, waveR, playerFaction, powerLevel);
+  const baseCmd    = factionDefCmdForTile(waveC, waveR, playerFaction, powerLevel, waveIndex);
   if (!baseCmd) return garrisonDefCmd(tile, playerFaction);
 
   const split = tierSplitForPowerLevel(powerLevel, budget);
   const slots = buildTroopSlots(baseCmd.faction, split, waveSeed);
+  const totalTroops = slots.reduce((s, sl) => s + sl.troops, 0);
 
   return {
     ...baseCmd,
-    troops:      budget,
-    troopSlots:  slots.length > 0 ? slots : undefined,
-    troopBranch: slots[0]?.branch ?? baseCmd.troopBranch,
+    troops:        totalTroops,
+    commandBudget: budget,
+    troopSlots:    slots.length > 0 ? slots : undefined,
+    troopBranch:   slots[0]?.branch ?? baseCmd.troopBranch,
   };
 }
 function applyInstantEffects(skills, round, rs) {
