@@ -183,7 +183,7 @@ function ActionButton({ icon, label, color = "#c8a060", onClick, badge, accent }
 }
 
 // ── Tile Search Popup ─────────────────────────────────────────────────────────
-const PL_LIST = [1,2,3,4,5,6,7,8,9]
+const PL_LIST = [1,2,3,4,5,6,7,8,9,10,11,12,13]
   .filter(pl => POWER_DEFS[pl])
   .map(pl => ({ pl, label: POWER_DEFS[pl].label, color: POWER_DEFS[pl].color }));
 
