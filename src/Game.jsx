@@ -377,6 +377,23 @@ export default function RiseToWar() {
   // ── Hooks ──
   useResources({ screen, tilesRef, setRss, bldgs });
 
+  // ── Stamina regen: +20/hr = +1 per 3 minutes ─────────────────────────────
+  useEffect(() => {
+    if (screen !== "game") return;
+    const STAMINA_MAX   = 200;
+    const REGEN_PER_HR  = 20;
+    const INTERVAL_MS   = 3 * 60 * 1000; // 3 minutes = 1 regen tick
+    const REGEN_PER_TICK = REGEN_PER_HR / (60 / 3); // = 1 per tick
+    const id = setInterval(() => {
+      setPlayerCmds(prev => prev.map(c => {
+        const cur = c.stamina ?? STAMINA_MAX;
+        if (cur >= STAMINA_MAX) return c;
+        return { ...c, stamina: Math.min(STAMINA_MAX, cur + REGEN_PER_TICK) };
+      }));
+    }, INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [screen]);
+
   const { initPathfinding, findPath, findPathBatch } = usePathfinding();
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
@@ -944,6 +961,13 @@ export default function RiseToWar() {
     const destTile = tilesMapRef.current[destKey];
     const type = destTile?.owner==="player" ? "move" : "attack";
     if (type==="move" && destTile?.owner!=="player") return;
+    // Stamina check: moves cost 10, attacks cost 20
+    const staminaCost = type === "attack" ? 20 : 10;
+    const curStamina = freshCmd.stamina ?? 200;
+    if (curStamina < staminaCost) {
+      floaty(`⚡ Not enough stamina! (${curStamina}/200)`, "#cc8030", freshCmd.tk);
+      return;
+    }
     // Peninsula gates can only be attacked by their home faction
     if (type==="attack" && destTile?.isPeninsulaGate && destTile?.homeFaction && destTile.homeFaction !== facKey) {
       floaty("⚠ Only " + destTile.homeFaction + " can attack this gate!", "#cc8030", freshCmd.tk);
@@ -960,7 +984,12 @@ export default function RiseToWar() {
         floaty("⚠ No path to target!", "#cc4040", freshCmd.tk);
         return;
       }
-      setCmds(p => p.map(c => c.uid===freshCmd.uid ? { ...c, march:{ type, path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, lastStepTime:Date.now() } } : c));
+      // Deduct stamina immediately on march dispatch
+      setCmds(p => p.map(c => c.uid===freshCmd.uid ? {
+        ...c,
+        stamina: Math.max(0, (c.stamina ?? 200) - staminaCost),
+        march:{ type, path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, lastStepTime:Date.now() }
+      } : c));
     });
   }, [floaty, gearInventory, findPath]);
 
@@ -1147,7 +1176,7 @@ export default function RiseToWar() {
           const existing = nx.find(x => x.id === h.id && x.owner === "player");
           if (!existing) {
             nx.push({ ...h, uid:h.uid, troops:0, troopBranch:null, tk:hqk, owner:"player", lvl:5, xp:0,
-              respectPoints:0, respectLevel:0, skillPoints:{}, unspentSkillPoints:5,
+              respectPoints:0, respectLevel:0, skillPoints:{}, unspentSkillPoints:5, stamina:200,
               gear:{ helmet:null, armor:null, bracers:null, accessory:null } });
           } else {
             const points = existing.respectLevel >= RESPECT_MAX
