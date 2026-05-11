@@ -176,15 +176,14 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         gfx.beginFill(getTileBaseColor(c, r, "grass")); gfx.drawPolygon(TOP); gfx.endFill();
 
         // P10–P13: subtle power-level tinted border + selection outline
-        if ((isKeep || isKeepPart) && (tiles[key]?.powerLevel ?? 0) >= 10) {
-          const pl  = tiles[key]?.powerLevel ?? 10;
-          // Subtle dim border — muted purple/pink tint, low opacity
+        if ((isKeep || isKeepPart) && (tile.powerLevel ?? 0) >= 10) {
+          const pl  = tile.powerLevel ?? 10;
           const borderColor = pl >= 13 ? 0x6a1840 : pl >= 12 ? 0x581448 : pl >= 11 ? 0x401050 : 0x2a0c38;
           gfx.lineStyle(1.5, borderColor, 0.55); gfx.drawPolygon(TOP); gfx.lineStyle(0);
 
-          // Selection outline — white on whichever cell was tapped (primary or part)
-          const primaryKey = isKeepPart ? tiles[key]?.keepPrimaryKey : key;
-          if (selKey === key || selKey === primaryKey) {
+          const tileKey   = `${c},${r}`;
+          const primaryKey = isKeepPart ? tile.keepPrimaryKey : tileKey;
+          if (selKey === tileKey || selKey === primaryKey) {
             gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
           }
         }
