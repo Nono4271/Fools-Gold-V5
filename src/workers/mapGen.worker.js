@@ -21,26 +21,30 @@ const POWER_DEFS = {
   7: { cmdLvl:18, command:2160 },
   8: { cmdLvl:25, command:3600 },
   9: { cmdLvl:28, command:4200 },
+  10:{ cmdLvl:35, command:5500 },
+  11:{ cmdLvl:40, command:6500 },
+  12:{ cmdLvl:45, command:7500 },
+  13:{ cmdLvl:50, command:9000 },
 };
 const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 }; // kept for keeps only
 
 // ── Power level distribution ──────────────────────────────────────────────────
-// Weighted random — same probabilities map-wide. Geometric decay per tier.
-// Calibrated for 1200 players across 1.4M tiles:
-//   P1: ~670k  P2: ~391k  P3: ~195k  P4: ~89k  P5: ~34k  P6: ~13k  P7: ~4.2k  P8: ~2.8k  P9: ~1.4k
-// P7 stays in 2,500-5,000 target range.
-// To add future tiers: push { pl:N, w } — POWER_TOTAL auto-normalises.
+// P10–P13 use weight 1 each but are converted to 2×2 structures after the main
+// tile pass — any tile that rolled P10-P13 becomes the top-left of a 2×2 block.
 const POWER_WEIGHTS = [
-  { pl:1, w:480 },  // ~47.9%
-  { pl:2, w:280 },  // ~27.9%
-  { pl:3, w:140 },  // ~14.0%
-  { pl:4, w: 64 },  // ~ 6.4%
-  { pl:5, w: 24 },  // ~ 2.4%
-  { pl:6, w:  9 },  // ~ 0.9%
-  { pl:7, w:  3 },  // ~ 0.3% → ~4,200 tiles
-  { pl:8, w:  2 },  // ~ 0.2% → ~2,800 tiles
-  { pl:9, w:  1 },  // ~ 0.1% → ~1,400 tiles
-  // Future: { pl:10, w:1 }, etc.
+  { pl:1, w:480 },
+  { pl:2, w:280 },
+  { pl:3, w:140 },
+  { pl:4, w: 64 },
+  { pl:5, w: 24 },
+  { pl:6, w:  9 },
+  { pl:7, w:  3 },
+  { pl:8, w:  2 },
+  { pl:9, w:  1 },
+  { pl:10,w:  1 },
+  { pl:11,w:  1 },
+  { pl:12,w:  1 },
+  { pl:13,w:  1 },
 ];
 const POWER_TOTAL = POWER_WEIGHTS.reduce((s, e) => s + e.w, 0); // 1000
 
@@ -537,8 +541,58 @@ self.onmessage = function(e) {
 
   postMessage({ type:"progress", pct:82, label:"Placing keeps..." });
 
-  const KEEP_CMD_LVL=20, KEEP_TROOPS=2000, KEEP_SIEGE=5000, KEEP_RADIUS=5;
+  // ── P10–P13: stamp 2×2 structures ────────────────────────────────────────────
+  // Each tile that rolled P10-P13 becomes the top-left of a 2×2 footprint.
+  // Primary (top-left): F_KEEP. Other 3 cells: F_KEEPPART pointing to primary.
+  // Skip if any of the 4 cells is already occupied by a keep/HQ/gate/border.
+  const P10_SIEGE = { 10:8000, 11:10000, 12:14000, 13:20000 };
   const keepMeta = {};
+
+  for (let r2 = 0; r2 < ROWS - 1; r2++) {
+    for (let c2 = 0; c2 < COLS - 1; c2++) {
+      const idx2 = r2 * COLS + c2;
+      const pl2  = powerArr[idx2];
+      if (pl2 < 10) continue;
+
+      // All 4 cells must be clear
+      const cells = [[c2,r2],[c2+1,r2],[c2,r2+1],[c2+1,r2+1]];
+      let blocked = false;
+      for (const [tc, tr] of cells) {
+        const ti = tr * COLS + tc;
+        if (flagArr[ti] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { blocked = true; break; }
+      }
+      if (blocked) { powerArr[idx2] = 9; continue; } // downgrade so it renders as P9
+
+      const siege2 = P10_SIEGE[pl2] ?? 8000;
+
+      // Primary tile
+      terrainArr[idx2]  = TERRAIN_ENC.grass ?? 0;
+      rssArr[idx2]      = 0;
+      flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
+      garrisonArr[idx2] = POWER_DEFS[pl2].command;
+      siegeArr[idx2]    = siege2;
+      siegeMaxArr[idx2] = siege2;
+
+      // 3 KEEPPART tiles
+      for (const [tc, tr] of [[c2+1,r2],[c2,r2+1],[c2+1,r2+1]]) {
+        const ti = tr * COLS + tc;
+        terrainArr[ti]  = TERRAIN_ENC.grass ?? 0;
+        rssArr[ti]      = 0;
+        powerArr[ti]    = pl2;
+        regionArr[ti]   = regionArr[idx2];
+        flagArr[ti]     = (flagArr[ti] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
+        keepPrimArr[ti] = idx2;
+      }
+
+      keepMeta[`${c2},${r2}`] = {
+        keepName:      `P${pl2} Structure`,
+        garrisonWaves: 2,
+        cx: c2, cy: r2,
+      };
+    }
+  }
+
+  const KEEP_CMD_LVL=20, KEEP_TROOPS=2000, KEEP_SIEGE=5000, KEEP_RADIUS=5;
 
   for (const reg of REGION_LIST) {
     const idx = reg.cy*COLS + reg.cx;
