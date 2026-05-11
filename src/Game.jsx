@@ -931,7 +931,7 @@ export default function RiseToWar() {
   const cmdsAdjToSel = useMemo(() => {
     if (!selAdjToPlayer || !selTile) return [];
     return playerCmds.filter(cmd =>
-      cmd.owner === "player" && (cmd.troops||0) > 0 && !cmd.march
+      cmd.owner === "player" && (normaliseTroopSlots(cmd).reduce((s,sl)=>s+(sl.troops||0),0) || cmd.troops || 0) > 0 && !cmd.march
     );
   }, [selAdjToPlayer, selTile, playerCmds]);
 
@@ -957,7 +957,8 @@ export default function RiseToWar() {
     // Re-read from ref to get the freshest tk (React state cmd may be one render behind)
     const freshCmd = cmdsRef.current?.find(c => c.uid === cmd.uid) ?? cmd;
     if (freshCmd.march) return;
-    if (!freshCmd.troops || freshCmd.troops < 1) { floaty("⚠ Assign troops first!", "#cc8030", freshCmd.tk); return; }
+    const freshCmdTroops = normaliseTroopSlots(freshCmd).reduce((s,sl)=>s+(sl.troops||0),0) || freshCmd.troops || 0;
+    if (!freshCmdTroops || freshCmdTroops < 1) { floaty("⚠ Assign troops first!", "#cc8030", freshCmd.tk); return; }
     const destTile = tilesMapRef.current[destKey];
     const type = destTile?.owner==="player" ? "move" : "attack";
     if (type==="move" && destTile?.owner!=="player") return;
@@ -974,7 +975,8 @@ export default function RiseToWar() {
       return;
     }
     const boostedSpd = applyGearToCmd(freshCmd, gearInventory).spd || 60;
-    const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, freshCmd.troopBranch));
+    const slots0 = normaliseTroopSlots(freshCmd);
+    const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, slots0.length ? slots0.map(sl=>sl.branch) : freshCmd.troopBranch));
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null);
     perfLog(`march: from ${freshCmd.tk} → ${destKey}`);
     findPath(freshCmd.tk, destKey).then(path => {
@@ -1008,7 +1010,8 @@ export default function RiseToWar() {
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
     const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
     if (!cmd || cmd.march || cmd.tk===hqKey) return;
-    const stepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, cmd.troopBranch));
+    const _rSlots = normaliseTroopSlots(cmd);
+    const stepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
     findPath(cmd.tk, hqKey).then(path => {
       if (!path || path.length < 2) return;
       setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
@@ -1021,7 +1024,8 @@ export default function RiseToWar() {
   const startReinforcement = useCallback((cmd, amount) => {
     if (!cmd || amount <= 0) return;
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
-    const stepMs = Math.max(100, Math.floor(marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, cmd.troopBranch))/2));
+    const _rSlots2 = normaliseTroopSlots(cmd);
+    const stepMs = Math.max(100, Math.floor(marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots2.length ? _rSlots2.map(sl=>sl.branch) : cmd.troopBranch))/2));
     setMode("view"); setReinCmd(null);
     setSliderVals(v => ({ ...v, [`rein_${cmd.uid}`]:undefined }));
     findPath(hqKey, cmd.tk).then(path => {
@@ -1046,41 +1050,72 @@ export default function RiseToWar() {
     setTrainingQueue({ amount, remaining:amount, total:amount, cost });
   }, [canAfford, bldgs.barracks, barracksPool, trainingQueue]);
 
-  const assignTroops = useCallback((uid, troopBranch, newTotal) => {
+  // setTroopSlot(uid, slotIndex, branch, troops) — set one slot on a commander.
+  // slotIndex: 0-2. If troops===0, remove the slot. Max 3 slots.
+  const setTroopSlot = useCallback((uid, slotIndex, branch, newTroops) => {
     setCmds(prev => {
       const cmd = prev.find(c => c.uid===uid);
       if (!cmd) return prev;
       const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?500:0);
-      // Command cost per troop varies by size: small=1, medium=2, large=25
-      const branchSize = troopBranch
-        ? (FACTION_TROOPS[troopBranch.faction]?.branches?.find(b => b.key === troopBranch.branch)?.size ?? "small")
-        : "small";
-      const cmdCost = COMMAND_COST[branchSize] ?? 1;
-      // Max troops this commander can field given command cap and cost-per-troop
-      const maxByCommand = Math.floor(commandCap / cmdCost);
-      const branchChanged = JSON.stringify(cmd.troopBranch) !== JSON.stringify(troopBranch);
-      const oldTroops    = branchChanged ? 0 : (cmd.troops||0);
-      const oldReturning = branchChanged ? (cmd.troops||0) : 0;
-      const capped       = Math.min(newTotal, maxByCommand);
-      const canDraw      = barracksPool + oldReturning;
-      const delta        = capped - oldTroops;
-      const finalTotal   = delta > 0 ? oldTroops + Math.min(delta, canDraw) : capped;
+
+      // Build new slots array (start from existing troopSlots or legacy single slot)
+      const existingSlots = normaliseTroopSlots(cmd);
+      const newSlots = [...existingSlots];
+
+      // Compute command already used by OTHER slots
+      const otherUsed = newSlots.reduce((sum, sl, idx) => {
+        if (idx === slotIndex) return sum;
+        const bSize = sl.branch ? (FACTION_TROOPS[sl.branch.faction]?.branches?.find(b => b.key===sl.branch.branch)?.size ?? "small") : "small";
+        return sum + (sl.troops || 0) * (COMMAND_COST[bSize] ?? 1);
+      }, 0);
+      const remainingCap = Math.max(0, commandCap - otherUsed);
+      const branchSize = branch ? (FACTION_TROOPS[branch.faction]?.branches?.find(b => b.key===branch.branch)?.size ?? "small") : "small";
+      const cmdCost    = COMMAND_COST[branchSize] ?? 1;
+      const maxByCmd   = Math.floor(remainingCap / cmdCost);
+
+      // Old troops in THIS slot (to return to barracks)
+      const oldSlot      = existingSlots[slotIndex];
+      const oldTroops    = oldSlot?.troops || 0;
+      const branchChanged = JSON.stringify(oldSlot?.branch) !== JSON.stringify(branch);
+      const returning    = branchChanged ? oldTroops : 0;
+      const curInSlot    = branchChanged ? 0 : oldTroops;
+
+      const capped   = Math.min(newTroops, maxByCmd);
+      const canDraw  = barracksPool + returning;
+      const delta    = capped - curInSlot;
+      const final    = delta > 0 ? curInSlot + Math.min(delta, canDraw) : capped;
+
       setBarracks(pool => {
-        const poolAfterReturn = pool + oldReturning;
-        const drawn    = Math.max(0, finalTotal - oldTroops);
-        const returned = Math.max(0, oldTroops  - finalTotal);
+        const poolAfterReturn = pool + returning;
+        const drawn   = Math.max(0, final - curInSlot);
+        const returned= Math.max(0, curInSlot - final);
         return poolAfterReturn - drawn + returned;
       });
-      return prev.map(c => c.uid===uid ? { ...c, troopBranch, troops:finalTotal } : c);
+
+      if (final === 0 || !branch) {
+        // Remove this slot
+        const filtered = newSlots.filter((_, i) => i !== slotIndex);
+        return prev.map(c => c.uid===uid ? { ...c, troopSlots: filtered, troops: filtered.reduce((s,sl)=>s+(sl.troops||0),0), troopBranch: filtered[0]?.branch ?? null } : c);
+      }
+      // Upsert slot
+      newSlots[slotIndex] = { branch, troops: final };
+      const trimmed = newSlots.filter(Boolean).slice(0, 3);
+      return prev.map(c => c.uid===uid ? { ...c, troopSlots: trimmed, troops: trimmed.reduce((s,sl)=>s+(sl.troops||0),0), troopBranch: trimmed[0]?.branch ?? null } : c);
     });
   }, [barracksPool, bldgs.commandcenter]);
+
+  // Legacy alias: assignTroops(uid, branch, total) maps to slot 0
+  const assignTroops = useCallback((uid, troopBranch, newTotal) => {
+    setTroopSlot(uid, 0, troopBranch, newTotal);
+  }, [setTroopSlot]);
 
   const returnTroops = useCallback((uid) => {
     setCmds(prev => {
       const cmd = prev.find(c => c.uid===uid);
-      if (!cmd || !cmd.troops) return prev;
-      setBarracks(pool => pool + (cmd.troops||0));
-      return prev.map(c => c.uid===uid ? { ...c, troops:0, troopBranch:null } : c);
+      if (!cmd) return prev;
+      const total = normaliseTroopSlots(cmd).reduce((s,sl)=>s+(sl.troops||0), 0) || cmd.troops || 0;
+      setBarracks(pool => pool + total);
+      return prev.map(c => c.uid===uid ? { ...c, troopSlots:[], troops:0, troopBranch:null } : c);
     });
   }, []);
 
@@ -1175,7 +1210,7 @@ export default function RiseToWar() {
         cmdResults.forEach(h => {
           const existing = nx.find(x => x.id === h.id && x.owner === "player");
           if (!existing) {
-            nx.push({ ...h, uid:h.uid, troops:0, troopBranch:null, tk:hqk, owner:"player", lvl:5, xp:0,
+            nx.push({ ...h, uid:h.uid, troops:0, troopSlots:[], troopBranch:null, tk:hqk, owner:"player", lvl:5, xp:0,
               respectPoints:0, respectLevel:0, skillPoints:{}, unspentSkillPoints:5, stamina:200,
               gear:{ helmet:null, armor:null, bracers:null, accessory:null } });
           } else {
@@ -1490,7 +1525,7 @@ export default function RiseToWar() {
         trainSlider={trainSlider} setTrainSlider={setTrainSlider}
         upgQueue={upgQueue} sliderVals={sliderVals} setSliderVals={setSliderVals}
         bLog={bLog} upgrade={upgrade} canAfford={canAfford}
-        assignTroops={assignTroops} returnTroops={returnTroops} queueTraining={queueTraining}
+        assignTroops={assignTroops} setTroopSlot={setTroopSlot} returnTroops={returnTroops} queueTraining={queueTraining}
         recallMarch={recallMarch} setScreen={setScreen}
         gearInventory={gearInventory}
         playerHqKey={playerHqKey}
