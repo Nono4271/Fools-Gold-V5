@@ -3,7 +3,7 @@ import { FACTION_TROOPS, FACTION_KEYS } from "../../shared/constants/troops.js";
 import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS } from "../../shared/constants/map.js";
 import { CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
 import { barracksCapacity } from "../../shared/constants/buildings.js";
-import { adj, bfsPath, effectiveMarchSpd, marchStepMs } from "../../shared/utils/pathfinding.js";
+import { adj, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
 import { simBattle, garrisonDefCmd } from "../../shared/utils/battle.js";
 import { calcSiegePower } from "../../shared/constants/map.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
@@ -17,6 +17,43 @@ const CLASS_GROWTH = {
   support:  { atk: 0.2, foc: 1.3, spd: 0.8 },
   leader:   { atk: 0.8, foc: 0.8, spd: 0.8 },
 };
+
+// ── Slot-aware army helpers ────────────────────────────────────────────────────
+function cmdTroops(cmd) {
+  if (cmd?.troopSlots) return cmd.troopSlots.reduce((s, sl) => s + (sl.troops || 0), 0);
+  return cmd?.troops || 0;
+}
+function cmdSlots(cmd) {
+  return normaliseTroopSlots(cmd);
+}
+function cmdSiegePower(cmd, boostedCmd) {
+  const slots = cmdSlots(cmd);
+  const bonus = boostedCmd?.gearBonuses?.armySiege || 0;
+  if (slots.length > 0) return calcSiegePower(slots, null, bonus, FACTION_TROOPS);
+  return calcSiegePower(cmdTroops(cmd), cmd.troopBranch, bonus);
+}
+function cmdMarchSpd(cmd, boostedCmd) {
+  const slots = cmdSlots(cmd);
+  const bonus = boostedCmd?.gearBonuses?.armySpd || 0;
+  if (slots.length > 0) return effectiveMarchSpd(boostedCmd?.spd || cmd.spd || 60, slots.map(sl => sl.branch), bonus);
+  return effectiveMarchSpd(boostedCmd?.spd || cmd.spd || 60, cmd.troopBranch, bonus);
+}
+// Apply proportional losses to slots after battle
+function applySlotLosses(cmd, lost) {
+  if (!cmd.troopSlots || cmd.troopSlots.length === 0) return {};
+  const total = cmd.troopSlots.reduce((s, sl) => s + (sl.troops || 0), 0);
+  if (total === 0) return { troopSlots: [] };
+  const frac = Math.min(1, lost / total);
+  const newSlots = cmd.troopSlots.map(sl => ({
+    ...sl,
+    troops: Math.max(0, Math.round((sl.troops || 0) * (1 - frac))),
+  }));
+  return { troopSlots: newSlots };
+}
+function clearSlots(cmd) {
+  if (cmd.troopSlots) return { troopSlots: [] };
+  return { troops: 0, troopBranch: null };
+}
 
 // Returns the garrison reset delay for a tile — keeps use a much longer timer
 function garrisonResetMs(tile) {
@@ -121,7 +158,7 @@ arrivedAttackers.forEach(cmd => {
   const originKey = cmd.march?.origin || hqKey;
   if (!hasPlayerFoothold(destKey, originKey, tiles)) {
     const boostedCmd0 = applyGearToCmd(cmd, gearInventory);
-    const stepMs = marchStepMs(effectiveMarchSpd(boostedCmd0.spd || 60, cmd.troopBranch, boostedCmd0.gearBonuses?.armySpd || 0));
+    const stepMs = marchStepMs(cmdMarchSpd(cmd, boostedCmd0));
     const retreatPath = bfsPath(destKey, hqKey);
     setCmds(p => p.map(c => {
       if (c.uid !== cmd.uid) return c;
@@ -138,9 +175,8 @@ arrivedAttackers.forEach(cmd => {
 
   // Garrison-defeated path: apply siege only
   if (defTile.garrisonDefeated) {
-    const newTroops  = cmd.troops || 0;
     const boostedCmd0 = applyGearToCmd(cmd, gearInventory);
-    const siegePower = calcSiegePower(newTroops, cmd.troopBranch, boostedCmd0.gearBonuses?.armySiege || 0);
+    const siegePower = cmdSiegePower(cmd, boostedCmd0);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
     let siegeCaptured = false;
     if (siegePower >= currentSiege) {
@@ -164,8 +200,8 @@ arrivedAttackers.forEach(cmd => {
 
   // Stage 1 battle
   const boostedCmd = applyGearToCmd(cmd, gearInventory);
-  const res = simBattle(boostedCmd, cmd.troops || 50, effectiveDefTile, wallLvl);
-  const troopsAfterS1 = res.won ? Math.max(0, (cmd.troops||0) - res.lost) : 0;
+  const res = simBattle(boostedCmd, cmdTroops(cmd), effectiveDefTile, wallLvl);
+  const troopsAfterS1 = res.won ? Math.max(0, cmdTroops(cmd) - res.lost) : 0;
 
   if (res.report) {
       const passiveSummary = getPassiveBonuses(boostedCmd);
@@ -186,13 +222,13 @@ arrivedAttackers.forEach(cmd => {
   if (!res.won && !res.isDraw) {
     floaty("💀 DEFEATED — retreating", "#cc3030", destKey);
     // Bug 23 fix: 30% of lost troops go to wounded on defeat (same as win path)
-    const woundedOnLoss = Math.floor((cmd.troops || 0) * res.lost / Math.max(1, cmd.troops || 1) * 0.30);
+    const woundedOnLoss = Math.floor(res.lost * 0.30);
     if (woundedOnLoss > 0) { setWounded(w => w + woundedOnLoss); floaty(`🏥 +${woundedOnLoss} wounded`, "#88aaff", destKey); }
     setCmds(p => p.map(c => {
       if (c.uid !== cmd.uid) return c;
       const retreatPath = bfsPath(originKey, hqKey);
       const stepMs = marchStepMs(effectiveMarchSpd(boostedCmd.spd||60, null, boostedCmd.gearBonuses?.armySpd || 0));
-      let updated = { ...c, troops:0, tk:originKey, march:null, drawTimer:null, drawTile:null, drawOrigin:null };
+      let updated = { ...c, ...clearSlots(c), tk:originKey, march:null, drawTimer:null, drawTile:null, drawOrigin:null };
       if (retreatPath && retreatPath.length >= 2) {
         updated = { ...updated, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:originKey, stepMs, lastStepTime:Date.now() } };
       } else { updated = { ...updated, tk:hqKey }; }
@@ -203,11 +239,11 @@ arrivedAttackers.forEach(cmd => {
   }
 
   if (res.isDraw) {
-    const troopsAfterDraw = Math.max(1, (cmd.troops||0) - res.lost);
+    const troopsAfterDraw = Math.max(1, cmdTroops(cmd) - res.lost);
     floaty("⚔ DRAW — rematch in 5 min", "#c0a020", destKey);
     setCmds(p => p.map(c => {
       if (c.uid !== cmd.uid) return c;
-      return { ...c, troops:troopsAfterDraw, tk:destKey, march:null,
+      return { ...c, troops:troopsAfterDraw, ...applySlotLosses(c, res.lost), tk:destKey, march:null,
         drawTimer:  Date.now() + 5 * 60 * 1000,
         drawOrigin: originKey,
         drawTile:   destKey,
@@ -257,7 +293,7 @@ arrivedAttackers.forEach(cmd => {
   }
 
   // Both stages won — check siege
-  const siegePower   = calcSiegePower(finalTroops, cmd.troopBranch, boostedCmd.gearBonuses?.armySiege || 0);
+  const siegePower   = cmdSiegePower({ ...cmd, troops: finalTroops, troopSlots: cmd.troopSlots ? applySlotLosses(cmd, cmdTroops(cmd) - finalTroops).troopSlots : undefined }, boostedCmd);
   const currentSiege = defTile.siege ?? SIEGE_BASE;
   let tileCaptured = false;
 
@@ -273,14 +309,15 @@ arrivedAttackers.forEach(cmd => {
     floaty(`⚔ SIEGE ${currentSiege-siegePower}/${defTile.siegeMax??SIEGE_BASE} — not captured`, "#d0a030", destKey);
   }
 
-  const wc = Math.floor(((cmd.troops||0) - finalTroops) * 0.30);
+  const wc = Math.floor((cmdTroops(cmd) - finalTroops) * 0.30);
   if (wc > 0) { setWounded(w => w + wc); floaty(`🏥 +${wc} wounded`, "#88aaff", destKey); }
 
   const finalTk   = tileCaptured ? destKey : originKey;
   const xpSrc     = res2 || res;
   setCmds(p => p.map(c => {
     if (c.uid !== cmd.uid) return c;
-    const updated = { ...c, troops:finalTroops, tk:finalTk, march:null };
+    const lostTotal = cmdTroops(c) - finalTroops;
+      const updated = { ...c, troops:finalTroops, ...applySlotLosses(c, lostTotal), tk:finalTk, march:null };
     return { ...updated, ...applyXp(updated, xpSrc.xpGain, floaty) };
   }));
   const stageLabel = hasAiCmd ? " (2-stage)" : "";
@@ -331,7 +368,7 @@ useEffect(() => {
 
       // ── Timer expired: run rematch inline ────────────────────────────────
       // Guard: if player returned troops between draw and rematch, cancel silently
-      if (!cmd.troops || cmd.troops <= 0) {
+      if (!cmdTroops(cmd) || cmdTroops(cmd) <= 0) {
         setCmds(p => p.map(c => c.uid === cmd.uid
           ? { ...c, drawTimer:null, drawTile:null, drawOrigin:null } : c));
         return;
@@ -347,7 +384,7 @@ useEffect(() => {
         .filter(c => c.owner === "ai" && c.tk === destKey && !c.march && (c.troops || 0) > 0)
         .sort((a, b) => (b.arrivedAt ?? 0) - (a.arrivedAt ?? 0));
 
-      let remainingTroops = cmd.troops || 0;
+      let remainingTroops = cmdTroops(cmd);
       let totalXp         = 0;
       let totalWounded    = 0;
       let playerDefeated  = false;
@@ -459,7 +496,7 @@ useEffect(() => {
       }
 
       // Player won all fights — attempt siege/capture
-      const siegePower   = calcSiegePower(remainingTroops, cmd.troopBranch, boostedCmd.gearBonuses?.armySiege || 0);
+      const siegePower   = cmdSiegePower({ ...cmd, troops: remainingTroops }, boostedCmd);
       const currentSiege = defTile.siege ?? SIEGE_BASE;
       if (siegePower >= currentSiege) {
         tileCaptured = true;
@@ -512,7 +549,7 @@ arrivedAI.forEach(cmd => {
   const boostedCmd2 = applyGearToCmd(cmd, gearInventory);
 
   if (defTile.garrisonDefeated) {
-    const siegePower = calcSiegePower(cmd.troops||0, cmd.troopBranch, boostedCmd2.gearBonuses?.armySiege || 0);
+    const siegePower = cmdSiegePower(cmd, boostedCmd2);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
     if (siegePower >= currentSiege) {
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
@@ -528,12 +565,12 @@ arrivedAI.forEach(cmd => {
   }
 
   const wallLvl = defTile.owner === "player" && defTile.isHQ ? (bldgs.walls||0) : 0;
-  const res = simBattle(boostedCmd2, cmd.troops||50, defTile, wallLvl);
-  const newTroops = res.won ? Math.max(0, (cmd.troops||0) - res.lost) : 0;
+  const res = simBattle(boostedCmd2, cmdTroops(cmd), defTile, wallLvl);
+  const newTroops = res.won ? Math.max(0, cmdTroops(cmd) - res.lost) : 0;
   let tileCaptured = false;
 
   if (res.won) {
-    const siegePower = calcSiegePower(newTroops, cmd.troopBranch, boostedCmd2.gearBonuses?.armySiege || 0);
+    const siegePower = cmdSiegePower({ ...cmd, troops: newTroops }, boostedCmd2);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
     if (siegePower >= currentSiege) {
       tileCaptured = true;
@@ -549,7 +586,7 @@ arrivedAI.forEach(cmd => {
   const finalTk = tileCaptured ? destKey : originKey;
   setAiCmds(p => p.map(c => {
     if (c.uid !== cmd.uid) return c;
-    let updated = { ...c, troops:newTroops, tk:finalTk, march:null, arrivedAt: tileCaptured ? Date.now() : (c.arrivedAt ?? Date.now()) };
+    let updated = { ...c, troops:newTroops, ...applySlotLosses(c, cmdTroops(c) - newTroops), tk:finalTk, march:null, arrivedAt: tileCaptured ? Date.now() : (c.arrivedAt ?? Date.now()) };
     if (!res.won) {
       const retreatPath = bfsPath(finalTk, getAiHqKey(cmd));
       if (retreatPath && retreatPath.length >= 2) {
