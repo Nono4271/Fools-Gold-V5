@@ -28,10 +28,13 @@ export const WIN_R = 407;
 export const WIN_KEY = `${WIN_C},${WIN_R}`;
 
 export const POWER_DEFS = {
-1: { label:"1/hr",  color:"#6a9a6a", cmdLvl:1,  troops:36,  ringPower:1  },
-2: { label:"10/hr", color:"#9a8a30", cmdLvl:4,  troops:300, ringPower:10 },
-3: { label:"15/hr", color:"#9a5a30", cmdLvl:6,  troops:480, ringPower:15 },
-4: { label:"30/hr", color:"#9a3030", cmdLvl:8,  troops:960, ringPower:30 },
+1: { label:"1/hr",  color:"#6a9a6a", cmdLvl:1,  command:36,   ringPower:1  },
+2: { label:"10/hr", color:"#9a8a30", cmdLvl:4,  command:300,  ringPower:10 },
+3: { label:"15/hr", color:"#9a5a30", cmdLvl:6,  command:480,  ringPower:15 },
+4: { label:"30/hr", color:"#9a3030", cmdLvl:8,  command:960,  ringPower:30 },
+5: { label:"40/hr", color:"#7a3090", cmdLvl:10, command:1200, ringPower:40 },
+6: { label:"60/hr", color:"#4a30a0", cmdLvl:15, command:1800, ringPower:60 },
+7: { label:"90/hr", color:"#2030b0", cmdLvl:18, command:2160, ringPower:90 },
 };
 
 // XP per command point consumed, by troop tier (0-indexed)
@@ -50,6 +53,9 @@ return SIEGE_HQ_BASE + (wallLvl || 0) * 10000;
 export function tilePowerLevel(c, r) {
 const cx = 788, cy = 407;
 const dist = Math.max(Math.abs(c - cx), Math.abs(r - cy));
+if (dist <= 25)  return 7;
+if (dist <= 45)  return 6;
+if (dist <= 60)  return 5;
 if (dist <= 80)  return 4;
 if (dist <= 180) return 3;
 if (dist <= 320) return 2;

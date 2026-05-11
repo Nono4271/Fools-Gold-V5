@@ -227,6 +227,110 @@ export function npcForPowerLevel(pl) {
   return NPC_COMMANDERS.outlaw;
 }
 
+// ── Faction commander garrison for tier 4–7 tiles ────────────────────────────
+// Returns a defCmd object drawn from a veteran or soldier HDEF of the alignment
+// opposite to the player's chosen faction. Selection is deterministic per tile
+// coordinate (c, r) so it never changes between sessions.
+// R0 = respect level 0.
+// Skill points and troop tier vary by power level per spec:
+//   pl 4 → lvl 8,  3sp, all t1
+//   pl 5 → lvl 10, 5sp, all t1
+//   pl 6 → lvl 15, 5sp, half t1 half t2
+//   pl 7 → lvl 18, 5sp, half t1 half t2
+// The commander AND their troops come from the same opposite-alignment faction.
+// First-main and second-main skill keys by class (BRANCH_SKILL_MAP in skills.js):
+//   attacker → "killing_instinct" / "quick_strike"
+//   defender → "iron_will"       / "shield_wall"
+//   support  → "field_medic"     / "mending_wave"
+//   leader   → "warchief_aura"   / "warchief_roar"
+const FACTION_CMD_FIRST_SKILL = {
+  attacker: "killing_instinct",
+  defender: "iron_will",
+  support:  "field_medic",
+  leader:   "warchief_aura",
+};
+const FACTION_CMD_SECOND_SKILL = {
+  attacker: "quick_strike",
+  defender: "shield_wall",
+  support:  "mending_wave",
+  leader:   "warchief_roar",
+};
+
+// Branch keys per faction — must stay in sync with FACTION_TROOPS in troops.js
+const FACTION_BRANCHES = {
+  pirates:        ["swashbucklers", "gunners",       "sea_beasts"   ],
+  bountyhunters:  ["spellblades",   "acolytes",      "golems"       ],
+  orcs:           ["grunts",        "warg_riders",   "trolls"       ],
+  dragons:        ["dragonkin",     "drake_riders",  "elder_dragons"],
+  holyknights:    ["templars",      "battlepriests", "inquisitors"  ],
+  nightcreatures: ["vampires",      "werewolves",    "spiders"      ],
+};
+
+// Per power-level garrison commander config
+const FACTION_CMD_CONFIG = {
+  4: { lvl:8,  skillPts:3, troopTierFn: ()     => 0          },
+  5: { lvl:10, skillPts:5, troopTierFn: ()     => 0          },
+  6: { lvl:15, skillPts:5, troopTierFn: (seed) => (seed & 1) }, // 0 or 1
+  7: { lvl:18, skillPts:5, troopTierFn: (seed) => (seed & 1) }, // 0 or 1
+};
+
+export function factionDefCmdForTile(c, r, playerFaction, powerLevel) {
+  const pl = powerLevel || 4;
+
+  // Inline alignment data to avoid circular dep issues
+  const ALIGN = {
+    humans:   ["pirates","bountyhunters","holyknights"],
+    creatures:["orcs","dragons","nightcreatures"],
+  };
+  const playerAlign = ALIGN.humans.includes(playerFaction) ? "humans" : "creatures";
+  const oppFactions = playerAlign === "humans" ? ALIGN.creatures : ALIGN.humans;
+
+  // Pool: veteran + soldier heroes from the opposite alignment
+  const pool = HDEFS.filter(h =>
+    (h.rarity === "veteran" || h.rarity === "soldier") &&
+    oppFactions.includes(h.faction)
+  );
+  if (!pool.length) return null;
+
+  // Deterministic seed from tile coords
+  const seed = (((c + 1) * 73856093) ^ ((r + 1) * 19349663)) >>> 0;
+  const src  = pool[seed % pool.length];
+
+  // Per-tier config
+  const cfg       = FACTION_CMD_CONFIG[pl] || FACTION_CMD_CONFIG[4];
+  const troopTier = cfg.troopTierFn(seed);
+
+  // Pick a branch from the commander's own faction (deterministic, different hash)
+  const factionBranches = FACTION_BRANCHES[src.faction] || FACTION_BRANCHES.pirates;
+  const branchSeed = (((c + 3) * 19349663) ^ ((r + 7) * 73856093)) >>> 0;
+  const branch     = factionBranches[branchSeed % factionBranches.length];
+  const troopBranch = { faction: src.faction, branch, tier: troopTier };
+
+  // Skill points: 3sp → first skill only at lvl 3; 5sp → first at 3 + second at 2
+  const firstKey  = FACTION_CMD_FIRST_SKILL[src.cls]  || "killing_instinct";
+  const secondKey = FACTION_CMD_SECOND_SKILL[src.cls] || "quick_strike";
+  const skillPoints = cfg.skillPts === 5
+    ? { [firstKey]: 3, [secondKey]: 2 }
+    : { [firstKey]: 3 };
+
+  return {
+    id:              src.id,
+    n:               src.n,
+    icon:            src.icon,
+    cls:             src.cls,
+    faction:         src.faction,
+    rarity:          src.rarity,
+    lvl:             cfg.lvl,
+    atk:             src.atk,
+    foc:             src.foc  || 0,
+    spd:             src.spd,
+    respect:         0,
+    skillPoints,
+    troopBranch,
+    isFactionGarrison: true,
+  };
+}
+
 // ── Pull rates & pity ─────────────────────────────────────────────────────────
 export const PULL_RATES = { soldier: 0.80, veteran: 0.17, champion: 0.03 };
 export const PITY       = { soldier: 20,   veteran: 100,  champion: 300  };
