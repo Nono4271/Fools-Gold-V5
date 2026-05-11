@@ -2,15 +2,13 @@ import { useEffect, useRef } from "react";
 import { rssRate, storageMax } from "../../shared/constants/buildings.js";
 
 // ── RSS rates per power level (per hour) ─────────────────────────────────────
-// P1: 60/hr of ALL four rss types regardless of tile rss type
-// P2: 288/hr of matching rss type only
-// P3: 336/hr of matching rss type only
-// P4: 432/hr of matching rss type only
-// P5: 504/hr of matching rss type only
-// P6: 672/hr of matching rss type only
-// P7: 768/hr of matching rss type only
-const RATE_P1_PER_HR = 60;   // flat, all types
-const RATE_BY_PL = { 2: 288, 3: 336, 4: 432, 5: 504, 6: 672, 7: 768 }; // matching type only
+// P1: 60/hr flat all types. P2+: matching rss type only.
+const RATE_P1_PER_HR = 60;
+const RATE_BY_PL = {
+  2:288, 3:336, 4:432, 5:504, 6:672, 7:768,
+  8:864, 9:960,
+  10:1200, 11:1440, 12:1680, 13:1920,
+};
 
 // Base passive income every player gets regardless of tiles or buildings
 const BASE_PASSIVE_PER_HR = 200; // +200/hr of all 4 resources
