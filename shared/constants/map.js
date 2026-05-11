@@ -64,7 +64,29 @@ if (dist <= 320) return 2;
 return 1;
 }
 
-export function calcSiegePower(troops, troopBranch, armySiegeBonus = 0, troopTierData = null) {
+// calcSiegePower — multi-slot or legacy single-branch.
+// Multi-slot: calcSiegePower(troopSlots[], null, armySiegeBonus, FACTION_TROOPS)
+// Legacy:     calcSiegePower(troops, troopBranch, armySiegeBonus, troopTierData)
+export function calcSiegePower(troopsOrSlots, troopBranchOrNull, armySiegeBonus = 0, tierDataOrFactionTroops = null) {
+  if (Array.isArray(troopsOrSlots)) {
+    const slots = troopsOrSlots;
+    const FT    = tierDataOrFactionTroops; // caller passes FACTION_TROOPS here
+    if (!slots.length) return 0;
+    let total = 0;
+    for (const sl of slots) {
+      if (!sl.troops || sl.troops <= 0) continue;
+      const b  = sl.branch;
+      const f  = FT?.[b?.faction];
+      const br = f?.branches?.find(x => x.key === b?.branch);
+      const td = br?.tiers?.[b?.tier ?? 0];
+      const siegeRate = td ? (td.siege / Math.max(1, sl.troops)) : 0.5;
+      total += Math.round(sl.troops * siegeRate);
+    }
+    return total + (armySiegeBonus || 0);
+  }
+  // Legacy: single troops count
+  const troops = troopsOrSlots;
+  const troopTierData = tierDataOrFactionTroops;
   if (!troops || troops <= 0) return 0;
   const siegeRate = troopTierData ? (troopTierData.siege / troops) : 0.5;
   return Math.round(troops * siegeRate + (armySiegeBonus || 0));
