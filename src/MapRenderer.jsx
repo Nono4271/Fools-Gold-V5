@@ -513,9 +513,9 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   const s    = TH * 0.82;
 
   // Size only — one prop per tile, gets bigger with power level.
-  // P2=0.35×, P7=0.75×, P13=1.20×
+  // P2=0.18×, P7=0.72×, P13=1.80×
   const t        = Math.min(1, (pl - 1) / 12);
-  const sizeMult = 0.35 + t * 0.85;
+  const sizeMult = 0.18 + t * 1.62;
 
   if (rss === "wood") {
     // Single pine tree, scaled by power level
