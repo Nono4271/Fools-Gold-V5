@@ -894,7 +894,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
   const cmdCap = cmdCommand(lvl, bldgs?.commandcenter ?? 0, (cmd.cls==="leader"&&lvl>=25)?500:0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
       {showSkills && <SkillTreeOverlay cmd={cmd} setCmds={setCmds} gems={gems} setGems={setGems} onClose={() => setShowSkills(false)} />}
 
       {/* ── Name + identity ── */}
@@ -1660,10 +1660,8 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         );
       })()}
 
-      {/* ── Spacer: pushes Skill Trees to bottom ── */}
-      <div style={{ flex: 1 }} />
-
       {/* ── Skill Trees button (the main CTA) ── */}
+      <div style={{ height: 16, flexShrink: 0 }} />
       <div style={{ padding: "12px 18px 28px", flexShrink: 0 }}>
         <button onClick={() => setShowSkills(true)} style={{
           width: "100%", padding: "13px 0",
@@ -1903,6 +1901,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       position: "fixed", inset: 0, zIndex: 9200,
       background: "#080704",
       display: "flex", flexDirection: "column",
+      height: "100dvh", overflow: "hidden",
       touchAction: "auto",
     }}>
       <style>{CSS}</style>
@@ -2006,7 +2005,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       )}
 
       {/* ── Body: portrait list + detail ── */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
 
         {/* Left — portrait roster */}
         <div style={{
@@ -2034,8 +2033,8 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           )}
         </div>
 
-        {/* Right — detail panel */}
-        <div style={{ flex: 1, overflowY: "auto", minWidth: 0, position: "relative" }}>
+        {/* Right — detail panel (CommanderDetail self-scrolls) */}
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", position: "relative" }}>
           {selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
             : (
