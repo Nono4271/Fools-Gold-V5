@@ -454,102 +454,102 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
           })}
 
         </svg>
-      </div>
 
-      {/* ── Detail panel ── */}
-      {selectedItem && (
-        <div style={{
-          flexShrink: 0,
-          background: "rgba(4,6,10,0.98)",
-          borderTop: "1px solid rgba(200,160,64,0.2)",
-          padding: "10px 14px 14px",
-          zIndex: 10,
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-            <div>
-              <div style={{ color: "#c8a060", fontSize: 12, letterSpacing: ".06em" }}>
-                {selectedItem.keepName || selectedItem.name || selectedItem.key}
-              </div>
-              <div style={{
-                color: selectedItem.owner
-                  ? (selectedItem.owner === "player" ? "#88ccff" : (FAC_COLOR[selectedItem.owner] || "#cc8844"))
-                  : "#7a6a50",
-                fontSize: 10, marginTop: 2,
-              }}>
-                {!selectedItem.owner ? "Unoccupied"
-                  : selectedItem.owner === "player" ? "Your Faction" : "Enemy"}
-                {selectedItem.garrison > 0 && ` · ${garrisonLabel(selectedItem.garrison)} garrison`}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button
-                onClick={() => {
-                  onClose();
-                  requestAnimationFrame(() => onTeleport(selectedItem.cx, selectedItem.cy));
-                }}
-                style={{
-                  padding: "7px 18px",
-                  background: "linear-gradient(160deg,#2a1e08,#100c02)",
-                  border: "1px solid #8a6020", borderRadius: 4,
-                  color: "#f0c060", fontFamily: "'Cinzel',serif",
-                  fontSize: 11, letterSpacing: ".06em", cursor: "pointer",
-                  WebkitTapHighlightColor: "transparent",
-                }}>Go →</button>
-              <button
-                onClick={() => setSelected(null)}
-                style={{
-                  background: "none", border: "none", color: "#4a4030",
-                  fontSize: 16, cursor: "pointer", padding: "8px",
-                  WebkitTapHighlightColor: "transparent",
-                }}>
-                ✕
-              </button>
-            </div>
-          </div>
+        {/* ── Detail panel — absolute overlay at bottom so SVG never reshapes ── */}
+        {selectedItem && (
           <div style={{
-            padding: "3px 8px", borderRadius: 3, display: "inline-block",
-            background: selectedItem.layer === "ring"     ? "rgba(240,192,64,0.12)"
-                      : selectedItem.layer === "conflict" ? "rgba(220,60,40,0.12)"
-                      : selectedItem.type === "crossing"  ? "rgba(30,100,160,0.15)"
-                      : selectedItem.type === "tollbridge"? "rgba(160,120,20,0.15)"
-                      : selectedItem.type === "tunnel"    ? "rgba(60,60,80,0.15)"
-                      : "rgba(60,80,60,0.12)",
-            border: `1px solid ${
-              selectedItem.layer === "ring" ? "#7a5010"
-              : selectedItem.layer === "conflict" ? "#6a2010"
-              : selectedItem.type === "crossing" ? "#1a5080"
-              : selectedItem.type === "tollbridge" ? "#806010"
-              : selectedItem.type === "tunnel" ? "#404058"
-              : "#2a3a2a"
-            }`,
-            color: selectedItem.layer === "ring" ? "#c8a040"
-                 : selectedItem.layer === "conflict" ? "#cc5040"
-                 : selectedItem.type === "crossing" ? "#4ab8d8"
-                 : selectedItem.type === "tollbridge" ? "#c8a030"
-                 : selectedItem.type === "tunnel" ? "#8a8aaa"
-                 : "#4a6a4a",
-            fontSize: 8,
+            position: "absolute", left: 0, right: 0, bottom: 0,
+            background: "rgba(4,6,10,0.97)",
+            borderTop: "1px solid rgba(200,160,64,0.2)",
+            padding: "10px 14px 14px",
+            zIndex: 10,
           }}>
-            {selectedItem.type === "crossing"   ? "🌊 River Crossing"
-             : selectedItem.type === "tollbridge"? "⌒ Toll Bridge"
-             : selectedItem.type === "tunnel"    ? "⛰ Tunnel Gate"
-             : selectedItem.layer === "ring"     ? "⚜ Holy Ring"
-             : selectedItem.layer === "conflict" ? "⚔ Conflict Zone"
-             : selectedItem.layer === "farm"     ? "🌾 Farm Region" : "🏰 Starting Region"}
-          </div>
-          {selectedItem.siegeMax > 0 && (
-            <div style={{ marginTop: 6 }}>
-              <div style={{ background: "#0a0c10", borderRadius: 2, height: 5, overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+              <div>
+                <div style={{ color: "#c8a060", fontSize: 12, letterSpacing: ".06em" }}>
+                  {selectedItem.keepName || selectedItem.name || selectedItem.key}
+                </div>
                 <div style={{
-                  height: "100%",
-                  width: `${Math.round((selectedItem.siege / selectedItem.siegeMax) * 100)}%`,
-                  background: "linear-gradient(90deg,#882020,#dd3030)", borderRadius: 2,
-                }}/>
+                  color: selectedItem.owner
+                    ? (selectedItem.owner === "player" ? "#88ccff" : (FAC_COLOR[selectedItem.owner] || "#cc8844"))
+                    : "#7a6a50",
+                  fontSize: 10, marginTop: 2,
+                }}>
+                  {!selectedItem.owner ? "Unoccupied"
+                    : selectedItem.owner === "player" ? "Your Faction" : "Enemy"}
+                  {selectedItem.garrison > 0 && ` · ${garrisonLabel(selectedItem.garrison)} garrison`}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button
+                  onClick={() => {
+                    onClose();
+                    requestAnimationFrame(() => onTeleport(selectedItem.cx, selectedItem.cy));
+                  }}
+                  style={{
+                    padding: "7px 18px",
+                    background: "linear-gradient(160deg,#2a1e08,#100c02)",
+                    border: "1px solid #8a6020", borderRadius: 4,
+                    color: "#f0c060", fontFamily: "'Cinzel',serif",
+                    fontSize: 11, letterSpacing: ".06em", cursor: "pointer",
+                    WebkitTapHighlightColor: "transparent",
+                  }}>Go →</button>
+                <button
+                  onClick={() => setSelected(null)}
+                  style={{
+                    background: "none", border: "none", color: "#4a4030",
+                    fontSize: 16, cursor: "pointer", padding: "8px",
+                    WebkitTapHighlightColor: "transparent",
+                  }}>
+                  ✕
+                </button>
               </div>
             </div>
-          )}
-        </div>
-      )}
+            <div style={{
+              padding: "3px 8px", borderRadius: 3, display: "inline-block",
+              background: selectedItem.layer === "ring"     ? "rgba(240,192,64,0.12)"
+                        : selectedItem.layer === "conflict" ? "rgba(220,60,40,0.12)"
+                        : selectedItem.type === "crossing"  ? "rgba(30,100,160,0.15)"
+                        : selectedItem.type === "tollbridge"? "rgba(160,120,20,0.15)"
+                        : selectedItem.type === "tunnel"    ? "rgba(60,60,80,0.15)"
+                        : "rgba(60,80,60,0.12)",
+              border: `1px solid ${
+                selectedItem.layer === "ring" ? "#7a5010"
+                : selectedItem.layer === "conflict" ? "#6a2010"
+                : selectedItem.type === "crossing" ? "#1a5080"
+                : selectedItem.type === "tollbridge" ? "#806010"
+                : selectedItem.type === "tunnel" ? "#404058"
+                : "#2a3a2a"
+              }`,
+              color: selectedItem.layer === "ring" ? "#c8a040"
+                   : selectedItem.layer === "conflict" ? "#cc5040"
+                   : selectedItem.type === "crossing" ? "#4ab8d8"
+                   : selectedItem.type === "tollbridge" ? "#c8a030"
+                   : selectedItem.type === "tunnel" ? "#8a8aaa"
+                   : "#4a6a4a",
+              fontSize: 8,
+            }}>
+              {selectedItem.type === "crossing"   ? "🌊 River Crossing"
+               : selectedItem.type === "tollbridge"? "⌒ Toll Bridge"
+               : selectedItem.type === "tunnel"    ? "⛰ Tunnel Gate"
+               : selectedItem.layer === "ring"     ? "⚜ Holy Ring"
+               : selectedItem.layer === "conflict" ? "⚔ Conflict Zone"
+               : selectedItem.layer === "farm"     ? "🌾 Farm Region" : "🏰 Starting Region"}
+            </div>
+            {selectedItem.siegeMax > 0 && (
+              <div style={{ marginTop: 6 }}>
+                <div style={{ background: "#0a0c10", borderRadius: 2, height: 5, overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%",
+                    width: `${Math.round((selectedItem.siege / selectedItem.siegeMax) * 100)}%`,
+                    background: "linear-gradient(90deg,#882020,#dd3030)", borderRadius: 2,
+                  }}/>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 });

@@ -230,7 +230,7 @@ function GearDetail({ piece, inventory, cmds, setCmds, setInventory, playerAlign
   };
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px 32px", display: "flex", flexDirection: "column", gap: 10, touchAction: "pan-y", overscrollBehavior: "contain" }}>
+    <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px 60px", display: "flex", flexDirection: "column", gap: 10, touchAction: "pan-y", overscrollBehavior: "contain" }}>
       <GearCard piece={piece} selected={false} onClick={() => {}} />
 
       {/* Equip / Unequip */}
