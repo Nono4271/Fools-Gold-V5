@@ -175,7 +175,22 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           const { cx, cy } = isoXY(c, r);
           const mid = cy + TH / 2;
           const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
-          gfx.beginFill(getTileBaseColor(c, r, "grass")); gfx.drawPolygon(TOP); gfx.endFill();
+          const baseColor = getTileBaseColor(c, r, "grass");
+          // Outer ring of the 5×5 keep region (|dc|==2 or |dr|==2): apply 2.2 px
+          // overdraw stroke to cover black border seams from neighbouring tiles.
+          const primKey = tile.isKeep ? `${c},${r}` : tile.keepPrimaryKey;
+          if (primKey) {
+            const [pc, pr] = primKey.split(",").map(Number);
+            const isOuter = Math.abs(c - pc) === 2 || Math.abs(r - pr) === 2;
+            if (isOuter) {
+              const OD = 2.2;
+              gfx.lineStyle(OD * 2, baseColor, 1);
+              gfx.beginFill(baseColor); gfx.drawPolygon(TOP); gfx.endFill();
+              gfx.lineStyle(0);
+              continue;
+            }
+          }
+          gfx.beginFill(baseColor); gfx.drawPolygon(TOP); gfx.endFill();
         }
         continue;
       }
@@ -508,10 +523,12 @@ function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
       if (pl === 1) continue; // P1 has all resources but no individual props
       if (tile.rss) {
         if (tile.isKeep && pl >= 10) {
-          // Draw one giant prop centered on the 2×2 footprint midpoint
-          // Center of 2×2 block relative to primary: same cx, cy + TH/2
+          // Draw one giant prop centered on the 2×2 footprint midpoint.
+          // Each tier gets a distinct size well above the P9 ceiling (sizeMult tops
+          // out at pl=13). Synthetic pl: P10→16, P11→19, P12→22, P13→25.
+          const syntheticPl = 13 + (pl - 9) * 3;
           const midCy = cy + TH / 2;
-          drawRssProp(gfx, tile.rss, cx, midCy - TH / 2, c, r, Math.min(13, pl + 2));
+          drawRssProp(gfx, tile.rss, cx, midCy - TH / 2, c, r, syntheticPl);
         } else {
           drawRssProp(gfx, tile.rss, cx, sy, c, r, pl);
         }
@@ -562,8 +579,8 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   const s    = TH * 0.82;
 
   // Size only — one prop per tile, gets bigger with power level.
-  // P2=0.18×, P7=0.72×, P13=1.80×
-  const t        = Math.min(1, (pl - 1) / 12);
+  // P2=0.18×, P7=0.72×, P13=1.80×; synthetic pl>13 (P10–P13 keeps) grows beyond that.
+  const t        = (pl - 1) / 12;
   const sizeMult = 0.18 + t * 1.62;
 
   if (rss === "wood") {
@@ -905,19 +922,13 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningR
   group.__keepKey = tileKey;
 
   if (isSelected) {
-    // Outline traces the actual keep courtyard diamond + corner tower extent.
-    // by = gy - 18; courtyard corners: top by-28, right/left by-10 ±36, bottom by+8.
-    // Corner towers add ~5px (ts*0.75=5.25) to each side; pad 2px for the stroke.
-    const pad = 2;
-    const hw  = 36 + 7 + pad;      // half-width:  courtyard half + tower radius + pad
-    const top = by - 30 - 7 - pad; // topmost tower tip
-    const bot = by +  8 + pad;     // bottom courtyard tip
-    const mid = (top + bot) / 2;   // vertical midpoint ≈ by - 10
+    // Outline traces the full 5×5 tile footprint (KEEP_RADIUS=2).
+    // From center (bx, gy): N=(0,-106), E=(+200,+26.5), S=(0,+159), W=(-200,+26.5)
     const KEEP_OUTLINE = [
-      bx,       top,
-      bx + hw,  mid,
-      bx,       bot,
-      bx - hw,  mid,
+      bx,        gy - 106,
+      bx + 200,  gy +  26.5,
+      bx,        gy + 159,
+      bx - 200,  gy +  26.5,
     ];
     const outlineGfx = new PIXI.Graphics();
     outlineGfx.lineStyle(3, 0xffffff, 0.95);
