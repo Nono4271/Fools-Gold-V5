@@ -460,20 +460,26 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // Primary cell only — draw merged 2×2 diamond covering all 4 cells
       const { cx, cy } = isoXY(c, r);
       const baseColor = getTileBaseColor(c, r, "grass");
+      // Overdraw by 4px on every edge to fully cover neighbor tile stroke artifacts
+      const OD = 4;
       const MERGED = [
-        cx,        cy - 1,          // N (1px overdraw to seal sub-pixel gaps)
-        cx + TW+1, cy + TH,         // E
-        cx,        cy + TH * 2 + 1, // S
-        cx - TW-1, cy + TH,         // W
+        cx,          cy - OD,          // N
+        cx + TW + OD, cy + TH,         // E
+        cx,          cy + TH * 2 + OD, // S
+        cx - TW - OD, cy + TH,         // W
       ];
-      gfx.lineStyle(0);
+      // Stroke the outline with the fill color so neighbor edges are painted over
+      gfx.lineStyle(OD * 2, baseColor, 1);
       gfx.beginFill(baseColor); gfx.drawPolygon(MERGED); gfx.endFill();
+      gfx.lineStyle(0);
 
       // Owner tint over the full footprint
       const owner2 = tile.owner || null;
       if (owner2) {
         const ot = owner2 === "player" ? 0x1ea0b4 : 0xdc3c28;
+        gfx.lineStyle(OD * 2, ot, 0.18);
         gfx.beginFill(ot, 0.18); gfx.drawPolygon(MERGED); gfx.endFill();
+        gfx.lineStyle(0);
       }
     }
   }
