@@ -463,6 +463,21 @@ function resolveBranchMap(cmdOrCls, treeOrCls) {
   return BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
 }
 
+// Returns [branch0, branch1] for a garrison defender commander — used by heroes.js
+// to assign skill points without creating a circular dependency.
+export function getDefCmdBranches(cmd) {
+  const cls = cmd.cls ?? "attacker";
+  const branches = cmd.faction === "holyknights"
+    ? (HOLYKNIGHTS_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker)
+    : cmd.faction === "nightcreatures"
+    ? (NIGHTCREATURES_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker)
+    : (BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker);
+  return [
+    branches[0] ?? { main: "killing_instinct", sides: [] },
+    branches[1] ?? { main: "quick_strike",     sides: [] },
+  ];
+}
+
 export function getBranchMainSkill(treeOrCls, branchIndex, cmd) {
   const branches = resolveBranchMap(cmd, treeOrCls);
   const branch   = branches[branchIndex % branches.length];

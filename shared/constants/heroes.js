@@ -119,6 +119,7 @@ export const SKILL_TREES = {
 
 // Skill naming and mechanic tables live in skills.js — re-exported here for backward compat
 export { MAIN_BRANCH_NAMES, FACTION_MAIN_NAMES, getMainBranchNames, SKILL_NAMES, getSkillNames, TREE_DISPLAY_NAMES, getTreeDisplayNames, SKILL_MECHANICS, SKILLS, getBranchMechanicKey, getBranchMechanic } from "./skills.js";
+import { getDefCmdBranches } from "./skills.js";
 
 // DEAD_CODE_START — kept so this marker is findable, replaced by skills.js re-export above
 const _MAIN_BRANCH_NAMES_UNUSED = {
@@ -268,10 +269,12 @@ const FACTION_BRANCHES = {
 
 // Per power-level garrison commander config
 const FACTION_CMD_CONFIG = {
-  4: { lvl:8,  skillPts:3, troopTierFn: ()     => 0          },
-  5: { lvl:10, skillPts:5, troopTierFn: ()     => 0          },
-  6: { lvl:15, skillPts:5, troopTierFn: (seed) => (seed & 1) }, // 0 or 1
-  7: { lvl:18, skillPts:5, troopTierFn: (seed) => (seed & 1) }, // 0 or 1
+  4: { lvl:8,  troopTierFn: ()     => 0,          skillLayout: { b0m:2, b0s:1,            b1m:0, b1s:0            } },
+  5: { lvl:10, troopTierFn: ()     => 0,          skillLayout: { b0m:2, b0s:1,            b1m:2, b1s:0            } },
+  6: { lvl:15, troopTierFn: (seed) => (seed & 1), skillLayout: { b0m:2, b0s:1,            b1m:2, b1s:0            } },
+  7: { lvl:18, troopTierFn: (seed) => (seed & 1), skillLayout: { b0m:2, b0s:1,            b1m:2, b1s:0            } },
+  8: { lvl:22, troopTierFn: (seed) => (seed & 1), skillLayout: { b0m:2, b0s:1, b0s2:1,   b1m:2, b1s:1, b1s2:1   } },
+  9: { lvl:25, troopTierFn: (seed) => 1,          skillLayout: { b0m:3, b0s:1, b0s2:1,   b1m:2, b1s:1            } },
 };
 
 export function factionDefCmdForTile(c, r, playerFaction, powerLevel) {
@@ -306,12 +309,26 @@ export function factionDefCmdForTile(c, r, playerFaction, powerLevel) {
   const branch     = factionBranches[branchSeed % factionBranches.length];
   const troopBranch = { faction: src.faction, branch, tier: troopTier };
 
-  // Skill points: 3sp → first skill only at lvl 3; 5sp → first at 3 + second at 2
-  const firstKey  = FACTION_CMD_FIRST_SKILL[src.cls]  || "killing_instinct";
-  const secondKey = FACTION_CMD_SECOND_SKILL[src.cls] || "quick_strike";
-  const skillPoints = cfg.skillPts === 5
-    ? { [firstKey]: 3, [secondKey]: 2 }
-    : { [firstKey]: 3 };
+  // Build skill points from layout: b0=branch0, b1=branch1, m=main, s=side0, s2=side1
+  // Sides picked deterministically from tile seed so same tile always gets same build.
+  const layout = cfg.skillLayout;
+  const [b0, b1] = getDefCmdBranches(src);
+
+  // Pick which side(s) to use per branch — alternate via seed bit
+  const sideSeed0 = (seed >> 4) & 1; // 0 or 1 — picks side index within branch
+  const sideSeed1 = (seed >> 6) & 1;
+
+  const skillPoints = {};
+  if (layout.b0m) skillPoints[b0.main]                              = layout.b0m;
+  if (layout.b0s && b0.sides.length > 0)
+    skillPoints[b0.sides[sideSeed0 % b0.sides.length]]              = layout.b0s;
+  if (layout.b0s2 && b0.sides.length > 1)
+    skillPoints[b0.sides[(sideSeed0 + 1) % b0.sides.length]]        = layout.b0s2;
+  if (layout.b1m) skillPoints[b1.main]                              = layout.b1m;
+  if (layout.b1s && b1.sides.length > 0)
+    skillPoints[b1.sides[sideSeed1 % b1.sides.length]]              = layout.b1s;
+  if (layout.b1s2 && b1.sides.length > 1)
+    skillPoints[b1.sides[(sideSeed1 + 1) % b1.sides.length]]        = layout.b1s2;
 
   return {
     id:              src.id,
