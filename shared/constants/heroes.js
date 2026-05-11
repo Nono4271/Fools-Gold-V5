@@ -276,9 +276,23 @@ const FACTION_CMD_CONFIG = {
   7: { lvl:18, troopTierFn: (seed) => (seed & 1), skillLayout: { b0m:2, b0s:1,            b1m:2, b1s:0            } },
   8: { lvl:22, troopTierFn: (seed) => (seed & 1), skillLayout: { b0m:2, b0s:1, b0s2:1,   b1m:2, b1s:1, b1s2:1   } },
   9: { lvl:25, troopTierFn: (seed) => 1,          skillLayout: { b0m:3, b0s:1, b0s2:1,   b1m:2, b1s:1            } },
+  // P10–P13: rarityForWave(waveIndex) determines rarity per wave
+  // Skill point totals: P10=10, P11=10, P12=12, P13=15
+  10:{ lvl:35, troopTierFn: () => 1, respect:1,
+       rarityPool: (wi) => wi === 0 ? ["soldier"] : ["veteran"],
+       skillLayout: { b0m:4, b0s:2, b0s2:1,   b1m:2, b1s:1            } },  // 10 pts
+  11:{ lvl:40, troopTierFn: () => 2, respect:2,
+       rarityPool: (wi) => wi === 0 ? ["veteran"] : ["champion"],
+       skillLayout: { b0m:4, b0s:2, b0s2:1,   b1m:2, b1s:1            } },  // 10 pts
+  12:{ lvl:45, troopTierFn: () => 2, respect:3,
+       rarityPool: (wi) => wi === 0 ? ["veteran"] : ["champion"],
+       skillLayout: { b0m:5, b0s:2, b0s2:1,   b1m:2, b1s:1, b1s2:1   } },  // 12 pts
+  13:{ lvl:50, troopTierFn: () => 2, respect:3,
+       rarityPool: (wi) => wi === 0 ? ["veteran"] : ["champion"],
+       skillLayout: { b0m:6, b0s:3, b0s2:2,   b1m:2, b1s:1, b1s2:1   } },  // 15 pts
 };
 
-export function factionDefCmdForTile(c, r, playerFaction, powerLevel) {
+export function factionDefCmdForTile(c, r, playerFaction, powerLevel, waveIndex = 0) {
   const pl = powerLevel || 4;
 
   // Inline alignment data to avoid circular dep issues
@@ -289,10 +303,17 @@ export function factionDefCmdForTile(c, r, playerFaction, powerLevel) {
   const playerAlign = ALIGN.humans.includes(playerFaction) ? "humans" : "creatures";
   const oppFactions = playerAlign === "humans" ? ALIGN.creatures : ALIGN.humans;
 
-  // Pool: veteran + soldier heroes from the opposite alignment
+  const cfg = FACTION_CMD_CONFIG[pl] || FACTION_CMD_CONFIG[4];
+
+  // P10+: rarityPool(waveIndex) returns exact rarity list for this wave
+  // P4-P9: always veteran + soldier pool
+  const allowedRarities = cfg.rarityPool
+    ? cfg.rarityPool(waveIndex)
+    : ["veteran", "soldier"];
+
   const pool = HDEFS.filter(h =>
-    (h.rarity === "veteran" || h.rarity === "soldier") &&
-    oppFactions.includes(h.faction)
+    oppFactions.includes(h.faction) &&
+    allowedRarities.includes(h.rarity)
   );
   if (!pool.length) return null;
 
@@ -300,8 +321,6 @@ export function factionDefCmdForTile(c, r, playerFaction, powerLevel) {
   const seed = (((c + 1) * 73856093) ^ ((r + 1) * 19349663)) >>> 0;
   const src  = pool[seed % pool.length];
 
-  // Per-tier config
-  const cfg       = FACTION_CMD_CONFIG[pl] || FACTION_CMD_CONFIG[4];
   const troopTier = cfg.troopTierFn(seed);
 
   // Pick a branch from the commander's own faction (deterministic, different hash)
@@ -310,13 +329,11 @@ export function factionDefCmdForTile(c, r, playerFaction, powerLevel) {
   const branch     = factionBranches[branchSeed % factionBranches.length];
   const troopBranch = { faction: src.faction, branch, tier: troopTier };
 
-  // Build skill points from layout: b0=branch0, b1=branch1, m=main, s=side0, s2=side1
-  // Sides picked deterministically from tile seed so same tile always gets same build.
+  // Build skill points from layout
   const layout = cfg.skillLayout;
   const [b0, b1] = getDefCmdBranches(src);
 
-  // Pick which side(s) to use per branch — alternate via seed bit
-  const sideSeed0 = (seed >> 4) & 1; // 0 or 1 — picks side index within branch
+  const sideSeed0 = (seed >> 4) & 1;
   const sideSeed1 = (seed >> 6) & 1;
 
   const skillPoints = {};
@@ -342,7 +359,7 @@ export function factionDefCmdForTile(c, r, playerFaction, powerLevel) {
     atk:             src.atk,
     foc:             src.foc  || 0,
     spd:             src.spd,
-    respect:         0,
+    respect:         cfg.respect ?? 0,
     skillPoints,
     troopBranch,
     isFactionGarrison: true,

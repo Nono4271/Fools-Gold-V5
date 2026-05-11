@@ -37,6 +37,10 @@ export const POWER_DEFS = {
 7: { label:"90/hr",  color:"#2030b0", cmdLvl:18, command:2160, ringPower:90  },
 8: { label:"130/hr", color:"#1040c0", cmdLvl:25, command:3600, ringPower:130 },
 9: { label:"150/hr", color:"#0858d0", cmdLvl:28, command:4200, ringPower:150 },
+10:{ label:"200/hr", color:"#7010e0", cmdLvl:35, command:5500, ringPower:200 },
+11:{ label:"230/hr", color:"#9010c0", cmdLvl:40, command:6500, ringPower:230 },
+12:{ label:"260/hr", color:"#b010a0", cmdLvl:45, command:7500, ringPower:260 },
+13:{ label:"300/hr", color:"#d01080", cmdLvl:50, command:9000, ringPower:300 },
 };
 
 // XP per command point consumed, by troop tier (0-indexed)
