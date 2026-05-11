@@ -611,13 +611,15 @@ self.onmessage = function(e) {
       siegeArr[idx2]    = siege2;
       siegeMaxArr[idx2] = siege2;
 
-      // 3 KEEPPART tiles — preserve natural terrain and rss
+      // 3 KEEPPART tiles — preserve natural terrain, copy primary's rss so all 4 cells share the same prop type
+      const primaryRss = rssArr[idx2];
       for (const [tc, tr] of [[c2+1,r2],[c2,r2+1],[c2+1,r2+1]]) {
         const ti = tr * COLS + tc;
         powerArr[ti]    = pl2;
         regionArr[ti]   = regionArr[idx2];
         flagArr[ti]     = (flagArr[ti] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
         keepPrimArr[ti] = idx2;
+        rssArr[ti]      = primaryRss;
       }
 
       keepMeta[`${c2},${r2}`] = {
