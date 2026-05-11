@@ -91,12 +91,22 @@ export default function RiseToWar() {
     if (!t) return;
     // Create a new root object so useMemo returns a new reference,
     // which triggers MapRenderer's useEffect([tiles]) and redraws immediately.
-    tilesMapRef.current = { ...tilesMapRef.current, [key]: { ...t, ...patch } };
+    const merged = { ...t, ...patch };
+    // Recompute the garrisonDefeated getter after every merge so it stays consistent
+    Object.defineProperty(merged, 'garrisonDefeated', {
+      get() { return (this.defeatedWaves?.length ?? 0) >= (this.garrisonWaves ?? 1) && (this.garrisonWaves ?? 1) > 0; },
+      configurable: true, enumerable: true,
+    });
+    tilesMapRef.current = { ...tilesMapRef.current, [key]: merged };
     const updated = tilesMapRef.current[key];
-    // Keep defeatedTilesRef in sync
-    if ('garrisonDefeated' in patch || 'resetAt' in patch) {
-      if (updated.garrisonDefeated && updated.resetAt) {
-        defeatedTilesRef.current[key] = { garrisonDefeated: true, resetAt: updated.resetAt };
+    // Keep defeatedTilesRef in sync — track any tile with a pending reset
+    if ('defeatedWaves' in patch || 'resetAt' in patch) {
+      const allDefeated = (updated.defeatedWaves?.length ?? 0) >= (updated.garrisonWaves ?? 1);
+      if (allDefeated && updated.resetAt) {
+        defeatedTilesRef.current[key] = { resetAt: updated.resetAt };
+      } else if (updated.resetAt) {
+        // Partial progress also needs reset tracking
+        defeatedTilesRef.current[key] = { resetAt: updated.resetAt };
       } else {
         delete defeatedTilesRef.current[key];
       }
@@ -506,7 +516,9 @@ export default function RiseToWar() {
               hasAiCommander: false,
               siege:      siegeArr[idx],
               siegeMax:   siegeMaxArr[idx],
-              garrisonDefeated: !!(flags & F_DEFEATED),
+              garrisonWaves:   km?.garrisonWaves ?? 1,
+              defeatedWaves:   [],
+              get garrisonDefeated() { return this.defeatedWaves?.length >= this.garrisonWaves && this.garrisonWaves > 0; },
               resetAt:    null,
               isKeep, isKeepPart, isHQ, isHQPart, isWin,
               isGate, isBorder,
@@ -529,7 +541,7 @@ export default function RiseToWar() {
             owner: "player", isHQ: true, garrison: 0,
             terrain: "grass", rss: null, defCmd: null,
             siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
-            garrisonDefeated: false, resetAt: null,
+            defeatedWaves: [], resetAt: null,
           };
           const [hc, hr] = playerSpawn.split(",").map(Number);
           [[1,0],[0,1],[1,1]].forEach(([dc,dr]) => {
@@ -561,7 +573,7 @@ export default function RiseToWar() {
               owner: "ai", isHQ: true, garrison: 0,
               terrain: "grass", rss: null, defCmd: null,
               siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
-              garrisonDefeated: false, resetAt: null,
+              defeatedWaves: [], resetAt: null,
             };
             const [ahc, ahr] = spawn.split(",").map(Number);
             [[1,0],[0,1],[1,1]].forEach(([dc,dr]) => {
@@ -719,8 +731,13 @@ export default function RiseToWar() {
       changedKeys.forEach(k => {
         const tile = tilesMapRef.current[k];
         if (tile) {
-          tilesMapRef.current[k] = { ...tile, siege: tile.siegeMax, garrisonDefeated: false, resetAt: null };
-          delete defeatedTilesRef.current[k]; // keep index in sync
+          const reset = { ...tile, siege: tile.siegeMax, defeatedWaves: [], resetAt: null };
+          Object.defineProperty(reset, 'garrisonDefeated', {
+            get() { return (this.defeatedWaves?.length ?? 0) >= (this.garrisonWaves ?? 1) && (this.garrisonWaves ?? 1) > 0; },
+            configurable: true, enumerable: true,
+          });
+          tilesMapRef.current[k] = reset;
+          delete defeatedTilesRef.current[k];
           changed = true;
         }
       });
@@ -862,7 +879,7 @@ export default function RiseToWar() {
                   })()
                 : { n:npc2.n, icon:npc2.icon, cls:npc2.cls, faction:null, rarity:'soldier', lvl:pd.cmdLvl, troops:pd.command, troopBranch:npc2.troopBranch, atk:npc2.atk*pd.cmdLvl, spd:npc2.spd+pd.cmdLvl*2 })
             : null;
-          patchTile(key, { owner:null, garrison:pd?pd.command:50, siege:t.siegeMax??SIEGE_BASE, siegeMax:t.siegeMax??SIEGE_BASE, garrisonDefeated:false, resetAt:null, defCmd:resetDefCmd });
+          patchTile(key, { owner:null, garrison:pd?pd.command:50, siege:t.siegeMax??SIEGE_BASE, siegeMax:t.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:resetDefCmd });
         });
         const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
         // Fix #6: offload retreat BFS to worker. Collect all affected cmds,
