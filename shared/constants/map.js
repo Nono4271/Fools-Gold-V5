@@ -28,13 +28,15 @@ export const WIN_R = 407;
 export const WIN_KEY = `${WIN_C},${WIN_R}`;
 
 export const POWER_DEFS = {
-1: { label:"1/hr",  color:"#6a9a6a", cmdLvl:1,  command:36,   ringPower:1  },
-2: { label:"10/hr", color:"#9a8a30", cmdLvl:4,  command:300,  ringPower:10 },
-3: { label:"15/hr", color:"#9a5a30", cmdLvl:6,  command:480,  ringPower:15 },
-4: { label:"30/hr", color:"#9a3030", cmdLvl:8,  command:960,  ringPower:30 },
-5: { label:"40/hr", color:"#7a3090", cmdLvl:10, command:1200, ringPower:40 },
-6: { label:"60/hr", color:"#4a30a0", cmdLvl:15, command:1800, ringPower:60 },
-7: { label:"90/hr", color:"#2030b0", cmdLvl:18, command:2160, ringPower:90 },
+1: { label:"1/hr",   color:"#6a9a6a", cmdLvl:1,  command:36,   ringPower:1   },
+2: { label:"10/hr",  color:"#9a8a30", cmdLvl:4,  command:300,  ringPower:10  },
+3: { label:"15/hr",  color:"#9a5a30", cmdLvl:6,  command:480,  ringPower:15  },
+4: { label:"30/hr",  color:"#9a3030", cmdLvl:8,  command:960,  ringPower:30  },
+5: { label:"40/hr",  color:"#7a3090", cmdLvl:10, command:1200, ringPower:40  },
+6: { label:"60/hr",  color:"#4a30a0", cmdLvl:15, command:1800, ringPower:60  },
+7: { label:"90/hr",  color:"#2030b0", cmdLvl:18, command:2160, ringPower:90  },
+8: { label:"130/hr", color:"#1040c0", cmdLvl:25, command:3600, ringPower:130 },
+9: { label:"150/hr", color:"#0858d0", cmdLvl:28, command:4200, ringPower:150 },
 };
 
 // XP per command point consumed, by troop tier (0-indexed)
