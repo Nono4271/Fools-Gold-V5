@@ -1884,93 +1884,6 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
     }}>
       <style>{CSS}</style>
 
-      {/* ── Top bar ── */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "12px 16px",
-        background: "linear-gradient(180deg,rgba(20,15,5,1),rgba(10,8,3,.97))",
-        borderBottom: "1px solid #2a1e08",
-        flexShrink: 0, position: "relative",
-      }}>
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: 1,
-          background: "linear-gradient(90deg,transparent,#8a6020 20%,#f0c04066 50%,#8a6020 80%,transparent)",
-        }} />
-
-        <button onClick={onClose} style={{
-          width: 38, height: 38, borderRadius: "50%",
-          background: "rgba(255,255,255,.04)", border: "1px solid #2e2010",
-          color: "#8a7050", fontSize: 18, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-        }}>←</button>
-
-        <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 13,
-          background: "linear-gradient(135deg,#f0c040,#c8902888)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          letterSpacing: ".04em" }}>Commander</div>
-
-
-      </div>
-
-      {/* ── Filter icon button ── */}
-      <div style={{
-        padding: "7px 14px",
-        borderBottom: "1px solid #161208",
-        background: "rgba(0,0,0,.25)",
-        display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
-      }}>
-        <button onClick={() => setShowFilter(true)} style={{
-          display: "flex", alignItems: "center", gap: 8,
-          padding: "8px 14px", borderRadius: 6,
-          background: activeFilterCount > 0 ? "rgba(240,192,64,.1)" : "rgba(255,255,255,.03)",
-          border: `1px solid ${activeFilterCount > 0 ? "rgba(240,192,64,.4)" : "#2a2010"}`,
-          color: activeFilterCount > 0 ? "#f0c040" : "#5a4a30",
-          fontFamily: "'Cinzel',serif", fontSize: 10, cursor: "pointer",
-          transition: "all .15s",
-        }}>
-          <span style={{ fontSize: 15 }}>⚙</span>
-          <span>Filter & Sort</span>
-          {activeFilterCount > 0 && (
-            <span style={{
-              width: 18, height: 18, borderRadius: "50%",
-              background: "linear-gradient(135deg,#f0c040,#c07020)",
-              color: "#0a0804", fontSize: 9, fontWeight: 700,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>{activeFilterCount}</span>
-          )}
-        </button>
-        {/* Active filter pills */}
-        <div style={{ flex: 1, display: "flex", gap: 5, flexWrap: "wrap" }}>
-          {filterAlignment && (
-            <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px",
-              background: "rgba(240,192,64,.08)", border: "1px solid rgba(240,192,64,.3)",
-              borderRadius: 12, fontSize: 8, color: "#c0a030", fontFamily: "'Cinzel',serif" }}>
-              {ALIGNMENT[filterAlignment]?.icon} {ALIGNMENT[filterAlignment]?.n}
-              <span onClick={() => setFilterAlignment(null)} style={{ cursor: "pointer", opacity: .7, marginLeft: 2 }}>✕</span>
-            </div>
-          )}
-          {filterClass && (
-            <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px",
-              background: "rgba(240,192,64,.08)", border: "1px solid rgba(240,192,64,.3)",
-              borderRadius: 12, fontSize: 8, color: "#c0a030", fontFamily: "'Cinzel',serif" }}>
-              {CLASS[filterClass]?.icon} {CLASS[filterClass]?.n}
-              <span onClick={() => setFilterClass(null)} style={{ cursor: "pointer", opacity: .7, marginLeft: 2 }}>✕</span>
-            </div>
-          )}
-          {filterSubspecies && (
-            <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px",
-              background: "rgba(240,192,64,.08)", border: "1px solid rgba(240,192,64,.3)",
-              borderRadius: 12, fontSize: 8, color: "#c0a030", fontFamily: "'Cinzel',serif" }}>
-              {filterSubspecies}
-              <span onClick={() => setFilterSubspecies(null)} style={{ cursor: "pointer", opacity: .7, marginLeft: 2 }}>✕</span>
-            </div>
-          )}
-        </div>
-        <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: "#3a2e18", flexShrink: 0 }}>
-          {filtered.length} / {allPlayer.length}
-        </span>
-      </div>
-
       {/* Filter popup */}
       {showFilter && (
         <FilterPopup
@@ -1985,7 +1898,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       {/* ── Body: portrait list + detail ── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
 
-        {/* Left — portrait roster */}
+        {/* Left — back arrow + filter + portrait roster */}
         <div style={{
           width: 76, flexShrink: 0,
           overflowY: "auto", overflowX: "hidden",
@@ -1993,8 +1906,44 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           background: "rgba(0,0,0,.3)",
           scrollbarWidth: "none",
           display: "flex", flexDirection: "column",
-          paddingTop: 6, paddingBottom: 12,
+          touchAction: "pan-y", overscrollBehavior: "contain",
         }}>
+          {/* Back arrow + filter icon — fixed at top of column */}
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+            padding: "10px 0 8px", flexShrink: 0,
+            borderBottom: "1px solid #1a1508",
+          }}>
+            <button onClick={onClose} style={{
+              width: 44, height: 44, borderRadius: "50%",
+              background: "rgba(255,255,255,.04)", border: "1px solid #2e2010",
+              color: "#8a7050", fontSize: 18, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              WebkitTapHighlightColor: "transparent",
+            }}>←</button>
+            <button onClick={() => setShowFilter(true)} style={{
+              width: 44, height: 44, borderRadius: "50%",
+              background: activeFilterCount > 0 ? "rgba(240,192,64,.12)" : "rgba(255,255,255,.03)",
+              border: `1px solid ${activeFilterCount > 0 ? "rgba(240,192,64,.5)" : "#2a2010"}`,
+              color: activeFilterCount > 0 ? "#f0c040" : "#5a4a30",
+              fontSize: 18, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              position: "relative",
+              WebkitTapHighlightColor: "transparent",
+            }}>
+              ⚙
+              {activeFilterCount > 0 && (
+                <span style={{
+                  position: "absolute", top: 2, right: 2,
+                  width: 14, height: 14, borderRadius: "50%",
+                  background: "linear-gradient(135deg,#f0c040,#c07020)",
+                  color: "#0a0804", fontSize: 7, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>{activeFilterCount}</span>
+              )}
+            </button>
+          </div>
+
           {filtered.map(cmd => (
             <RosterPortrait
               key={cmd.uid}
