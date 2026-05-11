@@ -461,7 +461,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const { cx, cy } = isoXY(c, r);
       const baseColor = getTileBaseColor(c, r, "grass");
       // Overdraw by 4px on every edge to fully cover neighbor tile stroke artifacts
-      const OD = 4;
+      const OD = 2;
       const MERGED = [
         cx,          cy - OD,          // N
         cx + TW + OD, cy + TH,         // E
@@ -888,10 +888,10 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningR
   const by   = worldCY - elev - 10;
   const gy   = worldCY;
   const FOOTPRINT = [
-     bx,        gy - 200,
-     bx + 440,  gy +  20,
-     bx,        gy + 240,
-     bx - 440,  gy +  20,
+     bx,        gy - 100,
+     bx + 220,  gy +  20,
+     bx,        gy + 120,
+     bx - 220,  gy +  20,
   ];
   const isSelected = selKey === tileKey;
   const owner      = tile.owner || null;
@@ -904,7 +904,7 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningR
     outlineGfx.lineStyle(3, 0xffffff, 0.95);
     outlineGfx.drawPolygon(FOOTPRINT);
     outlineGfx.lineStyle(1, 0xffffff, 0.25);
-    outlineGfx.drawPolygon([bx, gy-193, bx+433, gy+20, bx, gy+233, bx-433, gy+20]);
+    outlineGfx.drawPolygon([bx, gy-96, bx+216, gy+20, bx, gy+116, bx-216, gy+20]);
     outlineGfx.lineStyle(0);
     group.addChild(outlineGfx);
   }
@@ -915,7 +915,7 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningR
 
   const hit = new PIXI.Graphics();
   hit.beginFill(0xffffff, 0.001);
-  hit.drawRect(bx - 440, gy - 200, 880, 440);
+  hit.drawRect(bx - 220, gy - 100, 440, 220);
   hit.endFill();
   hit.hitArea     = new PIXI.Polygon(FOOTPRINT);
   hit.interactive = true;
