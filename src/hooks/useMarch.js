@@ -67,6 +67,7 @@ tilesRef, floaty, gearInventory,
 playerHqKey, aiHqKeys,
 emitTileCapture, emitTileSiege,
 gatePartners,
+facKey,
 }) {
 // Server-sync helpers — no-op if server not connected yet
 const _emitCapture = (key, patch) => emitTileCapture?.(key, patch);
@@ -159,7 +160,7 @@ arrivedAttackers.forEach(cmd => {
 
   // Check live AI commander presence
   const hasAiCmd = cmds.some(c => c.owner === "ai" && c.tk === destKey && !c.march);
-  const effectiveDefTile = hasAiCmd ? defTile : { ...defTile, defCmd:garrisonDefCmd(defTile) };
+  const effectiveDefTile = hasAiCmd ? defTile : { ...defTile, defCmd:garrisonDefCmd(defTile, facKey) };
 
   // Stage 1 battle
   const boostedCmd = applyGearToCmd(cmd, gearInventory);
@@ -388,7 +389,7 @@ useEffect(() => {
 
       // If player is still standing and no new draw, fight NPC garrison
       if (!playerDefeated && !newDrawTimer && remainingTroops > 0) {
-        const garrisonTile = { ...defTile, defCmd: garrisonDefCmd(defTile) };
+        const garrisonTile = { ...defTile, defCmd: garrisonDefCmd(defTile, facKey) };
         const resG = simBattle({ ...boostedCmd, troops: remainingTroops }, remainingTroops, garrisonTile, wallLvl);
         if (resG.report) {
           const enriched = { ...resG.report, timestamp: Date.now(), cmdCls: cmd.cls,

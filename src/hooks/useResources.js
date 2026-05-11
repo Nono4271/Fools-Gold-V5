@@ -5,8 +5,11 @@ import { useEffect, useRef } from "react";
 // P2: 288/hr of matching rss type only
 // P3: 336/hr of matching rss type only
 // P4: 432/hr of matching rss type only
+// P5: 504/hr of matching rss type only
+// P6: 672/hr of matching rss type only
+// P7: 768/hr of matching rss type only
 const RATE_P1_PER_HR = 60;   // flat, all types
-const RATE_BY_PL = { 2: 288, 3: 336, 4: 432 }; // matching type only
+const RATE_BY_PL = { 2: 288, 3: 336, 4: 432, 5: 504, 6: 672, 7: 768 }; // matching type only
 
 // Tick every 60s — one re-render per minute instead of every 2s.
 // Per-tick gain = hourly_rate / ticks_per_hour = hourly_rate / 60.
