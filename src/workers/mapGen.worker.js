@@ -20,7 +20,47 @@ const POWER_DEFS = {
   6: { cmdLvl:15, command:1800 },
   7: { cmdLvl:18, command:2160 },
 };
-const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 };
+const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 }; // kept for keeps only
+
+// ── Power level distribution ──────────────────────────────────────────────────
+// Weighted random — same probabilities map-wide. Geometric decay per tier.
+// Calibrated for 1200 players across 1.4M tiles:
+//   P1: ~672k  P2: ~392k  P3: ~196k  P4: ~90k  P5: ~34k  P6: ~13k  P7: ~4.2k
+// P7 = ~4,200 tiles — in the 2,500-5,000 target range.
+// To add future tiers: push { pl:N, w } — POWER_TOTAL auto-normalises.
+// Suggested next: P8: 2, P9: 1.
+const POWER_WEIGHTS = [
+  { pl:1, w:480 },  // ~48.0%
+  { pl:2, w:280 },  // ~28.0%
+  { pl:3, w:140 },  // ~14.0%
+  { pl:4, w: 64 },  // ~ 6.4%
+  { pl:5, w: 24 },  // ~ 2.4%
+  { pl:6, w:  9 },  // ~ 0.9%
+  { pl:7, w:  3 },  // ~ 0.3% → ~4,200 tiles, ~3.5 per player at 1200
+  // Future: { pl:8, w:2 }, { pl:9, w:1 }, etc.
+];
+const POWER_TOTAL = POWER_WEIGHTS.reduce((s, e) => s + e.w, 0); // 1000
+
+// Fast per-tile RNG seeded from coords — deterministic, no global state
+function tileRng(c, r) {
+  let s = (((c + 1) * 73856093) ^ ((r + 1) * 19349663)) | 0;
+  return () => {
+    s = (Math.imul(s, 1103515245) + 12345) | 0;
+    return ((s >>> 16) & 0x7fff) / 0x7fff;
+  };
+}
+
+// Pick a power level for a tile using weighted table
+function rollPowerLevel(c, r) {
+  const rng  = tileRng(c, r);
+  const roll = rng() * POWER_TOTAL;
+  let acc = 0;
+  for (const { pl, w } of POWER_WEIGHTS) {
+    acc += w;
+    if (roll < acc) return pl;
+  }
+  return POWER_WEIGHTS[POWER_WEIGHTS.length - 1].pl;
+}
 
 const TERRAIN_ENC = { grass:0, forest:1, mountain:2, desert:3, river:4, ravine:5, rockymountain:6 };
 const TERRAIN_DEC = ["grass","forest","mountain","desert","river","ravine","rockymountain"];
@@ -471,7 +511,7 @@ self.onmessage = function(e) {
 
       const regIdx  = REGION_MAP[idx];
       const reg     = regIdx ? REGION_LIST[regIdx-1] : null;
-      const pl      = reg ? (REGION_POWER[reg.layer]??1) : 1;
+      const pl      = rollPowerLevel(c, r);   // global weighted random, same odds everywhere
       const pd      = POWER_DEFS[pl];
       const rssKey  = RKEYS[Math.floor(Math.random()*4)];
       const trpKey  = TROOP_KEYS[Math.floor(Math.random()*4)];
@@ -647,7 +687,173 @@ self.onmessage = function(e) {
   // Merge gateMeta into keepMeta
   Object.assign(keepMeta, gateMeta);
 
-  postMessage({ type:"progress", pct:92, label:"Finding spawn points..." });
+  // ── Pass 1: Anti-lockout ─────────────────────────────────────────────────────
+  // For every faction start keep, guarantee at least 2 of the 4 orthogonal
+  // neighbours are P1. This ensures players can always move out of spawn.
+  postMessage({ type:"progress", pct:92, label:"Anti-lockout pass..." });
+  {
+    const FACTION_STARTS = Object.values(FACTION_REGIONS).map(fr => {
+      const reg = REGION_LIST.find(r => r.key === fr.start);
+      return reg ? { cx: reg.cx, cy: reg.cy } : null;
+    }).filter(Boolean);
+
+    for (const { cx, cy } of FACTION_STARTS) {
+      // Check tiles adjacent to keep centre (skip the keep tile itself and its parts)
+      const neighbours = [
+        { c: cx,   r: cy-1 },
+        { c: cx,   r: cy+1 },
+        { c: cx-1, r: cy   },
+        { c: cx+1, r: cy   },
+        { c: cx-1, r: cy-1 },
+        { c: cx+1, r: cy-1 },
+        { c: cx-1, r: cy+1 },
+        { c: cx+1, r: cy+1 },
+      ].filter(({ c, r }) =>
+        c >= 0 && r >= 0 && c < COLS && r < ROWS &&
+        !(flagArr[r*COLS+c] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER))
+      );
+
+      const p1Count = neighbours.filter(({ c, r }) => powerArr[r*COLS+c] === 1).length;
+      if (p1Count >= 2) continue; // already safe
+
+      // Force the closest non-special neighbours to P1 until we have 2
+      let forced = p1Count;
+      for (const { c, r } of neighbours) {
+        if (forced >= 2) break;
+        const idx = r*COLS+c;
+        if (powerArr[idx] !== 1) {
+          powerArr[idx]    = 1;
+          garrisonArr[idx] = POWER_DEFS[1].command;
+          forced++;
+        }
+      }
+    }
+  }
+
+  // ── Pass 2: BFS road network ─────────────────────────────────────────────────
+  // Build a minimal 1-tile-wide P1 road connecting every gate and keep so that
+  // there is always a passable P1 path between any two of them.
+  // Uses Dijkstra (treating non-P1 tiles as higher cost) to carve the cheapest
+  // path and stamps those tiles as P1.
+  postMessage({ type:"progress", pct:94, label:"Building road network..." });
+  {
+    // Collect all node coords: every gate (F_GATE|F_KEEP) and every keep centre
+    const nodes = [];
+    for (const [key, meta] of Object.entries(keepMeta)) {
+      const [c, r] = key.split(",").map(Number);
+      nodes.push({ c, r });
+    }
+
+    if (nodes.length > 1) {
+      // Helper: is a tile passable for road-building (not hard border, not HQ interior)
+      const passable = (c, r) => {
+        if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return false;
+        const fl = flagArr[r*COLS+c];
+        return !(fl & (F_BORDER | F_HQPART | F_KEEPPART));
+      };
+
+      // Dijkstra from source to target — returns array of {c,r} path or null
+      const dijkstra = (sc, sr, tc, tr) => {
+        const INF = 1e9;
+        // Small priority queue via sorted array — acceptable for short paths
+        const dist = new Map();
+        const prev = new Map();
+        const key  = (c, r) => c * 10000 + r;
+        const queue = [{ c: sc, r: sr, d: 0 }];
+        dist.set(key(sc, sr), 0);
+
+        while (queue.length) {
+          // Pop minimum — linear scan is fine; paths are < few hundred tiles
+          let minI = 0;
+          for (let i = 1; i < queue.length; i++) if (queue[i].d < queue[minI].d) minI = i;
+          const { c, r, d } = queue[minI];
+          queue.splice(minI, 1);
+
+          if (c === tc && r === tr) break;
+          if (d > (dist.get(key(c, r)) ?? INF)) continue;
+
+          for (const [dc, dr] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+            const nc = c+dc, nr = r+dr;
+            if (!passable(nc, nr)) continue;
+            const fl  = flagArr[nr*COLS+nc];
+            // Cost: free to travel through existing P1 or gate/keep; expensive otherwise
+            const isRoad = (powerArr[nr*COLS+nc] === 1) || !!(fl & (F_KEEP|F_GATE));
+            const nd = d + (isRoad ? 1 : 10);
+            const nk = key(nc, nr);
+            if (nd < (dist.get(nk) ?? INF)) {
+              dist.set(nk, nd);
+              prev.set(nk, { c, r });
+              queue.push({ c: nc, r: nr, d: nd });
+            }
+          }
+        }
+
+        // Reconstruct path
+        const path = [];
+        let cur = { c: tc, r: tr };
+        const tk = key(tc, tr);
+        if (!prev.has(tk) && !(tc === sc && tr === sr)) return null;
+        while (cur) {
+          path.push(cur);
+          const pk = key(cur.c, cur.r);
+          const p  = prev.get(pk);
+          cur = p || null;
+        }
+        return path;
+      };
+
+      // Connect nodes in a minimal spanning tree (Prim's — greedy nearest unvisited)
+      const visited = new Set([0]);
+      while (visited.size < nodes.length) {
+        let bestPath = null, bestCost = Infinity, bestTarget = -1;
+        for (const si of visited) {
+          const src = nodes[si];
+          for (let ti = 0; ti < nodes.length; ti++) {
+            if (visited.has(ti)) continue;
+            const tgt = nodes[ti];
+            // Manhattan distance as fast heuristic to skip very distant pairs
+            const mhd = Math.abs(src.c - tgt.c) + Math.abs(src.r - tgt.r);
+            if (mhd > 600) continue; // too far — skip for performance
+            const path = dijkstra(src.c, src.r, tgt.c, tgt.r);
+            if (!path) continue;
+            if (path.length < bestCost) {
+              bestCost = path.length;
+              bestPath = path;
+              bestTarget = ti;
+            }
+          }
+        }
+        if (bestTarget === -1) {
+          // No reachable unvisited node from current set — connect nearest by brute coords
+          let nearestDist = Infinity, nearestIdx = -1;
+          for (const si of visited) {
+            const src = nodes[si];
+            for (let ti = 0; ti < nodes.length; ti++) {
+              if (visited.has(ti)) continue;
+              const d = Math.abs(src.c-nodes[ti].c)+Math.abs(src.r-nodes[ti].r);
+              if (d < nearestDist) { nearestDist = d; nearestIdx = ti; }
+            }
+          }
+          if (nearestIdx !== -1) visited.add(nearestIdx);
+          continue;
+        }
+
+        // Stamp the path as P1 road tiles (skip keep/gate tiles themselves)
+        for (const { c, r } of bestPath) {
+          const idx = r*COLS+c;
+          const fl  = flagArr[idx];
+          if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) continue;
+          if (powerArr[idx] !== 1) {
+            powerArr[idx]    = 1;
+            garrisonArr[idx] = POWER_DEFS[1].command;
+          }
+        }
+        visited.add(bestTarget);
+      }
+    }
+  }
+
+  postMessage({ type:"progress", pct:96, label:"Finding spawn points..." });
 
   const spawnKeys={}, usedKeys=new Set();
   for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
