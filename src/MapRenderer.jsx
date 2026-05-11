@@ -461,7 +461,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const { cx, cy } = isoXY(c, r);
       const baseColor = getTileBaseColor(c, r, "grass");
       // Overdraw by 4px on every edge to fully cover neighbor tile stroke artifacts
-      const OD = 2;
+      const OD = 2.2;
       const MERGED = [
         cx,          cy - OD,          // N
         cx + TW + OD, cy + TH,         // E
