@@ -183,9 +183,9 @@ function ActionButton({ icon, label, color = "#c8a060", onClick, badge, accent }
 }
 
 // ── Tile Search Popup ─────────────────────────────────────────────────────────
-const PL_LIST = Object.entries(POWER_DEFS).map(([pl, def]) => ({
-  pl: Number(pl), label: def.label, color: def.color,
-}));
+const PL_LIST = [1,2,3,4,5,6,7,8,9]
+  .filter(pl => POWER_DEFS[pl])
+  .map(pl => ({ pl, label: POWER_DEFS[pl].label, color: POWER_DEFS[pl].color }));
 
 function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClose }) {
   const [selected, setSelected] = useState(new Set());
@@ -229,12 +229,13 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
   return (
     <>
       {/* Backdrop */}
-      <div style={{ position:"fixed", inset:0, zIndex:8000 }} onClick={onClose} />
+      <div style={{ position:"fixed", inset:0, zIndex:9200, pointerEvents:"auto" }} onClick={onClose} />
 
       {/* Panel */}
       <div style={{
-        position:"fixed", bottom:90, right:8, zIndex:8001,
+        position:"fixed", bottom:90, right:8, zIndex:9201,
         width:230,
+        pointerEvents:"auto",
         background:"rgba(5,7,11,.97)",
         border:"1px solid #2a2010",
         borderRadius:8,
