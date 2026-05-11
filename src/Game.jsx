@@ -9,7 +9,7 @@ import { HDEFS, RC, RARITY, CLASS, rollGacha, addRespect, RESPECT_DUPE_POINTS, R
 import { rollFullPull, rollGearSchematic, createRespectSchematic, createGearInstance, GEAR_RARITY, GEAR_SLOTS, GEAR_PIECES, rollFullPullCmdRarity } from "../shared/constants/gear.js";
 import { HQP, AI_HQ_KEY, WIN_KEY, RKEYS, RSS, POWER_DEFS, SIEGE_BASE, SIEGE_KEEP_BASE, calcSiegePower, hqSiegeValue } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST, CMD_LVL_MAX, xpToNext } from "../shared/constants/troops.js";
-import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainRate, maxTrainBatch, tierFromBranchLevel } from "../shared/constants/buildings.js";
+import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainRate, maxTrainBatch, tierFromBranchLevel, storageMax } from "../shared/constants/buildings.js";
 import { isoXY, TW, TH, ISO_W, ISO_H } from "../shared/constants/geometry.js";
 import { FACTION_REGIONS, REGION_LIST } from "../shared/constants/regions.js";
 
@@ -125,7 +125,7 @@ export default function RiseToWar() {
   const [loadPct,  setLoadPct]  = useState(0);
   const [loadLabel,setLoadLabel]= useState("Generating world...");
   const [playerHqKey, setPlayerHqKey] = useState(null);
-  const [rss,    setRss]     = useState({ stone:300, wood:300, ore:300, gas:300 });
+  const [rss,    setRss]     = useState({ stone:200_000, wood:200_000, ore:200_000, gas:200_000 });
   const [gems,   setGems]    = useState(20000);
 
   const [playerCmds, setPlayerCmds] = useState([]);
@@ -184,7 +184,7 @@ export default function RiseToWar() {
   const [pullResults,         setPullResults]         = useState([]);
   const [lastFreePull,   setLastFreePull]   = useState(null);
   const [dailyHalfUsed, setDailyHalfUsed]  = useState(false);
-  const [bldgs,  setBldgs]   = useState({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 });
+  const [bldgs,  setBldgs]   = useState({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, storage:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 });
   const [upgQueue, setUpgQueue] = useState({});
 
   const [aiFaction,      setAiFaction]      = useState(null);
@@ -375,7 +375,7 @@ export default function RiseToWar() {
   const [showPerf,       setShowPerf]       = useState(false);
 
   // ── Hooks ──
-  useResources({ screen, tilesRef, setRss });
+  useResources({ screen, tilesRef, setRss, bldgs });
 
   const { initPathfinding, findPath, findPathBatch } = usePathfinding();
 
