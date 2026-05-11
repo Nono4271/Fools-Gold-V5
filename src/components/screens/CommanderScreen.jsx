@@ -2034,7 +2034,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
         </div>
 
         {/* Right — detail panel (CommanderDetail self-scrolls) */}
-        <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", position: "relative" }}>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}>
           {selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
             : (
