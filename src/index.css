@@ -18,16 +18,14 @@ body {
 #root { width: 100%; height: 100%; overflow: hidden; background: #0e1014; }
 
 /* Scrollable overlay screens add this class on mount so the touchstart
-   handler in main.tsx bails out, and position:static lets inner scroll
-   containers receive pan gestures on iOS. */
+   handler in main.tsx bails out. position:fixed overlays manage their own
+   scroll internally — root height containment must be preserved. */
 html.gacha-open,
 html.gacha-open body {
-  position: static;
   touch-action: pan-y;
 }
-html.gacha-open #root {
-  overflow: visible;
-}
+/* Do NOT set overflow:visible on #root — it breaks flex height containment
+   for all position:fixed overlay screens. They scroll internally instead. */
 
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: #0a0c10; }
