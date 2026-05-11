@@ -899,119 +899,107 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
 
       {/* ── Name + identity ── */}
       <div style={{
-        padding: "10px 14px 8px",
+        padding: "8px 14px 6px",
         background: `linear-gradient(160deg, ${r.color}0c 0%, transparent 55%)`,
         borderBottom: "1px solid #1c1610",
         flexShrink: 0,
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+        {/* Row 1: name + portrait */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 5 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Name */}
             <div style={{
-              fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 14,
+              fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 13,
               color: "#ede0c8", letterSpacing: ".01em", lineHeight: 1.1,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>{cmd.n}</div>
-
-            {/* Class + faction + rarity chips */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 7, position: "relative" }}>
-              {cls && (
-                <>
-                  <div
-                    onClick={() => setShowClassPopup(showClassPopup === "class" ? null : "class")}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 4,
-                      padding: "3px 9px",
-                      background: showClassPopup === "class" ? `${r.color}18` : "rgba(255,255,255,.04)",
-                      border: `1px solid ${r.color}${showClassPopup === "class" ? "70" : "45"}`,
-                      borderRadius: 3, cursor: "pointer",
-                    }}>
-                    <span style={{ fontSize: 13 }}>{cls.icon}</span>
-                    <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, fontWeight: 700,
-                      color: r.color, letterSpacing: ".06em" }}>{cls.n}</span>
-                    <span style={{ fontSize: 7, color: r.color, opacity: 0.6 }}>ⓘ</span>
-                  </div>
-                  {/* Class popup */}
-                  {showClassPopup === "class" && (
-                    <div style={{
-                      position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 50,
-                      width: 220, padding: "10px 12px",
-                      background: "#0e0c09", border: `1px solid ${r.color}40`,
-                      borderRadius: 6, boxShadow: `0 4px 20px rgba(0,0,0,.7)`,
-                      animation: "fadeUp .12s ease",
-                    }}>
-                      <div style={{ fontSize: 7, color: r.color, fontFamily: "'Cinzel',serif",
-                        letterSpacing: ".08em", marginBottom: 4 }}>
-                        {cls.icon} {cls.n.toUpperCase()} CLASS
-                      </div>
-                      <div style={{ fontSize: 9, fontFamily: "'Crimson Pro',serif",
-                        color: "#7a6a50", lineHeight: 1.5, marginBottom: 8 }}>{cls.desc}</div>
-                      <div style={{ fontSize: 7, color: lvl >= 25 ? "#f0c040" : "#5a4a2a",
-                        fontFamily: "'Cinzel',serif", letterSpacing: ".08em", marginBottom: 4 }}>
-                        ⭐ LV25 BONUS{lvl >= 25 ? " — ACTIVE" : ` — unlocks at Lv25`}
-                      </div>
-                      <div style={{ fontSize: 9, fontFamily: "'Crimson Pro',serif",
-                        color: lvl >= 25 ? "#c0a070" : "#3a3020", lineHeight: 1.5 }}>{cls.bonus}</div>
-                    </div>
-                  )}
-                </>
-              )}
-              {faction && (
-                <div style={{ display: "flex", alignItems: "center", gap: 4,
-                  padding: "3px 8px", borderRadius: 3,
-                  background: `${faction.c}12`, border: `1px solid ${faction.c}35` }}>
-                  <span style={{ fontSize: 11 }}>{faction.s}</span>
-                  <span style={{ fontSize: 8, color: faction.c, fontFamily: "'Cinzel',serif" }}>{faction.n}</span>
-                </div>
-              )}
-              <div style={{
-                padding: "3px 8px", borderRadius: 3,
-                background: `${r.color}12`, border: `1px solid ${r.color}45`,
-                fontSize: 8, color: r.color, fontFamily: "'Cinzel',serif", fontWeight: 700,
-              }}>{r.n}</div>
-
-              {/* Subspecies tag */}
-              {(() => {
-                const sub = getSubspecies(cmd.faction, cmd.rarity);
-                if (!sub) return null;
-                return (
-                  <div style={{
-                    padding: "3px 8px", borderRadius: 3,
-                    background: "rgba(255,255,255,.04)", border: "1px solid #2a2010",
-                    fontSize: 8, color: "#8a7a50", fontFamily: "'Cinzel',serif",
-                    display: "flex", alignItems: "center", gap: 4,
-                  }}>
-                    <span style={{ fontSize: 9 }}>◈</span>{sub}
-                  </div>
-                );
-              })()}
-
-              {/* Alignment tag */}
-              {(() => {
-                const alnKey = getFactionAlignment(cmd.faction);
-                const aln = ALIGNMENT[alnKey];
-                if (!aln) return null;
-                return (
-                  <div style={{
-                    padding: "3px 8px", borderRadius: 3,
-                    background: "rgba(255,255,255,.03)", border: "1px solid #241c10",
-                    fontSize: 8, color: "#5a4a30", fontFamily: "'Cinzel',serif",
-                    display: "flex", alignItems: "center", gap: 4,
-                  }}>
-                    <span style={{ fontSize: 10 }}>{aln.icon}</span>{aln.n}
-                  </div>
-                );
-              })()}
-            </div>
           </div>
-
           {/* Portrait circle */}
           <div style={{
-            width: 46, height: 46, borderRadius: "50%", flexShrink: 0,
+            width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
             background: `radial-gradient(circle at 38% 32%, ${r.color}22, #0c0a07)`,
             border: `2px solid ${r.color}55`,
-            boxShadow: `0 0 20px ${r.color}28`,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
           }}>{cmd.icon}</div>
+        </div>
+
+        {/* Row 2: chips — single nowrap scrollable line */}
+        <div style={{ display: "flex", gap: 4, overflowX: "auto", flexWrap: "nowrap",
+          scrollbarWidth: "none", WebkitOverflowScrolling: "touch", position: "relative" }}>
+          {cls && (
+            <div
+              onClick={() => setShowClassPopup(showClassPopup === "class" ? null : "class")}
+              style={{
+                display: "flex", alignItems: "center", gap: 3, flexShrink: 0,
+                padding: "2px 7px",
+                background: showClassPopup === "class" ? `${r.color}18` : "rgba(255,255,255,.04)",
+                border: `1px solid ${r.color}${showClassPopup === "class" ? "70" : "45"}`,
+                borderRadius: 3, cursor: "pointer",
+              }}>
+              <span style={{ fontSize: 11 }}>{cls.icon}</span>
+              <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, fontWeight: 700,
+                color: r.color }}>{cls.n}</span>
+              <span style={{ fontSize: 6, color: r.color, opacity: 0.6 }}>ⓘ</span>
+              {/* Class popup */}
+              {showClassPopup === "class" && (
+                <div style={{
+                  position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 50,
+                  width: 220, padding: "10px 12px",
+                  background: "#0e0c09", border: `1px solid ${r.color}40`,
+                  borderRadius: 6, boxShadow: `0 4px 20px rgba(0,0,0,.7)`,
+                  animation: "fadeUp .12s ease",
+                }}>
+                  <div style={{ fontSize: 7, color: r.color, fontFamily: "'Cinzel',serif",
+                    letterSpacing: ".08em", marginBottom: 4 }}>
+                    {cls.icon} {cls.n.toUpperCase()} CLASS
+                  </div>
+                  <div style={{ fontSize: 9, fontFamily: "'Crimson Pro',serif",
+                    color: "#7a6a50", lineHeight: 1.5, marginBottom: 8 }}>{cls.desc}</div>
+                  <div style={{ fontSize: 7, color: lvl >= 25 ? "#f0c040" : "#5a4a2a",
+                    fontFamily: "'Cinzel',serif", letterSpacing: ".08em", marginBottom: 4 }}>
+                    ⭐ LV25 BONUS{lvl >= 25 ? " — ACTIVE" : ` — unlocks at Lv25`}
+                  </div>
+                  <div style={{ fontSize: 9, fontFamily: "'Crimson Pro',serif",
+                    color: lvl >= 25 ? "#c0a070" : "#3a3020", lineHeight: 1.5 }}>{cls.bonus}</div>
+                </div>
+              )}
+            </div>
+          )}
+          {faction && (
+            <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0,
+              padding: "2px 7px", borderRadius: 3,
+              background: `${faction.c}12`, border: `1px solid ${faction.c}35` }}>
+              <span style={{ fontSize: 9 }}>{faction.s}</span>
+              <span style={{ fontSize: 7, color: faction.c, fontFamily: "'Cinzel',serif" }}>{faction.n}</span>
+            </div>
+          )}
+          <div style={{
+            padding: "2px 7px", borderRadius: 3, flexShrink: 0,
+            background: `${r.color}12`, border: `1px solid ${r.color}45`,
+            fontSize: 7, color: r.color, fontFamily: "'Cinzel',serif", fontWeight: 700,
+          }}>{r.n}</div>
+          {(() => {
+            const sub = getSubspecies(cmd.faction, cmd.rarity);
+            if (!sub) return null;
+            return (
+              <div style={{
+                padding: "2px 7px", borderRadius: 3, flexShrink: 0,
+                background: "rgba(255,255,255,.04)", border: "1px solid #2a2010",
+                fontSize: 7, color: "#8a7a50", fontFamily: "'Cinzel',serif",
+              }}>◈ {sub}</div>
+            );
+          })()}
+          {(() => {
+            const alnKey = getFactionAlignment(cmd.faction);
+            const aln = ALIGNMENT[alnKey];
+            if (!aln) return null;
+            return (
+              <div style={{
+                padding: "2px 7px", borderRadius: 3, flexShrink: 0,
+                background: "rgba(255,255,255,.03)", border: "1px solid #241c10",
+                fontSize: 7, color: "#5a4a30", fontFamily: "'Cinzel',serif",
+              }}>{aln.icon} {aln.n}</div>
+            );
+          })()}
         </div>
 
         {/* Respect bar */}
@@ -1295,7 +1283,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
 
         return (
           <div style={{ margin: "0 14px 2px", flexShrink: 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <div style={{ fontSize: 7, color: "#3a3020", fontFamily: "'Cinzel',serif", letterSpacing: ".08em" }}>GEAR</div>
               {hasAnyGear && (
                 <button onClick={() => {
@@ -1308,7 +1296,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                 }}>Unequip All</button>
               )}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 4 }}>
               {["helmet","armor","bracers","accessory"].map(slotKey => {
                 const equippedId = cmd.gear?.[slotKey];
                 const piece = equippedId ? (gearInventory ?? []).find(g => g.instanceId === equippedId) : null;
@@ -1343,7 +1331,8 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                         else setShowClassPopup(isOpen ? null : slotKey);
                       }}
                       style={{
-                        padding: "10px 6px 8px", textAlign: "center",
+                        padding: "6px 4px 5px", textAlign: "center",
+                        minHeight: 44,
                         background: piece ? `${rc}12` : isOpen ? "rgba(255,255,255,.04)" : "rgba(255,255,255,.015)",
                         border: `1px solid ${isOpen ? (rc ?? r.color)+"60" : piece ? rc+"40" : "#1e1810"}`,
                         borderRadius: 5, cursor: "pointer",
@@ -1352,29 +1341,29 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                         touchAction: "manipulation",
                         WebkitTapHighlightColor: "transparent",
                       }}>
-                      <div style={{ fontSize: piece ? 26 : 20, marginBottom: 4, opacity: piece ? 1 : 0.25 }}>
+                      <div style={{ fontSize: piece ? 20 : 16, marginBottom: 2, opacity: piece ? 1 : 0.25 }}>
                         {piece ? piece.icon : slotDef.icon}
                       </div>
-                      <div style={{ fontSize: 7, fontFamily: "'Cinzel',serif",
+                      <div style={{ fontSize: 6, fontFamily: "'Cinzel',serif",
                         color: piece ? rc : "#2a2010",
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        marginBottom: piece ? 3 : 0 }}>
+                        marginBottom: piece ? 2 : 0 }}>
                         {piece ? piece.n.split(" ")[0] : slotDef.n}
                       </div>
                       {piece && (
                         <>
-                          <div style={{ fontSize: 7, color: "#6a5a40", fontFamily: "'Cinzel',serif", marginBottom: 2 }}>
+                          <div style={{ fontSize: 6, color: "#6a5a40", fontFamily: "'Cinzel',serif", marginBottom: 1 }}>
                             {STAT_ICONS[piece.primaryStat]} +{pVal}
                           </div>
                           <div style={{ display: "flex", justifyContent: "center", gap: 1 }}>
                             {Array.from({length:5}).map((_,i)=>(
-                              <span key={i} style={{fontSize:5, color:i<(piece.stars??0)?"#aaa":"#222"}}>★</span>
+                              <span key={i} style={{fontSize:4, color:i<(piece.stars??0)?"#aaa":"#222"}}>★</span>
                             ))}
                           </div>
                         </>
                       )}
                       {!piece && (
-                        <div style={{ fontSize: 6, color: "#2a2010", fontFamily: "'Cinzel',serif", marginTop: 2 }}>empty</div>
+                        <div style={{ fontSize: 5, color: "#2a2010", fontFamily: "'Cinzel',serif", marginTop: 1 }}>empty</div>
                       )}
                     </div>
 
