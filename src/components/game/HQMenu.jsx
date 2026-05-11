@@ -933,7 +933,7 @@ return (
 // -----------------------------------------------------------------------------
 function CommandCenterScreen({ cmds, pKeys, rss, gems, bldgs, bLog, tiles }) {
 const rssToBuilding = { stone:"quarry", wood:"lumber", ore:"forge", gas:"refinery" };
-const totalTroops   = cmds.filter(c=>c.owner==="player").reduce((s,c)=>s+(c.troops||0),0);
+const totalTroops   = cmds.filter(c=>c.owner==="player").reduce((s,c)=>s+(c.troopSlots?.length>0?c.troopSlots.reduce((a,sl)=>a+(sl.troops||0),0):(c.troops||0)),0);
 return (
 <div>
 <SectionHeader>COMMAND CENTER</SectionHeader>
@@ -1016,9 +1016,16 @@ if (!tier) return;
 const key = `${fKey}_${branch.key}_${maxTier}`;
 const fColor = FACTION_META[fKey]?.c || "#888";
 const assigned = (cmds||[])
-.filter(x=>x.owner==="player"&&x.troopBranch?.faction===fKey
-&&x.troopBranch?.branch===branch.key)
-.reduce((s,x)=>s+(x.troops||0),0);
+.filter(x=>x.owner==="player")
+.reduce((s,x)=>{
+  // Sum only the slot(s) matching this branch key, not the raw command budget
+  if (x.troopSlots?.length>0) {
+    return s + x.troopSlots.filter(sl=>sl.branch?.faction===fKey&&sl.branch?.branch===branch.key).reduce((a,sl)=>a+(sl.troops||0),0);
+  }
+  // Legacy single-branch commander
+  if (x.troopBranch?.faction===fKey&&x.troopBranch?.branch===branch.key) return s+(x.troops||0);
+  return s;
+},0);
 cards.push({ key, tier, branch, fColor, assigned, fKey });
 });
 });
@@ -1266,7 +1273,15 @@ return (
       const tier       = branch?.tiers[tb?.tier??0];
       const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?500:0);
       const cmdCost    = COMMAND_COST[branch?.size] ?? 1;
-      const cmdUsed    = (cmd.troops||0) * cmdCost;
+      // For multi-slot commanders, sum command consumption per slot (units × slot's own cost).
+      // cmd.troops alone is the raw unit sum and doesn't account for mixed slot sizes.
+      const cmdUsed = cmd.troopSlots?.length > 0
+        ? cmd.troopSlots.reduce((s, sl) => {
+            const slBranch = FACTION_TROOPS[sl.branch?.faction]?.branches.find(b=>b.key===sl.branch?.branch);
+            const slCost   = COMMAND_COST[slBranch?.size] ?? 1;
+            return s + (sl.troops || 0) * slCost;
+          }, 0)
+        : (cmd.troops || 0) * cmdCost;
       const troopPct   = Math.round((cmdUsed / commandCap) * 100);
       const fColor     = FACTION_META[tb?.faction]?.c || P.gold;
 
@@ -1374,9 +1389,13 @@ return (
             </div>
           )}
           {isAtHQ && tb && (() => {
-            const sv        = sliderVals[cmd.uid] ?? (cmd.troops||0);
-            const maxSlider = Math.min(Math.floor(commandCap/cmdCost), barracksPool+(cmd.troops||0));
-            const delta     = sv - (cmd.troops||0);
+            // Slider controls slot 0 only (assignTroops is an alias for setTroopSlot slot 0).
+            // Use slot 0 unit count as the baseline, not cmd.troops (which is the total unit
+            // sum across all slots and can't be compared directly to a single-slot slider).
+            const slot0Troops = cmd.troopSlots?.length > 0 ? (cmd.troopSlots[0]?.troops || 0) : (cmd.troops || 0);
+            const sv        = sliderVals[cmd.uid] ?? slot0Troops;
+            const maxSlider = Math.min(Math.floor(commandCap/cmdCost), barracksPool+slot0Troops);
+            const delta     = sv - slot0Troops;
             return (
               <div>
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:8,
