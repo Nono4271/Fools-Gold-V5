@@ -924,7 +924,8 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
 
         {/* Row 2: chips — single nowrap scrollable line */}
         <div style={{ display: "flex", gap: 4, overflowX: "auto", flexWrap: "nowrap",
-          scrollbarWidth: "none", WebkitOverflowScrolling: "touch", position: "relative" }}>
+          scrollbarWidth: "none", WebkitOverflowScrolling: "touch", position: "relative",
+          msOverflowStyle: "none" }}>
           {cls && (
             <div
               onClick={() => setShowClassPopup(showClassPopup === "class" ? null : "class")}
@@ -1010,11 +1011,11 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
           const atMaxPromo = rLvl >= (promoInfo?.respectRequired ?? RESPECT_MAX) || !promoInfo?.to;
           const barGlows = atPromoThreshold || pct >= 90;
           return (
-            <div style={{ marginTop: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 15 }}>⚜</span>
-                  <span style={{ fontFamily: "'Cinzel',serif", fontSize: 15, fontWeight: 700,
+            <div style={{ marginTop: 5 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ fontSize: 11 }}>⚜</span>
+                  <span style={{ fontFamily: "'Cinzel',serif", fontSize: 12, fontWeight: 700,
                     color: r.color }}>R{rLvl}</span>
                   {promoInfo?.to && rLvl < promoInfo.respectRequired && (
                     <span style={{ fontSize: 7, color: "#3a3228", fontFamily: "'Cinzel',serif" }}>
@@ -1127,7 +1128,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         })()}
 
         {/* XP bar */}
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 4 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
             <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#6a6040" }}>
               Lv.{lvl} / Lv.{CMD_LVL_MAX}
@@ -1177,8 +1178,8 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
               position: "relative",
               background: showClassPopup === `stat_${label}` ? "rgba(255,255,255,.04)" : "transparent",
             }}>
-            <div style={{ fontSize: 14, marginBottom: 3 }}>{icon}</div>
-            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 12, fontWeight: 700, color }}>{val}</div>
+            <div style={{ fontSize: 12, marginBottom: 2 }}>{icon}</div>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 11, fontWeight: 700, color }}>{val}</div>
             <div style={{ fontSize: 6, color: "#3a3020", fontFamily: "'Cinzel',serif",
               letterSpacing: ".07em", marginTop: 3 }}>{label}{growth != null && <span style={{ color: "#3a3020" }}> ▴</span>}</div>
 
@@ -1210,17 +1211,13 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         const stam = cmd.stamina ?? 200;
         const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
         return (
-          <div style={{ padding: "6px 14px", borderBottom: "1px solid #161210" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+          <div style={{ padding: "4px 14px", borderBottom: "1px solid #161210" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
               <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: "#8a7a60", letterSpacing: ".08em" }}>⚡ STAMINA</div>
-              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: sc, fontWeight: 700 }}>{Math.floor(stam)} / 200</div>
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: sc, fontWeight: 700 }}>{Math.floor(stam)} / 200</div>
             </div>
-            <div style={{ height: 5, background: "rgba(0,0,0,.5)", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ height: 4, background: "rgba(0,0,0,.5)", borderRadius: 3, overflow: "hidden" }}>
               <div style={{ height: "100%", width: `${(stam / 200) * 100}%`, background: sc, borderRadius: 3, transition: "width .3s" }}/>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 6, color: "#6a5a40", fontFamily: "'Cinzel',serif" }}>
-              <span>Move: 10⚡ · Attack: 20⚡</span>
-              <span>Regen: +20/hr</span>
             </div>
           </div>
         );
