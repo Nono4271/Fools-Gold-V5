@@ -430,7 +430,13 @@ const durationBuffs = new Map();
 
 const atkLvl    = cmd.lvl || 5;
 const defLvl    = dc ? dc.lvl  : 2;
-const defTroops = dc ? dc.troops : (defTile.garrison || defTile.garrisonTroops || 30);
+// Use actual unit count from slots when available; dc.troops is the raw command budget
+// which overstates real unit count for medium (×2) and large (×25) branches.
+const defTroops = dc
+  ? (dc.troopSlots?.length > 0
+      ? totalSlotTroops(dc.troopSlots)
+      : dc.troops ?? 0)
+  : (defTile.garrison || defTile.garrisonTroops || 30);
 const defCmdSpd = dc ? (dc.spd || 40) : 40;
 
 const defTerrBonusBase = 1 + fort / 100;
