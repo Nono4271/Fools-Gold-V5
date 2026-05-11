@@ -1,8 +1,8 @@
-import { FACTION_TROOPS, troopSizeModifier, skillProcAtLevel } from "../constants/troops.js";
+import { FACTION_TROOPS, COMMAND_COST, troopSizeModifier, skillProcAtLevel } from "../constants/troops.js";
 import { TERR  } from "../constants/terrain.js";
 import { POWER_DEFS, XP_PER_COMMAND } from "../constants/map.js";
 import { skillFiresOnRound, getActiveSkills, getPassiveBonuses } from "../constants/skills.js";
-import { npcForPowerLevel, factionDefCmdForTile } from "../constants/heroes.js";
+import { npcForPowerLevel, factionDefCmdForTile, FACTION_BRANCHES_EXPORT } from "../constants/heroes.js";
 
 // ── Normalize a commander to troopSlots array (backward compat) ──────────────
 function normaliseTroopSlots(cmd) {
@@ -156,7 +156,88 @@ return { ...tile, defCmd: garrisonDefCmd(tile, playerFaction) };
 return tile;
 }
 
-// ── Hero skill: instant effects ───────────────────────────────────────────────
+// ── Multi-wave garrison helpers ───────────────────────────────────────────────
+
+// Returns total garrison wave count for a tile.
+export function garrisonWaveCount(tile) {
+  if (tile?.garrisonWaves != null) return tile.garrisonWaves;
+  if (tile?.isGate || tile?.isKeep) return 2; // safe fallback
+  return 1;
+}
+
+// Builds a wave defender commander with troopSlots allocated from the command budget.
+// Wave index seeds a distinct commander/branch selection via Knuth multiplicative hash.
+// Always draws from the opposite alignment to the player faction (veteran/soldier only).
+export function garrisonWaveDefCmd(tile, waveIndex, playerFaction) {
+  const c = tile.c ?? tile.cx ?? 0;
+  const r = tile.r ?? tile.cy ?? 0;
+  const budget = tile.garrisonTroops || tile.garrison || 2100;
+
+  // Per-wave seed: incorporate wave index so each wave gets a distinct commander
+  const baseSeed = (((c + 1) * 73856093) ^ ((r + 1) * 19349663)) >>> 0;
+  const waveSeed = (baseSeed ^ (waveIndex * 2654435761)) >>> 0;
+
+  // Alignment / faction pool — opposite to player
+  const ALIGN = {
+    humans:    ["pirates", "bountyhunters", "holyknights"],
+    creatures: ["orcs", "dragons", "nightcreatures"],
+  };
+  const playerAlign = ALIGN.humans.includes(playerFaction) ? "humans" : "creatures";
+  const oppFactions = playerAlign === "humans" ? ALIGN.creatures : ALIGN.humans;
+
+  // Pick commander from veteran/soldier pool
+  const { HDEFS } = (() => {
+    // HDEFS is not directly importable here; rebuild minimal pool from FACTION_BRANCHES_EXPORT
+    // by using factionDefCmdForTile which already encapsulates the pool logic.
+    return { HDEFS: null };
+  })();
+
+  // Delegate commander identity + skills to factionDefCmdForTile (uses baseSeed internally)
+  // We override its seed by passing coords that produce waveSeed-equivalent dispersion:
+  // Use (c + waveIndex*997, r + waveIndex*1009) so each wave visits a different slot.
+  const waveC = (c + waveIndex * 997) | 0;
+  const waveR = (r + waveIndex * 1009) | 0;
+  const powerLevel = Math.max(4, tile.powerLevel || 4); // wave defenders are always P4+
+  const baseCmd = factionDefCmdForTile(waveC, waveR, playerFaction, powerLevel);
+  if (!baseCmd) return garrisonDefCmd(tile, playerFaction); // fallback
+
+  // Build troopSlots: spend the full command budget across 1–3 branches of this faction.
+  // Use waveSeed to decide how many slots (1–3) and which branches.
+  const factionBranches = FACTION_BRANCHES_EXPORT[baseCmd.faction] || ["swashbucklers"];
+  const numSlots = 1 + (waveSeed % 3); // 1, 2, or 3 slots
+  const slots = [];
+  let remaining = budget;
+
+  for (let i = 0; i < numSlots && remaining > 0; i++) {
+    const branchKey = factionBranches[(waveSeed + i * 7) % factionBranches.length];
+    const fTroops   = FACTION_TROOPS[baseCmd.faction];
+    const branchDef = fTroops?.branches?.find(b => b.key === branchKey);
+    const size      = branchDef?.size || "small";
+    const cost      = COMMAND_COST[size] || 1;
+
+    // Last slot takes all remaining; others take a random portion (seeded)
+    let share;
+    if (i === numSlots - 1) {
+      share = remaining;
+    } else {
+      // Split roughly evenly with slight variance seeded by wave+slot
+      const frac = 0.3 + 0.4 * (((waveSeed >> (i * 4)) & 0xf) / 15);
+      share = Math.max(cost, Math.round(remaining * frac));
+    }
+    const troops = Math.floor(share / cost);
+    if (troops > 0) {
+      slots.push({ branch: { faction: baseCmd.faction, branch: branchKey, tier: baseCmd.troopBranch?.tier ?? 0 }, troops });
+      remaining -= troops * cost;
+    }
+  }
+
+  return {
+    ...baseCmd,
+    troops: budget,       // total for display / legacy callers
+    troopSlots: slots,
+    troopBranch: slots[0]?.branch ?? baseCmd.troopBranch,
+  };
+}
 function applyInstantEffects(skills, round, rs) {
 for (const { def, level } of skills) {
 if (!skillFiresOnRound(def, round)) continue;
