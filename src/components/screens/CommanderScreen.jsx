@@ -1220,6 +1220,27 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         ))}
       </div>
 
+      {/* ── Stamina ── */}
+      {(() => {
+        const stam = cmd.stamina ?? 200;
+        const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
+        return (
+          <div style={{ padding: "10px 14px", borderBottom: "1px solid #161210" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: "#8a7a60", letterSpacing: ".08em" }}>⚡ STAMINA</div>
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: sc, fontWeight: 700 }}>{Math.floor(stam)} / 200</div>
+            </div>
+            <div style={{ height: 5, background: "rgba(0,0,0,.5)", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${(stam / 200) * 100}%`, background: sc, borderRadius: 3, transition: "width .3s" }}/>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 6, color: "#6a5a40", fontFamily: "'Cinzel',serif" }}>
+              <span>Move: 10⚡ · Attack: 20⚡</span>
+              <span>Regen: +20/hr</span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── March status ── */}
       {cmd.march && (() => {
         const eta = Math.ceil((cmd.march.path.length - cmd.march.step - 1) * cmd.march.stepMs / 1000);
