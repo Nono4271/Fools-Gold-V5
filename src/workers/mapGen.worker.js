@@ -478,7 +478,7 @@ function buildLookups() {
   return {TERRAIN_MAP,REGION_MAP};
 }
 
-function randomSpawn(regionKey, usedKeys) {
+function randomSpawn(regionKey, usedKeys, flagArr) {
   const reg=REGION_LIST.find(r=>r.key===regionKey);
   if (!reg) return null;
   for (let attempt=0;attempt<200;attempt++) {
@@ -487,6 +487,16 @@ function randomSpawn(regionKey, usedKeys) {
     if (c<1||c>=COLS-1||r<1||r>=ROWS-1) continue;
     const k=`${c},${r}`;
     if (KEEP_FOOTPRINT_SET.has(k)||usedKeys.has(k)) continue;
+    // Also skip any dynamically placed P10-13 structure or its parts
+    const fl = flagArr[r*COLS+c];
+    if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) continue;
+    // Ensure 2x2 HQ footprint cells are also clear
+    let footClear = true;
+    for (const [dc,dr] of [[1,0],[0,1],[1,1]]) {
+      const fl2 = flagArr[(r+dr)*COLS+(c+dc)];
+      if (fl2 & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { footClear=false; break; }
+    }
+    if (!footClear) continue;
     return k;
   }
   return `${reg.cx+5},${reg.cy+5}`;
@@ -1059,7 +1069,7 @@ self.onmessage = function(e) {
   for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
     const startRegion=FACTION_REGIONS[fk]?.start;
     if (!startRegion) continue;
-    const key=randomSpawn(startRegion,usedKeys);
+    const key=randomSpawn(startRegion,usedKeys,flagArr);
     if (key){spawnKeys[fk]=key;usedKeys.add(key);}
   }
 
