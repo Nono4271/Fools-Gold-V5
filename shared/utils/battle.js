@@ -122,65 +122,79 @@ return (atkBranchDef.role === "ranged" || atkBranchDef.role === "siege_ranged") 
 }
 
 // ── Shared troop-slot builder ─────────────────────────────────────────────────
-// Spends `budget` command points across 1–3 branches of `faction`, seeded by
-// `seed`. Respects COMMAND_COST so large units (cost 25) never overflow the budget.
-function buildTroopSlots(faction, budget, seed, tier) {
+// `tierSplit` is an array of { tier, budget } entries — each spends its budget
+// at the given tier index (0=T1, 1=T2, 2=T3). Slots within each tier group are
+// seeded by `seed` offset by the group index. Respects COMMAND_COST.
+function buildTroopSlots(faction, tierSplit, seed) {
   const factionBranches = FACTION_BRANCHES_EXPORT[faction];
   if (!factionBranches || !factionBranches.length) return [];
   const fTroops = FACTION_TROOPS[faction];
   if (!fTroops) return [];
 
-  const numSlots = 1 + (seed % 3); // 1, 2, or 3 slots
-  const slots = [];
-  let remaining = budget;
+  const allSlots = [];
 
-  for (let i = 0; i < numSlots && remaining > 0; i++) {
-    const branchKey = factionBranches[(seed + i * 7) % factionBranches.length];
-    const branchDef = fTroops.branches?.find(b => b.key === branchKey);
-    const cost      = COMMAND_COST[branchDef?.size || "small"] || 1;
+  tierSplit.forEach(({ tier, budget }, groupIdx) => {
+    if (budget <= 0) return;
+    const groupSeed = (seed + groupIdx * 1000003) >>> 0;
+    const numSlots  = 1 + (groupSeed % 3); // 1–3 slots per tier group
+    let remaining   = budget;
 
-    // Ensure last slot can afford at least 1 troop; skip branch if not
-    if (remaining < cost) break;
+    for (let i = 0; i < numSlots && remaining > 0; i++) {
+      const branchKey = factionBranches[(groupSeed + i * 7) % factionBranches.length];
+      const branchDef = fTroops.branches?.find(b => b.key === branchKey);
+      const cost      = COMMAND_COST[branchDef?.size || "small"] || 1;
 
-    let share;
-    if (i === numSlots - 1) {
-      share = remaining;
-    } else {
-      // Seeded fraction 30–70% of remaining, but capped so last slot gets ≥ cost
-      const frac  = 0.3 + 0.4 * (((seed >> (i * 4)) & 0xf) / 15);
-      const raw   = Math.round(remaining * frac);
-      // Reserve at least `cost` for the remaining slots
-      const slotsLeft = numSlots - i - 1;
-      share = Math.min(raw, remaining - slotsLeft * cost);
-      share = Math.max(cost, share);
+      if (remaining < cost) break;
+
+      let share;
+      if (i === numSlots - 1) {
+        share = remaining;
+      } else {
+        const frac      = 0.3 + 0.4 * (((groupSeed >> (i * 4)) & 0xf) / 15);
+        const raw       = Math.round(remaining * frac);
+        const slotsLeft = numSlots - i - 1;
+        share = Math.min(raw, remaining - slotsLeft * cost);
+        share = Math.max(cost, share);
+      }
+
+      const troops = Math.floor(share / cost);
+      if (troops <= 0) continue;
+      allSlots.push({ branch: { faction, branch: branchKey, tier }, troops });
+      remaining -= troops * cost;
     }
+  });
 
-    const troops = Math.floor(share / cost);
-    if (troops <= 0) continue;
-    slots.push({
-      branch: { faction, branch: branchKey, tier: tier ?? 0 },
-      troops,
-    });
-    remaining -= troops * cost;
+  return allSlots;
+}
+
+// Returns the tier split for a given power level.
+// P1–P5: all T1 (index 0). P6–P9: half T1 half T2 (indices 0 and 1).
+function tierSplitForPowerLevel(plvl, budget) {
+  if (plvl >= 6) {
+    const half = Math.floor(budget / 2);
+    return [
+      { tier: 0, budget: half },
+      { tier: 1, budget: budget - half },
+    ];
   }
-
-  return slots;
+  return [{ tier: 0, budget }];
 }
 
 export function garrisonDefCmd(tile, playerFaction) {
-const plvl = tile.powerLevel || 1;
-const pd   = POWER_DEFS[plvl] || POWER_DEFS[1];
+const plvl   = tile.powerLevel || 1;
+const pd     = POWER_DEFS[plvl] || POWER_DEFS[1];
 const budget = tile.garrisonTroops || pd.command;
 
 // P4+ tiles: named faction commander from opposite alignment, with multi-slot army
 if (plvl >= 4 && playerFaction) {
   const fc = factionDefCmdForTile(tile.c ?? 0, tile.r ?? 0, playerFaction, plvl);
   if (fc) {
-    const seed = (((( tile.c ?? 0) + 1) * 73856093) ^ (((tile.r ?? 0) + 1) * 19349663)) >>> 0;
-    const slots = buildTroopSlots(fc.faction, budget, seed, fc.troopBranch?.tier ?? 0);
+    const seed  = (((( tile.c ?? 0) + 1) * 73856093) ^ (((tile.r ?? 0) + 1) * 19349663)) >>> 0;
+    const split = tierSplitForPowerLevel(plvl, budget);
+    const slots = buildTroopSlots(fc.faction, split, seed);
     return {
       ...fc,
-      troops: budget,
+      troops:     budget,
       troopSlots: slots.length > 0 ? slots : undefined,
       troopBranch: slots[0]?.branch ?? fc.troopBranch,
     };
@@ -222,8 +236,8 @@ export function garrisonWaveCount(tile) {
 // Wave index seeds a distinct commander/branch selection via Knuth multiplicative hash.
 // Always draws from the opposite alignment to the player faction (veteran/soldier only).
 export function garrisonWaveDefCmd(tile, waveIndex, playerFaction) {
-  const c = tile.c ?? tile.cx ?? 0;
-  const r = tile.r ?? tile.cy ?? 0;
+  const c      = tile.c ?? tile.cx ?? 0;
+  const r      = tile.r ?? tile.cy ?? 0;
   const budget = tile.garrisonTroops || tile.garrison || 2100;
 
   // Per-wave seed: incorporate wave index so each wave gets a distinct commander
@@ -231,18 +245,19 @@ export function garrisonWaveDefCmd(tile, waveIndex, playerFaction) {
   const waveSeed = (baseSeed ^ (waveIndex * 2654435761)) >>> 0;
 
   // Offset tile coords per wave so factionDefCmdForTile picks a different commander
-  const waveC = (c + waveIndex * 997) | 0;
-  const waveR = (r + waveIndex * 1009) | 0;
+  const waveC      = (c + waveIndex * 997) | 0;
+  const waveR      = (r + waveIndex * 1009) | 0;
   const powerLevel = Math.max(4, tile.powerLevel || 4);
-  const baseCmd = factionDefCmdForTile(waveC, waveR, playerFaction, powerLevel);
+  const baseCmd    = factionDefCmdForTile(waveC, waveR, playerFaction, powerLevel);
   if (!baseCmd) return garrisonDefCmd(tile, playerFaction);
 
-  const slots = buildTroopSlots(baseCmd.faction, budget, waveSeed, baseCmd.troopBranch?.tier ?? 0);
+  const split = tierSplitForPowerLevel(powerLevel, budget);
+  const slots = buildTroopSlots(baseCmd.faction, split, waveSeed);
 
   return {
     ...baseCmd,
-    troops: budget,
-    troopSlots: slots.length > 0 ? slots : undefined,
+    troops:      budget,
+    troopSlots:  slots.length > 0 ? slots : undefined,
     troopBranch: slots[0]?.branch ?? baseCmd.troopBranch,
   };
 }
