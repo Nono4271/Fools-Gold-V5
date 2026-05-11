@@ -175,18 +175,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
         gfx.beginFill(getTileBaseColor(c, r, "grass")); gfx.drawPolygon(TOP); gfx.endFill();
 
-        // P10–P13: subtle power-level tinted border + selection outline
-        if ((isKeep || isKeepPart) && (tile.powerLevel ?? 0) >= 10) {
-          const pl  = tile.powerLevel ?? 10;
-          const borderColor = pl >= 13 ? 0x6a1840 : pl >= 12 ? 0x581448 : pl >= 11 ? 0x401050 : 0x2a0c38;
-          gfx.lineStyle(1.5, borderColor, 0.55); gfx.drawPolygon(TOP); gfx.lineStyle(0);
-
-          const tileKey   = `${c},${r}`;
-          const primaryKey = isKeepPart ? tile.keepPrimaryKey : tileKey;
-          if (selKey === tileKey || selKey === primaryKey) {
-            gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
-          }
-        }
+        // P10–P13: no extra lineStyle here — selection outline is drawn via selGfx/drawSelection
+        // which covers all 4 cells cleanly. The tile fill alone is sufficient.
         continue;
       }
 
@@ -1208,7 +1198,29 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       if (!key) return;
       const [sc, sr] = key.split(",").map(Number);
       const tile = tilesRef.current[key];
-      if (!tile || (tile.isKeep && !tile.isGate) || tile.isKeepPart) return; // keep layer handles its own selection
+      if (!tile) return;
+
+      // P10–P13 primary or part: draw white outline on all 4 cells
+      const pl = tile.powerLevel ?? 0;
+      if (pl >= 10 && (tile.isKeep || tile.isKeepPart)) {
+        // Resolve to primary
+        const primKey   = tile.isKeepPart ? tile.keepPrimaryKey : key;
+        const [pc, pr]  = (primKey || key).split(",").map(Number);
+        // Draw outline on all 4 cells of the 2×2 footprint
+        for (const [dc, dr] of [[0,0],[1,0],[0,1],[1,1]]) {
+          const cc = pc + dc, rr = pr + dr;
+          const { cx, cy } = isoXY(cc, rr);
+          const mid = cy + TH / 2;
+          const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
+          selGfx.lineStyle(2.5, 0xffffff, 0.95);
+          selGfx.drawPolygon(TOP);
+          selGfx.lineStyle(0);
+        }
+        return;
+      }
+
+      // Static keeps handled by keep layer; gates/regular tiles handled here
+      if ((tile.isKeep && !tile.isGate) || tile.isKeepPart) return;
       const elev = (tile.isHQ||tile.isHQPart) ? 14 : tile.isWin ? 10 : (tile.isKeep||tile.isKeepPart) ? 8 : 4;
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
@@ -1544,9 +1556,13 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           const wy = (t.clientY-rect.top -panRef.current.y)/zoomRef.current;
           const key = worldToKey(wx, wy, tilesRef.current);
           if (key) {
+            // Resolve P10-13 keepPart to primary so drawSelection outlines all 4 cells
+            const rawTile = tilesRef.current[key];
+            const selKey2 = (rawTile?.isKeepPart && (rawTile?.powerLevel ?? 0) >= 10 && rawTile?.keepPrimaryKey)
+              ? rawTile.keepPrimaryKey : key;
             selGfx.clear();
-            selRef.current = key;
-            drawSelection(key);
+            selRef.current = selKey2;
+            drawSelection(selKey2);
             lastBoundsRef.current = null;
             onTileClickRef.current(key, e);
           }
