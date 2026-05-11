@@ -169,21 +169,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if ((isKeep && !isGate) || isKeepPart) {
         const pl10 = (tile.powerLevel ?? 0) >= 10;
         if (pl10) {
-          // P10–P13: keepPart cells are rendered by the primary — skip them.
-          if (isKeepPart) continue;
-          // Primary: draw one merged 2×2 diamond so no internal seams show.
-          const { cx, cy } = isoXY(c, r);
-          const baseColor = getTileBaseColor(c, r, "grass");
-          // Outer hull of the 2×2 block: N, E, S, W corners
-          // Expanded by 1px outward on each axis to eliminate sub-pixel gap artifacts
-          const MERGED = [
-            cx,        cy - 1,          // N
-            cx + TW+1, cy + TH,         // E
-            cx,        cy + TH * 2 + 1, // S
-            cx - TW-1, cy + TH,         // W
-          ];
-          gfx.lineStyle(0);
-          gfx.beginFill(baseColor); gfx.drawPolygon(MERGED); gfx.endFill();
+          // P10–P13: skip all 4 cells in the main pass — drawn in second pass below
+          continue;
         } else {
           const { cx, cy } = isoXY(c, r);
           const mid = cy + TH / 2;
@@ -453,6 +440,40 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
       if (isSel) {
         gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+      }
+    }
+  }
+
+  // ── Second pass: P10–P13 merged diamonds drawn AFTER all regular tiles ────
+  // This ensures the merged ground fill always sits on top and never gets
+  // clipped by adjacent tiles rendered in later diagonal strips.
+  for (let d = dMin; d <= dMax; d++) {
+    const cLo = Math.max(cMin, d - rMax);
+    const cHi = Math.min(cMax, d - rMin);
+    for (let c = cLo; c <= cHi; c++) {
+      const r = d - c;
+      if (r < rMin || r > rMax) continue;
+      const tile = tiles[`${c},${r}`];
+      if (!tile) continue;
+      const pl = tile.powerLevel ?? 0;
+      if (pl < 10 || !tile.isKeep || tile.isGate) continue;
+      // Primary cell only — draw merged 2×2 diamond covering all 4 cells
+      const { cx, cy } = isoXY(c, r);
+      const baseColor = getTileBaseColor(c, r, "grass");
+      const MERGED = [
+        cx,        cy - 1,          // N (1px overdraw to seal sub-pixel gaps)
+        cx + TW+1, cy + TH,         // E
+        cx,        cy + TH * 2 + 1, // S
+        cx - TW-1, cy + TH,         // W
+      ];
+      gfx.lineStyle(0);
+      gfx.beginFill(baseColor); gfx.drawPolygon(MERGED); gfx.endFill();
+
+      // Owner tint over the full footprint
+      const owner2 = tile.owner || null;
+      if (owner2) {
+        const ot = owner2 === "player" ? 0x1ea0b4 : 0xdc3c28;
+        gfx.beginFill(ot, 0.18); gfx.drawPolygon(MERGED); gfx.endFill();
       }
     }
   }
