@@ -1573,6 +1573,7 @@ export default function RiseToWar() {
       <GameBar
         cmds={cmds}
         facName={facName}
+        tiles={tiles}
         unseenBattles={unseenBattles}
         setHqOpen={setHqOpen} setHqTab={setHqTab}
         onCenterHQ={centerOnHQ}
@@ -1588,6 +1589,9 @@ export default function RiseToWar() {
         hidden={worldMapOpen || hqOpen || cmdScreenOpen || gearScreenOpen}
         showPerf={showPerf}
         setShowPerf={setShowPerf}
+        panRef={panRef}
+        zoomRef={zoomRef}
+        mapRendererRef={mapRendererRef}
       />
 
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
