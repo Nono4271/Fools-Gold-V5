@@ -1880,9 +1880,9 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       {/* ── Body: 3 columns ── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
 
-        {/* ── Col 1: back arrow + filter + scrollable roster ── */}
+        {/* ── Col 1: back arrow + filter + scrollable roster (2-wide grid) ── */}
         <div style={{
-          width: 76, flexShrink: 0,
+          width: 152, flexShrink: 0,
           overflowY: "auto", overflowX: "hidden",
           borderRight: "1px solid #1e1508",
           background: "rgba(0,0,0,.3)",
@@ -1890,9 +1890,10 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           display: "flex", flexDirection: "column",
           touchAction: "pan-y", overscrollBehavior: "contain",
         }}>
+          {/* Back + filter buttons */}
           <div style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-            padding: "10px 0 8px", flexShrink: 0,
+            display: "flex", justifyContent: "space-around", alignItems: "center",
+            padding: "10px 8px 8px", flexShrink: 0,
             borderBottom: "1px solid #1a1508",
           }}>
             <button onClick={onClose} style={{
@@ -1924,17 +1925,20 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
               )}
             </button>
           </div>
-          {filtered.map(cmd => (
-            <RosterPortrait
-              key={cmd.uid}
-              cmd={cmd}
-              selected={cmd.uid === selectedUid}
-              onClick={() => setSelectedUid(cmd.uid)}
-            />
-          ))}
+          {/* 2-column portrait grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+            {filtered.map(cmd => (
+              <RosterPortrait
+                key={cmd.uid}
+                cmd={cmd}
+                selected={cmd.uid === selectedUid}
+                onClick={() => setSelectedUid(cmd.uid)}
+              />
+            ))}
+          </div>
           {filtered.length === 0 && (
             <div style={{ padding: "20px 8px", textAlign: "center", color: "#2a2010",
-              fontFamily: "'Cinzel',serif", fontSize: 8, fontStyle: "italic" }}>
+              fontFamily: "'Cinzel',serif", fontSize: 8, fontStyle: "italic", gridColumn: "1/-1" }}>
               No matches
             </div>
           )}
@@ -1988,7 +1992,11 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
         })()}
 
         {/* ── Col 3: all commander info (CommanderDetail) ── */}
-        <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}>
+        <div style={{
+          flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", position: "relative",
+          display: "flex", flexDirection: "column",
+          paddingRight: "max(12px, env(safe-area-inset-right, 12px))",
+        }}>
           {selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
             : (
