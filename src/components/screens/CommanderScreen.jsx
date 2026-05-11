@@ -894,12 +894,12 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
   const cmdCap = cmdCommand(lvl, bldgs?.commandcenter ?? 0, (cmd.cls==="leader"&&lvl>=25)?500:0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
       {showSkills && <SkillTreeOverlay cmd={cmd} setCmds={setCmds} gems={gems} setGems={setGems} onClose={() => setShowSkills(false)} />}
 
       {/* ── Name + identity ── */}
       <div style={{
-        padding: "16px 18px 12px",
+        padding: "10px 14px 8px",
         background: `linear-gradient(160deg, ${r.color}0c 0%, transparent 55%)`,
         borderBottom: "1px solid #1c1610",
         flexShrink: 0,
@@ -908,7 +908,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Name */}
             <div style={{
-              fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 16,
+              fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 14,
               color: "#ede0c8", letterSpacing: ".01em", lineHeight: 1.1,
             }}>{cmd.n}</div>
 
@@ -1006,11 +1006,11 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
 
           {/* Portrait circle */}
           <div style={{
-            width: 58, height: 58, borderRadius: "50%", flexShrink: 0,
+            width: 46, height: 46, borderRadius: "50%", flexShrink: 0,
             background: `radial-gradient(circle at 38% 32%, ${r.color}22, #0c0a07)`,
             border: `2px solid ${r.color}55`,
             boxShadow: `0 0 20px ${r.color}28`,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34,
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
           }}>{cmd.icon}</div>
         </div>
 
@@ -1022,7 +1022,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
           const atMaxPromo = rLvl >= (promoInfo?.respectRequired ?? RESPECT_MAX) || !promoInfo?.to;
           const barGlows = atPromoThreshold || pct >= 90;
           return (
-            <div style={{ marginTop: 14 }}>
+            <div style={{ marginTop: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 15 }}>⚜</span>
@@ -1159,10 +1159,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         </div>
       </div>
 
-      {/* ── Gap between XP bar and stats ── */}
-      <div style={{ height: 44, flexShrink: 0 }} />
-
-      {/* ── 4-stat row (matches reference layout) ── */}
+      {/* ── 4-stat row ── */}
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(4,1fr)",
         borderBottom: "1px solid #1a1510", background: "#090805", flexShrink: 0,
@@ -1186,7 +1183,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
           <div key={label}
             onClick={() => growth != null && setShowClassPopup(showClassPopup === `stat_${label}` ? null : `stat_${label}`)}
             style={{
-              padding: "8px 0", textAlign: "center",
+              padding: "6px 0", textAlign: "center",
               borderRight: "1px solid #161210",
               cursor: growth != null ? "pointer" : "default",
               position: "relative",
@@ -1225,7 +1222,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         const stam = cmd.stamina ?? 200;
         const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
         return (
-          <div style={{ padding: "10px 14px", borderBottom: "1px solid #161210" }}>
+          <div style={{ padding: "6px 14px", borderBottom: "1px solid #161210" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
               <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: "#8a7a60", letterSpacing: ".08em" }}>⚡ STAMINA</div>
               <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: sc, fontWeight: 700 }}>{Math.floor(stam)} / 200</div>
@@ -1266,9 +1263,6 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         );
       })()}
 
-      {/* ── Gap between stats and gear ── */}
-      <div style={{ height: 16, flexShrink: 0 }} />
-
       {/* ── Gear slots ── */}
       {(() => {
         const SLOT_DEFS = { helmet:{n:"Helmet",icon:"⛑"}, armor:{n:"Armor",icon:"🛡"}, bracers:{n:"Bracers",icon:"🥊"}, accessory:{n:"Accessory",icon:"💍"} };
@@ -1300,7 +1294,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         const hasAnyGear = ["helmet","armor","bracers","accessory"].some(s => cmd.gear?.[s]);
 
         return (
-          <div style={{ margin: "0 18px 4px", flexShrink: 0 }}>
+          <div style={{ margin: "0 14px 2px", flexShrink: 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <div style={{ fontSize: 7, color: "#3a3020", fontFamily: "'Cinzel',serif", letterSpacing: ".08em" }}>GEAR</div>
               {hasAnyGear && (
@@ -1349,7 +1343,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                         else setShowClassPopup(isOpen ? null : slotKey);
                       }}
                       style={{
-                        padding: "30px 6px 24px", textAlign: "center",
+                        padding: "10px 6px 8px", textAlign: "center",
                         background: piece ? `${rc}12` : isOpen ? "rgba(255,255,255,.04)" : "rgba(255,255,255,.015)",
                         border: `1px solid ${isOpen ? (rc ?? r.color)+"60" : piece ? rc+"40" : "#1e1810"}`,
                         borderRadius: 5, cursor: "pointer",
@@ -1358,7 +1352,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                         touchAction: "manipulation",
                         WebkitTapHighlightColor: "transparent",
                       }}>
-                      <div style={{ fontSize: piece ? 46 : 34, marginBottom: 8, opacity: piece ? 1 : 0.25 }}>
+                      <div style={{ fontSize: piece ? 26 : 20, marginBottom: 4, opacity: piece ? 1 : 0.25 }}>
                         {piece ? piece.icon : slotDef.icon}
                       </div>
                       <div style={{ fontSize: 7, fontFamily: "'Cinzel',serif",
@@ -1660,11 +1654,11 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         );
       })()}
 
-      {/* ── Skill Trees button (the main CTA) ── */}
-      <div style={{ height: 16, flexShrink: 0 }} />
-      <div style={{ padding: "12px 18px 28px", flexShrink: 0 }}>
+      {/* ── Skill Trees button ── */}
+      <div style={{ height: 8, flexShrink: 0 }} />
+      <div style={{ padding: "0 14px 10px", flexShrink: 0 }}>
         <button onClick={() => setShowSkills(true)} style={{
-          width: "100%", padding: "13px 0",
+          width: "100%", padding: "9px 0",
           background: `linear-gradient(135deg, ${r.color}18, rgba(0,0,0,.4))`,
           border: `1px solid ${r.color}48`,
           borderRadius: 6, cursor: "pointer",
@@ -1676,11 +1670,11 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
             position: "absolute", top: 0, left: 0, right: 0, height: 1,
             background: `linear-gradient(90deg,transparent,${r.color}55,transparent)`,
           }} />
-          <span style={{ fontSize: 20 }}>✦</span>
+          <span style={{ fontSize: 16 }}>✦</span>
           <div style={{ textAlign: "left" }}>
-            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 12, fontWeight: 700,
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 11, fontWeight: 700,
               color: r.color, letterSpacing: ".06em" }}>SKILL TREES</div>
-            <div style={{ fontSize: 8, color: "#4a3a28", fontFamily: "'Cinzel',serif", marginTop: 2 }}>
+            <div style={{ fontSize: 7, color: "#4a3a28", fontFamily: "'Cinzel',serif", marginTop: 1 }}>
               {(cmd.unspentSkillPoints ?? 0) > 0
                 ? `${cmd.unspentSkillPoints} point${cmd.unspentSkillPoints !== 1 ? "s" : ""} to spend`
                 : "View & assign skill points"}
@@ -1689,22 +1683,14 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
           {(cmd.unspentSkillPoints ?? 0) > 0 && (
             <div style={{
               marginLeft: "auto",
-              width: 22, height: 22, borderRadius: "50%",
+              width: 20, height: 20, borderRadius: "50%",
               background: "linear-gradient(135deg,#dd3030,#991010)",
-              fontSize: 10, color: "#fff", fontFamily: "'Cinzel',serif", fontWeight: 700,
+              fontSize: 9, color: "#fff", fontFamily: "'Cinzel',serif", fontWeight: 700,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>{cmd.unspentSkillPoints}</div>
           )}
         </button>
       </div>
-
-
-      {/* ── Bottom fade ── */}
-      <div style={{
-        height: 40, flexShrink: 0,
-        background: "linear-gradient(180deg, transparent, #080704 90%)",
-        pointerEvents: "none",
-      }} />
     </div>
   );
 }
