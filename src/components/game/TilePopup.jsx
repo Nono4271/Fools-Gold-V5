@@ -218,18 +218,42 @@ export default memo(function TilePopup({
             const sv = selTile.siege ?? SIEGE_BASE;
             const sm = selTile.siegeMax ?? SIEGE_BASE;
             const pct = Math.round((sv/sm)*100);
-            const isDefeated = selTile.garrisonDefeated;
+            const totalWaves   = selTile.garrisonWaves ?? 1;
+            const defeatedCount = selTile.defeatedWaves?.length ?? 0;
+            const allDefeated  = defeatedCount >= totalWaves && totalWaves > 0;
+            const hasProgress  = defeatedCount > 0;
             const resetSecs = selTile.resetAt ? Math.max(0,Math.ceil((selTile.resetAt-Date.now())/1000)) : null;
+            const siegeLabel = allDefeated
+              ? "🏰 SIEGE — ALL WAVES CLEARED"
+              : hasProgress
+                ? `🏰 SIEGE — WAVE ${defeatedCount}/${totalWaves} CLEARED`
+                : "🏰 SIEGE";
+            const borderCol = allDefeated ? "rgba(240,192,64,.3)" : hasProgress ? "rgba(200,120,40,.3)" : "#1e1810";
+            const labelCol  = allDefeated ? "#f0c040" : hasProgress ? "#d08030" : "#7a6a5a";
             return (
-              <div style={{marginBottom:4,padding:"3px 6px",background:"rgba(255,255,255,.03)",borderRadius:3,border:`1px solid ${isDefeated?"rgba(240,192,64,.3)":"#1e1810"}`}}>
+              <div style={{marginBottom:4,padding:"3px 6px",background:"rgba(255,255,255,.03)",borderRadius:3,border:`1px solid ${borderCol}`}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
-                  <span style={{fontFamily:"'Cinzel',serif",fontSize:7,color:isDefeated?"#f0c040":"#7a6a5a",fontWeight:700}}>🏰 SIEGE{isDefeated?" — GARRISON DEFEATED":""}</span>
+                  <span style={{fontFamily:"'Cinzel',serif",fontSize:7,color:labelCol,fontWeight:700}}>{siegeLabel}</span>
                   <span style={{fontSize:7,color:pct>66?"#3daa60":pct>33?"#d0a030":"#cc3030",fontFamily:"'Cinzel',serif",fontWeight:700}}>{sv}/{sm}</span>
                 </div>
                 <div style={{height:3,background:"#181820",borderRadius:2,overflow:"hidden"}}>
                   <div style={{height:"100%",width:`${pct}%`,background:pct>66?"#3daa60":pct>33?"#d0a030":"#cc3030",borderRadius:2,transition:"width .3s"}}/>
                 </div>
-                {isDefeated && resetSecs!==null && (
+                {/* Wave progress pip bar for keeps/gates */}
+                {totalWaves > 1 && (
+                  <div style={{display:"flex",gap:2,marginTop:3,alignItems:"center"}}>
+                    <span style={{fontSize:6,color:"#5a4a40",fontFamily:"'Cinzel',serif",marginRight:2}}>WAVES</span>
+                    {Array.from({length:totalWaves}).map((_,i) => (
+                      <div key={i} style={{
+                        flex:1, height:3, borderRadius:1,
+                        background: i < defeatedCount ? "#f0c040" : "#2a2020",
+                        border: i < defeatedCount ? "none" : "1px solid #3a2a20",
+                      }}/>
+                    ))}
+                    <span style={{fontSize:6,color:labelCol,fontFamily:"'Cinzel',serif",marginLeft:2,whiteSpace:"nowrap"}}>{defeatedCount}/{totalWaves}</span>
+                  </div>
+                )}
+                {resetSecs !== null && hasProgress && (
                   <div style={{fontSize:6,color:"#8a7040",fontFamily:"'Crimson Pro',serif",marginTop:2}}>Resets in {resetSecs}s</div>
                 )}
               </div>
@@ -243,10 +267,20 @@ export default memo(function TilePopup({
             const dc = (isAiOwned && !aiCmdPresent) ? garrisonDefCmd(selTile, facKey) : selTile.defCmd;
             if (!dc) return null;
             const tt = tbInfo(dc.troopBranch);
+            const totalWaves    = selTile.garrisonWaves ?? 1;
+            const defeatedCount = selTile.defeatedWaves?.length ?? 0;
+            const wavesLeft     = Math.max(0, totalWaves - defeatedCount);
             return (
               <div style={{marginBottom:4,padding:"3px 6px",background:"rgba(200,40,40,.06)",borderRadius:3,border:"1px solid rgba(200,40,40,.2)"}}>
-                <div style={{fontSize:7,color:"#8a5a4a",fontFamily:"'Cinzel',serif",letterSpacing:".06em",marginBottom:3}}>
-                  {isAiOwned ? (aiCmdPresent?"ENEMY COMMANDER":"GARRISON") : "GARRISON"}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                  <span style={{fontSize:7,color:"#8a5a4a",fontFamily:"'Cinzel',serif",letterSpacing:".06em"}}>
+                    {isAiOwned ? (aiCmdPresent?"ENEMY COMMANDER":"GARRISON") : "GARRISON"}
+                  </span>
+                  {totalWaves > 1 && (
+                    <span style={{fontSize:6,color:wavesLeft>0?"#d08030":"#6a4a30",fontFamily:"'Cinzel',serif",fontWeight:700}}>
+                      {wavesLeft}/{totalWaves} waves left
+                    </span>
+                  )}
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>Lv{dc.lvl??"?"}</div><div style={{fontSize:6,color:"#5a4a40"}}>Level</div></div>
