@@ -14,6 +14,7 @@ document.addEventListener(
     if (document.documentElement.classList.contains("gacha-open")) return;
     if ((e.target as Element | null)?.closest(".gear-picker-list")) return;
     if ((e.target as Element | null)?.closest(".battle-popup")) return;
+    if ((e.target as Element | null)?.closest(".find-tiles-popup")) return;
     const target = e.target as Element | null;
     if (!target) return;
     const interactive = target.closest(
