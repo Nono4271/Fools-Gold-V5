@@ -12,10 +12,13 @@ const RKEYS      = ["stone","wood","ore","gas"];
 const TROOP_KEYS = ["infantry","mage","spearmen","horsemen"];
 
 const POWER_DEFS = {
-  1: { cmdLvl:1,  troops:36  },
-  2: { cmdLvl:4,  troops:300 },
-  3: { cmdLvl:6,  troops:480 },
-  4: { cmdLvl:8,  troops:960 },
+  1: { cmdLvl:1,  command:36   },
+  2: { cmdLvl:4,  command:300  },
+  3: { cmdLvl:6,  command:480  },
+  4: { cmdLvl:8,  command:960  },
+  5: { cmdLvl:10, command:1200 },
+  6: { cmdLvl:15, command:1800 },
+  7: { cmdLvl:18, command:2160 },
 };
 const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 };
 
@@ -478,7 +481,7 @@ self.onmessage = function(e) {
       troopArr[idx]    = TROOP_ENC[trpKey] ?? 0;
       powerArr[idx]    = pl;
       regionArr[idx]   = regIdx;
-      garrisonArr[idx] = pd.troops;
+      garrisonArr[idx] = pd.command;
       siegeArr[idx]    = SIEGE_BASE;
       siegeMaxArr[idx] = SIEGE_BASE;
     }
