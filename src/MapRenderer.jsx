@@ -170,13 +170,27 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // are NOT in KEEP_REGION_LIST — render them with their actual terrain color.
       // P10–P13 dynamic structures are also handled here with selection outline.
       if ((isKeep && !isGate) || isKeepPart) {
-        const { cx, cy } = isoXY(c, r);
-        const mid = cy + TH / 2;
-        const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
-        gfx.beginFill(getTileBaseColor(c, r, "grass")); gfx.drawPolygon(TOP); gfx.endFill();
-
-        // P10–P13: no extra lineStyle here — selection outline is drawn via selGfx/drawSelection
-        // which covers all 4 cells cleanly. The tile fill alone is sufficient.
+        const pl10 = (tile.powerLevel ?? 0) >= 10;
+        if (pl10) {
+          // P10–P13: keepPart cells are rendered by the primary — skip them.
+          if (isKeepPart) continue;
+          // Primary: draw one merged 2×2 diamond so no internal seams show.
+          const { cx, cy } = isoXY(c, r);
+          const baseColor = getTileBaseColor(c, r, "grass");
+          // Outer hull of the 2×2 block: N, E, S, W corners
+          const MERGED = [
+            cx,        cy,            // N — top of (c,r)
+            cx + TW,   cy + TH,       // E — right of (c+1,r)
+            cx,        cy + TH * 2,   // S — bottom of (c+1,r+1)
+            cx - TW,   cy + TH,       // W — left of (c,r+1)
+          ];
+          gfx.beginFill(baseColor); gfx.drawPolygon(MERGED); gfx.endFill();
+        } else {
+          const { cx, cy } = isoXY(c, r);
+          const mid = cy + TH / 2;
+          const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
+          gfx.beginFill(getTileBaseColor(c, r, "grass")); gfx.drawPolygon(TOP); gfx.endFill();
+        }
         continue;
       }
 
@@ -460,12 +474,21 @@ function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
       const isStaticKeep = (tile.isKeep && !tile.isGate) && (tile.powerLevel ?? 0) < 10;
       const isStaticPart = tile.isKeepPart && (tile.powerLevel ?? 0) < 10;
       if (isStaticKeep || isStaticPart) continue;
+      // P10–P13 keepPart: skip — primary handles the single unified prop
+      const pl = tile.powerLevel || 1;
+      if (tile.isKeepPart && pl >= 10) continue;
       const { cx, cy } = isoXY(c, r);
       const sy = cy - 4;
-      const pl = tile.powerLevel || 1;
       if (pl === 1) continue; // P1 has all resources but no individual props
       if (tile.rss) {
-        drawRssProp(gfx, tile.rss, cx, sy, c, r, pl);
+        if (tile.isKeep && pl >= 10) {
+          // Draw one giant prop centered on the 2×2 footprint midpoint
+          // Center of 2×2 block relative to primary: same cx, cy + TH/2
+          const midCy = cy + TH / 2;
+          drawRssProp(gfx, tile.rss, cx, midCy - TH / 2, c, r, Math.min(13, pl + 2));
+        } else {
+          drawRssProp(gfx, tile.rss, cx, sy, c, r, pl);
+        }
       } else if (!tile.owner) {
         drawAmbientScatter(gfx, tile, cx, sy, pl);
       }
@@ -1147,22 +1170,23 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const tile = tilesRef.current[key];
       if (!tile) return;
 
-      // P10–P13 primary or part: draw white outline on all 4 cells
+      // P10–P13 primary or part: draw white outline around full 2×2 footprint (outer border only)
       const pl = tile.powerLevel ?? 0;
       if (pl >= 10 && (tile.isKeep || tile.isKeepPart)) {
         // Resolve to primary
         const primKey   = tile.isKeepPart ? tile.keepPrimaryKey : key;
         const [pc, pr]  = (primKey || key).split(",").map(Number);
-        // Draw outline on all 4 cells of the 2×2 footprint
-        for (const [dc, dr] of [[0,0],[1,0],[0,1],[1,1]]) {
-          const cc = pc + dc, rr = pr + dr;
-          const { cx, cy } = isoXY(cc, rr);
-          const mid = cy + TH / 2;
-          const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
-          selGfx.lineStyle(2.5, 0xffffff, 0.95);
-          selGfx.drawPolygon(TOP);
-          selGfx.lineStyle(0);
-        }
+        const { cx, cy } = isoXY(pc, pr);
+        // Single outer diamond encompassing all 4 cells — no internal lines
+        const MERGED = [
+          cx,        cy,            // N
+          cx + TW,   cy + TH,       // E
+          cx,        cy + TH * 2,   // S
+          cx - TW,   cy + TH,       // W
+        ];
+        selGfx.lineStyle(3, 0xffffff, 0.95);
+        selGfx.drawPolygon(MERGED);
+        selGfx.lineStyle(0);
         return;
       }
 
@@ -1257,15 +1281,24 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
               const isStaticKeep = (tile.isKeep && !tile.isGate) && pl < 10;
               const isStaticPart = tile.isKeepPart && pl < 10;
               if (isStaticKeep || isStaticPart) continue;
+              // P10–P13 keepPart: skip — primary draws the single unified sprite
+              if (tile.isKeepPart && pl >= 10) continue;
+              const texPl = (tile.isKeep && pl >= 10) ? Math.min(13, pl + 2) : pl;
               const texMap = rssTextures[tile.rss];
-              const tex = texMap?.[pl] ?? texMap?.[2];
+              const tex = texMap?.[texPl] ?? texMap?.[pl] ?? texMap?.[2];
               if (!tex) continue;
               const { cx, cy } = isoXY(c, r);
               const sp = propsSpritePool.pop() ?? new PIXI.Sprite();
               sp.texture  = tex;
               sp.anchor.set(0.5, anchorY);
-              sp.x = cx;
-              sp.y = cy - 4 + TH * 0.5;
+              // P10–P13 primary: center sprite on the 2×2 footprint midpoint
+              if (tile.isKeep && pl >= 10) {
+                sp.x = cx;
+                sp.y = cy - 4 + TH;
+              } else {
+                sp.x = cx;
+                sp.y = cy - 4 + TH * 0.5;
+              }
               propsSpriteContainer.addChild(sp);
             }
           }
