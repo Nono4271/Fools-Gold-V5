@@ -182,7 +182,7 @@ function ActionButton({ icon, label, color = "#c8a060", onClick, badge, accent }
   );
 }
 
-// ── Tile Search Popup ─────────────────────────────────────────────────────────
+// ── Tile Search Panel (slides in from left like CommanderPicker) ───────────────
 const PL_LIST = [1,2,3,4,5,6,7,8,9,10,11,12,13]
   .filter(pl => POWER_DEFS[pl])
   .map(pl => ({ pl, label: POWER_DEFS[pl].label, color: POWER_DEFS[pl].color }));
@@ -202,12 +202,9 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
     if (!selected.size || !tiles) return;
     const hqKey = playerHqKey;
     const [hc, hr] = (hqKey || "0,0").split(",").map(Number);
-
-    // Collect all matching tiles, compute distance from player HQ
     const matches = [];
     for (const [key, tile] of Object.entries(tiles)) {
       if (!selected.has(tile.powerLevel)) continue;
-      // Exclude static keeps, HQs, gates and border tiles — but include P10-13 structures
       if (tile.isHQ || tile.isGate || tile.isBorder || tile.isKeepPart) continue;
       if (tile.isKeep && tile.powerLevel < 10) continue;
       const dc = tile.c - hc, dr = tile.r - hr;
@@ -229,72 +226,75 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
   }, [panRef, zoomRef, mapRendererRef, onClose]);
 
   return (
-    <>
-      {/* Backdrop */}
-      <div style={{ position:"fixed", inset:0, zIndex:9200, pointerEvents:"auto" }} onClick={onClose} />
-
-      {/* Panel */}
-      <div className="find-tiles-popup" style={{
-        position:"fixed", bottom:90, right:8, zIndex:9201,
-        width:280,
-        pointerEvents:"auto",
-        background:"rgba(5,7,11,.97)",
-        border:"1px solid #2a2010",
-        borderRadius:8,
-        boxShadow:"0 8px 32px rgba(0,0,0,.9), 0 0 0 1px rgba(200,160,64,.1)",
-        overflow:"hidden",
-      }}>
-        {/* Header */}
-        <div style={{ padding:"8px 10px 6px", borderBottom:"1px solid #1e1810", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <span style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#c8a060", letterSpacing:".06em" }}>🔍 Find Tiles</span>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"#4a4040", fontSize:16, cursor:"pointer", lineHeight:1, padding:"0 2px" }}>✕</button>
+    <div style={{
+      position:"fixed", top:38, left:0, bottom:0, width:280, zIndex:9500,
+      background:"rgba(5,7,11,.97)", borderRight:"1px solid #1a2030",
+      boxShadow:"4px 0 32px rgba(0,0,0,.9)",
+      display:"flex", flexDirection:"column",
+      animation:"slideInLeft .22s ease",
+      pointerEvents:"auto",
+    }}>
+      {/* Header */}
+      <div style={{ padding:"10px 12px", borderBottom:"1px solid #1a1e28", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, background:"rgba(255,255,255,.025)" }}>
+        <div>
+          <div style={{ fontFamily:"'Cinzel',serif", fontWeight:700, fontSize:12, color:"#c8a060" }}>🔍 FIND TILES</div>
+          <div style={{ fontSize:8, color:"#5a6a7a", fontFamily:"'Crimson Pro',serif", marginTop:2 }}>Select power levels to search</div>
         </div>
+        <button
+          onClick={onClose}
+          style={{ background:"none", border:"1px solid #2a2a2a", color:"#777", fontSize:16, minWidth:36, minHeight:36, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", touchAction:"manipulation", WebkitTapHighlightColor:"transparent", borderRadius:4, flexShrink:0 }}
+        >✕</button>
+      </div>
 
-        {/* Power level checkboxes */}
-        <div style={{ padding:"8px 10px 4px" }}>
-          <div style={{ fontSize:7, color:"#5a4a30", fontFamily:"'Cinzel',serif", marginBottom:6, letterSpacing:".05em" }}>SELECT POWER LEVELS</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            {PL_LIST.map(({ pl, label, color }) => (
-              <label key={pl} style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", padding:"4px 2px" }}>
-                <div
-                  role="checkbox"
-                  aria-checked={selected.has(pl)}
-                  onClick={() => togglePl(pl)}
-                  style={{
-                    width:20, height:20, borderRadius:3, flexShrink:0,
-                    border:`1px solid ${color}88`,
-                    background: selected.has(pl) ? color : "rgba(0,0,0,.4)",
-                    boxShadow: selected.has(pl) ? `0 0 6px ${color}66` : "none",
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    transition:"background .1s, box-shadow .1s",
-                    cursor:"pointer",
-                  }}
-                >
-                  {selected.has(pl) && <span style={{ fontSize:13, color:"#fff", lineHeight:1 }}>✓</span>}
+      {/* Power level picker */}
+      <div className="scr" style={{ flex:1, overflowY:"auto", padding:"10px 12px" }}>
+        <div style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Cinzel',serif", marginBottom:8, letterSpacing:".05em" }}>POWER LEVELS</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+          {PL_LIST.map(({ pl, label, color }) => {
+            const on = selected.has(pl);
+            return (
+              <div
+                key={pl}
+                onClick={() => togglePl(pl)}
+                style={{
+                  display:"flex", alignItems:"center", gap:10, padding:"8px 10px",
+                  borderRadius:5, cursor:"pointer", touchAction:"manipulation",
+                  background: on ? `${color}18` : "rgba(255,255,255,.02)",
+                  border:`1px solid ${on ? color+"60" : "#1e2028"}`,
+                  transition:"background .12s, border-color .12s",
+                }}
+              >
+                <div style={{
+                  width:18, height:18, borderRadius:3, flexShrink:0,
+                  border:`1px solid ${color}88`,
+                  background: on ? color : "rgba(0,0,0,.4)",
+                  boxShadow: on ? `0 0 6px ${color}66` : "none",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  transition:"background .1s",
+                }}>
+                  {on && <span style={{ fontSize:12, color:"#fff", lineHeight:1 }}>✓</span>}
                 </div>
-                <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color, letterSpacing:".04em" }}>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color: on ? color : "#5a6a6a", letterSpacing:".04em" }}>
                   ⚡ {label}
                 </span>
-              </label>
-            ))}
-          </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Search button */}
-        <div style={{ padding:"8px 10px" }}>
+        <div style={{ marginTop:10 }}>
           <button
             onClick={doSearch}
             disabled={!selected.size}
             style={{
               width:"100%", padding:"12px 0",
-              background: selected.size
-                ? "linear-gradient(160deg,#3a2808,#1e1404)"
-                : "rgba(20,15,8,.6)",
-              border:`1px solid ${selected.size ? "#8a6020" : "#2a2010"}`,
-              borderRadius:4, color: selected.size ? "#f0c060" : "#4a3820",
-              fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:".06em",
+              background: selected.size ? "linear-gradient(160deg,#1a2a3a,#0e1820)" : "rgba(10,14,20,.6)",
+              border:`1px solid ${selected.size ? "#3a6080" : "#1a2028"}`,
+              borderRadius:5, color: selected.size ? "#80c0e0" : "#2a3a48",
+              fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:".06em",
               cursor: selected.size ? "pointer" : "default",
-              boxShadow: selected.size ? "inset 0 1px 0 rgba(255,255,255,.08)" : "none",
+              touchAction:"manipulation",
             }}
           >
             🔍 Search Nearest 20
@@ -303,50 +303,44 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
 
         {/* Results */}
         {searched && results !== null && (
-          <div style={{ borderTop:"1px solid #1e1810", maxHeight:240, overflowY:"auto" }}>
-            {results.length === 0 ? (
-              <div style={{ padding:"12px 10px", fontSize:8, color:"#5a4a30", fontFamily:"'Cinzel',serif", textAlign:"center" }}>
-                No matching tiles found
-              </div>
-            ) : (
-              <div style={{ padding:"4px 6px 6px" }}>
-                <div style={{ fontSize:7, color:"#4a3820", fontFamily:"'Cinzel',serif", padding:"4px 4px 2px", letterSpacing:".05em" }}>
-                  {results.length} NEAREST RESULTS
-                </div>
-                {results.map(({ key, c, r, pl, dist }) => {
-                  const def = POWER_DEFS[pl];
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => jumpTo(c, r)}
-                      style={{
-                        display:"flex", alignItems:"center", justifyContent:"space-between",
-                        width:"100%", padding:"10px 8px", marginBottom:3,
-                        background:"rgba(255,255,255,.03)", border:"1px solid #1e1810",
-                        borderRadius:4, cursor:"pointer",
-                        textAlign:"left",
-                      }}
-                    >
-                      <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                        <span style={{
-                          fontSize:7, fontFamily:"'Cinzel',serif", fontWeight:700,
-                          color: def?.color, background:`${def?.color}18`,
-                          padding:"1px 4px", borderRadius:3, border:`1px solid ${def?.color}40`,
-                        }}>⚡ {def?.label}</span>
-                        <span style={{ fontSize:7, color:"#6a6a5a", fontFamily:"'Cinzel',serif" }}>{c},{r}</span>
-                      </div>
-                      <span style={{ fontSize:7, color:"#4a4a3a", fontFamily:"'Cinzel',serif" }}>
-                        {Math.round(dist)} tiles ›
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+          <div style={{ marginTop:10 }}>
+            <div style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Cinzel',serif", marginBottom:6, letterSpacing:".05em" }}>
+              {results.length > 0 ? `${results.length} NEAREST RESULTS` : "NO RESULTS FOUND"}
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+              {results.map(({ key, c, r, pl, dist }) => {
+                const def = POWER_DEFS[pl];
+                return (
+                  <button
+                    key={key}
+                    onClick={() => jumpTo(c, r)}
+                    style={{
+                      display:"flex", alignItems:"center", justifyContent:"space-between",
+                      width:"100%", padding:"10px 10px",
+                      background:"rgba(255,255,255,.03)", border:"1px solid #1e2028",
+                      borderRadius:5, cursor:"pointer", touchAction:"manipulation",
+                      textAlign:"left",
+                    }}
+                  >
+                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <span style={{
+                        fontSize:7, fontFamily:"'Cinzel',serif", fontWeight:700,
+                        color: def?.color, background:`${def?.color}18`,
+                        padding:"1px 5px", borderRadius:3, border:`1px solid ${def?.color}40`,
+                      }}>⚡ {def?.label}</span>
+                      <span style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Crimson Pro',serif" }}>{c},{r}</span>
+                    </div>
+                    <span style={{ fontSize:7, color:"#3a4a5a", fontFamily:"'Cinzel',serif" }}>
+                      {Math.round(dist)} ›
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
