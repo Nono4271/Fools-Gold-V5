@@ -901,7 +901,7 @@ self.onmessage = function(e) {
       // ══ V border col 328 ══
       [327,141,  229,141],  // v328_141 A → saltmere
       [329,141,  427,141],  // v328_141 B → brineHollow
-      [327,274,  390,308],  // v328_274 A → thornveil
+      [327,274,  229,274],  // v328_274 A → deadAnchor
       [329,274,  390,308],  // v328_274 B → thornveil
       [327,407,  390,432],  // v328_407 A → cinderPass
       [329,407,  390,432],  // v328_407 B → cinderPass
@@ -971,7 +971,6 @@ self.onmessage = function(e) {
       [427,673,  427,794],  // hexmire ↔ cursemoor
       [613,673,  613,794],  // ruinwatch ↔ ashenveil
       [975,673,  975,794],  // pilgrimsRest ↔ sacredVale
-      [1173,673, 1173,794], // bonepile ↔ dawnmarch
     ];
 
     const stampRoad = (c, r) => {
