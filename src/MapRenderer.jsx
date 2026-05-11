@@ -783,6 +783,10 @@ function drawKeepGfx(gfx, bx, by, owner, isWin, isSelected) {
   gfx.endFill();
 
   // ── Base courtyard — wide isometric diamond ──
+  // 2.2 px overdraw stroke (same as P10+ tiles) to cover black border seams
+  // from neighbouring tiles that bleed through beneath the keep sprite.
+  const OD = 2.2;
+  gfx.lineStyle(OD * 2, fc2, 1);
   gfx.beginFill(fc2);
   gfx.drawPolygon([
     bx,      by - 28,
@@ -791,6 +795,7 @@ function drawKeepGfx(gfx, bx, by, owner, isWin, isSelected) {
     bx - 36, by - 10,
   ]);
   gfx.endFill();
+  gfx.lineStyle(0);
 
   // ── Courtyard lit face (right) ──
   gfx.beginFill(fc, 0.35);
@@ -900,11 +905,23 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningR
   group.__keepKey = tileKey;
 
   if (isSelected) {
+    // Outline traces the actual keep courtyard diamond + corner tower extent.
+    // by = gy - 18; courtyard corners: top by-28, right/left by-10 ±36, bottom by+8.
+    // Corner towers add ~5px (ts*0.75=5.25) to each side; pad 2px for the stroke.
+    const pad = 2;
+    const hw  = 36 + 7 + pad;      // half-width:  courtyard half + tower radius + pad
+    const top = by - 30 - 7 - pad; // topmost tower tip
+    const bot = by +  8 + pad;     // bottom courtyard tip
+    const mid = (top + bot) / 2;   // vertical midpoint ≈ by - 10
+    const KEEP_OUTLINE = [
+      bx,       top,
+      bx + hw,  mid,
+      bx,       bot,
+      bx - hw,  mid,
+    ];
     const outlineGfx = new PIXI.Graphics();
     outlineGfx.lineStyle(3, 0xffffff, 0.95);
-    outlineGfx.drawPolygon(FOOTPRINT);
-    outlineGfx.lineStyle(1, 0xffffff, 0.25);
-    outlineGfx.drawPolygon([bx, gy-96, bx+216, gy+20, bx, gy+116, bx-216, gy+20]);
+    outlineGfx.drawPolygon(KEEP_OUTLINE);
     outlineGfx.lineStyle(0);
     group.addChild(outlineGfx);
   }
