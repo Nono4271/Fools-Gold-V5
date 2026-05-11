@@ -1,7 +1,8 @@
-import { useState, memo } from "react";
+import { useState, memo, useCallback } from "react";
 import { RARITY, CLASS } from "../../../shared/constants/heroes.js";
 import { CSS } from "../../constants/css.js";
-import { HQP } from "../../../shared/constants/map.js";
+import { HQP, POWER_DEFS } from "../../../shared/constants/map.js";
+import { isoXY } from "../../../shared/constants/geometry.js";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    GameBar — persistent bottom action bar + left commander portraits + right reports
@@ -181,6 +182,169 @@ function ActionButton({ icon, label, color = "#c8a060", onClick, badge, accent }
   );
 }
 
+// ── Tile Search Popup ─────────────────────────────────────────────────────────
+const PL_LIST = Object.entries(POWER_DEFS).map(([pl, def]) => ({
+  pl: Number(pl), label: def.label, color: def.color,
+}));
+
+function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClose }) {
+  const [selected, setSelected] = useState(new Set());
+  const [results, setResults] = useState(null);
+  const [searched, setSearched] = useState(false);
+
+  const togglePl = (pl) => setSelected(prev => {
+    const next = new Set(prev);
+    next.has(pl) ? next.delete(pl) : next.add(pl);
+    return next;
+  });
+
+  const doSearch = useCallback(() => {
+    if (!selected.size || !tiles) return;
+    const hqKey = playerHqKey;
+    const [hc, hr] = (hqKey || "0,0").split(",").map(Number);
+
+    // Collect all matching tiles, compute distance from player HQ
+    const matches = [];
+    for (const [key, tile] of Object.entries(tiles)) {
+      if (!selected.has(tile.powerLevel)) continue;
+      if (tile.isKeep || tile.isHQ || tile.isGate || tile.isBorder) continue;
+      const dc = tile.c - hc, dr = tile.r - hr;
+      matches.push({ key, c: tile.c, r: tile.r, pl: tile.powerLevel, dist: Math.sqrt(dc*dc + dr*dr) });
+    }
+    matches.sort((a, b) => a.dist - b.dist);
+    setResults(matches.slice(0, 20));
+    setSearched(true);
+  }, [selected, tiles, playerHqKey]);
+
+  const jumpTo = useCallback((c, r) => {
+    const { cx, cy } = isoXY(c, r);
+    const z = zoomRef.current;
+    const px = -cx * z + window.innerWidth / 2;
+    const py = -cy * z + window.innerHeight / 2;
+    panRef.current = { x: px, y: py };
+    mapRendererRef.current?.teleport(px, py);
+    onClose();
+  }, [panRef, zoomRef, mapRendererRef, onClose]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div style={{ position:"fixed", inset:0, zIndex:8000 }} onClick={onClose} />
+
+      {/* Panel */}
+      <div style={{
+        position:"fixed", bottom:90, right:8, zIndex:8001,
+        width:230,
+        background:"rgba(5,7,11,.97)",
+        border:"1px solid #2a2010",
+        borderRadius:8,
+        boxShadow:"0 8px 32px rgba(0,0,0,.9), 0 0 0 1px rgba(200,160,64,.1)",
+        overflow:"hidden",
+      }}>
+        {/* Header */}
+        <div style={{ padding:"8px 10px 6px", borderBottom:"1px solid #1e1810", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#c8a060", letterSpacing:".06em" }}>🔍 Find Tiles</span>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:"#4a4040", fontSize:16, cursor:"pointer", lineHeight:1, padding:"0 2px" }}>✕</button>
+        </div>
+
+        {/* Power level checkboxes */}
+        <div style={{ padding:"8px 10px 4px" }}>
+          <div style={{ fontSize:7, color:"#5a4a30", fontFamily:"'Cinzel',serif", marginBottom:6, letterSpacing:".05em" }}>SELECT POWER LEVELS</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            {PL_LIST.map(({ pl, label, color }) => (
+              <label key={pl} style={{ display:"flex", alignItems:"center", gap:7, cursor:"pointer" }}>
+                <div
+                  onClick={() => togglePl(pl)}
+                  style={{
+                    width:14, height:14, borderRadius:3, flexShrink:0,
+                    border:`1px solid ${color}88`,
+                    background: selected.has(pl) ? color : "rgba(0,0,0,.4)",
+                    boxShadow: selected.has(pl) ? `0 0 6px ${color}66` : "none",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    transition:"background .1s, box-shadow .1s",
+                    cursor:"pointer",
+                  }}
+                >
+                  {selected.has(pl) && <span style={{ fontSize:9, color:"#fff", lineHeight:1 }}>✓</span>}
+                </div>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color, letterSpacing:".04em" }}>
+                  ⚡ {label}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Search button */}
+        <div style={{ padding:"8px 10px" }}>
+          <button
+            onClick={doSearch}
+            disabled={!selected.size}
+            style={{
+              width:"100%", padding:"7px 0",
+              background: selected.size
+                ? "linear-gradient(160deg,#3a2808,#1e1404)"
+                : "rgba(20,15,8,.6)",
+              border:`1px solid ${selected.size ? "#8a6020" : "#2a2010"}`,
+              borderRadius:4, color: selected.size ? "#f0c060" : "#4a3820",
+              fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:".06em",
+              cursor: selected.size ? "pointer" : "default",
+              boxShadow: selected.size ? "inset 0 1px 0 rgba(255,255,255,.08)" : "none",
+            }}
+          >
+            🔍 Search Nearest 20
+          </button>
+        </div>
+
+        {/* Results */}
+        {searched && results !== null && (
+          <div style={{ borderTop:"1px solid #1e1810", maxHeight:240, overflowY:"auto" }}>
+            {results.length === 0 ? (
+              <div style={{ padding:"12px 10px", fontSize:8, color:"#5a4a30", fontFamily:"'Cinzel',serif", textAlign:"center" }}>
+                No matching tiles found
+              </div>
+            ) : (
+              <div style={{ padding:"4px 6px 6px" }}>
+                <div style={{ fontSize:7, color:"#4a3820", fontFamily:"'Cinzel',serif", padding:"4px 4px 2px", letterSpacing:".05em" }}>
+                  {results.length} NEAREST RESULTS
+                </div>
+                {results.map(({ key, c, r, pl, dist }) => {
+                  const def = POWER_DEFS[pl];
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => jumpTo(c, r)}
+                      style={{
+                        display:"flex", alignItems:"center", justifyContent:"space-between",
+                        width:"100%", padding:"5px 6px", marginBottom:2,
+                        background:"rgba(255,255,255,.03)", border:"1px solid #1e1810",
+                        borderRadius:4, cursor:"pointer",
+                        textAlign:"left",
+                      }}
+                    >
+                      <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                        <span style={{
+                          fontSize:7, fontFamily:"'Cinzel',serif", fontWeight:700,
+                          color: def?.color, background:`${def?.color}18`,
+                          padding:"1px 4px", borderRadius:3, border:`1px solid ${def?.color}40`,
+                        }}>⚡ {def?.label}</span>
+                        <span style={{ fontSize:7, color:"#6a6a5a", fontFamily:"'Cinzel',serif" }}>{c},{r}</span>
+                      </div>
+                      <span style={{ fontSize:7, color:"#4a4a3a", fontFamily:"'Cinzel',serif" }}>
+                        {Math.round(dist)} tiles ›
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 export default memo(function GameBar({
   cmds, facName, tiles,
   onCenterHQ,
@@ -194,6 +358,7 @@ export default memo(function GameBar({
   playerHqKey,
   hidden,
   showPerf, setShowPerf,
+  panRef, zoomRef, mapRendererRef,
 }) {
   if (hidden) return null;
   // All player commanders (for left rail) — only those NOT at HQ
@@ -210,6 +375,8 @@ export default memo(function GameBar({
     setHqOpen(true);
     setHqTab(tab);
   };
+
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <>
@@ -303,6 +470,13 @@ export default memo(function GameBar({
             onClick={() => setGearScreenOpen(true)}
           />
           <ActionButton
+            icon="🔍"
+            label="Search"
+            color="#80aacc"
+            accent="#1a3a5c"
+            onClick={() => setSearchOpen(v => !v)}
+          />
+          <ActionButton
             icon="⏱"
             label="Perf"
             color={showPerf ? "#66dd66" : "#4a4a4a"}
@@ -311,6 +485,17 @@ export default memo(function GameBar({
           />
         </div>
       </div>
+
+      {searchOpen && (
+        <TileSearch
+          tiles={tiles}
+          panRef={panRef}
+          zoomRef={zoomRef}
+          mapRendererRef={mapRendererRef}
+          playerHqKey={playerHqKey}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
     </>
   );
 });
