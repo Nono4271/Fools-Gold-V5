@@ -1482,9 +1482,18 @@ display:"flex", justifyContent:"space-between" }}>
 const isActive = tb?.faction===fKey && tb?.branch===br.key && (tb?.tier??0)===idx;
 return (
 <button key={idx} className="btn"
-onClick={() => setCmds(p => p.map(c => c.uid===cmd.uid
-? { ...c, troopBranch:{ faction:fKey, branch:br.key, tier:idx } }
-: c))}
+onClick={() => setCmds(p => p.map(c => {
+  if (c.uid !== cmd.uid) return c;
+  const newBranch = { faction:fKey, branch:br.key, tier:idx };
+  // Keep existing slot troops count; update slot 0 branch only
+  const existingTroops = c.troopSlots?.[0]?.troops ?? c.troops ?? 0;
+  const newSlots = [{ branch: newBranch, troops: existingTroops },
+    ...(c.troopSlots?.slice(1) ?? [])];
+  return { ...c,
+    troopBranch: newBranch,
+    troopSlots: newSlots,
+  };
+}))
 style={{ padding:"6px 4px", textAlign:"center",
 background:isActive?"rgba(240,192,64,.15)":"rgba(255,255,255,.02)",
 border:`1px solid ${isActive?P.gold:P.border}`,
