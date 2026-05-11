@@ -1,7 +1,7 @@
 import { useState, useEffect, memo, useMemo } from "react";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
-import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel } from "../../../shared/constants/buildings.js";
+import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
 const SC = RC;
 
@@ -294,6 +294,7 @@ return (
 </div>
 <div style={{ fontSize:11, color:P.sub, fontFamily:P.ffb, marginBottom:16, lineHeight:1.6 }}>{def.desc}</div>
 {bKey==="barracks" && <div style={{ fontSize:10, color:"#6a8aaa", marginBottom:12 }}>Capacity: {barracksCapacity(lvl).toLocaleString()}</div>}
+{bKey==="storage" && <div style={{ fontSize:10, color:"#6aaa8a", marginBottom:12 }}>Max Resources: {storageMax(lvl).toLocaleString()} → <span style={{color:"#aad4b8"}}>{storageMax(Math.min(lvl+1,20)).toLocaleString()}</span> at Lv{Math.min(lvl+1,20)}</div>}
 {isGated && <div style={{ fontSize:9, color:"#8a6020", fontFamily:P.ffb, fontStyle:"italic", marginBottom:12 }}>🔒 Upgrade HQ to Lv{avail+1} to unlock next level</div>}
 {cost && (
 <div style={{ padding:"12px 14px", background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:6, marginBottom:12 }}>
@@ -742,7 +743,7 @@ function InfrastructureScreen({ bldgs, setBldgs, rss, setRss, canAfford, upgrade
 const [leftSel, setLeftSel]     = useState("buildings");
 const [selBuilding, setSelBuilding] = useState(null);
 
-const BLDG_KEYS = ["hq","walls","quarry","lumber","forge","refinery","barracks","training","commandcenter","healingtent"];
+const BLDG_KEYS = ["hq","walls","quarry","lumber","forge","refinery","storage","barracks","training","commandcenter","healingtent"];
 
 const primaryFaction = facKey || "pirates";
 const myAlign        = getAlignment(primaryFaction);
@@ -945,17 +946,20 @@ borderRadius:5, padding:"10px 12px" }}>
 <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:7, marginBottom:12 }}>
 {RKEYS.map(k => {
 const bldgKey = rssToBuilding[k];
-const rate = (bldgs[bldgKey]||0) * (BLDG[bldgKey]?.rate||0);
-const tileProd = Object.values(tiles).filter(t=>t.owner==="player"&&t.rss===k).length * 50;
+const bldgRate = rssRate(bldgs[bldgKey]||0);
+const tileProd = Object.values(tiles).filter(t=>t.owner==="player"&&t.rss===k).length * 60;
+const totalPerHr = 200 + bldgRate + tileProd;
+const cap = storageMax(bldgs.storage||0);
 return (
 <div key={k} style={{ background:RSS[k].bg, border:`1px solid ${RSS[k].col}30`, borderRadius:5, padding:"8px 10px" }}>
 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
 <div style={{ fontSize:9, color:RSS[k].col, fontFamily:P.ff, fontWeight:700 }}>{RSS[k].icon} {RSS[k].lbl}</div>
-{(rate+tileProd)>0 && <div style={{ fontSize:7, color:RSS[k].col, opacity:.7, fontFamily:P.ff }}>+{rate+tileProd}/s</div>}
+<div style={{ fontSize:7, color:RSS[k].col, opacity:.7, fontFamily:P.ff }}>+{totalPerHr.toLocaleString()}/hr</div>
 </div>
 <div style={{ fontSize:18, fontWeight:700, color:P.text, fontFamily:P.ff, marginTop:2 }}>
 {Math.floor(rss[k]).toLocaleString()}
 </div>
+<div style={{ fontSize:6, color:P.dim, marginTop:1 }}>cap: {cap.toLocaleString()}</div>
 </div>
 );
 })}
