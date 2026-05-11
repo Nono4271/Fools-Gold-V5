@@ -1214,6 +1214,19 @@ return (
                 overflow:"hidden", textOverflow:"ellipsis" }}>{cmd.n}</div>
               <div style={{ fontSize:6, color:P.sub }}>Lv{cmd.lvl} . {cmd.cls}</div>
             </div>
+            {/* Stamina badge */}
+            {(() => {
+              const stam = cmd.stamina ?? 200;
+              const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
+              return (
+                <div style={{ textAlign:"center", flexShrink:0 }}>
+                  <div style={{ fontSize:5, color:sc }}>⚡{Math.floor(stam)}</div>
+                  <div style={{ width:24, height:3, background:"rgba(0,0,0,.4)", borderRadius:2, overflow:"hidden", marginTop:1 }}>
+                    <div style={{ height:"100%", width:`${(stam/200)*100}%`, background:sc, borderRadius:2 }}/>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
           {tier && (
             <div style={{ fontSize:6, color:fColor, fontFamily:P.ff,
@@ -1261,6 +1274,20 @@ return (
               <div style={{ fontSize:7, color:isAtHQ?"#3daa60":"#7a5a3a", marginTop:1 }}>
                 {isAtHQ ? "🏰 At HQ" : "📍 Away -- recall to HQ to modify"}
               </div>
+              {/* Stamina bar */}
+              {(() => {
+                const stam = cmd.stamina ?? 200;
+                const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
+                return (
+                  <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:4 }}>
+                    <span style={{ fontSize:7, color:sc }}>⚡</span>
+                    <div style={{ flex:1, height:4, background:"rgba(0,0,0,.4)", borderRadius:2, overflow:"hidden" }}>
+                      <div style={{ height:"100%", width:`${(stam/200)*100}%`, background:sc, borderRadius:2, transition:"width .3s" }}/>
+                    </div>
+                    <span style={{ fontSize:7, color:sc, fontFamily:P.ff, minWidth:30 }}>{Math.floor(stam)}/200</span>
+                  </div>
+                );
+              })()}
             </div>
             {(cmd.troops||0) > 0 && (
               <button className="btn" onClick={() => returnTroops(cmd.uid)}

@@ -265,6 +265,9 @@ export default memo(function TilePopup({
               <div style={{fontSize:7,color:"#4a6a4a",fontFamily:"'Cinzel',serif",letterSpacing:".06em",marginBottom:3}}>COMMANDERS</div>
               {cmdsOnSel.map(cmd => {
                 const tt = tbInfo(cmd.troopBranch);
+                const stam = cmd.stamina ?? 200;
+                const stamPct = Math.max(0, Math.min(100, (stam / 200) * 100));
+                const stamColor = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
                 return (
                   <div key={cmd.uid} style={{display:"flex",alignItems:"center",gap:4,marginBottom:2,padding:"2px 4px",background:"rgba(60,170,80,.07)",borderRadius:3,border:"1px solid rgba(60,170,80,.2)"}}>
                     <span style={{fontSize:10}}>{cmd.icon}</span>
@@ -274,6 +277,14 @@ export default memo(function TilePopup({
                         <span style={{fontFamily:"'Cinzel',serif",fontSize:6,color:"#f0c040",flexShrink:0}}>Lv{cmd.lvl||5}</span>
                       </div>
                       {tt && <div style={{fontSize:7,color:tt.color}}>{tt.label} {(cmd.troops||0).toLocaleString()}</div>}
+                      {/* Stamina bar */}
+                      <div style={{display:"flex",alignItems:"center",gap:3,marginTop:2}}>
+                        <span style={{fontSize:5,color:"#7a9a7a"}}>⚡</span>
+                        <div style={{flex:1,height:3,background:"rgba(0,0,0,.4)",borderRadius:2,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${stamPct}%`,background:stamColor,borderRadius:2,transition:"width .3s"}}/>
+                        </div>
+                        <span style={{fontSize:5,color:stamColor,fontFamily:"'Cinzel',serif",flexShrink:0}}>{Math.floor(stam)}</span>
+                      </div>
                     </div>
                     {cmd.march && <div style={{fontSize:6,color:"#f0c040",fontFamily:"'Cinzel',serif",flexShrink:0}}>→</div>}
                   </div>
@@ -326,14 +337,45 @@ export default memo(function TilePopup({
 
           {/* Action buttons */}
           <div style={{display:"flex",gap:3,marginTop:4,flexWrap:"wrap"}}>
-            {selTile.owner!=="player" && canAtk && (
-              <button className="btn" onClick={() => { setAtkKey(selKey); setMode("pickAttackCmd"); setPick(null); }}
-                style={{flex:1,padding:"5px 3px",background:"linear-gradient(135deg,rgba(140,20,20,.6),rgba(100,10,10,.4))",border:"1px solid #cc2020",color:"#f0a0a0",fontSize:9,fontWeight:700}}>⚔ Attack</button>
-            )}
-            {selTile.owner==="player" && cmdsOnSel.filter(c=>!c.march&&(c.troops||0)>0).length>0 && (
-              <button className="btn" onClick={() => { setMvCmd(cmdsOnSel.filter(c=>!c.march&&(c.troops||0)>0)[0]); setMode("selectMarchDest"); }}
-                style={{flex:1,padding:"5px 3px",background:"linear-gradient(135deg,rgba(20,80,40,.6),rgba(10,60,30,.4))",border:"1px solid #2a8040",color:"#80d090",fontSize:9,fontWeight:700}}>🚶 Move</button>
-            )}
+            {selTile.owner!=="player" && canAtk && (() => {
+              // Check if best available attacker has ≥20 stamina
+              const candidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
+              const hasStam = candidates.some(c => (c.stamina ?? 200) >= 20);
+              return (
+                <button className="btn"
+                  onClick={() => hasStam ? (setAtkKey(selKey), setMode("pickAttackCmd"), setPick(null)) : null}
+                  title={hasStam ? "" : "No commanders with enough stamina (need 20⚡)"}
+                  style={{flex:1,padding:"5px 3px",
+                    background: hasStam
+                      ? "linear-gradient(135deg,rgba(140,20,20,.6),rgba(100,10,10,.4))"
+                      : "rgba(60,20,20,.3)",
+                    border:`1px solid ${hasStam?"#cc2020":"#553030"}`,
+                    color:hasStam?"#f0a0a0":"#7a5050",
+                    fontSize:9,fontWeight:700,
+                    cursor:hasStam?"pointer":"not-allowed",opacity:hasStam?1:.6}}>
+                  ⚔ Attack {!hasStam && <span style={{fontSize:7}}>⚡low</span>}
+                </button>
+              );
+            })()}
+            {selTile.owner==="player" && cmdsOnSel.filter(c=>!c.march&&(c.troops||0)>0).length>0 && (() => {
+              const mover = cmdsOnSel.filter(c=>!c.march&&(c.troops||0)>0)[0];
+              const hasStam = (mover?.stamina ?? 200) >= 10;
+              return (
+                <button className="btn"
+                  onClick={() => hasStam ? (setMvCmd(mover), setMode("selectMarchDest")) : null}
+                  title={hasStam ? "" : "Need 10⚡ stamina to move"}
+                  style={{flex:1,padding:"5px 3px",
+                    background: hasStam
+                      ? "linear-gradient(135deg,rgba(20,80,40,.6),rgba(10,60,30,.4))"
+                      : "rgba(20,40,20,.3)",
+                    border:`1px solid ${hasStam?"#2a8040":"#2a4a2a"}`,
+                    color:hasStam?"#80d090":"#507050",
+                    fontSize:9,fontWeight:700,
+                    cursor:hasStam?"pointer":"not-allowed",opacity:hasStam?1:.6}}>
+                  🚶 Move {!hasStam && <span style={{fontSize:7}}>⚡low</span>}
+                </button>
+              );
+            })()}
             {selTile.owner==="player" && cmdsOnSel.some(c=>c.troopBranch&&!c.march) && barracksPool>0 && (
               <button className="btn" onClick={() => { setReinCmd(cmdsOnSel.find(c=>c.troopBranch&&!c.march)); setMode("reinforce"); }}
                 style={{flex:1,padding:"5px 3px",background:"linear-gradient(135deg,rgba(20,40,120,.6),rgba(10,30,100,.4))",border:"1px solid #2a40cc",color:"#80a0ff",fontSize:9,fontWeight:700}}>🔄</button>
