@@ -586,7 +586,8 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   if (rss === "wood") {
     if (pl >= 22) {
       // ── P12/P13: Ancient Grove ────────────────────────────────────────────
-      const sc = s * sizeMult * 0.038;
+      const tierScale = pl >= 25 ? 2.0 : 1.6;
+      const sc = TH * 0.45 / 88 * tierScale;
       const numTrees = pl >= 25 ? 4 : 2;
       // ground shadow
       gfx.beginFill(0x000000, 0.22); gfx.drawEllipse(cx, base, 58*sc, 12*sc); gfx.endFill();
@@ -645,7 +646,8 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
       }
     } else if (pl >= 16) {
       // ── P10/P11: Lumber camp ──────────────────────────────────────────────
-      const sc = s * sizeMult * 0.038;
+      const tierScale = pl >= 19 ? 1.3 : 1.0;
+      const sc = TH * 0.45 / 88 * tierScale;
       const numTrees = pl >= 19 ? 5 : 3;
       // ground shadow
       gfx.beginFill(0x000000, 0.20); gfx.drawEllipse(cx, base, 60*sc, 12*sc); gfx.endFill();
@@ -713,7 +715,8 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   } else if (rss === "stone") {
     if (pl >= 22) {
       // ── P12/P13: Megalith circle ──────────────────────────────────────────
-      const sc = s * sizeMult * 0.038;
+      const tierScale = pl >= 25 ? 2.0 : 1.6;
+      const sc = TH * 0.45 / 88 * tierScale;
       const numSlabs = pl >= 25 ? 5 : 3; // P13=5 slabs+lintel, P12=3+lintel
       // ground shadow
       gfx.beginFill(0x000000, 0.30); gfx.drawEllipse(cx, base, sc*58, sc*14); gfx.endFill();
@@ -762,7 +765,8 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
       }
     } else if (pl >= 16) {
       // ── P10/P11: Crusher wheel ────────────────────────────────────────────
-      const sc = s * sizeMult * 0.038;
+      const tierScale = pl >= 19 ? 1.3 : 1.0;
+      const sc = TH * 0.45 / 88 * tierScale;
       const wr = (pl >= 19 ? 46 : 38) * sc; // P11 bigger wheel
       const wx = cx + 10*sc, wy = base - wr - 4*sc;
       // ground shadow
@@ -847,7 +851,8 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   } else if (rss === "ore") {
     if (pl >= 22) {
       // ── P12/P13: Mine shaft ───────────────────────────────────────────────
-      const sc = s * sizeMult * 0.038;
+      const tierScale = pl >= 25 ? 2.0 : 1.6;
+      const sc = TH * 0.45 / 88 * tierScale;
       const numShafts = pl >= 25 ? 2 : 1;
       // ground shadow
       gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(cx, base, 62*sc, 13*sc); gfx.endFill();
@@ -897,7 +902,8 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
       }
     } else if (pl >= 16) {
       // ── P10/P11: Smelter ──────────────────────────────────────────────────
-      const sc = s * sizeMult * 0.038;
+      const tierScale = pl >= 19 ? 1.3 : 1.0;
+      const sc = TH * 0.45 / 88 * tierScale;
       const numFurnaces = pl >= 19 ? 2 : 1;
       // ground shadow
       gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(cx, base, 60*sc, 13*sc); gfx.endFill();
@@ -976,7 +982,8 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   } else {
     if (pl >= 22) {
       // ── P12/P13: Collector Dome ───────────────────────────────────────────
-      const sc = s * sizeMult * 0.038;
+      const tierScale = pl >= 25 ? 2.0 : 1.6;
+      const sc = TH * 0.45 / 88 * tierScale;
       // gas pit
       gfx.beginFill(0x080e04); gfx.drawEllipse(cx,base-2*sc,28*sc,10*sc); gfx.endFill();
       gfx.beginFill(0x121a06); gfx.drawEllipse(cx,base-2*sc,18*sc,7*sc); gfx.endFill();
@@ -1065,7 +1072,8 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
       }
     } else if (pl >= 16) {
       // ── P10/P11: Venting rig ──────────────────────────────────────────────
-      const sc = s * sizeMult * 0.038;
+      const tierScale = pl >= 19 ? 1.3 : 1.0;
+      const sc = TH * 0.45 / 88 * tierScale;
       const numStacks = pl >= 19 ? 6 : 3;
       // gas pit
       gfx.beginFill(0x080e04); gfx.drawEllipse(cx,base-2*sc,32*sc,12*sc); gfx.endFill();
