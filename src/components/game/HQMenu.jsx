@@ -358,13 +358,14 @@ const BRANCH_LVL_BONUS = [
   return (
   <div onClick={onClose}
   style={{ position:"fixed", inset:0, zIndex:200, background:"rgba(0,0,0,.72)",
-  display:"flex", alignItems:"flex-start", justifyContent:"center",
-  overflowY:"auto", padding:"12px 8px", WebkitOverflowScrolling:"touch" }}>
+  display:"flex", alignItems:"center", justifyContent:"center",
+  padding:"12px 8px" }}>
   <div onClick={e => e.stopPropagation()}
   style={{ background:"#0f1018", border:`1px solid ${fColor}55`,
-  borderRadius:12, padding:20, width:"min(340px, 96vw)", position:"relative",
+  borderRadius:12, padding:"12px 14px 16px", width:"min(320px, 94vw)", position:"relative",
   boxShadow:`0 8px 32px rgba(0,0,0,.7), 0 0 0 1px ${fColor}22`,
-  marginTop:"auto", marginBottom:"auto", flexShrink:0 }}>
+  maxHeight:"82dvh", overflowY:"auto", WebkitOverflowScrolling:"touch",
+  flexShrink:0 }}>
   {/* close — large tap target */}
   <button onClick={onClose}
   style={{ position:"absolute", top:0, right:0, width:44, height:44,
@@ -391,7 +392,7 @@ const BRANCH_LVL_BONUS = [
   </div>
   </div>
   )}
-  <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
   <div style={{ width:44, height:44, borderRadius:8, background:`${fColor}22`,
   border:`1px solid ${fColor}55`, display:"flex", alignItems:"center",
   justifyContent:"center", flexDirection:"column" }}>
@@ -404,17 +405,17 @@ const BRANCH_LVL_BONUS = [
   </div>
   </div>
   {/* stat grid */}
-  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7, marginBottom:12 }}>
+  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:5, marginBottom:10 }}>
   {[
   { lbl:"HP",    val:tier.hp,                         col:"#5dcc80" },
   { lbl:"DEF",   val:tier.def,                        col:"#88aaff" },
   { lbl:"DMG",   val:`${tier.dmgLo} - ${tier.dmgHi}`, col:"#e08050" },
   { lbl:"CMD",   val:`${cmdCost} / troop`,            col:P.sub    },
   ].map(({ lbl, val, col }) => (
-  <div key={lbl} style={{ padding:"8px 10px", background:"rgba(255,255,255,.03)",
+  <div key={lbl} style={{ padding:"6px 8px", background:"rgba(255,255,255,.03)",
   border:`1px solid ${P.border}`, borderRadius:6 }}>
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".06em", marginBottom:3 }}>{lbl}</div>
-  <div style={{ fontSize:13, fontWeight:700, color:col, fontFamily:P.ff }}>{val}</div>
+  <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".06em", marginBottom:2 }}>{lbl}</div>
+  <div style={{ fontSize:12, fontWeight:700, color:col, fontFamily:P.ff }}>{val}</div>
   </div>
   ))}
   </div>
