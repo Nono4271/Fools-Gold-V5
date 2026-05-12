@@ -357,119 +357,144 @@ const BRANCH_LVL_BONUS = [
   const RSS_COL = { stone:["🪨","#aaaaaa"], wood:["🪵","#c8903a"], ore:["⚙️","#88aaff"], gas:["⛽","#5dcc80"] };
   return (
   <div onClick={onClose}
-  style={{ position:"fixed", inset:0, zIndex:200, background:"rgba(0,0,0,.72)",
-  display:"flex", alignItems:"center", justifyContent:"center",
-  padding:"12px 8px" }}>
-  <div onClick={e => e.stopPropagation()}
-  style={{ background:"#0f1018", border:`1px solid ${fColor}55`,
-  borderRadius:12, padding:"12px 14px 16px", width:"min(320px, 94vw)", position:"relative",
-  boxShadow:`0 8px 32px rgba(0,0,0,.7), 0 0 0 1px ${fColor}22`,
-  maxHeight:"82dvh", overflowY:"auto", WebkitOverflowScrolling:"touch",
-  flexShrink:0 }}>
-  {/* close — large tap target */}
+  style={{ position:"fixed", inset:0, zIndex:200,
+  background:"linear-gradient(135deg,#08060e 0%,#0c0a12 50%,#06080e 100%)",
+  display:"flex", flexDirection:"column", overflow:"hidden" }}>
+
+  {/* Top bar */}
+  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px",
+  background:"rgba(0,0,0,.5)", borderBottom:`1px solid ${fColor}33`, flexShrink:0 }}>
   <button onClick={onClose}
-  style={{ position:"absolute", top:0, right:0, width:44, height:44,
-  background:"rgba(255,255,255,.04)", border:"none", borderRadius:"0 12px 0 8px",
-  color:"#8a7a60", fontSize:18, cursor:"pointer",
+  style={{ width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,.06)",
+  border:`1px solid ${fColor}40`, color:"#8a7a60", fontSize:18, cursor:"pointer",
   display:"flex", alignItems:"center", justifyContent:"center",
-  WebkitTapHighlightColor:"transparent" }}>✕</button>
-  {/* header */}
+  WebkitTapHighlightColor:"transparent" }}>←</button>
+  <div style={{ fontFamily:P.ff, fontWeight:700, fontSize:13, color:P.text }}>
+  {tier.label}
+  </div>
+  <div style={{ fontSize:8, color:dmgColor, fontFamily:P.ff, marginTop:1 }}>
+  {branch.label} · {branch.size} · {branch.dmgType}
+  </div>
   {isLocked && (
-  <div style={{ background: branchOpen ? "rgba(200,80,40,.08)" : "rgba(80,60,40,.1)",
-  border: `1px solid ${branchOpen ? "#cc4040aa" : "#6a4a2a88"}`,
-  borderRadius:8, padding:"9px 12px", marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
-  <span style={{ fontSize:16 }}>🔒</span>
-  <div>
-  <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
-  color: branchOpen ? "#cc4040" : "#aa8040", letterSpacing:".06em" }}>
-  {branchOpen ? "TIER LOCKED" : "BRANCH LOCKED"}
-  </div>
-  <div style={{ fontSize:7, color:"#6a5a40", fontFamily:P.ff, marginTop:2, lineHeight:1.5 }}>
-  {branchOpen
-    ? `Upgrade this branch to unlock. Stats shown are previews.`
-    : `Assign this branch to a commander first to unlock it.`}
-  </div>
-  </div>
-  </div>
-  )}
-  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
-  <div style={{ width:44, height:44, borderRadius:8, background:`${fColor}22`,
-  border:`1px solid ${fColor}55`, display:"flex", alignItems:"center",
-  justifyContent:"center", flexDirection:"column" }}>
-  <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:fColor }}>{roman[tierIdx]}</div>
-  <div style={{ fontSize:16 }}>{fDef.s}</div>
-  </div>
-  <div>
-  <div style={{ fontFamily:P.ff, fontSize:13, fontWeight:700, color:P.text }}>{tier.label}</div>
-  <div style={{ fontSize:8, color:dmgColor, marginTop:1 }}>{branch.label} / {branch.size} / {branch.dmgType}</div>
-  </div>
-  </div>
-  {/* stat grid */}
-  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:5, marginBottom:10 }}>
-  {[
-  { lbl:"HP",    val:tier.hp,                         col:"#5dcc80" },
-  { lbl:"DEF",   val:tier.def,                        col:"#88aaff" },
-  { lbl:"DMG",   val:`${tier.dmgLo} - ${tier.dmgHi}`, col:"#e08050" },
-  { lbl:"CMD",   val:`${cmdCost} / troop`,            col:P.sub    },
-  ].map(({ lbl, val, col }) => (
-  <div key={lbl} style={{ padding:"6px 8px", background:"rgba(255,255,255,.03)",
-  border:`1px solid ${P.border}`, borderRadius:6 }}>
-  <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".06em", marginBottom:2 }}>{lbl}</div>
-  <div style={{ fontSize:12, fontWeight:700, color:col, fontFamily:P.ff }}>{val}</div>
-  </div>
-  ))}
-  </div>
-  {/* skills */}
-  <div style={{ marginBottom:12 }}>
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:6 }}>SKILLS</div>
-  {skills.map(skill => (
-  <div key={skill.key} style={{ padding:"8px 10px", background:"rgba(255,255,255,.02)",
-  border:`1px solid ${P.border}`, borderRadius:6, marginBottom:5 }}>
-  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-  <span style={{ fontSize:15, lineHeight:1 }}>{skill.icon}</span>
-  <div style={{ flex:1 }}>
-  <div style={{ fontFamily:P.ff, fontSize:10, fontWeight:700, color:fColor }}>{skill.name}</div>
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ffb, letterSpacing:".03em", marginTop:1 }}>
-  {TRIGGER_LABEL[skill.trigger] || skill.trigger}
-  {" · "}
-  <span style={{ color:"#88aaff" }}>
-  {Math.round(skill.procBase*100)}%–{Math.round(skill.procMax*100)}% proc
+  <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:5,
+  background: branchOpen ? "rgba(200,60,40,.15)" : "rgba(160,100,40,.15)",
+  border:`1px solid ${branchOpen ? "#cc404066" : "#a8643366"}`,
+  borderRadius:6, padding:"3px 8px" }}>
+  <span style={{fontSize:11}}>🔒</span>
+  <span style={{ fontSize:7, color: branchOpen ? "#cc6040" : "#c09040", fontFamily:P.ff, fontWeight:700 }}>
+  {branchOpen ? "UPGRADE TO UNLOCK" : "ASSIGN BRANCH FIRST"}
   </span>
   </div>
+  )}
+  </div>
+
+  {/* Body: left icon panel + right info */}
+  <div onClick={e => e.stopPropagation()}
+  style={{ flex:1, display:"flex", minHeight:0, overflow:"hidden" }}>
+
+  {/* ── LEFT: faction icon + tier badge ── */}
+  <div style={{ width:"38%", flexShrink:0, display:"flex", flexDirection:"column",
+  alignItems:"center", justifyContent:"center", gap:12,
+  background:`radial-gradient(ellipse at 50% 40%, ${fColor}18 0%, transparent 70%)`,
+  borderRight:`1px solid ${fColor}22`, padding:"16px 8px" }}>
+  {/* Big faction emblem */}
+  <div style={{ width:110, height:110, borderRadius:16,
+  background:`radial-gradient(135deg, ${fColor}22, ${fColor}08)`,
+  border:`2px solid ${fColor}55`,
+  display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column",
+  boxShadow:`0 0 40px ${fColor}22`,
+  filter: isLocked ? "grayscale(0.7) brightness(0.6)" : "none" }}>
+  <div style={{ fontSize:52, lineHeight:1 }}>{fDef.s}</div>
+  <div style={{ fontFamily:P.ff, fontSize:13, fontWeight:700, color:fColor, marginTop:4 }}>{roman[tierIdx]}</div>
+  </div>
+  <div style={{ fontFamily:P.ff, fontSize:10, fontWeight:700, color:fColor,
+  letterSpacing:".08em", textAlign:"center" }}>{fDef.quarters ?? fDef.n}</div>
+  <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff, textAlign:"center", lineHeight:1.5 }}>
+  Tier {roman[tierIdx]} · {branch.size} unit<br/>
+  {branch.dmgType} damage
+  </div>
+  {/* Unlock note */}
+  <div style={{ fontSize:7, color:`${fColor}88`, fontFamily:P.ff, textAlign:"center",
+  background:`${fColor}0a`, border:`1px solid ${fColor}22`, borderRadius:5,
+  padding:"4px 8px", lineHeight:1.5 }}>
+  Unlocked at<br/>branch Lv{tierIdx*2+1}
   </div>
   </div>
-  <div style={{ fontSize:8, color:P.sub, fontFamily:P.ffb, lineHeight:1.65 }}>{skill.desc}</div>
+
+  {/* ── RIGHT: stats, skills, conscription ── */}
+  <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch",
+  padding:"14px 14px 20px" }}>
+
+  {/* Stat grid */}
+  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:14 }}>
+  {[
+  { lbl:"HP",    val:tier.hp,                          col:"#5dcc80", icon:"❤️" },
+  { lbl:"DEF",   val:tier.def,                         col:"#88aaff", icon:"🛡" },
+  { lbl:"DMG",   val:`${tier.dmgLo}–${tier.dmgHi}`,   col:dmgColor,  icon:"⚔️" },
+  { lbl:"CMD",   val:`${cmdCost} / unit`,              col:P.sub,     icon:"⭐" },
+  ].map(({ lbl, val, col, icon }) => (
+  <div key={lbl} style={{ padding:"10px 12px", borderRadius:8,
+  background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}` }}>
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:3 }}>
+  {icon} {lbl}
+  </div>
+  <div style={{ fontSize:16, fontWeight:700, color:col, fontFamily:P.ff }}>{val}</div>
   </div>
   ))}
   </div>
-  {/* conscription */}
-  <div style={{ padding:"8px 10px", background:"rgba(255,255,255,.02)",
-  border:`1px solid ${P.border}`, borderRadius:6 }}>
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:7 }}>CONSCRIPTION</div>
-  {/* cost per troop */}
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".05em", marginBottom:4 }}>COST PER TROOP</div>
-  <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:8 }}>
+
+  {/* Skills */}
+  {skills.length > 0 && (
+  <div style={{ marginBottom:14 }}>
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
+  marginBottom:8, textTransform:"uppercase" }}>Skills</div>
+  {skills.map(skill => (
+  <div key={skill.key} style={{ padding:"10px 12px", background:"rgba(255,255,255,.02)",
+  border:`1px solid ${P.border}`, borderRadius:8, marginBottom:6 }}>
+  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+  <span style={{ fontSize:18, lineHeight:1 }}>{skill.icon}</span>
+  <div style={{ flex:1 }}>
+  <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:fColor }}>{skill.name}</div>
+  <div style={{ fontSize:7, color:"#88aaff", fontFamily:P.ff, marginTop:1 }}>
+  {TRIGGER_LABEL[skill.trigger] || skill.trigger} · {Math.round(skill.procBase*100)}%–{Math.round(skill.procMax*100)}% proc
+  </div>
+  </div>
+  </div>
+  <div style={{ fontSize:9, color:P.sub, fontFamily:P.ffb, lineHeight:1.65 }}>{skill.desc}</div>
+  </div>
+  ))}
+  </div>
+  )}
+
+  {/* Conscription */}
+  <div style={{ background:"rgba(255,255,255,.02)", border:`1px solid ${P.border}`,
+  borderRadius:8, padding:"10px 12px" }}>
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
+  marginBottom:8, textTransform:"uppercase" }}>Conscription</div>
+  <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
   {Object.entries(conscriptCost).map(([k, v]) => {
   const [icon, col] = RSS_COL[k] || ["", P.sub];
   return (
-  <span key={k} style={{ fontSize:9, fontFamily:P.ff, color:col }}>
-  {icon} {v}
-  </span>
+  <div key={k} style={{ display:"flex", alignItems:"center", gap:3,
+  background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`,
+  borderRadius:5, padding:"4px 8px" }}>
+  <span style={{fontSize:11}}>{icon}</span>
+  <span style={{ fontSize:9, fontFamily:P.ff, color:col, fontWeight:700 }}>{v}</span>
+  </div>
   );
   })}
   </div>
-  {/* time */}
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".05em", marginBottom:4 }}>TRAIN TIME</div>
-  <div style={{ fontSize:9, fontFamily:P.ff, color:"#e8a840", marginBottom:7 }}>
-  ⏱ {conscriptBase}s per troop <span style={{ fontSize:7, color:P.dim }}>(base)</span>
-  </div>
-  {/* unlock note */}
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ffb, lineHeight:1.65 }}>
-  Tier <strong style={{color:fColor}}>{roman[tierIdx]}</strong> unlocked at branch Lv{tierIdx*2+1}.
-  Train speed scales with Barracks level.
+  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+  <span style={{fontSize:9}}>⏱</span>
+  <span style={{ fontSize:10, fontFamily:P.ff, color:"#e8a840", fontWeight:700 }}>
+  {conscriptBase}s per unit
+  </span>
+  <span style={{ fontSize:7, color:P.dim }}>(base, scales with Barracks)</span>
   </div>
   </div>
-  </div>
+
+  </div>{/* end right panel */}
+  </div>{/* end body */}
   </div>
   );
   }
