@@ -199,14 +199,14 @@ export const HDEFS = [
   { id:"h37", n:"Brother Aldric",          faction:"holyknights",     rarity:"soldier",  cls:"defender", atk:78,  foc:20,  spd:48, icon:"🛡", subspecies:"Templar", portrait:"/commanders/h37_brother_aldric_portrait.webp", bust:"/commanders/h37_brother_aldric_bust.webp" },
   { id:"h38", n:"Commander Vayne",         faction:"holyknights",     rarity:"veteran",  cls:"leader",   atk:130, foc:30,  spd:55, icon:"⚔️", subspecies:"Templar", portrait:"/commanders/h38_commander_vayne_portrait.webp", bust:"/commanders/h38_commander_vayne_bust.webp" },
   { id:"h39", n:"Friar Brennan",           faction:"holyknights",     rarity:"soldier",  cls:"support",  atk:40,  foc:120, spd:52, icon:"✝️", subspecies:"BattlePriest" },
-  { id:"h40", n:"High Warden Seraph",      faction:"holyknights",     rarity:"champion", cls:"attacker", atk:178, foc:40,  spd:60, icon:"☀️", subspecies:"BattlePriest" },
+  { id:"h40", n:"High Warden Seraph",      faction:"holyknights",     rarity:"champion", cls:"attacker", atk:178, foc:40,  spd:60, icon:"☀️", subspecies:"BattlePriest", portrait:"/commanders/h40_high_warden_seraph_portrait.webp",    bust:"/commanders/h40_high_warden_seraph_bust.webp" },
   { id:"h41", n:"Sister Vivara",           faction:"holyknights",     rarity:"veteran",  cls:"support",  atk:45,  foc:145, spd:62, icon:"🌟", subspecies:"Inquisitor"   },
-  { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"attacker", atk:182, foc:20,  spd:58, icon:"🌑", subspecies:"Inquisitor"   },
+  { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"attacker", atk:182, foc:20,  spd:58, icon:"🌑", subspecies:"Inquisitor",   portrait:"/commanders/h42_grand_inquistor_mourne_portrait.webp", bust:"/commanders/h42_grand_inquistor_mourne_bust.webp" },
 
   { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"attacker", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire",      portrait:"/commanders/h43_countess_serava_portrait.webp",  bust:"/commanders/h43_countess_serava_bust.webp" },
-  { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"support",  atk:65,  foc:170, spd:72, icon:"🩸", subspecies:"Vampire"      },
+  { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"support",  atk:65,  foc:170, spd:72, icon:"🩸", subspecies:"Vampire",      portrait:"/commanders/h44_lord_malachar_portrait.webp",          bust:"/commanders/h44_lord_malachar_bust.webp" },
   { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"attacker", atk:92,  foc:0,   spd:80, icon:"🐺", subspecies:"Werewolf",     portrait:"/commanders/h45_fang_groth_portrait.webp",       bust:"/commanders/h45_fang_groth_bust.webp" },
-  { id:"h46", n:"Alpha Korrax",         faction:"nightcreatures",  rarity:"champion", cls:"leader",   atk:185, foc:0,   spd:85, icon:"🌕", subspecies:"Werewolf"     },
+  { id:"h46", n:"Alpha Korrax",         faction:"nightcreatures",  rarity:"champion", cls:"leader",   atk:185, foc:0,   spd:85, icon:"🌕", subspecies:"Werewolf",     portrait:"/commanders/h46_alpha_korrax_portrait.webp",           bust:"/commanders/h46_alpha_korrax_bust.webp" },
   { id:"h47", n:"Skitter Vex",          faction:"nightcreatures",  rarity:"soldier",  cls:"defender", atk:70,  foc:20,  spd:60, icon:"🕷", subspecies:"Spider"       },
   { id:"h48", n:"Widow Nyxara",         faction:"nightcreatures",  rarity:"veteran",  cls:"support",  atk:40,  foc:145, spd:65, icon:"🕸", subspecies:"Spider"       },
 ];
