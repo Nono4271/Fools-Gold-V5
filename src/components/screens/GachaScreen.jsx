@@ -25,7 +25,9 @@ function SlotCard({ slot, index, coll }) {
       }}>
         <div style={{ fontSize: 7, color: "#4a4a5a", fontFamily: "'Cinzel',serif",
           letterSpacing: ".08em", marginBottom: 5 }}>COMMANDER</div>
-        <div style={{ fontSize: 28 }}>{h.icon}</div>
+        <div style={{ width: 56, height: 56, borderRadius: "50%", overflow: "hidden", margin: "0 auto", background: "#0c0a07", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+          {h.bust ? <img src={h.bust} alt={h.n} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : h.icon}
+        </div>
         <div style={{ color: r?.color, fontSize: 7, fontFamily: "'Cinzel',serif",
           fontWeight: 700, marginTop: 3 }}>{r?.n}</div>
         <div style={{ color: "#9a9aba", fontSize: 6, fontFamily: "'Cinzel',serif", marginTop: 1 }}>
@@ -550,7 +552,9 @@ export default function GachaScreen({
                         borderRadius: 5, padding: 6, textAlign: "center",
                         opacity: owned ? 1 : 0.28, filter: owned ? "none" : "grayscale(1)",
                       }}>
-                        <div style={{ fontSize: 20 }}>{owned ? h.icon : "❓"}</div>
+                        <div style={{ width: 40, height: 40, borderRadius: "50%", overflow: "hidden", margin: "0 auto 2px", background: "#0c0a07", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                          {owned && h.bust ? <img src={h.bust} alt={h.n} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : (owned ? h.icon : "❓")}
+                        </div>
                         <div style={{ color: r.color, fontSize: 6, fontFamily: "'Cinzel',serif",
                           fontWeight: 700, marginTop: 1 }}>{r.n}</div>
                         <div style={{ color: "#8a8aaa", fontSize: 6, fontFamily: "'Cinzel',serif",
