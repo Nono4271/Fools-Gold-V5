@@ -22,6 +22,7 @@ const TV = {
   ruin:         { base: hc('#4a4440'), lite: hc('#585050'), shad: hc('#363030') },
   shore:        { base: hc('#b09868'), lite: hc('#c0a878'), shad: hc('#907850') },
   road:         { base: hc('#7a6a50'), lite: hc('#8a7a60'), shad: hc('#5a4e38') },
+  hellfire:     { base: hc('#1e0800'), lite: hc('#320e04'), shad: hc('#0e0400') },
   // Border terrain
   river:        { base: hc('#0e2e58'), lite: hc('#1a4a80'), shad: hc('#081a38') },
   ravine:       { base: hc('#2a1a0c'), lite: hc('#3c2610'), shad: hc('#180e06') },
@@ -205,6 +206,21 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         const key = `${c},${r}`;
         const isSel   = selKey === key;
         const hasCmds = Boolean(cByTile[key]?.length);
+
+        // ── Path tiles: isGate but NOT isKeep — render as plain border terrain ──
+        // These are the 2 passable tiles between Gate A and Gate B. They have no
+        // crossingType, so without this check they'd fall through to the tunnel else.
+        if (!isKeep) {
+          gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
+          if (owner) {
+            const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+            gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
+            if (!isSel) { gfx.lineStyle(2, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
+          }
+          if (hasCmds && !isSel) { gfx.lineStyle(2, 0xf0dc3c, 0.9); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
+          if (isSel) { gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
+          continue;
+        }
 
         if (ct === "crossing") {
           // ── River Crossing Option B: Stone Arches ──
@@ -434,6 +450,12 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         if (zoom >= 0.75) { gfx.lineStyle(2, 0xf0c040, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
       } else {
         gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
+        // Hellfire terrain: add a subtle red-orange lava glow tint over the dark base
+        if (terrain === "hellfire") {
+          const rng2 = tileRng(c + 3, r + 7);
+          const glowAlpha = 0.12 + rng2() * 0.08;
+          gfx.beginFill(0xcc2800, glowAlpha); gfx.drawPolygon(TOP); gfx.endFill();
+        }
         // Shade triangles removed — they created a visible X/cross pattern on each tile.
       }
 
@@ -1181,6 +1203,57 @@ function drawAmbientScatter(gfx, tile, cx, sy, pl = 1) {
     gfx.beginFill(0x1a1814); gfx.drawPolygon([bx, by-h, bx-hw, by, bx+hw*0.1, by]); gfx.endFill();
     gfx.beginFill(0x2e2a24); gfx.drawPolygon([bx, by-h, bx+hw*0.1, by, bx+hw*0.9, by-h*0.35]); gfx.endFill();
     gfx.beginFill(0xdde0e8, 0.50); gfx.drawPolygon([bx, by-h, bx-hw*0.35, by-h*0.72, bx+hw*0.45, by-h*0.68]); gfx.endFill();
+  } else if (terrain === "hellfire") {
+    // Lava fissure cracks on the scorched asphalt surface
+    const rnd2 = tileRng(c + 1, r);
+    const rnd3 = tileRng(c, r + 1);
+    // Dark scorched ground overlay
+    gfx.beginFill(0x0a0300, 0.55);
+    gfx.drawEllipse(cx, cy2, TW * 0.35, TH * 0.20);
+    gfx.endFill();
+    // Glowing lava crack — main diagonal
+    const crackLen = TW * (0.18 + t * 0.22);
+    const crackAngle = 0.35 + rnd() * 0.5;
+    const cx1 = cx + Math.cos(crackAngle) * crackLen * 0.5;
+    const cy1 = cy2 + Math.sin(crackAngle) * crackLen * 0.28;
+    const cx2 = cx - Math.cos(crackAngle) * crackLen * 0.5;
+    const cy2b = cy2 - Math.sin(crackAngle) * crackLen * 0.28;
+    // Glow halo under crack
+    gfx.beginFill(0xff4400, 0.15 + t * 0.10);
+    gfx.drawEllipse(cx, cy2, crackLen * 0.55, crackLen * 0.18);
+    gfx.endFill();
+    // Outer crack (dark border)
+    gfx.lineStyle(2.8 + t * 1.5, 0x0a0200, 0.90);
+    gfx.moveTo(cx1, cy1); gfx.lineTo(cx2, cy2b);
+    gfx.lineStyle(0);
+    // Inner lava glow
+    gfx.lineStyle(1.2 + t * 0.8, 0xff6010, 0.80);
+    gfx.moveTo(cx1, cy1); gfx.lineTo(cx2, cy2b);
+    gfx.lineStyle(0);
+    // Bright centre line
+    gfx.lineStyle(0.5, 0xffcc40, 0.65);
+    gfx.moveTo(cx1, cy1); gfx.lineTo(cx2, cy2b);
+    gfx.lineStyle(0);
+    // Secondary short crack
+    const ang2 = crackAngle + 0.9 + rnd2() * 0.6;
+    const len2 = crackLen * (0.35 + rnd3() * 0.30);
+    const sx = cx + (rnd2() - 0.5) * TW * 0.15;
+    const sy2 = cy2 + (rnd3() - 0.5) * TH * 0.10;
+    gfx.lineStyle(1.8 + t, 0x0a0200, 0.80);
+    gfx.moveTo(sx, sy2); gfx.lineTo(sx + Math.cos(ang2) * len2, sy2 + Math.sin(ang2) * len2 * 0.5);
+    gfx.lineStyle(0);
+    gfx.lineStyle(0.7, 0xee4400, 0.60);
+    gfx.moveTo(sx, sy2); gfx.lineTo(sx + Math.cos(ang2) * len2, sy2 + Math.sin(ang2) * len2 * 0.5);
+    gfx.lineStyle(0);
+    // Ember dots scattered near cracks
+    const emberCount = 2 + Math.floor(t * 2);
+    for (let e = 0; e < emberCount; e++) {
+      const ex = cx + (tileRng(c + e, r)() - 0.5) * TW * 0.40;
+      const ey = cy2 + (tileRng(c, r + e + 1)() - 0.5) * TH * 0.25;
+      const er = 0.8 + t * 0.6;
+      const alpha = 0.55 + tileRng(c + e, r + e)() * 0.30;
+      gfx.beginFill(0xff8820, alpha); gfx.drawCircle(ex, ey, er); gfx.endFill();
+    }
   } else if (terrain === "grass" || terrain === "forest") {
     const sz = (1.2 + t * 2.8) * (0.6 + rnd()*0.8);
     gfx.beginFill(rnd()>0.5?v.lite:v.base, 0.50); gfx.drawEllipse(cx+(rnd()-0.5)*TW*0.3, cy2+(rnd()-0.5)*TH*0.25, sz*0.9, sz*0.5); gfx.endFill();
