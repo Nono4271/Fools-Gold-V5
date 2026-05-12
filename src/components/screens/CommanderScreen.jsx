@@ -7,6 +7,7 @@ import {
   respectCost, RESPECT_MAX, PROMO,
   PLAYABLE_FACTIONS, ALIGNMENT, addRespect,
   SUBSPECIES, getSubspecies, getFactionAlignment,
+  HDEFS,
 } from "../../../shared/constants/heroes.js";
 import {
   MAIN_SKILLS, SIDE_SKILLS,
@@ -144,7 +145,7 @@ function Connector({ x1, y1, x2, y2, color, lit, dashed }) {
 }
 
 // ── Skill info panel (shown when a node is tapped) ────────────────────────────
-function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canLevelUp, gateLocked, onLevelUp, onClose }) {
+function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canLevelUp, gateLocked, branchLocked, onLevelUp, onClose }) {
   if (!skillDef) return null;
   const atMax = level >= maxLevel;
   return (
@@ -239,12 +240,14 @@ function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canL
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             transition: "all .15s", opacity: canLevelUp ? 1 : 0.7,
           }}>
-          <span style={{ fontSize: 14 }}>{gateLocked ? "🔒" : "✦"}</span>
+          <span style={{ fontSize: 14 }}>{branchLocked ? "🔒" : gateLocked ? "🔒" : "✦"}</span>
           {canLevelUp
             ? "Upgrade (1 point)"
-            : gateLocked
-              ? "Upgrade main skill first"
-              : "No skill points available"}
+            : branchLocked
+              ? "Skill locked — earn Respect to unlock"
+              : gateLocked
+                ? "Upgrade main skill first"
+                : "No skill points available"}
         </button>
       )}
     </div>
@@ -357,9 +360,9 @@ function BranchRow({
           const gateLocked = lvl >= cap;
           return (
             <g transform={`translate(${leftX - sideSz / 2},${mainY - sideSz / 2})`}
-              onClick={() => !nodeLocked && onNodeClick(sk, false, gateLocked && lvl < 5)}
-              onTouchEnd={(e) => { e.preventDefault(); !nodeLocked && onNodeClick(sk, false, gateLocked && lvl < 5); }}
-              style={{ cursor: nodeLocked ? "default" : "pointer", touchAction: "manipulation" }}>
+              onClick={() => onNodeClick(sk, false, gateLocked && lvl < 5, nodeLocked)}
+              onTouchEnd={(e) => { e.preventDefault(); onNodeClick(sk, false, gateLocked && lvl < 5, nodeLocked); }}
+              style={{ cursor: "pointer", touchAction: "manipulation" }}>
               <FactionNode faction={faction} size={sideSz}
                 filled={lvl > 0} color={color} accent={accent}
                 locked={nodeLocked} isMain={false} selected={sel} />
@@ -391,9 +394,9 @@ function BranchRow({
           const gateLocked = lvl >= cap;
           return (
             <g transform={`translate(${rightX - sideSz / 2},${mainY - sideSz / 2})`}
-              onClick={() => !nodeLocked && onNodeClick(sk, false, gateLocked && lvl < 5)}
-              onTouchEnd={(e) => { e.preventDefault(); !nodeLocked && onNodeClick(sk, false, gateLocked && lvl < 5); }}
-              style={{ cursor: nodeLocked ? "default" : "pointer", touchAction: "manipulation" }}>
+              onClick={() => onNodeClick(sk, false, gateLocked && lvl < 5, nodeLocked)}
+              onTouchEnd={(e) => { e.preventDefault(); onNodeClick(sk, false, gateLocked && lvl < 5, nodeLocked); }}
+              style={{ cursor: "pointer", touchAction: "manipulation" }}>
               <FactionNode faction={faction} size={sideSz}
                 filled={lvl > 0} color={color} accent={accent}
                 locked={nodeLocked} isMain={false} selected={sel} />
@@ -544,10 +547,10 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
   const fColor = factionTheme.color;
   const fAccent = factionTheme.accent;
 
-  function handleNodeClick(skillDef, isMain, gateLocked, mainKeyForBranch) {
+  function handleNodeClick(skillDef, isMain, gateLocked, branchLocked, mainKeyForBranch) {
     const key = skillDef.key;
     if (selectedNode?.skillKey === key) { setSelectedNode(null); return; }
-    setSelectedNode({ skillDef, isMain, skillKey: key, mainKeyForBranch, gateLocked });
+    setSelectedNode({ skillDef, isMain, skillKey: key, mainKeyForBranch, gateLocked, branchLocked });
   }
 
   // Live read from cmds for reactivity
@@ -567,7 +570,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
   // selected node's live data
   const selLevel   = selectedNode ? (liveSkillPts[selectedNode.skillKey] ?? 0) : 0;
   const selMaxLvl  = selectedNode?.isMain ? 10 : 5;
-  const selCanUp   = liveUnspent > 0 && selLevel < selMaxLvl && !selectedNode?.gateLocked;
+  const selCanUp   = liveUnspent > 0 && selLevel < selMaxLvl && !selectedNode?.gateLocked && !selectedNode?.branchLocked;
 
   return (
     <div style={{
@@ -739,11 +742,12 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
                   tag={tag}
                   treeIcon={tree.icon}
                   unlocksAt={unlocksAt}
-                  onNodeClick={(sk, isMain, gL) =>
+                  onNodeClick={(sk, isMain, gL, nodeLk) =>
                     handleNodeClick(
                       isMain ? { ...mainSkill, ...MAIN_SKILLS[mainSkill.key] } : { ...sk, ...SIDE_SKILLS[sk.key] },
                       isMain,
                       gL,
+                      nodeLk,
                       isMain ? null : mainSkill.key,
                     )
                   }
@@ -761,7 +765,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
             (selectedNode.mainKeyForBranch
               ? liveLevel >= getSideCap(selectedNode.mainKeyForBranch)
               : false);
-          const canUp = liveUnspent > 0 && liveLevel < maxLvl && !liveGate;
+          const canUp = liveUnspent > 0 && liveLevel < maxLvl && !liveGate && !selectedNode.branchLocked;
           return (
             <SkillInfoPanel
               skillDef={selectedNode.skillDef}
@@ -772,6 +776,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
               accent={fAccent}
               canLevelUp={canUp}
               gateLocked={liveGate}
+              branchLocked={selectedNode.branchLocked}
               onLevelUp={() => handleLevelUp(selectedNode.skillKey, selectedNode.mainKeyForBranch)}
               onClose={() => setSelectedNode(null)}
             />
@@ -783,7 +788,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
 }
 
 // ── Portrait circle (left roster column) ──────────────────────────────────────
-function RosterPortrait({ cmd, selected, onClick }) {
+function RosterPortrait({ cmd, selected, onClick, isLocked, isOppositeAlignment }) {
   const r = RARITY[cmd.rarity] ?? RARITY.soldier;
   const rLvl = cmd.respectLevel ?? 0;
 
@@ -856,11 +861,18 @@ function RosterPortrait({ cmd, selected, onClick }) {
       {/* First name label */}
       <div style={{
         fontFamily: "'Cinzel',serif", fontSize: 7, marginTop: 2,
-        color: selected ? r.color : "#4a3a28",
+        color: selected ? ((isLocked || isOppositeAlignment) ? "#777" : r.color) : "#4a3a28",
         textAlign: "center", maxWidth: 64,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         transition: "color .15s",
       }}>{cmd.n.split(" ")[0]}</div>
+      {/* Opposite alignment warning */}
+      {isOppositeAlignment && (
+        <div style={{
+          fontSize: 5, color: "#cc4040", fontFamily: "'Cinzel',serif",
+          textAlign: "center", lineHeight: 1.2, maxWidth: 64, marginTop: -3,
+        }}>OPP. ALIGN.</div>
+      )}
     </div>
   );
 }
@@ -1831,7 +1843,26 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
   const allPlayer = cmds.filter(c => c.owner === "player");
   const activeFilterCount = [filterClass, filterAlignment, filterSubspecies].filter(Boolean).length;
 
-  const filtered = allPlayer.filter(c => {
+  // Determine player alignment to flag opposite-alignment commanders
+  const playerFactionKey = allPlayer[0]?.faction ?? null;
+  const playerAlnKey = playerFactionKey ? getFactionAlignment(playerFactionKey) : null;
+
+  // Build a full roster: owned commanders first (real data), then unowned HDEFS as preview stubs
+  const ownedIds = new Set(allPlayer.map(c => c.id ?? c.uid));
+  const unownedStubs = HDEFS
+    .filter(h => !ownedIds.has(h.id))
+    .map(h => ({
+      ...h,
+      uid: `stub_${h.id}`,
+      owner: "unowned",
+      lvl: 1, xp: 0, respectLevel: 0, respectPoints: 0,
+      skillPoints: {}, march: null,
+      _isStub: true,
+    }));
+
+  const allRosterCmds = [...allPlayer, ...unownedStubs];
+
+  const filtered = allRosterCmds.filter(c => {
     if (filterClass && c.cls !== filterClass) return false;
     if (filterAlignment) {
       const aln = ALIGNMENT[filterAlignment];
@@ -1847,14 +1878,18 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
     }
     return true;
   }).sort((a, b) => {
+    // Owned always before unowned
+    const aOwned = !a._isStub ? 0 : 1;
+    const bOwned = !b._isStub ? 0 : 1;
+    if (aOwned !== bOwned) return aOwned - bOwned;
     if (sortBy === "rarity")  return (RARITY_ORDER[a.rarity] ?? 3) - (RARITY_ORDER[b.rarity] ?? 3);
     if (sortBy === "level")   return (b.lvl ?? 5) - (a.lvl ?? 5);
     if (sortBy === "respect") return (b.respectLevel ?? 0) - (a.respectLevel ?? 0);
     return 0;
   });
 
-  const [selectedUid, setSelectedUid] = useState(initialUid ?? filtered[0]?.uid ?? null);
-  const selectedCmd = filtered.find(c => c.uid === selectedUid) ?? filtered[0] ?? null;
+  const [selectedUid, setSelectedUid] = useState(initialUid ?? allPlayer[0]?.uid ?? null);
+  const selectedCmd = filtered.find(c => c.uid === selectedUid) ?? allPlayer[0] ?? filtered[0] ?? null;
 
   return (
     <div style={{
@@ -1927,14 +1962,21 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           </div>
           {/* 2-column portrait grid */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-            {filtered.map(cmd => (
-              <RosterPortrait
-                key={cmd.uid}
-                cmd={cmd}
-                selected={cmd.uid === selectedUid}
-                onClick={() => setSelectedUid(cmd.uid)}
-              />
-            ))}
+            {filtered.map(cmd => {
+              const cmdAlnKey = getFactionAlignment(cmd.faction);
+              const isOppositeAlignment = playerAlnKey && cmdAlnKey !== playerAlnKey;
+              const isLocked = cmd._isStub;
+              return (
+                <RosterPortrait
+                  key={cmd.uid}
+                  cmd={cmd}
+                  selected={cmd.uid === selectedUid}
+                  onClick={() => setSelectedUid(cmd.uid)}
+                  isLocked={isLocked}
+                  isOppositeAlignment={!isLocked && isOppositeAlignment}
+                />
+              );
+            })}
           </div>
           {filtered.length === 0 && (
             <div style={{ padding: "20px 8px", textAlign: "center", color: "#2a2010",
@@ -1971,6 +2013,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                 ? <img src={selectedCmd.portrait} alt={selectedCmd.n} style={{
                     width: "100%", height: "100%", objectFit: "contain", objectPosition: "center",
                     display: "block",
+                    filter: selectedCmd._isStub ? "grayscale(1) brightness(0.45)" : "none",
                     maskImage: "linear-gradient(to bottom, black 60%, transparent 100%), linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
                     WebkitMaskImage: "linear-gradient(to bottom, black 60%, transparent 100%), linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
                     maskComposite: "intersect",
@@ -1978,23 +2021,37 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                   }} />
                 : <div style={{
                     fontSize: 72, lineHeight: 1,
-                    filter: `drop-shadow(0 0 24px ${fCol}88)`,
+                    filter: selectedCmd._isStub ? "grayscale(1) brightness(0.4)" : `drop-shadow(0 0 24px ${fCol}88)`,
                     marginBottom: 12,
                   }}>{selectedCmd.icon}</div>
               }
               {/* Name */}
               <div style={{
                 fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 10,
-                color: "#c8b890", letterSpacing: ".04em", textAlign: "center",
+                color: selectedCmd._isStub ? "#666" : "#c8b890", letterSpacing: ".04em", textAlign: "center",
                 padding: "0 8px",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 maxWidth: "100%",
               }}>{selectedCmd.n}</div>
+              {/* Opposite alignment warning in col2 */}
+              {selectedCmd._isStub && (() => {
+                const _alnKey = getFactionAlignment(selectedCmd.faction);
+                const _isOpp = playerAlnKey && _alnKey !== playerAlnKey;
+                return _isOpp ? (
+                  <div style={{ fontSize: 7, color: "#cc4040", fontFamily: "'Cinzel',serif",
+                    fontWeight: 700, marginTop: 4, textAlign: "center", padding: "0 8px" }}>
+                    ✖ OPPOSITE ALIGNMENT
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 7, color: "#8a6830", fontFamily: "'Cinzel',serif",
+                    marginTop: 4, textAlign: "center" }}>🔒 Not Summoned</div>
+                );
+              })()}
               {/* Faction */}
               {faction2 && (
                 <div style={{
                   marginTop: 5, fontSize: 9,
-                  color: fCol, fontFamily: "'Cinzel',serif",
+                  color: selectedCmd._isStub ? "#555" : fCol, fontFamily: "'Cinzel',serif",
                   opacity: 0.8,
                 }}>{faction2.s} {faction2.n}</div>
               )}
@@ -2008,7 +2065,74 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           display: "flex", flexDirection: "column",
           paddingRight: "max(12px, env(safe-area-inset-right, 12px))",
         }}>
-          {selectedCmd
+          {selectedCmd && selectedCmd._isStub ? (() => {
+            const r3 = RARITY[selectedCmd.rarity] ?? RARITY.soldier;
+            const cmdAlnKey3 = getFactionAlignment(selectedCmd.faction);
+            const isOpp3 = playerAlnKey && cmdAlnKey3 !== playerAlnKey;
+            const f3 = PLAYABLE_FACTIONS.find(f => f.key === selectedCmd.faction);
+            return (
+              <div style={{ height: "100%", overflowY: "auto", padding: "14px 12px 40px" }}>
+                {/* Locked banner */}
+                <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid #2a2010",
+                  borderRadius: 8, padding: "10px 14px", marginBottom: 12, textAlign: "center" }}>
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>🔒</div>
+                  {isOpp3 ? (
+                    <>
+                      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#cc4040",
+                        fontWeight: 700, letterSpacing: ".06em" }}>OPPOSITE ALIGNMENT</div>
+                      <div style={{ fontSize: 8, color: "#6a4a4a", fontFamily: "'Cinzel',serif",
+                        marginTop: 4, lineHeight: 1.5 }}>
+                        This commander cannot be played this season.<br/>They belong to the opposing alignment.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#aa8840",
+                        fontWeight: 700, letterSpacing: ".06em" }}>NOT YET SUMMONED</div>
+                      <div style={{ fontSize: 8, color: "#6a5a3a", fontFamily: "'Cinzel',serif",
+                        marginTop: 4, lineHeight: 1.5 }}>
+                        Summon this commander from the portal to recruit them.
+                      </div>
+                    </>
+                  )}
+                </div>
+                {/* Basic stats preview */}
+                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: "#5a4a30",
+                  letterSpacing: ".08em", marginBottom: 6 }}>COMMANDER PREVIEW</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+                  {[
+                    ["⚔ ATK", selectedCmd.atk ?? "—"],
+                    ["👁 FOC", selectedCmd.foc ?? "—"],
+                    ["💨 SPD", selectedCmd.spd ?? "—"],
+                    ["✦ CLASS", CLASS[selectedCmd.cls]?.n ?? selectedCmd.cls],
+                    ["⭐ RARITY", r3.n],
+                    ["🏷 SUBSPECIES", selectedCmd.subspecies ?? "—"],
+                  ].map(([lbl, val]) => (
+                    <div key={lbl} style={{ background: "rgba(255,255,255,.02)", border: "1px solid #1a1408",
+                      borderRadius: 5, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 6, color: "#5a4a30", fontFamily: "'Cinzel',serif",
+                        letterSpacing: ".05em", marginBottom: 2 }}>{lbl}</div>
+                      <div style={{ fontSize: 10, color: "#c0a870", fontFamily: "'Cinzel',serif",
+                        fontWeight: 700 }}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Faction */}
+                {f3 && (
+                  <div style={{ background: `${f3.c}10`, border: `1px solid ${f3.c}30`,
+                    borderRadius: 5, padding: "7px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 14 }}>{f3.s}</span>
+                    <div>
+                      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: f3.c,
+                        fontWeight: 700 }}>{f3.n}</div>
+                      <div style={{ fontSize: 7, color: "#5a4a30", fontFamily: "'Cinzel',serif",
+                        marginTop: 1 }}>{f3.desc}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })() : selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
             : (
               <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center",

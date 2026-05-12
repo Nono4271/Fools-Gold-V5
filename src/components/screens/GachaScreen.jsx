@@ -329,7 +329,7 @@ export default function GachaScreen({
   screen, tiles, gems, pull,
   pullResults, coll, gearInventory, respectSchematics,
   cmds, setCmds, onSchematicUsed,
-  pityCounters, isFreeAvailable, isHalfAvailable, playerAlignment, setScreen,
+  pityCounters, isFreeAvailable, isHalfAvailable, playerAlignment, setScreen, onOpenCommander,
 }) {
   const aln = ALIGNMENT[playerAlignment];
   const [activeTab, setActiveTab] = useState("summon"); // "summon" | "gear" | "collection"
@@ -549,22 +549,29 @@ export default function GachaScreen({
                     const r = RARITY[h.rarity];
                     const cls = CLASS[h.cls];
                     return (
-                      <div key={h.id} style={{
+                      <div key={h.id}
+                        onClick={() => {
+                          const ownedCmd = cmds?.find(c => c.id === h.id && c.owner === "player");
+                          if (onOpenCommander) onOpenCommander(ownedCmd?.uid ?? null, h.id);
+                        }}
+                        style={{
                         background: "rgba(255,255,255,.02)",
-                        border: `1px solid ${owned ? r.color + "70" : "#131318"}`,
+                        border: `1px solid ${owned ? r.color + "70" : "#1a1820"}`,
                         borderRadius: 5, padding: 6, textAlign: "center",
-                        opacity: owned ? 1 : 0.28, filter: owned ? "none" : "grayscale(1)",
+                        opacity: owned ? 1 : 0.4, filter: owned ? "none" : "grayscale(0.75)",
+                        cursor: "pointer", transition: "opacity .15s, border-color .15s",
                       }}>
-                        <div style={{ width: 40, height: 40, borderRadius: "50%", overflow: "hidden", margin: "0 auto 2px", background: "#0c0a07", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
-                          {owned && h.bust ? <img src={h.bust} alt={h.n} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : (owned ? h.icon : "❓")}
+                        <div style={{ width: 40, height: 40, borderRadius: "50%", overflow: "hidden", margin: "0 auto 2px", background: "#0c0a07", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+                          filter: owned ? "none" : "grayscale(1) brightness(0.5)" }}>
+                          {owned && h.bust ? <img src={h.bust} alt={h.n} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : h.icon}
                         </div>
                         <div style={{ color: r.color, fontSize: 6, fontFamily: "'Cinzel',serif",
                           fontWeight: 700, marginTop: 1 }}>{r.n}</div>
                         <div style={{ color: "#8a8aaa", fontSize: 6, fontFamily: "'Cinzel',serif",
                           marginTop: 1 }}>{cls?.icon} {cls?.n}</div>
                         <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7,
-                          color: "#c0b090", lineHeight: 1.3, marginTop: 2 }}>
-                          {owned ? h.n : "???"}
+                          color: owned ? "#c0b090" : "#5a4a3a", lineHeight: 1.3, marginTop: 2 }}>
+                          {h.n}
                         </div>
                       </div>
                     );
