@@ -6,6 +6,7 @@ export const TERR_VIS = {
   ruin:         { top:"#3a3430", topL:"#504846", lWall:"#1e1c1a", rWall:"#181614", elev:4 },
   shore:        { top:"#b09060", topL:"#c8a870", lWall:"#7a6040", rWall:"#5a4830", elev:4 },
   road:         { top:"#7a6a50", topL:"#8a7a60", lWall:"#4a3e2e", rWall:"#3a3022", elev:2 },
+  hellfire:     { top:"#1a0800", topL:"#2e0e04", lWall:"#0e0400", rWall:"#080200", elev:2 },
   // Border terrain — impassable except at gate/crossing tiles
   river:        { top:"#0a1e3a", topL:"#1a3a60", lWall:"#041228", rWall:"#030e1e", elev:0 },
   ravine:       { top:"#1e100a", topL:"#2e1808", lWall:"#120808", rWall:"#0c0604", elev:0 },
@@ -20,6 +21,7 @@ export const TERR = {
   ruin:         { lbl:"Ruin",         icon:"🏚",  def:20, w:0,  impassable:false },
   shore:        { lbl:"Shoreline",    icon:"🏖",  def:0,  w:0,  impassable:false },
   road:         { lbl:"Road",         icon:"🛤",  def:0,  w:50, impassable:false },
+  hellfire:     { lbl:"Hellfire Road",icon:"🔥",  def:0,  w:50, impassable:false },
   // Border terrain
   river:        { lbl:"River",        icon:"🌊", def:0,  w:0,  impassable:true  },
   ravine:       { lbl:"Ravine",       icon:"🏔",  def:0,  w:0,  impassable:true  },
