@@ -119,7 +119,7 @@ export default memo(function TilePopup({
                   border:"1px solid rgba(96,192,240,.2)",
                   borderRadius:4, cursor:"pointer",
                 }}>
-                {cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{width:20,height:20,borderRadius:"50%",objectFit:"cover",flexShrink:0}} /> : <span style={{fontSize:14}}>{cmd.icon}</span>}
+                <span style={{fontSize:14}}>{cmd.icon}</span>
                 <div style={{flex:1, minWidth:0}}>
                   <div style={{fontFamily:"'Cinzel',serif", fontSize:8, color:"#c0e0f8", fontWeight:700,
                     overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{cmd.n}</div>
@@ -285,6 +285,7 @@ export default memo(function TilePopup({
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>Lv{dc.lvl??"?"}</div><div style={{fontSize:6,color:"#5a4a40"}}>Level</div></div>
                   <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>{(dc.troops??0).toLocaleString()}</div><div style={{fontSize:6,color:"#5a4a40"}}>Troops</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#c08040",fontWeight:700}}>{(selTile.garrison??selTile.garrisonTroops??0).toLocaleString()}</div><div style={{fontSize:6,color:"#5a4a40"}}>Command</div></div>
                   {/* Fog of war: never show enemy commander name or troop type */}
                   {!isAiOwned && tt && <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto"}}><span style={{fontSize:7,color:tt.color,fontFamily:"'Cinzel',serif"}}>{tt.label}</span></div>}
                   {isAiOwned && <div style={{marginLeft:"auto",fontSize:7,color:"#5a4040",fontFamily:"'Cinzel',serif",fontStyle:"italic"}}>Enemy Commander</div>}
@@ -304,7 +305,7 @@ export default memo(function TilePopup({
                 const stamColor = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
                 return (
                   <div key={cmd.uid} style={{display:"flex",alignItems:"center",gap:4,marginBottom:2,padding:"2px 4px",background:"rgba(60,170,80,.07)",borderRadius:3,border:"1px solid rgba(60,170,80,.2)"}}>
-                    {cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{width:16,height:16,borderRadius:"50%",objectFit:"cover",flexShrink:0}} /> : <span style={{fontSize:10}}>{cmd.icon}</span>}
+                    <span style={{fontSize:10}}>{cmd.icon}</span>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:4}}>
                         <span style={{fontFamily:"'Cinzel',serif",fontSize:7,color:"#90c870",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cmd.n}</span>
@@ -340,7 +341,7 @@ export default memo(function TilePopup({
               <div key={cmd.uid} style={{marginBottom:4,padding:"4px 6px",background:"rgba(192,160,0,.1)",borderRadius:3,border:"1px solid rgba(192,160,0,.4)"}}>
                 <div style={{fontSize:7,color:"#c8a020",fontFamily:"'Cinzel',serif",letterSpacing:".06em",marginBottom:3}}>⚔ DRAW — REMATCH PENDING</div>
                 <div style={{display:"flex",alignItems:"center",gap:4}}>
-                  {cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{width:16,height:16,borderRadius:"50%",objectFit:"cover",flexShrink:0}} /> : <span style={{fontSize:10}}>{cmd.icon}</span>}
+                  <span style={{fontSize:10}}>{cmd.icon}</span>
                   <span style={{fontSize:7,color:"#d0b840",fontFamily:"'Cinzel',serif",flex:1}}>{cmd.n}</span>
                   <span style={{fontSize:8,color:"#e0c040",fontWeight:700,minWidth:32,textAlign:"right"}}>
                     {mins}:{secs.toString().padStart(2,"0")}
@@ -362,7 +363,7 @@ export default memo(function TilePopup({
                 const eta = Math.ceil((cmd.march.path.length-cmd.march.step-1)*cmd.march.stepMs/1000);
                 return (
                   <div key={cmd.uid} style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}>
-                    {cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{width:16,height:16,borderRadius:"50%",objectFit:"cover",flexShrink:0}} /> : <span style={{fontSize:10}}>{cmd.icon}</span>}
+                    <span style={{fontSize:10}}>{cmd.icon}</span>
                     <span style={{fontSize:7,color:"#c0a860",fontFamily:"'Cinzel',serif",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cmd.n}</span>
                     <span style={{fontSize:6,color:cmd.march.type==="attack"?"#ff6666":"#44cc88",flexShrink:0}}>~{eta}s</span>
                     <button className="btn" onClick={() => recallMarch(cmd.uid)}
@@ -472,7 +473,7 @@ export default memo(function TilePopup({
             {cmdsOnSel.filter(c=>!c.march).map(cmd => (
               <div key={cmd.uid} onClick={() => { recallStationary(cmd.uid); setPopupMode("main"); }}
                 style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,padding:"4px 6px",background:"rgba(240,192,64,.07)",border:"1px solid rgba(240,192,64,.2)",borderRadius:4,cursor:"pointer"}}>
-                {cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{width:22,height:22,borderRadius:"50%",objectFit:"cover",flexShrink:0}} /> : <span style={{fontSize:14}}>{cmd.icon}</span>}
+                <span style={{fontSize:14}}>{cmd.icon}</span>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:"#e0d0c0",fontWeight:700}}>{cmd.n}</div>
                   <div style={{fontSize:7,color:"#7a7a5a"}}>{(()=>{ const slots=cmd.troopSlots||[]; if(slots.length>0) return slots.map(sl=>tbInfo(sl.branch)?.label).filter(Boolean).join(' + ')+' · '+(cmd.troops||0).toLocaleString(); if(cmd.troopBranch) return tbInfo(cmd.troopBranch)?.label+' · '+(cmd.troops||0).toLocaleString(); return 'No troops'; })()}</div>
@@ -496,7 +497,7 @@ export default memo(function TilePopup({
           return (
             <div>
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,padding:"4px 6px",background:"rgba(60,170,80,.07)",borderRadius:3,border:"1px solid rgba(60,170,80,.2)"}}>
-                {cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{width:24,height:24,borderRadius:"50%",objectFit:"cover",flexShrink:0}} /> : <span style={{fontSize:16}}>{cmd.icon}</span>}
+                <span style={{fontSize:16}}>{cmd.icon}</span>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:"#90c870",fontWeight:700}}>{cmd.n} Lv{cmd.lvl||5}</div>
                   <div style={{fontSize:7,color:"#6a8a6a"}}>{(cmd.troops||0).toLocaleString()} total troops</div>
