@@ -599,7 +599,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
           color: "#8a7a50", fontSize: 16, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>←</button>
-        <div style={{ fontSize: 26 }}>{cmd.icon}</div>
+        <div style={{ width: 34, height: 34, borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>{cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : cmd.icon}</div>
         <div>
           <div style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 14, color: "#e8dcc8" }}>
             {cmd.n}
@@ -817,7 +817,7 @@ function RosterPortrait({ cmd, selected, onClick }) {
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 28, overflow: "hidden", position: "relative",
         }}>
-          {cmd.icon}
+          {cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"50%" }} /> : cmd.icon}
           <div style={{
             position: "absolute", bottom: 0, left: 0, right: 0, height: "38%",
             background: "linear-gradient(to top, rgba(0,0,0,.75), transparent)",
@@ -1965,12 +1965,19 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                 background: `radial-gradient(circle, ${fCol}28 0%, transparent 70%)`,
                 pointerEvents: "none",
               }}/>
-              {/* Commander icon — large */}
-              <div style={{
-                fontSize: 72, lineHeight: 1,
-                filter: `drop-shadow(0 0 24px ${fCol}88)`,
-                marginBottom: 12,
-              }}>{selectedCmd.icon}</div>
+              {/* Commander portrait / icon — large */}
+              {selectedCmd.portrait
+                ? <img src={selectedCmd.portrait} alt={selectedCmd.n} style={{
+                    width: "100%", maxHeight: 280, objectFit: "cover", objectPosition: "top",
+                    display: "block", marginBottom: 12,
+                    filter: `drop-shadow(0 0 24px ${fCol}88)`,
+                  }} />
+                : <div style={{
+                    fontSize: 72, lineHeight: 1,
+                    filter: `drop-shadow(0 0 24px ${fCol}88)`,
+                    marginBottom: 12,
+                  }}>{selectedCmd.icon}</div>
+              }
               {/* Name */}
               <div style={{
                 fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 10,
