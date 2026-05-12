@@ -217,7 +217,7 @@ export const HDEFS = [
 // Stats are ~50% of average soldier-rarity playable commanders.
 // Power level mapping: P1 → Skirmisher, P2 → Raider, P3/P4 → Outlaw
 export const NPC_COMMANDERS = {
-  skirmisher: { id:"npc1", n:"Skirmisher", icon:"⚔",  faction:null, rarity:"soldier", cls:"attacker", atk:45, foc:0,  spd:35, troopBranch:{ faction:"pirates",  branch:"cutthroats",   tier:0 } },
+  skirmisher: { id:"npc1", n:"Skirmisher", icon:"⚔",  faction:null, rarity:"soldier", cls:"attacker", atk:45, foc:0,  spd:35, troopBranch:{ faction:"pirates",  branch:"swashbucklers", tier:0 } },
   raider:     { id:"npc2", n:"Raider",     icon:"🗡",  faction:null, rarity:"soldier", cls:"attacker", atk:50, foc:0,  spd:38, troopBranch:{ faction:"orcs",     branch:"grunts",     tier:0 } },
   outlaw:     { id:"npc3", n:"Outlaw",     icon:"💀",  faction:null, rarity:"soldier", cls:"attacker", atk:55, foc:10, spd:40, troopBranch:{ faction:"pirates",   branch:"swashbucklers", tier:0 } },
 };
