@@ -168,17 +168,43 @@ const REGION_KEY_TO_IDX = {};
 REGION_LIST.forEach((r,i) => { REGION_KEY_TO_IDX[r.key] = i+1; });
 
 // Biome seeds scaled for 1400x1000
+// ── Terrain clusters ──────────────────────────────────────────────────────────
+// The map is divided into 16 macro-regions, each assigned a dominant biome.
+// Multiple seeds per region produce organic cluster shapes via Voronoi BFS.
+// Biome assignments are hand-tuned so adjacent regions feel distinct.
+const BIOME_CLUSTERS = [
+  // [cx, cy, terrain, numSeeds, spreadRadius]
+  { cx:229,  cy:141,  t:"forest",   n:12, r:100 },  // pirates NW
+  { cx:427,  cy:141,  t:"mountain", n:10, r:90  },  // pirates E / conflict NW
+  { cx:613,  cy:141,  t:"grass",    n:12, r:100 },  // conflict N centre-W
+  { cx:788,  cy:141,  t:"desert",   n:10, r:90  },  // conflict N centre-E
+  { cx:975,  cy:141,  t:"mountain", n:10, r:90  },  // nightcreatures SW
+  { cx:1173, cy:141,  t:"forest",   n:12, r:100 },  // nightcreatures N
+  { cx:229,  cy:340,  t:"mountain", n:10, r:90  },  // pirates S / dragons N
+  { cx:580,  cy:275,  t:"desert",   n:10, r:90  },  // conflict mid-W
+  { cx:788,  cy:275,  t:"grass",    n:12, r:100 },  // holy-grail / conflict mid-E
+  { cx:1074, cy:340,  t:"desert",   n:10, r:90  },  // nightcreatures S / orcs N
+  { cx:229,  cy:520,  t:"forest",   n:12, r:100 },  // dragons / scorchveil
+  { cx:450,  cy:430,  t:"mountain", n:10, r:90  },  // dragons E / conflict SW
+  { cx:788,  cy:474,  t:"grass",    n:12, r:100 },  // holyknights N / centre
+  { cx:1074, cy:520,  t:"forest",   n:10, r:90  },  // orcs S / grimhold
+  { cx:430,  cy:720,  t:"desert",   n:12, r:100 },  // bountyhunters W
+  { cx:900,  cy:720,  t:"mountain", n:12, r:100 },  // holyknights S / sacredVale
+];
+
 const BIOME_SEEDS = (() => {
   let s = 0xdeadbeef|0;
   const rng = () => { s=(Math.imul(s,1664525)+1013904223)|0; return((s>>>0)/0xffffffff); };
   const seeds = [];
-  [["grass",80],["forest",60],["mountain",55],["desert",55]].forEach(([t,n]) => {
-    for (let i=0;i<n;i++) {
-      let c,r;
-      do { c=Math.floor(rng()*1400); r=Math.floor(rng()*1000); } while (Math.max(c,r)<50 && t!=="grass");
-      seeds.push({c,r,t});
+  for (const { cx, cy, t, n, r } of BIOME_CLUSTERS) {
+    for (let i = 0; i < n; i++) {
+      const angle = rng() * Math.PI * 2;
+      const dist  = rng() * r;
+      const c   = Math.round(cx + Math.cos(angle) * dist);
+      const row = Math.round(cy + Math.sin(angle) * dist);
+      if (c >= 0 && c < 1400 && row >= 0 && row < 1000) seeds.push({ c, r: row, t });
     }
-  });
+  }
   return seeds;
 })();
 const TERRAIN_NAMES = ["grass","forest","mountain","desert","river","ravine","rockymountain"];
@@ -479,7 +505,7 @@ function buildLookups() {
   return {TERRAIN_MAP,REGION_MAP};
 }
 
-function randomSpawn(regionKey, usedKeys, flagArr) {
+function randomSpawn(regionKey, usedKeys, flagArr, terrainArr) {
   const reg=REGION_LIST.find(r=>r.key===regionKey);
   if (!reg) return null;
   for (let attempt=0;attempt<200;attempt++) {
@@ -491,11 +517,15 @@ function randomSpawn(regionKey, usedKeys, flagArr) {
     // Also skip any dynamically placed P10-13 structure or its parts
     const fl = flagArr[r*COLS+c];
     if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) continue;
-    // Ensure 2x2 HQ footprint cells are also clear
+    // Don't spawn HQ on a road tile
+    if (terrainArr[r*COLS+c] === TERRAIN_ENC.road) continue;
+    // Ensure 2x2 HQ footprint cells are also clear and road-free
     let footClear = true;
     for (const [dc,dr] of [[1,0],[0,1],[1,1]]) {
-      const fl2 = flagArr[(r+dr)*COLS+(c+dc)];
+      const ti = (r+dr)*COLS+(c+dc);
+      const fl2 = flagArr[ti];
       if (fl2 & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { footClear=false; break; }
+      if (terrainArr[ti] === TERRAIN_ENC.road) { footClear=false; break; }
     }
     if (!footClear) continue;
     return k;
@@ -580,6 +610,52 @@ self.onmessage = function(e) {
 
   postMessage({ type:"progress", pct:82, label:"Placing keeps..." });
 
+  // ── Pre-compute road tile set so P10+ keeps don't land on roads ──────────────
+  // Roads are stamped later (pct 94) but segments are static, so we can walk them now.
+  const ROAD_TILE_SET = new Set();
+  {
+    const addRoadTile = (c, r) => { if (c>=0&&r>=0&&c<COLS&&r<ROWS) ROAD_TILE_SET.add(r*COLS+c); };
+    const ROAD_SEGS_EARLY = [
+      [229,207,229,141],[229,209,229,274],[427,207,427,141],[427,209,460,242],
+      [613,207,613,141],[613,209,613,274],[788,207,788,141],[788,209,788,274],
+      [975,207,975,141],[975,209,975,274],[1173,207,1173,141],[1173,209,1173,274],
+      [613,340,613,274],[613,342,613,407],[788,340,788,274],[788,342,788,407],
+      [975,340,975,274],[975,342,975,407],
+      [229,473,229,407],[229,475,229,540],[427,473,427,540],[427,475,427,540],
+      [613,473,613,407],[613,475,613,407],[788,473,788,407],[788,475,788,540],
+      [975,473,975,407],[975,475,975,540],[1173,473,1173,407],[1173,475,1173,540],
+      [229,606,229,540],[229,608,229,673],[613,606,580,578],[613,608,580,578],
+      [788,606,788,540],[788,608,788,673],[1173,606,1173,540],[1173,608,1173,673],
+      [427,739,427,794],[427,741,427,794],[613,739,613,673],[613,741,613,794],
+      [788,739,788,673],[788,741,788,794],[975,739,975,673],[975,741,975,794],
+      [327,141,229,141],[329,141,427,141],[327,274,229,274],[329,274,390,308],
+      [327,407,390,432],[329,407,390,432],[327,540,229,540],[329,540,427,540],
+      [327,794,229,794],[329,794,427,794],
+      [525,141,427,141],[527,141,613,141],[525,274,460,242],[527,274,613,274],
+      [525,407,460,375],[527,407,613,407],[525,673,427,673],[527,673,613,673],
+      [525,794,427,794],[527,794,613,794],
+      [700,141,613,141],[702,141,788,141],[700,274,613,274],[702,274,788,274],
+      [700,407,613,407],[702,407,788,407],[700,540,648,510],[702,540,648,510],
+      [875,141,788,141],[877,141,975,141],[875,274,788,274],[877,274,975,274],
+      [875,407,788,407],[877,407,975,407],[875,540,788,540],[877,540,975,540],
+      [875,794,788,794],[877,794,975,794],
+      [1073,141,975,141],[1075,141,1173,141],[1073,274,975,274],[1075,274,1173,274],
+      [1073,407,975,407],[1075,407,1173,407],[1073,540,975,540],[1075,540,1173,540],
+      [1073,794,975,794],[1075,794,1173,794],
+      [215,42,229,141],[55,437,229,407],[1334,288,1173,274],[1334,563,1173,540],
+      [628,910,613,794],[795,910,788,794],
+      [390,308,460,242],[390,432,460,375],[648,510,580,578],
+      [427,673,427,794],[613,673,613,794],[975,673,975,794],
+    ];
+    for (const [c1,r1,c2,r2] of ROAD_SEGS_EARLY) {
+      const dc = c2>c1?1:c2<c1?-1:0;
+      const dr = r2>r1?1:r2<r1?-1:0;
+      for (let c=c1; c!==c2; c+=dc) addRoadTile(c,r1);
+      if (dr!==0) for (let r=r1; r!==r2+dr; r+=dr) addRoadTile(c2,r);
+      else addRoadTile(c2,r1);
+    }
+  }
+
   // ── P10–P13: stamp 2×2 structures ────────────────────────────────────────────
   // Each tile that rolled P10-P13 becomes the top-left of a 2×2 footprint.
   // Primary (top-left): F_KEEP. Other 3 cells: F_KEEPPART pointing to primary.
@@ -593,13 +669,14 @@ self.onmessage = function(e) {
       const pl2  = powerArr[idx2];
       if (pl2 < 10) continue;
 
-      // All 4 cells must be clear of flags AND outside static keep footprints
+      // All 4 cells must be clear of flags AND outside static keep footprints AND not on roads
       const cells = [[c2,r2],[c2+1,r2],[c2,r2+1],[c2+1,r2+1]];
       let blocked = false;
       for (const [tc, tr] of cells) {
         const ti = tr * COLS + tc;
         if (flagArr[ti] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { blocked = true; break; }
         if (KEEP_FOOTPRINT_SET.has(`${tc},${tr}`)) { blocked = true; break; }
+        if (ROAD_TILE_SET.has(ti)) { blocked = true; break; }
       }
       if (blocked) { powerArr[idx2] = 9; continue; }
 
@@ -1097,7 +1174,7 @@ self.onmessage = function(e) {
   for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
     const startRegion=FACTION_REGIONS[fk]?.start;
     if (!startRegion) continue;
-    const key=randomSpawn(startRegion,usedKeys,flagArr);
+    const key=randomSpawn(startRegion,usedKeys,flagArr,terrainArr);
     if (key){spawnKeys[fk]=key;usedKeys.add(key);}
   }
 
