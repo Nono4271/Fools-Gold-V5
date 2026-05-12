@@ -1406,6 +1406,7 @@ export default function RiseToWar() {
           button, .btn { touch-action: manipulation; cursor: pointer; }
           [style*="position: fixed"], [style*="position:fixed"] { touch-action: auto; }
           .scr, [style*="overflow-y: auto"], [style*="overflowY: auto"] { touch-action: pan-y !important; }
+          .scr *, .scr button, .scr .btn { touch-action: pan-y !important; }
           .gear-picker-list, .gear-picker-list * { touch-action: pan-y !important; }
         `}
       </style>
