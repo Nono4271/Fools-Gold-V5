@@ -310,7 +310,7 @@ function BranchRow({
       {/* Branch label row */}
       <div style={{
         display: "flex", alignItems: "center", gap: 7,
-        padding: "0 14px 4px",
+        padding: "0 8px 2px",
         opacity: locked ? 0.3 : 1,
       }}>
         <span style={{ fontSize: 10 }}>{treeIcon}</span>
@@ -589,7 +589,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
         background: `radial-gradient(ellipse, ${fColor}22 0%, transparent 70%)`,
         pointerEvents: "none", zIndex: 0,
       }} />
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap');${CSS}.skill-tree-grid{display:flex;flex-direction:column;padding:10px 4px 160px}.skill-tree-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y!important}.roster-scroll{touch-action:pan-y!important;-webkit-overflow-scrolling:touch}@media(orientation:landscape)and(max-height:600px){.skill-tree-scroll{overflow-y:hidden!important;height:100%}.skill-tree-grid{display:grid!important;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:0;padding:2px;height:100%;align-items:center;justify-items:center}.skill-tree-grid div{width:100%;overflow:visible;display:flex;flex-direction:column;align-items:center;justify-content:center}.skill-branch-sep{display:none!important}.skill-branch-inner{transform:scale(0.75);transform-origin:center center;width:100%;display:flex;flex-direction:column;align-items:center}}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap');${CSS}.skill-tree-scroll{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}.skill-tree-grid{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:0}.skill-branch-sep{display:none!important}.skill-branch-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;width:100%;overflow:visible}.skill-branch-inner svg{width:min(340px,100%)}.skill-branch-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:visible}.roster-scroll{touch-action:pan-y!important;-webkit-overflow-scrolling:touch}`}</style>
 
       {/* Header */}
       <div style={{
@@ -700,10 +700,9 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
         </span>
       </div>
 
-      <div className="skill-tree-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto",
-        position: "relative", WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}>
+      <div className="skill-tree-scroll">
 
-        <div className="skill-tree-grid">
+        <div className="skill-tree-grid" style={{ overflow: "visible" }}>
           {treeEntries.map(({ treeKey, label, unlocksAt, tag, branchIdx }, idx) => {
             const tree = SKILL_TREES[treeKey];
             if (!tree) return null;
@@ -717,7 +716,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
               treeEntries[idx - 1].treeKey, treeEntries[idx - 1].branchIdx, cmd).key] ?? 0) > 0;
 
             return (
-              <div key={`tree_${idx}`} style={{ overflow: "visible", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div key={`tree_${idx}`} className="skill-branch-cell">
                 {/* Inter-branch spine separator */}
                 {idx > 0 && <div className="skill-branch-sep"><SpineSep color={fColor} lit={prevActive} /></div>}
 
@@ -1910,7 +1909,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       )}
 
       {/* ── Body: 3 columns ── */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0, touchAction: "auto" }}>
 
         {/* ── Col 1: back arrow + filter + scrollable roster (2-wide grid) ── */}
         <div style={{
@@ -1919,6 +1918,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           borderRight: "1px solid #1e1508",
           background: "rgba(0,0,0,.3)",
           display: "flex", flexDirection: "column",
+          touchAction: "pan-y",
         }}>
           {/* Back + filter buttons */}
           <div style={{
