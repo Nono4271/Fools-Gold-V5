@@ -156,9 +156,9 @@ export function getSubspecies(faction, rarity) {
 // The extra 2 slots are static-random (seeded at design time).
 export const HDEFS = [
   // ── Pirates ── (leader, attacker, support, defender covered; extras: attacker+leader)
-  { id:"h1",  n:"Redwake Fynn",         faction:"pirates",        rarity:"veteran",  cls:"attacker", atk:130, foc:0,   spd:88, icon:"🏴‍☠️", subspecies:"Shipwright", portrait:"/commanders/h1_redwake_fynn_portrait.PNG", bust:"/commanders/h1_redwake_fynn_bust.PNG" },
+  { id:"h1",  n:"Redwake Fynn",         faction:"pirates",        rarity:"veteran",  cls:"attacker", atk:130, foc:0,   spd:88, icon:"🏴‍☠️", subspecies:"Shipwright", portrait:"/commanders/h1_redwake_fynn_portrait.webp", bust:"/commanders/h1_redwake_fynn_bust.webp" },
   { id:"h2",  n:"Cutlass Mora",         faction:"pirates",        rarity:"veteran",  cls:"defender", atk:105, foc:0,   spd:78, icon:"🗡",          subspecies:"Shipwright" },
-  { id:"h13", n:"Admiral Brine",        faction:"pirates",        rarity:"soldier",  cls:"leader",   atk:95,  foc:0,   spd:65, icon:"⚓",          subspecies:"First Mate",  portrait:"/commanders/h13_admiral_brine_portrait.PNG",    bust:"/commanders/h13_admiral_brine_bust.PNG" },
+  { id:"h13", n:"Admiral Brine",        faction:"pirates",        rarity:"soldier",  cls:"leader",   atk:95,  foc:0,   spd:65, icon:"⚓",          subspecies:"First Mate",  portrait:"/commanders/h13_admiral_brine_portrait.webp",    bust:"/commanders/h13_admiral_brine_bust.webp" },
   { id:"h14", n:"Saltwhisper",          faction:"pirates",        rarity:"soldier",  cls:"support",  atk:55,  foc:110, spd:72, icon:"🪝",          subspecies:"First Mate" },
   { id:"h25", n:"Ironjaw Reck",         faction:"pirates",        rarity:"champion", cls:"attacker", atk:175, foc:0,   spd:90, icon:"💀",          subspecies:"Captain"    },
   { id:"h26", n:"Navigator Seyne",      faction:"pirates",        rarity:"champion", cls:"leader",   atk:110, foc:60,  spd:80, icon:"🧭",          subspecies:"Captain"    },
@@ -169,9 +169,9 @@ export const HDEFS = [
 
 
   // ── Bounty Hunters / Wizards ── (leader, attacker, support, defender covered; extras: support+attacker)
-  { id:"h5",  n:"Solarius Vex",         faction:"bountyhunters",  rarity:"veteran",  cls:"support",  atk:20,  foc:180, spd:62, icon:"🔮",          subspecies:"Sage"        },
+  { id:"h5",  n:"Solarius Vex",         faction:"bountyhunters",  rarity:"veteran",  cls:"support",  atk:20,  foc:180, spd:62, icon:"🔮",          subspecies:"Sage", portrait:"/commanders/h5_solarius_vex_portrait.webp", bust:"/commanders/h5_solarius_vex_bust.webp" },
   { id:"h6",  n:"Mira Ashveil",         faction:"bountyhunters",  rarity:"veteran",  cls:"attacker", atk:120, foc:100, spd:70, icon:"✨",          subspecies:"Sage"        },
-  { id:"h17", n:"Runekeeper Dov",       faction:"bountyhunters",  rarity:"soldier",  cls:"leader",   atk:75,  foc:80,  spd:58, icon:"📜",          subspecies:"Apprentice"  },
+  { id:"h17", n:"Runekeeper Dov",       faction:"bountyhunters",  rarity:"soldier",  cls:"leader",   atk:75,  foc:80,  spd:58, icon:"📜",          subspecies:"Apprentice", portrait:"/commanders/h17_runekeeper_dov_portrait.webp", bust:"/commanders/h17_runekeeper_dov_bust.webp" },
   { id:"h18", n:"Hexblade Oren",        faction:"bountyhunters",  rarity:"soldier",  cls:"defender", atk:90,  foc:60,  spd:55, icon:"🔯",          subspecies:"Apprentice"  },
   { id:"h29", n:"Archmage Thessaly",    faction:"bountyhunters",  rarity:"champion", cls:"support",  atk:40,  foc:210, spd:65, icon:"🌟",          subspecies:"Warlock"     },
   { id:"h30", n:"Spellblade Ryn",       faction:"bountyhunters",  rarity:"champion", cls:"attacker", atk:155, foc:130, spd:72, icon:"⚡",          subspecies:"Warlock"     },
@@ -182,30 +182,30 @@ export const HDEFS = [
 
 
   // ── Orcs ── (leader, attacker, support, defender covered; extras: attacker+defender)
-  { id:"h9",  n:"Grimtusk",             faction:"orcs",           rarity:"veteran",  cls:"attacker", atk:155, foc:0,   spd:60, icon:"⚔️",         subspecies:"Marauder"    },
+  { id:"h9",  n:"Grimtusk",             faction:"orcs",           rarity:"veteran",  cls:"attacker", atk:155, foc:0,   spd:60, icon:"⚔️",         subspecies:"Marauder", portrait:"/commanders/h9_grimtusk_portrait.webp", bust:"/commanders/h9_grimtusk_bust.webp" },
   { id:"h10", n:"Ashgrip",              faction:"orcs",           rarity:"veteran",  cls:"defender", atk:115, foc:0,   spd:65, icon:"🪓",          subspecies:"Marauder"    },
-  { id:"h21", n:"Warcroak",             faction:"orcs",           rarity:"soldier",  cls:"leader",   atk:80,  foc:0,   spd:58, icon:"🥁",          subspecies:"Raider"      },
+  { id:"h21", n:"Warcroak",             faction:"orcs",           rarity:"soldier",  cls:"leader",   atk:80,  foc:0,   spd:58, icon:"🥁",          subspecies:"Raider", portrait:"/commanders/h21_warcroak_portrait.webp", bust:"/commanders/h21_warcroak_bust.webp" },
   { id:"h22", n:"Shaman Grix",          faction:"orcs",           rarity:"soldier",  cls:"support",  atk:30,  foc:100, spd:60, icon:"💀",          subspecies:"Raider"      },
   { id:"h33", n:"Warlord Korgath",      faction:"orcs",           rarity:"champion", cls:"attacker", atk:185, foc:0,   spd:62, icon:"🗡",          subspecies:"Warlord"     },
   { id:"h34", n:"Ironhide Bruk",        faction:"orcs",           rarity:"champion", cls:"defender", atk:140, foc:0,   spd:55, icon:"🦴",          subspecies:"Warlord"     },
   // ── Dragons ── (leader, attacker, support, defender covered; extras: attacker+support)
-  { id:"h11", n:"Emberclaw",            faction:"dragons",        rarity:"veteran",  cls:"attacker", atk:155, foc:0,   spd:75, icon:"🐉",          subspecies:"Adult"       },
+  { id:"h11", n:"Emberclaw",            faction:"dragons",        rarity:"veteran",  cls:"attacker", atk:155, foc:0,   spd:75, icon:"🐉",          subspecies:"Adult", portrait:"/commanders/h11_emberclaw_portrait.webp", bust:"/commanders/h11_emberclaw_bust.webp" },
   { id:"h12", n:"Scaleveil Dusk",       faction:"dragons",        rarity:"veteran",  cls:"support",  atk:50,  foc:140, spd:80, icon:"🔥",          subspecies:"Adult"       },
-  { id:"h23", n:"Ashen Kraul",          faction:"dragons",        rarity:"soldier",  cls:"leader",   atk:78,  foc:0,   spd:68, icon:"🦎",          subspecies:"Hatchling"   },
+  { id:"h23", n:"Ashen Kraul",          faction:"dragons",        rarity:"soldier",  cls:"leader",   atk:78,  foc:0,   spd:68, icon:"🦎",          subspecies:"Hatchling", portrait:"/commanders/h23_ashen_kraul_portrait.webp", bust:"/commanders/h23_ashen_kraul_bust.webp" },
   { id:"h24", n:"Cinderfang",           faction:"dragons",        rarity:"soldier",  cls:"defender", atk:100, foc:0,   spd:58, icon:"🪨",          subspecies:"Hatchling"   },
   { id:"h35", n:"Pyrewing Skar",        faction:"dragons",         rarity:"champion", cls:"attacker", atk:180, foc:0,   spd:78, icon:"🌋", subspecies:"Elder"     },
   { id:"h36", n:"Voidscale Nyxara",     faction:"dragons",         rarity:"champion", cls:"support",  atk:60,  foc:175, spd:82, icon:"🌑", subspecies:"Elder"     },
 
-  { id:"h37", n:"Brother Aldric",          faction:"holyknights",     rarity:"soldier",  cls:"defender", atk:78,  foc:20,  spd:48, icon:"🛡", subspecies:"Templar"      },
-  { id:"h38", n:"Commander Vayne",         faction:"holyknights",     rarity:"veteran",  cls:"leader",   atk:130, foc:30,  spd:55, icon:"⚔️", subspecies:"Templar"      },
+  { id:"h37", n:"Brother Aldric",          faction:"holyknights",     rarity:"soldier",  cls:"defender", atk:78,  foc:20,  spd:48, icon:"🛡", subspecies:"Templar", portrait:"/commanders/h37_brother_aldric_portrait.webp", bust:"/commanders/h37_brother_aldric_bust.webp" },
+  { id:"h38", n:"Commander Vayne",         faction:"holyknights",     rarity:"veteran",  cls:"leader",   atk:130, foc:30,  spd:55, icon:"⚔️", subspecies:"Templar", portrait:"/commanders/h38_commander_vayne_portrait.webp", bust:"/commanders/h38_commander_vayne_bust.webp" },
   { id:"h39", n:"Friar Brennan",           faction:"holyknights",     rarity:"soldier",  cls:"support",  atk:40,  foc:120, spd:52, icon:"✝️", subspecies:"BattlePriest" },
   { id:"h40", n:"High Warden Seraph",      faction:"holyknights",     rarity:"champion", cls:"attacker", atk:178, foc:40,  spd:60, icon:"☀️", subspecies:"BattlePriest" },
   { id:"h41", n:"Sister Vivara",           faction:"holyknights",     rarity:"veteran",  cls:"support",  atk:45,  foc:145, spd:62, icon:"🌟", subspecies:"Inquisitor"   },
   { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"attacker", atk:182, foc:20,  spd:58, icon:"🌑", subspecies:"Inquisitor"   },
 
-  { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"attacker", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire",      portrait:"/commanders/h43_countess_serava_portrait.PNG",  bust:"/commanders/h43_countess_serava_bust.PNG" },
+  { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"attacker", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire",      portrait:"/commanders/h43_countess_serava_portrait.webp",  bust:"/commanders/h43_countess_serava_bust.webp" },
   { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"support",  atk:65,  foc:170, spd:72, icon:"🩸", subspecies:"Vampire"      },
-  { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"attacker", atk:92,  foc:0,   spd:80, icon:"🐺", subspecies:"Werewolf",     portrait:"/commanders/h45_fang_groth_portrait.PNG",       bust:"/commanders/h45_fang_groth_bust.PNG" },
+  { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"attacker", atk:92,  foc:0,   spd:80, icon:"🐺", subspecies:"Werewolf",     portrait:"/commanders/h45_fang_groth_portrait.webp",       bust:"/commanders/h45_fang_groth_bust.webp" },
   { id:"h46", n:"Alpha Korrax",         faction:"nightcreatures",  rarity:"champion", cls:"leader",   atk:185, foc:0,   spd:85, icon:"🌕", subspecies:"Werewolf"     },
   { id:"h47", n:"Skitter Vex",          faction:"nightcreatures",  rarity:"soldier",  cls:"defender", atk:70,  foc:20,  spd:60, icon:"🕷", subspecies:"Spider"       },
   { id:"h48", n:"Widow Nyxara",         faction:"nightcreatures",  rarity:"veteran",  cls:"support",  atk:40,  foc:145, spd:65, icon:"🕸", subspecies:"Spider"       },
