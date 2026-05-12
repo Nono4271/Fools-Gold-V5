@@ -1045,10 +1045,22 @@ function drawCmdIcons(gfx, textCont, cmds, tiles) {
         gfx.beginFill(0x000000,0.45); gfx.drawCircle(cx+dx+1,ey-10,9); gfx.endFill();
         gfx.beginFill(col,0.9);       gfx.drawCircle(cx+dx,  ey-11,9); gfx.endFill();
         gfx.beginFill(0x000000,0.55); gfx.drawCircle(cx+dx,  ey-11,7); gfx.endFill();
-        if (textCont && cmd.icon) {
-          const txt = new PIXI.Text(cmd.icon, { fontSize: 10, align: "center" });
-          txt.anchor.set(0.5, 0.5); txt.x = cx+dx; txt.y = ey-11;
-          textCont.addChild(txt);
+        if (textCont) {
+          if (cmd.bust) {
+            const tex = PIXI.Texture.from(cmd.bust);
+            const sprite = new PIXI.Sprite(tex);
+            sprite.width = 14; sprite.height = 14;
+            sprite.anchor.set(0.5, 0.5); sprite.x = cx+dx; sprite.y = ey-11;
+            const mask = new PIXI.Graphics();
+            mask.beginFill(0xffffff); mask.drawCircle(cx+dx, ey-11, 7); mask.endFill();
+            sprite.mask = mask;
+            textCont.addChild(mask);
+            textCont.addChild(sprite);
+          } else if (cmd.icon) {
+            const txt = new PIXI.Text(cmd.icon, { fontSize: 10, align: "center" });
+            txt.anchor.set(0.5, 0.5); txt.x = cx+dx; txt.y = ey-11;
+            textCont.addChild(txt);
+          }
         }
       });
       if (grp.length > 3) { gfx.beginFill(col,0.7); gfx.drawCircle(cx+14,ey-8,5); gfx.endFill(); }
