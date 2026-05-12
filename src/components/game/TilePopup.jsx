@@ -473,6 +473,8 @@ export default memo(function TilePopup({
               <div key={cmd.uid} onClick={() => { recallStationary(cmd.uid); setPopupMode("main"); }}
                 style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,padding:"4px 6px",background:"rgba(240,192,64,.07)",border:"1px solid rgba(240,192,64,.2)",borderRadius:4,cursor:"pointer"}}>
                 {cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{width:22,height:22,borderRadius:"50%",objectFit:"cover",flexShrink:0}} /> : <span style={{fontSize:14}}>{cmd.icon}</span>}
+                <div style={{flex:1}}>
+                  <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:"#e0d0c0",fontWeight:700}}>{cmd.n}</div>
                   <div style={{fontSize:7,color:"#7a7a5a"}}>{(()=>{ const slots=cmd.troopSlots||[]; if(slots.length>0) return slots.map(sl=>tbInfo(sl.branch)?.label).filter(Boolean).join(' + ')+' · '+(cmd.troops||0).toLocaleString(); if(cmd.troopBranch) return tbInfo(cmd.troopBranch)?.label+' · '+(cmd.troops||0).toLocaleString(); return 'No troops'; })()}</div>
                 </div>
                 <span style={{fontSize:8,color:"#f0c040"}}>🏰</span>
