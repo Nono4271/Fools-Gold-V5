@@ -261,15 +261,26 @@ export default memo(function TilePopup({
           })()}
 
           {/* Enemy garrison */}
-          {selTile.owner !== "player" && (selTile.defCmd || selTile.owner==="ai") && (() => {
+          {selTile.owner !== "player" && (() => {
             const isAiOwned = selTile.owner==="ai";
-            const aiCmdPresent = isAiOwned && cmds.some(c => c.owner==="ai" && c.tk===selKey && !c.march);
-            const dc = (isAiOwned && !aiCmdPresent) ? garrisonDefCmd(selTile, facKey) : selTile.defCmd;
+            const isNeutral = !selTile.owner;
+            const liveAiCmd = isAiOwned ? cmds.find(c => c.owner==="ai" && c.tk===selKey && !c.march) : null;
+            const aiCmdPresent = !!liveAiCmd;
+            // Neutral tiles: always generate garrison from garrisonDefCmd; AI tiles: live cmd or garrisonDefCmd; else stored defCmd
+            const dc = aiCmdPresent ? liveAiCmd
+              : (isAiOwned || isNeutral) ? garrisonDefCmd(selTile, facKey)
+              : selTile.defCmd;
             if (!dc) return null;
             const tt = tbInfo(dc.troopBranch);
             const totalWaves    = selTile.garrisonWaves ?? 1;
             const defeatedCount = selTile.defeatedWaves?.length ?? 0;
             const wavesLeft     = Math.max(0, totalWaves - defeatedCount);
+            // Army command = live AI commander troops (most accurate); fall back to tile garrison or dc.troops for neutral
+            const armyCommand = aiCmdPresent
+              ? (dc.troops ?? 0)
+              : isNeutral
+                ? (dc.troops ?? 0)
+                : (selTile.garrison ?? selTile.garrisonTroops ?? dc.troops ?? 0);
             return (
               <div style={{marginBottom:4,padding:"3px 6px",background:"rgba(200,40,40,.06)",borderRadius:3,border:"1px solid rgba(200,40,40,.2)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
@@ -283,9 +294,9 @@ export default memo(function TilePopup({
                   )}
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>Lv{dc.lvl??"?"}</div><div style={{fontSize:6,color:"#5a4a40"}}>Level</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>Lv{dc.lvl??"?"}</div><div style={{fontSize:6,color:"#5a4a40"}}>Cmd Lv</div></div>
                   <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>{(dc.troops??0).toLocaleString()}</div><div style={{fontSize:6,color:"#5a4a40"}}>Troops</div></div>
-                  <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#c08040",fontWeight:700}}>{(selTile.garrison??selTile.garrisonTroops??0).toLocaleString()}</div><div style={{fontSize:6,color:"#5a4a40"}}>Command</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#c08040",fontWeight:700}}>{armyCommand.toLocaleString()}</div><div style={{fontSize:6,color:"#5a4a40"}}>Army Cmd</div></div>
                   {/* Fog of war: never show enemy commander name or troop type */}
                   {!isAiOwned && tt && <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto"}}><span style={{fontSize:7,color:tt.color,fontFamily:"'Cinzel',serif"}}>{tt.label}</span></div>}
                   {isAiOwned && <div style={{marginLeft:"auto",fontSize:7,color:"#5a4040",fontFamily:"'Cinzel',serif",fontStyle:"italic"}}>Enemy Commander</div>}
