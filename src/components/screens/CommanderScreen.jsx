@@ -1954,6 +1954,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
               width: "28%", flexShrink: 0,
               borderRight: "1px solid #1e1508",
               background: selectedCmd.portrait ? "transparent" : `radial-gradient(ellipse at 50% 30%, ${fCol}18 0%, #04030a 65%)`,
+              borderRight: selectedCmd.portrait ? "none" : "1px solid #1e1508",
               display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center",
               position: "relative", overflow: "hidden",
@@ -1970,6 +1971,10 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                 ? <img src={selectedCmd.portrait} alt={selectedCmd.n} style={{
                     width: "100%", height: "100%", objectFit: "contain", objectPosition: "center",
                     display: "block",
+                    maskImage: "linear-gradient(to bottom, black 60%, transparent 100%), linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
+                    WebkitMaskImage: "linear-gradient(to bottom, black 60%, transparent 100%), linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
+                    maskComposite: "intersect",
+                    WebkitMaskComposite: "source-in",
                   }} />
                 : <div style={{
                     fontSize: 72, lineHeight: 1,
