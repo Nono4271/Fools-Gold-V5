@@ -49,7 +49,7 @@ export default memo(function CommanderPicker({
       </div>
 
       {/* Commander list */}
-      <div className="scr" style={{flex:1,overflowY:"auto",padding:"10px 12px"}}>
+      <div className="scr" style={{flex:1,overflowY:"auto",padding:"10px 12px",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain"}}>
         {cmdsAdjToSel.length===0 ? (
           <div style={{padding:"12px",background:"rgba(255,255,255,.02)",border:"1px solid #2a2020",borderRadius:5,fontSize:9,color:"#6a5a4a",fontFamily:"'Crimson Pro',serif",fontStyle:"italic",textAlign:"center"}}>
             No eligible commanders. A commander with troops must be on a player-owned tile to attack.
@@ -106,7 +106,7 @@ export default memo(function CommanderPicker({
 
               return (
                 <button key={cmd.uid} onClick={() => setPick(picked?null:cmd)}
-                  style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:picked?"rgba(60,170,100,.15)":"rgba(255,255,255,.03)",border:`2px solid ${picked?"#3daa60":"rgba(255,255,255,.06)"}`,borderRadius:8,cursor:"pointer",transition:"all .15s",boxShadow:picked?"0 0 12px rgba(60,170,100,.4)":"none",width:"100%",textAlign:"left",fontFamily:"inherit",color:"inherit"}}>
+                  style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:picked?"rgba(60,170,100,.15)":"rgba(255,255,255,.03)",border:`2px solid ${picked?"#3daa60":"rgba(255,255,255,.06)"}`,borderRadius:8,cursor:"pointer",transition:"all .15s",boxShadow:picked?"0 0 12px rgba(60,170,100,.4)":"none",width:"100%",textAlign:"left",fontFamily:"inherit",color:"inherit",touchAction:"pan-y",WebkitTapHighlightColor:"transparent"}}>
                   {cmd.bust
                     ? <img src={cmd.bust} alt={cmd.n} style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",flexShrink:0}} />
                     : <div style={{fontSize:28,flexShrink:0}}>{cmd.icon}</div>

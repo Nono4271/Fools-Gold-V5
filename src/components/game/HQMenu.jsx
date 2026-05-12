@@ -428,10 +428,10 @@ const BRANCH_LVL_BONUS = [
   {/* Stat grid */}
   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:14 }}>
   {[
-  { lbl:"HP",    val:tier.hp,                          col:"#5dcc80", icon:"❤️" },
-  { lbl:"DEF",   val:tier.def,                         col:"#88aaff", icon:"🛡" },
   { lbl:"DMG",   val:`${tier.dmgLo}–${tier.dmgHi}`,   col:dmgColor,  icon:"⚔️" },
-  { lbl:"CMD",   val:`${cmdCost} / unit`,              col:P.sub,     icon:"⭐" },
+  { lbl:"DEF",   val:tier.def,                         col:"#88aaff", icon:"🛡" },
+  { lbl:"HP",    val:tier.hp,                          col:"#5dcc80", icon:"❤️" },
+  { lbl:"SPD",   val:tier.spd,                         col:"#f0c040", icon:"🚶" },
   ].map(({ lbl, val, col, icon }) => (
   <div key={lbl} style={{ padding:"10px 12px", borderRadius:8,
   background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}` }}>
@@ -490,6 +490,13 @@ const BRANCH_LVL_BONUS = [
   {conscriptBase}s per unit
   </span>
   <span style={{ fontSize:7, color:P.dim }}>(base, scales with Barracks)</span>
+  </div>
+  <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:6 }}>
+  <span style={{fontSize:9}}>⭐</span>
+  <span style={{ fontSize:10, fontFamily:P.ff, color:P.sub, fontWeight:700 }}>
+  {cmdCost} CMD / unit
+  </span>
+  <span style={{ fontSize:7, color:P.dim }}>(command cost)</span>
   </div>
   </div>
 
