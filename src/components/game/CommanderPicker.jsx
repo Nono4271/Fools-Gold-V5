@@ -107,7 +107,10 @@ export default memo(function CommanderPicker({
               return (
                 <button key={cmd.uid} onClick={() => setPick(picked?null:cmd)}
                   style={{display:"flex",gap:10,alignItems:"center",padding:"10px 12px",background:picked?"rgba(60,170,100,.15)":"rgba(255,255,255,.03)",border:`2px solid ${picked?"#3daa60":"rgba(255,255,255,.06)"}`,borderRadius:8,cursor:"pointer",transition:"all .15s",boxShadow:picked?"0 0 12px rgba(60,170,100,.4)":"none",width:"100%",textAlign:"left",fontFamily:"inherit",color:"inherit"}}>
-                  <div style={{fontSize:28,flexShrink:0}}>{cmd.icon}</div>
+                  {cmd.bust
+                    ? <img src={cmd.bust} alt={cmd.n} style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",flexShrink:0}} />
+                    : <div style={{fontSize:28,flexShrink:0}}>{cmd.icon}</div>
+                  }
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontFamily:"'Cinzel',serif",fontSize:11,fontWeight:700,color:picked?"#3daa60":"#e0d0c0",marginBottom:1}}>{cmd.n}</div>
                     <div style={{fontSize:8,color:SC(cmd.rarity),marginBottom:2,fontFamily:"'Cinzel',serif"}}>{SS(cmd.rarity)}{cmd.cls ? ` · ${CLASS[cmd.cls]?.icon} ${CLASS[cmd.cls]?.n}` : ''} · Lv{cmd.lvl||5}</div>

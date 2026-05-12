@@ -60,7 +60,10 @@ export default memo(function BottomPanel({
             <div>
               {/* Commander card */}
               <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12,padding:"8px 10px",background:"rgba(30,60,120,.12)",border:"1px solid rgba(50,100,200,.3)",borderRadius:5}}>
-                <span style={{fontSize:26}}>{reinCmd.icon}</span>
+                {reinCmd.bust
+                  ? <img src={reinCmd.bust} alt={reinCmd.n} style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",flexShrink:0}} />
+                  : <span style={{fontSize:26}}>{reinCmd.icon}</span>
+                }
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:11,fontWeight:700,color:"#e0d0c0"}}>{reinCmd.n} <span style={{color:"#f0c040",fontSize:9}}>Lv{reinCmd.lvl||5}</span></div>
                   {(() => {
@@ -132,7 +135,10 @@ export default memo(function BottomPanel({
                   {cmdsOnSel.filter(c=>!c.march).map(cmd => (
                     <div key={cmd.uid} onClick={() => setMvCmd(cmd)}
                       style={{background:mvCmd.uid===cmd.uid?"rgba(40,160,80,.2)":"rgba(255,255,255,.04)",border:`2px solid ${mvCmd.uid===cmd.uid?"#3daa60":"rgba(255,255,255,.08)"}`,borderRadius:7,padding:"8px 10px",cursor:"pointer",textAlign:"center",minWidth:80}}>
-                      <div style={{fontSize:22}}>{cmd.icon}</div>
+                      {cmd.bust
+                        ? <img src={cmd.bust} alt={cmd.n} style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",margin:"0 auto"}} />
+                        : <div style={{fontSize:22}}>{cmd.icon}</div>
+                      }
                       <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:"#e0d0c0",fontWeight:700}}>{cmd.n}</div>
                       <div style={{fontSize:8,color:"#3daa60"}}>{((cmd.troopSlots?.reduce((s,sl)=>s+(sl.troops||0),0)) || cmd.troops||0).toLocaleString()} troops</div>
                       {mvCmd.uid===cmd.uid && <div style={{fontSize:7,color:"#3daa60",marginTop:2}}>✓ SELECTED</div>}
