@@ -1373,6 +1373,16 @@ export default function RiseToWar() {
       isFreeAvailable={isFreeAvailable}
       isHalfAvailable={isHalfAvailable}
       playerAlignment={playerAlignment} setScreen={setScreen}
+      onOpenCommander={(uid, heroId) => {
+        // uid: owned commander uid (or null for unowned), heroId: HDEFS id
+        if (uid) setCmdScreenUid(uid);
+        else {
+          // For unowned stubs: set uid to the stub uid format
+          setCmdScreenUid(`stub_${heroId}`);
+        }
+        setCmdScreenOpen(true);
+        setScreen("game");
+      }}
     />
   );
 
