@@ -262,7 +262,9 @@ export function garrisonWaveDefCmd(tile, waveIndex, playerFaction) {
   // Offset tile coords per wave so factionDefCmdForTile picks a different commander
   const waveC      = (c + waveIndex * 997) | 0;
   const waveR      = (r + waveIndex * 1009) | 0;
-  const powerLevel = Math.max(4, tile.powerLevel || 4);
+  const powerLevel = tile.powerLevel || 1;
+  // P1–P3: use NPC path (same as garrisonDefCmd) — no faction commander available
+  if (powerLevel < 4) return garrisonDefCmd(tile, playerFaction);
   const baseCmd    = factionDefCmdForTile(waveC, waveR, playerFaction, powerLevel, waveIndex);
   if (!baseCmd) return garrisonDefCmd(tile, playerFaction);
 
