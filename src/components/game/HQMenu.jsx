@@ -358,16 +358,20 @@ const BRANCH_LVL_BONUS = [
   return (
   <div onClick={onClose}
   style={{ position:"fixed", inset:0, zIndex:200, background:"rgba(0,0,0,.72)",
-  display:"flex", alignItems:"center", justifyContent:"center" }}>
+  display:"flex", alignItems:"flex-start", justifyContent:"center",
+  overflowY:"auto", padding:"12px 8px", WebkitOverflowScrolling:"touch" }}>
   <div onClick={e => e.stopPropagation()}
   style={{ background:"#0f1018", border:`1px solid ${fColor}55`,
-  borderRadius:12, padding:20, width:288, position:"relative",
+  borderRadius:12, padding:20, width:"min(340px, 96vw)", position:"relative",
   boxShadow:`0 8px 32px rgba(0,0,0,.7), 0 0 0 1px ${fColor}22`,
-  maxHeight:"88vh", overflowY:"auto" }}>
-  {/* close */}
+  marginTop:"auto", marginBottom:"auto", flexShrink:0 }}>
+  {/* close — large tap target */}
   <button onClick={onClose}
-  style={{ position:"absolute", top:8, right:10, background:"none", border:"none",
-  color:P.dim, fontSize:16, cursor:"pointer", lineHeight:1 }}>x</button>
+  style={{ position:"absolute", top:0, right:0, width:44, height:44,
+  background:"rgba(255,255,255,.04)", border:"none", borderRadius:"0 12px 0 8px",
+  color:"#8a7a60", fontSize:18, cursor:"pointer",
+  display:"flex", alignItems:"center", justifyContent:"center",
+  WebkitTapHighlightColor:"transparent" }}>✕</button>
   {/* header */}
   {isLocked && (
   <div style={{ background: branchOpen ? "rgba(200,80,40,.08)" : "rgba(80,60,40,.1)",
