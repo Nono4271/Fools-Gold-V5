@@ -244,6 +244,7 @@ return tile;
 export function garrisonWaveCount(tile) {
   if (tile?.garrisonWaves != null) return tile.garrisonWaves;
   if (tile?.isGate || tile?.isKeep) return 2; // safe fallback
+  if ((tile?.powerLevel ?? 0) >= 10) return 2; // P10-P13 have 2 garrison waves
   return 1;
 }
 
