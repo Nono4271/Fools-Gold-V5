@@ -156,7 +156,7 @@ export function getSubspecies(faction, rarity) {
 // The extra 2 slots are static-random (seeded at design time).
 export const HDEFS = [
   // ── Pirates ── (leader, attacker, support, defender covered; extras: attacker+leader)
-  { id:"h1",  n:"Redwake Fynn",         faction:"pirates",        rarity:"veteran",  cls:"attacker", atk:130, foc:0,   spd:88, icon:"🏴‍☠️", subspecies:"Shipwright", portrait:"/src/assets/commanders/h1_redwake_fynn_portrait.PNG", bust:"/src/assets/commanders/h1_redwake_fynn_bust.PNG" },
+  { id:"h1",  n:"Redwake Fynn",         faction:"pirates",        rarity:"veteran",  cls:"attacker", atk:130, foc:0,   spd:88, icon:"🏴‍☠️", subspecies:"Shipwright", portrait:"/commanders/h1_redwake_fynn_portrait.PNG", bust:"/commanders/h1_redwake_fynn_bust.PNG" },
   { id:"h2",  n:"Cutlass Mora",         faction:"pirates",        rarity:"veteran",  cls:"defender", atk:105, foc:0,   spd:78, icon:"🗡",          subspecies:"Shipwright" },
   { id:"h13", n:"Admiral Brine",        faction:"pirates",        rarity:"soldier",  cls:"leader",   atk:95,  foc:0,   spd:65, icon:"⚓",          subspecies:"First Mate" },
   { id:"h14", n:"Saltwhisper",          faction:"pirates",        rarity:"soldier",  cls:"support",  atk:55,  foc:110, spd:72, icon:"🪝",          subspecies:"First Mate" },
