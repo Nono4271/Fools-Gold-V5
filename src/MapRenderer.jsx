@@ -475,13 +475,22 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // Primary cell only — draw merged 2×2 diamond covering all 4 cells
       const { cx, cy } = isoXY(c, r);
       const baseColor = getTileBaseColor(c, r, "grass");
-      // Overdraw by 4px on every edge to fully cover neighbor tile stroke artifacts
+      // Overdraw by 4px on every edge to fully cover neighbor tile stroke artifacts,
+      // but skip overdraw on sides adjacent to an HQ tile to avoid painting over it.
+      const hqN = tiles[`${c},${r-1}`]?.isHQ || tiles[`${c+1},${r-1}`]?.isHQ;
+      const hqE = tiles[`${c+2},${r}`]?.isHQ || tiles[`${c+2},${r+1}`]?.isHQ;
+      const hqS = tiles[`${c},${r+2}`]?.isHQ || tiles[`${c+1},${r+2}`]?.isHQ;
+      const hqW = tiles[`${c-1},${r}`]?.isHQ || tiles[`${c-1},${r+1}`]?.isHQ;
       const OD = 2.2;
+      const odN = hqN ? 0 : OD;
+      const odE = hqE ? 0 : OD;
+      const odS = hqS ? 0 : OD;
+      const odW = hqW ? 0 : OD;
       const MERGED = [
-        cx,          cy - OD,          // N
-        cx + TW + OD, cy + TH,         // E
-        cx,          cy + TH * 2 + OD, // S
-        cx - TW - OD, cy + TH,         // W
+        cx,           cy - odN,          // N
+        cx + TW + odE, cy + TH,          // E
+        cx,           cy + TH * 2 + odS, // S
+        cx - TW - odW, cy + TH,          // W
       ];
       // Stroke the outline with the fill color so neighbor edges are painted over
       gfx.lineStyle(OD * 2, baseColor, 1);
@@ -1669,15 +1678,17 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const tmpGfx = new PIXI.Graphics();
       // Bake one texture per (rss, powerLevel) pair so size scaling works on iOS.
       // P1 tiles have no props so skip pl=1. 52 textures total (4 rss × 13 pl).
+      // P10–P13 are baked with syntheticPl (16/19/22/25) to hit the new prop art branches.
       for (const rss of ["wood", "stone", "ore", "gas"]) {
         rssTextures[rss] = {}; // keyed by pl
         for (let pl = 2; pl <= 13; pl++) {
+          const bakePl = pl >= 10 ? 13 + (pl - 9) * 3 : pl; // P10→16, P11→19, P12→22, P13→25
           const rt = PIXI.RenderTexture.create({
             width: TEX_W, height: TEX_H,
             resolution: app.renderer.resolution,
           });
           tmpGfx.clear();
-          drawRssProp(tmpGfx, rss, TEX_CX, TEX_SY, 5, 3, pl);
+          drawRssProp(tmpGfx, rss, TEX_CX, TEX_SY, 5, 3, bakePl);
           app.renderer.render(tmpGfx, { renderTexture: rt });
           rssTextures[rss][pl] = rt;
         }
@@ -1813,7 +1824,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
               if (isStaticKeep || isStaticPart) continue;
               // P10–P13 keepPart: skip — primary draws the single unified sprite
               if (tile.isKeepPart && pl >= 10) continue;
-              const texPl = (tile.isKeep && pl >= 10) ? Math.min(13, pl + 2) : pl;
+              const texPl = pl; // textures stored under raw pl, baked with syntheticPl for P10-P13
               const texMap = rssTextures[tile.rss];
               const tex = texMap?.[texPl] ?? texMap?.[pl] ?? texMap?.[2];
               if (!tex) continue;
