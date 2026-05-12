@@ -70,8 +70,8 @@ function rollPowerLevel(c, r) {
   return POWER_WEIGHTS[POWER_WEIGHTS.length - 1].pl;
 }
 
-const TERRAIN_ENC = { grass:0, forest:1, mountain:2, desert:3, river:4, ravine:5, rockymountain:6, road:7 };
-const TERRAIN_DEC = ["grass","forest","mountain","desert","river","ravine","rockymountain","road"];
+const TERRAIN_ENC = { grass:0, forest:1, mountain:2, desert:3, river:4, ravine:5, rockymountain:6, road:7, hellfire:8 };
+const TERRAIN_DEC = ["grass","forest","mountain","desert","river","ravine","rockymountain","road","hellfire"];
 const RSS_ENC     = { stone:1, wood:2, ore:3, gas:4 };
 const RSS_DEC     = [null,"stone","wood","ore","gas"];
 const TROOP_ENC   = { infantry:1, mage:2, spearmen:3, horsemen:4 };
@@ -518,14 +518,16 @@ function randomSpawn(regionKey, usedKeys, flagArr, terrainArr) {
     const fl = flagArr[r*COLS+c];
     if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) continue;
     // Don't spawn HQ on a road tile
-    if (terrainArr[r*COLS+c] === TERRAIN_ENC.road) continue;
+    const t0 = terrainArr[r*COLS+c];
+    if (t0 === TERRAIN_ENC.road || t0 === TERRAIN_ENC.hellfire) continue;
     // Ensure 2x2 HQ footprint cells are also clear and road-free
     let footClear = true;
     for (const [dc,dr] of [[1,0],[0,1],[1,1]]) {
       const ti = (r+dr)*COLS+(c+dc);
       const fl2 = flagArr[ti];
       if (fl2 & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { footClear=false; break; }
-      if (terrainArr[ti] === TERRAIN_ENC.road) { footClear=false; break; }
+      const t1 = terrainArr[ti];
+      if (t1 === TERRAIN_ENC.road || t1 === TERRAIN_ENC.hellfire) { footClear=false; break; }
     }
     if (!footClear) continue;
     return k;
@@ -799,7 +801,8 @@ self.onmessage = function(e) {
       impassKeys.push(`${x},${y}`);
     }
 
-    // Paint path tiles — passable, same terrain visually
+    // Paint path tiles — passable, use border terrain so they visually match
+    // the surrounding border strip (river/ravine/rockymountain)
     for (const {x, y} of pathTiles) {
       const idx = y*COLS+x;
       if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
@@ -1151,7 +1154,7 @@ self.onmessage = function(e) {
       const idx = r * COLS + c;
       const fl  = flagArr[idx];
       if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) return;
-      terrainArr[idx]  = TERRAIN_ENC.road;
+      terrainArr[idx]  = TERRAIN_ENC.hellfire;
       if (powerArr[idx] !== 1) {
         powerArr[idx]    = 1;
         garrisonArr[idx] = POWER_DEFS[1].command;
