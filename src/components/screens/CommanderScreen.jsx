@@ -306,7 +306,7 @@ function BranchRow({
   const mainFilled = mainLvl > 0;
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative", overflow: "visible" }}>
       {/* Branch label row */}
       <div style={{
         display: "flex", alignItems: "center", gap: 7,
@@ -332,7 +332,7 @@ function BranchRow({
       </div>
 
       {/* SVG canvas */}
-      <svg width={W} height={H} style={{ display: "block", overflow: "visible", opacity: locked ? 0.32 : 1 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: "block", overflow: "visible", opacity: locked ? 0.32 : 1, touchAction: "manipulation" }}>
         {/* ambient glow */}
         {mainFilled && !locked && (
           <ellipse cx={spineX} cy={mainY} rx={95} ry={45}
@@ -698,18 +698,28 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
         </span>
       </div>
 
-      {/* ── Vertical spine layout ── */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "scroll", position: "relative", WebkitOverflowScrolling: "touch" }}>
+      {/* ── Skill tree layout: 1-col portrait, 2x2 landscape ── */}
+      <style>{`
+        .skill-tree-grid { display: flex; flex-direction: column; padding: 10px 4px 160px; }
+        .skill-tree-scroll { flex: 1; min-height: 0; overflow-y: auto; position: relative;
+          -webkit-overflow-scrolling: touch; }
+        @media (orientation: landscape) and (max-height: 520px) {
+          .skill-tree-scroll { overflow-y: hidden !important; height: 100%; }
+          .skill-tree-grid { display: grid !important; grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr; gap: 0; padding: 2px; height: 100%;
+            align-items: center; justify-items: center; }
+          .skill-tree-grid > div { width: 100%; overflow: visible;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; }
+          .skill-branch-sep { display: none !important; }
+          .skill-branch-inner { transform: scale(0.75); transform-origin: center center;
+            width: 100%; display: flex; flex-direction: column; align-items: center; }
+        }
+      `}</style>
+      <div className="skill-tree-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto",
+        position: "relative", WebkitOverflowScrolling: "touch" }}>
 
-        {/* Decorative centre spine line */}
-        <div style={{
-          position: "absolute", left: "50%", top: 0, bottom: 0, width: 2,
-          background: `linear-gradient(180deg, transparent 0%, ${fColor}14 15%, ${fColor}14 85%, transparent 100%)`,
-          transform: "translateX(-50%)",
-          pointerEvents: "none", zIndex: 0,
-        }} />
-
-        <div style={{ padding: "14px 6px 180px", position: "relative", zIndex: 1 }}>
+        <div className="skill-tree-grid">
           {treeEntries.map(({ treeKey, label, unlocksAt, tag, branchIdx }, idx) => {
             const tree = SKILL_TREES[treeKey];
             if (!tree) return null;
@@ -723,10 +733,11 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
               treeEntries[idx - 1].treeKey, treeEntries[idx - 1].branchIdx, cmd).key] ?? 0) > 0;
 
             return (
-              <div key={`tree_${idx}`}>
+              <div key={`tree_${idx}`} style={{ overflow: "visible", display: "flex", flexDirection: "column", alignItems: "center" }}>
                 {/* Inter-branch spine separator */}
-                {idx > 0 && <SpineSep color={fColor} lit={prevActive} />}
+                {idx > 0 && <div className="skill-branch-sep"><SpineSep color={fColor} lit={prevActive} /></div>}
 
+                <div className="skill-branch-inner">
                 <BranchRow
                   faction={cmd.faction}
                   color={fColor}
@@ -752,6 +763,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
                     )
                   }
                 />
+                </div>
               </div>
             );
           })}
@@ -821,6 +833,7 @@ function RosterPortrait({ cmd, selected, onClick, isLocked, isOppositeAlignment 
           border: `1px solid ${r.color}45`,
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 28, overflow: "hidden", position: "relative",
+          filter: (isLocked || isOppositeAlignment) ? "grayscale(1) brightness(0.45) sepia(0.1)" : "none",
         }}>
           {cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"50%" }} /> : cmd.icon}
           <div style={{
@@ -1918,12 +1931,10 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
         {/* ── Col 1: back arrow + filter + scrollable roster (2-wide grid) ── */}
         <div style={{
           width: 152, flexShrink: 0,
-          overflowY: "auto", overflowX: "hidden",
+          overflow: "hidden",
           borderRight: "1px solid #1e1508",
           background: "rgba(0,0,0,.3)",
-          scrollbarWidth: "none",
           display: "flex", flexDirection: "column",
-          touchAction: "pan-y", overscrollBehavior: "contain",
         }}>
           {/* Back + filter buttons */}
           <div style={{
@@ -1960,7 +1971,9 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
               )}
             </button>
           </div>
-          {/* 2-column portrait grid */}
+          {/* 2-column portrait grid — this inner div scrolls, buttons stay pinned */}
+          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden",
+            scrollbarWidth: "none", touchAction: "pan-y", overscrollBehavior: "contain" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
             {filtered.map(cmd => {
               const cmdAlnKey = getFactionAlignment(cmd.faction);
@@ -1984,6 +1997,8 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
               No matches
             </div>
           )}
+          </div>
+          </div>
         </div>
 
         {/* ── Col 2: commander portrait / art area ── */}
