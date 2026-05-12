@@ -343,7 +343,7 @@ const BRANCH_LVL_BONUS = [
 
   // -- Troop stat modal ----------------------------------------------------------
   function TroopStatModal({ troop, fColor, fDef, onClose }) {
-  const { branch, tierIdx, tier } = troop;
+  const { branch, tierIdx, tier, isLocked, branchOpen } = troop;
   const cmdCost = COMMAND_COST[branch.size] ?? 1;
   const dmgColor = branch.dmgType === "magical" ? "#a855f7" : "#e08050";
   const roman = ["I","II","III"];
@@ -369,6 +369,24 @@ const BRANCH_LVL_BONUS = [
   style={{ position:"absolute", top:8, right:10, background:"none", border:"none",
   color:P.dim, fontSize:16, cursor:"pointer", lineHeight:1 }}>x</button>
   {/* header */}
+  {isLocked && (
+  <div style={{ background: branchOpen ? "rgba(200,80,40,.08)" : "rgba(80,60,40,.1)",
+  border: `1px solid ${branchOpen ? "#cc4040aa" : "#6a4a2a88"}`,
+  borderRadius:8, padding:"9px 12px", marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+  <span style={{ fontSize:16 }}>🔒</span>
+  <div>
+  <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
+  color: branchOpen ? "#cc4040" : "#aa8040", letterSpacing:".06em" }}>
+  {branchOpen ? "TIER LOCKED" : "BRANCH LOCKED"}
+  </div>
+  <div style={{ fontSize:7, color:"#6a5a40", fontFamily:P.ff, marginTop:2, lineHeight:1.5 }}>
+  {branchOpen
+    ? `Upgrade this branch to unlock. Stats shown are previews.`
+    : `Assign this branch to a commander first to unlock it.`}
+  </div>
+  </div>
+  </div>
+  )}
   <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
   <div style={{ width:44, height:44, borderRadius:8, background:`${fColor}22`,
   border:`1px solid ${fColor}55`, display:"flex", alignItems:"center",
@@ -670,13 +688,13 @@ const BRANCH_LVL_BONUS = [
   const canView = tierUnlocked;
   return (
   <button key={idx}
-  onClick={() => canView && setSelTroop({ branch: br, tierIdx: idx, tier, fColor: fDef.c, fDef })}
+  onClick={() => setSelTroop({ branch: br, tierIdx: idx, tier, fColor: fDef.c, fDef, isLocked: !canView, branchOpen })}
   style={{ flex:1, minHeight:90, padding:"8px 6px", position:"relative", zIndex:1,
-  borderRadius:8, cursor: canView ? "pointer" : "default",
+  borderRadius:8, cursor: "pointer",
   background: tierUnlocked ? `${fDef.c}15` : "rgba(255,255,255,.02)",
   border:`1px solid ${tierUnlocked ? fDef.c+"55" : P.border}`,
   display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3,
-  opacity: !branchOpen ? 0.25 : !tierUnlocked ? 0.45 : 1,
+  opacity: !branchOpen ? 0.35 : !tierUnlocked ? 0.5 : 1,
   transition:"all .15s",
   boxShadow: canView ? `0 2px 8px ${fDef.c}22` : "none" }}>
   {/* tier roman numeral badge */}
@@ -703,10 +721,8 @@ const BRANCH_LVL_BONUS = [
   <div style={{ fontSize:6, color:"#4a3820", fontFamily:P.ff }}>Lv{needsLvl}</div>
   ) : null}
   {/* tap hint */}
-  {tierUnlocked && (
-  <div style={{ fontSize:5, color:`${fDef.c}88`, fontFamily:P.ff,
+  <div style={{ fontSize:5, color: tierUnlocked ? `${fDef.c}88` : "#4a3a28", fontFamily:P.ff,
   letterSpacing:".06em", marginTop:1 }}>TAP FOR INFO</div>
-  )}
   </button>
   );
   })}
