@@ -584,97 +584,553 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   const sizeMult = 0.18 + t * 1.62;
 
   if (rss === "wood") {
-    // Single pine tree, scaled by power level
-    const h  = s * 0.80 * sizeMult;
-    const hw = s * 0.55 * sizeMult * 0.5;
-    const tx = cx + (rnd()-0.5)*s*0.08;
-    const tbase = base + 0.04 * s * sizeMult;
-    // shadow
-    gfx.beginFill(0x000000, 0.18); gfx.drawEllipse(tx, tbase, s*sizeMult*0.28, s*sizeMult*0.08); gfx.endFill();
-    // trunk
-    gfx.beginFill(0x3a2010); gfx.drawRect(tx - s*0.018, tbase - h*0.12, s*0.036, h*0.14); gfx.endFill();
-    // 4 canopy tiers
-    const tiers = [[0.00,0.28,0.50],[0.22,0.48,0.38],[0.42,0.65,0.27],[0.60,0.82,0.16]];
-    const dark  = [0x0e2010, 0x163014, 0x1e4018, 0x264e1c];
-    const lite  = [0x1e4020, 0x2a5a28, 0x3a7030, 0x4a8838];
-    tiers.forEach(([t0, t1, hwr], ti) => {
-      const boty = tbase - h * t0, topy = tbase - h * t1, thw = hw * hwr;
-      gfx.beginFill(dark[ti]); gfx.drawPolygon([tx,topy, tx-thw,boty, tx,boty]); gfx.endFill();
-      gfx.beginFill(lite[ti]); gfx.drawPolygon([tx,topy, tx,boty, tx+thw,boty]); gfx.endFill();
-    });
+    if (pl >= 22) {
+      // ── P12/P13: Ancient Grove ────────────────────────────────────────────
+      const sc = s * sizeMult * 0.038;
+      const numTrees = pl >= 25 ? 4 : 2;
+      // ground shadow
+      gfx.beginFill(0x000000, 0.22); gfx.drawEllipse(cx, base, 58*sc, 12*sc); gfx.endFill();
+      // root ground patches
+      [[cx-20*sc,base,28*sc,5*sc],[cx+16*sc,base-2*sc,20*sc,4*sc]].forEach(([rx,ry,rw,rh]) => {
+        gfx.beginFill(0x2a1808); gfx.drawEllipse(rx,ry,rw,rh); gfx.endFill();
+      });
+      // helper: draw one ancient tree
+      function drawAncient(tx, tbase2, lean, scale2) {
+        const th = 88*scale2, tw2 = 11*scale2;
+        // root buttresses
+        [[-1,0.4],[-0.5,0.6],[0.6,0.5],[1,0.35]].forEach(([dx,sz]) => {
+          gfx.beginFill(0x2a1808);
+          gfx.drawPolygon([tx,tbase2-th*0.15, tx+dx*tw2*3,tbase2, tx+dx*tw2*2.5,tbase2, tx+tw2*0.3,tbase2-th*0.18]);
+          gfx.endFill();
+        });
+        // trunk
+        gfx.beginFill(0x1e1408);
+        gfx.drawPolygon([tx-tw2*0.5,tbase2, tx-tw2*0.3+lean*14*scale2,tbase2-th*0.75, tx+tw2*0.3+lean*14*scale2,tbase2-th*0.75, tx+tw2*0.5,tbase2]);
+        gfx.endFill();
+        gfx.beginFill(0x3a2818);
+        gfx.drawPolygon([tx+tw2*0.05,tbase2, tx+tw2*0.05+lean*14*scale2,tbase2-th*0.75, tx+tw2*0.3+lean*14*scale2,tbase2-th*0.75, tx+tw2*0.5,tbase2]);
+        gfx.endFill();
+        // canopy blobs
+        const ccx = tx+lean*14*scale2, ccy = tbase2-th*0.82;
+        [[0,0,27*scale2,21*scale2,0x1a3a14],[-17*scale2,-7*scale2,19*scale2,17*scale2,0x162e10],[15*scale2,-4*scale2,21*scale2,16*scale2,0x203818],[0,-17*scale2,17*scale2,14*scale2,0x1e3416]].forEach(([dx,dy,bw,bh,col]) => {
+          gfx.beginFill(col); gfx.drawEllipse(ccx+dx, ccy+dy, bw, bh); gfx.endFill();
+        });
+        // canopy highlight
+        gfx.beginFill(0x3c7820, 0.28); gfx.drawEllipse(ccx-6*scale2, ccy-9*scale2, 9*scale2, 7*scale2); gfx.endFill();
+        // hanging moss
+        for (let mi = 0; mi < 5; mi++) {
+          const mx2 = ccx + (mi-2)*8*scale2;
+          gfx.lineStyle(0.9*scale2, 0x284a14, 0.45);
+          gfx.moveTo(mx2, ccy+7*scale2); gfx.lineTo(mx2-1, ccy+(16+mi*4)*scale2);
+          gfx.lineStyle(0);
+        }
+        // fireflies
+        if (pl >= 25) {
+          [[ccx-8*scale2,ccy-4*scale2],[ccx+10*scale2,ccy-12*scale2],[ccx+2*scale2,ccy+4*scale2]].forEach(([fx,fy]) => {
+            gfx.beginFill(0x78dc3c, 0.55); gfx.drawCircle(fx, fy, 1.5*scale2); gfx.endFill();
+            gfx.beginFill(0x78dc3c, 0.14); gfx.drawCircle(fx, fy, 4*scale2); gfx.endFill();
+          });
+        }
+      }
+      const treeScale = sc * 0.85;
+      if (numTrees === 2) {
+        drawAncient(cx-24*sc, base, -0.2, treeScale);
+        drawAncient(cx+24*sc, base, 0.25, treeScale*0.92);
+      } else {
+        // P13: 4 trees — back pair smaller, front pair larger
+        drawAncient(cx-38*sc, base-4*sc, -0.15, treeScale*0.78);
+        drawAncient(cx+36*sc, base-4*sc, 0.18, treeScale*0.74);
+        drawAncient(cx-20*sc, base, -0.22, treeScale);
+        drawAncient(cx+20*sc, base, 0.28, treeScale*0.94);
+      }
+    } else if (pl >= 16) {
+      // ── P10/P11: Lumber camp ──────────────────────────────────────────────
+      const sc = s * sizeMult * 0.038;
+      const numTrees = pl >= 19 ? 5 : 3;
+      // ground shadow
+      gfx.beginFill(0x000000, 0.20); gfx.drawEllipse(cx, base, 60*sc, 12*sc); gfx.endFill();
+      // helper: pine tree
+      function drawPine(tx, tbase2, scale2) {
+        const h2 = 62*scale2, hw2 = 18*scale2;
+        gfx.beginFill(0x000000, 0.12); gfx.drawEllipse(tx,tbase2,11*scale2,3.5*scale2); gfx.endFill();
+        gfx.beginFill(0x3a2010); gfx.drawRect(tx-2*scale2,tbase2-h2*0.12,4*scale2,h2*0.14); gfx.endFill();
+        const tiers2=[[0,0.28,1],[0.22,0.50,0.75],[0.44,0.68,0.52],[0.62,0.84,0.32]];
+        const darks=[0x0e2010,0x163014,0x1e4018,0x264e1c];
+        const lites=[0x1e4020,0x2a5a28,0x3a7030,0x4a8838];
+        tiers2.forEach(([t0,t1,hwr],ti) => {
+          const by2=tbase2-h2*t0,ty2=tbase2-h2*t1,thw2=hw2*hwr;
+          gfx.beginFill(darks[ti]); gfx.drawPolygon([tx,ty2, tx-thw2,by2, tx,by2]); gfx.endFill();
+          gfx.beginFill(lites[ti]); gfx.drawPolygon([tx,ty2, tx,by2, tx+thw2,by2]); gfx.endFill();
+        });
+      }
+      const tsc = sc * 0.88;
+      if (numTrees === 3) {
+        drawPine(cx-36*sc, base, tsc*0.80);
+        drawPine(cx+36*sc, base, tsc*0.76);
+        drawPine(cx,       base-8*sc, tsc);
+      } else {
+        // P11: 5 trees
+        drawPine(cx-50*sc, base, tsc*0.68);
+        drawPine(cx-26*sc, base, tsc*0.80);
+        drawPine(cx,       base-8*sc, tsc);
+        drawPine(cx+26*sc, base, tsc*0.78);
+        drawPine(cx+48*sc, base, tsc*0.70);
+      }
+      // stump
+      gfx.beginFill(0x3a2010); gfx.drawPolygon([cx-10*sc,base, cx-8*sc,base-14*sc, cx+8*sc,base-14*sc, cx+10*sc,base]); gfx.endFill();
+      gfx.beginFill(0x5a3820); gfx.drawEllipse(cx,base-14*sc,8*sc,4*sc); gfx.endFill();
+      gfx.lineStyle(0.6*sc, 0x7a5030, 1); gfx.drawEllipse(cx,base-14*sc,5*sc,2.5*sc); gfx.lineStyle(0);
+      // axe handle
+      gfx.lineStyle(2*sc, 0x6a4020, 1); gfx.moveTo(cx+2*sc,base-14*sc); gfx.lineTo(cx+14*sc,base-30*sc); gfx.lineStyle(0);
+      // axe head
+      gfx.beginFill(0x8a8a9a); gfx.drawPolygon([cx+12*sc,base-32*sc, cx+18*sc,base-28*sc, cx+16*sc,base-22*sc, cx+10*sc,base-26*sc]); gfx.endFill();
+      gfx.beginFill(0xb0b0c0); gfx.drawPolygon([cx+12*sc,base-32*sc, cx+14*sc,base-30*sc, cx+12*sc,base-24*sc, cx+10*sc,base-26*sc]); gfx.endFill();
+      // log pile
+      const lx=cx-22*sc, ly=base-4*sc;
+      gfx.beginFill(0x4a2c14); gfx.drawEllipse(lx,ly,8*sc,4*sc); gfx.endFill();
+      gfx.beginFill(0x3a2010); gfx.drawRect(lx-8*sc,ly-7*sc,16*sc,7*sc); gfx.endFill();
+      gfx.beginFill(0x5a3820); gfx.drawEllipse(lx,ly-7*sc,8*sc,4*sc); gfx.endFill();
+      gfx.beginFill(0x3a2010); gfx.drawRect(lx-6*sc,ly-12*sc,12*sc,5*sc); gfx.endFill();
+      gfx.beginFill(0x5a3820); gfx.drawEllipse(lx,ly-12*sc,6*sc,3*sc); gfx.endFill();
+    } else {
+      // ── P2–P9: original single pine ───────────────────────────────────────
+      const h  = s * 0.80 * sizeMult;
+      const hw = s * 0.55 * sizeMult * 0.5;
+      const tx = cx + (rnd()-0.5)*s*0.08;
+      const tbase = base + 0.04 * s * sizeMult;
+      gfx.beginFill(0x000000, 0.18); gfx.drawEllipse(tx, tbase, s*sizeMult*0.28, s*sizeMult*0.08); gfx.endFill();
+      gfx.beginFill(0x3a2010); gfx.drawRect(tx - s*0.018, tbase - h*0.12, s*0.036, h*0.14); gfx.endFill();
+      const tiers = [[0.00,0.28,0.50],[0.22,0.48,0.38],[0.42,0.65,0.27],[0.60,0.82,0.16]];
+      const dark  = [0x0e2010, 0x163014, 0x1e4018, 0x264e1c];
+      const lite  = [0x1e4020, 0x2a5a28, 0x3a7030, 0x4a8838];
+      tiers.forEach(([t0, t1, hwr], ti) => {
+        const boty = tbase - h * t0, topy = tbase - h * t1, thw = hw * hwr;
+        gfx.beginFill(dark[ti]); gfx.drawPolygon([tx,topy, tx-thw,boty, tx,boty]); gfx.endFill();
+        gfx.beginFill(lite[ti]); gfx.drawPolygon([tx,topy, tx,boty, tx+thw,boty]); gfx.endFill();
+      });
+    }
 
   } else if (rss === "stone") {
-    // Single boulder cluster, scaled by power level
-    const bh = s * 0.34 * sizeMult;
-    const hw = s * 0.22 * sizeMult * 0.5;
-    const bx = cx + (rnd()-0.5)*s*0.06;
-    const by = base - bh * 0.1;
-    const top = by - bh;
-    // shadow
-    gfx.beginFill(0x000000, 0.22); gfx.drawEllipse(bx, by, s*sizeMult*0.30, s*sizeMult*0.10); gfx.endFill();
-    // left dark face
-    gfx.beginFill(0x3a3830); gfx.drawPolygon([bx-hw*0.6,by, bx-hw*0.8,by-bh*0.5, bx-hw*0.2,top, bx+hw*0.1,by-bh*0.3]); gfx.endFill();
-    // top face
-    gfx.beginFill(0x7a7468); gfx.drawPolygon([bx-hw*0.2,top, bx+hw*0.4,top+bh*0.15, bx+hw*0.6,by-bh*0.4, bx+hw*0.1,by-bh*0.3]); gfx.endFill();
-    // right face
-    gfx.beginFill(0x585450); gfx.drawPolygon([bx+hw*0.1,by-bh*0.3, bx+hw*0.6,by-bh*0.4, bx+hw*0.7,by, bx-hw*0.6,by]); gfx.endFill();
-    // highlight
-    gfx.beginFill(0xb4afa5, 0.28); gfx.drawEllipse(bx+hw*0.1, top+bh*0.2, hw*0.3, bh*0.12); gfx.endFill();
-    // smaller secondary rocks at higher levels
-    if (sizeMult > 0.55) {
-      const s2 = 0.45 * sizeMult;
-      const bx2 = bx + s*0.18*sizeMult, by2 = by - s*0.02*sizeMult;
-      const bh2 = bh*0.55, hw2 = hw*0.55, top2 = by2-bh2;
-      gfx.beginFill(0x323028); gfx.drawPolygon([bx2-hw2*0.6,by2, bx2-hw2*0.7,by2-bh2*0.5, bx2-hw2*0.1,top2, bx2+hw2*0.2,by2-bh2*0.3]); gfx.endFill();
-      gfx.beginFill(0x686460); gfx.drawPolygon([bx2-hw2*0.1,top2, bx2+hw2*0.5,top2+bh2*0.15, bx2+hw2*0.65,by2-bh2*0.4, bx2+hw2*0.2,by2-bh2*0.3]); gfx.endFill();
-      gfx.beginFill(0x504c48); gfx.drawPolygon([bx2+hw2*0.2,by2-bh2*0.3, bx2+hw2*0.65,by2-bh2*0.4, bx2+hw2*0.7,by2, bx2-hw2*0.6,by2]); gfx.endFill();
+    if (pl >= 22) {
+      // ── P12/P13: Megalith circle ──────────────────────────────────────────
+      const sc = s * sizeMult * 0.038;
+      const numSlabs = pl >= 25 ? 5 : 3; // P13=5 slabs+lintel, P12=3+lintel
+      // ground shadow
+      gfx.beginFill(0x000000, 0.30); gfx.drawEllipse(cx, base, sc*58, sc*14); gfx.endFill();
+      // ground rubble scatter
+      [[cx-28*sc,base-2*sc,10*sc,4*sc],[cx+24*sc,base-3*sc,9*sc,4*sc],[cx-10*sc,base-1*sc,7*sc,3*sc]].forEach(([rx,ry,rw,rh]) => {
+        gfx.beginFill(0x2a2820); gfx.drawEllipse(rx,ry,rw,rh); gfx.endFill();
+      });
+      // helper: draw one upright slab
+      function drawSlab(sx, sh, sw, lean) {
+        const slabBase = base;
+        const lx = lean * 0.04;
+        // shadow face
+        gfx.beginFill(0x1e1c18); gfx.drawPolygon([sx-sw*0.5-3*sc,slabBase, sx-sw*0.5-1*sc,slabBase-sh, sx-sw*0.5+2*sc,slabBase-sh, sx-sw*0.5,slabBase]); gfx.endFill();
+        // front face
+        gfx.beginFill(0x4a4840); gfx.drawRect(sx-sw*0.5+lx*sh, slabBase-sh, sw, sh); gfx.endFill();
+        // top face
+        gfx.beginFill(0x6a6858); gfx.drawPolygon([sx-sw*0.5+lx*sh,slabBase-sh, sx+sw*0.5+lx*sh,slabBase-sh, sx+sw*0.5+lx*sh+3*sc,slabBase-sh-4*sc, sx-sw*0.5+lx*sh+3*sc,slabBase-sh-4*sc]); gfx.endFill();
+        // highlight strip
+        gfx.beginFill(0xa09888, 0.15); gfx.drawRect(sx-sw*0.5+lx*sh, slabBase-sh, sw*0.25, sh); gfx.endFill();
+        // crack
+        gfx.lineStyle(0.8*sc, 0x2a2820, 1); gfx.moveTo(sx-sw*0.1+lx*sh*0.5, slabBase-sh*0.3); gfx.lineTo(sx+sw*0.15+lx*sh*0.7, slabBase-sh*0.7); gfx.lineStyle(0);
+        // moss
+        gfx.beginFill(0x285014, 0.30); gfx.drawRect(sx-sw*0.5+lx*sh, slabBase-sh+2*sc, sw*0.3, 2*sc); gfx.endFill();
+      }
+      const slabH = 88*sc, slabW = 16*sc;
+      // back centre slab
+      drawSlab(cx, slabH*0.62, slabW*0.85, -0.04);
+      if (numSlabs >= 5) {
+        // extra flanking slabs for P13
+        drawSlab(cx-44*sc, slabH*0.50, slabW*0.75, 0.06);
+        drawSlab(cx+42*sc, slabH*0.48, slabW*0.72, -0.05);
+      }
+      // main left/right uprights
+      drawSlab(cx-22*sc, slabH, slabW, 0.03);
+      drawSlab(cx+22*sc, slabH*0.94, slabW*0.95, -0.02);
+      // lintel
+      const lintY = base - slabH*0.93, lintW = 56*sc, lintH2 = 10*sc;
+      gfx.beginFill(0x2a2820); gfx.drawPolygon([cx-lintW*0.5-4*sc,lintY+lintH2, cx-lintW*0.5-2*sc,lintY, cx+lintW*0.5+2*sc,lintY, cx+lintW*0.5,lintY+lintH2]); gfx.endFill();
+      gfx.beginFill(0x504e44); gfx.drawRect(cx-lintW*0.5, lintY, lintW, lintH2); gfx.endFill();
+      gfx.beginFill(0x6a6858); gfx.drawPolygon([cx-lintW*0.5,lintY, cx+lintW*0.5,lintY, cx+lintW*0.5+3*sc,lintY-5*sc, cx-lintW*0.5+3*sc,lintY-5*sc]); gfx.endFill();
+      gfx.beginFill(0xa09888, 0.12); gfx.drawRect(cx-lintW*0.5, lintY, lintW*0.3, lintH2); gfx.endFill();
+      // P13: add atmospheric glow between uprights
+      if (pl >= 25) {
+        gfx.beginFill(0x4080c0, 0.06); gfx.drawEllipse(cx, lintY+lintH2*2, 18*sc, 22*sc); gfx.endFill();
+        gfx.beginFill(0x6080ff, 0.04); gfx.drawEllipse(cx, lintY, 28*sc, 30*sc); gfx.endFill();
+      }
+    } else if (pl >= 16) {
+      // ── P10/P11: Crusher wheel ────────────────────────────────────────────
+      const sc = s * sizeMult * 0.038;
+      const wr = (pl >= 19 ? 46 : 38) * sc; // P11 bigger wheel
+      const wx = cx + 10*sc, wy = base - wr - 4*sc;
+      // ground shadow
+      gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(cx, base, 60*sc, 13*sc); gfx.endFill();
+      // stone dust on ground
+      gfx.beginFill(0xa09888, 0.10); gfx.drawEllipse(cx+5*sc, base, 28*sc, 7*sc); gfx.endFill();
+      // boulder pile (left)
+      [[cx-28*sc,base-18*sc,18*sc,11*sc],[cx-42*sc,base-10*sc,14*sc,8*sc],[cx-18*sc,base-10*sc,12*sc,7*sc],[cx-35*sc,base-28*sc,13*sc,8*sc]].forEach(([bx,by,bw,bh]) => {
+        gfx.beginFill(0x2a2820); gfx.drawEllipse(bx,by,bw,bh); gfx.endFill();
+        gfx.beginFill(0x4a4840); gfx.drawEllipse(bx-bw*0.1,by-bh*0.3,bw*0.7,bh*0.55); gfx.endFill();
+        gfx.beginFill(0x6a6858); gfx.drawEllipse(bx-bw*0.2,by-bh*0.45,bw*0.35,bh*0.28); gfx.endFill();
+      });
+      // P11: extra small boulder pile on right
+      if (pl >= 19) {
+        [[cx+32*sc,base-12*sc,12*sc,7*sc],[cx+42*sc,base-6*sc,9*sc,5*sc]].forEach(([bx,by,bw,bh]) => {
+          gfx.beginFill(0x2a2820); gfx.drawEllipse(bx,by,bw,bh); gfx.endFill();
+          gfx.beginFill(0x4a4840); gfx.drawEllipse(bx-bw*0.1,by-bh*0.3,bw*0.7,bh*0.55); gfx.endFill();
+        });
+      }
+      // wheel shadow
+      gfx.beginFill(0x000000, 0.22); gfx.drawEllipse(wx+4*sc, base, wr*0.35, wr*0.1); gfx.endFill();
+      // wheel outer ring
+      gfx.beginFill(0x1e1c18); gfx.drawCircle(wx, wy, wr); gfx.endFill();
+      // wheel face
+      gfx.beginFill(0x3a3830); gfx.drawCircle(wx, wy, wr-3*sc); gfx.endFill();
+      // radial segments
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        gfx.lineStyle(1.5*sc, 0x2a2820, 1);
+        gfx.moveTo(wx + Math.cos(ang)*10*sc, wy + Math.sin(ang)*10*sc);
+        gfx.lineTo(wx + Math.cos(ang)*(wr-4*sc), wy + Math.sin(ang)*(wr-4*sc));
+        gfx.lineStyle(0);
+      }
+      // highlight
+      gfx.beginFill(0x8c8778, 0.20); gfx.drawCircle(wx-wr*0.25, wy-wr*0.3, wr*0.45); gfx.endFill();
+      // centre hole
+      gfx.beginFill(0x0e0c08); gfx.drawCircle(wx, wy, 8*sc); gfx.endFill();
+      gfx.beginFill(0x1e1c14); gfx.drawCircle(wx, wy, 5*sc); gfx.endFill();
+      // axle post
+      gfx.beginFill(0x3a2c18); gfx.drawRect(wx-3*sc, wy-wr-6*sc, 6*sc, 14*sc); gfx.endFill();
+      gfx.beginFill(0x5a4428); gfx.drawRect(wx-1*sc, wy-wr-6*sc, 2*sc, 14*sc); gfx.endFill();
+      // cracks
+      gfx.lineStyle(1.2*sc, 0x141210, 1);
+      gfx.moveTo(wx+wr*0.1, wy-wr*0.2); gfx.lineTo(wx+wr*0.4, wy+wr*0.1);
+      gfx.moveTo(wx-wr*0.3, wy+wr*0.2); gfx.lineTo(wx-wr*0.1, wy+wr*0.45);
+      gfx.lineStyle(0);
+      // P11: second smaller wheel leaning behind
+      if (pl >= 19) {
+        const wr2 = wr * 0.62, wx2 = cx - 14*sc, wy2 = base - wr2 - 2*sc;
+        gfx.beginFill(0x161412); gfx.drawCircle(wx2, wy2, wr2); gfx.endFill();
+        gfx.beginFill(0x2a2826); gfx.drawCircle(wx2, wy2, wr2-2*sc); gfx.endFill();
+        gfx.beginFill(0x0e0c08); gfx.drawCircle(wx2, wy2, 5*sc); gfx.endFill();
+        for (let i = 0; i < 6; i++) {
+          const ang = (i / 6) * Math.PI * 2;
+          gfx.lineStyle(1*sc, 0x1e1c18, 1);
+          gfx.moveTo(wx2+Math.cos(ang)*7*sc, wy2+Math.sin(ang)*7*sc);
+          gfx.lineTo(wx2+Math.cos(ang)*(wr2-3*sc), wy2+Math.sin(ang)*(wr2-3*sc));
+          gfx.lineStyle(0);
+        }
+      }
+    } else {
+      // ── P2–P9: original boulder cluster ──────────────────────────────────
+      const bh = s * 0.34 * sizeMult;
+      const hw = s * 0.22 * sizeMult * 0.5;
+      const bx = cx + (rnd()-0.5)*s*0.06;
+      const by = base - bh * 0.1;
+      const top = by - bh;
+      gfx.beginFill(0x000000, 0.22); gfx.drawEllipse(bx, by, s*sizeMult*0.30, s*sizeMult*0.10); gfx.endFill();
+      gfx.beginFill(0x3a3830); gfx.drawPolygon([bx-hw*0.6,by, bx-hw*0.8,by-bh*0.5, bx-hw*0.2,top, bx+hw*0.1,by-bh*0.3]); gfx.endFill();
+      gfx.beginFill(0x7a7468); gfx.drawPolygon([bx-hw*0.2,top, bx+hw*0.4,top+bh*0.15, bx+hw*0.6,by-bh*0.4, bx+hw*0.1,by-bh*0.3]); gfx.endFill();
+      gfx.beginFill(0x585450); gfx.drawPolygon([bx+hw*0.1,by-bh*0.3, bx+hw*0.6,by-bh*0.4, bx+hw*0.7,by, bx-hw*0.6,by]); gfx.endFill();
+      gfx.beginFill(0xb4afa5, 0.28); gfx.drawEllipse(bx+hw*0.1, top+bh*0.2, hw*0.3, bh*0.12); gfx.endFill();
+      if (sizeMult > 0.55) {
+        const bx2 = bx + s*0.18*sizeMult, by2 = by - s*0.02*sizeMult;
+        const bh2 = bh*0.55, hw2 = hw*0.55, top2 = by2-bh2;
+        gfx.beginFill(0x323028); gfx.drawPolygon([bx2-hw2*0.6,by2, bx2-hw2*0.7,by2-bh2*0.5, bx2-hw2*0.1,top2, bx2+hw2*0.2,by2-bh2*0.3]); gfx.endFill();
+        gfx.beginFill(0x686460); gfx.drawPolygon([bx2-hw2*0.1,top2, bx2+hw2*0.5,top2+bh2*0.15, bx2+hw2*0.65,by2-bh2*0.4, bx2+hw2*0.2,by2-bh2*0.3]); gfx.endFill();
+        gfx.beginFill(0x504c48); gfx.drawPolygon([bx2+hw2*0.2,by2-bh2*0.3, bx2+hw2*0.65,by2-bh2*0.4, bx2+hw2*0.7,by2, bx2-hw2*0.6,by2]); gfx.endFill();
+      }
     }
 
   } else if (rss === "ore") {
-    // Single large nugget / ore deposit, scaled by power level
-    const rx = s * 0.14 * sizeMult, ry = s * 0.10 * sizeMult;
-    const nx = cx + (rnd()-0.5)*s*0.06;
-    const ny = base - ry*0.3;
-    // shadow
-    gfx.beginFill(0x000000, 0.20); gfx.drawEllipse(nx, ny+ry*0.6, rx*1.2, ry*0.45); gfx.endFill();
-    // dirt socket
-    gfx.beginFill(0x1e1c14); gfx.drawEllipse(nx, ny+ry*0.5, rx*1.1, ry*0.5); gfx.endFill();
-    // nugget body
-    gfx.beginFill(0x4a2e08); gfx.drawEllipse(nx, ny, rx, ry*0.85); gfx.endFill();
-    gfx.beginFill(0xc89030); gfx.drawEllipse(nx-rx*0.1, ny-ry*0.12, rx*0.75, ry*0.65); gfx.endFill();
-    gfx.beginFill(0xf0d060); gfx.drawEllipse(nx-rx*0.22, ny-ry*0.28, rx*0.38, ry*0.30); gfx.endFill();
-    gfx.beginFill(0xfffce0, 0.45); gfx.drawEllipse(nx-rx*0.25, ny-ry*0.30, rx*0.28, ry*0.18); gfx.endFill();
-    gfx.beginFill(0x64c8ff, 0.70); gfx.drawCircle(nx-rx*0.12, ny-ry*0.05, s*sizeMult*0.012); gfx.endFill();
-    gfx.beginFill(0x64c8ff, 0.70); gfx.drawCircle(nx+rx*0.08, ny+ry*0.05, s*sizeMult*0.010); gfx.endFill();
-    // extra small nuggets at higher levels
-    if (sizeMult > 0.60) {
-      const rx2 = rx*0.52, ry2 = ry*0.52;
-      const nx2 = nx + rx*0.9, ny2 = ny + ry*0.3;
-      gfx.beginFill(0x1e1c14); gfx.drawEllipse(nx2, ny2+ry2*0.5, rx2*1.1, ry2*0.5); gfx.endFill();
-      gfx.beginFill(0x4a2e08); gfx.drawEllipse(nx2, ny2, rx2, ry2*0.85); gfx.endFill();
-      gfx.beginFill(0xc89030); gfx.drawEllipse(nx2-rx2*0.1, ny2-ry2*0.12, rx2*0.75, ry2*0.65); gfx.endFill();
+    if (pl >= 22) {
+      // ── P12/P13: Mine shaft ───────────────────────────────────────────────
+      const sc = s * sizeMult * 0.038;
+      const numShafts = pl >= 25 ? 2 : 1;
+      // ground shadow
+      gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(cx, base, 62*sc, 13*sc); gfx.endFill();
+      function drawShaft(sx, sbase) {
+        const ew=44*sc, eh=50*sc, ex=sx-ew*0.5-4*sc, ey=sbase-eh-8*sc;
+        gfx.beginFill(0x1a1810); gfx.drawRect(ex-4*sc, ey-4*sc, ew+8*sc, eh+4*sc); gfx.endFill();
+        gfx.beginFill(0x4a3018); gfx.drawRect(ex-2*sc, ey, 6*sc, eh); gfx.endFill();
+        gfx.beginFill(0x5a3820); gfx.drawRect(ex-2*sc, ey, 3*sc, eh); gfx.endFill();
+        gfx.beginFill(0x4a3018); gfx.drawRect(ex+ew-4*sc, ey, 6*sc, eh); gfx.endFill();
+        gfx.beginFill(0x5a3820); gfx.drawRect(ex+ew-4*sc, ey, 3*sc, eh); gfx.endFill();
+        gfx.beginFill(0x3a2410); gfx.drawRect(ex-4*sc, ey-8*sc, ew+8*sc, 10*sc); gfx.endFill();
+        gfx.beginFill(0x5a3820); gfx.drawRect(ex-4*sc, ey-8*sc, ew+8*sc, 4*sc); gfx.endFill();
+        gfx.beginFill(0x080604); gfx.drawRect(ex+2*sc, ey+2*sc, ew-4*sc, eh-2*sc); gfx.endFill();
+        gfx.beginFill(0x180e06, 0.9); gfx.drawRect(ex+2*sc, ey+2*sc, ew-4*sc, eh-2*sc); gfx.endFill();
+        gfx.beginFill(0xb47828, 0.08); gfx.drawEllipse(sx, ey+eh*0.3, 12*sc, 8*sc); gfx.endFill();
+        gfx.lineStyle(2*sc, 0x3a2410, 1);
+        gfx.moveTo(ex+2*sc, ey+eh*0.4); gfx.lineTo(ex+ew-4*sc, ey+eh*0.5); gfx.lineStyle(0);
+        // cart
+        const cartx=sx+20*sc, carty=sbase-14*sc;
+        gfx.beginFill(0x3a2010); gfx.drawCircle(cartx-8*sc, carty+4*sc, 5*sc); gfx.endFill();
+        gfx.beginFill(0x5a3828); gfx.drawCircle(cartx-8*sc, carty+4*sc, 3*sc); gfx.endFill();
+        gfx.beginFill(0x3a2010); gfx.drawCircle(cartx+8*sc, carty+4*sc, 5*sc); gfx.endFill();
+        gfx.beginFill(0x5a3828); gfx.drawCircle(cartx+8*sc, carty+4*sc, 3*sc); gfx.endFill();
+        gfx.beginFill(0x2a1e0c); gfx.drawRect(cartx-14*sc, carty-10*sc, 28*sc, 14*sc); gfx.endFill();
+        gfx.beginFill(0x3a2c14); gfx.drawRect(cartx-14*sc, carty-10*sc, 3*sc, 14*sc); gfx.endFill();
+        gfx.beginFill(0x3a2c14); gfx.drawRect(cartx+11*sc, carty-10*sc, 3*sc, 14*sc); gfx.endFill();
+        gfx.beginFill(0x3a2c14); gfx.drawRect(cartx-14*sc, carty-10*sc, 28*sc, 3*sc); gfx.endFill();
+        [0,1,2,3,4,5].forEach(i => {
+          const ox=cartx-10*sc+(i%3)*7*sc, oy=carty-14*sc-Math.floor(i/3)*4*sc;
+          gfx.beginFill(0x1e1c14); gfx.drawEllipse(ox,oy+2*sc,4*sc,2*sc); gfx.endFill();
+          gfx.beginFill(i%2===0?0xc89030:0xf0c040); gfx.drawEllipse(ox,oy,4*sc,2.5*sc); gfx.endFill();
+          gfx.beginFill(0xf8e080); gfx.drawEllipse(ox-1*sc,oy-0.8*sc,1.5*sc,1*sc); gfx.endFill();
+        });
+        // rails
+        gfx.lineStyle(1.5*sc, 0x3a3020, 1);
+        gfx.moveTo(ex+4*sc, sbase+2*sc); gfx.lineTo(cartx+20*sc, sbase+2*sc);
+        gfx.moveTo(ex+4*sc, sbase+6*sc); gfx.lineTo(cartx+20*sc, sbase+6*sc);
+        for (let ri=0;ri<5;ri++){const rx2=ex+8*sc+ri*18*sc; gfx.moveTo(rx2,sbase); gfx.lineTo(rx2,sbase+8*sc);}
+        gfx.lineStyle(0);
+      }
+      if (numShafts === 1) {
+        drawShaft(cx-4*sc, base);
+      } else {
+        // P13: two shafts side by side, second offset and smaller
+        drawShaft(cx-18*sc, base);
+        drawShaft(cx+22*sc, base);
+      }
+    } else if (pl >= 16) {
+      // ── P10/P11: Smelter ──────────────────────────────────────────────────
+      const sc = s * sizeMult * 0.038;
+      const numFurnaces = pl >= 19 ? 2 : 1;
+      // ground shadow
+      gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(cx, base, 60*sc, 13*sc); gfx.endFill();
+      // ash/slag
+      gfx.beginFill(0x281e14, 0.60); gfx.drawEllipse(cx+5*sc, base, 28*sc, 7*sc); gfx.endFill();
+      function drawFurnace(fx2, fbase) {
+        const fw=36*sc, fh=52*sc, flx=fx2-fw*0.5, fly=fbase-fh-8*sc;
+        // shadow
+        gfx.beginFill(0x1a1610); gfx.drawPolygon([flx,fly+fh, flx-6*sc,fly+fh+4*sc, flx-6*sc,fly+8*sc, flx,fly]); gfx.endFill();
+        // body
+        gfx.beginFill(0x2e2820); gfx.drawRect(flx,fly,fw,fh); gfx.endFill();
+        // block seams
+        gfx.lineStyle(1*sc, 0x1e1810, 1);
+        gfx.moveTo(flx,fly+fh*0.33); gfx.lineTo(flx+fw,fly+fh*0.33);
+        gfx.moveTo(flx,fly+fh*0.66); gfx.lineTo(flx+fw,fly+fh*0.66);
+        gfx.moveTo(flx+fw*0.5,fly); gfx.lineTo(flx+fw*0.5,fly+fh);
+        gfx.lineStyle(0);
+        // top
+        gfx.beginFill(0x3e3830); gfx.drawRect(flx,fly-6*sc,fw,6*sc); gfx.endFill();
+        gfx.beginFill(0x504840); gfx.drawPolygon([flx,fly-6*sc, flx+fw,fly-6*sc, flx+fw+4*sc,fly-10*sc, flx+4*sc,fly-10*sc]); gfx.endFill();
+        // fire mouth
+        const mw=20*sc, mh=16*sc, mx2=flx+fw*0.5-mw*0.5, my2=fly+fh-mh-4*sc;
+        gfx.beginFill(0x0a0604); gfx.drawRect(mx2,my2,mw,mh); gfx.endFill();
+        gfx.beginFill(0xff5000, 0.15); gfx.drawEllipse(mx2+mw*0.5,my2+mh*0.5,mw*0.9,mh*0.9); gfx.endFill();
+        gfx.beginFill(0xff8c00, 0.25); gfx.drawEllipse(mx2+mw*0.5,my2+mh*0.5,mw*0.6,mh*0.6); gfx.endFill();
+        gfx.beginFill(0xffb400, 0.35); gfx.drawEllipse(mx2+mw*0.5,my2+mh*0.5,mw*0.35,mh*0.35); gfx.endFill();
+        gfx.beginFill(0xffe064, 0.80); gfx.drawCircle(mx2+mw*0.5, my2+mh*0.5, 2*sc); gfx.endFill();
+        // chimney
+        gfx.beginFill(0x1e1810); gfx.drawRect(fx2-4*sc, fly-22*sc, 8*sc, 18*sc); gfx.endFill();
+        gfx.beginFill(0x2e2820); gfx.drawRect(fx2-2*sc, fly-22*sc, 4*sc, 18*sc); gfx.endFill();
+        // smoke
+        for (let si=0; si<5; si++) {
+          const sp=si/4; const sy2=fly-22*sc-sp*18*sc; const ssx=fx2+Math.sin(sp*3)*4*sc;
+          gfx.beginFill(0x3c3228, (1-sp)*0.28); gfx.drawCircle(ssx,sy2,(3+sp*4)*sc); gfx.endFill();
+        }
+        // glow on ground
+        gfx.beginFill(0xff6400, 0.07); gfx.drawEllipse(fx2, fbase-2*sc, 18*sc, 5*sc); gfx.endFill();
+        // ingot mould beside
+        const ix=fx2+20*sc, iy=fbase-10*sc;
+        gfx.beginFill(0x1e1c14); gfx.drawRect(ix-10*sc,iy-4*sc,20*sc,8*sc); gfx.endFill();
+        [[ix-6*sc,iy-2*sc,0xc89030],[ix+2*sc,iy-3*sc,0xd4a020]].forEach(([ingx,ingy,col]) => {
+          gfx.beginFill(0x1a1810); gfx.drawRect(ingx-4*sc,ingy,8*sc,4*sc); gfx.endFill();
+          gfx.beginFill(col); gfx.drawRect(ingx-4*sc,ingy-3*sc,8*sc,4*sc); gfx.endFill();
+          gfx.beginFill(0xf0d060); gfx.drawRect(ingx-4*sc,ingy-3*sc,3*sc,2*sc); gfx.endFill();
+        });
+      }
+      if (numFurnaces === 1) {
+        drawFurnace(cx-6*sc, base);
+      } else {
+        // P11: two furnaces
+        drawFurnace(cx-22*sc, base);
+        drawFurnace(cx+18*sc, base);
+      }
+    } else {
+      // ── P2–P9: original nugget ────────────────────────────────────────────
+      const rx = s * 0.14 * sizeMult, ry = s * 0.10 * sizeMult;
+      const nx = cx + (rnd()-0.5)*s*0.06;
+      const ny = base - ry*0.3;
+      gfx.beginFill(0x000000, 0.20); gfx.drawEllipse(nx, ny+ry*0.6, rx*1.2, ry*0.45); gfx.endFill();
+      gfx.beginFill(0x1e1c14); gfx.drawEllipse(nx, ny+ry*0.5, rx*1.1, ry*0.5); gfx.endFill();
+      gfx.beginFill(0x4a2e08); gfx.drawEllipse(nx, ny, rx, ry*0.85); gfx.endFill();
+      gfx.beginFill(0xc89030); gfx.drawEllipse(nx-rx*0.1, ny-ry*0.12, rx*0.75, ry*0.65); gfx.endFill();
+      gfx.beginFill(0xf0d060); gfx.drawEllipse(nx-rx*0.22, ny-ry*0.28, rx*0.38, ry*0.30); gfx.endFill();
+      gfx.beginFill(0xfffce0, 0.45); gfx.drawEllipse(nx-rx*0.25, ny-ry*0.30, nx*0.28, ry*0.18); gfx.endFill();
+      gfx.beginFill(0x64c8ff, 0.70); gfx.drawCircle(nx-rx*0.12, ny-ry*0.05, s*sizeMult*0.012); gfx.endFill();
+      gfx.beginFill(0x64c8ff, 0.70); gfx.drawCircle(nx+rx*0.08, ny+ry*0.05, s*sizeMult*0.010); gfx.endFill();
+      if (sizeMult > 0.60) {
+        const rx2 = rx*0.52, ry2 = ry*0.52;
+        const nx2 = nx + rx*0.9, ny2 = ny + ry*0.3;
+        gfx.beginFill(0x1e1c14); gfx.drawEllipse(nx2, ny2+ry2*0.5, rx2*1.1, ry2*0.5); gfx.endFill();
+        gfx.beginFill(0x4a2e08); gfx.drawEllipse(nx2, ny2, rx2, ry2*0.85); gfx.endFill();
+        gfx.beginFill(0xc89030); gfx.drawEllipse(nx2-rx2*0.1, ny2-ry2*0.12, rx2*0.75, ry2*0.65); gfx.endFill();
+      }
     }
 
   } else {
-    // Gas pit — larger pit and more vapor at higher levels
-    const sm = sizeMult;
-    gfx.beginFill(0x080e04); gfx.drawEllipse(cx, base, s*sm*0.28, s*sm*0.11); gfx.endFill();
-    gfx.beginFill(0x121a06); gfx.drawEllipse(cx, base, s*sm*0.20, s*sm*0.07); gfx.endFill();
-    gfx.lineStyle(s*sm*0.018, 0x2a3a10, 0.8); gfx.drawEllipse(cx, base, s*sm*0.28, s*sm*0.11); gfx.lineStyle(0);
-    // bubbles
-    const bub = [[-0.10,0.02,0.055],[0.08,-0.02,0.045],[0.01,0.04,0.050]];
-    bub.forEach(([dxr,dyr,rr]) => {
-      const bx=cx+dxr*s*sm, by=base+dyr*s*sm, br=rr*s*sm;
-      gfx.beginFill(0x3c5a0a, 0.70); gfx.drawEllipse(bx, by, br, br*0.38); gfx.endFill();
-    });
-    // single vapor vent, taller at higher levels
-    const vh = 0.40 + t * 0.60;
-    for (let i = 0; i < 8; i++) {
-      const tp = i / 8;
-      const py = base - tp * vh * s * sm;
-      const px = cx + Math.sin(tp*3.5)*s*0.04;
-      const rr = s*sm*0.025 + tp*s*sm*0.065;
-      gfx.beginFill(0x78be28, (1-tp)*0.38); gfx.drawCircle(px, py, rr); gfx.endFill();
+    if (pl >= 22) {
+      // ── P12/P13: Collector Dome ───────────────────────────────────────────
+      const sc = s * sizeMult * 0.038;
+      // gas pit
+      gfx.beginFill(0x080e04); gfx.drawEllipse(cx,base-2*sc,28*sc,10*sc); gfx.endFill();
+      gfx.beginFill(0x121a06); gfx.drawEllipse(cx,base-2*sc,18*sc,7*sc); gfx.endFill();
+      gfx.lineStyle(0.8*sc, 0x2a3a10, 1); gfx.drawEllipse(cx,base-2*sc,28*sc,10*sc); gfx.lineStyle(0);
+      // bubbles in pit
+      [[-0.10,0.02,0.055],[0.08,-0.02,0.045],[0.01,0.04,0.050]].forEach(([dxr,dyr,rr]) => {
+        gfx.beginFill(0x3c5a0a, 0.70); gfx.drawEllipse(cx+dxr*45*sc,base-2*sc+dyr*45*sc,rr*45*sc,(rr*45*sc)*0.38); gfx.endFill();
+      });
+      // pipes running outward
+      [[-45*sc,0],[45*sc,0],[0,-20*sc]].forEach(([dx,dy]) => {
+        const ang = Math.atan2(dy,dx), len = Math.sqrt(dx*dx+dy*dy);
+        gfx.beginFill(0x1e2010);
+        const cos=Math.cos(ang), sin2=Math.sin(ang);
+        gfx.drawRect(cx+cos*18*sc+sin2*(-2*sc), base-12*sc+sin2*18*sc+cos*(-2*sc), (len-18*sc)*cos-(4*sc)*sin2, (len-18*sc)*sin2+(4*sc)*cos);
+        gfx.endFill();
+        // vent at end
+        const ex2=cx+dx, ey2=base-12*sc+dy;
+        for (let vi=0;vi<5;vi++){
+          const vp=vi/5;
+          gfx.beginFill(0x64b432, (1-vp)*0.40); gfx.drawCircle(ex2+Math.sin(vp*3)*2*sc, ey2-vp*14*sc, (2+vp*4)*sc); gfx.endFill();
+        }
+      });
+      // dome shadow
+      const dr=38*sc, dbase=base-8*sc;
+      gfx.beginFill(0x000000, 0.18); gfx.drawEllipse(cx+4*sc, dbase+4*sc, dr*0.7, dr*0.2); gfx.endFill();
+      // dome dark half
+      gfx.beginFill(0x1a2010); gfx.drawPolygon([cx-dr,dbase, cx+dr,dbase, cx+dr,dbase, cx,dbase-dr]); gfx.endFill();
+      gfx.beginFill(0x1a2010); gfx.drawEllipse(cx-dr*0.3, dbase-dr*0.5, dr*0.55, dr*0.55); gfx.endFill();
+      // dome main arc
+      gfx.beginFill(0x2a3018);
+      for (let ai=0; ai<=16; ai++) {
+        const ang1=(ai/16)*Math.PI, ang2=((ai+1)/16)*Math.PI;
+        gfx.drawPolygon([cx,dbase, cx-Math.cos(ang1)*dr,dbase-Math.sin(ang1)*dr*0.85, cx-Math.cos(ang2)*dr,dbase-Math.sin(ang2)*dr*0.85]);
+      }
+      gfx.endFill();
+      // dome highlight
+      gfx.beginFill(0x4a6828, 0.20); gfx.drawEllipse(cx-dr*0.25,dbase-dr*0.32,dr*0.4,dr*0.35); gfx.endFill();
+      // base ring
+      gfx.beginFill(0x1e2414); gfx.drawRect(cx-dr,dbase-3*sc,dr*2,6*sc); gfx.endFill();
+      gfx.beginFill(0x2e3420); gfx.drawRect(cx-dr,dbase-3*sc,dr*2,2*sc); gfx.endFill();
+      // stone seam lines on dome
+      gfx.lineStyle(1*sc, 0x1a2010, 0.7);
+      [0.25,0.50,0.75].forEach(p => {
+        const dy2=-(p)*dr*0.85; const dw=Math.sqrt(Math.max(0,dr*dr-(dy2*dy2/0.72)))*0.92;
+        gfx.moveTo(cx-dw,dbase+dy2); gfx.lineTo(cx+dw,dbase+dy2);
+      });
+      gfx.lineStyle(0);
+      // bolts around base
+      for (let bi=0;bi<8;bi++){
+        const ang=(bi/8)*Math.PI;
+        gfx.beginFill(0x3a3c28); gfx.drawCircle(cx+Math.cos(ang)*(dr-4*sc),dbase-Math.sin(ang)*6*sc,1.5*sc); gfx.endFill();
+      }
+      // central vent stack
+      gfx.beginFill(0x1e2010); gfx.drawRect(cx-4*sc,dbase-dr-8*sc,8*sc,dr*0.5); gfx.endFill();
+      gfx.beginFill(0x2a2c18); gfx.drawRect(cx-2*sc,dbase-dr-8*sc,3*sc,dr*0.5); gfx.endFill();
+      gfx.beginFill(0x3a3c28); gfx.drawRect(cx-6*sc,dbase-dr-12*sc,12*sc,6*sc); gfx.endFill();
+      // vent gas
+      for (let vi=0;vi<10;vi++){
+        const vp=vi/10; const vy=dbase-dr-12*sc-vp*28*sc; const vx=cx+Math.sin(vp*4)*5*sc;
+        gfx.beginFill(0x64be3c,(1-vp)*0.48); gfx.drawCircle(vx,vy,(3+vp*7)*sc); gfx.endFill();
+      }
+      // pressure gauge
+      gfx.beginFill(0x1a2010); gfx.drawCircle(cx+dr*0.55,dbase-dr*0.35,6*sc); gfx.endFill();
+      gfx.beginFill(0x2a3418); gfx.drawCircle(cx+dr*0.55,dbase-dr*0.35,4.5*sc); gfx.endFill();
+      gfx.lineStyle(1*sc,0x6aaa70,1); gfx.moveTo(cx+dr*0.55,dbase-dr*0.35); gfx.lineTo(cx+dr*0.55+3*sc,dbase-dr*0.35-3*sc); gfx.lineStyle(0);
+      // P13: glowing cracks + extra pressure effects
+      if (pl >= 25) {
+        // glowing crack lines on dome surface
+        gfx.lineStyle(1.5*sc, 0x78dc28, 0.45);
+        gfx.moveTo(cx-dr*0.35,dbase-dr*0.4); gfx.lineTo(cx-dr*0.18,dbase-dr*0.7);
+        gfx.moveTo(cx+dr*0.2,dbase-dr*0.25); gfx.lineTo(cx+dr*0.38,dbase-dr*0.55);
+        gfx.lineStyle(0);
+        // extra gas leak around base
+        [cx-dr*0.55,cx-dr*0.2,cx+dr*0.3,cx+dr*0.6].forEach((lx,li) => {
+          for (let vi=0;vi<6;vi++){
+            const vp=vi/6;
+            gfx.beginFill(0x78dc28,(1-vp)*0.30); gfx.drawCircle(lx+Math.sin(vp*3)*2*sc, dbase-vp*18*sc, (1.5+vp*3)*sc); gfx.endFill();
+          }
+        });
+        // extra side pressure gauge
+        gfx.beginFill(0x1a2010); gfx.drawCircle(cx-dr*0.52,dbase-dr*0.28,5*sc); gfx.endFill();
+        gfx.beginFill(0x3a4820); gfx.drawCircle(cx-dr*0.52,dbase-dr*0.28,3.5*sc); gfx.endFill();
+        gfx.lineStyle(1*sc,0xa0e040,1); gfx.moveTo(cx-dr*0.52,dbase-dr*0.28); gfx.lineTo(cx-dr*0.52-3*sc,dbase-dr*0.28-2*sc); gfx.lineStyle(0);
+        // ground mist glow
+        gfx.beginFill(0x50a020, 0.10); gfx.drawEllipse(cx,base,45*sc,10*sc); gfx.endFill();
+      }
+    } else if (pl >= 16) {
+      // ── P10/P11: Venting rig ──────────────────────────────────────────────
+      const sc = s * sizeMult * 0.038;
+      const numStacks = pl >= 19 ? 6 : 3;
+      // gas pit
+      gfx.beginFill(0x080e04); gfx.drawEllipse(cx,base-2*sc,32*sc,12*sc); gfx.endFill();
+      gfx.beginFill(0x121a06); gfx.drawEllipse(cx,base-2*sc,22*sc,8*sc); gfx.endFill();
+      gfx.lineStyle(1*sc,0x2a3a10,0.8); gfx.drawEllipse(cx,base-2*sc,32*sc,12*sc); gfx.lineStyle(0);
+      [[-0.10,0.02,0.055],[0.08,-0.02,0.045],[0.01,0.04,0.050]].forEach(([dxr,dyr,rr]) => {
+        gfx.beginFill(0x3c5a0a,0.70); gfx.drawEllipse(cx+dxr*45*sc,base-2*sc+dyr*45*sc,rr*45*sc,(rr*45*sc)*0.38); gfx.endFill();
+      });
+      const postH=68*sc;
+      const posts = numStacks===3 ? [cx-22*sc,cx,cx+22*sc] : [cx-34*sc,cx-14*sc,cx+6*sc,cx+26*sc];
+      posts.forEach(px => {
+        gfx.beginFill(0x2a2820); gfx.drawRect(px-3*sc,base-postH,6*sc,postH); gfx.endFill();
+        gfx.beginFill(0x3a3830); gfx.drawRect(px-1*sc,base-postH,2*sc,postH); gfx.endFill();
+      });
+      [0.3,0.6,0.85].forEach(p => {
+        const py=base-postH*p, spanX=posts[posts.length-1]-posts[0];
+        gfx.beginFill(0x242220); gfx.drawRect(posts[0]-3*sc,py-2*sc,spanX+6*sc,4*sc); gfx.endFill();
+        gfx.beginFill(0x343230); gfx.drawRect(posts[0]-3*sc,py-1*sc,spanX+6*sc,1*sc); gfx.endFill();
+      });
+      // diagonal braces
+      gfx.lineStyle(2*sc,0x2a2820,1);
+      gfx.moveTo(posts[0],base-postH*0.3); gfx.lineTo(posts[Math.floor(posts.length/2)],base-postH*0.6);
+      gfx.moveTo(posts[posts.length-1],base-postH*0.3); gfx.lineTo(posts[Math.floor(posts.length/2)],base-postH*0.6);
+      gfx.lineStyle(0);
+      const vents = numStacks===3
+        ? [{x:cx-16*sc,h:48*sc,w:5*sc},{x:cx,h:58*sc,w:6*sc},{x:cx+16*sc,h:44*sc,w:5*sc}]
+        : [{x:cx-28*sc,h:42*sc,w:4*sc},{x:cx-10*sc,h:52*sc,w:5*sc},{x:cx+4*sc,h:58*sc,w:6*sc},{x:cx+20*sc,h:46*sc,w:5*sc},{x:cx-22*sc,h:36*sc,w:4*sc},{x:cx+30*sc,h:38*sc,w:4*sc}];
+      vents.forEach(v => {
+        gfx.beginFill(0x1e2010); gfx.drawRect(v.x-v.w*0.5,base-v.h-4*sc,v.w,v.h); gfx.endFill();
+        gfx.beginFill(0x2a2c18); gfx.drawRect(v.x-v.w*0.5,base-v.h-4*sc,v.w*0.4,v.h); gfx.endFill();
+        gfx.beginFill(0x3a3c28); gfx.drawRect(v.x-v.w*0.5-2*sc,base-v.h-8*sc,v.w+4*sc,5*sc); gfx.endFill();
+        for (let vi=0;vi<10;vi++){
+          const vp=vi/10; const vy=base-v.h-8*sc-vp*30*sc; const vx=v.x+Math.sin(vp*4)*4*sc;
+          gfx.beginFill(0x64b432,(1-vp)*0.45); gfx.drawCircle(vx,vy,(3+vp*8)*sc); gfx.endFill();
+        }
+        // bolts
+        [0.3,0.6,0.8].forEach(p => {
+          gfx.beginFill(0x3a3830); gfx.drawCircle(v.x-v.w*0.5-1*sc,base-v.h*p,1.5*sc); gfx.endFill();
+          gfx.beginFill(0x3a3830); gfx.drawCircle(v.x+v.w*0.5+1*sc,base-v.h*p,1.5*sc); gfx.endFill();
+        });
+      });
+      // pressure gauge on main stack
+      const mainStack = vents[Math.floor(vents.length/2)];
+      gfx.beginFill(0x1e2010); gfx.drawCircle(mainStack.x+6*sc,base-32*sc,5*sc); gfx.endFill();
+      gfx.beginFill(0x3a4020); gfx.drawCircle(mainStack.x+6*sc,base-32*sc,3.5*sc); gfx.endFill();
+      gfx.lineStyle(1*sc,0x6aaa70,1); gfx.moveTo(mainStack.x+6*sc,base-32*sc); gfx.lineTo(mainStack.x+8*sc,base-34*sc); gfx.lineStyle(0);
+    } else {
+      // ── P2–P9: original gas pit ───────────────────────────────────────────
+      const sm = sizeMult;
+      gfx.beginFill(0x080e04); gfx.drawEllipse(cx, base, s*sm*0.28, s*sm*0.11); gfx.endFill();
+      gfx.beginFill(0x121a06); gfx.drawEllipse(cx, base, s*sm*0.20, s*sm*0.07); gfx.endFill();
+      gfx.lineStyle(s*sm*0.018, 0x2a3a10, 0.8); gfx.drawEllipse(cx, base, s*sm*0.28, s*sm*0.11); gfx.lineStyle(0);
+      const bub = [[-0.10,0.02,0.055],[0.08,-0.02,0.045],[0.01,0.04,0.050]];
+      bub.forEach(([dxr,dyr,rr]) => {
+        const bx=cx+dxr*s*sm, by=base+dyr*s*sm, br=rr*s*sm;
+        gfx.beginFill(0x3c5a0a, 0.70); gfx.drawEllipse(bx, by, br, br*0.38); gfx.endFill();
+      });
+      const vh = 0.40 + t * 0.60;
+      for (let i = 0; i < 8; i++) {
+        const tp = i / 8;
+        const py = base - tp * vh * s * sm;
+        const px = cx + Math.sin(tp*3.5)*s*0.04;
+        const rr = s*sm*0.025 + tp*s*sm*0.065;
+        gfx.beginFill(0x78be28, (1-tp)*0.38); gfx.drawCircle(px, py, rr); gfx.endFill();
+      }
     }
   }
 }
