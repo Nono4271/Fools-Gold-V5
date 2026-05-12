@@ -408,7 +408,7 @@ const defTierData  = defRes?.tierData   ?? null;
 // Normalise defender to slots: use dc.troopSlots if present, else single troopBranch.
 const defSlots = (dc?.troopSlots && dc.troopSlots.length > 0)
   ? dc.troopSlots
-  : (dc?.troopBranch ? [{ branch: dc.troopBranch, troops: defTroops ?? (dc?.troops ?? 30) }] : []);
+  : (dc?.troopBranch ? [{ branch: dc.troopBranch, troops: dc?.troops ?? 30 }] : []);
 const defSlotResolved = defSlots.map(sl => {
   const res = resolveBranch(sl.branch);
   return {
