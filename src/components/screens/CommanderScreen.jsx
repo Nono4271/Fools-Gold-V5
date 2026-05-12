@@ -1953,24 +1953,23 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
             <div style={{
               width: "28%", flexShrink: 0,
               borderRight: "1px solid #1e1508",
-              background: `radial-gradient(ellipse at 50% 30%, ${fCol}18 0%, #04030a 65%)`,
+              background: selectedCmd.portrait ? "transparent" : `radial-gradient(ellipse at 50% 30%, ${fCol}18 0%, #04030a 65%)`,
               display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center",
               position: "relative", overflow: "hidden",
             }}>
-              {/* Atmospheric glow */}
-              <div style={{
+              {/* Atmospheric glow — only shown when no portrait */}
+              {!selectedCmd.portrait && <div style={{
                 position: "absolute", top: "15%", left: "50%", transform: "translateX(-50%)",
                 width: 120, height: 120, borderRadius: "50%",
                 background: `radial-gradient(circle, ${fCol}28 0%, transparent 70%)`,
                 pointerEvents: "none",
-              }}/>
+              }}/>}
               {/* Commander portrait / icon — large */}
               {selectedCmd.portrait
                 ? <img src={selectedCmd.portrait} alt={selectedCmd.n} style={{
-                    width: "100%", maxHeight: 280, objectFit: "cover", objectPosition: "top",
-                    display: "block", marginBottom: 12,
-                    filter: `drop-shadow(0 0 24px ${fCol}88)`,
+                    width: "100%", height: "100%", objectFit: "contain", objectPosition: "center",
+                    display: "block",
                   }} />
                 : <div style={{
                     fontSize: 72, lineHeight: 1,
