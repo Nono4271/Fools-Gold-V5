@@ -158,7 +158,7 @@ export const HDEFS = [
   // ── Pirates ── (leader, attacker, support, defender covered; extras: attacker+leader)
   { id:"h1",  n:"Redwake Fynn",         faction:"pirates",        rarity:"veteran",  cls:"attacker", atk:130, foc:0,   spd:88, icon:"🏴‍☠️", subspecies:"Shipwright", portrait:"/commanders/h1_redwake_fynn_portrait.PNG", bust:"/commanders/h1_redwake_fynn_bust.PNG" },
   { id:"h2",  n:"Cutlass Mora",         faction:"pirates",        rarity:"veteran",  cls:"defender", atk:105, foc:0,   spd:78, icon:"🗡",          subspecies:"Shipwright" },
-  { id:"h13", n:"Admiral Brine",        faction:"pirates",        rarity:"soldier",  cls:"leader",   atk:95,  foc:0,   spd:65, icon:"⚓",          subspecies:"First Mate" },
+  { id:"h13", n:"Admiral Brine",        faction:"pirates",        rarity:"soldier",  cls:"leader",   atk:95,  foc:0,   spd:65, icon:"⚓",          subspecies:"First Mate", portrait:"/commanders/h13_admiral_brine_portrait.PNG", bust:"/commanders/h13_admiral_brine_bust.PNG" },
   { id:"h14", n:"Saltwhisper",          faction:"pirates",        rarity:"soldier",  cls:"support",  atk:55,  foc:110, spd:72, icon:"🪝",          subspecies:"First Mate" },
   { id:"h25", n:"Ironjaw Reck",         faction:"pirates",        rarity:"champion", cls:"attacker", atk:175, foc:0,   spd:90, icon:"💀",          subspecies:"Captain"    },
   { id:"h26", n:"Navigator Seyne",      faction:"pirates",        rarity:"champion", cls:"leader",   atk:110, foc:60,  spd:80, icon:"🧭",          subspecies:"Captain"    },
@@ -203,9 +203,9 @@ export const HDEFS = [
   { id:"h41", n:"Sister Vivara",           faction:"holyknights",     rarity:"veteran",  cls:"support",  atk:45,  foc:145, spd:62, icon:"🌟", subspecies:"Inquisitor"   },
   { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"attacker", atk:182, foc:20,  spd:58, icon:"🌑", subspecies:"Inquisitor"   },
 
-  { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"attacker", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire"      },
+  { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"attacker", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire", portrait:"/commanders/h43_countess_serava_portrait.PNG", bust:"/commanders/h43_countess_serava_bust.PNG" },
   { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"support",  atk:65,  foc:170, spd:72, icon:"🩸", subspecies:"Vampire"      },
-  { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"attacker", atk:92,  foc:0,   spd:80, icon:"🐺", subspecies:"Werewolf"     },
+  { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"attacker", atk:92,  foc:0,   spd:80, icon:"🐺", subspecies:"Werewolf", portrait:"/commanders/h45_fang_groth_portrait.PNG", bust:"/commanders/h45_fang_groth_bust.PNG" },
   { id:"h46", n:"Alpha Korrax",         faction:"nightcreatures",  rarity:"champion", cls:"leader",   atk:185, foc:0,   spd:85, icon:"🌕", subspecies:"Werewolf"     },
   { id:"h47", n:"Skitter Vex",          faction:"nightcreatures",  rarity:"soldier",  cls:"defender", atk:70,  foc:20,  spd:60, icon:"🕷", subspecies:"Spider"       },
   { id:"h48", n:"Widow Nyxara",         faction:"nightcreatures",  rarity:"veteran",  cls:"support",  atk:40,  foc:145, spd:65, icon:"🕸", subspecies:"Spider"       },
