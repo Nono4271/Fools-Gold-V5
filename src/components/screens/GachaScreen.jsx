@@ -238,7 +238,10 @@ function SchematicStrip({ schematics, cmds, setCmds, onSchematicUsed }) {
                           color: "#c0b090", fontFamily: "'Cinzel',serif", fontSize: 7,
                           cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
                         }}>
-                          <span style={{ fontSize: 12 }}>{c.icon}</span>
+                          {c.bust
+                            ? <img src={c.bust} alt={c.n} style={{width:16,height:16,borderRadius:"50%",objectFit:"cover"}} />
+                            : <span style={{ fontSize: 12 }}>{c.icon}</span>
+                          }
                           <span>{c.n}</span>
                         </button>
                       ))}
