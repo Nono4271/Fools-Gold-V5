@@ -21,10 +21,10 @@ const POWER_DEFS = {
   7: { cmdLvl:18, command:2160 },
   8: { cmdLvl:25, command:3600 },
   9: { cmdLvl:28, command:4200 },
-  10:{ cmdLvl:35, command:5500 },
-  11:{ cmdLvl:40, command:6500 },
-  12:{ cmdLvl:45, command:7500 },
-  13:{ cmdLvl:50, command:9000 },
+  10:{ cmdLvl:35, command:6600 },
+  11:{ cmdLvl:40, command:7800 },
+  12:{ cmdLvl:45, command:9000 },
+  13:{ cmdLvl:50, command:10800 },
 };
 const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 }; // kept for keeps only
 
