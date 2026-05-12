@@ -13,6 +13,7 @@ document.addEventListener(
     // touch naturally so pan gestures reach the scroll containers.
     if (document.documentElement.classList.contains("gacha-open")) return;
     if ((e.target as Element | null)?.closest(".gear-picker-list")) return;
+    if ((e.target as Element | null)?.closest(".roster-scroll")) return;
     if ((e.target as Element | null)?.closest(".battle-popup")) return;
     if ((e.target as Element | null)?.closest(".find-tiles-popup")) return;
     const target = e.target as Element | null;
