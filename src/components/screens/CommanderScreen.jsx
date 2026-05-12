@@ -587,7 +587,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
         background: `radial-gradient(ellipse, ${fColor}22 0%, transparent 70%)`,
         pointerEvents: "none", zIndex: 0,
       }} />
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap');${CSS}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap');${CSS}.skill-tree-grid{display:flex;flex-direction:column;padding:10px 4px 160px}.skill-tree-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}@media(orientation:landscape)and(max-height:520px){.skill-tree-scroll{overflow-y:hidden!important;height:100%}.skill-tree-grid{display:grid!important;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:0;padding:2px;height:100%;align-items:center;justify-items:center}.skill-tree-grid div{width:100%;overflow:visible;display:flex;flex-direction:column;align-items:center;justify-content:center}.skill-branch-sep{display:none!important}.skill-branch-inner{transform:scale(0.75);transform-origin:center center;width:100%;display:flex;flex-direction:column;align-items:center}}`}</style>
 
       {/* Header */}
       <div style={{
@@ -698,24 +698,6 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
         </span>
       </div>
 
-      {/* ── Skill tree layout: 1-col portrait, 2x2 landscape ── */}
-      <style>{`
-        .skill-tree-grid { display: flex; flex-direction: column; padding: 10px 4px 160px; }
-        .skill-tree-scroll { flex: 1; min-height: 0; overflow-y: auto; position: relative;
-          -webkit-overflow-scrolling: touch; }
-        @media (orientation: landscape) and (max-height: 520px) {
-          .skill-tree-scroll { overflow-y: hidden !important; height: 100%; }
-          .skill-tree-grid { display: grid !important; grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr; gap: 0; padding: 2px; height: 100%;
-            align-items: center; justify-items: center; }
-          .skill-tree-grid > div { width: 100%; overflow: visible;
-            display: flex; flex-direction: column; align-items: center;
-            justify-content: center; }
-          .skill-branch-sep { display: none !important; }
-          .skill-branch-inner { transform: scale(0.75); transform-origin: center center;
-            width: 100%; display: flex; flex-direction: column; align-items: center; }
-        }
-      `}</style>
       <div className="skill-tree-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto",
         position: "relative", WebkitOverflowScrolling: "touch" }}>
 
@@ -1990,13 +1972,12 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                 />
               );
             })}
-          </div>
-          {filtered.length === 0 && (
-            <div style={{ padding: "20px 8px", textAlign: "center", color: "#2a2010",
-              fontFamily: "'Cinzel',serif", fontSize: 8, fontStyle: "italic", gridColumn: "1/-1" }}>
-              No matches
-            </div>
-          )}
+            {filtered.length === 0 && (
+              <div style={{ padding: "20px 8px", textAlign: "center", color: "#2a2010",
+                fontFamily: "'Cinzel',serif", fontSize: 8, fontStyle: "italic", gridColumn: "1/-1" }}>
+                No matches
+              </div>
+            )}
           </div>
           </div>
         </div>
