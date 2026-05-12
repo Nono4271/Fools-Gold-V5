@@ -854,21 +854,7 @@ function RosterPortrait({ cmd, selected, onClick, isLocked, isOppositeAlignment 
         }}>R{rLvl}</div>
       </div>
 
-      {/* First name label */}
-      <div style={{
-        fontFamily: "'Cinzel',serif", fontSize: 7, marginTop: 2,
-        color: selected ? ((isLocked || isOppositeAlignment) ? "#777" : r.color) : "#4a3a28",
-        textAlign: "center", maxWidth: 64,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        transition: "color .15s",
-      }}>{cmd.n.split(" ")[0]}</div>
-      {/* Opposite alignment warning */}
-      {isOppositeAlignment && (
-        <div style={{
-          fontSize: 5, color: "#cc4040", fontFamily: "'Cinzel',serif",
-          textAlign: "center", lineHeight: 1.2, maxWidth: 64, marginTop: -3,
-        }}>OPP. ALIGN.</div>
-      )}
+
     </div>
   );
 }
@@ -2074,25 +2060,19 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                 {/* Locked banner */}
                 <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid #2a2010",
                   borderRadius: 8, padding: "10px 14px", marginBottom: 12, textAlign: "center" }}>
-                  <div style={{ fontSize: 22, marginBottom: 4 }}>🔒</div>
+                  <div style={{ fontFamily: "'Cinzel',serif", fontSize: 16, fontWeight: 700,
+                    color: isOpp3 ? "#cc4040" : "#c8a060", letterSpacing: ".05em",
+                    marginBottom: 6 }}>{selectedCmd.n}</div>
                   {isOpp3 ? (
-                    <>
-                      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#cc4040",
-                        fontWeight: 700, letterSpacing: ".06em" }}>OPPOSITE ALIGNMENT</div>
-                      <div style={{ fontSize: 8, color: "#6a4a4a", fontFamily: "'Cinzel',serif",
-                        marginTop: 4, lineHeight: 1.5 }}>
-                        This commander cannot be played this season.<br/>They belong to the opposing alignment.
-                      </div>
-                    </>
+                    <div style={{ fontSize: 8, color: "#6a4a4a", fontFamily: "'Cinzel',serif",
+                      marginTop: 4, lineHeight: 1.5 }}>
+                      This commander cannot be played this season.<br/>They belong to the opposing alignment.
+                    </div>
                   ) : (
-                    <>
-                      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#aa8840",
-                        fontWeight: 700, letterSpacing: ".06em" }}>NOT YET SUMMONED</div>
-                      <div style={{ fontSize: 8, color: "#6a5a3a", fontFamily: "'Cinzel',serif",
-                        marginTop: 4, lineHeight: 1.5 }}>
-                        Summon this commander from the portal to recruit them.
-                      </div>
-                    </>
+                    <div style={{ fontSize: 8, color: "#6a5a3a", fontFamily: "'Cinzel',serif",
+                      marginTop: 4, lineHeight: 1.5 }}>
+                      Summon this commander from the portal to recruit them.
+                    </div>
                   )}
                 </div>
                 {/* Basic stats preview */}
