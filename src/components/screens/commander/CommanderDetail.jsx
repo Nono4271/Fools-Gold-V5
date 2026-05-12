@@ -137,8 +137,8 @@ export default function CommanderDetail({ cmd, bldgs, gearInventory, setGearInve
             background: `radial-gradient(circle at 38% 32%, ${r.color}22, #0c0a07)`,
             border: `2px solid ${r.color}55`,
             boxShadow: `0 0 20px ${r.color}28`,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34,
-          }}>{cmd.icon}</div>
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, overflow: "hidden",
+          }}>{cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{fontSize:34}}>{cmd.icon}</span>}</div>
         </div>
 
         {/* Respect bar */}
@@ -279,7 +279,12 @@ export default function CommanderDetail({ cmd, bldgs, gearInventory, setGearInve
         </div>
       </div>
 
-      <div style={{ height: 44, flexShrink: 0 }} />
+      {cmd.portrait && (
+        <div style={{ flexShrink: 0, width: "100%", background: "#070604" }}>
+          <img src={cmd.portrait} alt={cmd.n} style={{ width: "100%", maxHeight: 320, objectFit: "cover", objectPosition: "top", display: "block" }} />
+        </div>
+      )}
+      {!cmd.portrait && <div style={{ height: 44, flexShrink: 0 }} />}
 
       {/* ── 4-stat row ── */}
       <div style={{

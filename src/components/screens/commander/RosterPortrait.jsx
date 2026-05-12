@@ -30,7 +30,7 @@ export default function RosterPortrait({ cmd, selected, onClick }) {
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 28, overflow: "hidden", position: "relative",
         }}>
-          {cmd.icon}
+          {cmd.bust ? <img src={cmd.bust} alt={cmd.n} style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"50%" }} /> : cmd.icon}
           <div style={{
             position: "absolute", bottom: 0, left: 0, right: 0, height: "38%",
             background: "linear-gradient(to top, rgba(0,0,0,.75), transparent)",
