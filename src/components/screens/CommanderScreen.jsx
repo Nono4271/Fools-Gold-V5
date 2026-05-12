@@ -422,28 +422,30 @@ function BranchRow({
 
         {/* MAIN spine node */}
         <g transform={`translate(${spineX - mainSz / 2},${mainY - mainSz / 2})`}
-          onClick={() => !locked && onNodeClick(mainSkill, true, false)}
-          onTouchEnd={(e) => { e.preventDefault(); !locked && onNodeClick(mainSkill, true, false); }}
-          style={{ cursor: locked ? "default" : "pointer", touchAction: "manipulation" }}>
+          onClick={() => onNodeClick(mainSkill, true, false, locked, null)}
+          onTouchEnd={(e) => { e.preventDefault(); onNodeClick(mainSkill, true, false, locked, null); }}
+          style={{ cursor: "pointer", touchAction: "manipulation" }}>
           <FactionNode faction={faction} size={mainSz}
             filled={mainFilled} color={color} accent={accent}
             locked={locked} isMain={true} selected={selectedKey === mainSkill.key} />
           <LevelPips cx={mainSz/2} cy={mainSz/2} r={mainSz*0.42}
             level={mainLvl} maxLevel={10} color={color} accent={accent} />
-          {!locked && (
-            <>
-              <text x={mainSz / 2} y={mainSz / 2 + 7} textAnchor="middle"
-                fontSize={20} style={{ pointerEvents: "none" }}>{mainSkill.icon}</text>
-              <text x={mainSz / 2} y={mainSz + 14} textAnchor="middle"
-                fontSize={7.5} fill={mainFilled ? accent : "#6a5a3a"}
-                fontFamily="'Cinzel',serif" fontWeight={mainFilled ? "700" : "400"}>
-                {mainSkill.name}
-              </text>
+          <>
+            <text x={mainSz / 2} y={mainSz / 2 + 7} textAnchor="middle"
+              fontSize={locked ? 16 : 20} style={{ pointerEvents: "none" }}>
+              {locked ? "🔒" : mainSkill.icon}
+            </text>
+            <text x={mainSz / 2} y={mainSz + 14} textAnchor="middle"
+              fontSize={7.5} fill={locked ? "#5a4a30" : mainFilled ? accent : "#6a5a3a"}
+              fontFamily="'Cinzel',serif" fontWeight={mainFilled && !locked ? "700" : "400"}>
+              {mainSkill.name}
+            </text>
+            {!locked && (
               <text x={mainSz / 2} y={mainSz + 25} textAnchor="middle"
                 fontSize={7} fill={mainFilled ? color : "#3a2a18"}
                 fontFamily="'Cinzel',serif">{mainLvl}/10</text>
-            </>
-          )}
+            )}
+          </>
         </g>
       </svg>
     </div>
@@ -587,7 +589,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
         background: `radial-gradient(ellipse, ${fColor}22 0%, transparent 70%)`,
         pointerEvents: "none", zIndex: 0,
       }} />
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap');${CSS}.skill-tree-grid{display:flex;flex-direction:column;padding:10px 4px 160px}.skill-tree-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}@media(orientation:landscape)and(max-height:520px){.skill-tree-scroll{overflow-y:hidden!important;height:100%}.skill-tree-grid{display:grid!important;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:0;padding:2px;height:100%;align-items:center;justify-items:center}.skill-tree-grid div{width:100%;overflow:visible;display:flex;flex-direction:column;align-items:center;justify-content:center}.skill-branch-sep{display:none!important}.skill-branch-inner{transform:scale(0.75);transform-origin:center center;width:100%;display:flex;flex-direction:column;align-items:center}}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap');${CSS}.skill-tree-grid{display:flex;flex-direction:column;padding:10px 4px 160px}.skill-tree-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y!important}.roster-scroll{touch-action:pan-y!important;-webkit-overflow-scrolling:touch}@media(orientation:landscape)and(max-height:600px){.skill-tree-scroll{overflow-y:hidden!important;height:100%}.skill-tree-grid{display:grid!important;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:0;padding:2px;height:100%;align-items:center;justify-items:center}.skill-tree-grid div{width:100%;overflow:visible;display:flex;flex-direction:column;align-items:center;justify-content:center}.skill-branch-sep{display:none!important}.skill-branch-inner{transform:scale(0.75);transform-origin:center center;width:100%;display:flex;flex-direction:column;align-items:center}}`}</style>
 
       {/* Header */}
       <div style={{
@@ -699,7 +701,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
       </div>
 
       <div className="skill-tree-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto",
-        position: "relative", WebkitOverflowScrolling: "touch" }}>
+        position: "relative", WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}>
 
         <div className="skill-tree-grid">
           {treeEntries.map(({ treeKey, label, unlocksAt, tag, branchIdx }, idx) => {
@@ -1954,8 +1956,9 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
             </button>
           </div>
           {/* 2-column portrait grid — this inner div scrolls, buttons stay pinned */}
-          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden",
-            scrollbarWidth: "none", touchAction: "pan-y", overscrollBehavior: "contain" }}>
+          <div className="roster-scroll" style={{ flex: 1, overflowY: "auto", overflowX: "hidden",
+            scrollbarWidth: "none", touchAction: "pan-y",
+            WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
             {filtered.map(cmd => {
               const cmdAlnKey = getFactionAlignment(cmd.faction);
