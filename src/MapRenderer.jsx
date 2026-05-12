@@ -175,7 +175,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           const { cx, cy } = isoXY(c, r);
           const mid = cy + TH / 2;
           const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
-          const baseColor = getTileBaseColor(c, r, "grass");
+          const baseColor = getTileBaseColor(c, r, terrain || "grass");
           // Outer ring of the 5×5 keep region (|dc|==2 or |dr|==2): apply 2.2 px
           // overdraw stroke to cover black border seams from neighbouring tiles.
           const primKey = tile.isKeep ? `${c},${r}` : tile.keepPrimaryKey;
@@ -474,7 +474,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (pl < 10 || !tile.isKeep || tile.isGate) continue;
       // Primary cell only — draw merged 2×2 diamond covering all 4 cells
       const { cx, cy } = isoXY(c, r);
-      const baseColor = getTileBaseColor(c, r, "grass");
+      // Use the tile's actual terrain so the P10+ footprint blends with its cluster
+      const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
       // Overdraw by 4px on every edge to fully cover neighbor tile stroke artifacts,
       // but skip overdraw on sides adjacent to an HQ tile to avoid painting over it.
       const hqN = tiles[`${c},${r-1}`]?.isHQ || tiles[`${c+1},${r-1}`]?.isHQ;
@@ -595,7 +596,7 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   if (rss === "wood") {
     if (pl >= 22) {
       // ── P12/P13: Ancient Grove ────────────────────────────────────────────
-      const tierScale = pl >= 25 ? 2.0 : 1.6;
+      const tierScale = pl >= 25 ? 7.0 : 5.5;
       const sc = TH * 0.45 / 88 * tierScale;
       const numTrees = pl >= 25 ? 4 : 2;
       // ground shadow
@@ -655,7 +656,7 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
       }
     } else if (pl >= 16) {
       // ── P10/P11: Lumber camp ──────────────────────────────────────────────
-      const tierScale = pl >= 19 ? 1.3 : 1.0;
+      const tierScale = pl >= 19 ? 4.5 : 3.5;
       const sc = TH * 0.45 / 88 * tierScale;
       const numTrees = pl >= 19 ? 5 : 3;
       // ground shadow
@@ -724,7 +725,7 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   } else if (rss === "stone") {
     if (pl >= 22) {
       // ── P12/P13: Megalith circle ──────────────────────────────────────────
-      const tierScale = pl >= 25 ? 2.0 : 1.6;
+      const tierScale = pl >= 25 ? 7.0 : 5.5;
       const sc = TH * 0.45 / 88 * tierScale;
       const numSlabs = pl >= 25 ? 5 : 3; // P13=5 slabs+lintel, P12=3+lintel
       // ground shadow
@@ -774,7 +775,7 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
       }
     } else if (pl >= 16) {
       // ── P10/P11: Crusher wheel ────────────────────────────────────────────
-      const tierScale = pl >= 19 ? 1.3 : 1.0;
+      const tierScale = pl >= 19 ? 4.5 : 3.5;
       const sc = TH * 0.45 / 88 * tierScale;
       const wr = (pl >= 19 ? 46 : 38) * sc; // P11 bigger wheel
       const wx = cx + 10*sc, wy = base - wr - 4*sc;
@@ -860,7 +861,7 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   } else if (rss === "ore") {
     if (pl >= 22) {
       // ── P12/P13: Mine shaft ───────────────────────────────────────────────
-      const tierScale = pl >= 25 ? 2.0 : 1.6;
+      const tierScale = pl >= 25 ? 7.0 : 5.5;
       const sc = TH * 0.45 / 88 * tierScale;
       const numShafts = pl >= 25 ? 2 : 1;
       // ground shadow
@@ -911,7 +912,7 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
       }
     } else if (pl >= 16) {
       // ── P10/P11: Smelter ──────────────────────────────────────────────────
-      const tierScale = pl >= 19 ? 1.3 : 1.0;
+      const tierScale = pl >= 19 ? 4.5 : 3.5;
       const sc = TH * 0.45 / 88 * tierScale;
       const numFurnaces = pl >= 19 ? 2 : 1;
       // ground shadow
@@ -991,7 +992,7 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   } else {
     if (pl >= 22) {
       // ── P12/P13: Collector Dome ───────────────────────────────────────────
-      const tierScale = pl >= 25 ? 2.0 : 1.6;
+      const tierScale = pl >= 25 ? 7.0 : 5.5;
       const sc = TH * 0.45 / 88 * tierScale;
       // gas pit
       gfx.beginFill(0x080e04); gfx.drawEllipse(cx,base-2*sc,28*sc,10*sc); gfx.endFill();
@@ -1015,24 +1016,21 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
           gfx.beginFill(0x64b432, (1-vp)*0.40); gfx.drawCircle(ex2+Math.sin(vp*3)*2*sc, ey2-vp*14*sc, (2+vp*4)*sc); gfx.endFill();
         }
       });
-      // dome shadow
-      const dr=38*sc, dbase=base-8*sc;
-      gfx.beginFill(0x000000, 0.18); gfx.drawEllipse(cx+4*sc, dbase+4*sc, dr*0.7, dr*0.2); gfx.endFill();
-      // dome dark half
-      gfx.beginFill(0x1a2010); gfx.drawPolygon([cx-dr,dbase, cx+dr,dbase, cx+dr,dbase, cx,dbase-dr]); gfx.endFill();
-      gfx.beginFill(0x1a2010); gfx.drawEllipse(cx-dr*0.3, dbase-dr*0.5, dr*0.55, dr*0.55); gfx.endFill();
-      // dome main arc
+      // dome shadow + dome: base sits ON the ground surface
+      const dr=38*sc, dbase=base;  // dome base grounded at tile surface
+      gfx.beginFill(0x000000, 0.18); gfx.drawEllipse(cx+4*sc, dbase+2*sc, dr*0.8, dr*0.2); gfx.endFill();
+      // dome main arc — symmetric half-ellipse arching upward
       gfx.beginFill(0x2a3018);
       for (let ai=0; ai<=16; ai++) {
         const ang1=(ai/16)*Math.PI, ang2=((ai+1)/16)*Math.PI;
-        gfx.drawPolygon([cx,dbase, cx-Math.cos(ang1)*dr,dbase-Math.sin(ang1)*dr*0.85, cx-Math.cos(ang2)*dr,dbase-Math.sin(ang2)*dr*0.85]);
+        gfx.drawPolygon([cx,dbase, cx+Math.cos(ang1)*dr,dbase-Math.sin(ang1)*dr*0.85, cx+Math.cos(ang2)*dr,dbase-Math.sin(ang2)*dr*0.85]);
       }
       gfx.endFill();
       // dome highlight
-      gfx.beginFill(0x4a6828, 0.20); gfx.drawEllipse(cx-dr*0.25,dbase-dr*0.32,dr*0.4,dr*0.35); gfx.endFill();
-      // base ring
-      gfx.beginFill(0x1e2414); gfx.drawRect(cx-dr,dbase-3*sc,dr*2,6*sc); gfx.endFill();
-      gfx.beginFill(0x2e3420); gfx.drawRect(cx-dr,dbase-3*sc,dr*2,2*sc); gfx.endFill();
+      gfx.beginFill(0x4a6828, 0.20); gfx.drawEllipse(cx+dr*0.25,dbase-dr*0.32,dr*0.4,dr*0.35); gfx.endFill();
+      // base ring sitting on ground
+      gfx.beginFill(0x1e2414); gfx.drawRect(cx-dr,dbase-2*sc,dr*2,5*sc); gfx.endFill();
+      gfx.beginFill(0x2e3420); gfx.drawRect(cx-dr,dbase-2*sc,dr*2,2*sc); gfx.endFill();
       // stone seam lines on dome
       gfx.lineStyle(1*sc, 0x1a2010, 0.7);
       [0.25,0.50,0.75].forEach(p => {
@@ -1043,7 +1041,7 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
       // bolts around base
       for (let bi=0;bi<8;bi++){
         const ang=(bi/8)*Math.PI;
-        gfx.beginFill(0x3a3c28); gfx.drawCircle(cx+Math.cos(ang)*(dr-4*sc),dbase-Math.sin(ang)*6*sc,1.5*sc); gfx.endFill();
+        gfx.beginFill(0x3a3c28); gfx.drawCircle(cx+Math.cos(ang)*dr,dbase-Math.sin(ang)*4*sc,1.5*sc); gfx.endFill();
       }
       // central vent stack
       gfx.beginFill(0x1e2010); gfx.drawRect(cx-4*sc,dbase-dr-8*sc,8*sc,dr*0.5); gfx.endFill();
@@ -1055,9 +1053,9 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
         gfx.beginFill(0x64be3c,(1-vp)*0.48); gfx.drawCircle(vx,vy,(3+vp*7)*sc); gfx.endFill();
       }
       // pressure gauge
-      gfx.beginFill(0x1a2010); gfx.drawCircle(cx+dr*0.55,dbase-dr*0.35,6*sc); gfx.endFill();
-      gfx.beginFill(0x2a3418); gfx.drawCircle(cx+dr*0.55,dbase-dr*0.35,4.5*sc); gfx.endFill();
-      gfx.lineStyle(1*sc,0x6aaa70,1); gfx.moveTo(cx+dr*0.55,dbase-dr*0.35); gfx.lineTo(cx+dr*0.55+3*sc,dbase-dr*0.35-3*sc); gfx.lineStyle(0);
+      gfx.beginFill(0x1a2010); gfx.drawCircle(cx+dr*0.75,dbase-dr*0.35,6*sc); gfx.endFill();
+      gfx.beginFill(0x2a3418); gfx.drawCircle(cx+dr*0.75,dbase-dr*0.35,4.5*sc); gfx.endFill();
+      gfx.lineStyle(1*sc,0x6aaa70,1); gfx.moveTo(cx+dr*0.75,dbase-dr*0.35); gfx.lineTo(cx+dr*0.75+3*sc,dbase-dr*0.35-3*sc); gfx.lineStyle(0);
       // P13: glowing cracks + extra pressure effects
       if (pl >= 25) {
         // glowing crack lines on dome surface
@@ -1081,7 +1079,7 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
       }
     } else if (pl >= 16) {
       // ── P10/P11: Venting rig ──────────────────────────────────────────────
-      const tierScale = pl >= 19 ? 1.3 : 1.0;
+      const tierScale = pl >= 19 ? 4.5 : 3.5;
       const sc = TH * 0.45 / 88 * tierScale;
       const numStacks = pl >= 19 ? 6 : 3;
       // gas pit
