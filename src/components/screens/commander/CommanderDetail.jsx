@@ -279,6 +279,7 @@ export default function CommanderDetail({ cmd, bldgs, gearInventory, setGearInve
         </div>
       </div>
 
+      <div style={{ fontSize: 8, color: "#ff6644", fontFamily: "monospace", padding: "4px 8px" }}>DEBUG bust={cmd.bust || "MISSING"}</div>
       {cmd.portrait && (
         <div style={{ flexShrink: 0, width: "100%", background: "#070604" }}>
           <img src={cmd.portrait} alt={cmd.n} style={{ width: "100%", maxHeight: 320, objectFit: "cover", objectPosition: "top", display: "block" }} />
