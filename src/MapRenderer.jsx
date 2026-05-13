@@ -1206,54 +1206,48 @@ function drawAmbientScatter(gfx, tile, cx, sy, pl = 1) {
     gfx.beginFill(0x2e2a24); gfx.drawPolygon([bx, by-h, bx+hw*0.1, by, bx+hw*0.9, by-h*0.35]); gfx.endFill();
     gfx.beginFill(0xdde0e8, 0.50); gfx.drawPolygon([bx, by-h, bx-hw*0.35, by-h*0.72, bx+hw*0.45, by-h*0.68]); gfx.endFill();
   } else if (terrain === "hellfire") {
-    // Lava fissure cracks on the scorched asphalt surface
-    const rnd2 = tileRng(c + 1, r);
-    const rnd3 = tileRng(c, r + 1);
-    // Dark scorched ground overlay
-    gfx.beginFill(0x0a0300, 0.55);
-    gfx.drawEllipse(cx, cy2, TW * 0.35, TH * 0.20);
+    // 6 straight cracks radiating from a central origin point (ref image style)
+    // Dark scorched ground overlay at origin
+    gfx.beginFill(0x0a0300, 0.65);
+    gfx.drawEllipse(cx, cy2, TW * 0.12, TH * 0.07);
     gfx.endFill();
-    // Glowing lava crack — main diagonal
-    const crackLen = TW * (0.18 + t * 0.22);
-    const crackAngle = 0.35 + rnd() * 0.5;
-    const cx1 = cx + Math.cos(crackAngle) * crackLen * 0.5;
-    const cy1 = cy2 + Math.sin(crackAngle) * crackLen * 0.28;
-    const cx2 = cx - Math.cos(crackAngle) * crackLen * 0.5;
-    const cy2b = cy2 - Math.sin(crackAngle) * crackLen * 0.28;
-    // Glow halo under crack
-    gfx.beginFill(0xff4400, 0.15 + t * 0.10);
-    gfx.drawEllipse(cx, cy2, crackLen * 0.55, crackLen * 0.18);
+    // Small bright origin glow
+    gfx.beginFill(0xff6600, 0.55 + t * 0.20);
+    gfx.drawEllipse(cx, cy2, TW * 0.06, TH * 0.035);
     gfx.endFill();
-    // Outer crack (dark border)
-    gfx.lineStyle(2.8 + t * 1.5, 0x0a0200, 0.90);
-    gfx.moveTo(cx1, cy1); gfx.lineTo(cx2, cy2b);
-    gfx.lineStyle(0);
-    // Inner lava glow
-    gfx.lineStyle(1.2 + t * 0.8, 0xff6010, 0.80);
-    gfx.moveTo(cx1, cy1); gfx.lineTo(cx2, cy2b);
-    gfx.lineStyle(0);
-    // Bright centre line
-    gfx.lineStyle(0.5, 0xffcc40, 0.65);
-    gfx.moveTo(cx1, cy1); gfx.lineTo(cx2, cy2b);
-    gfx.lineStyle(0);
-    // Secondary short crack
-    const ang2 = crackAngle + 0.9 + rnd2() * 0.6;
-    const len2 = crackLen * (0.35 + rnd3() * 0.30);
-    const sx = cx + (rnd2() - 0.5) * TW * 0.15;
-    const sy2 = cy2 + (rnd3() - 0.5) * TH * 0.10;
-    gfx.lineStyle(1.8 + t, 0x0a0200, 0.80);
-    gfx.moveTo(sx, sy2); gfx.lineTo(sx + Math.cos(ang2) * len2, sy2 + Math.sin(ang2) * len2 * 0.5);
-    gfx.lineStyle(0);
-    gfx.lineStyle(0.7, 0xee4400, 0.60);
-    gfx.moveTo(sx, sy2); gfx.lineTo(sx + Math.cos(ang2) * len2, sy2 + Math.sin(ang2) * len2 * 0.5);
-    gfx.lineStyle(0);
-    // Ember dots scattered near cracks
-    const emberCount = 2 + Math.floor(t * 2);
+
+    // 6 cracks evenly spaced radiating outward — angles spread across the isometric face
+    // Base angles: 0, 60, 120, 180, 240, 300 degrees mapped to iso perspective (x squished)
+    const crackBaseAngles = [0, Math.PI/3, 2*Math.PI/3, Math.PI, 4*Math.PI/3, 5*Math.PI/3];
+    const crackBaseLen = TW * (0.22 + t * 0.14);
+    for (let i = 0; i < 6; i++) {
+      const ang = crackBaseAngles[i];
+      // vary length slightly per crack using stable per-crack rng
+      const lenFactor = 0.75 + tileRng(c + i, r + i)() * 0.50;
+      const cLen = crackBaseLen * lenFactor;
+      // Isometric perspective: squash y axis
+      const ex = cx + Math.cos(ang) * cLen;
+      const ey = cy2 + Math.sin(ang) * cLen * 0.38;
+      // Dark border
+      gfx.lineStyle(2.6 + t * 1.2, 0x080100, 0.92);
+      gfx.moveTo(cx, cy2); gfx.lineTo(ex, ey);
+      gfx.lineStyle(0);
+      // Orange lava glow
+      gfx.lineStyle(1.3 + t * 0.7, 0xff5500, 0.85);
+      gfx.moveTo(cx, cy2); gfx.lineTo(ex, ey);
+      gfx.lineStyle(0);
+      // Bright white-yellow core
+      gfx.lineStyle(0.5, 0xffdd60, 0.70);
+      gfx.moveTo(cx, cy2); gfx.lineTo(cx + Math.cos(ang) * cLen * 0.55, cy2 + Math.sin(ang) * cLen * 0.38 * 0.55);
+      gfx.lineStyle(0);
+    }
+    // Ember dots near crack tips
+    const emberCount = 3 + Math.floor(t * 2);
     for (let e = 0; e < emberCount; e++) {
-      const ex = cx + (tileRng(c + e, r)() - 0.5) * TW * 0.40;
-      const ey = cy2 + (tileRng(c, r + e + 1)() - 0.5) * TH * 0.25;
-      const er = 0.8 + t * 0.6;
-      const alpha = 0.55 + tileRng(c + e, r + e)() * 0.30;
+      const ex = cx + (tileRng(c + e, r)() - 0.5) * TW * 0.42;
+      const ey = cy2 + (tileRng(c, r + e + 1)() - 0.5) * TH * 0.26;
+      const er = 0.7 + t * 0.5;
+      const alpha = 0.50 + tileRng(c + e, r + e)() * 0.35;
       gfx.beginFill(0xff8820, alpha); gfx.drawCircle(ex, ey, er); gfx.endFill();
     }
   } else if (terrain === "grass" || terrain === "forest") {
@@ -2070,15 +2064,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       }
       // 1–2 crack glow segments (positions along the static crack drawn at tile render)
       const cracks = [];
-      const numCracks = 1 + Math.floor(rng() * 2);
-      for (let i = 0; i < numCracks; i++) {
+      // 6 radiating cracks matching static geometry
+      const baseAngles = [0, Math.PI/3, 2*Math.PI/3, Math.PI, 4*Math.PI/3, 5*Math.PI/3];
+      for (let i = 0; i < 6; i++) {
+        const lenFactor = 0.75 + rng() * 0.50;
         cracks.push({
-          ox: (rng() - 0.5) * TW * 0.30,
-          oy: (rng() - 0.5) * TH * 0.18,
-          angle: 0.35 + rng() * 0.8,
-          len: TW * (0.14 + rng() * 0.18),
+          angle: baseAngles[i],
+          len: TW * (0.22 + 0.07) * lenFactor, // matches crackBaseLen at t=0.5
           phase: rng() * Math.PI * 2,
-          speed: 2.0 + rng() * 2.5,
+          speed: 1.8 + rng() * 2.0,
         });
       }
       const data = { flames, cracks };
@@ -2112,26 +2106,29 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
           const { flames, cracks } = getHellfireFlames(c, r);
 
-          // ── 1. Crack glow pulses — lines only, tiny halos ─────────────────
+          // ── 1. Crack glow pulses — lines radiating from tile center ──────────
           for (const ck of cracks) {
             const glow = 0.5 + 0.5 * Math.sin(t * ck.speed + ck.phase);
-            const bx = tcx + ck.ox;
-            const by = tcy + ck.oy;
-            const dx = Math.cos(ck.angle) * ck.len * 0.5;
-            const dy = Math.sin(ck.angle) * ck.len * 0.15;
-            // Tiny tight halo — no big ellipse
-            hellfireGfx.beginFill(0xff4400, 0.04 + glow * 0.07);
-            hellfireGfx.drawEllipse(bx, by, ck.len * 0.38, ck.len * 0.10);
-            hellfireGfx.endFill();
-            // Glowing crack line
-            hellfireGfx.lineStyle(1.5, 0xff6010, 0.50 + glow * 0.40);
-            hellfireGfx.moveTo(bx - dx, by - dy);
-            hellfireGfx.lineTo(bx + dx, by + dy);
-            // Hot inner line
-            hellfireGfx.lineStyle(0.6, 0xffcc40, 0.35 + glow * 0.50);
-            hellfireGfx.moveTo(bx - dx * 0.55, by - dy * 0.55);
-            hellfireGfx.lineTo(bx + dx * 0.55, by + dy * 0.55);
+            // All cracks originate from tile center
+            const ex = tcx + Math.cos(ck.angle) * ck.len;
+            const ey = tcy + Math.sin(ck.angle) * ck.len * 0.38;
+            // Outer glow line
+            hellfireGfx.lineStyle(2.0, 0xff4400, 0.25 + glow * 0.35);
+            hellfireGfx.moveTo(tcx, tcy);
+            hellfireGfx.lineTo(ex, ey);
+            // Core lava line
+            hellfireGfx.lineStyle(1.2, 0xff6010, 0.50 + glow * 0.40);
+            hellfireGfx.moveTo(tcx, tcy);
+            hellfireGfx.lineTo(ex, ey);
+            // Hot inner core (inner 55%)
+            hellfireGfx.lineStyle(0.5, 0xffcc40, 0.35 + glow * 0.55);
+            hellfireGfx.moveTo(tcx, tcy);
+            hellfireGfx.lineTo(tcx + Math.cos(ck.angle) * ck.len * 0.55, tcy + Math.sin(ck.angle) * ck.len * 0.38 * 0.55);
             hellfireGfx.lineStyle(0);
+            // Small origin pulse
+            hellfireGfx.beginFill(0xff8800, 0.10 + glow * 0.18);
+            hellfireGfx.drawCircle(tcx, tcy, 2.5 + glow * 1.5);
+            hellfireGfx.endFill();
           }
 
           // Flame jets removed — only crack glow pulses remain.
