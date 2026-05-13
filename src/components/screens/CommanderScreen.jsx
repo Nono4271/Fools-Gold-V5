@@ -228,7 +228,7 @@ function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canL
           fontFamily: "'Cinzel',serif", fontSize: 9, color: accent,
           letterSpacing: ".08em" }}>✦ MAX LEVEL ✦</div>
       ) : (
-        <button onClick={() => { if (canLevelUp) { onLevelUp(); onClose(); } }}
+        <button onClick={() => { if (canLevelUp) { onLevelUp(); } }}
           disabled={!canLevelUp}
           style={{
             width: "100%", padding: "11px 0",
@@ -1493,7 +1493,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                 <div
                   onClick={() => { setPreviewGear(null); setShowClassPopup(pgSlot); }}
                   style={{
-                    position: "fixed", inset: 0, zIndex: 200,
+                    position: "fixed", inset: 0, zIndex: 800,
                     background: "rgba(0,0,0,.65)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
