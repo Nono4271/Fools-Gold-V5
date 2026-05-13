@@ -535,6 +535,14 @@ defCmdCls: dc?.cls ?? null,
 defSkillsSnapshot: dc ? getActiveSkills(dc).map(({ key, def, level }) => ({ key, level, name: def.name, icon: def.icon, type: def.type, desc: def.desc, cooldown: def.cooldown, tree: def.tree })) : [],
 terrain:defTile.terrain, modLabel,
 defPowerLevel:defTile.powerLevel || 1,
+tileName: defTile.isKeep
+  ? (defTile.keepName || defTile.regionName + " Keep")
+  : defTile.isGate
+    ? (defTile.keepName || "Gate")
+    : (defTile.powerLevel && defTile.powerLevel > 1)
+      ? `${POWER_DEFS[defTile.powerLevel]?.ringPower ?? defTile.powerLevel} Power Land (${POWER_DEFS[defTile.powerLevel]?.label ?? ""})`
+      : defTile.powerLevel === 1 ? "1 Power Land (1/hr)"
+      : (defTile.regionName || defTile.terrain || "Unknown"),
 defTroopBranch: primaryDefSlot?.branch ?? dc?.troopBranch ?? null,
 defTroopSlots: defSlotResolved.map(sl => ({ branch: sl.branch, troops: sl.troops })),
 rounds:[], atkTroopsEnd:totalAtkTroops, defTroopsEnd:defTroops, won:false, xpGain:0,
@@ -548,7 +556,7 @@ defBust: dc?.bust||null, defPortrait: dc?.portrait||null,
 
 // ── Phase 0: pre-battle log ───────────────────────────────────────────────
 const phase0 = { round:0, isPreBattle:true, actions:[] };
-phase0.actions.push({ actor:"SYSTEM", action:`⚔ Battle begins — ${defTile.terrain}${defTile.isHQ?" (HQ)":""} · ${modLabel}`, dmg:0, isPhase0:true });
+phase0.actions.push({ actor:"SYSTEM", action:`⚔ Battle begins — ${report.tileName}${defTile.isHQ?" (HQ)":""} · ${modLabel}`, dmg:0, isPhase0:true });
 phase0.actions.push({ actor:"SYSTEM", action:`${cmd.n} (${totalAtkTroops.toLocaleString()} troops) vs ${report.defCmdName} (${defTroops.toLocaleString()} troops)`, dmg:0, isPhase0:true });
 
 atkSlotResolved.forEach(sl => {
