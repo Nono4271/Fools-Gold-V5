@@ -558,9 +558,11 @@ function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
           // Draw one giant prop centered on the 2×2 footprint midpoint.
           // Each tier gets a distinct size well above the P9 ceiling (sizeMult tops
           // out at pl=13). Synthetic pl: P10→16, P11→19, P12→22, P13→25.
+          // The 2×2 diamond's visual centre is TH below the primary tile centre,
+          // so shift sy down by TH so the prop base sits inside the merged footprint.
           const syntheticPl = 13 + (pl - 9) * 3;
           const midCy = cy + TH / 2;
-          drawRssProp(gfx, tile.rss, cx, midCy - TH / 2, c, r, syntheticPl);
+          drawRssProp(gfx, tile.rss, cx, midCy + TH / 2, c, r, syntheticPl);
         } else {
           drawRssProp(gfx, tile.rss, cx, sy, c, r, pl);
         }
@@ -2132,74 +2134,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
             hellfireGfx.lineStyle(0);
           }
 
-          // ── 2. Small organic flame jets — 1–2 per tile ───────────────────
-          for (const fl of flames) {
-            const f1 = 0.5 + 0.5 * Math.sin(t * fl.speed        + fl.phase);
-            const f2 = 0.5 + 0.5 * Math.sin(t * fl.speed * 1.4  + fl.phase + 0.9);
-            const f3 = 0.5 + 0.5 * Math.sin(t * fl.speed * 0.7  + fl.phase + 2.1);
-
-            const h  = fl.maxH * (0.50 + f1 * 0.50); // height breathes
-            const w  = fl.wid  * (0.80 + f2 * 0.30); // width wobbles
-
-            const fx = tcx + fl.ox;
-            const fy = tcy + fl.oy;
-
-            // Build a flame silhouette with many points so it's NOT a triangle.
-            // Outer flame — wide wavy base, pinched mid, tapering tip
-            const o = [
-              fx - w,          fy,                    // base left
-              fx - w * 0.80,   fy - h * 0.12,
-              fx - w * 0.65,   fy - h * 0.25 + f2 * 2,
-              fx - w * 0.42,   fy - h * 0.40,
-              fx - w * 0.28,   fy - h * 0.55 - f3 * 2,
-              fx - w * 0.14,   fy - h * 0.70,
-              fx,              fy - h,                // tip
-              fx + w * 0.14,   fy - h * 0.70,
-              fx + w * 0.28,   fy - h * 0.55 - f3 * 2,
-              fx + w * 0.42,   fy - h * 0.40,
-              fx + w * 0.65,   fy - h * 0.25 + f2 * 2,
-              fx + w * 0.80,   fy - h * 0.12,
-              fx + w,          fy,                    // base right
-            ];
-            hellfireGfx.beginFill(0xcc1800, 0.60 + f1 * 0.25);
-            hellfireGfx.drawPolygon(o);
-            hellfireGfx.endFill();
-
-            // Mid flame — narrower, orange
-            const m = [
-              fx - w * 0.55,   fy,
-              fx - w * 0.40,   fy - h * 0.20,
-              fx - w * 0.26,   fy - h * 0.38 + f3 * 1.5,
-              fx - w * 0.14,   fy - h * 0.56,
-              fx,              fy - h * 0.86,
-              fx + w * 0.14,   fy - h * 0.56,
-              fx + w * 0.26,   fy - h * 0.38 + f3 * 1.5,
-              fx + w * 0.40,   fy - h * 0.20,
-              fx + w * 0.55,   fy,
-            ];
-            hellfireGfx.beginFill(0xff5500, 0.72 + f2 * 0.20);
-            hellfireGfx.drawPolygon(m);
-            hellfireGfx.endFill();
-
-            // Inner core — yellow, very narrow
-            const i2 = [
-              fx - w * 0.22,   fy,
-              fx - w * 0.14,   fy - h * 0.28 + f1 * 1,
-              fx - w * 0.07,   fy - h * 0.52,
-              fx,              fy - h * 0.78,
-              fx + w * 0.07,   fy - h * 0.52,
-              fx + w * 0.14,   fy - h * 0.28 + f1 * 1,
-              fx + w * 0.22,   fy,
-            ];
-            hellfireGfx.beginFill(0xffdd22, 0.65 + f1 * 0.25);
-            hellfireGfx.drawPolygon(i2);
-            hellfireGfx.endFill();
-
-            // Bright tip dot
-            hellfireGfx.beginFill(0xffffff, 0.50 + f2 * 0.40);
-            hellfireGfx.drawCircle(fx, fy - h * 0.96, 1.0);
-            hellfireGfx.endFill();
-          }
+          // Flame jets removed — only crack glow pulses remain.
         }
       }
     };
