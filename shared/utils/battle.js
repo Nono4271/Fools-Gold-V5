@@ -542,6 +542,8 @@ bastionActive,
 atkTroopsWounded: 0,
 atkCmdStats: { atk:cmd.atk||150, foc:cmd.foc||0, spd:cmd.spd||60, gearArmyAtk:gb.armyAtk||0, gearArmyFoc:gb.armyFoc||0, gearArmySpd:gb.armySpd||0, gearArmySiege:gb.armySiege||0 },
 cmdCls: cmd.cls||null, cmdFaction: cmd.faction||null, cmdSubspecies: cmd.subspecies||null,
+atkBust: cmd.bust||null, atkPortrait: cmd.portrait||null,
+defBust: dc?.bust||null, defPortrait: dc?.portrait||null,
 };
 
 // ── Phase 0: pre-battle log ───────────────────────────────────────────────
