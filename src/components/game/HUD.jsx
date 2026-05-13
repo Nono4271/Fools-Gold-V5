@@ -4,19 +4,27 @@ import { RKEYS, RSS, POWER_DEFS } from "../../../shared/constants/map.js";
 /*
   HUD — landscape top bar
   ──────────────────────────────────────────────────────────────────────────────
-  Two-row layout inside a taller bar (52px). Slant is shallow (≈12px horizontal
-  over 52px height) so it sits well past the minimap in landscape.
+  The bar is a parallelogram band spanning the centre of the screen.
+  Left and right edges are both slanted, leaving ~120px clear on each side
+  (left for minimap, right for action buttons).
 
-  ROW 1 (top):   [RSS pills] ... [Faction medallion] ... [🔴 orb | 🟡 coin | 💎 gems | ⚙]
-  ROW 2 (bottom): [💍 power/hr — left-aligned under RSS]  [⬛ tile count — right-aligned under currencies]
+  Two-row layout:
 
-  Minimap (104px circle) sits at top:4 left:6, zIndex 180 — HUD leaves that
-  corner clear. Content starts at ~130px from left edge.
+  ROW 1:  [stone][wood][ore][gas] | [FG] | [egg][treasure][💎][⚙]
+  ROW 2:  [💍 +Xhr — below gas]         [⬛ n/31 — below egg pill]
+
+  Everything is tightly packed around the faction medallion as centre anchor.
   ──────────────────────────────────────────────────────────────────────────────
 */
 
-const BAR_H          = 52;   // px — tall enough for two content rows
-const CONTENT_START  = 130;  // px from left — clears minimap (104) + gap + slant
+const BAR_H      = 52;
+// Mirror: same clear zone on both sides (~120px on a ~750px landscape screen)
+// In the SVG viewBox (0..1000), minimap side ends ~160 units, right clear starts ~840
+const L_BOTTOM   = 160;   // bottom-left  corner — further left  (slants right going up)
+const L_TOP      = 176;   // top-left     corner — further right
+const R_TOP      = 824;   // top-right    corner — further left
+const R_BOTTOM   = 840;   // bottom-right corner — further right (slants left going up)
+// Result: trapezoid wider at bottom, both edges angling inward toward the top
 
 export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
 
@@ -31,36 +39,18 @@ export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
   }, [tiles, pKeys]);
 
   const tileCount = pKeys?.size ?? 0;
-
-  // TODO: wire real per-hour rates from game tick state
-  const rssRate = { stone: 200, wood: 200, ore: 200, gas: 2400 };
-
-  const pillBase = {
-    display: "flex", alignItems: "center", gap: 3,
-    padding: "2px 7px",
-    borderRadius: 3,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,.05), 0 1px 3px rgba(0,0,0,.6)",
-    whiteSpace: "nowrap",
-  };
+  const rssRate   = { stone: 200, wood: 200, ore: 200, gas: 2400 }; // TODO: wire
 
   return (
     <div style={{
-      position: "fixed",
-      top: 0, left: 0, right: 0,
+      position: "fixed", top: 0, left: 0, right: 0,
       zIndex: 200,
       paddingTop: "env(safe-area-inset-top, 0px)",
       height: BAR_H,
       pointerEvents: "none",
     }}>
 
-      {/* ── SVG bar shape ─────────────────────────────────────────────────────
-          Landscape screen ~700-900px wide. Minimap circle is 104px at left:6.
-          Slant: bottom-left corner at x=118, top-left at x=130 → only 12px
-          horizontal over 52px height = very shallow angle, clears all RSS.
-          viewBox 1000 units wide maps to 100% screen width.
-          In landscape 700px wide: 118/1000*700 = 82.6px from left edge for
-          the bottom corner — the minimap ends at 6+104=110px, so bar clears it.
-      ──────────────────────────────────────────────────────────────────────── -->*/}
+      {/* ── SVG bar: double-slanted parallelogram ── */}
       <svg
         style={{ position:"absolute", inset:0, width:"100%", height:BAR_H, pointerEvents:"none" }}
         preserveAspectRatio="none"
@@ -74,35 +64,48 @@ export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
           </linearGradient>
           <linearGradient id="trimGrad" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%"   stopColor="transparent"/>
-            <stop offset="12%"  stopColor="#c8a04055"/>
-            <stop offset="88%"  stopColor="#c8a04055"/>
+            <stop offset="10%"  stopColor="#c8a04055"/>
+            <stop offset="90%"  stopColor="#c8a04055"/>
             <stop offset="100%" stopColor="transparent"/>
           </linearGradient>
         </defs>
-        {/* Shallow slant: bottom corner x=155, top corner x=172 → 17px over 52px */}
-        <polygon points="155,52 172,0 1000,0 1000,52" fill="url(#hudGrad)"/>
-        <line x1="155" y1="51.5" x2="1000" y2="51.5" stroke="url(#trimGrad)" strokeWidth="1"/>
-        <line x1="155" y1="52"   x2="172"  y2="0"    stroke="#c8a04040"       strokeWidth="1"/>
+        <polygon
+          points={`${L_BOTTOM},52 ${L_TOP},0 ${R_TOP},0 ${R_BOTTOM},52`}
+          fill="url(#hudGrad)"
+        />
+        {/* Bottom gold trim */}
+        <line x1={L_BOTTOM} y1="51.5" x2={R_BOTTOM} y2="51.5"
+          stroke="url(#trimGrad)" strokeWidth="1"/>
+        {/* Left slant highlight */}
+        <line x1={L_BOTTOM} y1="52" x2={L_TOP} y2="0"
+          stroke="#c8a04044" strokeWidth="1"/>
+        {/* Right slant highlight */}
+        <line x1={R_BOTTOM} y1="52" x2={R_TOP} y2="0"
+          stroke="#c8a04044" strokeWidth="1"/>
       </svg>
 
-      {/* ── Content wrapper ── */}
+      {/* ── Content: two rows, tightly centred ── */}
+      {/*
+        The polygon in viewBox units spans L_TOP..R_TOP at the top edge.
+        L_TOP=176/1000 = 17.6% from left, R_TOP=840/1000 = 84% from left.
+        We use percentage-based padding to match, + a small buffer for the slant.
+      */}
       <div style={{
         position: "absolute", inset: 0,
         paddingTop: "env(safe-area-inset-top, 0px)",
-        paddingLeft: CONTENT_START,
-        paddingRight: 8,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
+        // Content starts just inside the slants — use % so it scales with screen width
+        paddingLeft:  "18.5%",
+        paddingRight: "17%",
+        display: "flex", flexDirection: "column", justifyContent: "center",
         gap: 3,
         pointerEvents: "auto",
       }}>
 
-        {/* ═══ ROW 1 ══════════════════════════════════════════════════════════ */}
-        <div style={{ display:"flex", alignItems:"center", gap:0 }}>
+        {/* ══ ROW 1 ══════════════════════════════════════════════════════════ */}
+        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
 
-          {/* LEFT — RSS pills */}
-          <div style={{ display:"flex", alignItems:"center", gap:4, flex:"0 0 auto" }}>
+          {/* LEFT — RSS pills, tight together */}
+          <div style={{ display:"flex", alignItems:"center", gap:3, flex:"0 0 auto" }}>
             {RKEYS.map(k => (
               <div key={k} style={{
                 display:"flex", alignItems:"center", gap:2,
@@ -114,11 +117,11 @@ export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
                 whiteSpace:"nowrap",
               }}>
                 <span style={{ fontSize:10 }}>{RSS[k].icon}</span>
-                <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
-                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:RSS[k].col, lineHeight:1.1 }}>
+                <div style={{ display:"flex", flexDirection:"column" }}>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:RSS[k].col, lineHeight:1.15 }}>
                     {Math.floor(rss[k]).toLocaleString()}
                   </span>
-                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:`${RSS[k].col}80`, lineHeight:1.1 }}>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:`${RSS[k].col}80`, lineHeight:1.15 }}>
                     +{rssRate[k]}/h
                   </span>
                 </div>
@@ -126,15 +129,15 @@ export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
             ))}
           </div>
 
-          {/* CENTRE — faction medallion */}
-          <div style={{ flex:"1 1 auto", display:"flex", justifyContent:"center" }}>
+          {/* CENTRE — faction medallion, no flex-grow gap, just a small margin */}
+          <div style={{ margin:"0 6px", flexShrink:0 }}>
             <div style={{
-              width:36, height:36, borderRadius:"50%",
+              width:34, height:34, borderRadius:"50%",
               background:"radial-gradient(circle at 35% 30%, #2a2215, #0e0c09)",
               border:"1px solid #c8a04060",
               boxShadow:"0 0 10px rgba(200,160,64,.18), inset 0 1px 0 rgba(255,255,255,.08)",
               display:"flex", alignItems:"center", justifyContent:"center",
-              flexShrink:0, position:"relative",
+              position:"relative",
             }}>
               <div style={{ position:"absolute", inset:-2, borderRadius:"50%", border:"1px solid rgba(200,160,64,.15)" }}/>
               <span style={{
@@ -148,11 +151,18 @@ export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
             </div>
           </div>
 
-          {/* RIGHT — red orb | gold coin | gems | settings */}
-          <div style={{ display:"flex", alignItems:"center", gap:5, flex:"0 0 auto" }}>
+          {/* RIGHT — currencies, tight */}
+          <div style={{ display:"flex", alignItems:"center", gap:3, flex:"0 0 auto" }}>
 
-            {/* Red orb placeholder */}
-            <div style={{ ...pillBase, background:"rgba(160,25,25,.20)", border:"1px solid rgba(200,55,55,.28)" }}>
+            {/* Dragon Eggs — red orb placeholder */}
+            <div style={{
+              display:"flex", alignItems:"center", gap:3,
+              padding:"2px 6px",
+              background:"rgba(160,25,25,.20)", border:"1px solid rgba(200,55,55,.28)",
+              borderRadius:3,
+              boxShadow:"inset 0 1px 0 rgba(255,255,255,.05), 0 1px 3px rgba(0,0,0,.6)",
+              whiteSpace:"nowrap",
+            }}>
               <div style={{
                 width:14, height:14, borderRadius:"50%",
                 background:"radial-gradient(circle at 35% 30%, #ff6060, #880808)",
@@ -163,8 +173,15 @@ export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
               <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#e05050" }}>20</span>
             </div>
 
-            {/* Gold coin placeholder */}
-            <div style={{ ...pillBase, background:"rgba(140,105,15,.20)", border:"1px solid rgba(200,155,35,.28)" }}>
+            {/* Treasure — gold coin placeholder */}
+            <div style={{
+              display:"flex", alignItems:"center", gap:3,
+              padding:"2px 6px",
+              background:"rgba(140,105,15,.20)", border:"1px solid rgba(200,155,35,.28)",
+              borderRadius:3,
+              boxShadow:"inset 0 1px 0 rgba(255,255,255,.05), 0 1px 3px rgba(0,0,0,.6)",
+              whiteSpace:"nowrap",
+            }}>
               <div style={{
                 width:14, height:14, borderRadius:"50%",
                 background:"radial-gradient(circle at 35% 30%, #ffd040, #7a5508)",
@@ -176,7 +193,14 @@ export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
             </div>
 
             {/* Gems */}
-            <div style={{ ...pillBase, background:"rgba(240,192,64,.07)", border:"1px solid rgba(240,192,64,.22)" }}>
+            <div style={{
+              display:"flex", alignItems:"center", gap:3,
+              padding:"2px 6px",
+              background:"rgba(240,192,64,.07)", border:"1px solid rgba(240,192,64,.22)",
+              borderRadius:3,
+              boxShadow:"inset 0 1px 0 rgba(255,255,255,.05), 0 1px 3px rgba(0,0,0,.6)",
+              whiteSpace:"nowrap",
+            }}>
               <span style={{ fontSize:11 }}>💎</span>
               <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#f0c040" }}>
                 {(gems ?? 0).toLocaleString()}
@@ -192,10 +216,9 @@ export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
               display:"flex", alignItems:"center", justifyContent:"center",
               cursor:"pointer", padding:0, flexShrink:0,
               boxShadow:"inset 0 1px 0 rgba(255,255,255,.05)",
-              pointerEvents:"auto",
-              touchAction:"manipulation",
+              pointerEvents:"auto", touchAction:"manipulation",
             }}>
-              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none">
                 <circle cx="8" cy="8" r="2.2" stroke="#c8a040" strokeWidth="1.2"/>
                 <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06"
                   stroke="#c8a04088" strokeWidth="1.2" strokeLinecap="round"/>
@@ -204,39 +227,56 @@ export default memo(function HUD({ facName, pKeys, rss, gems, tiles }) {
           </div>
         </div>
 
-        {/* ═══ ROW 2 ══════════════════════════════════════════════════════════ */}
-        <div style={{ display:"flex", alignItems:"center" }}>
+        {/* ══ ROW 2 — sub-labels flanking the faction icon ════════════════════
+            Power/hr sits directly below the gap between gas and FG icon (left side).
+            Tile count sits directly below the gap between FG icon and egg pill (right side).
+            We replicate the same flex structure so they naturally align.
+        ══════════════════════════════════════════════════════════════════════ */}
+        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
 
-          {/* Power/hr — left-aligned, sits below RSS block */}
-          <div style={{
-            display:"flex", alignItems:"center", gap:3,
-            flex:"0 0 auto",
-          }}>
-            <span style={{ fontSize:8 }}>💍</span>
-            <span style={{
-              fontFamily:"'Cinzel',serif", fontSize:7, color:"#d4af37",
-              whiteSpace:"nowrap",
-            }}>
-              +{ringPowerPerHr.toLocaleString()}/hr
-            </span>
+          {/* Spacer matching RSS block width — aligns power/hr to end of RSS */}
+          <div style={{ display:"flex", alignItems:"center", gap:3, flex:"0 0 auto" }}>
+            {RKEYS.map(k => (
+              <div key={k} style={{
+                // invisible spacer — same width as RSS pill
+                visibility:"hidden",
+                display:"flex", alignItems:"center", gap:2,
+                padding:"2px 5px",
+                whiteSpace:"nowrap",
+              }}>
+                <span style={{ fontSize:10 }}>{RSS[k].icon}</span>
+                <div style={{ display:"flex", flexDirection:"column" }}>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, lineHeight:1.15 }}>
+                    {Math.floor(rss[k]).toLocaleString()}
+                  </span>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, lineHeight:1.15 }}>
+                    +{k === "gas" ? rssRate[k] : rssRate[k]}/h
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Spacer */}
-          <div style={{ flex:"1 1 auto" }}/>
-
-          {/* Tile count — right-aligned, sits below currencies */}
-          <div style={{
-            display:"flex", alignItems:"center", gap:3,
-            flex:"0 0 auto",
-          }}>
-            <span style={{ fontSize:8 }}>⬛</span>
-            <span style={{
-              fontFamily:"'Cinzel',serif", fontSize:7, color:"#6a9060",
-              whiteSpace:"nowrap",
-            }}>
-              {tileCount}/31
-            </span>
+          {/* Power/hr — right-aligned to just left of faction icon */}
+          <div style={{ margin:"0 6px", display:"flex", justifyContent:"flex-end", flexShrink:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:2 }}>
+              <span style={{ fontSize:8 }}>💍</span>
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#d4af37", whiteSpace:"nowrap" }}>
+                +{ringPowerPerHr.toLocaleString()}/hr
+              </span>
+            </div>
           </div>
+
+          {/* Tile count — left-aligned to just right of faction icon */}
+          <div style={{ display:"flex", alignItems:"center", gap:3, flex:"0 0 auto" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:2 }}>
+              <span style={{ fontSize:8 }}>⬛</span>
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#6a9060", whiteSpace:"nowrap" }}>
+                {tileCount}/31
+              </span>
+            </div>
+          </div>
+
         </div>
 
       </div>
