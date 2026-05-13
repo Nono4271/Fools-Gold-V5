@@ -897,6 +897,95 @@ function BattleListItem({ b, selected, onClick }) {
   );
 }
 
+// ── LOTR-style troop slot boxes ───────────────────────────────────────────────
+// Shows up to 3 troop type boxes: icon, tier badge, current/total count
+function TroopSlotBoxes({ b, isEnemy }) {
+  // Build slot list: enemy uses defTroopBranch single slot, attacker uses atkTroopSlots array
+  let slots = [];
+  if (!isEnemy) {
+    const raw = b.atkTroopSlots ?? (b.atkTroopBranch ? [{ branch: b.atkTroopBranch, troops: b.atkTroopsStart }] : []);
+    slots = raw.map(sl => {
+      const res = resolveTroopBranch(sl.branch);
+      return { res, troops: sl.troops ?? 0, troopsEnd: null };
+    });
+  } else {
+    const raw = b.defTroopSlots ?? (b.defTroopBranch ? [{ branch: b.defTroopBranch, troops: b.defTroopsStart ?? 0 }] : []);
+    slots = raw.map(sl => {
+      const res = resolveTroopBranch(sl.branch);
+      return { res, troops: sl.troops ?? 0, troopsEnd: b.defTroopsEnd ?? 0 };
+    });
+  }
+
+  const accentColor = isEnemy ? "#cc4444" : "#4488ff";
+  const tierColors  = ["#8a8aaa", "#4488cc", "#a855f7"]; // T1 grey, T2 blue, T3 purple
+
+  return (
+    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+      {slots.map((sl, i) => {
+        const br  = sl.res?.branchDef ?? null;
+        const td  = sl.res?.tierData  ?? null;
+        const tier = sl.res ? (br?.tiers?.indexOf(td) ?? 0) : 0;
+        const tierLabel = td?.label ?? (tier === 0 ? "T1" : tier === 1 ? "T2" : "T3");
+        const tierColor = tierColors[Math.min(tier, 2)];
+        const icon = br ? (
+          br.dmgType === "magical" ? "✦" :
+          br.size === "small" ? "🗡" : br.size === "large" ? "🪃" : "⚔"
+        ) : "⚔";
+        const current = isEnemy ? (sl.troopsEnd ?? sl.troops) : sl.troops;
+        const total   = sl.troops;
+
+        return (
+          <div key={i} style={{
+            display:"flex", flexDirection:"column", alignItems:"center",
+            padding:"5px 7px",
+            background:"rgba(255,255,255,.03)",
+            border:`1px solid ${accentColor}33`,
+            borderRadius:5, minWidth:64, flex:1,
+          }}>
+            {/* Icon */}
+            <div style={{
+              width:32, height:32, borderRadius:"50%",
+              background:`${accentColor}18`,
+              border:`1px solid ${accentColor}44`,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:16, marginBottom:4,
+            }}>
+              {icon}
+            </div>
+            {/* Tier badge */}
+            <div style={{
+              fontSize:6, color:tierColor, fontFamily:"'Cinzel',serif",
+              background:`${tierColor}18`, border:`1px solid ${tierColor}44`,
+              borderRadius:3, padding:"1px 5px", marginBottom:3,
+              letterSpacing:".05em",
+            }}>
+              {tierLabel}
+            </div>
+            {/* Troop label */}
+            <div style={{
+              fontSize:6, color:"#6a5a40", fontFamily:"'Cinzel',serif",
+              letterSpacing:".03em", textAlign:"center", marginBottom:3,
+              maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+            }}>
+              {br?.label ?? "Unknown"}
+            </div>
+            {/* Count: current / total */}
+            <div style={{ fontSize:8, fontFamily:"'Cinzel',serif", fontWeight:700, color:accentColor }}>
+              {current.toLocaleString()}
+              <span style={{ fontSize:6, color:"#3a3028", fontWeight:400 }}>
+                /{total.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+      {slots.length === 0 && (
+        <div style={{ fontSize:7, color:"#2a2020", fontFamily:"'Cinzel',serif", fontStyle:"italic" }}>No troop data</div>
+      )}
+    </div>
+  );
+}
+
 // ── Simple summary right-column detail panel ──────────────────────────────────
 function SimpleSummaryPanel({ b, onOpen }) {
   const oc = outcomeOf(b);
@@ -916,7 +1005,7 @@ function SimpleSummaryPanel({ b, onOpen }) {
       {/* Commander portraits — hip-up style like LOTR RTW */}
       <div style={{
         display:"grid", gridTemplateColumns:"1fr auto 1fr",
-        height:220, flexShrink:0, overflow:"hidden",
+        height:300, flexShrink:0, overflow:"hidden",
         borderBottom:"1px solid #1a1508",
       }}>
         {/* Attacker portrait */}
@@ -1013,40 +1102,40 @@ function SimpleSummaryPanel({ b, onOpen }) {
         </div>
       </div>
 
-      {/* Troop bars + stats */}
+      {/* Troop boxes + bars */}
       <div style={{
-        padding:"10px 14px 6px",
+        padding:"10px 14px 8px",
         borderBottom:"1px solid #1a1508",
         flexShrink:0,
       }}>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 20px 1fr", gap:8, alignItems:"start" }}>
+
           {/* Attacker troops */}
           <div>
             <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".06em", marginBottom:3 }}>YOUR TROOPS</div>
-            <div style={{ fontSize:8, color:"#4488ff", fontFamily:"'Cinzel',serif",
-              fontWeight:700, marginBottom:3 }}>
-              {b.atkTroopsStart.toLocaleString()} troops
+              letterSpacing:".06em", marginBottom:5 }}>YOUR TROOPS</div>
+            <TroopSlotBoxes b={b} isEnemy={false} />
+            <div style={{ marginTop:6 }}>
+              <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+              <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
             </div>
-            <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
-            <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
           </div>
 
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <div style={{ width:1, height:32, background:"#1e1808" }} />
+            <div style={{ width:1, height:"100%", background:"#1e1808" }} />
           </div>
 
           {/* Defender troops */}
           <div style={{ textAlign:"right" }}>
             <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".06em", marginBottom:3 }}>ENEMY TROOPS</div>
-            <div style={{ fontSize:8, color:"#cc4444", fontFamily:"'Cinzel',serif",
-              fontWeight:700, marginBottom:3 }}>
-              {(b.defTroopsStart ?? 0).toLocaleString()} troops
+              letterSpacing:".06em", marginBottom:5 }}>ENEMY TROOPS</div>
+            <TroopSlotBoxes b={b} isEnemy={true} />
+            <div style={{ marginTop:6 }}>
+              <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+              <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
             </div>
-            <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
-            <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
           </div>
+
         </div>
       </div>
 
@@ -1349,12 +1438,12 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
       display:"flex", alignItems:"center", justifyContent:"center",
     }}>
       <div style={{
-        width:"min(780px, 96vw)", height:"min(88vh, 800px)",
+        width:"100vw", height:"100vh",
         background:"#08060a",
-        border:"1px solid #2a1e08",
-        borderRadius:8,
+        border:"none",
+        borderRadius:0,
         display:"flex", flexDirection:"column",
-        boxShadow:"0 8px 56px rgba(0,0,0,.95)",
+        boxShadow:"none",
         overflow:"hidden",
       }}>
 
@@ -1430,7 +1519,7 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
 
             {/* Left: scrollable battle history list */}
             <div style={{
-              width:140, flexShrink:0,
+              width:200, flexShrink:0,
               borderRight:"1px solid #1a1510",
               overflowY:"auto", padding:"8px 6px",
               background:"rgba(0,0,0,.28)",
