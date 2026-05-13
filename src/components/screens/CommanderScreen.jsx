@@ -551,7 +551,6 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
 
   function handleNodeClick(skillDef, isMain, gateLocked, branchLocked, mainKeyForBranch) {
     const key = skillDef.key;
-    if (selectedNode?.skillKey === key) { setSelectedNode(null); return; }
     setSelectedNode({ skillDef, isMain, skillKey: key, mainKeyForBranch, gateLocked, branchLocked });
   }
 
@@ -575,7 +574,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
   const selCanUp   = liveUnspent > 0 && selLevel < selMaxLvl && !selectedNode?.gateLocked && !selectedNode?.branchLocked;
 
   return (
-    <div style={{
+    <div onClick={() => setSelectedNode(null)} style={{
       position: "fixed", inset: 0, zIndex: 9200,
       background: `radial-gradient(ellipse at 50% 0%, #03100f 0%, #020608 55%, #010204 100%)`,
       display: "flex", flexDirection: "column",
@@ -702,7 +701,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
 
       <div className="skill-tree-scroll">
 
-        <div className="skill-tree-grid" style={{ overflow: "visible" }}>
+        <div className="skill-tree-grid" onClick={e => e.stopPropagation()} style={{ overflow: "visible" }}>
           {treeEntries.map(({ treeKey, label, unlocksAt, tag, branchIdx }, idx) => {
             const tree = SKILL_TREES[treeKey];
             if (!tree) return null;
@@ -762,6 +761,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
               : false);
           const canUp = liveUnspent > 0 && liveLevel < maxLvl && !liveGate && !selectedNode.branchLocked;
           return (
+            <div onClick={e => e.stopPropagation()}>
             <SkillInfoPanel
               skillDef={selectedNode.skillDef}
               isMain={selectedNode.isMain}
@@ -775,6 +775,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
               onLevelUp={() => handleLevelUp(selectedNode.skillKey, selectedNode.mainKeyForBranch)}
               onClose={() => setSelectedNode(null)}
             />
+            </div>
           );
         })()}
       </div>
@@ -1436,7 +1437,6 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                             onClick={(e) => {
                               e.stopPropagation();
                               setPreviewGear({ piece: g, slotKey: openSlot });
-                              setShowClassPopup(null);
                             }}
 
                             style={{
@@ -1491,7 +1491,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
 
               return (
                 <div
-                  onClick={() => setPreviewGear(null)}
+                  onClick={() => { setPreviewGear(null); setShowClassPopup(pgSlot); }}
                   style={{
                     position: "fixed", inset: 0, zIndex: 200,
                     background: "rgba(0,0,0,.65)",
@@ -1519,7 +1519,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                           </span>
                         </div>
                       </div>
-                      <button onClick={() => setPreviewGear(null)} style={{
+                      <button onClick={() => { setPreviewGear(null); setShowClassPopup(pgSlot); }} style={{
                         background:"transparent", border:"none", color:"#6a5a4a",
                         fontSize:16, cursor:"pointer", flexShrink:0, lineHeight:1,
                       }}>✕</button>
@@ -1575,7 +1575,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                     <div style={{ display:"flex", gap:8, marginTop:4 }}>
                       {isEquipped ? (
                         <button
-                          onClick={() => { handleUnequip(pgSlot); setPreviewGear(null); }}
+                          onClick={() => { handleUnequip(pgSlot); setPreviewGear(null); setShowClassPopup(null); }}
                           style={{
                             flex:1, padding:"10px 0", borderRadius:5, cursor:"pointer",
                             background:"rgba(180,60,60,.12)", border:"1px solid rgba(180,60,60,.4)",
@@ -1586,7 +1586,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                         </button>
                       ) : (
                         <button
-                          onClick={() => { handleEquip(pg); setPreviewGear(null); }}
+                          onClick={() => { handleEquip(pg); setPreviewGear(null); setShowClassPopup(null); }}
                           style={{
                             flex:1, padding:"10px 0", borderRadius:5, cursor:"pointer",
                             background:`linear-gradient(135deg,${pgRc}22,rgba(0,0,0,.3))`,
@@ -1598,7 +1598,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                         </button>
                       )}
                       <button
-                        onClick={() => setPreviewGear(null)}
+                        onClick={() => { setPreviewGear(null); setShowClassPopup(pgSlot); }}
                         style={{
                           padding:"10px 16px", borderRadius:5, cursor:"pointer",
                           background:"rgba(255,255,255,.03)", border:"1px solid #2a2010",
