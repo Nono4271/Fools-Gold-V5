@@ -151,7 +151,9 @@ if (screen !== "game") return;
 const arrivedAttackers = cmds.filter(c => c.owner === "player" && c.march?.arrived && c.march?.type === "attack");
 if (!arrivedAttackers.length) return;
 
-arrivedAttackers.forEach(cmd => {
+arrivedAttackers.forEach(staleCmd => {
+  // Re-read from cmdsRef to get the LIVE cmd with current troops (post-reinforcement)
+  const cmd = cmdsRef.current.find(c => c.uid === staleCmd.uid) ?? staleCmd;
   const destKey = cmd.tk;
   const defTile = tiles[destKey];
   if (!defTile || defTile.owner === "player") {
@@ -363,13 +365,13 @@ arrivedAttackers.forEach(cmd => {
     tileCaptured = true;
     patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:null, hasAiCommander:false });
     _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:null });
-    floaty(`⚔ CAPTURED! (${siegePower} siege)`, "#3daa60", destKey);
+    floaty("⚔ CAPTURED!", "#3daa60", destKey);
     if (destKey === WIN_KEY) setWinner("player");
   } else {
     const newSiege = currentSiege - siegePower;
     patchTile(destKey, { siege:newSiege, defeatedWaves:newlyDefeated, resetAt:Date.now()+garrisonResetMs(defTile), defCmd:null, hasAiCommander:false });
     _emitSiege(destKey, { siege:newSiege, defeatedWaves:newlyDefeated, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
-    floaty(`⚔ WIN  🔨 SIEGE ${newSiege}/${defTile.siegeMax??SIEGE_BASE}`, "#d0a030", destKey);
+    floaty(`🔨 SIEGE ${newSiege}/${defTile.siegeMax??SIEGE_BASE}`, "#d0a030", destKey);
   }
 
   const finalTk = tileCaptured ? destKey : originKey;
