@@ -849,7 +849,8 @@ export default function RiseToWar() {
               });
               floaty(`🏰 ${rm.amount} reinforcements returned to barracks`, "#88aaff", hqKey);
             } else {
-              setPlayerCmds(cmds => cmds.map(c => {
+              setPlayerCmds(cmds => {
+                const next = cmds.map(c => {
                 if (c.uid !== rm.cmdUid) return c;
                 const cap       = cmdCommand(c.lvl||5, bldgs.commandcenter||0, (c.cls==="leader"&&(c.lvl||5)>=25)?500:0);
                 const newTroops = Math.min(cap, (c.troops||0) + rm.amount);
@@ -862,8 +863,27 @@ export default function RiseToWar() {
                   });
                   floaty(`↩ ${overflow} troops returned (cmd full)`, "#88aaff", rm.path[rm.path.length-1]);
                 }
-                return { ...c, troops: newTroops };
-              }));
+                return { ...c, troops: newTroops, troopSlots: (() => {
+                  if (!c.troopSlots || c.troopSlots.length === 0) return c.troopSlots;
+                  const added = newTroops - (c.troops || 0);
+                  if (added <= 0) return c.troopSlots;
+                  // Distribute added troops proportionally by slot count
+                  const totalSlotTroops = c.troopSlots.reduce((s, sl) => s + (sl.troops || 0), 0);
+                  let remaining = added;
+                  return c.troopSlots.map((sl, i) => {
+                    const frac = totalSlotTroops > 0 ? (sl.troops || 0) / totalSlotTroops : 1 / c.troopSlots.length;
+                    const share = i === c.troopSlots.length - 1
+                      ? remaining
+                      : Math.round(added * frac);
+                    remaining -= share;
+                    return { ...sl, troops: (sl.troops || 0) + share };
+                  });
+                })() };
+              });
+                // Sync cmdsRef immediately so march arrival reads updated troops
+                cmdsRef.current = [...next, ...cmdsRef.current.filter(c => c.owner !== "player")];
+                return next;
+              });
               floaty(`+${rm.amount} reinforcements arrived!`, "#88aaff", rm.path[rm.path.length-1]);
             }
           } else {
