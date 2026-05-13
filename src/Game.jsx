@@ -9,7 +9,7 @@ import { HDEFS, RC, RARITY, CLASS, rollGacha, addRespect, RESPECT_DUPE_POINTS, R
 import { rollFullPull, rollGearSchematic, createRespectSchematic, createGearInstance, GEAR_RARITY, GEAR_SLOTS, GEAR_PIECES, rollFullPullCmdRarity } from "../shared/constants/gear.js";
 import { HQP, AI_HQ_KEY, WIN_KEY, RKEYS, RSS, POWER_DEFS, SIEGE_BASE, SIEGE_KEEP_BASE, calcSiegePower, hqSiegeValue } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST, CMD_LVL_MAX, xpToNext } from "../shared/constants/troops.js";
-import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainRate, maxTrainBatch, tierFromBranchLevel, storageMax } from "../shared/constants/buildings.js";
+import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainRate, maxTrainBatch, tierFromBranchLevel, storageMax, voidTapCapacity, voidTapCooldownMs, voidTapYield } from "../shared/constants/buildings.js";
 import { isoXY, TW, TH, ISO_W, ISO_H } from "../shared/constants/geometry.js";
 import { FACTION_REGIONS, REGION_LIST } from "../shared/constants/regions.js";
 
@@ -282,6 +282,25 @@ export default function RiseToWar() {
   }, [bldgs]); // eslint-disable-line react-hooks/exhaustive-deps
   // quarterLevels: { [factionKey]: currentLevel }  — player-purchased quarter upgrades
   const [quarterLevels, setQuarterLevels] = useState({});
+
+  // Void Tap state
+  const [mysticOrbs,    setMysticOrbs]    = useState(0);
+  const [lastVoidTap,   setLastVoidTap]   = useState(null); // timestamp ms or null
+
+  // Derived void tap values from bldgs
+  const voidTapLvl  = bldgs.voidtap || 0;
+  const mysticOrbsCap = voidTapLvl > 0 ? voidTapCapacity(voidTapLvl) : 10000;
+  const voidTapCooldown = voidTapLvl > 0 ? voidTapCooldownMs(voidTapLvl) : voidTapCooldownMs(1);
+  const voidTapReady = voidTapLvl > 0
+    && mysticOrbs < mysticOrbsCap
+    && (lastVoidTap === null || Date.now() - lastVoidTap >= voidTapCooldown);
+
+  const doVoidTap = () => {
+    if (!voidTapReady) return;
+    const gain = voidTapYield(quarterLevels);
+    setMysticOrbs(prev => Math.min(mysticOrbsCap, prev + gain));
+    setLastVoidTap(Date.now());
+  };
   const [woundedTroops,  setWounded]       = useState(0);
   const [woundedQueue,   setWoundedQueue]  = useState(0);
   const [trainingQueue,  setTrainingQueue] = useState(null);
@@ -1462,7 +1481,8 @@ export default function RiseToWar() {
         </div>
       )}
 
-      <HUD facName={facName} facKey={facKey} pKeys={pKeys} rss={rss} gems={gems} tiles={tiles} />
+      <HUD facName={facName} facKey={facKey} pKeys={pKeys} rss={rss} gems={gems} tiles={tiles}
+        mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap} voidTapReady={voidTapReady} />
 
       {/* Server connection indicator */}
       <div style={{
@@ -1564,6 +1584,10 @@ export default function RiseToWar() {
         facKey={facKey}
         unlockedBranches={unlockedBranches} setUnlockedBranches={setUnlockedBranches}
         quarterLevels={quarterLevels} setQuarterLevels={setQuarterLevels}
+        mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap}
+        voidTapLvl={voidTapLvl} voidTapReady={voidTapReady}
+        lastVoidTap={lastVoidTap} voidTapCooldown={voidTapCooldown}
+        doVoidTap={doVoidTap}
       />
 
       {winner && (
@@ -1688,6 +1712,7 @@ export default function RiseToWar() {
         panRef={panRef}
         zoomRef={zoomRef}
         mapRendererRef={mapRendererRef}
+        voidTapReady={voidTapReady}
       />
 
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
