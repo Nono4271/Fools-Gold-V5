@@ -805,7 +805,7 @@ function InfrastructureScreen({ bldgs, setBldgs, rss, setRss, canAfford, upgrade
 const [leftSel, setLeftSel]     = useState("buildings");
 const [selBuilding, setSelBuilding] = useState(null);
 
-const BLDG_KEYS = ["hq","walls","quarry","lumber","forge","refinery","storage","barracks","training","commandcenter","healingtent"];
+const BLDG_KEYS = ["hq","walls","quarry","lumber","forge","refinery","storage","barracks","training","commandcenter","healingtent","voidtap"];
 
 const primaryFaction = facKey || "pirates";
 const myAlign        = getAlignment(primaryFaction);
