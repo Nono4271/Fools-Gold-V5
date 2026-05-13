@@ -74,38 +74,37 @@ function CircleNode({ node, unlocked, active, onClick, r = 22 }) {
 const CX = 350, CY = 270;
 
 const NODES = [
-  // TL
-  {id:"tl",     x:193, y:185, r:22, icon:"🥚", label:"Dragon Eggs",    accent:"#e04060", desc:"Begin passively regenerating Dragon Eggs over time.",        prereqs:[]},
-  {id:"tl_t",   x:115, y:125, r:19, icon:"⛏",  label:"Keen Gatherer",  accent:"#9898b0", desc:"+10% resource gathering rate from all tiles.",               prereqs:["tl"]},
-  {id:"tl_b",   x:104, y:220, r:19, icon:"⚔️",  label:"Battle Rite",   accent:"#ee6644", desc:"+3% troop attack for all armies.",                           prereqs:["tl"]},
-  {id:"tl_t1",  x:-6, y:26, r:17, icon:"🪨",  label:"Stone Mastery",  accent:"#9898b0", desc:"+15% stone & wood production.",                             prereqs:["tl_t"]},
-  {id:"tl_b1",  x:-19, y:170, r:17, icon:"🛡",  label:"Iron Will",     accent:"#cc8844", desc:"+3% troop defence.",                                         prereqs:["tl_b"]},
-  {id:"tl_b2",  x:-25, y:282, r:17, icon:"👑",  label:"Warlord's Pact",accent:"#f0c040", desc:"+5% attack & +5% defence.",                                  prereqs:["tl_b"]},
-  // TR
-  {id:"tr",     x:31, y:75, r:17, icon:"⚡",  label:"Swift March",    accent:"#88aaff", desc:"+5% march speed for all commanders.",                        prereqs:[]},
-  {id:"tr_t",   x:20, y:190, r:17, icon:"🗺",  label:"Far Marcher",    accent:"#6688ee", desc:"+2 maximum march range.",                                    prereqs:["tr"]},
-  {id:"tr_b",   x:14, y:280, r:17, icon:"🔍",  label:"Arcane Sight",   accent:"#44ccee", desc:"Reveal enemy troop counts when scouting.",                  prereqs:["tr"]},
-  {id:"tr_b1",  x:507, y:165, r:22, icon:"👁",  label:"All-Seeing",     accent:"#40ddcc", desc:"Fog of war radius +2 tiles.",                               prereqs:["tr_b"]},
-  {id:"tr_b2",  x:587, y:100, r:19, icon:"🔮",  label:"Omniscience",    accent:"#40aaff", desc:"No fog of war — full map awareness.",                       prereqs:["tr_b"]},
-  {id:"tr_b3",  x:605, y:188, r:19, icon:"⚔️",  label:"Twin Legions",   accent:"#5577ff", desc:"Unlock a 3rd simultaneous march.",                          prereqs:["tr_b"]},
-  {id:"tr_b4",  x:688, y:140, r:17, icon:"🌀",  label:"Void Attunement",accent:"#aa55ff", desc:"Void Tap cooldown reduced by 10%.",                         prereqs:["tr_b"]},
-  // BL
-  {id:"bl",     x:704, y:190, r:17, icon:"🛡",  label:"Fortify",        accent:"#88cc88", desc:"+500 HQ siege HP.",                                         prereqs:[]},
-  {id:"bl_t",   x:694, y:238, r:17, icon:"🏰",  label:"Ancient Wards",  accent:"#c8b070", desc:"+1,000 HQ siege HP. Walls heal 10% faster.",               prereqs:["bl"]},
-  {id:"bl_b",   x:675, y:282, r:17, icon:"⭐",  label:"Tactician",      accent:"#f0c040", desc:"Commanders gain +5% XP from all battles.",                  prereqs:["bl"]},
-  {id:"bl_b1",  x:-19, y:401, r:17, icon:"⚡",  label:"Siege Master",   accent:"#88cc44", desc:"+10% siege power for all marching armies.",                 prereqs:["bl_b"]},
-  {id:"bl_b2",  x:-25, y:508, r:17, icon:"📜",  label:"Elder's Rite",   accent:"#c8a040", desc:"All Wizard's Tomes effects increased by 15%.",              prereqs:["bl_b"]},
-  // BR
-  {id:"br",     x:193, y:355, r:22, icon:"🌀",  label:"Void Mastery",   accent:"#cc44ff", desc:"+5,000 Mystic Orb capacity.",                               prereqs:[]},
-  {id:"br_t",   x:115, y:300, r:19, icon:"✨",  label:"Abundance Rite", accent:"#d4af37", desc:"+10% all resource production.",                             prereqs:["br"]},
-  {id:"br_m",   x:104, y:415, r:19, icon:"🪵",  label:"Forest Lore",    accent:"#a07840", desc:"+15% wood & ore production.",                               prereqs:["br"]},
-  {id:"br_b",   x:20, y:375, r:17, icon:"🥚",  label:"Egg Vault I",    accent:"#e04060", desc:"+5 Dragon Egg capacity.",                                   prereqs:["br"]},
-  {id:"br_t1",  x:14, y:460, r:17, icon:"🌀",  label:"Void Channel",   accent:"#cc44ff", desc:"Void Tap cooldown reduced by additional 10%.",              prereqs:["br_t"]},
-  {id:"br_b1",  x:460, y:380, r:22, icon:"🥚",  label:"Egg Vault II",   accent:"#e04060", desc:"+5 Dragon Egg capacity (total +10).",                       prereqs:["br_b"]},
+  // TL quadrant
+  {id:"tl",     x:210, y:185, r:22, icon:"🥚", label:"Dragon Eggs",    accent:"#e04060", desc:"Begin passively regenerating Dragon Eggs over time.",       prereqs:[]},
+  {id:"tl_t",   x:135, y:120, r:19, icon:"⛏",  label:"Keen Gatherer",  accent:"#9898b0", desc:"+10% resource gathering rate from all tiles.",              prereqs:["tl"]},
+  {id:"tl_b",   x:125, y:215, r:19, icon:"⚔️",  label:"Battle Rite",   accent:"#ee6644", desc:"+3% troop attack for all armies.",                          prereqs:["tl"]},
+  {id:"tl_t1",  x:52,  y:68,  r:17, icon:"🪨",  label:"Stone Mastery",  accent:"#9898b0", desc:"+15% stone & wood production.",                            prereqs:["tl_t"]},
+  {id:"tl_b1",  x:42,  y:182, r:17, icon:"🛡",  label:"Iron Will",     accent:"#cc8844", desc:"+3% troop defence.",                                        prereqs:["tl_b"]},
+  {id:"tl_b2",  x:38,  y:272, r:17, icon:"👑",  label:"Warlord's Pact",accent:"#f0c040", desc:"+5% attack & +5% defence.",                                 prereqs:["tl_b"]},
+  // TR quadrant
+  {id:"tr",     x:492, y:162, r:22, icon:"⚡",  label:"Swift March",    accent:"#88aaff", desc:"+5% march speed for all commanders.",                       prereqs:[]},
+  {id:"tr_t",   x:568, y:98,  r:19, icon:"🗺",  label:"Far Marcher",    accent:"#6688ee", desc:"+2 maximum march range.",                                   prereqs:["tr"]},
+  {id:"tr_b",   x:582, y:188, r:19, icon:"🔍",  label:"Arcane Sight",   accent:"#44ccee", desc:"Reveal enemy troop counts when scouting.",                 prereqs:["tr"]},
+  {id:"tr_b1",  x:655, y:138, r:17, icon:"👁",  label:"All-Seeing",     accent:"#40ddcc", desc:"Fog of war radius +2 tiles.",                              prereqs:["tr_b"]},
+  {id:"tr_b2",  x:670, y:188, r:17, icon:"🔮",  label:"Omniscience",    accent:"#40aaff", desc:"No fog of war — full map awareness.",                      prereqs:["tr_b"]},
+  {id:"tr_b3",  x:660, y:238, r:17, icon:"⚔️",  label:"Twin Legions",   accent:"#5577ff", desc:"Unlock a 3rd simultaneous march.",                         prereqs:["tr_b"]},
+  {id:"tr_b4",  x:642, y:282, r:17, icon:"🌀",  label:"Void Attunement",accent:"#aa55ff", desc:"Void Tap cooldown reduced by 10%.",                        prereqs:["tr_b"]},
+  // BL quadrant
+  {id:"bl",     x:210, y:355, r:22, icon:"🛡",  label:"Fortify",        accent:"#88cc88", desc:"+500 HQ siege HP.",                                        prereqs:[]},
+  {id:"bl_t",   x:135, y:298, r:19, icon:"🏰",  label:"Ancient Wards",  accent:"#c8b070", desc:"+1,000 HQ siege HP. Walls heal 10% faster.",              prereqs:["bl"]},
+  {id:"bl_b",   x:125, y:412, r:19, icon:"⭐",  label:"Tactician",      accent:"#f0c040", desc:"Commanders gain +5% XP from all battles.",                 prereqs:["bl"]},
+  {id:"bl_b1",  x:42,  y:372, r:17, icon:"⚡",  label:"Siege Master",   accent:"#88cc44", desc:"+10% siege power for all marching armies.",                prereqs:["bl_b"]},
+  {id:"bl_b2",  x:38,  y:458, r:17, icon:"📜",  label:"Elder's Rite",   accent:"#c8a040", desc:"All Wizard's Tomes effects increased by 15%.",             prereqs:["bl_b"]},
+  // BR quadrant
+  {id:"br",     x:450, y:378, r:22, icon:"🌀",  label:"Void Mastery",   accent:"#cc44ff", desc:"+5,000 Mystic Orb capacity.",                              prereqs:[]},
+  {id:"br_t",   x:512, y:325, r:19, icon:"✨",  label:"Abundance Rite", accent:"#d4af37", desc:"+10% all resource production.",                            prereqs:["br"]},
+  {id:"br_m",   x:522, y:398, r:19, icon:"🪵",  label:"Forest Lore",    accent:"#a07840", desc:"+15% wood & ore production.",                              prereqs:["br"]},
+  {id:"br_b",   x:508, y:468, r:19, icon:"🥚",  label:"Egg Vault I",    accent:"#e04060", desc:"+5 Dragon Egg capacity.",                                  prereqs:["br"]},
+  {id:"br_t1",  x:585, y:298, r:17, icon:"🌀",  label:"Void Channel",   accent:"#cc44ff", desc:"Void Tap cooldown reduced by additional 10%.",             prereqs:["br_t"]},
+  {id:"br_b1",  x:580, y:472, r:17, icon:"🥚",  label:"Egg Vault II",   accent:"#e04060", desc:"+5 Dragon Egg capacity (total +10).",                      prereqs:["br_b"]},
   // Faction — right of Forest
-  {id:"faction",x:527, y:330, r:19, icon:"⚔️",  label:"Faction Mastery",accent:"#f0c040", desc:"Your faction's unique passive ability.",                    prereqs:["br_m"]},
+  {id:"faction",x:612, y:398, r:19, icon:"⚔️",  label:"Faction Mastery",accent:"#f0c040", desc:"Your faction's unique passive ability.",                   prereqs:["br_m"]},
 ];
-
 const NODE_MAP = Object.fromEntries(NODES.map(n=>[n.id,n]));
 
 const LINES = [
@@ -228,7 +227,7 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
           {/* SVG tree */}
           <div style={{flex:1,overflow:"auto",WebkitOverflowScrolling:"touch",
             display:"flex",alignItems:"stretch"}}>
-            <svg viewBox="-15 55 760 450"
+            <svg viewBox="15 45 680 460"
               style={{width:"100%",height:"100%",display:"block"}}
               preserveAspectRatio="xMidYMid meet">
               <defs>
