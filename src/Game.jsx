@@ -849,8 +849,7 @@ export default function RiseToWar() {
               });
               floaty(`🏰 ${rm.amount} reinforcements returned to barracks`, "#88aaff", hqKey);
             } else {
-              setPlayerCmds(cmds => {
-                const next = cmds.map(c => {
+              setPlayerCmds(cmds => cmds.map(c => {
                 if (c.uid !== rm.cmdUid) return c;
                 const cap       = cmdCommand(c.lvl||5, bldgs.commandcenter||0, (c.cls==="leader"&&(c.lvl||5)>=25)?500:0);
                 const newTroops = Math.min(cap, (c.troops||0) + rm.amount);
@@ -879,11 +878,7 @@ export default function RiseToWar() {
                     return { ...sl, troops: (sl.troops || 0) + share };
                   });
                 })() };
-              });
-                // Sync cmdsRef immediately so march arrival reads updated troops
-                cmdsRef.current = [...next, ...cmdsRef.current.filter(c => c.owner !== "player")];
-                return next;
-              });
+              }));
               floaty(`+${rm.amount} reinforcements arrived!`, "#88aaff", rm.path[rm.path.length-1]);
             }
           } else {
@@ -1182,7 +1177,7 @@ export default function RiseToWar() {
       setBarracks(pool => pool + total);
       return prev.map(c => c.uid===uid ? { ...c, troopSlots:[], troops:0, troopBranch:null } : c);
     });
-  }, []);
+  }, [setBarracks]);
 
   const upgrade = useCallback(type => {
     const lvl = bldgs[type]||0;
