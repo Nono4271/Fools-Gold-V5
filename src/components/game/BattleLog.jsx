@@ -929,8 +929,8 @@ function SimpleSummaryPanel({ b, onOpen }) {
           {b.atkPortrait || b.atkBust ? (
             <img src={b.atkPortrait ?? b.atkBust} alt={b.atkName}
               style={{
-                position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)",
-                height:"115%", objectFit:"cover", objectPosition:"top center", opacity:.92,
+                position:"absolute", top:0, left:0, width:"100%", height:"100%",
+                objectFit:"cover", objectPosition:"top center", opacity:.92,
               }} />
           ) : (
             <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center",
@@ -987,8 +987,8 @@ function SimpleSummaryPanel({ b, onOpen }) {
           {b.defPortrait || b.defBust ? (
             <img src={b.defPortrait ?? b.defBust} alt={b.defCmdName}
               style={{
-                position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%) scaleX(-1)",
-                height:"115%", objectFit:"cover", objectPosition:"top center", opacity:.92,
+                position:"absolute", top:0, left:0, width:"100%", height:"100%",
+                objectFit:"cover", objectPosition:"top center", transform:"scaleX(-1)", opacity:.92,
               }} />
           ) : (
             <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center",
