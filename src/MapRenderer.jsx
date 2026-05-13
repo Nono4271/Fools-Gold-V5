@@ -2045,6 +2045,46 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const hellfireGfx = new PIXI.Graphics();
     world.addChild(hellfireGfx);
 
+    // Pre-compute stable per-tile flame positions so they don't shift each frame
+    const hellfireFlameCache = new Map();
+    function getHellfireFlames(c, r) {
+      const key = `${c},${r}`;
+      if (hellfireFlameCache.has(key)) return hellfireFlameCache.get(key);
+      // Deterministic RNG seeded per tile
+      let s = (c * 2654435761 ^ r * 2246822519) >>> 0;
+      const rng = () => { s = (s ^ (s << 13)) >>> 0; s = (s ^ (s >> 17)) >>> 0; s = (s ^ (s << 5)) >>> 0; return (s >>> 0) / 0xffffffff; };
+      // 3–5 scatter flame positions across the tile surface
+      const count = 3 + Math.floor(rng() * 3);
+      const flames = [];
+      for (let i = 0; i < count; i++) {
+        flames.push({
+          ox: (rng() - 0.5) * TW * 0.55,   // offset from tile centre
+          oy: (rng() - 0.5) * TH * 0.30,
+          phase: rng() * Math.PI * 2,        // unique phase per flame
+          speed: 3.5 + rng() * 3.0,          // flicker speed
+          maxH: TH * (0.18 + rng() * 0.22),  // max flame height
+          wid:  TW * (0.04 + rng() * 0.04),  // flame base width
+          isCrack: i < 2,                     // first 2 are crack glow pulses
+        });
+      }
+      // 1–2 crack glow segments (positions along the static crack drawn at tile render)
+      const cracks = [];
+      const numCracks = 1 + Math.floor(rng() * 2);
+      for (let i = 0; i < numCracks; i++) {
+        cracks.push({
+          ox: (rng() - 0.5) * TW * 0.30,
+          oy: (rng() - 0.5) * TH * 0.18,
+          angle: 0.35 + rng() * 0.8,
+          len: TW * (0.14 + rng() * 0.18),
+          phase: rng() * Math.PI * 2,
+          speed: 2.0 + rng() * 2.5,
+        });
+      }
+      const data = { flames, cracks };
+      hellfireFlameCache.set(key, data);
+      return data;
+    }
+
     const hellfireFn = () => {
       const t = performance.now() / 1000;
       const curTiles = tilesRef.current;
@@ -2065,19 +2105,82 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           if (!tile || tile.terrain !== "hellfire") continue;
 
           const { cx, cy } = isoXY(c, r);
-          const cy2 = cy + TH * 0.5;
+          const cy2 = cy + TH * 0.50;
 
-          const phase  = (c * 1.7 + r * 2.3) % (Math.PI * 2);
-          const phase2 = (c * 3.1 + r * 0.9) % (Math.PI * 2);
-          const pulse  = 0.5 + 0.5 * Math.sin(t * 4.2 + phase);
-          const pulse2 = 0.5 + 0.5 * Math.sin(t * 2.8 + phase2);
+          const { flames, cracks } = getHellfireFlames(c, r);
 
-          hellfireGfx.beginFill(0xff4400, 0.08 + pulse * 0.12);
-          hellfireGfx.drawEllipse(cx, cy2, TW * 0.38, TH * 0.22);
-          hellfireGfx.endFill();
-          hellfireGfx.beginFill(0xff9930, 0.10 + pulse2 * 0.12);
-          hellfireGfx.drawEllipse(cx, cy2, TW * 0.18, TH * 0.10);
-          hellfireGfx.endFill();
+          // ── 1. Glowing crack pulse ───────────────────────────────────────────
+          for (const ck of cracks) {
+            const glow = 0.5 + 0.5 * Math.sin(t * ck.speed + ck.phase);
+            const bx = cx + ck.ox;
+            const by = cy2 + ck.oy;
+            const dx = Math.cos(ck.angle) * ck.len * 0.5;
+            const dy = Math.sin(ck.angle) * ck.len * 0.22;
+            // Soft glow halo around crack
+            hellfireGfx.beginFill(0xff4400, 0.06 + glow * 0.10);
+            hellfireGfx.drawEllipse(bx, by, ck.len * 0.55, ck.len * 0.18);
+            hellfireGfx.endFill();
+            // Bright inner crack line
+            hellfireGfx.lineStyle(1.2, 0xff8820, 0.55 + glow * 0.35);
+            hellfireGfx.moveTo(bx - dx, by - dy);
+            hellfireGfx.lineTo(bx + dx, by + dy);
+            hellfireGfx.lineStyle(0.4, 0xffdd60, 0.40 + glow * 0.45);
+            hellfireGfx.moveTo(bx - dx * 0.6, by - dy * 0.6);
+            hellfireGfx.lineTo(bx + dx * 0.6, by + dy * 0.6);
+            hellfireGfx.lineStyle(0);
+          }
+
+          // ── 2. Scatter flame jets shooting upward ────────────────────────────
+          for (const fl of flames) {
+            const flicker = 0.5 + 0.5 * Math.sin(t * fl.speed + fl.phase);
+            const flicker2 = 0.5 + 0.5 * Math.sin(t * fl.speed * 1.3 + fl.phase + 1.1);
+            const h = fl.maxH * (0.4 + flicker * 0.6);  // flame height pulses
+            const w = fl.wid * (0.7 + flicker2 * 0.5);
+
+            const fx = cx + fl.ox;
+            const fy = cy2 + fl.oy;
+
+            // Ground glow pool under flame
+            hellfireGfx.beginFill(0xff3300, 0.08 + flicker * 0.10);
+            hellfireGfx.drawEllipse(fx, fy, w * 2.2, w * 0.9);
+            hellfireGfx.endFill();
+
+            // Outer flame shape — dark orange/red base
+            hellfireGfx.beginFill(0xdd2200, 0.55 + flicker * 0.25);
+            hellfireGfx.drawPolygon([
+              fx - w,        fy,
+              fx + w,        fy,
+              fx + w * 0.5,  fy - h * 0.55,
+              fx,            fy - h,
+              fx - w * 0.5,  fy - h * 0.55,
+            ]);
+            hellfireGfx.endFill();
+
+            // Mid flame — bright orange
+            hellfireGfx.beginFill(0xff6600, 0.70 + flicker2 * 0.20);
+            hellfireGfx.drawPolygon([
+              fx - w * 0.60, fy,
+              fx + w * 0.60, fy,
+              fx + w * 0.25, fy - h * 0.60,
+              fx,            fy - h * 0.88,
+              fx - w * 0.25, fy - h * 0.60,
+            ]);
+            hellfireGfx.endFill();
+
+            // Hot core — yellow-white tip
+            hellfireGfx.beginFill(0xffee44, 0.55 + flicker * 0.35);
+            hellfireGfx.drawPolygon([
+              fx - w * 0.28, fy - h * 0.30,
+              fx + w * 0.28, fy - h * 0.30,
+              fx,            fy - h * 0.95,
+            ]);
+            hellfireGfx.endFill();
+
+            // Spark — tiny bright dot at tip
+            hellfireGfx.beginFill(0xffffff, 0.55 + flicker2 * 0.35);
+            hellfireGfx.drawCircle(fx, fy - h, 0.7);
+            hellfireGfx.endFill();
+          }
         }
       }
     };
