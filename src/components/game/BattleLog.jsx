@@ -920,7 +920,7 @@ function TroopSlotBoxes({ b, isEnemy }) {
   const tierColors  = ["#8a8aaa", "#4488cc", "#a855f7"]; // T1 grey, T2 blue, T3 purple
 
   return (
-    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+    <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
       {slots.map((sl, i) => {
         const br  = sl.res?.branchDef ?? null;
         const td  = sl.res?.tierData  ?? null;
@@ -937,18 +937,18 @@ function TroopSlotBoxes({ b, isEnemy }) {
         return (
           <div key={i} style={{
             display:"flex", flexDirection:"column", alignItems:"center",
-            padding:"5px 7px",
+            padding:"4px 5px",
             background:"rgba(255,255,255,.03)",
             border:`1px solid ${accentColor}33`,
-            borderRadius:5, minWidth:64, flex:1,
+            borderRadius:4, minWidth:52, flex:1,
           }}>
             {/* Icon */}
             <div style={{
-              width:32, height:32, borderRadius:"50%",
+              width:24, height:24, borderRadius:"50%",
               background:`${accentColor}18`,
               border:`1px solid ${accentColor}44`,
               display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:16, marginBottom:4,
+              fontSize:12, marginBottom:3,
             }}>
               {icon}
             </div>
@@ -956,23 +956,23 @@ function TroopSlotBoxes({ b, isEnemy }) {
             <div style={{
               fontSize:6, color:tierColor, fontFamily:"'Cinzel',serif",
               background:`${tierColor}18`, border:`1px solid ${tierColor}44`,
-              borderRadius:3, padding:"1px 5px", marginBottom:3,
-              letterSpacing:".05em",
+              borderRadius:3, padding:"1px 4px", marginBottom:2,
+              letterSpacing:".04em",
             }}>
               {tierLabel}
             </div>
             {/* Troop label */}
             <div style={{
-              fontSize:6, color:"#6a5a40", fontFamily:"'Cinzel',serif",
-              letterSpacing:".03em", textAlign:"center", marginBottom:3,
-              maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+              fontSize:5.5, color:"#6a5a40", fontFamily:"'Cinzel',serif",
+              letterSpacing:".02em", textAlign:"center", marginBottom:2,
+              maxWidth:60, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
             }}>
               {br?.label ?? "Unknown"}
             </div>
             {/* Count: current / total */}
-            <div style={{ fontSize:8, fontFamily:"'Cinzel',serif", fontWeight:700, color:accentColor }}>
+            <div style={{ fontSize:7, fontFamily:"'Cinzel',serif", fontWeight:700, color:accentColor }}>
               {current.toLocaleString()}
-              <span style={{ fontSize:6, color:"#3a3028", fontWeight:400 }}>
+              <span style={{ fontSize:5.5, color:"#3a3028", fontWeight:400 }}>
                 /{total.toLocaleString()}
               </span>
             </div>
@@ -1002,10 +1002,10 @@ function SimpleSummaryPanel({ b, onOpen }) {
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
-      {/* Commander portraits — hip-up style like LOTR RTW */}
+      {/* Commander portraits — compact to leave room for troops below */}
       <div style={{
         display:"grid", gridTemplateColumns:"1fr auto 1fr",
-        height:300, flexShrink:0, overflow:"hidden",
+        height:180, flexShrink:0, overflow:"hidden",
         borderBottom:"1px solid #1a1508",
       }}>
         {/* Attacker portrait */}
@@ -1104,7 +1104,7 @@ function SimpleSummaryPanel({ b, onOpen }) {
 
       {/* Troop boxes + bars */}
       <div style={{
-        padding:"10px 14px 8px",
+        padding:"6px 14px 6px",
         borderBottom:"1px solid #1a1508",
         flexShrink:0,
       }}>
@@ -1115,7 +1115,7 @@ function SimpleSummaryPanel({ b, onOpen }) {
             <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
               letterSpacing:".06em", marginBottom:5 }}>YOUR TROOPS</div>
             <TroopSlotBoxes b={b} isEnemy={false} />
-            <div style={{ marginTop:6 }}>
+            <div style={{ marginTop:4 }}>
               <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
               <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
             </div>
@@ -1130,7 +1130,7 @@ function SimpleSummaryPanel({ b, onOpen }) {
             <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
               letterSpacing:".06em", marginBottom:5 }}>ENEMY TROOPS</div>
             <TroopSlotBoxes b={b} isEnemy={true} />
-            <div style={{ marginTop:6 }}>
+            <div style={{ marginTop:4 }}>
               <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
               <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
             </div>
@@ -1140,7 +1140,7 @@ function SimpleSummaryPanel({ b, onOpen }) {
       </div>
 
       {/* XP + meta row */}
-      <div style={{ padding:"8px 14px", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+      <div style={{ padding:"5px 14px", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
         <div style={{ display:"flex", gap:10 }}>
           {b.xpGain > 0 && (
             <span style={{ fontSize:8, color:"#8a6030", fontFamily:"'Cinzel',serif" }}>

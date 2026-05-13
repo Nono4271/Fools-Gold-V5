@@ -227,7 +227,7 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
           {/* SVG tree */}
           <div style={{flex:1,overflow:"hidden",
             display:"flex",alignItems:"stretch"}}>
-            <svg viewBox="45 40 940 580"
+            <svg viewBox="45 45 975 645"
               style={{width:"100%",height:"100%",display:"block"}}
               preserveAspectRatio="xMidYMid meet">
               <defs>
