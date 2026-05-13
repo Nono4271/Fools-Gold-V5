@@ -152,12 +152,15 @@ const arrivedAttackers = cmds.filter(c => c.owner === "player" && c.march?.arriv
 if (!arrivedAttackers.length) return;
 
 arrivedAttackers.forEach(staleCmd => {
-  // Re-read from cmdsRef to get the LIVE cmd with current troops (post-reinforcement)
-  const cmd = cmdsRef.current.find(c => c.uid === staleCmd.uid) ?? staleCmd;
+  // staleCmd comes from cmds.filter() — cmds is the current state in this effect closure.
+  // If reinforcement happened before this render, staleCmd already has updated troops.
+  // Use it directly; also check cmdsRef for any same-tick updates not yet in cmds.
+  const liveCmd = cmdsRef.current.find(c => c.uid === staleCmd.uid);
+  const cmd = (liveCmd && cmdTroops(liveCmd) > cmdTroops(staleCmd)) ? liveCmd : staleCmd;
   const destKey = cmd.tk;
   const defTile = tiles[destKey];
   if (!defTile || defTile.owner === "player") {
-    setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
+    setCmds(p => p.map(c => c.uid === staleCmd.uid ? { ...c, march:null } : c));
     return;
   }
 
@@ -604,7 +607,7 @@ useEffect(() => {
 // cmds intentionally omitted — we read cmdsRef.current inside the interval
 // so the interval is never torn down/recreated when march steps fire setCmds.
 // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [screen, tilesRef, setCmds, floaty, hqKey, bldgs.walls, gearInventory]);
+}, [screen, cmds, tilesRef, setCmds, floaty, hqKey, bldgs.walls, gearInventory]);
 
 // AI attack arrival
 useEffect(() => {
