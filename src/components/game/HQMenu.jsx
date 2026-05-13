@@ -1,7 +1,7 @@
 import { useState, useEffect, memo, useMemo } from "react";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
-import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate } from "../../../shared/constants/buildings.js";
+import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
 const SC = RC;
 
@@ -1743,10 +1743,18 @@ HEAL RATE
 // -----------------------------------------------------------------------------
 const TRADE_RATE = 0.70; // 70% return on trade
 
-function MarketplaceScreen({ rss, setRss }) {
+function MarketplaceScreen({ rss, setRss, mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady, lastVoidTap, voidTapCooldown, doVoidTap, quarterLevels }) {
 const [fromKey, setFromKey] = useState("stone");
 const [toKey,   setToKey]   = useState("wood");
 const [amount,  setAmount]  = useState(0);
+const [now,     setNow]     = useState(Date.now());
+
+// Tick every second to update the cooldown countdown
+useEffect(() => {
+  if (!lastVoidTap) return;
+  const id = setInterval(() => setNow(Date.now()), 1000);
+  return () => clearInterval(id);
+}, [lastVoidTap]);
 
 const maxTrade   = Math.floor(rss[fromKey] || 0);
 const safeAmount = Math.min(amount, maxTrade);
@@ -1869,6 +1877,120 @@ Trade any resource for another at a 70% return rate. Use the slider to select ho
   </div>
 </div>
 
+{/* ── Void Tap ─────────────────────────────────────────────────────── */}
+{(() => {
+  const tapYield     = voidTapYield(quarterLevels);
+  const msRemaining  = lastVoidTap ? Math.max(0, voidTapCooldown - (now - lastVoidTap)) : 0;
+  const cooldownStr  = fmtCooldown(msRemaining);
+  const fillPct      = mysticOrbsCap > 0 ? Math.min(1, (mysticOrbs || 0) / mysticOrbsCap) : 0;
+  const isFull       = (mysticOrbs || 0) >= mysticOrbsCap;
+  const notBuilt     = !voidTapLvl || voidTapLvl < 1;
+
+  return (
+    <div style={{ marginTop:12 }}>
+      <SectionHeader>VOID TAP</SectionHeader>
+      <div style={{ padding:"10px 12px", background:"rgba(80,10,120,.12)",
+        border:"1px solid rgba(120,40,180,.28)", borderRadius:6 }}>
+
+        {notBuilt ? (
+          <div style={{ textAlign:"center", padding:"12px 0" }}>
+            <div style={{ fontSize:22, marginBottom:6 }}>🌀</div>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#7a4a9a", letterSpacing:".08em", marginBottom:6 }}>
+              VOID TAP NOT BUILT
+            </div>
+            <div style={{ fontFamily:"'Crimson Pro',serif", fontSize:10, color:P.sub, fontStyle:"italic" }}>
+              Build the Void Tap in Architecture → Buildings to channel Mystic Orbs.
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Orb pool status */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                <span style={{ fontSize:14 }}>🌀</span>
+                <div>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#bb66ff", letterSpacing:".06em" }}>
+                    MYSTIC ORBS
+                  </div>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:P.sub }}>
+                    Lv{voidTapLvl} · Cap {(mysticOrbsCap||0).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:"#cc88ff", fontWeight:700 }}>
+                  {(mysticOrbs||0).toLocaleString()}
+                </div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:P.dim }}>
+                  / {(mysticOrbsCap||0).toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Fill bar */}
+            <div style={{ height:4, background:"rgba(255,255,255,.05)", borderRadius:2, marginBottom:10, overflow:"hidden" }}>
+              <div style={{
+                height:"100%", borderRadius:2,
+                width:`${fillPct*100}%`,
+                background: isFull
+                  ? "linear-gradient(90deg,#aa44ff,#cc88ff)"
+                  : "linear-gradient(90deg,#6622aa,#aa44ff)",
+                transition:"width .4s ease",
+                boxShadow: isFull ? "0 0 6px #aa44ff" : "none",
+              }}/>
+            </div>
+
+            {/* Tap yield info */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+              padding:"6px 8px", background:"rgba(255,255,255,.03)",
+              border:"1px solid rgba(120,40,180,.2)", borderRadius:4, marginBottom:10 }}>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:P.sub }}>
+                TAP YIELD
+              </div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color: tapYield > 0 ? "#cc88ff" : P.dim }}>
+                {tapYield > 0 ? `+${tapYield.toLocaleString()} orbs` : "Upgrade quarters to earn orbs"}
+              </div>
+            </div>
+
+            {/* Cooldown status */}
+            {!voidTapReady && !isFull && (
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+                padding:"6px 8px", background:"rgba(255,255,255,.02)",
+                border:"1px solid rgba(80,40,120,.2)", borderRadius:4, marginBottom:10 }}>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:P.dim }}>NEXT TAP IN</div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#8855bb" }}>{cooldownStr}</div>
+              </div>
+            )}
+            {isFull && (
+              <div style={{ textAlign:"center", padding:"4px 0 8px",
+                fontFamily:"'Cinzel',serif", fontSize:8, color:"#aa55ff", letterSpacing:".06em" }}>
+                ✦ POOL FULL — SPEND ORBS BEFORE TAPPING ✦
+              </div>
+            )}
+
+            {/* Tap button */}
+            <button className="btn" disabled={!voidTapReady} onClick={doVoidTap}
+              style={{ width:"100%", padding:"12px",
+                background: voidTapReady
+                  ? "linear-gradient(135deg,rgba(140,40,220,.5),rgba(80,10,140,.4))"
+                  : "rgba(255,255,255,.02)",
+                border:`1px solid ${voidTapReady?"#8833cc":"#1a1020"}`,
+                color: voidTapReady ? "#cc88ff" : "#3a2a4a",
+                fontSize:12, fontWeight:700, letterSpacing:".1em",
+                boxShadow: voidTapReady ? "0 0 12px rgba(140,40,220,.3)" : "none",
+                transition:"all .2s",
+              }}>
+              {isFull ? "🌀 POOL FULL"
+                : voidTapReady ? `🌀 VOID TAP  +${tapYield.toLocaleString()} ORBS`
+                : `🌀 VOID TAP  (${cooldownStr})`}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+})()}
+
 );
 }
 
@@ -1885,6 +2007,8 @@ upgrade, canAfford, assignTroops, returnTroops, queueTraining,
 recallMarch, setScreen, gearInventory, playerHqKey,
 facKey, unlockedBranches, setUnlockedBranches,
 quarterLevels, setQuarterLevels,
+mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady,
+lastVoidTap, voidTapCooldown, doVoidTap,
 }) {
 if (!hqOpen) return null;
 
@@ -2014,7 +2138,12 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             woundedQueue={woundedQueue} bLog={bLog}/>
         )}
         {hqTab === "marketplace" && (
-          <MarketplaceScreen rss={rss} setRss={setRss}/>
+          <MarketplaceScreen rss={rss} setRss={setRss}
+            mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap}
+            voidTapLvl={voidTapLvl} voidTapReady={voidTapReady}
+            lastVoidTap={lastVoidTap} voidTapCooldown={voidTapCooldown}
+            doVoidTap={doVoidTap} quarterLevels={quarterLevels}
+          />
         )}
       </div>
     );

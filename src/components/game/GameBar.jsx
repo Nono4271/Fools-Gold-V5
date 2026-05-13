@@ -361,6 +361,7 @@ export default memo(function GameBar({
   hidden,
   showPerf, setShowPerf,
   panRef, zoomRef, mapRendererRef,
+  voidTapReady,
 }) {
   if (hidden) return null;
   // All player commanders (for left rail) — only those NOT at HQ
@@ -440,6 +441,7 @@ export default memo(function GameBar({
             label="HQ"
             color="#c8a060"
             accent="#8a6020"
+            badge={voidTapReady ? 1 : 0}
             onClick={() => onCenterHQ && onCenterHQ()}
           />
           <ActionButton
