@@ -298,6 +298,29 @@ export default function FactionScreen({
             }}
           />
 
+          {/* Champion name — sits above the bottom fade */}
+          {legendary && (
+            <div style={{
+              position:"absolute", bottom:88, left:0, right:0,
+              display:"flex", flexDirection:"column", alignItems:"center",
+              pointerEvents:"none",
+            }}>
+              <div style={{
+                fontSize:8, fontWeight:700, letterSpacing:"0.18em",
+                color:"#f0c040", opacity:0.85, marginBottom:3,
+              }}>
+                CHAMPION COMMANDER
+              </div>
+              <div style={{
+                fontFamily:"'Cinzel',serif", fontSize:13, fontWeight:700,
+                letterSpacing:"0.08em", color:"#f0ece4",
+                textShadow:`0 0 18px ${faction.c}99, 0 2px 6px #000`,
+              }}>
+                {legendary.n}
+              </div>
+            </div>
+          )}
+
           {/* Bottom fade */}
           <div style={{
             position:"absolute", bottom:0, left:0, right:0, height:80,
@@ -407,19 +430,7 @@ export default function FactionScreen({
                   <span style={{fontSize:8,color:SC(h.rarity),letterSpacing:"0.06em"}}>{SS(h.rarity)}</span>
                 </div>
               ))}
-              {legendary && (
-                <div style={{
-                  display:"flex", alignItems:"center", gap:6,
-                  padding:"5px 9px",
-                  background:`rgba(${hexToRgb(faction.c)},0.06)`,
-                  border:`1px solid ${faction.c}28`,
-                  borderRadius:4,
-                }}>
-                  <span style={{fontSize:12}}>⭐</span>
-                  <span style={{fontFamily:"'Crimson Pro',serif",fontSize:11,color:"#c0b090",flex:1}}>{legendary.n}</span>
-                  <span style={{fontSize:8,color:"#f0c040",letterSpacing:"0.06em"}}>CHAMPION</span>
-                </div>
-              )}
+
             </div>
           </div>
 
