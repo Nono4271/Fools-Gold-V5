@@ -84,7 +84,8 @@ export function calcSiegePower(troopsOrSlots, troopBranchOrNull, armySiegeBonus 
       const f  = FT?.[b?.faction];
       const br = f?.branches?.find(x => x.key === b?.branch);
       const td = br?.tiers?.[b?.tier ?? 0];
-      const siegeRate = td ? (td.siege / Math.max(1, sl.troops)) : 0.5;
+      // td.siege is a per-troop siege value — multiply directly by troop count
+      const siegeRate = td ? td.siege : 0.5;
       total += Math.round(sl.troops * siegeRate);
     }
     return total + (armySiegeBonus || 0);
