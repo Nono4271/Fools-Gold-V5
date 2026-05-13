@@ -450,29 +450,11 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         if (zoom >= 0.75) { gfx.lineStyle(2, 0xf0c040, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
       } else {
         gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
-        // Hellfire terrain: strong lava-crack tint + dark base overdraw
+        // Hellfire terrain: add a subtle red-orange lava glow tint over the dark base
         if (terrain === "hellfire") {
           const rng2 = tileRng(c + 3, r + 7);
-          // Dark near-black overdraw to kill the base color
-          gfx.beginFill(0x060200, 0.72); gfx.drawPolygon(TOP); gfx.endFill();
-          // Red lava glow seeping through
-          const glowAlpha = 0.28 + rng2() * 0.14;
-          gfx.beginFill(0xcc2000, glowAlpha); gfx.drawPolygon(TOP); gfx.endFill();
-          // Static crack lines baked into the tile (animated glow drawn on hellfireGfx)
-          const rng3 = tileRng(c + 11, r + 5);
-          const crackCol = 0xff3800;
-          const tcx = cx, tcy = cy - elev;
-          const tmid = tcy + TH / 2;
-          gfx.lineStyle(1.4, crackCol, 0.70);
-          gfx.moveTo(tcx - TW * (0.10 + rng3() * 0.12), tmid - TH * (0.05 + rng3() * 0.10));
-          gfx.lineTo(tcx + TW * (0.08 + rng3() * 0.14), tmid + TH * (0.08 + rng3() * 0.12));
-          gfx.lineStyle(0.8, crackCol, 0.55);
-          gfx.moveTo(tcx + TW * (0.04 + rng3() * 0.10), tmid - TH * (0.12 + rng3() * 0.08));
-          gfx.lineTo(tcx + TW * (0.22 + rng3() * 0.10), tmid + TH * (0.04 + rng3() * 0.06));
-          gfx.lineStyle(0.7, 0xff6020, 0.45);
-          gfx.moveTo(tcx - TW * (0.20 + rng3() * 0.08), tmid + TH * (0.02 + rng3() * 0.08));
-          gfx.lineTo(tcx + TW * (0.05 + rng3() * 0.08), tmid + TH * (0.18 + rng3() * 0.08));
-          gfx.lineStyle(0);
+          const glowAlpha = 0.12 + rng2() * 0.08;
+          gfx.beginFill(0xcc2800, glowAlpha); gfx.drawPolygon(TOP); gfx.endFill();
         }
         // Shade triangles removed — they created a visible X/cross pattern on each tile.
       }
@@ -2071,18 +2053,17 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       // Deterministic RNG seeded per tile
       let s = (c * 2654435761 ^ r * 2246822519) >>> 0;
       const rng = () => { s = (s ^ (s << 13)) >>> 0; s = (s ^ (s >> 17)) >>> 0; s = (s ^ (s << 5)) >>> 0; return (s >>> 0) / 0xffffffff; };
-      // 3–5 scatter flame positions across the tile surface
-      const count = 3 + Math.floor(rng() * 3);
+      // 1–2 small flames per tile — fewer is more convincing
+      const count = 1 + Math.floor(rng() * 2);
       const flames = [];
       for (let i = 0; i < count; i++) {
         flames.push({
-          ox: (rng() - 0.5) * TW * 0.55,   // offset from tile centre
-          oy: (rng() - 0.5) * TH * 0.30,
-          phase: rng() * Math.PI * 2,        // unique phase per flame
-          speed: 3.5 + rng() * 3.0,          // flicker speed
-          maxH: TH * (0.55 + rng() * 0.70),  // tall flames: 29–66px
-          wid:  TW * (0.10 + rng() * 0.10),  // wider base: 8–16px
-          isCrack: i < 2,
+          ox: (rng() - 0.5) * TW * 0.40,   // offset from tile centre
+          oy: (rng() - 0.5) * TH * 0.20,
+          phase: rng() * Math.PI * 2,
+          speed: 2.5 + rng() * 2.0,         // moderate flicker speed
+          maxH: TH * (0.28 + rng() * 0.18), // short: 15–25px tall
+          wid:  TW * (0.12 + rng() * 0.08), // wide base: 10–16px
         });
       }
       // 1–2 crack glow segments (positions along the static crack drawn at tile render)
@@ -2093,7 +2074,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           ox: (rng() - 0.5) * TW * 0.30,
           oy: (rng() - 0.5) * TH * 0.18,
           angle: 0.35 + rng() * 0.8,
-          len: TW * (0.28 + rng() * 0.26),  // longer crack segments
+          len: TW * (0.14 + rng() * 0.18),
           phase: rng() * Math.PI * 2,
           speed: 2.0 + rng() * 2.5,
         });
@@ -2123,80 +2104,100 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           if (!tile || tile.terrain !== "hellfire") continue;
 
           const { cx, cy } = isoXY(c, r);
-          const cy2 = cy + TH * 0.50;
+          // Centre of tile top face
+          const tcx = cx;
+          const tcy = cy + TH * 0.5;
 
           const { flames, cracks } = getHellfireFlames(c, r);
 
-          // ── 1. Glowing crack pulse ───────────────────────────────────────────
+          // ── 1. Crack glow pulses — lines only, tiny halos ─────────────────
           for (const ck of cracks) {
             const glow = 0.5 + 0.5 * Math.sin(t * ck.speed + ck.phase);
-            const bx = cx + ck.ox;
-            const by = cy2 + ck.oy;
+            const bx = tcx + ck.ox;
+            const by = tcy + ck.oy;
             const dx = Math.cos(ck.angle) * ck.len * 0.5;
-            const dy = Math.sin(ck.angle) * ck.len * 0.22;
-            // Large soft glow halo around crack
-            hellfireGfx.beginFill(0xff3000, 0.18 + glow * 0.22);
-            hellfireGfx.drawEllipse(bx, by, ck.len * 0.80, ck.len * 0.32);
+            const dy = Math.sin(ck.angle) * ck.len * 0.15;
+            // Tiny tight halo — no big ellipse
+            hellfireGfx.beginFill(0xff4400, 0.04 + glow * 0.07);
+            hellfireGfx.drawEllipse(bx, by, ck.len * 0.38, ck.len * 0.10);
             hellfireGfx.endFill();
-            // Bright inner crack line
-            hellfireGfx.lineStyle(2.0, 0xff8820, 0.70 + glow * 0.30);
+            // Glowing crack line
+            hellfireGfx.lineStyle(1.5, 0xff6010, 0.50 + glow * 0.40);
             hellfireGfx.moveTo(bx - dx, by - dy);
             hellfireGfx.lineTo(bx + dx, by + dy);
-            hellfireGfx.lineStyle(0.8, 0xffee60, 0.55 + glow * 0.45);
-            hellfireGfx.moveTo(bx - dx * 0.6, by - dy * 0.6);
-            hellfireGfx.lineTo(bx + dx * 0.6, by + dy * 0.6);
+            // Hot inner line
+            hellfireGfx.lineStyle(0.6, 0xffcc40, 0.35 + glow * 0.50);
+            hellfireGfx.moveTo(bx - dx * 0.55, by - dy * 0.55);
+            hellfireGfx.lineTo(bx + dx * 0.55, by + dy * 0.55);
             hellfireGfx.lineStyle(0);
           }
 
-          // ── 2. Scatter flame jets shooting upward ────────────────────────────
+          // ── 2. Small organic flame jets — 1–2 per tile ───────────────────
           for (const fl of flames) {
-            const flicker  = 0.5 + 0.5 * Math.sin(t * fl.speed + fl.phase);
-            const flicker2 = 0.5 + 0.5 * Math.sin(t * fl.speed * 1.3 + fl.phase + 1.1);
-            const h = fl.maxH * (0.45 + flicker * 0.55);
-            const w = fl.wid  * (0.70 + flicker2 * 0.50);
+            const f1 = 0.5 + 0.5 * Math.sin(t * fl.speed        + fl.phase);
+            const f2 = 0.5 + 0.5 * Math.sin(t * fl.speed * 1.4  + fl.phase + 0.9);
+            const f3 = 0.5 + 0.5 * Math.sin(t * fl.speed * 0.7  + fl.phase + 2.1);
 
-            const fx = cx + fl.ox;
-            const fy = cy2 + fl.oy;
+            const h  = fl.maxH * (0.50 + f1 * 0.50); // height breathes
+            const w  = fl.wid  * (0.80 + f2 * 0.30); // width wobbles
 
-            // Large ground glow pool under flame
-            hellfireGfx.beginFill(0xff2200, 0.18 + flicker * 0.18);
-            hellfireGfx.drawEllipse(fx, fy, w * 3.5, w * 1.4);
+            const fx = tcx + fl.ox;
+            const fy = tcy + fl.oy;
+
+            // Build a flame silhouette with many points so it's NOT a triangle.
+            // Outer flame — wide wavy base, pinched mid, tapering tip
+            const o = [
+              fx - w,          fy,                    // base left
+              fx - w * 0.80,   fy - h * 0.12,
+              fx - w * 0.65,   fy - h * 0.25 + f2 * 2,
+              fx - w * 0.42,   fy - h * 0.40,
+              fx - w * 0.28,   fy - h * 0.55 - f3 * 2,
+              fx - w * 0.14,   fy - h * 0.70,
+              fx,              fy - h,                // tip
+              fx + w * 0.14,   fy - h * 0.70,
+              fx + w * 0.28,   fy - h * 0.55 - f3 * 2,
+              fx + w * 0.42,   fy - h * 0.40,
+              fx + w * 0.65,   fy - h * 0.25 + f2 * 2,
+              fx + w * 0.80,   fy - h * 0.12,
+              fx + w,          fy,                    // base right
+            ];
+            hellfireGfx.beginFill(0xcc1800, 0.60 + f1 * 0.25);
+            hellfireGfx.drawPolygon(o);
             hellfireGfx.endFill();
 
-            // Outer flame shape — dark orange/red base
-            hellfireGfx.beginFill(0xdd2200, 0.65 + flicker * 0.25);
-            hellfireGfx.drawPolygon([
-              fx - w,        fy,
-              fx + w,        fy,
-              fx + w * 0.5,  fy - h * 0.55,
-              fx,            fy - h,
-              fx - w * 0.5,  fy - h * 0.55,
-            ]);
+            // Mid flame — narrower, orange
+            const m = [
+              fx - w * 0.55,   fy,
+              fx - w * 0.40,   fy - h * 0.20,
+              fx - w * 0.26,   fy - h * 0.38 + f3 * 1.5,
+              fx - w * 0.14,   fy - h * 0.56,
+              fx,              fy - h * 0.86,
+              fx + w * 0.14,   fy - h * 0.56,
+              fx + w * 0.26,   fy - h * 0.38 + f3 * 1.5,
+              fx + w * 0.40,   fy - h * 0.20,
+              fx + w * 0.55,   fy,
+            ];
+            hellfireGfx.beginFill(0xff5500, 0.72 + f2 * 0.20);
+            hellfireGfx.drawPolygon(m);
             hellfireGfx.endFill();
 
-            // Mid flame — bright orange
-            hellfireGfx.beginFill(0xff6600, 0.80 + flicker2 * 0.18);
-            hellfireGfx.drawPolygon([
-              fx - w * 0.60, fy,
-              fx + w * 0.60, fy,
-              fx + w * 0.25, fy - h * 0.60,
-              fx,            fy - h * 0.88,
-              fx - w * 0.25, fy - h * 0.60,
-            ]);
+            // Inner core — yellow, very narrow
+            const i2 = [
+              fx - w * 0.22,   fy,
+              fx - w * 0.14,   fy - h * 0.28 + f1 * 1,
+              fx - w * 0.07,   fy - h * 0.52,
+              fx,              fy - h * 0.78,
+              fx + w * 0.07,   fy - h * 0.52,
+              fx + w * 0.14,   fy - h * 0.28 + f1 * 1,
+              fx + w * 0.22,   fy,
+            ];
+            hellfireGfx.beginFill(0xffdd22, 0.65 + f1 * 0.25);
+            hellfireGfx.drawPolygon(i2);
             hellfireGfx.endFill();
 
-            // Hot core — yellow-white tip
-            hellfireGfx.beginFill(0xffee44, 0.70 + flicker * 0.28);
-            hellfireGfx.drawPolygon([
-              fx - w * 0.28, fy - h * 0.30,
-              fx + w * 0.28, fy - h * 0.30,
-              fx,            fy - h * 0.95,
-            ]);
-            hellfireGfx.endFill();
-
-            // Spark — bright dot at tip
-            hellfireGfx.beginFill(0xffffff, 0.75 + flicker2 * 0.25);
-            hellfireGfx.drawCircle(fx, fy - h, 1.2);
+            // Bright tip dot
+            hellfireGfx.beginFill(0xffffff, 0.50 + f2 * 0.40);
+            hellfireGfx.drawCircle(fx, fy - h * 0.96, 1.0);
             hellfireGfx.endFill();
           }
         }
