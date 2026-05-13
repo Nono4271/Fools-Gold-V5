@@ -655,14 +655,14 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
           </div>
         </div>
 
-        {/* Scrollable content */}
-        <div className="scr" style={{ flex:1, overflowY:"auto", padding:"0 0 24px" }}>
+        {/* Static non-scrollable content — fills remaining height */}
+        <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", minHeight:0 }}>
 
         {/* Commander bust comparison row */}
         <div style={{
           display:"grid", gridTemplateColumns:"1fr auto 1fr",
           borderBottom:"1px solid #1a1508",
-          height:160,
+          flex:"0 0 130px",
           overflow:"hidden",
         }}>
           {/* Attacker */}
@@ -739,8 +739,9 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
         {/* Troop bars */}
         <div style={{
           display:"grid", gridTemplateColumns:"1fr 24px 1fr",
-          gap:10, padding:"14px 20px",
+          gap:8, padding:"10px 16px",
           borderBottom:"1px solid #1a1508",
+          flexShrink:0,
         }}>
           {/* Attacker troops */}
           <div onClick={() => atkResolved && setSubPopup(p => p==="atkTroop" ? null : "atkTroop")}
@@ -785,7 +786,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
         </div>
 
         {/* Stats table */}
-        <div style={{ padding:"14px 20px 20px" }}>
+        <div style={{ padding:"10px 16px", flex:1, display:"flex", flexDirection:"column", minHeight:0, overflow:"hidden" }}>
           <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto",
             fontSize:11, color:"#3a3028", fontFamily:"'Cinzel',serif",
             letterSpacing:".07em", marginBottom:8, paddingBottom:6,
@@ -796,11 +797,12 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
             <span style={{ textAlign:"right", color:"#cc444488" }}>ENEMY</span>
           </div>
 
+          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:3, minHeight:0 }}>
           {statRows.map(({ label, atkVal, defVal }) => (
             <div key={label} style={{
               display:"grid", gridTemplateColumns:"auto 1fr auto",
-              alignItems:"center", marginBottom:8,
-              padding:"8px 10px", borderRadius:4,
+              alignItems:"center", flex:1,
+              padding:"4px 10px", borderRadius:4,
               background:"rgba(255,255,255,.015)",
             }}>
               <span style={{ fontSize:15, fontWeight:700, color:"#c8a060",
@@ -817,15 +819,16 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
               </span>
             </div>
           ))}
+          </div>
 
           {/* Footer */}
-          <div style={{ marginTop:12, fontSize:11, color:"#2a2010", textAlign:"center",
-            fontFamily:"'Cinzel',serif", letterSpacing:".06em" }}>
-            {b.terrain} · {b.modLabel} · {b.rounds?.length ?? 0} rounds
+          <div style={{ marginTop:6, fontSize:11, color:"#2a2010", textAlign:"center",
+            fontFamily:"'Cinzel',serif", letterSpacing:".06em", flexShrink:0 }}>
+            {b.tileName ?? "—"} · {b.modLabel} · {b.rounds?.length ?? 0} rounds
           </div>
         </div>
 
-        </div>{/* end scrollable */}
+        </div>{/* end static content */}
       </div>
 
       {/* Sub-popup backdrop — renders above BattleStatsPopup */}
@@ -889,7 +892,7 @@ function BattleListItem({ b, selected, onClick }) {
           fontSize:7, color:"#9a8060", fontFamily:"'Cinzel',serif",
           overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:1,
         }}>
-          {b.tileName ?? b.terrain ?? "—"}
+          {b.tileName ?? "—"}
         </div>
         <div style={{ fontSize:6, color:"#3a3028" }}>{timeAgo(b.timestamp)}</div>
       </div>
