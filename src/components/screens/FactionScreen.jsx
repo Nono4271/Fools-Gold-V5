@@ -1,8 +1,61 @@
+import { useState } from "react";
 import { CSS } from "../../constants/css.js";
 import { ALIGNMENT, PLAYABLE_FACTIONS, getFactionAlignment } from "../../../shared/constants/factions.js";
 import { HDEFS, SC, SS } from "../../../shared/constants/heroes.js";
 import { barracksCapacity, BRANCH_UNLOCK_Q, tierFromBranchLevel } from "../../../shared/constants/buildings.js";
 import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
+
+const LEGENDARY_BY_FACTION = {
+  pirates:        { n: "Ironjaw Reck",             portrait: "/commanders/h25_ironjaw_reck_portrait.webp" },
+  bountyhunters:  { n: "Archmage Theon",           portrait: "/commanders/h29_archmage_theon_portrait.webp" },
+  orcs:           { n: "Warlord Korgath",           portrait: "/commanders/h33_warlord_korgath_portrait.webp" },
+  dragons:        { n: "Pyrewing Skar",             portrait: "/commanders/h35_pyrewing_skar_portrait.webp" },
+  holyknights:    { n: "Grand Inquisitor Mourne",   portrait: "/commanders/h42_grand_inquistor_mourne_portrait.webp" },
+  nightcreatures: { n: "Alpha Korrax",              portrait: "/commanders/h46_alpha_korrax_portrait.webp" },
+};
+
+const QUARTER_BY_FACTION = {
+  pirates:        "Plunder Yard",
+  bountyhunters:  "Ethereal Vault",
+  orcs:           "Grinding Grounds",
+  dragons:        "The Eyrie",
+  holyknights:    "The Sanctum",
+  nightcreatures: "The Shadowfen",
+};
+
+const FACTION_ICONS = {
+  pirates:        "🏴‍☠️",
+  bountyhunters:  "🔮",
+  orcs:           "⚔️",
+  dragons:        "🐉",
+  holyknights:    "✝️",
+  nightcreatures: "🌑",
+};
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r}, ${g}, ${b}`;
+}
+
+const EXTRA_CSS = `
+  @keyframes portraitFadeIn {
+    from { opacity: 0; transform: translateX(14px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .faction-icon-btn:hover {
+    border-color: rgba(255,255,255,0.2) !important;
+    background: rgba(255,255,255,0.055) !important;
+    transform: translateY(-1px);
+  }
+  .join-btn:hover {
+    background: rgba(61,220,132,0.12) !important;
+    box-shadow: 0 0 18px rgba(61,220,132,0.25);
+    transform: translateY(-1px);
+  }
+  .join-btn:active { transform: translateY(0); }
+`;
 
 export default function FactionScreen({
   setScreen, setFacKey, setFacName, setAiFaction,
@@ -10,113 +63,366 @@ export default function FactionScreen({
   setCmds, setColl, setTiles,
   setUnlockedBranches, setQuarterLevels,
 }) {
+  const [selected, setSelected] = useState(PLAYABLE_FACTIONS[0]);
+
+  const faction = selected;
+  const alignment = getFactionAlignment(faction.key);
+  const aln = ALIGNMENT[alignment];
+  const legendary = LEGENDARY_BY_FACTION[faction.key];
+  const quarter = QUARTER_BY_FACTION[faction.key];
+
+  const starters = [
+    HDEFS.find(h => h.faction === faction.key && h.rarity === "soldier"),
+    HDEFS.find(h => h.faction === faction.key && h.rarity === "veteran"),
+  ].filter(Boolean);
+
+  function handleJoin() {
+    const f = faction;
+    const TEMP_HQK = "1,1";
+    const seed = Date.now();
+    const startCmds = starters.map((h, i) => ({
+      ...h, uid: `p_${seed}_${i}`, owner: "player", troops: 0, troopBranch: null,
+      tk: TEMP_HQK, lvl: 5, xp: 0, respectPoints: 0, respectLevel: 0,
+      skillPoints: {}, unspentSkillPoints: 5,
+      gear: { helmet: null, armor: null, bracers: null, accessory: null },
+    }));
+
+    const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
+    const aiFactions = allFactions.filter(fk => fk !== f.key);
+    const allAiCmds = [];
+    aiFactions.forEach((aiFk) => {
+      const aiStarters = [
+        HDEFS.find(h => h.faction === aiFk && h.rarity === "soldier"),
+        HDEFS.find(h => h.faction === aiFk && h.rarity === "veteran"),
+      ].filter(Boolean);
+      aiStarters.forEach((h, i) => {
+        allAiCmds.push({
+          ...h, uid: `ai_${seed}_${aiFk}_${i}`, owner: "ai", troops: 0, troopBranch: null,
+          tk: TEMP_HQK, lvl: 5, xp: 0, respectPoints: 0, respectLevel: 0,
+          skillPoints: {}, unspentSkillPoints: 5,
+          gear:{helmet:null,armor:null,bracers:null,accessory:null},
+        });
+      });
+    });
+
+    const startingQuarterLevels = { [f.key]: 1 };
+    const fDef = FACTION_TROOPS[f.key];
+    const startingBldgPatch = {};
+    const startingUB = {};
+    if (fDef) {
+      fDef.branches.forEach((br, idx) => {
+        if (BRANCH_UNLOCK_Q[idx] <= 1) {
+          const bKey = `b_${f.key}_${br.key}`;
+          startingBldgPatch[bKey] = 1;
+          startingUB[`${f.key}:${br.key}`] = tierFromBranchLevel(1);
+        }
+      });
+    }
+
+    setFacKey(f.key);
+    setFacName(f.n);
+    setAiRss({stone:300,wood:300,ore:300,gas:300});
+    setAiBldgs({hq:1,quarry:0,lumber:0,forge:0,refinery:0,barracks:0,training:0,commandcenter:0,healingtent:0,walls:0});
+    setAiBarracksPool(barracksCapacity(0));
+    aiLastActionRef.current = 0;
+    setCmds([...startCmds, ...allAiCmds]);
+    setColl([
+      HDEFS.find(h => h.faction === f.key && h.rarity === "soldier"),
+      HDEFS.find(h => h.faction === f.key && h.rarity === "veteran"),
+    ].filter(Boolean));
+    setTiles({});
+    if (setQuarterLevels) setQuarterLevels(startingQuarterLevels);
+    if (setUnlockedBranches) setUnlockedBranches(startingUB);
+    setScreen("game");
+  }
+
+  const rows = [PLAYABLE_FACTIONS.slice(0,3), PLAYABLE_FACTIONS.slice(3,6)];
+
   return (
-    <div style={{width:"100vw",height:"100vh",background:"#0a0c10",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20,overflow:"auto"}}>
-      <style>{CSS}</style>
-      <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:"clamp(15px,4vw,26px)",background:"linear-gradient(135deg,#f0c040,#c03030,#f0c040)",backgroundSize:"200% auto",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",animation:"shimmer 3s linear infinite",marginBottom:4,textAlign:"center"}}>CHOOSE YOUR FACTION</h2>
-      <p style={{fontFamily:"'Crimson Pro',serif",fontStyle:"italic",color:"#5a4a3a",fontSize:11,marginBottom:18,textAlign:"center"}}>Your alignment determines which heroes you can summon.</p>
+    <div style={{
+      width:"100vw", height:"100vh",
+      background:"#08080f",
+      display:"flex", flexDirection:"column",
+      fontFamily:"'Cinzel',serif",
+      overflow:"hidden",
+    }}>
+      <style>{CSS}{EXTRA_CSS}</style>
 
-      {Object.entries(ALIGNMENT).map(([alnKey, aln]) => (
-        <div key={alnKey} style={{maxWidth:1100,width:"100%",marginBottom:20}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-            <span style={{fontSize:18}}>{aln.icon}</span>
-            <span style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:13,color:aln.color,letterSpacing:".12em"}}>{aln.n.toUpperCase()}</span>
-            <div style={{flex:1,height:1,background:`${aln.color}30`,marginLeft:6}}/>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(175px,1fr))",gap:10}}>
-            {PLAYABLE_FACTIONS.filter(f => aln.factions.includes(f.key)).map(f => {
-              const starters = [
-                HDEFS.find(h => h.faction === f.key && h.rarity === "soldier"),
-                HDEFS.find(h => h.faction === f.key && h.rarity === "veteran"),
-              ].filter(Boolean);
-              return (
-                <button key={f.key} className="btn"
-                  onClick={() => {
-                    const TEMP_HQK = "1,1";
-                    const seed = Date.now();
-                    const startCmds = starters.map((h, i) => ({
-                      ...h, uid: `p_${seed}_${i}`, owner: "player", troops: 0, troopBranch: null,
-                      tk: TEMP_HQK, lvl: 5, xp: 0, respectPoints: 0, respectLevel: 0,
-                      skillPoints: {}, unspentSkillPoints: 5,
-                      gear: { helmet: null, armor: null, bracers: null, accessory: null },
-                    }));
-
-                    const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
-                    const aiFactions = allFactions.filter(fk => fk !== f.key);
-                    const allAiCmds = [];
-                    aiFactions.forEach((aiFk) => {
-                      const aiStarters = [
-                        HDEFS.find(h => h.faction === aiFk && h.rarity === "soldier"),
-                        HDEFS.find(h => h.faction === aiFk && h.rarity === "veteran"),
-                      ].filter(Boolean);
-                      aiStarters.forEach((h, i) => {
-                        allAiCmds.push({
-                          ...h, uid: `ai_${seed}_${aiFk}_${i}`, owner: "ai", troops: 0, troopBranch: null,
-                          tk: TEMP_HQK, lvl: 5, xp: 0, respectPoints: 0, respectLevel: 0,
-                          skillPoints: {}, unspentSkillPoints: 5,
-                          gear:{helmet:null,armor:null,bracers:null,accessory:null},
-                        });
-                      });
-                    });
-
-                    // ── Seed starting state so Army tab works immediately ──
-                    // Quarter 0 (player's own faction) starts at level 1.
-                    // Branches unlocked at Q≤1 get bldgs entries at level 1,
-                    // which the unlockedBranches useEffect in Game.jsx will pick up.
-                    const startingQuarterLevels = { [f.key]: 1 };
-
-                    const fDef = FACTION_TROOPS[f.key];
-                    const startingBldgPatch = {};
-                    const startingUB = {};
-                    if (fDef) {
-                      fDef.branches.forEach((br, idx) => {
-                        // BRANCH_UNLOCK_Q[idx]: Q level required to unlock this branch
-                        // Q1 unlocks branch 0 (BRANCH_UNLOCK_Q[0] === 1)
-                        if (BRANCH_UNLOCK_Q[idx] <= 1) {
-                          const bKey = `b_${f.key}_${br.key}`;
-                          startingBldgPatch[bKey] = 1; // branch level 1 → T1 unlocked
-                          startingUB[`${f.key}:${br.key}`] = tierFromBranchLevel(1); // tier 0
-                        }
-                      });
-                    }
-
-                    setFacKey(f.key);
-                    setFacName(f.n);
-                    setAiRss({stone:300,wood:300,ore:300,gas:300});
-                    setAiBldgs({hq:1,quarry:0,lumber:0,forge:0,refinery:0,barracks:0,training:0,commandcenter:0,healingtent:0,walls:0});
-                    setAiBarracksPool(barracksCapacity(0));
-                    aiLastActionRef.current = 0;
-                    setCmds([...startCmds, ...allAiCmds]);
-                    setColl([
-                      HDEFS.find(h => h.faction === f.key && h.rarity === "soldier"),
-                      HDEFS.find(h => h.faction === f.key && h.rarity === "veteran"),
-                    ].filter(Boolean));
-                    setTiles({});
-
-                    // Seed quarter levels and unlocked branches before entering game
-                    if (setQuarterLevels) setQuarterLevels(startingQuarterLevels);
-                    if (setUnlockedBranches) setUnlockedBranches(startingUB);
-
-                    setScreen("game");
-                  }}
-                  style={{background:"rgba(255,255,255,.03)",border:`1px solid ${f.c}50`,borderRadius:8,padding:"14px 12px",color:"#e0d0c0",textAlign:"left"}}>
-                  <div style={{fontSize:26,marginBottom:4}}>{f.s}</div>
-                  <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:13,color:f.c,marginBottom:4}}>{f.n}</div>
-                  <div style={{fontSize:9,color:"#5a5060",fontFamily:"'Crimson Pro',serif",fontStyle:"italic",marginBottom:6}}>{f.desc}</div>
-                  <div style={{fontSize:8,color:"#6a6070",fontFamily:"'Cinzel',serif",marginBottom:2}}>STARTING COMMANDERS</div>
-                  {starters.map(h => (
-                    <div key={h.id} style={{display:"flex",alignItems:"center",gap:4,marginTop:3}}>
-                      <span style={{fontSize:9,color:"#c0b090",fontFamily:"'Cinzel',serif"}}>{h.n}</span>
-                      <span style={{fontSize:8,color:SC(h.rarity),fontFamily:"'Cinzel',serif",marginLeft:"auto"}}>{SS(h.rarity)}</span>
-                    </div>
-                  ))}
-                </button>
-              );
-            })}
-          </div>
+      {/* Header */}
+      <div style={{
+        display:"flex", alignItems:"center", gap:12,
+        padding:"14px 24px 10px",
+        borderBottom:"1px solid #1a1a2a",
+        background:"rgba(0,0,0,0.4)",
+        zIndex:10, flexShrink:0,
+      }}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:2,width:18,height:18}}>
+          {[0,1,2,3].map(i=><div key={i} style={{background:"#ccc",borderRadius:1}}/>)}
         </div>
-      ))}
-      <button className="btn" onClick={() => setScreen("title")} style={{padding:"7px 18px",background:"none",border:"1px solid #222",color:"#444",fontSize:11}}>← Back</button>
+        <span style={{fontSize:13,fontWeight:700,letterSpacing:"0.18em",color:"#e8e0d0",textTransform:"uppercase"}}>
+          CHOOSE FACTION
+        </span>
+      </div>
+
+      {/* Body */}
+      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+
+        {/* LEFT: faction icon grid */}
+        <div style={{
+          width:270, padding:"24px 18px",
+          display:"flex", flexDirection:"column", gap:20,
+          borderRight:"1px solid #1a1a2a",
+          background:"rgba(0,0,0,0.25)",
+          flexShrink:0,
+        }}>
+          {/* Alignment labels */}
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+            <span style={{fontSize:10,color:"#c8a060",letterSpacing:"0.12em"}}>{ALIGNMENT.humans.n.toUpperCase()}</span>
+            <span style={{fontSize:10,color:"#7aaa40",letterSpacing:"0.12em"}}>{ALIGNMENT.creatures.n.toUpperCase()}</span>
+          </div>
+
+          {/* 3x2 grid */}
+          {rows.map((row, ri) => (
+            <div key={ri} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+              {row.map(f => {
+                const isSelected = selected.key === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => setSelected(f)}
+                    className="faction-icon-btn"
+                    style={{
+                      background: isSelected
+                        ? `linear-gradient(145deg,${f.c}22,${f.c}08)`
+                        : "rgba(255,255,255,0.025)",
+                      border: isSelected
+                        ? `1px solid ${f.c}88`
+                        : "1px solid rgba(255,255,255,0.07)",
+                      borderRadius:6, padding:"10px 6px 8px",
+                      cursor:"pointer",
+                      display:"flex", flexDirection:"column",
+                      alignItems:"center", gap:5,
+                      transition:"all 0.18s ease",
+                      position:"relative", outline:"none",
+                    }}
+                  >
+                    {/* Green dot */}
+                    <div style={{
+                      position:"absolute",top:5,right:5,
+                      width:6,height:6,borderRadius:"50%",
+                      background:"#3ddc84",
+                      boxShadow:"0 0 4px #3ddc84aa",
+                    }}/>
+
+                    {/* Banner icon */}
+                    <div style={{
+                      width:34,height:42,
+                      background: isSelected
+                        ? `linear-gradient(180deg,${f.c}cc,${f.c}66)`
+                        : `linear-gradient(180deg,${f.c}55,${f.c}22)`,
+                      borderRadius:"3px 3px 0 0",
+                      clipPath:"polygon(0 0,100% 0,100% 80%,50% 100%,0 80%)",
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      fontSize:16,
+                      transition:"all 0.18s ease",
+                      flexShrink:0,
+                    }}>
+                      {FACTION_ICONS[f.key]}
+                    </div>
+
+                    <span style={{
+                      fontSize:7.5,fontWeight:700,letterSpacing:"0.06em",
+                      color: isSelected ? f.c : "#7a7080",
+                      textTransform:"uppercase",textAlign:"center",lineHeight:1.2,
+                      transition:"color 0.18s ease",
+                    }}>
+                      {f.n}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+
+          {/* Legend */}
+          <div style={{marginTop:"auto",display:"flex",alignItems:"center",gap:6}}>
+            <div style={{width:7,height:7,borderRadius:"50%",background:"#3ddc84",boxShadow:"0 0 4px #3ddc84aa"}}/>
+            <span style={{fontSize:9,color:"#4a4060",letterSpacing:"0.08em"}}>Vacant</span>
+          </div>
+
+          {/* Back */}
+          <button className="btn" onClick={() => setScreen("title")} style={{
+            padding:"7px 14px",background:"none",
+            border:"1px solid #222",color:"#444",fontSize:10,
+            cursor:"pointer",borderRadius:4,letterSpacing:"0.08em",
+          }}>
+            ← BACK
+          </button>
+        </div>
+
+        {/* CENTER: portrait */}
+        <div style={{
+          flex:1,position:"relative",overflow:"hidden",
+          display:"flex",alignItems:"flex-end",justifyContent:"center",
+        }}>
+          {/* Atmospheric glow */}
+          <div style={{
+            position:"absolute",inset:0,
+            background:`radial-gradient(ellipse 60% 65% at 50% 58%,${faction.c}1a 0%,transparent 68%)`,
+            pointerEvents:"none",transition:"background 0.4s ease",
+          }}/>
+
+          <img
+            key={legendary?.portrait}
+            src={legendary?.portrait}
+            alt={legendary?.n}
+            style={{
+              height:"92%", maxHeight:520,
+              objectFit:"contain", objectPosition:"top center",
+              filter:`drop-shadow(0 0 28px ${faction.c}44)`,
+              animation:"portraitFadeIn 0.35s ease forwards",
+              userSelect:"none", pointerEvents:"none",
+            }}
+          />
+
+          {/* Bottom fade */}
+          <div style={{
+            position:"absolute",bottom:0,left:0,right:0,height:100,
+            background:"linear-gradient(to top,#08080f 0%,transparent 100%)",
+            pointerEvents:"none",
+          }}/>
+        </div>
+
+        {/* RIGHT: info panel */}
+        <div style={{
+          width:290, padding:"28px 20px",
+          display:"flex", flexDirection:"column",
+          borderLeft:"1px solid #1a1a2a",
+          background:"rgba(0,0,0,0.2)",
+          flexShrink:0, overflowY:"auto",
+          gap:0,
+        }}>
+          {/* Faction header */}
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+            <div style={{
+              width:42,height:52,
+              background:`linear-gradient(180deg,${faction.c}cc,${faction.c}55)`,
+              borderRadius:"3px 3px 0 0",
+              clipPath:"polygon(0 0,100% 0,100% 80%,50% 100%,0 80%)",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:20,flexShrink:0,
+            }}>
+              {FACTION_ICONS[faction.key]}
+            </div>
+            <div>
+              <div style={{fontSize:17,fontWeight:900,letterSpacing:"0.1em",color:"#f0ece4",lineHeight:1}}>
+                {faction.n.toUpperCase()}
+              </div>
+              <div style={{fontSize:10,color:aln.color,letterSpacing:"0.1em",marginTop:5,display:"flex",alignItems:"center",gap:5}}>
+                <span>{aln.icon}</span><span>{aln.n}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{height:1,background:`${faction.c}28`,marginBottom:14}}/>
+
+          {/* Description */}
+          <p style={{fontFamily:"'Crimson Pro',serif",fontSize:12.5,lineHeight:1.75,color:"#8a7a6a",marginBottom:18}}>
+            {faction.desc}
+          </p>
+
+          {/* Faction Bonus */}
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.12em",color:"#3ddc84",marginBottom:8}}>
+              Faction Bonus
+            </div>
+            <div style={{
+              display:"flex",alignItems:"center",gap:8,
+              padding:"8px 10px",
+              background:"rgba(61,220,132,0.05)",
+              border:"1px solid rgba(61,220,132,0.14)",
+              borderRadius:4,
+            }}>
+              <span style={{color:"#3ddc84",fontSize:10}}>▲</span>
+              <span style={{fontFamily:"'Crimson Pro',serif",fontSize:12,color:"#9a8a7a"}}>Placeholder</span>
+            </div>
+          </div>
+
+          {/* Starting Quarter */}
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.12em",color:"#3ddc84",marginBottom:8}}>
+              Starting Quarter
+            </div>
+            <div style={{
+              display:"flex",alignItems:"center",gap:8,
+              padding:"8px 10px",
+              background:"rgba(255,255,255,0.03)",
+              border:"1px solid rgba(255,255,255,0.07)",
+              borderRadius:4,
+            }}>
+              <span style={{fontSize:13}}>🏰</span>
+              <span style={{fontFamily:"'Crimson Pro',serif",fontSize:12,color:"#c0b090"}}>{quarter}</span>
+            </div>
+          </div>
+
+          {/* Starting Commanders */}
+          <div style={{marginBottom:22}}>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.12em",color:"#3ddc84",marginBottom:8}}>
+              Starting Commanders
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:5}}>
+              {starters.map(h => (
+                <div key={h.id} style={{
+                  display:"flex",alignItems:"center",gap:7,
+                  padding:"7px 10px",
+                  background:"rgba(255,255,255,0.025)",
+                  border:"1px solid rgba(255,255,255,0.06)",
+                  borderRadius:4,
+                }}>
+                  <span style={{fontSize:13}}>{h.icon}</span>
+                  <span style={{fontFamily:"'Crimson Pro',serif",fontSize:12,color:"#c0b090",flex:1}}>{h.n}</span>
+                  <span style={{fontSize:9,color:SC(h.rarity),letterSpacing:"0.06em"}}>{SS(h.rarity)}</span>
+                </div>
+              ))}
+              {legendary && (
+                <div style={{
+                  display:"flex",alignItems:"center",gap:7,
+                  padding:"7px 10px",
+                  background:`rgba(${hexToRgb(faction.c)},0.06)`,
+                  border:`1px solid ${faction.c}28`,
+                  borderRadius:4,
+                }}>
+                  <span style={{fontSize:13}}>⭐</span>
+                  <span style={{fontFamily:"'Crimson Pro',serif",fontSize:12,color:"#c0b090",flex:1}}>{legendary.n}</span>
+                  <span style={{fontSize:9,color:"#f0c040",letterSpacing:"0.06em"}}>CHAMPION</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{flex:1}}/>
+
+          {/* JOIN */}
+          <button
+            onClick={handleJoin}
+            className="join-btn"
+            style={{
+              width:"100%", padding:"13px 0",
+              background:"transparent",
+              border:"2px solid #3ddc84",
+              borderRadius:4,
+              color:"#3ddc84",
+              fontSize:13,fontWeight:700,letterSpacing:"0.22em",
+              cursor:"pointer",
+              fontFamily:"'Cinzel',serif",
+              textTransform:"uppercase",
+              transition:"all 0.2s ease",
+            }}
+          >
+            JOIN
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
