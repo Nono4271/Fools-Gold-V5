@@ -8,7 +8,7 @@ function tbInfo(tb) {
   const b = f?.branches.find(b => b.key === tb.branch);
   const t = b?.tiers[tb.tier ?? 0];
   if (!b || !t) return null;
-  return { label: `${b.label} 2014 ${t.label}`, color: "#c8a060", size: b.size, dmgType: b.dmgType };
+  return { label: `${b.label} · ${t.label}`, color: "#c8a060", size: b.size, dmgType: b.dmgType };
 }
 import { TERR } from "../../../shared/constants/terrain.js";
 import { RSS, POWER_DEFS, SIEGE_BASE, HQP, TC } from "../../../shared/constants/map.js";
