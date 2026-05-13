@@ -138,7 +138,7 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef 
 
   return (
     <div style={{
-      position: "fixed", top: 52, left: 8, zIndex: 180,
+      position: "fixed", top: 4, left: 6, zIndex: 180,
       width: MM_SIZE, height: MM_SIZE,
       pointerEvents: "none",
     }}>
