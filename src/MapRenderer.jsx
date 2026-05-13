@@ -2032,11 +2032,68 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       markPropsDirty,
       clearSel: () => { selGfx.clear(); redrawKeeps(); },
       redrawSelection: (key) => { selGfx.clear(); if (key) drawSelection(key); redrawKeeps(); },
+      checkAndStartHellfire,
     };
 
     redraw(true);
     redrawOverlays();
     redrawKeeps();
+
+    // ── Hellfire animation ticker ─────────────────────────────────────────────
+    // A lightweight separate Graphics layer drawn on top of the tile layer.
+    // Redraws only hellfire glow pulses at 60fps using time-based sine waves.
+    // Tile geometry (cracks, embers) is still static in tileGfx — this layer
+    // only adds the animated glow/flicker on top, keeping cost very low.
+    const hellfireGfx = new PIXI.Graphics();
+    world.addChild(hellfireGfx);
+
+    let hellfireTicker = null;
+    function startHellfireTicker(tilesRef2) {
+      if (hellfireTicker) return;
+      hellfireTicker = (delta) => {
+        const t = performance.now() / 1000; // seconds
+        const b = getViewBounds(2);
+        const curTiles = tilesRef2.current;
+        hellfireGfx.clear();
+        for (let d = b.rMin + b.cMin; d <= b.rMax + b.cMax; d++) {
+          const cLo = Math.max(b.cMin, d - b.rMax);
+          const cHi = Math.min(b.cMax, d - b.rMin);
+          for (let c = cLo; c <= cHi; c++) {
+            const r = d - c;
+            if (r < b.rMin || r > b.rMax) continue;
+            const tile = curTiles?.[`${c},${r}`];
+            if (!tile || tile.terrain !== "hellfire") continue;
+            const { cx, cy: cyBase } = isoXY(c, r);
+            const cy2 = cyBase + TH * 0.5;
+            // Per-tile phase offset using tile coords so each tile flickers independently
+            const phase  = (c * 1.7 + r * 2.3) % (Math.PI * 2);
+            const phase2 = (c * 3.1 + r * 0.9) % (Math.PI * 2);
+            // Pulse: 0.5–1.0 range, ~1.5s period
+            const pulse  = 0.5 + 0.5 * Math.sin(t * 4.2 + phase);
+            const pulse2 = 0.5 + 0.5 * Math.sin(t * 2.8 + phase2);
+            // Outer lava glow ellipse — pulsing alpha
+            hellfireGfx.beginFill(0xff4400, 0.08 + pulse * 0.10);
+            hellfireGfx.drawEllipse(cx, cy2, TW * 0.38, TH * 0.22);
+            hellfireGfx.endFill();
+            // Inner hot core — tighter, brighter
+            hellfireGfx.beginFill(0xff8820, 0.06 + pulse2 * 0.08);
+            hellfireGfx.drawEllipse(cx, cy2, TW * 0.18, TH * 0.10);
+            hellfireGfx.endFill();
+          }
+        }
+      };
+      app.ticker.add(hellfireTicker);
+    }
+
+    // Start ticker only if any hellfire tiles exist in the loaded map
+    // (checked lazily on first tile reference update)
+    let hellfireChecked = false;
+    function checkAndStartHellfire(curTiles) {
+      if (hellfireChecked || !curTiles) return;
+      const hasHellfire = Object.values(curTiles).some(t => t?.terrain === "hellfire");
+      hellfireChecked = true;
+      if (hasHellfire) startHellfireTicker({ current: curTiles });
+    }
 
     // No ticker-based redraw — all redraws are event-driven:
     // tiles change, zoom, pan end, mode change, cmd update.
@@ -2290,6 +2347,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     el.addEventListener("mouseleave", onMU);
 
     return () => {
+      if (hellfireTicker) app.ticker.remove(hellfireTicker);
       cancelIdle();
       cancelPropsIdle();
       Object.values(rssTextures).forEach(texMap => {
@@ -2334,6 +2392,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     redrawRef.current?.markPropsDirty(); // Fix #9: tiles changed → props need repaint
     redrawRef.current?.redraw(true);
     redrawRef.current?.redrawKeeps();
+    redrawRef.current?.checkAndStartHellfire?.(tiles);
   }, [tiles]);
 
   useEffect(() => {

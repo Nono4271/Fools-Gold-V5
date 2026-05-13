@@ -1462,7 +1462,7 @@ export default function RiseToWar() {
         </div>
       )}
 
-      <HUD facName={facName} pKeys={pKeys} rss={rss} gems={gems} tiles={tiles} />
+      <HUD facName={facName} facKey={facKey} pKeys={pKeys} rss={rss} gems={gems} tiles={tiles} />
 
       {/* Server connection indicator */}
       <div style={{
