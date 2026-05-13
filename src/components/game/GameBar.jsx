@@ -249,10 +249,10 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
         >✕</button>
       </div>
 
-      {/* Power level picker */}
-      <div className="scr" style={{ flex:1, overflowY:"auto", padding:"10px 12px" }}>
-        <div style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Cinzel',serif", marginBottom:8, letterSpacing:".05em" }}>POWER LEVELS</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+      {/* Power level picker — fixed, no scroll, 2-column grid */}
+      <div style={{ padding:"8px 12px 6px", flexShrink:0, borderBottom:"1px solid #1a1e28" }}>
+        <div style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Cinzel',serif", marginBottom:6, letterSpacing:".05em" }}>POWER LEVELS</div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:3 }}>
           {PL_LIST.map(({ pl, label, color }) => {
             const on = selected.has(pl);
             return (
@@ -260,89 +260,91 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
                 key={pl}
                 onClick={() => togglePl(pl)}
                 style={{
-                  display:"flex", alignItems:"center", gap:10, padding:"8px 10px",
+                  display:"flex", alignItems:"center", gap:6, padding:"6px 8px",
                   borderRadius:5, cursor:"pointer", touchAction:"manipulation",
+                  WebkitTapHighlightColor:"transparent",
                   background: on ? `${color}18` : "rgba(255,255,255,.02)",
                   border:`1px solid ${on ? color+"60" : "#1e2028"}`,
                   transition:"background .12s, border-color .12s",
+                  userSelect:"none",
                 }}
               >
                 <div style={{
-                  width:18, height:18, borderRadius:3, flexShrink:0,
+                  width:14, height:14, borderRadius:3, flexShrink:0,
                   border:`1px solid ${color}88`,
                   background: on ? color : "rgba(0,0,0,.4)",
-                  boxShadow: on ? `0 0 6px ${color}66` : "none",
+                  boxShadow: on ? `0 0 5px ${color}66` : "none",
                   display:"flex", alignItems:"center", justifyContent:"center",
                   transition:"background .1s",
                 }}>
-                  {on && <span style={{ fontSize:12, color:"#fff", lineHeight:1 }}>✓</span>}
+                  {on && <span style={{ fontSize:10, color:"#fff", lineHeight:1 }}>✓</span>}
                 </div>
-                <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color: on ? color : "#5a6a6a", letterSpacing:".04em" }}>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color: on ? color : "#5a6a6a", letterSpacing:".02em" }}>
                   ⚡ {label}
                 </span>
               </div>
             );
           })}
         </div>
-
-        {/* Search button */}
-        <div style={{ marginTop:10 }}>
-          <button
-            onClick={doSearch}
-            disabled={!selected.size}
-            style={{
-              width:"100%", padding:"12px 0",
-              background: selected.size ? "linear-gradient(160deg,#1a2a3a,#0e1820)" : "rgba(10,14,20,.6)",
-              border:`1px solid ${selected.size ? "#3a6080" : "#1a2028"}`,
-              borderRadius:5, color: selected.size ? "#80c0e0" : "#2a3a48",
-              fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:".06em",
-              cursor: selected.size ? "pointer" : "default",
-              touchAction:"manipulation",
-            }}
-          >
-            🔍 Search Nearest 20
-          </button>
-        </div>
-
-        {/* Results */}
-        {searched && results !== null && (
-          <div style={{ marginTop:10 }}>
-            <div style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Cinzel',serif", marginBottom:6, letterSpacing:".05em" }}>
-              {results.length > 0 ? `${results.length} NEAREST RESULTS` : "NO RESULTS FOUND"}
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-              {results.map(({ key, c, r, pl, dist }) => {
-                const def = POWER_DEFS[pl];
-                return (
-                  <button
-                    key={key}
-                    onClick={() => jumpTo(c, r)}
-                    style={{
-                      display:"flex", alignItems:"center", justifyContent:"space-between",
-                      width:"100%", padding:"10px 10px",
-                      background:"rgba(255,255,255,.03)", border:"1px solid #1e2028",
-                      borderRadius:5, cursor:"pointer", touchAction:"manipulation",
-                      textAlign:"left",
-                    }}
-                  >
-                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                      <span style={{
-                        fontSize:7, fontFamily:"'Cinzel',serif", fontWeight:700,
-                        color: def?.color, background:`${def?.color}18`,
-                        padding:"1px 5px", borderRadius:3, border:`1px solid ${def?.color}40`,
-                      }}>⚡ {def?.label}</span>
-                      <span style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Crimson Pro',serif" }}>{c},{r}</span>
-                    </div>
-                    <span style={{ fontSize:7, color:"#3a4a5a", fontFamily:"'Cinzel',serif" }}>
-                      {Math.round(dist)} ›
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Search button — fixed */}
+      <div style={{ padding:"8px 12px", flexShrink:0, borderBottom:"1px solid #1a1e28" }}>
+        <button
+          onClick={doSearch}
+          disabled={!selected.size}
+          style={{
+            width:"100%", padding:"10px 0",
+            background: selected.size ? "linear-gradient(160deg,#1a2a3a,#0e1820)" : "rgba(10,14,20,.6)",
+            border:`1px solid ${selected.size ? "#3a6080" : "#1a2028"}`,
+            borderRadius:5, color: selected.size ? "#80c0e0" : "#2a3a48",
+            fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:".06em",
+            cursor: selected.size ? "pointer" : "default",
+            touchAction:"manipulation",
+          }}
+        >
+          🔍 Search Nearest 20
+        </button>
+      </div>
+
+      {/* Results — only this section scrolls */}
+      {searched && results !== null && (
+        <div className="scr" style={{ flex:1, overflowY:"auto", padding:"8px 12px" }}>
+          <div style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Cinzel',serif", marginBottom:6, letterSpacing:".05em" }}>
+            {results.length > 0 ? `${results.length} NEAREST RESULTS` : "NO RESULTS FOUND"}
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            {results.map(({ key, c, r, pl, dist }) => {
+              const def = POWER_DEFS[pl];
+              return (
+                <button
+                  key={key}
+                  onClick={() => jumpTo(c, r)}
+                  style={{
+                    display:"flex", alignItems:"center", justifyContent:"space-between",
+                    width:"100%", padding:"10px 10px",
+                    background:"rgba(255,255,255,.03)", border:"1px solid #1e2028",
+                    borderRadius:5, cursor:"pointer", touchAction:"manipulation",
+                    textAlign:"left",
+                  }}
+                >
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span style={{
+                      fontSize:7, fontFamily:"'Cinzel',serif", fontWeight:700,
+                      color: def?.color, background:`${def?.color}18`,
+                      padding:"1px 5px", borderRadius:3, border:`1px solid ${def?.color}40`,
+                    }}>⚡ {def?.label}</span>
+                    <span style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Crimson Pro',serif" }}>{c},{r}</span>
+                  </div>
+                  <span style={{ fontSize:7, color:"#3a4a5a", fontFamily:"'Cinzel',serif" }}>
+                    {Math.round(dist)} ›
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
