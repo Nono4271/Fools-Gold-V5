@@ -736,57 +736,54 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
           </div>
         </div>
 
-        {/* Troop bars */}
+        {/* Troop boxes + bars */}
         <div style={{
-          display:"grid", gridTemplateColumns:"1fr 24px 1fr",
-          gap:8, padding:"10px 16px",
+          padding:"8px 16px",
           borderBottom:"1px solid #1a1508",
           flexShrink:0,
         }}>
-          {/* Attacker troops */}
-          <div onClick={() => atkResolved && setSubPopup(p => p==="atkTroop" ? null : "atkTroop")}
-            style={{ cursor: atkResolved ? "pointer" : "default" }}>
-            <div style={{ fontSize:10, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".06em", marginBottom:4 }}>YOUR TROOPS</div>
-            <div style={{ fontSize:13, color:"#4488ff", fontFamily:"'Cinzel',serif", fontWeight:700,
-              marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-              {atkResolved ? `${atkResolved.branchDef.label} · ${atkResolved.tierData?.label ?? ""}` : "Unknown"}
-            </div>
-            <div style={{ fontSize:12, color:"#6a8060", marginBottom:5 }}>
-              {b.atkTroopsStart.toLocaleString()} → {b.atkTroopsEnd.toLocaleString()}
-            </div>
-            <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
-            {atkResolved && (
-              <div style={{ fontSize:10, color:"#2a2820", marginTop:4 }}>tap for troop stats →</div>
-            )}
-          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 20px 1fr", gap:8, alignItems:"start" }}>
 
-          {/* Divider */}
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <div style={{ width:1, height:"100%", background:"#1e1808" }} />
-          </div>
+            {/* Attacker troops */}
+            <div onClick={() => atkResolved && setSubPopup(p => p==="atkTroop" ? null : "atkTroop")}
+              style={{ cursor: atkResolved ? "pointer" : "default" }}>
+              <div style={{ fontSize:10, color:"#3a3028", fontFamily:"'Cinzel',serif",
+                letterSpacing:".06em", marginBottom:5 }}>YOUR TROOPS</div>
+              <TroopSlotBoxes b={b} isEnemy={false} />
+              <div style={{ marginTop:5 }}>
+                <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+                <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+              </div>
+              {atkResolved && (
+                <div style={{ fontSize:9, color:"#2a2820", marginTop:3 }}>tap for troop stats →</div>
+              )}
+            </div>
 
-          {/* Defender troops */}
-          <div onClick={() => defResolved && setSubPopup(p => p==="defTroop" ? null : "defTroop")}
-            style={{ cursor: defResolved ? "pointer" : "default", textAlign:"right" }}>
-            <div style={{ fontSize:10, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".06em", marginBottom:4 }}>ENEMY TROOPS</div>
-            <div style={{ fontSize:13, color:"#cc4444", fontFamily:"'Cinzel',serif", fontWeight:700,
-              marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-              {defResolved ? `${defResolved.branchDef.label} · ${defResolved.tierData?.label ?? ""}` : "Unknown"}
+            {/* Divider */}
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", paddingTop:18 }}>
+              <div style={{ width:1, height:"100%", background:"#1e1808" }} />
             </div>
-            <div style={{ fontSize:12, color:"#7a4040", marginBottom:5 }}>
-              {(b.defTroopsStart ?? 0).toLocaleString()} → {(b.defTroopsEnd ?? 0).toLocaleString()}
+
+            {/* Defender troops */}
+            <div onClick={() => defResolved && setSubPopup(p => p==="defTroop" ? null : "defTroop")}
+              style={{ cursor: defResolved ? "pointer" : "default", textAlign:"right" }}>
+              <div style={{ fontSize:10, color:"#3a3028", fontFamily:"'Cinzel',serif",
+                letterSpacing:".06em", marginBottom:5 }}>ENEMY TROOPS</div>
+              <TroopSlotBoxes b={b} isEnemy={true} />
+              <div style={{ marginTop:5 }}>
+                <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+                <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+              </div>
+              {defResolved && (
+                <div style={{ fontSize:9, color:"#2a2820", marginTop:3 }}>← tap for troop stats</div>
+              )}
             </div>
-            <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
-            {defResolved && (
-              <div style={{ fontSize:10, color:"#2a2820", marginTop:4 }}>← tap for troop stats</div>
-            )}
+
           </div>
         </div>
 
         {/* Stats table */}
-        <div style={{ padding:"10px 16px", flex:1, display:"flex", flexDirection:"column", minHeight:0, overflow:"hidden" }}>
+        <div style={{ padding:"10px 16px", flex:1, display:"flex", flexDirection:"column", minHeight:0, overflowY:"auto" }}>
           <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto",
             fontSize:11, color:"#3a3028", fontFamily:"'Cinzel',serif",
             letterSpacing:".07em", marginBottom:8, paddingBottom:6,
@@ -797,12 +794,12 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
             <span style={{ textAlign:"right", color:"#cc444488" }}>ENEMY</span>
           </div>
 
-          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:3, minHeight:0 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
           {statRows.map(({ label, atkVal, defVal }) => (
             <div key={label} style={{
               display:"grid", gridTemplateColumns:"auto 1fr auto",
-              alignItems:"center", flex:1,
-              padding:"4px 10px", borderRadius:4,
+              alignItems:"center",
+              padding:"6px 10px", borderRadius:4,
               background:"rgba(255,255,255,.015)",
             }}>
               <span style={{ fontSize:15, fontWeight:700, color:"#c8a060",
