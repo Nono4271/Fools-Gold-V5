@@ -171,86 +171,101 @@ export default memo(function HUD({
         <line x1={R_BOTTOM} y1="52" x2={R_TOP} y2="0" stroke="#c8a04044" strokeWidth="1"/>
       </svg>
 
-      {/* ── Content: three-column symmetric layout ── */}
+      {/* ── Content ── */}
       <div style={{
         position: "absolute", inset: 0,
         paddingTop: "env(safe-area-inset-top, 0px)",
-        paddingLeft: "18%", paddingRight: "18%",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        paddingLeft: "20%", paddingRight: "17%",
+        display: "flex", alignItems: "center", justifyContent: "flex-start",
         pointerEvents: "auto",
       }}>
 
-        {/* ══ LEFT COL: RSS pills + power/hr ═══════════════════════════════════ */}
-        <div style={{ display:"flex", flexDirection:"column", gap:2, alignItems:"flex-start" }}>
-          {/* RSS pills row */}
-          <div style={{ display:"flex", alignItems:"center", gap:3 }}>
-            {RKEYS.map(k => (
-              <div key={k} style={{
-                display:"flex", alignItems:"center", gap:2, padding:"2px 5px",
-                background:RSS[k].bg, border:`1px solid ${RSS[k].col}30`, borderRadius:3,
-                boxShadow:"inset 0 1px 0 rgba(255,255,255,.04), 0 1px 3px rgba(0,0,0,.6)",
+        {/* ══ THREE COLUMN LAYOUT — each column stacks its row1 + row2 ════════
+            Left  col: RSS pills (row1) + power/hr centred beneath (row2)
+            Mid   col: faction medallion only
+            Right col: eggs pill (row1) + tile count centred beneath (row2),
+                       then orbs, gems, settings (no sub-label)
+        ══════════════════════════════════════════════════════════════════════ */}
+        <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
+
+          {/* ── LEFT COL: RSS pills + power/hr right-aligned under gas ── */}
+          <div style={{ display:"flex", flexDirection:"column", gap:2, flex:"0 0 auto" }}>
+            {/* RSS pills row */}
+            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+              {RKEYS.map(k => (
+                <div key={k} style={{
+                  display:"flex", alignItems:"center", gap:2, padding:"2px 5px",
+                  background:RSS[k].bg, border:`1px solid ${RSS[k].col}30`, borderRadius:3,
+                  boxShadow:"inset 0 1px 0 rgba(255,255,255,.04), 0 1px 3px rgba(0,0,0,.6)",
+                  whiteSpace:"nowrap",
+                }}>
+                  <span style={{ fontSize:10 }}>{RSS[k].icon}</span>
+                  <div style={{ display:"flex", flexDirection:"column" }}>
+                    <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:RSS[k].col, lineHeight:1.15 }}>
+                      {Math.floor(rss[k]).toLocaleString()}
+                    </span>
+                    <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:`${RSS[k].col}80`, lineHeight:1.15 }}>
+                      +{rssRate[k]}/h
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Power/hr — right-aligned so it sits under the gas pill (last RSS) */}
+            <div style={{ display:"flex", justifyContent:"flex-end", alignItems:"center", gap:2 }}>
+              <span style={{ fontSize:8 }}>💍</span>
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#d4af37", whiteSpace:"nowrap" }}>
+                +{ringPowerPerHr.toLocaleString()}/hr
+              </span>
+            </div>
+          </div>
+
+          {/* ── MID COL: faction medallion, padded top to vertically centre in bar ── */}
+          <div style={{ flexShrink:0, margin:"0 6px", paddingTop:2 }}>
+            <div style={{
+              width:34, height:34, borderRadius:"50%",
+              background:"radial-gradient(circle at 35% 30%, #2a2215, #0e0c09)",
+              border:"1px solid #c8a04060",
+              boxShadow:"0 0 10px rgba(200,160,64,.18), inset 0 1px 0 rgba(255,255,255,.08)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              position:"relative",
+            }}>
+              <div style={{ position:"absolute", inset:-2, borderRadius:"50%", border:"1px solid rgba(200,160,64,.15)" }}/>
+              <span style={{ fontSize:18, lineHeight:1, userSelect:"none" }}>{facEmoji}</span>
+            </div>
+          </div>
+
+          {/* ── RIGHT COL: all items top-aligned so orbs/gems/settings don't drop ── */}
+          <div style={{ display:"flex", alignItems:"flex-start", gap:5, flex:"0 0 auto" }}>
+
+            {/* Dragon Eggs + tile count beneath */}
+            <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+              <div style={{
+                display:"flex", alignItems:"center", gap:3, padding:"2px 6px",
+                background:"rgba(140,15,35,.20)", border:"1px solid rgba(200,30,55,.28)",
+                borderRadius:3, boxShadow:"inset 0 1px 0 rgba(255,255,255,.05), 0 1px 3px rgba(0,0,0,.6)",
                 whiteSpace:"nowrap",
               }}>
-                <span style={{ fontSize:10 }}>{RSS[k].icon}</span>
+                <EggIcon size={15}/>
                 <div style={{ display:"flex", flexDirection:"column" }}>
-                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:RSS[k].col, lineHeight:1.15 }}>
-                    {Math.floor(rss[k]).toLocaleString()}
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#e04060", lineHeight:1.15 }}>
+                    {dragonEggs}/{dragonEggsCap}
                   </span>
-                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:`${RSS[k].col}80`, lineHeight:1.15 }}>
-                    +{rssRate[k]}/h
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#e0406088", lineHeight:1.15 }}>
+                    +{eggRegen}/hr
                   </span>
                 </div>
               </div>
-            ))}
-          </div>
-          {/* Power/hr row — right-aligned under gas pill */}
-          <div style={{ display:"flex", justifyContent:"flex-end", alignItems:"center", gap:2, width:"100%" }}>
-            <span style={{ fontSize:8 }}>💍</span>
-            <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#d4af37", whiteSpace:"nowrap" }}>
-              +{ringPowerPerHr.toLocaleString()}/hr
-            </span>
-          </div>
-        </div>
-
-        {/* ══ MID COL: faction medallion ═══════════════════════════════════════ */}
-        <div style={{ flexShrink:0 }}>
-          <div style={{
-            width:34, height:34, borderRadius:"50%",
-            background:"radial-gradient(circle at 35% 30%, #2a2215, #0e0c09)",
-            border:"1px solid #c8a04060",
-            boxShadow:"0 0 10px rgba(200,160,64,.18), inset 0 1px 0 rgba(255,255,255,.08)",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            position:"relative",
-          }}>
-            <div style={{ position:"absolute", inset:-2, borderRadius:"50%", border:"1px solid rgba(200,160,64,.15)" }}/>
-            <span style={{ fontSize:18, lineHeight:1, userSelect:"none" }}>{facEmoji}</span>
-          </div>
-        </div>
-
-        {/* ══ RIGHT COL: Eggs/tiles + Orbs + Gems + Settings ══════════════════ */}
-        <div style={{ display:"flex", flexDirection:"column", gap:2, alignItems:"flex-end" }}>
-          {/* Top row: eggs pill + orbs + gems + settings */}
-          <div style={{ display:"flex", alignItems:"center", gap:3 }}>
-
-            {/* Dragon Eggs */}
-            <div style={{
-              display:"flex", alignItems:"center", gap:3, padding:"2px 6px",
-              background:"rgba(140,15,35,.20)", border:"1px solid rgba(200,30,55,.28)",
-              borderRadius:3, boxShadow:"inset 0 1px 0 rgba(255,255,255,.05), 0 1px 3px rgba(0,0,0,.6)",
-              whiteSpace:"nowrap",
-            }}>
-              <EggIcon size={15}/>
-              <div style={{ display:"flex", flexDirection:"column" }}>
-                <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#e04060", lineHeight:1.15 }}>
-                  {dragonEggs}/{dragonEggsCap}
-                </span>
-                <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#e0406088", lineHeight:1.15 }}>
-                  +{eggRegen}/hr
+              {/* Tile count centred under eggs pill */}
+              <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:2 }}>
+                <span style={{ fontSize:8 }}>⬛</span>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#6a9060", whiteSpace:"nowrap" }}>
+                  {tileCount}/31
                 </span>
               </div>
             </div>
 
-            {/* Mystic Orbs */}
+            {/* Mystic Orbs — top-aligned, no sub-row so it sits flush with egg pill top */}
             <div style={{
               display:"flex", alignItems:"center", gap:3, padding:"2px 6px",
               background:"rgba(60,10,100,.22)", border:"1px solid rgba(120,40,180,.28)",
@@ -297,15 +312,7 @@ export default memo(function HUD({
               </svg>
             </button>
           </div>
-          {/* Tile count — right-aligned under settings, mirrors power/hr on left */}
-          <div style={{ display:"flex", justifyContent:"flex-end", alignItems:"center", gap:2 }}>
-            <span style={{ fontSize:8 }}>⬛</span>
-            <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#6a9060", whiteSpace:"nowrap" }}>
-              {tileCount}/31
-            </span>
-          </div>
         </div>
-
       </div>
     </div>
   );
