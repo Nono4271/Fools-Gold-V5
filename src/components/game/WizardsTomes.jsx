@@ -51,17 +51,17 @@ function CircleNode({ node, unlocked, active, onClick, r = 22 }) {
   const ac = node.accent ?? "#4488cc";
   return (
     <g onClick={onClick} style={{cursor:"pointer"}}>
-      {unlocked && <circle cx={0} cy={0} r={r*1.6}  fill={ac} opacity=".09"/>}
-      {active   && <circle cx={0} cy={0} r={r*1.38} fill="none" stroke={ac} strokeWidth="1.5" opacity=".55"/>}
+      {unlocked && <circle cx={0} cy={0} r={r*1.6}  fill={ac} opacity=".14"/>}
+      {active   && <circle cx={0} cy={0} r={r*1.38} fill="none" stroke={ac} strokeWidth="1.5" opacity=".7"/>}
       <circle cx={0} cy={0} r={r}
-        fill={unlocked?"#14103a":"#08061a"}
-        stroke={active?ac:unlocked?`${ac}cc`:"#14103a"}
+        fill={unlocked?"#1a1448":"#0f0c28"}
+        stroke={active?ac:unlocked?`${ac}dd`:"#3d2d80"}
         strokeWidth={active?2:1.5}/>
       <circle cx={0} cy={0} r={r*.76} fill="none"
-        stroke={unlocked?`${ac}40`:"#14103a"} strokeWidth="1"/>
+        stroke={unlocked?`${ac}55`:"#2a1f60"} strokeWidth="1"/>
       <text x={0} y={r*.32} textAnchor="middle" style={{
         fontSize:r*.88, fontFamily:"serif", userSelect:"none",
-        opacity:unlocked?1:.22,
+        opacity:unlocked?1:.55,
         filter:unlocked?`drop-shadow(0 0 ${r*.2}px ${ac})`:"none",
       }}>
         {unlocked?node.icon:"🔒"}
@@ -75,12 +75,12 @@ const CX = 350, CY = 270;
 
 const NODES = [
   // TL quadrant
-  {id:"tl",     x:127, y:164, r:22, icon:"🥚", label:"Dragon Eggs",    accent:"#e04060", desc:"Begin passively regenerating Dragon Eggs over time.",       prereqs:[]},
-  {id:"tl_t",   x:55,  y:90,  r:19, icon:"⛏",  label:"Keen Gatherer",  accent:"#9898b0", desc:"+10% resource gathering rate from all tiles.",              prereqs:["tl"]},
-  {id:"tl_b",   x:50,  y:220, r:19, icon:"⚔️",  label:"Battle Rite",   accent:"#ee6644", desc:"+3% troop attack for all armies.",                          prereqs:["tl"]},
-  {id:"tl_t1",  x:25,  y:55,  r:17, icon:"🪨",  label:"Stone Mastery",  accent:"#9898b0", desc:"+15% stone & wood production.",                            prereqs:["tl_t"]},
-  {id:"tl_b1",  x:22,  y:200, r:17, icon:"🛡",  label:"Iron Will",     accent:"#cc8844", desc:"+3% troop defence.",                                        prereqs:["tl_b"]},
-  {id:"tl_b2",  x:20,  y:270, r:17, icon:"👑",  label:"Warlord's Pact",accent:"#f0c040", desc:"+5% attack & +5% defence.",                                 prereqs:["tl_b"]},
+  {id:"tl",     x:190, y:185, r:22, icon:"🥚", label:"Dragon Eggs",    accent:"#e04060", desc:"Begin passively regenerating Dragon Eggs over time.",       prereqs:[]},
+  {id:"tl_t",   x:110, y:110, r:19, icon:"⛏",  label:"Keen Gatherer",  accent:"#9898b0", desc:"+10% resource gathering rate from all tiles.",              prereqs:["tl"]},
+  {id:"tl_b",   x:105, y:230, r:19, icon:"⚔️",  label:"Battle Rite",   accent:"#ee6644", desc:"+3% troop attack for all armies.",                          prereqs:["tl"]},
+  {id:"tl_t1",  x:50,  y:75,  r:17, icon:"🪨",  label:"Stone Mastery",  accent:"#9898b0", desc:"+15% stone & wood production.",                            prereqs:["tl_t"]},
+  {id:"tl_b1",  x:48,  y:210, r:17, icon:"🛡",  label:"Iron Will",     accent:"#cc8844", desc:"+3% troop defence.",                                        prereqs:["tl_b"]},
+  {id:"tl_b2",  x:45,  y:280, r:17, icon:"👑",  label:"Warlord's Pact",accent:"#f0c040", desc:"+5% attack & +5% defence.",                                 prereqs:["tl_b"]},
   // TR quadrant
   {id:"tr",     x:577, y:135, r:22, icon:"⚡",  label:"Swift March",    accent:"#88aaff", desc:"+5% march speed for all commanders.",                       prereqs:[]},
   {id:"tr_t",   x:697, y:55, r:19, icon:"🗺",  label:"Far Marcher",    accent:"#6688ee", desc:"+2 maximum march range.",                                   prereqs:["tr"]},
@@ -90,11 +90,11 @@ const NODES = [
   {id:"tr_b3",  x:844, y:230, r:17, icon:"⚔️",  label:"Twin Legions",   accent:"#5577ff", desc:"Unlock a 3rd simultaneous march.",                         prereqs:["tr_b"]},
   {id:"tr_b4",  x:816, y:285, r:17, icon:"🌀",  label:"Void Attunement",accent:"#aa55ff", desc:"Void Tap cooldown reduced by 10%.",                        prereqs:["tr_b"]},
   // BL quadrant
-  {id:"bl",     x:127, y:376, r:22, icon:"🛡",  label:"Fortify",        accent:"#88cc88", desc:"+500 HQ siege HP.",                                        prereqs:[]},
-  {id:"bl_t",   x:55,  y:310, r:19, icon:"🏰",  label:"Ancient Wards",  accent:"#c8b070", desc:"+1,000 HQ siege HP. Walls heal 10% faster.",              prereqs:["bl"]},
-  {id:"bl_b",   x:50,  y:448, r:19, icon:"⭐",  label:"Tactician",      accent:"#f0c040", desc:"Commanders gain +5% XP from all battles.",                 prereqs:["bl"]},
-  {id:"bl_b1",  x:22,  y:400, r:17, icon:"⚡",  label:"Siege Master",   accent:"#88cc44", desc:"+10% siege power for all marching armies.",                prereqs:["bl_b"]},
-  {id:"bl_b2",  x:20,  y:470, r:17, icon:"📜",  label:"Elder's Rite",   accent:"#c8a040", desc:"All Wizard's Tomes effects increased by 15%.",             prereqs:["bl_b"]},
+  {id:"bl",     x:190, y:375, r:22, icon:"🛡",  label:"Fortify",        accent:"#88cc88", desc:"+500 HQ siege HP.",                                        prereqs:[]},
+  {id:"bl_t",   x:110, y:310, r:19, icon:"🏰",  label:"Ancient Wards",  accent:"#c8b070", desc:"+1,000 HQ siege HP. Walls heal 10% faster.",              prereqs:["bl"]},
+  {id:"bl_b",   x:105, y:445, r:19, icon:"⭐",  label:"Tactician",      accent:"#f0c040", desc:"Commanders gain +5% XP from all battles.",                 prereqs:["bl"]},
+  {id:"bl_b1",  x:48,  y:410, r:17, icon:"⚡",  label:"Siege Master",   accent:"#88cc44", desc:"+10% siege power for all marching armies.",                prereqs:["bl_b"]},
+  {id:"bl_b2",  x:45,  y:480, r:17, icon:"📜",  label:"Elder's Rite",   accent:"#c8a040", desc:"All Wizard's Tomes effects increased by 15%.",             prereqs:["bl_b"]},
   // BR quadrant
   {id:"br",     x:509, y:405, r:22, icon:"🌀",  label:"Void Mastery",   accent:"#cc44ff", desc:"+5,000 Mystic Orb capacity.",                              prereqs:[]},
   {id:"br_t",   x:608, y:339, r:19, icon:"✨",  label:"Abundance Rite", accent:"#d4af37", desc:"+10% all resource production.",                            prereqs:["br"]},
@@ -231,18 +231,13 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
               style={{width:"100%",height:"100%",display:"block"}}
               preserveAspectRatio="xMidYMid meet">
               <defs>
-                <radialGradient id="wtbg" cx="50%" cy="50%" r="58%">
-                  <stop offset="0%" stopColor="#0c0c22"/>
-                  <stop offset="100%" stopColor="#06060e"/>
-                </radialGradient>
               </defs>
-              <rect x="-18" y="35" width="963" height="567" fill="url(#wtbg)"/>
 
               {/* Ring guides */}
               <ellipse cx={CX} cy={CY} rx={175} ry={155}
-                fill="none" stroke="rgba(140,100,255,.1)" strokeWidth="1"/>
+                fill="none" stroke="rgba(140,100,255,.25)" strokeWidth="1"/>
               <ellipse cx={CX} cy={CY} rx={320} ry={265}
-                fill="none" stroke="rgba(140,100,255,.06)" strokeWidth="1"/>
+                fill="none" stroke="rgba(140,100,255,.15)" strokeWidth="1"/>
 
               {/* Connection lines */}
               {LINES.map(([aid,bid])=>{
@@ -253,8 +248,8 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
                 return (
                   <line key={`${aid}-${bid}`}
                     x1={A.x} y1={A.y} x2={B.x} y2={B.y}
-                    stroke={lit?"#8866ff66":part?"#1a1440":"#0e0c20"}
-                    strokeWidth={lit?1.5:1}
+                    stroke={lit?"#9977ffaa":part?"#4433aa":"#2a1f60"}
+                    strokeWidth={lit?2:1.5}
                     strokeDasharray={part?"4 3":"none"}/>
                 );
               })}
@@ -282,7 +277,7 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
                       active={selected===n.id} onClick={()=>setSelected(n.id)} r={n.r}/>
                     <text x={0} y={n.r+12} textAnchor="middle" style={{
                       fontSize:6, fontFamily:"'Cinzel',serif",
-                      fill:selected===n.id?"#ffffff":unlocked.has(n.id)?`${n.accent}ee`:"#2a2050",
+                      fill:selected===n.id?"#ffffff":unlocked.has(n.id)?`${n.accent}ee`:"#5544aa",
                       letterSpacing:".03em"}}>
                       {n.label.length>13?n.label.slice(0,12)+"…":n.label}
                     </text>
