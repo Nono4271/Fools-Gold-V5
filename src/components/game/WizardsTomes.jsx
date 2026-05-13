@@ -76,11 +76,11 @@ const CX = 350, CY = 270;
 const NODES = [
   // TL quadrant
   {id:"tl",     x:127, y:164, r:22, icon:"🥚", label:"Dragon Eggs",    accent:"#e04060", desc:"Begin passively regenerating Dragon Eggs over time.",       prereqs:[]},
-  {id:"tl_t",   x:7, y:82, r:19, icon:"⛏",  label:"Keen Gatherer",  accent:"#9898b0", desc:"+10% resource gathering rate from all tiles.",              prereqs:["tl"]},
-  {id:"tl_b",   x:-9, y:201, r:19, icon:"⚔️",  label:"Battle Rite",   accent:"#ee6644", desc:"+3% troop attack for all armies.",                          prereqs:["tl"]},
-  {id:"tl_t1",  x:-2, y:68, r:17, icon:"🪨",  label:"Stone Mastery",  accent:"#9898b0", desc:"+15% stone & wood production.",                            prereqs:["tl_t"]},
-  {id:"tl_b1",  x:-13, y:182, r:17, icon:"🛡",  label:"Iron Will",     accent:"#cc8844", desc:"+3% troop defence.",                                        prereqs:["tl_b"]},
-  {id:"tl_b2",  x:-18, y:272, r:17, icon:"👑",  label:"Warlord's Pact",accent:"#f0c040", desc:"+5% attack & +5% defence.",                                 prereqs:["tl_b"]},
+  {id:"tl_t",   x:55,  y:90,  r:19, icon:"⛏",  label:"Keen Gatherer",  accent:"#9898b0", desc:"+10% resource gathering rate from all tiles.",              prereqs:["tl"]},
+  {id:"tl_b",   x:50,  y:220, r:19, icon:"⚔️",  label:"Battle Rite",   accent:"#ee6644", desc:"+3% troop attack for all armies.",                          prereqs:["tl"]},
+  {id:"tl_t1",  x:25,  y:55,  r:17, icon:"🪨",  label:"Stone Mastery",  accent:"#9898b0", desc:"+15% stone & wood production.",                            prereqs:["tl_t"]},
+  {id:"tl_b1",  x:22,  y:200, r:17, icon:"🛡",  label:"Iron Will",     accent:"#cc8844", desc:"+3% troop defence.",                                        prereqs:["tl_b"]},
+  {id:"tl_b2",  x:20,  y:270, r:17, icon:"👑",  label:"Warlord's Pact",accent:"#f0c040", desc:"+5% attack & +5% defence.",                                 prereqs:["tl_b"]},
   // TR quadrant
   {id:"tr",     x:577, y:135, r:22, icon:"⚡",  label:"Swift March",    accent:"#88aaff", desc:"+5% march speed for all commanders.",                       prereqs:[]},
   {id:"tr_t",   x:697, y:55, r:19, icon:"🗺",  label:"Far Marcher",    accent:"#6688ee", desc:"+2 maximum march range.",                                   prereqs:["tr"]},
@@ -91,10 +91,10 @@ const NODES = [
   {id:"tr_b4",  x:816, y:285, r:17, icon:"🌀",  label:"Void Attunement",accent:"#aa55ff", desc:"Void Tap cooldown reduced by 10%.",                        prereqs:["tr_b"]},
   // BL quadrant
   {id:"bl",     x:127, y:376, r:22, icon:"🛡",  label:"Fortify",        accent:"#88cc88", desc:"+500 HQ siege HP.",                                        prereqs:[]},
-  {id:"bl_t",   x:7, y:305, r:19, icon:"🏰",  label:"Ancient Wards",  accent:"#c8b070", desc:"+1,000 HQ siege HP. Walls heal 10% faster.",              prereqs:["bl"]},
-  {id:"bl_b",   x:-9, y:448, r:19, icon:"⭐",  label:"Tactician",      accent:"#f0c040", desc:"Commanders gain +5% XP from all battles.",                 prereqs:["bl"]},
-  {id:"bl_b1",  x:-13, y:372, r:17, icon:"⚡",  label:"Siege Master",   accent:"#88cc44", desc:"+10% siege power for all marching armies.",                prereqs:["bl_b"]},
-  {id:"bl_b2",  x:-18, y:458, r:17, icon:"📜",  label:"Elder's Rite",   accent:"#c8a040", desc:"All Wizard's Tomes effects increased by 15%.",             prereqs:["bl_b"]},
+  {id:"bl_t",   x:55,  y:310, r:19, icon:"🏰",  label:"Ancient Wards",  accent:"#c8b070", desc:"+1,000 HQ siege HP. Walls heal 10% faster.",              prereqs:["bl"]},
+  {id:"bl_b",   x:50,  y:448, r:19, icon:"⭐",  label:"Tactician",      accent:"#f0c040", desc:"Commanders gain +5% XP from all battles.",                 prereqs:["bl"]},
+  {id:"bl_b1",  x:22,  y:400, r:17, icon:"⚡",  label:"Siege Master",   accent:"#88cc44", desc:"+10% siege power for all marching armies.",                prereqs:["bl_b"]},
+  {id:"bl_b2",  x:20,  y:470, r:17, icon:"📜",  label:"Elder's Rite",   accent:"#c8a040", desc:"All Wizard's Tomes effects increased by 15%.",             prereqs:["bl_b"]},
   // BR quadrant
   {id:"br",     x:509, y:405, r:22, icon:"🌀",  label:"Void Mastery",   accent:"#cc44ff", desc:"+5,000 Mystic Orb capacity.",                              prereqs:[]},
   {id:"br_t",   x:608, y:339, r:19, icon:"✨",  label:"Abundance Rite", accent:"#d4af37", desc:"+10% all resource production.",                            prereqs:["br"]},
@@ -227,7 +227,7 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
           {/* SVG tree */}
           <div style={{flex:1,overflow:"auto",WebkitOverflowScrolling:"touch",
             display:"flex",alignItems:"stretch"}}>
-            <svg viewBox="-18 35 963 567"
+            <svg viewBox="-10 35 963 567"
               style={{width:"100%",height:"100%",display:"block"}}
               preserveAspectRatio="xMidYMid meet">
               <defs>
@@ -236,7 +236,7 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
                   <stop offset="100%" stopColor="#06060e"/>
                 </radialGradient>
               </defs>
-              <rect x="30" y="40" width="700" height="470" fill="url(#wtbg)"/>
+              <rect x="-18" y="35" width="963" height="567" fill="url(#wtbg)"/>
 
               {/* Ring guides */}
               <ellipse cx={CX} cy={CY} rx={175} ry={155}
