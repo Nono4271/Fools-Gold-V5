@@ -44,6 +44,7 @@ import CommanderPicker from "./components/game/CommanderPicker.jsx";
 import BottomPanel from "./components/game/BottomPanel.jsx";
 import WinScreen from "./components/game/WinScreen.jsx";
 import Minimap from "./components/game/Minimap.jsx";
+import WizardsTomes, { ScrollStackIcon } from "./components/game/WizardsTomes.jsx";
 import GameBar from "./components/game/GameBar.jsx";
 import CommanderScreen from "./components/screens/CommanderScreen.jsx";
 import GearScreen from "./components/screens/GearScreen.jsx";
@@ -286,6 +287,10 @@ export default function RiseToWar() {
   // Void Tap state
   const [mysticOrbs,    setMysticOrbs]    = useState(0);
   const [lastVoidTap,   setLastVoidTap]   = useState(null); // timestamp ms or null
+
+  // Wizard's Tomes
+  const [tomesOpen,  setTomesOpen]  = useState(false);
+  const [tomesLevel, setTomesLevel] = useState(0);
 
   // Derived void tap values from bldgs
   const voidTapLvl  = bldgs.voidtap || 0;
@@ -1608,6 +1613,31 @@ export default function RiseToWar() {
       )}
 
       <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} />
+
+      {/* Wizard's Tomes trigger — bottom-left below minimap */}
+      {!tomesOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
+        <button onClick={()=>setTomesOpen(true)} style={{
+          position:"fixed", left:8, bottom:90, zIndex:300,
+          background:"radial-gradient(circle at 35% 30%, #1a1030, #08060e)",
+          border:"1px solid rgba(200,160,64,.25)", borderRadius:"50%",
+          width:52, height:52,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          cursor:"pointer", padding:0,
+          boxShadow:"0 0 14px rgba(80,40,120,.4), inset 0 1px 0 rgba(255,255,255,.06)",
+          touchAction:"manipulation",
+        }}>
+          <ScrollStackIcon size={38}/>
+        </button>
+      )}
+
+      {tomesOpen && (
+        <WizardsTomes
+          open={tomesOpen}
+          onClose={()=>setTomesOpen(false)}
+          facKey={facKey}
+          tomesLevel={tomesLevel}
+        />
+      )}
 
       {gearScreenOpen && (
         <GearScreen
