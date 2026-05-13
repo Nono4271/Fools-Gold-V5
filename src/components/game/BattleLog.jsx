@@ -846,93 +846,238 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
 }
 
 // ── Simple battle summary card ────────────────────────────────────────────────
-function BattleCard({ b, onOpen }) {
+// ── Simple summary left-column list item ──────────────────────────────────────
+function BattleListItem({ b, selected, onClick }) {
   const oc = outcomeOf(b);
-
   return (
     <div
-      onClick={e => { e.stopPropagation(); onOpen(b); }}
-      onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onOpen(b); }}
+      onClick={e => { e.stopPropagation(); onClick(b); }}
+      onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onClick(b); }}
       style={{
-        position:"relative",
-        padding:"10px 14px", marginBottom:8, cursor:"pointer",
-        background:"rgba(255,255,255,.02)",
-        border:`1px solid #221e12`,
-        borderLeft:`3px solid ${oc.color}`,
-        borderRadius:5, transition:"background .15s",
+        display:"flex", alignItems:"center", gap:8,
+        padding:"7px 8px", marginBottom:4, cursor:"pointer", borderRadius:4,
+        background: selected ? "rgba(240,192,64,.07)" : "transparent",
+        border:`1px solid ${selected ? "#f0c04044" : "transparent"}`,
+        borderLeft:`2px solid ${oc.color}`,
         touchAction:"manipulation",
         WebkitTapHighlightColor:"transparent",
       }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-          <span style={{ fontSize:16 }}>{b.atkIcon || "⚔"}</span>
-          <div>
-            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, color:"#c8a060" }}>
-              {b.atkName}
-              {b.cmdCls && (
-                <span style={{ marginLeft:6, fontSize:7, color: CLS_COLOR[b.cmdCls] ?? "#888",
-                  background:"rgba(255,255,255,.04)", padding:"1px 5px", borderRadius:2 }}>
-                  {b.cmdCls}
-                </span>
-              )}
-            </div>
-            <div style={{ fontSize:7, color:"#4a3a28" }}>Lv{b.atkLvl} · {b.terrain} · {b.modLabel}</div>
-          </div>
-        </div>
-        <div style={{ textAlign:"right" }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, color:"#9a5050", marginBottom:2 }}>
-            {b.defCmdIcon} {b.defCmdName}
-          </div>
-          <div style={{ fontSize:7, color:"#3a3028" }}>{timeAgo(b.timestamp)}</div>
-        </div>
+      {/* Commander bust thumbnail */}
+      <div style={{
+        width:34, height:34, borderRadius:"50%", flexShrink:0, overflow:"hidden",
+        background:"rgba(255,255,255,.04)", border:`1px solid ${oc.color}44`,
+        display:"flex", alignItems:"center", justifyContent:"center",
+        position:"relative",
+      }}>
+        {b.atkBust ? (
+          <img src={b.atkBust} alt={b.atkName}
+            style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top center" }} />
+        ) : (
+          <span style={{ fontSize:18 }}>{b.atkIcon || "⚔"}</span>
+        )}
       </div>
 
-      {/* VS row: attacker | outcome | defender */}
-      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+      {/* Text */}
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:1 }}>
+          <span style={{
+            fontSize:7, fontWeight:700, color:oc.color, fontFamily:"'Cinzel',serif",
+            letterSpacing:".06em",
+          }}>{oc.text}</span>
+        </div>
+        <div style={{
+          fontSize:7, color:"#9a8060", fontFamily:"'Cinzel',serif",
+          overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:1,
+        }}>
+          {b.tileName ?? b.terrain ?? "—"}
+        </div>
+        <div style={{ fontSize:6, color:"#3a3028" }}>{timeAgo(b.timestamp)}</div>
+      </div>
+    </div>
+  );
+}
 
-        {/* Left: attacker */}
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:3 }}>ATTACKER</div>
-          <div style={{ fontSize:7, color:"#6a8060", marginBottom:3 }}>{b.atkTroopsStart.toLocaleString()} troops</div>
-          <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
-          <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+// ── Simple summary right-column detail panel ──────────────────────────────────
+function SimpleSummaryPanel({ b, onOpen }) {
+  const oc = outcomeOf(b);
+
+  if (!b) return (
+    <div style={{
+      flex:1, display:"flex", alignItems:"center", justifyContent:"center",
+      color:"#2a2020", fontFamily:"'Cinzel',serif", fontSize:9, fontStyle:"italic",
+    }}>
+      Select a battle on the left
+    </div>
+  );
+
+  return (
+    <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+
+      {/* Commander portraits — hip-up style like LOTR RTW */}
+      <div style={{
+        display:"grid", gridTemplateColumns:"1fr auto 1fr",
+        height:220, flexShrink:0, overflow:"hidden",
+        borderBottom:"1px solid #1a1508",
+      }}>
+        {/* Attacker portrait */}
+        <div style={{
+          position:"relative", overflow:"hidden",
+          background:"linear-gradient(135deg,#120e06,#0a0702)",
+        }}>
+          <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+            background:"radial-gradient(ellipse 90% 80% at 30% 85%, rgba(200,160,96,.15) 0%, transparent 70%)" }} />
+          {b.atkPortrait || b.atkBust ? (
+            <img src={b.atkPortrait ?? b.atkBust} alt={b.atkName}
+              style={{
+                position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)",
+                height:"115%", objectFit:"cover", objectPosition:"top center", opacity:.92,
+              }} />
+          ) : (
+            <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center",
+              justifyContent:"center", fontSize:64, opacity:.45 }}>
+              {b.atkIcon || "⚔"}
+            </div>
+          )}
+          {/* Name overlay */}
+          <div style={{
+            position:"absolute", bottom:0, left:0, right:0,
+            background:"linear-gradient(to top, rgba(8,5,0,.96) 0%, rgba(8,5,0,.6) 60%, transparent 100%)",
+            padding:"32px 10px 8px",
+          }}>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700,
+              color:"#c8a060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              {b.atkName}
+            </div>
+            <div style={{ fontSize:7, color:"#5a4a30" }}>
+              Lv{b.atkLvl}
+              {b.cmdCls && <span style={{ marginLeft:5, color: CLS_COLOR[b.cmdCls] ?? "#888" }}>{b.cmdCls}</span>}
+            </div>
+          </div>
+          <div style={{ position:"absolute", top:6, left:7,
+            fontSize:6, color:"#4488ffbb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
+            background:"rgba(0,0,0,.55)", padding:"2px 5px", borderRadius:2 }}>YOU</div>
         </div>
 
-        {/* Center: outcome */}
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, flexShrink:0 }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, color:oc.color,
-            border:`1px solid ${oc.color}55`, borderRadius:3, padding:"3px 8px",
-            background:`${oc.color}11` }}>
+        {/* Centre divider with outcome badge */}
+        <div style={{
+          display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+          width:36, background:"rgba(0,0,0,.4)",
+          borderLeft:"1px solid #1a1508", borderRight:"1px solid #1a1508",
+          gap:8,
+        }}>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:"#3a2e18",
+            letterSpacing:".1em", writingMode:"vertical-rl", transform:"rotate(180deg)" }}>VS</div>
+          <div style={{
+            fontFamily:"'Cinzel',serif", fontSize:7, fontWeight:700, color:oc.color,
+            border:`1px solid ${oc.color}55`, borderRadius:3, padding:"4px 5px",
+            background:`${oc.color}14`, writingMode:"vertical-rl", transform:"rotate(180deg)",
+            letterSpacing:".08em",
+          }}>
             {oc.text}
           </div>
         </div>
 
-        {/* Right: defender */}
-        <div style={{ flex:1, textAlign:"right" }}>
-          <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:3 }}>DEFENDER</div>
-          <div style={{ fontSize:7, color:"#7a4040", marginBottom:3 }}>{b.defTroopsStart?.toLocaleString()} troops</div>
-          <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
-          <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+        {/* Defender portrait */}
+        <div style={{
+          position:"relative", overflow:"hidden",
+          background:"linear-gradient(225deg,#0e0808,#0a0702)",
+        }}>
+          <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+            background:"radial-gradient(ellipse 90% 80% at 70% 85%, rgba(180,60,60,.15) 0%, transparent 70%)" }} />
+          {b.defPortrait || b.defBust ? (
+            <img src={b.defPortrait ?? b.defBust} alt={b.defCmdName}
+              style={{
+                position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%) scaleX(-1)",
+                height:"115%", objectFit:"cover", objectPosition:"top center", opacity:.92,
+              }} />
+          ) : (
+            <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center",
+              justifyContent:"center", fontSize:64, opacity:.45 }}>
+              {b.defCmdIcon || "🛡"}
+            </div>
+          )}
+          <div style={{
+            position:"absolute", bottom:0, left:0, right:0,
+            background:"linear-gradient(to top, rgba(8,3,3,.96) 0%, rgba(8,3,3,.6) 60%, transparent 100%)",
+            padding:"32px 10px 8px", textAlign:"right",
+          }}>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700,
+              color:"#aa7070", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              {b.defCmdName || "Enemy"}
+            </div>
+            <div style={{ fontSize:7, color:"#5a4a30" }}>Lv{b.defLvl ?? "?"}</div>
+          </div>
+          <div style={{ position:"absolute", top:6, right:7,
+            fontSize:6, color:"#cc4444bb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
+            background:"rgba(0,0,0,.55)", padding:"2px 5px", borderRadius:2 }}>ENEMY</div>
         </div>
-
       </div>
 
-      <div style={{ display:"flex", justifyContent:"space-between" }}>
-        <div style={{ display:"flex", gap:8 }}>
-          {b.won && b.xpGain > 0 && (
-            <span style={{ fontSize:7, color:"#8a6030" }}>+{b.xpGain} XP</span>
+      {/* Troop bars + stats */}
+      <div style={{
+        padding:"10px 14px 6px",
+        borderBottom:"1px solid #1a1508",
+        flexShrink:0,
+      }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 20px 1fr", gap:8, alignItems:"start" }}>
+          {/* Attacker troops */}
+          <div>
+            <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
+              letterSpacing:".06em", marginBottom:3 }}>YOUR TROOPS</div>
+            <div style={{ fontSize:8, color:"#4488ff", fontFamily:"'Cinzel',serif",
+              fontWeight:700, marginBottom:3 }}>
+              {b.atkTroopsStart.toLocaleString()} troops
+            </div>
+            <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+            <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+          </div>
+
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ width:1, height:32, background:"#1e1808" }} />
+          </div>
+
+          {/* Defender troops */}
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
+              letterSpacing:".06em", marginBottom:3 }}>ENEMY TROOPS</div>
+            <div style={{ fontSize:8, color:"#cc4444", fontFamily:"'Cinzel',serif",
+              fontWeight:700, marginBottom:3 }}>
+              {(b.defTroopsStart ?? 0).toLocaleString()} troops
+            </div>
+            <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+            <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+          </div>
+        </div>
+      </div>
+
+      {/* XP + meta row */}
+      <div style={{ padding:"8px 14px", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+        <div style={{ display:"flex", gap:10 }}>
+          {b.xpGain > 0 && (
+            <span style={{ fontSize:8, color:"#8a6030", fontFamily:"'Cinzel',serif" }}>
+              +{b.xpGain} XP
+            </span>
           )}
           {b.bastionActive && (
-            <span style={{ fontSize:7, color:"#5080e0" }}>🛡 Bastion</span>
+            <span style={{ fontSize:8, color:"#5080e0" }}>🛡 Bastion</span>
           )}
           {b.isStage2 && (
-            <span style={{ fontSize:7, color:"#5a4a38" }}>Stage 2</span>
+            <span style={{ fontSize:8, color:"#5a4a38" }}>Stage 2</span>
           )}
         </div>
-        <span style={{ fontSize:7, color:"#2a2018", fontFamily:"'Cinzel',serif" }}>
-          {b.rounds?.length ?? 0} rounds
-        </span>
+        {/* View full report button */}
+        <button
+          onClick={e => { e.stopPropagation(); onOpen(b); }}
+          style={{
+            padding:"4px 10px", borderRadius:3, cursor:"pointer",
+            background:"rgba(240,192,64,.09)", border:"1px solid #f0c04033",
+            color:"#c8a050", fontFamily:"'Cinzel',serif", fontSize:7,
+            letterSpacing:".06em",
+          }}>
+          FULL REPORT →
+        </button>
       </div>
+
     </div>
   );
 }
@@ -1189,10 +1334,11 @@ function DetailedLog({ b }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default memo(function BattleLog({ battles, bLog, onClose }) {
-  const [view,     setView]     = useState("simple");
-  const [selected, setSelected] = useState(0);
-  const [activeBattle, setActiveBattle] = useState(null); // battle open in BattleStatsPopup
-  const [subPopup, setSubPopup] = useState(null); // "atkCmd"|"defCmd"|"atkTroop"|"defTroop"
+  const [view,            setView]            = useState("simple");
+  const [selected,        setSelected]        = useState(0);
+  const [selectedSummary, setSelectedSummary] = useState(0);
+  const [activeBattle,    setActiveBattle]    = useState(null);
+  const [subPopup,        setSubPopup]        = useState(null);
 
   const hasBattles = battles.length > 0;
 
@@ -1203,7 +1349,7 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
       display:"flex", alignItems:"center", justifyContent:"center",
     }}>
       <div style={{
-        width:"min(700px, 96vw)", height:"min(88vh, 800px)",
+        width:"min(780px, 96vw)", height:"min(88vh, 800px)",
         background:"#08060a",
         border:"1px solid #2a1e08",
         borderRadius:8,
@@ -1279,14 +1425,31 @@ export default memo(function BattleLog({ battles, bLog, onClose }) {
           </div>
 
         ) : view === "simple" ? (
-          /* ── Summary: card list ── */
-          <div className="scr" style={{ flex:1, overflowY:"auto", padding:"12px 14px", touchAction:"pan-y" }}>
-            {battles.map((b, i) => (
-              <BattleCard
-                key={i} b={b}
-                onOpen={(battle) => setActiveBattle(battle)}
-              />
-            ))}
+          /* ── Summary: two-column LOTR-style ── */
+          <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
+
+            {/* Left: scrollable battle history list */}
+            <div style={{
+              width:140, flexShrink:0,
+              borderRight:"1px solid #1a1510",
+              overflowY:"auto", padding:"8px 6px",
+              background:"rgba(0,0,0,.28)",
+            }} className="scr">
+              {battles.map((b, i) => (
+                <BattleListItem
+                  key={i} b={b}
+                  selected={i === selectedSummary}
+                  onClick={() => setSelectedSummary(i)}
+                />
+              ))}
+            </div>
+
+            {/* Right: selected battle portrait + troop detail */}
+            <SimpleSummaryPanel
+              b={battles[selectedSummary] ?? null}
+              onOpen={(battle) => setActiveBattle(battle)}
+            />
+
           </div>
 
         ) : (
