@@ -1772,6 +1772,7 @@ setAmount(0);
 };
 
 return (
+<>
 <div>
 <SectionHeader>MARKETPLACE</SectionHeader>
 <div style={{ padding:"10px 12px", background:"rgba(255,255,255,.02)",
@@ -1991,7 +1992,7 @@ Trade any resource for another at a 70% return rate. Use the slider to select ho
   );
 })()}
 
-);
+</>);
 }
 
 // -----------------------------------------------------------------------------
