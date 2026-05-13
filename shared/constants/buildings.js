@@ -12,6 +12,7 @@ training:      { n:"Training Grounds", icon:"⚔️",  max:10, desc:"Increases m
 commandcenter: { n:"Command Center",   icon:"📡", max:10, desc:"+300 Command to all commanders per level.",                                      cost:{ stone:150, wood:120, ore:80,  gas:60 } },
 healingtent:   { n:"Healing Tent",     icon:"⛺", max:10, desc:"Heals wounded troops. +5/s per level.",                                         cost:{ stone:60,  wood:80,  ore:60,  gas:0  } },
 walls:         { n:"Walls",            icon:"🛡",  max:10, desc:"Increases HQ siege HP. Lv1=+10k, Lv10=+100k.",                                cost:{ stone:100, wood:60,  ore:0,   gas:0  } },
+voidtap:       { n:"Void Tap",         icon:"🌀", max:10, desc:"Channels arcane energy into Mystic Orbs. Higher levels increase capacity and reduce cooldown between taps.", cost:{ stone:120, wood:80, ore:100, gas:60 } },
 };
 
 export function barracksCapacity(lvl) {
@@ -118,4 +119,44 @@ export function branchMaxLevel(branchIdx, quarterLvl) {
 export function tierFromBranchLevel(bLvl) {
   if (bLvl <= 0) return -1;
   return Math.min(2, Math.floor((bLvl - 1) / 2));
+}
+
+// ── Void Tap helpers ──────────────────────────────────────────────────────────
+
+// Max orb capacity: 10,000 at Lv1, 100,000 at Lv10 — exponential curve
+export function voidTapCapacity(lvl) {
+  const l = Math.max(1, Math.min(10, lvl || 1));
+  // Slow early, faster later: use power curve
+  // Lv1=10k, Lv5≈28k, Lv10=100k
+  return Math.round(10_000 * Math.pow(10, (l - 1) / 9));
+}
+
+// Cooldown in ms: Lv1=10hr, Lv10=2hr — slow early, drops fast later
+// Uses inverse power: fast improvement at high levels
+export function voidTapCooldownMs(lvl) {
+  const l = Math.max(1, Math.min(10, lvl || 1));
+  const maxHr = 10, minHr = 2;
+  // t=0 at Lv1, t=1 at Lv10. Curve: slow start, fast end → use t^2.5
+  const t = (l - 1) / 9;
+  const hours = maxHr - (maxHr - minHr) * Math.pow(t, 0.4);
+  return Math.round(hours * 3_600_000);
+}
+
+// Yield per tap: sum of all quarter levels × 500
+export function voidTapYield(quarterLevels) {
+  if (!quarterLevels) return 0;
+  const total = Object.values(quarterLevels).reduce((s, v) => s + (v || 0), 0);
+  return total * 500;
+}
+
+// Formatted cooldown string e.g. "6h 30m"
+export function fmtCooldown(ms) {
+  if (ms <= 0) return "Ready";
+  const totalSec = Math.ceil(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  if (m > 0) return s > 0 ? `${m}m ${s}s` : `${m}m`;
+  return `${s}s`;
 }
