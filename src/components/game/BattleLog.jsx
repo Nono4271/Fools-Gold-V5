@@ -658,54 +658,81 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
         {/* Scrollable content */}
         <div className="scr" style={{ flex:1, overflowY:"auto", padding:"0 0 24px" }}>
 
-        {/* Commander row */}
+        {/* Commander bust comparison row */}
         <div style={{
           display:"grid", gridTemplateColumns:"1fr auto 1fr",
-          gap:10, padding:"16px 20px 12px",
           borderBottom:"1px solid #1a1508",
+          height:160,
+          overflow:"hidden",
         }}>
-          {/* Attacker commander */}
+          {/* Attacker */}
           <div onClick={() => setSubPopup(p => p==="atkCmd" ? null : "atkCmd")}
-            style={{ cursor:"pointer", padding:"10px 12px", borderRadius:6,
-              background:"rgba(200,160,96,.06)", border:"1px solid #2a1e08",
-              transition:"background .15s",
-            }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <span style={{ fontSize:28 }}>{b.atkIcon || "⚔"}</span>
-              <div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, fontWeight:700, color:"#c8a060",
-                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:120 }}>
-                  {b.atkName}
-                </div>
-                <div style={{ fontSize:11, color:"#5a4a30" }}>Lv{b.atkLvl} · tap for stats</div>
+            style={{ cursor:"pointer", position:"relative", overflow:"hidden",
+              background:"linear-gradient(135deg,#120e06,#0a0702)" }}>
+            <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+              background:"radial-gradient(ellipse 90% 80% at 30% 70%, rgba(200,160,96,.12) 0%, transparent 70%)" }} />
+            {b.atkBust ? (
+              <img src={b.atkBust} alt={b.atkName}
+                style={{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)",
+                  height:"100%", objectFit:"cover", objectPosition:"top center", opacity:.9 }} />
+            ) : (
+              <div style={{ position:"absolute", inset:0,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:52, opacity:.55 }}>
+                {b.atkIcon || "⚔"}
               </div>
+            )}
+            <div style={{ position:"absolute", bottom:0, left:0, right:0,
+              background:"linear-gradient(to top, rgba(8,5,0,.95) 0%, transparent 100%)",
+              padding:"28px 10px 7px" }}>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700,
+                color:"#c8a060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                {b.atkName}
+              </div>
+              <div style={{ fontSize:9, color:"#5a4a30" }}>Lv{b.atkLvl} · tap for stats</div>
             </div>
-
+            <div style={{ position:"absolute", top:7, left:7,
+              fontSize:7, color:"#4488ffbb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
+              background:"rgba(0,0,0,.5)", padding:"2px 6px", borderRadius:2 }}>YOU</div>
           </div>
 
           {/* VS */}
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
-            fontSize:12, color:"#3a2e18", fontFamily:"'Cinzel',serif", letterSpacing:".1em" }}>
-            VS
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", width:28,
+            background:"rgba(0,0,0,.3)",
+            borderLeft:"1px solid #1a1508", borderRight:"1px solid #1a1508" }}>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#3a2e18",
+              letterSpacing:".1em", writingMode:"vertical-rl", transform:"rotate(180deg)" }}>VS</div>
           </div>
 
-          {/* Defender commander */}
+          {/* Defender */}
           <div onClick={() => setSubPopup(p => p==="defCmd" ? null : "defCmd")}
-            style={{ cursor:"pointer", padding:"10px 12px", borderRadius:6,
-              background:"rgba(150,80,80,.06)", border:"1px solid #2a1e08",
-              transition:"background .15s", textAlign:"right",
-            }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:8 }}>
-              <div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, fontWeight:700, color:"#aa7070",
-                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:120 }}>
-                  {b.defCmdName}
-                </div>
-                <div style={{ fontSize:11, color:"#5a4a30" }}>Lv{b.defLvl} · tap for stats</div>
+            style={{ cursor:"pointer", position:"relative", overflow:"hidden",
+              background:"linear-gradient(225deg,#0e0808,#0a0702)" }}>
+            <div style={{ position:"absolute", inset:0, pointerEvents:"none",
+              background:"radial-gradient(ellipse 90% 80% at 70% 70%, rgba(180,60,60,.12) 0%, transparent 70%)" }} />
+            {b.defBust ? (
+              <img src={b.defBust} alt={b.defCmdName}
+                style={{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%) scaleX(-1)",
+                  height:"100%", objectFit:"cover", objectPosition:"top center", opacity:.9 }} />
+            ) : (
+              <div style={{ position:"absolute", inset:0,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:52, opacity:.55 }}>
+                {b.defCmdIcon || "🛡"}
               </div>
-              <span style={{ fontSize:28 }}>{b.defCmdIcon || "🛡"}</span>
+            )}
+            <div style={{ position:"absolute", bottom:0, left:0, right:0,
+              background:"linear-gradient(to top, rgba(8,3,3,.95) 0%, transparent 100%)",
+              padding:"28px 10px 7px", textAlign:"right" }}>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700,
+                color:"#aa7070", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                {b.defCmdName}
+              </div>
+              <div style={{ fontSize:9, color:"#5a4a30" }}>Lv{b.defLvl} · tap for stats</div>
             </div>
-
+            <div style={{ position:"absolute", top:7, right:7,
+              fontSize:7, color:"#cc4444bb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
+              background:"rgba(0,0,0,.5)", padding:"2px 6px", borderRadius:2 }}>ENEMY</div>
           </div>
         </div>
 
