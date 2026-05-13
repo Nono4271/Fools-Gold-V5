@@ -54,11 +54,11 @@ function CircleNode({ node, unlocked, active, onClick, r = 22 }) {
       {unlocked && <circle cx={0} cy={0} r={r*1.6}  fill={ac} opacity=".09"/>}
       {active   && <circle cx={0} cy={0} r={r*1.38} fill="none" stroke={ac} strokeWidth="1.5" opacity=".55"/>}
       <circle cx={0} cy={0} r={r}
-        fill={unlocked?"#19221a":"#0d0d0d"}
-        stroke={active?ac:unlocked?`${ac}bb`:"#282828"}
+        fill={unlocked?"#14103a":"#08061a"}
+        stroke={active?ac:unlocked?`${ac}cc`:"#14103a"}
         strokeWidth={active?2:1.5}/>
       <circle cx={0} cy={0} r={r*.76} fill="none"
-        stroke={unlocked?`${ac}50`:"#181818"} strokeWidth="1"/>
+        stroke={unlocked?`${ac}40`:"#14103a"} strokeWidth="1"/>
       <text x={0} y={r*.32} textAnchor="middle" style={{
         fontSize:r*.88, fontFamily:"serif", userSelect:"none",
         opacity:unlocked?1:.22,
@@ -75,35 +75,35 @@ const CX = 350, CY = 270;
 
 const NODES = [
   // TL quadrant
-  {id:"tl",     x:185, y:185, r:22, icon:"🥚", label:"Dragon Eggs",    accent:"#e04060", desc:"Begin passively regenerating Dragon Eggs over time.",       prereqs:[]},
-  {id:"tl_t",   x:96, y:120, r:19, icon:"⛏",  label:"Keen Gatherer",  accent:"#9898b0", desc:"+10% resource gathering rate from all tiles.",              prereqs:["tl"]},
-  {id:"tl_b",   x:84, y:215, r:19, icon:"⚔️",  label:"Battle Rite",   accent:"#ee6644", desc:"+3% troop attack for all armies.",                          prereqs:["tl"]},
+  {id:"tl",     x:127, y:164, r:22, icon:"🥚", label:"Dragon Eggs",    accent:"#e04060", desc:"Begin passively regenerating Dragon Eggs over time.",       prereqs:[]},
+  {id:"tl_t",   x:7, y:82, r:19, icon:"⛏",  label:"Keen Gatherer",  accent:"#9898b0", desc:"+10% resource gathering rate from all tiles.",              prereqs:["tl"]},
+  {id:"tl_b",   x:-9, y:201, r:19, icon:"⚔️",  label:"Battle Rite",   accent:"#ee6644", desc:"+3% troop attack for all armies.",                          prereqs:["tl"]},
   {id:"tl_t1",  x:-2, y:68, r:17, icon:"🪨",  label:"Stone Mastery",  accent:"#9898b0", desc:"+15% stone & wood production.",                            prereqs:["tl_t"]},
   {id:"tl_b1",  x:-13, y:182, r:17, icon:"🛡",  label:"Iron Will",     accent:"#cc8844", desc:"+3% troop defence.",                                        prereqs:["tl_b"]},
   {id:"tl_b2",  x:-18, y:272, r:17, icon:"👑",  label:"Warlord's Pact",accent:"#f0c040", desc:"+5% attack & +5% defence.",                                 prereqs:["tl_b"]},
   // TR quadrant
-  {id:"tr",     x:518, y:162, r:22, icon:"⚡",  label:"Swift March",    accent:"#88aaff", desc:"+5% march speed for all commanders.",                       prereqs:[]},
-  {id:"tr_t",   x:607, y:98, r:19, icon:"🗺",  label:"Far Marcher",    accent:"#6688ee", desc:"+2 maximum march range.",                                   prereqs:["tr"]},
-  {id:"tr_b",   x:624, y:188, r:19, icon:"🔍",  label:"Arcane Sight",   accent:"#44ccee", desc:"Reveal enemy troop counts when scouting.",                 prereqs:["tr"]},
-  {id:"tr_b1",  x:710, y:138, r:17, icon:"👁",  label:"All-Seeing",     accent:"#40ddcc", desc:"Fog of war radius +2 tiles.",                              prereqs:["tr_b"]},
-  {id:"tr_b2",  x:728, y:188, r:17, icon:"🔮",  label:"Omniscience",    accent:"#40aaff", desc:"No fog of war — full map awareness.",                      prereqs:["tr_b"]},
-  {id:"tr_b3",  x:716, y:238, r:17, icon:"⚔️",  label:"Twin Legions",   accent:"#5577ff", desc:"Unlock a 3rd simultaneous march.",                         prereqs:["tr_b"]},
-  {id:"tr_b4",  x:695, y:282, r:17, icon:"🌀",  label:"Void Attunement",accent:"#aa55ff", desc:"Void Tap cooldown reduced by 10%.",                        prereqs:["tr_b"]},
+  {id:"tr",     x:577, y:135, r:22, icon:"⚡",  label:"Swift March",    accent:"#88aaff", desc:"+5% march speed for all commanders.",                       prereqs:[]},
+  {id:"tr_t",   x:697, y:55, r:19, icon:"🗺",  label:"Far Marcher",    accent:"#6688ee", desc:"+2 maximum march range.",                                   prereqs:["tr"]},
+  {id:"tr_b",   x:720, y:168, r:19, icon:"🔍",  label:"Arcane Sight",   accent:"#44ccee", desc:"Reveal enemy troop counts when scouting.",                 prereqs:["tr"]},
+  {id:"tr_b1",  x:836, y:105, r:17, icon:"👁",  label:"All-Seeing",     accent:"#40ddcc", desc:"Fog of war radius +2 tiles.",                              prereqs:["tr_b"]},
+  {id:"tr_b2",  x:860, y:168, r:17, icon:"🔮",  label:"Omniscience",    accent:"#40aaff", desc:"No fog of war — full map awareness.",                      prereqs:["tr_b"]},
+  {id:"tr_b3",  x:844, y:230, r:17, icon:"⚔️",  label:"Twin Legions",   accent:"#5577ff", desc:"Unlock a 3rd simultaneous march.",                         prereqs:["tr_b"]},
+  {id:"tr_b4",  x:816, y:285, r:17, icon:"🌀",  label:"Void Attunement",accent:"#aa55ff", desc:"Void Tap cooldown reduced by 10%.",                        prereqs:["tr_b"]},
   // BL quadrant
-  {id:"bl",     x:185, y:355, r:22, icon:"🛡",  label:"Fortify",        accent:"#88cc88", desc:"+500 HQ siege HP.",                                        prereqs:[]},
-  {id:"bl_t",   x:96, y:298, r:19, icon:"🏰",  label:"Ancient Wards",  accent:"#c8b070", desc:"+1,000 HQ siege HP. Walls heal 10% faster.",              prereqs:["bl"]},
-  {id:"bl_b",   x:84, y:412, r:19, icon:"⭐",  label:"Tactician",      accent:"#f0c040", desc:"Commanders gain +5% XP from all battles.",                 prereqs:["bl"]},
+  {id:"bl",     x:127, y:376, r:22, icon:"🛡",  label:"Fortify",        accent:"#88cc88", desc:"+500 HQ siege HP.",                                        prereqs:[]},
+  {id:"bl_t",   x:7, y:305, r:19, icon:"🏰",  label:"Ancient Wards",  accent:"#c8b070", desc:"+1,000 HQ siege HP. Walls heal 10% faster.",              prereqs:["bl"]},
+  {id:"bl_b",   x:-9, y:448, r:19, icon:"⭐",  label:"Tactician",      accent:"#f0c040", desc:"Commanders gain +5% XP from all battles.",                 prereqs:["bl"]},
   {id:"bl_b1",  x:-13, y:372, r:17, icon:"⚡",  label:"Siege Master",   accent:"#88cc44", desc:"+10% siege power for all marching armies.",                prereqs:["bl_b"]},
   {id:"bl_b2",  x:-18, y:458, r:17, icon:"📜",  label:"Elder's Rite",   accent:"#c8a040", desc:"All Wizard's Tomes effects increased by 15%.",             prereqs:["bl_b"]},
   // BR quadrant
-  {id:"br",     x:468, y:378, r:22, icon:"🌀",  label:"Void Mastery",   accent:"#cc44ff", desc:"+5,000 Mystic Orb capacity.",                              prereqs:[]},
-  {id:"br_t",   x:541, y:325, r:19, icon:"✨",  label:"Abundance Rite", accent:"#d4af37", desc:"+10% all resource production.",                            prereqs:["br"]},
-  {id:"br_m",   x:553, y:398, r:19, icon:"🪵",  label:"Forest Lore",    accent:"#a07840", desc:"+15% wood & ore production.",                              prereqs:["br"]},
-  {id:"br_b",   x:536, y:468, r:19, icon:"🥚",  label:"Egg Vault I",    accent:"#e04060", desc:"+5 Dragon Egg capacity.",                                  prereqs:["br"]},
-  {id:"br_t1",  x:627, y:298, r:17, icon:"🌀",  label:"Void Channel",   accent:"#cc44ff", desc:"Void Tap cooldown reduced by additional 10%.",             prereqs:["br_t"]},
-  {id:"br_b1",  x:621, y:472, r:17, icon:"🥚",  label:"Egg Vault II",   accent:"#e04060", desc:"+5 Dragon Egg capacity (total +10).",                      prereqs:["br_b"]},
+  {id:"br",     x:509, y:405, r:22, icon:"🌀",  label:"Void Mastery",   accent:"#cc44ff", desc:"+5,000 Mystic Orb capacity.",                              prereqs:[]},
+  {id:"br_t",   x:608, y:339, r:19, icon:"✨",  label:"Abundance Rite", accent:"#d4af37", desc:"+10% all resource production.",                            prereqs:["br"]},
+  {id:"br_m",   x:624, y:430, r:19, icon:"🪵",  label:"Forest Lore",    accent:"#a07840", desc:"+15% wood & ore production.",                              prereqs:["br"]},
+  {id:"br_b",   x:601, y:518, r:19, icon:"🥚",  label:"Egg Vault I",    accent:"#e04060", desc:"+5 Dragon Egg capacity.",                                  prereqs:["br"]},
+  {id:"br_t1",  x:724, y:305, r:17, icon:"🌀",  label:"Void Channel",   accent:"#cc44ff", desc:"Void Tap cooldown reduced by additional 10%.",             prereqs:["br_t"]},
+  {id:"br_b1",  x:716, y:522, r:17, icon:"🥚",  label:"Egg Vault II",   accent:"#e04060", desc:"+5 Dragon Egg capacity (total +10).",                      prereqs:["br_b"]},
   // Faction — right of Forest
-  {id:"faction",x:659, y:398, r:19, icon:"⚔️",  label:"Faction Mastery",accent:"#f0c040", desc:"Your faction's unique passive ability.",                   prereqs:["br_m"]},
+  {id:"faction",x:767, y:430, r:19, icon:"⚔️",  label:"Faction Mastery",accent:"#f0c040", desc:"Your faction's unique passive ability.",                   prereqs:["br_m"]},
 ];
 const NODE_MAP = Object.fromEntries(NODES.map(n=>[n.id,n]));
 
@@ -140,19 +140,19 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
   if (!open) return null;
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:500,background:"#04020e",
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"#080818",
       display:"flex",flexDirection:"column",fontFamily:"'Cinzel',serif"}}>
 
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
         padding:"10px 16px",flexShrink:0,
-        background:"linear-gradient(180deg,#0c0818,#070510)",
-        borderBottom:"1px solid rgba(200,160,64,.18)"}}>
+        background:"linear-gradient(180deg,#0c0c22,#080816)",
+        borderBottom:"1px solid rgba(140,100,255,.25)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <ScrollStackIcon size={32} glowing/>
           <div>
             <div style={{fontSize:11,fontWeight:700,letterSpacing:".1em",
-              background:"linear-gradient(135deg,#f0c040,#c89030,#f0c040)",
+              background:"linear-gradient(135deg,#d0c0ff,#9966ff,#d0c0ff)",
               backgroundSize:"200% auto",WebkitBackgroundClip:"text",
               WebkitTextFillColor:"transparent",animation:"shimmer 3s linear infinite"}}>
               A WIZARD'S ANCIENT KNOWLEDGE
@@ -162,20 +162,20 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
             </div>
           </div>
         </div>
-        <button onClick={onClose} style={{background:"none",border:"1px solid #2a2010",
-          color:"#6a5a3a",fontSize:16,cursor:"pointer",width:28,height:28,borderRadius:4,
+        <button onClick={onClose} style={{background:"none",border:"1px solid #331166",
+          color:"#9966ff",fontSize:16,cursor:"pointer",width:28,height:28,borderRadius:4,
           display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"sans-serif"}}>✕</button>
       </div>
 
       {/* Tabs */}
-      <div style={{display:"flex",borderBottom:"1px solid rgba(200,160,64,.1)",
-        background:"#06040c",flexShrink:0}}>
+      <div style={{display:"flex",borderBottom:"1px solid rgba(120,80,255,.2)",
+        background:"#0c0c1e",flexShrink:0}}>
         {[{id:"knowledge",label:"📖  KNOWLEDGE"},{id:"lore",label:"🌟  LORE"}].map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} style={{
             flex:1,padding:"8px 0",
             background:tab===t.id?"rgba(200,160,64,.07)":"none",border:"none",
-            borderBottom:tab===t.id?"2px solid #c8a040":"2px solid transparent",
-            color:tab===t.id?"#c8a040":"#2e2010",
+            borderBottom:tab===t.id?"2px solid #9966ff":"2px solid transparent",
+            color:tab===t.id?"#c0a8ff":"#2a1866",
             fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:".1em",cursor:"pointer"}}>
             {t.label}
           </button>
@@ -188,7 +188,7 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
 
           {/* Detail panel */}
           <div style={{flexShrink:0,height:52,padding:"5px 14px",
-            background:"rgba(6,3,16,.98)",borderBottom:"1px solid rgba(40,20,80,.4)",
+            background:"rgba(6,4,20,.98)",borderBottom:"1px solid rgba(120,80,255,.2)",
             display:"flex",alignItems:"center",gap:10}}>
             {selNode ? (
               <>
@@ -198,19 +198,19 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
                   {unlocked.has(selNode.id)?selNode.icon:"🔒"}
                 </div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:10,color:selNode.accent,marginBottom:2}}>{selNode.label}</div>
-                  <div style={{fontSize:8.5,color:"#4a3828",fontFamily:"'Crimson Pro',serif",
+                  <div style={{fontSize:10,color:"#e8e0ff",marginBottom:2}}>{selNode.label}</div>
+                  <div style={{fontSize:8.5,color:"#7060aa",fontFamily:"'Crimson Pro',serif",
                     fontStyle:"italic",lineHeight:1.4}}>{selNode.desc}</div>
                 </div>
                 {unlocked.has(selNode.id) ? (
-                  <div style={{fontSize:8,color:selNode.accent,padding:"3px 8px",flexShrink:0,
-                    border:`1px solid ${selNode.accent}40`,borderRadius:3}}>✓ ACTIVE</div>
+                  <div style={{fontSize:8,color:"#c0a8ff",padding:"3px 8px",flexShrink:0,
+                    border:"1px solid rgba(150,100,255,.4)",borderRadius:3}}>✓ ACTIVE</div>
                 ) : (
                   <button onClick={()=>doUnlock(selNode)} disabled={!canUnlock(selNode)} style={{
                     padding:"5px 11px",flexShrink:0,
-                    background:canUnlock(selNode)?`${selNode.accent}25`:"rgba(255,255,255,.02)",
-                    border:`1px solid ${canUnlock(selNode)?selNode.accent:"#1a1408"}`,
-                    color:canUnlock(selNode)?selNode.accent:"#281e08",
+                    background:canUnlock(selNode)?"rgba(120,60,255,.25)":"rgba(255,255,255,.02)",
+                    border:`1px solid ${canUnlock(selNode)?"#9966ff":"#1a1440"}`,
+                    color:canUnlock(selNode)?"#e8e0ff":"#2a1866",
                     fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:".07em",
                     borderRadius:3,cursor:canUnlock(selNode)?"pointer":"not-allowed"}}>
                     {canUnlock(selNode)?"✦ UNLOCK":"LOCKED"}
@@ -227,22 +227,22 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
           {/* SVG tree */}
           <div style={{flex:1,overflow:"auto",WebkitOverflowScrolling:"touch",
             display:"flex",alignItems:"stretch"}}>
-            <svg viewBox="-15 45 760 460"
+            <svg viewBox="-18 35 963 567"
               style={{width:"100%",height:"100%",display:"block"}}
               preserveAspectRatio="xMidYMid meet">
               <defs>
                 <radialGradient id="wtbg" cx="50%" cy="50%" r="58%">
-                  <stop offset="0%" stopColor="#0c0620"/>
-                  <stop offset="100%" stopColor="#03020a"/>
+                  <stop offset="0%" stopColor="#0c0c22"/>
+                  <stop offset="100%" stopColor="#06060e"/>
                 </radialGradient>
               </defs>
               <rect x="30" y="40" width="700" height="470" fill="url(#wtbg)"/>
 
               {/* Ring guides */}
               <ellipse cx={CX} cy={CY} rx={175} ry={155}
-                fill="none" stroke="rgba(80,160,255,.05)" strokeWidth="1"/>
+                fill="none" stroke="rgba(140,100,255,.1)" strokeWidth="1"/>
               <ellipse cx={CX} cy={CY} rx={320} ry={265}
-                fill="none" stroke="rgba(80,160,255,.03)" strokeWidth="1"/>
+                fill="none" stroke="rgba(140,100,255,.06)" strokeWidth="1"/>
 
               {/* Connection lines */}
               {LINES.map(([aid,bid])=>{
@@ -253,23 +253,23 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
                 return (
                   <line key={`${aid}-${bid}`}
                     x1={A.x} y1={A.y} x2={B.x} y2={B.y}
-                    stroke={lit?"#8ab8ff88":part?"#2e2c40":"#1a1820"}
+                    stroke={lit?"#8866ff66":part?"#1a1440":"#0e0c20"}
                     strokeWidth={lit?1.5:1}
                     strokeDasharray={part?"4 3":"none"}/>
                 );
               })}
 
               {/* Centre level orb */}
-              <circle cx={CX} cy={CY} r={38} fill="#06031a" stroke="rgba(80,160,255,.2)" strokeWidth="1.5"/>
-              <circle cx={CX} cy={CY} r={32} fill="none"    stroke="rgba(80,160,255,.1)" strokeWidth="1"/>
-              <circle cx={CX} cy={CY} r={24} fill="#10083a"/>
-              <circle cx={CX} cy={CY} r={16} fill="#1e1060" opacity=".7"/>
+              <circle cx={CX} cy={CY} r={38} fill="#080820" stroke="rgba(140,100,255,.5)" strokeWidth="1.5"/>
+              <circle cx={CX} cy={CY} r={32} fill="none"    stroke="rgba(140,100,255,.15)" strokeWidth="1"/>
+              <circle cx={CX} cy={CY} r={24} fill="#14103a"/>
+              <circle cx={CX} cy={CY} r={16} fill="#1e1850" opacity=".7"/>
               <text x={CX} y={CY-8} textAnchor="middle"
-                style={{fontSize:6.5,fontFamily:"'Cinzel',serif",fill:"#5a5070",letterSpacing:".1em"}}>TOMES</text>
+                style={{fontSize:6.5,fontFamily:"'Cinzel',serif",fill:"#b0a0ee",letterSpacing:".1em"}}>TOMES</text>
               <text x={CX} y={CY+3} textAnchor="middle"
-                style={{fontSize:6,fontFamily:"'Cinzel',serif",fill:"#6a6080",letterSpacing:".06em"}}>LEVEL</text>
+                style={{fontSize:6,fontFamily:"'Cinzel',serif",fill:"#9080cc",letterSpacing:".06em"}}>LEVEL</text>
               <text x={CX} y={CY+22} textAnchor="middle"
-                style={{fontSize:20,fontFamily:"'Cinzel Decorative',serif",fill:"#8899cc",fontWeight:700}}>
+                style={{fontSize:20,fontFamily:"'Cinzel Decorative',serif",fill:"#d0c0ff",fontWeight:700}}>
                 {tomesLevel}
               </text>
 
@@ -282,7 +282,7 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
                       active={selected===n.id} onClick={()=>setSelected(n.id)} r={n.r}/>
                     <text x={0} y={n.r+12} textAnchor="middle" style={{
                       fontSize:6, fontFamily:"'Cinzel',serif",
-                      fill:selected===n.id?n.accent:unlocked.has(n.id)?`${n.accent}cc`:"#222018",
+                      fill:selected===n.id?"#ffffff":unlocked.has(n.id)?`${n.accent}ee`:"#2a2050",
                       letterSpacing:".03em"}}>
                       {n.label.length>13?n.label.slice(0,12)+"…":n.label}
                     </text>
@@ -297,13 +297,13 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
       {/* LORE TAB */}
       {tab==="lore" && (
         <div style={{flex:1,overflowY:"auto",padding:"18px 16px",
-          background:"linear-gradient(180deg,#06040c,#03020a)"}}>
+          background:"linear-gradient(180deg,#0c0c20,#060610)"}}>
           <div style={{textAlign:"center",marginBottom:20}}>
             <div style={{fontSize:32,marginBottom:8}}>{facDef?.s??"⚑"}</div>
-            <div style={{fontSize:13,color:"#c8a040",letterSpacing:".12em",marginBottom:5}}>
+            <div style={{fontSize:13,color:"#e8e0ff",letterSpacing:".12em",marginBottom:5}}>
               {facDef?.n?.toUpperCase()??"YOUR FACTION"}
             </div>
-            <div style={{fontSize:10,color:"#4a3828",fontFamily:"'Crimson Pro',serif",
+            <div style={{fontSize:10,color:"#6655aa",fontFamily:"'Crimson Pro',serif",
               fontStyle:"italic",lineHeight:1.6}}>
               {facDef?.desc??"The origins of this faction are shrouded in legend."}
             </div>
@@ -311,26 +311,26 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
 
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
             padding:"8px 12px",marginBottom:14,
-            background:"rgba(200,160,64,.05)",border:"1px solid rgba(200,160,64,.15)",borderRadius:5}}>
+            background:"rgba(100,60,255,.08)",border:"1px solid rgba(120,80,255,.25)",borderRadius:5}}>
             <div style={{fontSize:8,color:"#4a3a20",letterSpacing:".1em"}}>TOMES LEVEL</div>
-            <div style={{fontSize:20,color:"#c8a040",
+            <div style={{fontSize:20,color:"#d0c0ff",
               fontFamily:"'Cinzel Decorative',serif"}}>{tomesLevel}</div>
           </div>
 
           <div style={{marginBottom:18}}>
             <div style={{display:"flex",justifyContent:"space-between",
-              fontSize:7.5,color:"#3a2a18",marginBottom:4}}>
+              fontSize:7.5,color:"#5540aa",marginBottom:4}}>
               <span>MASTERY PROGRESS</span>
-              <span style={{color:"#c8a040"}}>{unlocked.size} / {NODES.length}</span>
+              <span style={{color:"#c0a8ff"}}>{unlocked.size} / {NODES.length}</span>
             </div>
             <div style={{height:4,background:"rgba(255,255,255,.04)",borderRadius:2,overflow:"hidden"}}>
               <div style={{height:"100%",borderRadius:2,
                 width:`${(unlocked.size/NODES.length)*100}%`,
-                background:"linear-gradient(90deg,#6a4010,#f0c040)",transition:"width .4s ease"}}/>
+                background:"linear-gradient(90deg,#330088,#9966ff)",transition:"width .4s ease"}}/>
             </div>
           </div>
 
-          <div style={{fontSize:7.5,color:"#3a2a18",letterSpacing:".12em",marginBottom:8}}>ACTIVE TOMES</div>
+          <div style={{fontSize:7.5,color:"#5540aa",letterSpacing:".12em",marginBottom:8}}>ACTIVE TOMES</div>
           {unlocked.size===0 ? (
             <div style={{fontSize:9,color:"#1e1408",fontFamily:"'Crimson Pro',serif",fontStyle:"italic"}}>
               No tomes unlocked yet. Study the Knowledge tree.
