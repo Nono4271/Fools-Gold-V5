@@ -176,7 +176,7 @@ export default memo(function HUD({
         position: "absolute", inset: 0,
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingLeft: "20%", paddingRight: "17%",
-        display: "flex", alignItems: "center",
+        display: "flex", alignItems: "center", justifyContent: "flex-start",
         pointerEvents: "auto",
       }}>
 
@@ -186,12 +186,12 @@ export default memo(function HUD({
             Right col: eggs pill (row1) + tile count centred beneath (row2),
                        then orbs, gems, settings (no sub-label)
         ══════════════════════════════════════════════════════════════════════ */}
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+        <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
 
-          {/* ── LEFT COL: RSS + power/hr ── */}
+          {/* ── LEFT COL: RSS pills + power/hr right-aligned under gas ── */}
           <div style={{ display:"flex", flexDirection:"column", gap:2, flex:"0 0 auto" }}>
             {/* RSS pills row */}
-            <div style={{ display:"flex", alignItems:"center", gap:3 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
               {RKEYS.map(k => (
                 <div key={k} style={{
                   display:"flex", alignItems:"center", gap:2, padding:"2px 5px",
@@ -211,8 +211,8 @@ export default memo(function HUD({
                 </div>
               ))}
             </div>
-            {/* Power/hr centred under RSS block */}
-            <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:2 }}>
+            {/* Power/hr — right-aligned so it sits under the gas pill (last RSS) */}
+            <div style={{ display:"flex", justifyContent:"flex-end", alignItems:"center", gap:2 }}>
               <span style={{ fontSize:8 }}>💍</span>
               <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#d4af37", whiteSpace:"nowrap" }}>
                 +{ringPowerPerHr.toLocaleString()}/hr
@@ -220,8 +220,8 @@ export default memo(function HUD({
             </div>
           </div>
 
-          {/* ── MID COL: faction medallion ── */}
-          <div style={{ flexShrink:0, margin:"0 4px" }}>
+          {/* ── MID COL: faction medallion, padded top to vertically centre in bar ── */}
+          <div style={{ flexShrink:0, margin:"0 6px", paddingTop:2 }}>
             <div style={{
               width:34, height:34, borderRadius:"50%",
               background:"radial-gradient(circle at 35% 30%, #2a2215, #0e0c09)",
@@ -235,8 +235,8 @@ export default memo(function HUD({
             </div>
           </div>
 
-          {/* ── RIGHT COL: eggs (+ tile count below) | orbs | gems | settings ── */}
-          <div style={{ display:"flex", alignItems:"center", gap:3, flex:"0 0 auto" }}>
+          {/* ── RIGHT COL: all items top-aligned so orbs/gems/settings don't drop ── */}
+          <div style={{ display:"flex", alignItems:"flex-start", gap:5, flex:"0 0 auto" }}>
 
             {/* Dragon Eggs + tile count beneath */}
             <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
@@ -265,7 +265,7 @@ export default memo(function HUD({
               </div>
             </div>
 
-            {/* Mystic Orbs */}
+            {/* Mystic Orbs — top-aligned, no sub-row so it sits flush with egg pill top */}
             <div style={{
               display:"flex", alignItems:"center", gap:3, padding:"2px 6px",
               background:"rgba(60,10,100,.22)", border:"1px solid rgba(120,40,180,.28)",
