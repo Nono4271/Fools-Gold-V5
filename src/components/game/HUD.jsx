@@ -1,5 +1,6 @@
 import { memo, useMemo } from "react";
 import { RKEYS, RSS, POWER_DEFS } from "../../../shared/constants/map.js";
+import { PLAYABLE_FACTIONS } from "../../../shared/constants/factions.js";
 
 /*
   HUD — landscape top bar
@@ -109,15 +110,16 @@ function fmtNum(n) {
 
 /* ── HUD ─────────────────────────────────────────────────────────────────── */
 export default memo(function HUD({
-  facName, pKeys, rss, gems, tiles,
-  // Dragon Eggs
+  facName, facKey, pKeys, rss, gems, tiles,
   dragonEggs    = 20,
   dragonEggsCap = 20,
-  // Mystic Orbs
   mysticOrbs    = 1000,
   mysticOrbsCap = 10000,
-  mysticOrbRegen = 0, // per-hr, from building — 0 until connected
+  mysticOrbRegen = 0,
 }) {
+  const facEmoji = useMemo(() => {
+    return PLAYABLE_FACTIONS.find(f => f.key === facKey)?.s ?? "⚑";
+  }, [facKey]);
 
   const ringPowerPerHr = useMemo(() => {
     if (!tiles) return 0;
@@ -173,38 +175,53 @@ export default memo(function HUD({
       <div style={{
         position: "absolute", inset: 0,
         paddingTop: "env(safe-area-inset-top, 0px)",
-        paddingLeft: "18.5%", paddingRight: "17%",
-        display: "flex", flexDirection: "column", justifyContent: "center",
-        gap: 3, pointerEvents: "auto",
+        paddingLeft: "20%", paddingRight: "17%",
+        display: "flex", alignItems: "center",
+        pointerEvents: "auto",
       }}>
 
-        {/* ══ ROW 1 ══════════════════════════════════════════════════════════ */}
-        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+        {/* ══ THREE COLUMN LAYOUT — each column stacks its row1 + row2 ════════
+            Left  col: RSS pills (row1) + power/hr centred beneath (row2)
+            Mid   col: faction medallion only
+            Right col: eggs pill (row1) + tile count centred beneath (row2),
+                       then orbs, gems, settings (no sub-label)
+        ══════════════════════════════════════════════════════════════════════ */}
+        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
 
-          {/* RSS pills */}
-          <div style={{ display:"flex", alignItems:"center", gap:3, flex:"0 0 auto" }}>
-            {RKEYS.map(k => (
-              <div key={k} style={{
-                display:"flex", alignItems:"center", gap:2, padding:"2px 5px",
-                background:RSS[k].bg, border:`1px solid ${RSS[k].col}30`, borderRadius:3,
-                boxShadow:"inset 0 1px 0 rgba(255,255,255,.04), 0 1px 3px rgba(0,0,0,.6)",
-                whiteSpace:"nowrap",
-              }}>
-                <span style={{ fontSize:10 }}>{RSS[k].icon}</span>
-                <div style={{ display:"flex", flexDirection:"column" }}>
-                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:RSS[k].col, lineHeight:1.15 }}>
-                    {Math.floor(rss[k]).toLocaleString()}
-                  </span>
-                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:`${RSS[k].col}80`, lineHeight:1.15 }}>
-                    +{rssRate[k]}/h
-                  </span>
+          {/* ── LEFT COL: RSS + power/hr ── */}
+          <div style={{ display:"flex", flexDirection:"column", gap:2, flex:"0 0 auto" }}>
+            {/* RSS pills row */}
+            <div style={{ display:"flex", alignItems:"center", gap:3 }}>
+              {RKEYS.map(k => (
+                <div key={k} style={{
+                  display:"flex", alignItems:"center", gap:2, padding:"2px 5px",
+                  background:RSS[k].bg, border:`1px solid ${RSS[k].col}30`, borderRadius:3,
+                  boxShadow:"inset 0 1px 0 rgba(255,255,255,.04), 0 1px 3px rgba(0,0,0,.6)",
+                  whiteSpace:"nowrap",
+                }}>
+                  <span style={{ fontSize:10 }}>{RSS[k].icon}</span>
+                  <div style={{ display:"flex", flexDirection:"column" }}>
+                    <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:RSS[k].col, lineHeight:1.15 }}>
+                      {Math.floor(rss[k]).toLocaleString()}
+                    </span>
+                    <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:`${RSS[k].col}80`, lineHeight:1.15 }}>
+                      +{rssRate[k]}/h
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            {/* Power/hr centred under RSS block */}
+            <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:2 }}>
+              <span style={{ fontSize:8 }}>💍</span>
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#d4af37", whiteSpace:"nowrap" }}>
+                +{ringPowerPerHr.toLocaleString()}/hr
+              </span>
+            </div>
           </div>
 
-          {/* Faction medallion */}
-          <div style={{ margin:"0 6px", flexShrink:0 }}>
+          {/* ── MID COL: faction medallion ── */}
+          <div style={{ flexShrink:0, margin:"0 4px" }}>
             <div style={{
               width:34, height:34, borderRadius:"50%",
               background:"radial-gradient(circle at 35% 30%, #2a2215, #0e0c09)",
@@ -214,34 +231,36 @@ export default memo(function HUD({
               position:"relative",
             }}>
               <div style={{ position:"absolute", inset:-2, borderRadius:"50%", border:"1px solid rgba(200,160,64,.15)" }}/>
-              <span style={{
-                fontFamily:"'Cinzel Decorative',serif", fontSize:10,
-                background:"linear-gradient(135deg,#f0c040,#c89030,#f0c040)",
-                backgroundSize:"200% auto",
-                WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
-                animation:"shimmer 3s linear infinite",
-                userSelect:"none",
-              }}>FG</span>
+              <span style={{ fontSize:18, lineHeight:1, userSelect:"none" }}>{facEmoji}</span>
             </div>
           </div>
 
-          {/* Currencies */}
+          {/* ── RIGHT COL: eggs (+ tile count below) | orbs | gems | settings ── */}
           <div style={{ display:"flex", alignItems:"center", gap:3, flex:"0 0 auto" }}>
 
-            {/* Dragon Eggs */}
-            <div style={{
-              display:"flex", alignItems:"center", gap:3, padding:"2px 6px",
-              background:"rgba(140,15,35,.20)", border:"1px solid rgba(200,30,55,.28)",
-              borderRadius:3, boxShadow:"inset 0 1px 0 rgba(255,255,255,.05), 0 1px 3px rgba(0,0,0,.6)",
-              whiteSpace:"nowrap",
-            }}>
-              <EggIcon size={15}/>
-              <div style={{ display:"flex", flexDirection:"column" }}>
-                <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#e04060", lineHeight:1.15 }}>
-                  {dragonEggs}/{dragonEggsCap}
-                </span>
-                <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#e0406088", lineHeight:1.15 }}>
-                  +{eggRegen}/hr
+            {/* Dragon Eggs + tile count beneath */}
+            <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+              <div style={{
+                display:"flex", alignItems:"center", gap:3, padding:"2px 6px",
+                background:"rgba(140,15,35,.20)", border:"1px solid rgba(200,30,55,.28)",
+                borderRadius:3, boxShadow:"inset 0 1px 0 rgba(255,255,255,.05), 0 1px 3px rgba(0,0,0,.6)",
+                whiteSpace:"nowrap",
+              }}>
+                <EggIcon size={15}/>
+                <div style={{ display:"flex", flexDirection:"column" }}>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#e04060", lineHeight:1.15 }}>
+                    {dragonEggs}/{dragonEggsCap}
+                  </span>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#e0406088", lineHeight:1.15 }}>
+                    +{eggRegen}/hr
+                  </span>
+                </div>
+              </div>
+              {/* Tile count centred under eggs pill */}
+              <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:2 }}>
+                <span style={{ fontSize:8 }}>⬛</span>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#6a9060", whiteSpace:"nowrap" }}>
+                  {tileCount}/31
                 </span>
               </div>
             </div>
@@ -293,46 +312,6 @@ export default memo(function HUD({
               </svg>
             </button>
           </div>
-        </div>
-
-        {/* ══ ROW 2 — power/hr left of FG, tile count right of FG ══════════ */}
-        <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-
-          {/* Ghost spacer — same width as RSS block */}
-          <div style={{ display:"flex", gap:3, flex:"0 0 auto", visibility:"hidden", pointerEvents:"none" }}>
-            {RKEYS.map(k => (
-              <div key={k} style={{ display:"flex", alignItems:"center", gap:2, padding:"2px 5px", whiteSpace:"nowrap" }}>
-                <span style={{ fontSize:10 }}>{RSS[k].icon}</span>
-                <div style={{ display:"flex", flexDirection:"column" }}>
-                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, lineHeight:1.15 }}>
-                    {Math.floor(rss[k]).toLocaleString()}
-                  </span>
-                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, lineHeight:1.15 }}>
-                    +{rssRate[k]}/h
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Power/hr — just left of FG */}
-          <div style={{ margin:"0 6px", display:"flex", justifyContent:"flex-end", flexShrink:0 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:2 }}>
-              <span style={{ fontSize:8 }}>💍</span>
-              <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#d4af37", whiteSpace:"nowrap" }}>
-                +{ringPowerPerHr.toLocaleString()}/hr
-              </span>
-            </div>
-          </div>
-
-          {/* Tile count — just right of FG */}
-          <div style={{ display:"flex", alignItems:"center", gap:2, flex:"0 0 auto" }}>
-            <span style={{ fontSize:8 }}>⬛</span>
-            <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#6a9060", whiteSpace:"nowrap" }}>
-              {tileCount}/31
-            </span>
-          </div>
-
         </div>
       </div>
     </div>
