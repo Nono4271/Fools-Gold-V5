@@ -356,8 +356,7 @@ const BRANCH_LVL_BONUS = [
   };
   const RSS_COL = { stone:["🪨","#aaaaaa"], wood:["🪵","#c8903a"], ore:["⚙️","#88aaff"], gas:["⛽","#5dcc80"] };
   return (
-  <div onClick={onClose}
-  style={{ position:"fixed", inset:0, zIndex:200,
+  <div style={{ position:"absolute", inset:0, zIndex:10,
   background:"linear-gradient(135deg,#08060e 0%,#0c0a12 50%,#06080e 100%)",
   display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
@@ -365,10 +364,10 @@ const BRANCH_LVL_BONUS = [
   <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px",
   background:"rgba(0,0,0,.5)", borderBottom:`1px solid ${fColor}33`, flexShrink:0 }}>
   <button onClick={onClose}
-  style={{ width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,.06)",
-  border:`1px solid ${fColor}40`, color:"#8a7a60", fontSize:18, cursor:"pointer",
-  display:"flex", alignItems:"center", justifyContent:"center",
-  WebkitTapHighlightColor:"transparent" }}>←</button>
+  style={{ padding:"4px 12px", borderRadius:4, background:"rgba(255,255,255,.06)",
+  border:`1px solid ${fColor}40`, color:"#8a7a60", fontSize:9,
+  fontFamily:P.ff, letterSpacing:".05em",
+  cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>{"<- Back to Quarters"}</button>
   <div style={{ fontFamily:P.ff, fontWeight:700, fontSize:13, color:P.text }}>
   {tier.label}
   </div>
@@ -560,7 +559,7 @@ const BRANCH_LVL_BONUS = [
   const roman = ["I","II","III"];
 
   return (
-  <div style={{ overflowY:"auto", height:"100%", padding:"14px 16px" }}>
+  <div style={{ position:"relative", overflowY:"auto", height:"100%", padding:"14px 16px" }}>
 
   {/* Quarter header */}
   <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16,
