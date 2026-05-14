@@ -511,7 +511,7 @@ function randomSpawn(regionKey, usedKeys, flagArr, terrainArr) {
   for (let attempt=0;attempt<200;attempt++) {
     const c=reg.cx+Math.floor((Math.random()-0.5)*70);
     const r=reg.cy+Math.floor((Math.random()-0.5)*70);
-    if (c<1||c>=COLS-1||r<1||r>=ROWS-1) continue;
+    if (c<1||c>=COLS-2||r<1||r>=ROWS-2) continue; // 3x3 HQ needs 2-tile margin
     const k=`${c},${r}`;
     if (KEEP_FOOTPRINT_SET.has(k)||usedKeys.has(k)) continue;
     // Also skip any dynamically placed P10-13 structure or its parts
@@ -520,14 +520,19 @@ function randomSpawn(regionKey, usedKeys, flagArr, terrainArr) {
     // Don't spawn HQ on a road tile
     const t0 = terrainArr[r*COLS+c];
     if (t0 === TERRAIN_ENC.road || t0 === TERRAIN_ENC.hellfire) continue;
-    // Ensure 2x2 HQ footprint cells are also clear and road-free
+    // Ensure 3x3 HQ footprint cells are all clear and road-free
     let footClear = true;
-    for (const [dc,dr] of [[1,0],[0,1],[1,1]]) {
-      const ti = (r+dr)*COLS+(c+dc);
-      const fl2 = flagArr[ti];
-      if (fl2 & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { footClear=false; break; }
-      const t1 = terrainArr[ti];
-      if (t1 === TERRAIN_ENC.road || t1 === TERRAIN_ENC.hellfire) { footClear=false; break; }
+    for (let dr = 0; dr < 3; dr++) {
+      for (let dc = 0; dc < 3; dc++) {
+        if (dc === 0 && dr === 0) continue; // top-left (already checked above)
+        const ti = (r+dr)*COLS+(c+dc);
+        if (ti < 0 || ti >= flagArr.length) { footClear=false; break; }
+        const fl2 = flagArr[ti];
+        if (fl2 & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { footClear=false; break; }
+        const t1 = terrainArr[ti];
+        if (t1 === TERRAIN_ENC.road || t1 === TERRAIN_ENC.hellfire) { footClear=false; break; }
+      }
+      if (!footClear) break;
     }
     if (!footClear) continue;
     return k;
