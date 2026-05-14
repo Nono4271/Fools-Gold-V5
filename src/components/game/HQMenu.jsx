@@ -1274,7 +1274,7 @@ borderRadius:3, transition:"width .3s" }}/>
                 <span style={{ fontWeight:700 }}>{sv.toLocaleString()}</span>
               </div>
               <input type="range" min={0} max={Math.max(1,sliderMax)} value={sv}
-                onChange={e => setPanelSlider(+e.target.value)}
+                onChange={e => setPanelSlider(+e.target.value)} onInput={e => setPanelSlider(+e.target.value)}
                 style={{ width:"100%", accentColor:isTrain?"#3daa60":"#cc3030", marginBottom:6 }}/>
               {isTrain && trainCost && (
                 <div style={{ fontSize:7, marginBottom:6, display:"flex", gap:5, flexWrap:"wrap" }}>
@@ -1510,7 +1510,7 @@ function SlotEditor({ cmd, slotIdx, setTroopSlot, troopCounts, bldgs, commandCap
             </span>
           </div>
           <input type="range" min={0} max={Math.max(1, maxSlider)} value={svClamped}
-            onChange={e => setSv(+e.target.value)}
+            onChange={e => setSv(+e.target.value)} onInput={e => setSv(+e.target.value)}
             style={{ width:"100%", accentColor:activeColor, marginBottom:6 }}/>
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:6,
             color:"#4a4a5a", marginBottom:6 }}>
@@ -1840,7 +1840,7 @@ HEAL RATE
       </div>
       {wounded > 0 && tentLvl > 0 && (<>
         <input type="range" min={0} max={Math.max(1,maxHeal)} value={sv}
-          onChange={e => setHealAmt(+e.target.value)}
+          onChange={e => setHealAmt(+e.target.value)} onInput={e => setHealAmt(+e.target.value)}
           style={{ width:"100%", accentColor:"#88aaff", marginBottom:8 }}/>
         <button className="btn" onClick={() => setHealAmt(maxHeal)}
           style={{ width:"100%", marginBottom:5, padding:"6px",
@@ -1965,7 +1965,7 @@ return (
             <span style={{ color:P.gold, fontWeight:700 }}>{safeAmount.toLocaleString()} {RSS[fromKey] ? RSS[fromKey].icon : ""}</span>
           </div>
           <input type="range" min={0} max={Math.max(1, maxTrade)} value={safeAmount}
-            onChange={e => setAmount(+e.target.value)}
+            onChange={e => setAmount(+e.target.value)} onInput={e => setAmount(+e.target.value)}
             style={{ width:"100%", accentColor:RSS[fromKey] ? RSS[fromKey].col : P.gold, marginBottom:3 }}/>
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:6, color:"#4a4a5a" }}>
             <span>0</span>

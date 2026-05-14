@@ -279,8 +279,81 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
           </div>
 
           {/* SVG tree */}
-          <div style={{flex:1,overflow:"hidden",
-            display:"flex",alignItems:"stretch"}}>
+          <div style={{flex:1,overflow:"hidden",position:"relative",
+            display:"flex",flexDirection:"column",alignItems:"stretch"}}>
+
+            {/* ── Power strip: HTML overlay so text is readable on all screen sizes ── */}
+            <div style={{flexShrink:0,padding:"6px 16px",
+              background:"rgba(8,6,24,.95)",borderBottom:"1px solid rgba(120,80,255,.2)",
+              display:"flex",alignItems:"center",gap:12}}>
+
+              {/* Left: pool / cost + progress bar */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",justifyContent:"space-between",
+                  alignItems:"baseline",marginBottom:4}}>
+                  <span style={{fontSize:9,fontFamily:"'Cinzel',serif",
+                    color:"#7755aa",letterSpacing:".1em"}}>POWER</span>
+                  <span style={{fontSize:9,fontFamily:"'Cinzel',serif",
+                    color:powerPerHr>0?"#8866cc":"#3a2a50"}}>
+                    {powerPerHr>0?`+${powerPerHr.toLocaleString()}/hr`:"no power"}
+                  </span>
+                </div>
+                {/* Progress bar */}
+                <div style={{height:6,borderRadius:3,background:"rgba(100,60,255,.15)",
+                  border:"1px solid rgba(120,80,255,.2)",overflow:"hidden",marginBottom:4}}>
+                  <div style={{height:"100%",borderRadius:3,
+                    background:canLevelUp
+                      ?"linear-gradient(90deg,#7733ff,#aa55ff)"
+                      :"rgba(120,80,255,.45)",
+                    width:`${progressPct}%`,transition:"width .4s ease"}}/>
+                </div>
+                {/* Pool / cost numbers */}
+                <div style={{fontSize:10,fontFamily:"'Cinzel',serif",
+                  color:canLevelUp?"#c0a8ff":"#6655aa",letterSpacing:".02em"}}>
+                  {atMaxLevel
+                    ? <span style={{color:"#d0c0ff"}}>✦ MAX LEVEL</span>
+                    : <>{poolDisplay.toLocaleString()} <span style={{color:"#3a2a60"}}>/</span> {costToNext.toLocaleString()}</>
+                  }
+                </div>
+                {!atMaxLevel && !canLevelUp && (
+                  <div style={{fontSize:8,color:"#3a2a50",fontFamily:"'Cinzel',serif",marginTop:2}}>
+                    {Math.max(0,costToNext-poolDisplay).toLocaleString()} more needed
+                  </div>
+                )}
+              </div>
+
+              {/* Right: level display + upgrade button */}
+              <div style={{flexShrink:0,textAlign:"center"}}>
+                <div style={{fontSize:8,color:"#5540aa",fontFamily:"'Cinzel',serif",
+                  letterSpacing:".1em",marginBottom:2}}>TOMES LV</div>
+                <div style={{fontSize:22,fontFamily:"'Cinzel Decorative',serif",
+                  color:"#d0c0ff",fontWeight:700,lineHeight:1,marginBottom:4}}>
+                  {tomesLevel}
+                </div>
+                {canLevelUp && (
+                  <button onClick={doLevelUp} style={{
+                    padding:"5px 12px",borderRadius:4,cursor:"pointer",
+                    background:"linear-gradient(135deg,rgba(120,60,255,.5),rgba(80,30,200,.3))",
+                    border:"1px solid #aa77ff",
+                    color:"#e8d8ff",fontFamily:"'Cinzel',serif",
+                    fontSize:9,fontWeight:700,letterSpacing:".05em",
+                    whiteSpace:"nowrap"}}>
+                    {levelsBuyable>1
+                      ? `▲ → LV ${tomesLevel+levelsBuyable} (+${levelsBuyable} pts)`
+                      : "▲ LEVEL UP"}
+                  </button>
+                )}
+                {tomesUnspentPoints>0 && (
+                  <div style={{fontSize:9,color:"#ff8844",marginTop:3,
+                    fontFamily:"'Cinzel',serif",fontWeight:700}}>
+                    {tomesUnspentPoints} pt{tomesUnspentPoints!==1?"s":""} to spend
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* SVG canvas */}
+            <div style={{flex:1,overflow:"hidden",display:"flex",alignItems:"stretch"}}>
             <svg viewBox="45 45 975 645"
               style={{width:"100%",height:"100%",display:"block"}}
               preserveAspectRatio="xMidYMid meet">
@@ -308,70 +381,19 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
                 );
               })}
 
-              {/* Centre level orb */}
+              {/* Centre level orb — now just the orb, no power text below */}
               <circle cx={CX} cy={CY} r={38} fill="#080820" stroke="rgba(140,100,255,.5)" strokeWidth="1.5"/>
               <circle cx={CX} cy={CY} r={32} fill="none"    stroke="rgba(140,100,255,.15)" strokeWidth="1"/>
               <circle cx={CX} cy={CY} r={24} fill="#14103a"/>
               <circle cx={CX} cy={CY} r={16} fill="#1e1850" opacity=".7"/>
-              <text x={CX} y={CY-8} textAnchor="middle"
-                style={{fontSize:6.5,fontFamily:"'Cinzel',serif",fill:"#b0a0ee",letterSpacing:".1em"}}>TOMES</text>
-              <text x={CX} y={CY+3} textAnchor="middle"
+              <text x={CX} y={CY-6} textAnchor="middle"
+                style={{fontSize:7,fontFamily:"'Cinzel',serif",fill:"#b0a0ee",letterSpacing:".1em"}}>TOMES</text>
+              <text x={CX} y={CY+5} textAnchor="middle"
                 style={{fontSize:6,fontFamily:"'Cinzel',serif",fill:"#9080cc",letterSpacing:".06em"}}>LEVEL</text>
-              <text x={CX} y={CY+22} textAnchor="middle"
-                style={{fontSize:20,fontFamily:"'Cinzel Decorative',serif",fill:"#d0c0ff",fontWeight:700}}>
+              <text x={CX} y={CY+24} textAnchor="middle"
+                style={{fontSize:22,fontFamily:"'Cinzel Decorative',serif",fill:"#d0c0ff",fontWeight:700}}>
                 {tomesLevel}
               </text>
-
-              {/* Power counter + level-up button below orb */}
-              {!atMaxLevel && (
-                <g>
-                  {/* "POWER" label */}
-                  <text x={CX} y={CY+40} textAnchor="middle"
-                    style={{fontSize:5.5,fontFamily:"'Cinzel',serif",fill:"#5a4a80",letterSpacing:".12em"}}>
-                    POWER
-                  </text>
-                  {/* Progress bar background */}
-                  <rect x={CX-58} y={CY+43} width={116} height={5} rx={2.5}
-                    fill="rgba(100,60,255,.15)" stroke="rgba(120,80,255,.2)" strokeWidth="0.5"/>
-                  {/* Progress bar fill */}
-                  <rect x={CX-58} y={CY+43} width={Math.min(116, 116 * progressPct / 100)} height={5} rx={2.5}
-                    fill={canLevelUp ? "#9966ff" : "rgba(120,80,255,.5)"}/>
-                  {/* Pool / cost text — full numbers */}
-                  <text x={CX} y={CY+57} textAnchor="middle"
-                    style={{fontSize:6.5,fontFamily:"'Cinzel',serif",fill: canLevelUp ? "#c0a8ff" : "#6655aa",letterSpacing:".03em"}}>
-                    {poolDisplay.toLocaleString()} / {costToNext.toLocaleString()}
-                  </text>
-                  {/* /hr label */}
-                  <text x={CX} y={CY+67} textAnchor="middle"
-                    style={{fontSize:5.5,fontFamily:"'Cinzel',serif",fill: powerPerHr > 0 ? "#7755aa" : "#3a2a50",letterSpacing:".06em"}}>
-                    {powerPerHr > 0 ? `+${powerPerHr.toLocaleString()}/hr` : "no power — capture tiles"}
-                  </text>
-                  {canLevelUp && (
-                    <g onClick={doLevelUp} style={{cursor:"pointer"}}>
-                      <rect x={CX-44} y={CY+72} width={88} height={18} rx={4}
-                        fill="rgba(120,60,255,.4)" stroke="#aa77ff" strokeWidth="1.2"/>
-                      <rect x={CX-44} y={CY+72} width={88} height={18} rx={4}
-                        fill="none" stroke="#cc99ff" strokeWidth="0.5" opacity="0.4"/>
-                      <text x={CX} y={CY+84} textAnchor="middle"
-                        style={{fontSize:7.5,fontFamily:"'Cinzel',serif",fill:"#e8d8ff",letterSpacing:".06em",fontWeight:700}}>
-                        {levelsBuyable > 1 ? `▲ LV ${tomesLevel} → ${tomesLevel + levelsBuyable}  (+${levelsBuyable} pts)` : `▲ LEVEL UP`}
-                      </text>
-                    </g>
-                  )}
-                  {!canLevelUp && (
-                    <text x={CX} y={CY+80} textAnchor="middle"
-                      style={{fontSize:5,fontFamily:"'Cinzel',serif",fill:"#3a2a50",letterSpacing:".06em"}}>
-                      {Math.round((1 - progressPct/100) * costToNext).toLocaleString()} more needed
-                    </text>
-                  )}
-                </g>
-              )}
-              {atMaxLevel && (
-                <text x={CX} y={CY+52} textAnchor="middle"
-                  style={{fontSize:7,fontFamily:"'Cinzel',serif",fill:"#d0c0ff",letterSpacing:".08em"}}>
-                  ✦ MAX ✦
-                </text>
-              )}
               {/* Unspent points badge */}
               {tomesUnspentPoints > 0 && (
                 <g>
@@ -400,7 +422,8 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
                 );
               })}
             </svg>
-          </div>
+            </div>{/* end SVG canvas div */}
+          </div>{/* end SVG tree column */}
         </div>
       )}
 
@@ -426,8 +449,8 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
               <div style={{fontSize:8,color:"#4a3a20",letterSpacing:".1em"}}>TOMES LEVEL</div>
               {!atMaxLevel && (
                 <div style={{fontSize:7,color:"#5540aa",marginTop:2}}>
-                  {fmtNum(poolDisplay)} / {fmtNum(costToNext)} power
-                  {powerPerHr > 0 && <span style={{color:"#6655aa"}}> · +{fmtNum(powerPerHr)}/hr</span>}
+                  {poolDisplay.toLocaleString()} / {costToNext.toLocaleString()} power
+                  {powerPerHr > 0 && <span style={{color:"#6655aa"}}> · +{powerPerHr.toLocaleString()}/hr</span>}
                 </div>
               )}
             </div>
