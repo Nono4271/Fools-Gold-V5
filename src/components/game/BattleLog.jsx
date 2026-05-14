@@ -658,11 +658,11 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
         {/* Static non-scrollable content — fills remaining height */}
         <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", minHeight:0 }}>
 
-        {/* Commander bust comparison row */}
+        {/* Commander busts + troop boxes merged — fixed height, no scroll */}
         <div style={{
           display:"grid", gridTemplateColumns:"1fr auto 1fr",
           borderBottom:"1px solid #1a1508",
-          flex:"0 0 130px",
+          flex:"0 0 160px",
           overflow:"hidden",
         }}>
           {/* Attacker */}
@@ -682,21 +682,28 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
                 {b.atkIcon || "⚔"}
               </div>
             )}
+            {/* Name + bars */}
             <div style={{ position:"absolute", bottom:0, left:0, right:0,
-              background:"linear-gradient(to top, rgba(8,5,0,.95) 0%, transparent 100%)",
-              padding:"28px 10px 7px" }}>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700,
+              background:"linear-gradient(to top, rgba(8,5,0,.97) 0%, transparent 100%)",
+              padding:"52px 8px 6px" }}>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700,
                 color:"#c8a060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {b.atkName}
               </div>
-              <div style={{ fontSize:9, color:"#5a4a30" }}>Lv{b.atkLvl} · tap for stats</div>
+              <div style={{ fontSize:7, color:"#5a4a30", marginBottom:3 }}>Lv{b.atkLvl} · tap for stats</div>
+              <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+              <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
             </div>
-            <div style={{ position:"absolute", top:7, left:7,
-              fontSize:7, color:"#4488ffbb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
-              background:"rgba(0,0,0,.5)", padding:"2px 6px", borderRadius:2 }}>YOU</div>
+            <div style={{ position:"absolute", top:6, left:7,
+              fontSize:6, color:"#4488ffbb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
+              background:"rgba(0,0,0,.5)", padding:"2px 5px", borderRadius:2 }}>YOU</div>
+            {/* Troop boxes overlapping portrait bottom */}
+            <div style={{ position:"absolute", bottom:38, left:6, zIndex:10 }}>
+              <TroopSlotBoxes b={b} isEnemy={false} />
+            </div>
           </div>
 
-          {/* VS */}
+          {/* VS divider */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", width:28,
             background:"rgba(0,0,0,.3)",
             borderLeft:"1px solid #1a1508", borderRight:"1px solid #1a1508" }}>
@@ -722,71 +729,32 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
               </div>
             )}
             <div style={{ position:"absolute", bottom:0, left:0, right:0,
-              background:"linear-gradient(to top, rgba(8,3,3,.95) 0%, transparent 100%)",
-              padding:"28px 10px 7px", textAlign:"right" }}>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700,
+              background:"linear-gradient(to top, rgba(8,3,3,.97) 0%, transparent 100%)",
+              padding:"52px 8px 6px", textAlign:"right" }}>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700,
                 color:"#aa7070", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {b.defCmdName}
               </div>
-              <div style={{ fontSize:9, color:"#5a4a30" }}>Lv{b.defLvl} · tap for stats</div>
+              <div style={{ fontSize:7, color:"#5a4a30", marginBottom:3 }}>Lv{b.defLvl} · tap for stats</div>
+              <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+              <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
             </div>
-            <div style={{ position:"absolute", top:7, right:7,
-              fontSize:7, color:"#cc4444bb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
-              background:"rgba(0,0,0,.5)", padding:"2px 6px", borderRadius:2 }}>ENEMY</div>
-          </div>
-        </div>
-
-        {/* Troop boxes + bars */}
-        <div style={{
-          padding:"8px 16px",
-          borderBottom:"1px solid #1a1508",
-          flexShrink:0,
-        }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 20px 1fr", gap:8, alignItems:"start" }}>
-
-            {/* Attacker troops */}
-            <div onClick={() => atkResolved && setSubPopup(p => p==="atkTroop" ? null : "atkTroop")}
-              style={{ cursor: atkResolved ? "pointer" : "default" }}>
-              <div style={{ fontSize:10, color:"#3a3028", fontFamily:"'Cinzel',serif",
-                letterSpacing:".06em", marginBottom:5 }}>YOUR TROOPS</div>
-              <TroopSlotBoxes b={b} isEnemy={false} />
-              <div style={{ marginTop:5 }}>
-                <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
-                <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
-              </div>
-              {atkResolved && (
-                <div style={{ fontSize:9, color:"#2a2820", marginTop:3 }}>tap for troop stats →</div>
-              )}
-            </div>
-
-            {/* Divider */}
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", paddingTop:18 }}>
-              <div style={{ width:1, height:"100%", background:"#1e1808" }} />
-            </div>
-
-            {/* Defender troops */}
-            <div onClick={() => defResolved && setSubPopup(p => p==="defTroop" ? null : "defTroop")}
-              style={{ cursor: defResolved ? "pointer" : "default", textAlign:"right" }}>
-              <div style={{ fontSize:10, color:"#3a3028", fontFamily:"'Cinzel',serif",
-                letterSpacing:".06em", marginBottom:5 }}>ENEMY TROOPS</div>
+            <div style={{ position:"absolute", top:6, right:7,
+              fontSize:6, color:"#cc4444bb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
+              background:"rgba(0,0,0,.5)", padding:"2px 5px", borderRadius:2 }}>ENEMY</div>
+            {/* Troop boxes overlapping portrait bottom, right-aligned */}
+            <div style={{ position:"absolute", bottom:38, right:6, zIndex:10,
+              display:"flex", justifyContent:"flex-end" }}>
               <TroopSlotBoxes b={b} isEnemy={true} />
-              <div style={{ marginTop:5 }}>
-                <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
-                <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
-              </div>
-              {defResolved && (
-                <div style={{ fontSize:9, color:"#2a2820", marginTop:3 }}>← tap for troop stats</div>
-              )}
             </div>
-
           </div>
         </div>
 
-        {/* Stats table */}
-        <div style={{ padding:"10px 16px", flex:1, display:"flex", flexDirection:"column", minHeight:0, overflowY:"auto" }}>
+        {/* Stats table — compact, no scroll, fits remaining height */}
+        <div style={{ padding:"8px 14px 6px", flex:1, display:"flex", flexDirection:"column", minHeight:0 }}>
           <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto",
-            fontSize:11, color:"#3a3028", fontFamily:"'Cinzel',serif",
-            letterSpacing:".07em", marginBottom:8, paddingBottom:6,
+            fontSize:9, color:"#3a3028", fontFamily:"'Cinzel',serif",
+            letterSpacing:".07em", marginBottom:5, paddingBottom:4,
             borderBottom:"1px solid #1e1808",
           }}>
             <span style={{ color:"#4488ff88" }}>YOU</span>
@@ -794,24 +762,24 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
             <span style={{ textAlign:"right", color:"#cc444488" }}>ENEMY</span>
           </div>
 
-          <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
           {statRows.map(({ label, atkVal, defVal }) => (
             <div key={label} style={{
               display:"grid", gridTemplateColumns:"auto 1fr auto",
               alignItems:"center",
-              padding:"6px 10px", borderRadius:4,
+              padding:"4px 8px", borderRadius:3,
               background:"rgba(255,255,255,.015)",
             }}>
-              <span style={{ fontSize:15, fontWeight:700, color:"#c8a060",
-                fontFamily:"'Cinzel',serif", minWidth:80 }}>
+              <span style={{ fontSize:13, fontWeight:700, color:"#c8a060",
+                fontFamily:"'Cinzel',serif", minWidth:70 }}>
                 {atkVal}
               </span>
-              <span style={{ fontSize:11, color:"#5a4a38", textAlign:"center",
-                fontFamily:"'Cinzel',serif", letterSpacing:".05em" }}>
+              <span style={{ fontSize:9, color:"#5a4a38", textAlign:"center",
+                fontFamily:"'Cinzel',serif", letterSpacing:".04em" }}>
                 {label}
               </span>
-              <span style={{ fontSize:15, fontWeight:700, color:"#aa6060",
-                fontFamily:"'Cinzel',serif", textAlign:"right", minWidth:80 }}>
+              <span style={{ fontSize:13, fontWeight:700, color:"#aa6060",
+                fontFamily:"'Cinzel',serif", textAlign:"right", minWidth:70 }}>
                 {defVal}
               </span>
             </div>
@@ -819,7 +787,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
           </div>
 
           {/* Footer */}
-          <div style={{ marginTop:6, fontSize:11, color:"#2a2010", textAlign:"center",
+          <div style={{ marginTop:"auto", paddingTop:4, fontSize:9, color:"#2a2010", textAlign:"center",
             fontFamily:"'Cinzel',serif", letterSpacing:".06em", flexShrink:0 }}>
             {b.tileName ?? "—"} · {b.modLabel} · {b.rounds?.length ?? 0} rounds
           </div>
@@ -898,90 +866,64 @@ function BattleListItem({ b, selected, onClick }) {
 }
 
 // ── LOTR-style troop slot boxes ───────────────────────────────────────────────
-// Shows up to 3 troop type boxes: icon, tier badge, current/total count
+// Fixed-size small squares matching LOTR:RTW reference image.
+// Always renders 3 slots worth of width (empty ones are invisible placeholders)
+// so box size never changes regardless of troop count.
+// Designed to be absolutely positioned overlapping portrait bottoms.
+const TIER_COLORS = ["#8a8aaa", "#4488cc", "#a855f7"];
+const TIER_ROMAN  = ["I", "II", "III"];
+
 function TroopSlotBoxes({ b, isEnemy }) {
-  // Build slot list: enemy uses defTroopBranch single slot, attacker uses atkTroopSlots array
   let slots = [];
   if (!isEnemy) {
     const raw = b.atkTroopSlots ?? (b.atkTroopBranch ? [{ branch: b.atkTroopBranch, troops: b.atkTroopsStart }] : []);
-    slots = raw.map(sl => {
-      const res = resolveTroopBranch(sl.branch);
-      return { res, troops: sl.troops ?? 0, troopsEnd: null };
-    });
+    slots = raw.map(sl => ({ res: resolveTroopBranch(sl.branch), troops: sl.troops ?? 0 }));
   } else {
     const raw = b.defTroopSlots ?? (b.defTroopBranch ? [{ branch: b.defTroopBranch, troops: b.defTroopsStart ?? 0 }] : []);
-    slots = raw.map(sl => {
-      const res = resolveTroopBranch(sl.branch);
-      return { res, troops: sl.troops ?? 0, troopsEnd: b.defTroopsEnd ?? 0 };
-    });
+    slots = raw.map(sl => ({ res: resolveTroopBranch(sl.branch), troops: sl.troops ?? 0 }));
   }
+  if (slots.length === 0) return null;
 
-  const accentColor = isEnemy ? "#cc4444" : "#4488ff";
-  const tierColors  = ["#8a8aaa", "#4488cc", "#a855f7"]; // T1 grey, T2 blue, T3 purple
+  // Pad to 3 so size is always identical
+  const padded = [0, 1, 2].map(i => slots[i] ?? null);
 
   return (
-    <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
-      {slots.map((sl, i) => {
-        const br  = sl.res?.branchDef ?? null;
-        const td  = sl.res?.tierData  ?? null;
-        const tier = sl.res ? (br?.tiers?.indexOf(td) ?? 0) : 0;
-        const tierLabel = td?.label ?? (tier === 0 ? "T1" : tier === 1 ? "T2" : "T3");
-        const tierColor = tierColors[Math.min(tier, 2)];
-        const icon = br ? (
-          br.dmgType === "magical" ? "✦" :
-          br.size === "small" ? "🗡" : br.size === "large" ? "🪃" : "⚔"
-        ) : "⚔";
-        const current = isEnemy ? (sl.troopsEnd ?? sl.troops) : sl.troops;
-        const total   = sl.troops;
-
+    <div style={{ display:"flex", gap:3 }}>
+      {padded.map((sl, i) => {
+        if (!sl) return <div key={i} style={{ width:40, height:46, flexShrink:0 }} />;
+        const br        = sl.res?.branchDef ?? null;
+        const td        = sl.res?.tierData  ?? null;
+        const tierIdx   = br ? Math.max(0, br.tiers.indexOf(td)) : 0;
+        const tierColor = TIER_COLORS[Math.min(tierIdx, 2)];
+        const icon      = br
+          ? (br.dmgType === "magical" ? "✦" : br.size === "small" ? "🗡" : br.size === "large" ? "🪃" : "⚔")
+          : "⚔";
+        const count = sl.troops > 999
+          ? `${(sl.troops / 1000).toFixed(1)}k`
+          : sl.troops.toLocaleString();
         return (
           <div key={i} style={{
-            display:"flex", flexDirection:"column", alignItems:"center",
-            padding:"4px 5px",
-            background:"rgba(255,255,255,.03)",
-            border:`1px solid ${accentColor}33`,
-            borderRadius:4, minWidth:52, flex:1,
+            width:40, height:46, flexShrink:0,
+            display:"flex", flexDirection:"column",
+            alignItems:"center", justifyContent:"center",
+            gap:1,
+            background:"rgba(6,4,2,.9)",
+            border:`1px solid ${tierColor}88`,
+            borderRadius:4,
+            boxShadow:"0 2px 10px rgba(0,0,0,.8)",
           }}>
-            {/* Icon */}
+            <div style={{ fontSize:15, lineHeight:1 }}>{icon}</div>
             <div style={{
-              width:24, height:24, borderRadius:"50%",
-              background:`${accentColor}18`,
-              border:`1px solid ${accentColor}44`,
-              display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:12, marginBottom:3,
-            }}>
-              {icon}
-            </div>
-            {/* Tier badge */}
+              fontSize:7, fontWeight:700, color:tierColor,
+              fontFamily:"'Cinzel',serif", lineHeight:1,
+            }}>{TIER_ROMAN[Math.min(tierIdx, 2)]}</div>
             <div style={{
-              fontSize:6, color:tierColor, fontFamily:"'Cinzel',serif",
-              background:`${tierColor}18`, border:`1px solid ${tierColor}44`,
-              borderRadius:3, padding:"1px 4px", marginBottom:2,
-              letterSpacing:".04em",
-            }}>
-              {tierLabel}
-            </div>
-            {/* Troop label */}
-            <div style={{
-              fontSize:5.5, color:"#6a5a40", fontFamily:"'Cinzel',serif",
-              letterSpacing:".02em", textAlign:"center", marginBottom:2,
-              maxWidth:60, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
-            }}>
-              {br?.label ?? "Unknown"}
-            </div>
-            {/* Count: current / total */}
-            <div style={{ fontSize:7, fontFamily:"'Cinzel',serif", fontWeight:700, color:accentColor }}>
-              {current.toLocaleString()}
-              <span style={{ fontSize:5.5, color:"#3a3028", fontWeight:400 }}>
-                /{total.toLocaleString()}
-              </span>
-            </div>
+              fontSize:6.5, fontWeight:700, color:"#c8a060",
+              fontFamily:"'Cinzel',serif", lineHeight:1, marginTop:1,
+            }}>{count}</div>
           </div>
         );
       })}
-      {slots.length === 0 && (
-        <div style={{ fontSize:7, color:"#2a2020", fontFamily:"'Cinzel',serif", fontStyle:"italic" }}>No troop data</div>
-      )}
     </div>
   );
 }
@@ -1002,10 +944,10 @@ function SimpleSummaryPanel({ b, onOpen }) {
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
-      {/* Commander portraits — compact to leave room for troops below */}
+      {/* Commander portraits with troop boxes overlapping bottom */}
       <div style={{
         display:"grid", gridTemplateColumns:"1fr auto 1fr",
-        height:180, flexShrink:0, overflow:"hidden",
+        height:200, flexShrink:0, overflow:"hidden",
         borderBottom:"1px solid #1a1508",
       }}>
         {/* Attacker portrait */}
@@ -1027,24 +969,31 @@ function SimpleSummaryPanel({ b, onOpen }) {
               {b.atkIcon || "⚔"}
             </div>
           )}
-          {/* Name overlay */}
+          {/* Name + bars overlay */}
           <div style={{
             position:"absolute", bottom:0, left:0, right:0,
-            background:"linear-gradient(to top, rgba(8,5,0,.96) 0%, rgba(8,5,0,.6) 60%, transparent 100%)",
-            padding:"32px 10px 8px",
+            background:"linear-gradient(to top, rgba(8,5,0,.97) 0%, rgba(8,5,0,.7) 50%, transparent 100%)",
+            padding:"56px 8px 6px",
           }}>
-            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700,
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700,
               color:"#c8a060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {b.atkName}
             </div>
-            <div style={{ fontSize:7, color:"#5a4a30" }}>
+            <div style={{ fontSize:6.5, color:"#5a4a30", marginBottom:3 }}>
               Lv{b.atkLvl}
-              {b.cmdCls && <span style={{ marginLeft:5, color: CLS_COLOR[b.cmdCls] ?? "#888" }}>{b.cmdCls}</span>}
+              {b.cmdCls && <span style={{ marginLeft:4, color: CLS_COLOR[b.cmdCls] ?? "#888" }}>{b.cmdCls}</span>}
             </div>
+            <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+            <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
           </div>
+          {/* YOU badge */}
           <div style={{ position:"absolute", top:6, left:7,
             fontSize:6, color:"#4488ffbb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
             background:"rgba(0,0,0,.55)", padding:"2px 5px", borderRadius:2 }}>YOU</div>
+          {/* Troop boxes — overlapping bottom of portrait */}
+          <div style={{ position:"absolute", bottom:36, left:6, zIndex:10 }}>
+            <TroopSlotBoxes b={b} isEnemy={false} />
+          </div>
         </div>
 
         {/* Centre divider with outcome badge */}
@@ -1087,55 +1036,25 @@ function SimpleSummaryPanel({ b, onOpen }) {
           )}
           <div style={{
             position:"absolute", bottom:0, left:0, right:0,
-            background:"linear-gradient(to top, rgba(8,3,3,.96) 0%, rgba(8,3,3,.6) 60%, transparent 100%)",
-            padding:"32px 10px 8px", textAlign:"right",
+            background:"linear-gradient(to top, rgba(8,3,3,.97) 0%, rgba(8,3,3,.7) 50%, transparent 100%)",
+            padding:"56px 8px 6px", textAlign:"right",
           }}>
-            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700,
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700,
               color:"#aa7070", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {b.defCmdName || "Enemy"}
             </div>
-            <div style={{ fontSize:7, color:"#5a4a30" }}>Lv{b.defLvl ?? "?"}</div>
+            <div style={{ fontSize:6.5, color:"#5a4a30", marginBottom:3 }}>Lv{b.defLvl ?? "?"}</div>
+            <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+            <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
           </div>
           <div style={{ position:"absolute", top:6, right:7,
             fontSize:6, color:"#cc4444bb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
             background:"rgba(0,0,0,.55)", padding:"2px 5px", borderRadius:2 }}>ENEMY</div>
-        </div>
-      </div>
-
-      {/* Troop boxes + bars */}
-      <div style={{
-        padding:"6px 14px 6px",
-        borderBottom:"1px solid #1a1508",
-        flexShrink:0,
-      }}>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 20px 1fr", gap:8, alignItems:"start" }}>
-
-          {/* Attacker troops */}
-          <div>
-            <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".06em", marginBottom:5 }}>YOUR TROOPS</div>
-            <TroopSlotBoxes b={b} isEnemy={false} />
-            <div style={{ marginTop:4 }}>
-              <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
-              <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
-            </div>
-          </div>
-
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <div style={{ width:1, height:"100%", background:"#1e1808" }} />
-          </div>
-
-          {/* Defender troops */}
-          <div style={{ textAlign:"right" }}>
-            <div style={{ fontSize:6, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".06em", marginBottom:5 }}>ENEMY TROOPS</div>
+          {/* Troop boxes — overlapping bottom of portrait, right-aligned */}
+          <div style={{ position:"absolute", bottom:36, right:6, zIndex:10,
+            display:"flex", justifyContent:"flex-end" }}>
             <TroopSlotBoxes b={b} isEnemy={true} />
-            <div style={{ marginTop:4 }}>
-              <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
-              <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
-            </div>
           </div>
-
         </div>
       </div>
 
