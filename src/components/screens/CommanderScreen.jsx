@@ -1672,6 +1672,92 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
   );
 }
 
+// ── Locked commander detail panel ────────────────────────────────────────────
+// Extracted into its own component so useState is called at the top level,
+// fixing the black-screen crash that occurred when clicking a locked commander.
+function LockedCommanderDetail({ selectedCmd, playerAlnKey, setCmds, gems, setGems }) {
+  const [showSkillsStub, setShowSkillsStub] = useState(false);
+
+  const r3 = RARITY[selectedCmd.rarity] ?? RARITY.soldier;
+  const cmdAlnKey3 = getFactionAlignment(selectedCmd.faction);
+  const isOpp3 = playerAlnKey && cmdAlnKey3 !== playerAlnKey;
+  const f3 = PLAYABLE_FACTIONS.find(f => f.key === selectedCmd.faction);
+
+  return (
+    <div style={{ height: "100%", overflowY: "auto", padding: "14px 12px 40px", position: "relative" }}>
+      {showSkillsStub && (
+        <SkillTreeOverlay cmd={selectedCmd} setCmds={setCmds} gems={gems} setGems={setGems}
+          onClose={() => setShowSkillsStub(false)} readOnly={true} />
+      )}
+      {/* Locked banner */}
+      <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid #2a2010",
+        borderRadius: 8, padding: "10px 14px", marginBottom: 12, textAlign: "center" }}>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 16, fontWeight: 700,
+          color: isOpp3 ? "#cc4040" : "#c8a060", letterSpacing: ".05em",
+          marginBottom: 6 }}>{selectedCmd.n}</div>
+        {isOpp3 ? (
+          <div style={{ fontSize: 8, color: "#6a4a4a", fontFamily: "'Cinzel',serif",
+            marginTop: 4, lineHeight: 1.5 }}>
+            This commander cannot be played this season.<br/>They belong to the opposing alignment.
+          </div>
+        ) : (
+          <div style={{ fontSize: 8, color: "#6a5a3a", fontFamily: "'Cinzel',serif",
+            marginTop: 4, lineHeight: 1.5 }}>
+            Summon this commander from the portal to recruit them.
+          </div>
+        )}
+      </div>
+      {/* Basic stats preview */}
+      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: "#5a4a30",
+        letterSpacing: ".08em", marginBottom: 6 }}>COMMANDER PREVIEW</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+        {[
+          ["⚔ ATK", selectedCmd.atk ?? "—"],
+          ["👁 FOC", selectedCmd.foc ?? "—"],
+          ["💨 SPD", selectedCmd.spd ?? "—"],
+          ["✦ CLASS", CLASS[selectedCmd.cls]?.n ?? selectedCmd.cls],
+          ["⭐ RARITY", r3.n],
+          ["🏷 SUBSPECIES", selectedCmd.subspecies ?? "—"],
+        ].map(([lbl, val]) => (
+          <div key={lbl} style={{ background: "rgba(255,255,255,.02)", border: "1px solid #1a1408",
+            borderRadius: 5, padding: "6px 8px" }}>
+            <div style={{ fontSize: 6, color: "#5a4a30", fontFamily: "'Cinzel',serif",
+              letterSpacing: ".05em", marginBottom: 2 }}>{lbl}</div>
+            <div style={{ fontSize: 10, color: "#c0a870", fontFamily: "'Cinzel',serif",
+              fontWeight: 700 }}>{val}</div>
+          </div>
+        ))}
+      </div>
+      {/* Faction */}
+      {f3 && (
+        <div style={{ background: `${f3.c}10`, border: `1px solid ${f3.c}30`,
+          borderRadius: 5, padding: "7px 10px", display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 14 }}>{f3.s}</span>
+          <div>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: f3.c,
+              fontWeight: 700 }}>{f3.n}</div>
+            <div style={{ fontSize: 7, color: "#5a4a30", fontFamily: "'Cinzel',serif",
+              marginTop: 1 }}>{f3.desc}</div>
+          </div>
+        </div>
+      )}
+      {/* Skill tree preview button */}
+      <div onClick={() => setShowSkillsStub(true)}
+        style={{ background: "rgba(100,60,180,.12)", border: "1px solid rgba(140,80,220,.35)",
+          borderRadius: 8, padding: "12px 14px", cursor: "pointer", display: "flex",
+          justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: "#aa77ee",
+            letterSpacing: ".06em", fontWeight: 700 }}>SKILL TREES</div>
+          <div style={{ fontSize: 7, color: "#6a5a8a", fontFamily: "'Cinzel',serif",
+            marginTop: 2 }}>Preview only — summon to unlock</div>
+        </div>
+        <span style={{ fontSize: 18, color: "#aa77ee" }}>👁</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Main screen export ────────────────────────────────────────────────────────
 // ── Filter popup ─────────────────────────────────────────────────────────────
 function FilterPopup({ filterClass, setFilterClass, filterAlignment, setFilterAlignment, filterSubspecies, setFilterSubspecies, sortBy, setSortBy, onClose }) {
@@ -2075,86 +2161,15 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           display: "flex", flexDirection: "column",
           paddingRight: "max(12px, env(safe-area-inset-right, 12px))",
         }}>
-          {selectedCmd && selectedCmd._isStub ? (() => {
-            const r3 = RARITY[selectedCmd.rarity] ?? RARITY.soldier;
-            const cmdAlnKey3 = getFactionAlignment(selectedCmd.faction);
-            const isOpp3 = playerAlnKey && cmdAlnKey3 !== playerAlnKey;
-            const f3 = PLAYABLE_FACTIONS.find(f => f.key === selectedCmd.faction);
-            const [showSkillsStub, setShowSkillsStub] = React.useState(false);
-            return (
-              <div style={{ height: "100%", overflowY: "auto", padding: "14px 12px 40px", position: "relative" }}>
-                {showSkillsStub && (
-                  <SkillTreeOverlay cmd={selectedCmd} setCmds={setCmds} gems={gems} setGems={setGems}
-                    onClose={() => setShowSkillsStub(false)} readOnly={true} />
-                )}
-                {/* Locked banner */}
-                <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid #2a2010",
-                  borderRadius: 8, padding: "10px 14px", marginBottom: 12, textAlign: "center" }}>
-                  <div style={{ fontFamily: "'Cinzel',serif", fontSize: 16, fontWeight: 700,
-                    color: isOpp3 ? "#cc4040" : "#c8a060", letterSpacing: ".05em",
-                    marginBottom: 6 }}>{selectedCmd.n}</div>
-                  {isOpp3 ? (
-                    <div style={{ fontSize: 8, color: "#6a4a4a", fontFamily: "'Cinzel',serif",
-                      marginTop: 4, lineHeight: 1.5 }}>
-                      This commander cannot be played this season.<br/>They belong to the opposing alignment.
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 8, color: "#6a5a3a", fontFamily: "'Cinzel',serif",
-                      marginTop: 4, lineHeight: 1.5 }}>
-                      Summon this commander from the portal to recruit them.
-                    </div>
-                  )}
-                </div>
-                {/* Basic stats preview */}
-                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: "#5a4a30",
-                  letterSpacing: ".08em", marginBottom: 6 }}>COMMANDER PREVIEW</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
-                  {[
-                    ["⚔ ATK", selectedCmd.atk ?? "—"],
-                    ["👁 FOC", selectedCmd.foc ?? "—"],
-                    ["💨 SPD", selectedCmd.spd ?? "—"],
-                    ["✦ CLASS", CLASS[selectedCmd.cls]?.n ?? selectedCmd.cls],
-                    ["⭐ RARITY", r3.n],
-                    ["🏷 SUBSPECIES", selectedCmd.subspecies ?? "—"],
-                  ].map(([lbl, val]) => (
-                    <div key={lbl} style={{ background: "rgba(255,255,255,.02)", border: "1px solid #1a1408",
-                      borderRadius: 5, padding: "6px 8px" }}>
-                      <div style={{ fontSize: 6, color: "#5a4a30", fontFamily: "'Cinzel',serif",
-                        letterSpacing: ".05em", marginBottom: 2 }}>{lbl}</div>
-                      <div style={{ fontSize: 10, color: "#c0a870", fontFamily: "'Cinzel',serif",
-                        fontWeight: 700 }}>{val}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* Faction */}
-                {f3 && (
-                  <div style={{ background: `${f3.c}10`, border: `1px solid ${f3.c}30`,
-                    borderRadius: 5, padding: "7px 10px", display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                    <span style={{ fontSize: 14 }}>{f3.s}</span>
-                    <div>
-                      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: f3.c,
-                        fontWeight: 700 }}>{f3.n}</div>
-                      <div style={{ fontSize: 7, color: "#5a4a30", fontFamily: "'Cinzel',serif",
-                        marginTop: 1 }}>{f3.desc}</div>
-                    </div>
-                  </div>
-                )}
-                {/* Skill tree preview button */}
-                <div onClick={() => setShowSkillsStub(true)}
-                  style={{ background: "rgba(100,60,180,.12)", border: "1px solid rgba(140,80,220,.35)",
-                    borderRadius: 8, padding: "12px 14px", cursor: "pointer", display: "flex",
-                    justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: "#aa77ee",
-                      letterSpacing: ".06em", fontWeight: 700 }}>SKILL TREES</div>
-                    <div style={{ fontSize: 7, color: "#6a5a8a", fontFamily: "'Cinzel',serif",
-                      marginTop: 2 }}>Preview only — summon to unlock</div>
-                  </div>
-                  <span style={{ fontSize: 18, color: "#aa77ee" }}>👁</span>
-                </div>
-              </div>
-            );
-          })() : selectedCmd
+          {selectedCmd && selectedCmd._isStub
+            ? <LockedCommanderDetail
+                selectedCmd={selectedCmd}
+                playerAlnKey={playerAlnKey}
+                setCmds={setCmds}
+                gems={gems}
+                setGems={setGems}
+              />
+            : selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
             : (
               <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center",
