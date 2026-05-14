@@ -2051,7 +2051,9 @@ Trade any resource for another at a 70% return rate. Use the slider to select ho
   );
 })()}
 
-</div></div>);
+  </div>
+</div>
+);
 }
 
 // -----------------------------------------------------------------------------
