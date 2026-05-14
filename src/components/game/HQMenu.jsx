@@ -1511,7 +1511,7 @@ function SlotEditor({ cmd, slotIdx, setTroopSlot, troopCounts, bldgs, commandCap
           </div>
           <input type="range" min={0} max={Math.max(1, maxSlider)} value={svClamped}
             onChange={e => setSv(+e.target.value)} onInput={e => setSv(+e.target.value)}
-            style={{ width:"100%", accentColor:activeColor, marginBottom:6 }}/>
+            style={{ width:"100%", accentColor:activeColor, marginBottom:6, touchAction:"none" }}/>
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:6,
             color:"#4a4a5a", marginBottom:6 }}>
             <span>0</span>
@@ -2224,6 +2224,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
         {hqTab === "army" && (
           <BattleGroupsScreen cmds={cmds} setCmds={setCmds} bldgs={bldgs}
             barracksPool={barracksPool} setBarracks={setBarracks}
+            troopCounts={troopCounts} setTroopSlot={setTroopSlot}
             sliderVals={sliderVals} setSliderVals={setSliderVals}
             assignTroops={assignTroops} returnTroops={returnTroops}
             playerHqKey={playerHqKey} unlockedBranches={unlockedBranches}/>

@@ -256,7 +256,7 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
           {PL_LIST.map(({ pl, label, color }) => {
             const on = selected.has(pl);
             return (
-              <div
+              <button
                 key={pl}
                 onClick={() => togglePl(pl)}
                 style={{
@@ -266,7 +266,7 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
                   background: on ? `${color}18` : "rgba(255,255,255,.02)",
                   border:`1px solid ${on ? color+"60" : "#1e2028"}`,
                   transition:"background .12s, border-color .12s",
-                  userSelect:"none",
+                  userSelect:"none", textAlign:"left",
                 }}
               >
                 <div style={{
@@ -282,7 +282,7 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
                 <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color: on ? color : "#5a6a6a", letterSpacing:".02em" }}>
                   ⚡ {label}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
