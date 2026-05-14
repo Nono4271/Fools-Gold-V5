@@ -1860,18 +1860,35 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
     }
     return true;
   }).sort((a, b) => {
-    // Owned always before unowned
+    // Owned (unlocked) always before unowned (locked/stub)
     const aOwned = !a._isStub ? 0 : 1;
     const bOwned = !b._isStub ? 0 : 1;
     if (aOwned !== bOwned) return aOwned - bOwned;
-    if (sortBy === "rarity")  return (RARITY_ORDER[a.rarity] ?? 3) - (RARITY_ORDER[b.rarity] ?? 3);
-    if (sortBy === "level")   return (b.lvl ?? 5) - (a.lvl ?? 5);
-    if (sortBy === "respect") return (b.respectLevel ?? 0) - (a.respectLevel ?? 0);
-    return 0;
+
+    if (!a._isStub && !b._isStub) {
+      // Both owned: level desc → rarity → alphabetical
+      const lvlDiff = (b.lvl ?? 5) - (a.lvl ?? 5);
+      if (lvlDiff !== 0) return lvlDiff;
+      const rarDiff = (RARITY_ORDER[a.rarity] ?? 3) - (RARITY_ORDER[b.rarity] ?? 3);
+      if (rarDiff !== 0) return rarDiff;
+      return (a.n ?? "").localeCompare(b.n ?? "");
+    }
+
+    // Both unowned (locked): rarity → alphabetical
+    const rarDiff = (RARITY_ORDER[a.rarity] ?? 3) - (RARITY_ORDER[b.rarity] ?? 3);
+    if (rarDiff !== 0) return rarDiff;
+    return (a.n ?? "").localeCompare(b.n ?? "");
   });
 
-  const [selectedUid, setSelectedUid] = useState(initialUid ?? allPlayer[0]?.uid ?? null);
-  const selectedCmd = filtered.find(c => c.uid === selectedUid) ?? allPlayer[0] ?? filtered[0] ?? null;
+  // Default selection = first item in the sorted filtered list (highest level owned,
+  // or first stub if no owned). initialUid overrides when opening to a specific cmd.
+  const defaultUid = initialUid ?? null; // computed after filtered is built below
+  const [selectedUid, setSelectedUid] = useState(defaultUid);
+  // Sync: if selectedUid is null or not in filtered, fall back to filtered[0]
+  const resolvedUid = (selectedUid && filtered.some(c => c.uid === selectedUid))
+    ? selectedUid
+    : (filtered[0]?.uid ?? null);
+  const selectedCmd = filtered.find(c => c.uid === resolvedUid) ?? null;
 
   return (
     <div style={{
@@ -1954,7 +1971,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                 <RosterPortrait
                   key={cmd.uid}
                   cmd={cmd}
-                  selected={cmd.uid === selectedUid}
+                  selected={cmd.uid === resolvedUid}
                   onClick={() => setSelectedUid(cmd.uid)}
                   isLocked={isLocked}
                   isOppositeAlignment={!isLocked && isOppositeAlignment}
