@@ -2020,3 +2020,170 @@ return (
 );
 }
 
+//  ROOT HQMenu
+// -----------------------------------------------------------------------------
+export default memo(function HQMenu({
+hqOpen, setHqOpen, hqTab, setHqTab,
+cmds, setCmds, tiles, rss, setRss, gems, pKeys,
+bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
+trainingQueue, trainSlider, setTrainSlider,
+upgQueue, sliderVals, setSliderVals, bLog,
+upgrade, canAfford, assignTroops, returnTroops, queueTraining,
+recallMarch, setScreen, gearInventory, playerHqKey,
+facKey, unlockedBranches, setUnlockedBranches,
+quarterLevels, setQuarterLevels,
+mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady,
+lastVoidTap, voidTapCooldown, doVoidTap,
+}) {
+if (!hqOpen) return null;
+
+const isHub = hqTab === "hub";
+
+// Parchment shell constants
+const PARCHMENT_BG = "#b8986a";
+const PAPER_BG_OUTER = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")`;
+
+return (
+<div style={{ position:"fixed", inset:0, zIndex:400,
+background: isHub ? PARCHMENT_BG : P.bg,
+display:"flex", flexDirection:"column",
+boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
+
+  {/* Parchment texture overlay -- only on hub */}
+  {isHub && <>
+    <div style={{ position:"absolute", inset:0, backgroundImage:PAPER_BG_OUTER,
+      backgroundSize:"200px 200px", opacity:0.5, pointerEvents:"none", zIndex:0 }}/>
+    <div style={{ position:"absolute", inset:0,
+      background:"radial-gradient(ellipse at center, transparent 40%, rgba(40,10,0,.5) 100%)",
+      pointerEvents:"none", zIndex:0 }}/>
+    <div style={{ position:"absolute", inset:0,
+      backgroundImage:"repeating-linear-gradient(0deg, transparent, transparent 22px, rgba(60,25,5,.06) 22px, rgba(60,25,5,.06) 23px)",
+      pointerEvents:"none", zIndex:0 }}/>
+    {/* Double border frame */}
+    <div style={{ position:"absolute", inset:7, border:"3px double #7a5028", borderRadius:3, pointerEvents:"none", zIndex:10 }}/>
+    <div style={{ position:"absolute", inset:13, border:"1px solid #7a502844", borderRadius:2, pointerEvents:"none", zIndex:10 }}/>
+    {/* Corner brackets */}
+    {[[0,0],[0,1],[1,0],[1,1]].map(([yt,xl],i) => (
+      <div key={i} style={{ position:"absolute", zIndex:11, pointerEvents:"none",
+        top:yt===0?9:"auto", bottom:yt===1?9:"auto", left:xl===0?9:"auto", right:xl===1?9:"auto",
+        width:22, height:22,
+        borderTop:yt===0?"2px solid #7a5028":"none", borderBottom:yt===1?"2px solid #7a5028":"none",
+        borderLeft:xl===0?"2px solid #7a5028":"none", borderRight:xl===1?"2px solid #7a5028":"none" }}/>
+    ))}
+  </>}
+
+  {/* Title bar */}
+  <div style={{ position:"relative", zIndex:5,
+    padding:"18px 24px 14px",
+    borderBottom: isHub ? "2px solid #7a5028" : `1px solid ${P.border}`,
+    display:"flex", alignItems:"center", justifyContent:"center",
+    flexShrink:0,
+    background: isHub ? "transparent" : "rgba(0,0,0,.4)" }}>
+
+    {/* Back button */}
+    {hqTab !== "hub" && (
+      <button onClick={() => setHqTab("hub")}
+        style={{ position:"absolute", left:24,
+          background:"rgba(255,255,255,.06)", border:`1px solid ${P.border}`,
+          color:P.sub, fontSize:11, padding:"4px 12px", borderRadius:4, cursor:"pointer" }}>
+        ← Back
+      </button>
+    )}
+
+    {/* Title */}
+    <div style={{ textAlign:"center" }}>
+      {isHub ? (
+        <>
+          <div style={{ fontFamily:"'Cinzel Decorative', serif", fontSize:30,
+            color:"#2a1005", letterSpacing:".25em",
+            textShadow:"1px 1px 0 rgba(255,210,120,.4), 0 2px 6px rgba(60,20,0,.3)" }}>HQ</div>
+          <div style={{ height:1, background:"linear-gradient(90deg, transparent, #7a5028 20%, #7a5028 80%, transparent)", marginTop:5 }}/>
+          <div style={{ fontFamily:"'IM Fell English', serif", fontSize:9, color:"#7a5028",
+            letterSpacing:".2em", fontStyle:"italic", marginTop:4, textTransform:"uppercase" }}>Headquarters</div>
+        </>
+      ) : (
+        <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14,
+          background:"linear-gradient(135deg,#f0c040,#c8803a,#f0c040)",
+          backgroundSize:"200% auto", WebkitBackgroundClip:"text",
+          WebkitTextFillColor:"transparent", animation:"shimmer 3s linear infinite" }}>
+          🏰 HEADQUARTERS {hqTab !== "hub" && `-- ${HUB_TILES_PARCHMENT.find(t=>t.id===hqTab)?.label??""}`}
+        </div>
+      )}
+    </div>
+
+    {/* Close button */}
+    <button onClick={() => setHqOpen(false)}
+      style={{ position:"absolute", right:24,
+        background: isHub ? "radial-gradient(ellipse at 40% 35%, #d8c080, #b89050)" : "rgba(200,50,50,.15)",
+        border: isHub ? "2px solid #7a5028" : "1px solid rgba(200,50,50,.4)",
+        color: isHub ? "#3a1a05" : "#dd6060",
+        fontSize:12, padding:"4px 14px", borderRadius:4, cursor:"pointer" }}>
+      {isHub ? "✕" : "✕ Close"}
+    </button>
+  </div>
+
+  {/* Content */}
+  {(() => {
+    const splitLayout = hqTab === "buildings" || hqTab === "army";
+    return (
+      <div className="scr" style={{ flex:1, overflowY: splitLayout ? "hidden" : "auto",
+        minHeight:0, padding: (isHub || splitLayout) ? 0 : 14,
+        display: isHub ? "flex" : splitLayout ? "flex" : "block",
+        flexDirection:"column", position:"relative", zIndex:2 }}>
+
+        {hqTab === "hub" && <HubScreen setHqTab={setHqTab}/>}
+
+        {hqTab === "buildings" && (
+          <InfrastructureScreen
+            bldgs={bldgs} setBldgs={setBldgs} rss={rss} setRss={setRss} canAfford={canAfford}
+            upgrade={upgrade} upgQueue={upgQueue} cmds={cmds} facKey={facKey}
+            quarterLevels={quarterLevels} setQuarterLevels={setQuarterLevels}
+            setUnlockedBranches={setUnlockedBranches}/>
+        )}
+        {hqTab === "commandcenter" && (
+          <CommandCenterScreen cmds={cmds} pKeys={pKeys} rss={rss} gems={gems}
+            bldgs={bldgs} bLog={bLog} tiles={tiles}/>
+        )}
+        {hqTab === "troops" && (
+          <StrikeCraftScreen bldgs={bldgs} barracksPool={barracksPool}
+            trainingQueue={trainingQueue} canAfford={canAfford}
+            queueTraining={queueTraining} rss={rss} cmds={cmds}
+            unlockedBranches={unlockedBranches}
+            discardTroops={n => setBarracks(p => Math.max(0, p - n))}/>
+        )}
+        {hqTab === "army" && (
+          <BattleGroupsScreen cmds={cmds} setCmds={setCmds} bldgs={bldgs}
+            barracksPool={barracksPool} setBarracks={setBarracks}
+            sliderVals={sliderVals} setSliderVals={setSliderVals}
+            assignTroops={assignTroops} returnTroops={returnTroops}
+            playerHqKey={playerHqKey} unlockedBranches={unlockedBranches}/>
+        )}
+        {hqTab === "repairbay" && (
+          <RepairBayScreen bldgs={bldgs} woundedTroops={woundedTroops}
+            woundedQueue={woundedQueue} bLog={bLog}/>
+        )}
+        {hqTab === "marketplace" && (
+          <MarketplaceScreen rss={rss} setRss={setRss}
+            mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap}
+            voidTapLvl={voidTapLvl} voidTapReady={voidTapReady}
+            lastVoidTap={lastVoidTap} voidTapCooldown={voidTapCooldown}
+            doVoidTap={doVoidTap} quarterLevels={quarterLevels}
+          />
+        )}
+      </div>
+    );
+  })()}
+
+  {/* Parchment bottom stamp -- hub only */}
+  {isHub && (
+    <div style={{ position:"absolute", bottom:16, left:"50%", transform:"translateX(-50%)",
+      zIndex:12, pointerEvents:"none",
+      fontFamily:"'IM Fell English', serif", fontSize:7.5, color:"#7a5028",
+      opacity:0.5, letterSpacing:".25em", fontStyle:"italic", whiteSpace:"nowrap" }}>
+      -- BY ROYAL DECREE --
+    </div>
+  )}
+</div>
+
+);
+});
