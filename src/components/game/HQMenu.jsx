@@ -1490,7 +1490,14 @@ function SlotEditor({ cmd, slotIdx, setTroopSlot, troopCounts, bldgs, commandCap
 
 function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, troopCounts, sliderVals, setSliderVals, setTroopSlot, returnTroops, playerHqKey, unlockedBranches }) {
 const hqKey      = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
-const playerCmds = cmds.filter(c => c.owner==="player");
+const ARMY_RARITY_ORDER = { champion: 0, veteran: 1, soldier: 2 };
+const playerCmds = cmds.filter(c => c.owner==="player").sort((a, b) => {
+  const lvlDiff = (b.lvl ?? 5) - (a.lvl ?? 5);
+  if (lvlDiff !== 0) return lvlDiff;
+  const rarDiff = (ARMY_RARITY_ORDER[a.rarity] ?? 3) - (ARMY_RARITY_ORDER[b.rarity] ?? 3);
+  if (rarDiff !== 0) return rarDiff;
+  return (a.n ?? "").localeCompare(b.n ?? "");
+});
 const [selUid, setSelUid] = useState(null);
 const selCmd = playerCmds.find(c=>c.uid===selUid) || playerCmds[0] || null;
 
