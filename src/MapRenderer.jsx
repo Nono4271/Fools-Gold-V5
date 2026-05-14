@@ -1510,17 +1510,33 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
   const spriteUrl  = `/hq/${spriteName}`;
 
-  // 3×3 diamond width = 3 tile widths; height = 3 tile heights + elev headroom
-  const targetW = TW * 3.2;
-  const targetH = TH * 6.5; // tall to accommodate spires/towers above the base
+  // The 3×3 isometric footprint:
+  //   width  = 3 tile-widths  = 3 × TW = 240px
+  //   height = 3 tile-heights = 3 × TH = 159px (ground plane only)
+  // Sprite needs extra vertical room for towers above the base.
+  // Width is fixed to exactly span the 3-tile diamond (TW*3).
+  // Height is width * sprite aspect so it scales proportionally — cap at TH*5.
+  const targetW = TW * 3.0;          // 240px — exactly the 3-tile diamond width
+  const targetH = TW * 3.0 * 1.15;  // ~276px — slight vertical stretch for towers
+
+  // Position: south corner of 3×3 footprint (lowest isometric point) is at (pc+1, pr+2).
+  // We place the sprite anchored at its visual base (bottom-centre of the building footprint)
+  // at the isometric centre of the 3×3 (tile pc+1, pr+1), shifted down by half TH so the
+  // base of the building aligns with the ground plane.
+  const spriteX = bx;
+  const spriteY = worldCY + TH * 0.5; // ground-plane centre of middle tile
+
+  const applySprite = (sp) => {
+    sp.anchor.set(0.5, 0.82); // 82% down = base of building, top 18% is towers/spires
+    sp.width  = targetW;
+    sp.height = targetH;
+    sp.x = spriteX;
+    sp.y = spriteY;
+  };
 
   if (texCache[spriteUrl]) {
     const sp = new PIXI.Sprite(texCache[spriteUrl]);
-    sp.anchor.set(0.5, 0.78); // anchor near base of building
-    sp.width  = targetW;
-    sp.height = targetH;
-    sp.x = bx;
-    sp.y = worldCY - elev;
+    applySprite(sp);
     group.addChild(sp);
   } else {
     // Load async — replace placeholder gfx once loaded
@@ -1533,16 +1549,11 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
     PIXI.Texture.fromURL(spriteUrl).then(tex => {
       texCache[spriteUrl] = tex;
-      // Remove placeholder, add real sprite
       if (placeholderGfx.parent) placeholderGfx.parent.removeChild(placeholderGfx);
       placeholderGfx.destroy();
       if (!group.destroyed) {
         const sp = new PIXI.Sprite(tex);
-        sp.anchor.set(0.5, 0.78);
-        sp.width  = targetW;
-        sp.height = targetH;
-        sp.x = bx;
-        sp.y = worldCY - elev;
+        applySprite(sp);
         group.addChildAt(sp, 0);
       }
     }).catch(() => {
@@ -1922,9 +1933,12 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     keepCont.interactiveChildren = true;
     world.addChild(keepCont); keepContRef.current = keepCont;
 
+    // HQ container sits BELOW keepCont so keeps that are south of the HQ
+    // render on top. We insert it just before keepCont in the display list.
     const hqCont = new PIXI.Container();
     hqCont.interactiveChildren = true;
-    world.addChild(hqCont); hqContRef.current = hqCont;
+    world.addChildAt(hqCont, world.children.indexOf(keepCont));
+    hqContRef.current = hqCont;
     const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
     const cmdGfx = new PIXI.Graphics(); world.addChild(cmdGfx); cmdGfxRef.current = cmdGfx;
