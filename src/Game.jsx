@@ -482,13 +482,13 @@ export default function RiseToWar() {
 
   useEffect(() => {
     if (screen !== "game") return;
-    const TICK_MS = 60 * 1000; // 1 minute
+    const TICK_MS = 10 * 1000; // every 10 seconds for smooth visual accumulation
     const id = setInterval(() => {
       const pph = Object.values(tilesMapRef.current)
         .filter(t => t.owner === "player" && t.powerLevel)
         .reduce((sum, t) => sum + (POWER_DEFS[t.powerLevel]?.ringPower ?? 0), 0);
       if (pph <= 0) return;
-      const gain = pph / 60; // per-minute portion
+      const gain = pph / 360; // 1/360th of hourly rate per 10-second tick
       setPowerPool(prev => prev + gain);
     }, TICK_MS);
     return () => clearInterval(id);
