@@ -1830,400 +1830,193 @@ setRss(prev => ({
 setAmount(0);
 };
 
+
 return (
-<div style={{ overflowY:"auto", WebkitOverflowScrolling:"touch", height:"100%", paddingBottom:32 }}>
-<div>
-<SectionHeader>MARKETPLACE</SectionHeader>
-<div style={{ padding:"10px 12px", background:"rgba(255,255,255,.02)",
-border:`1px solid ${P.border}`, borderRadius:6, marginBottom:10 }}>
-<div style={{ fontSize:8, color:P.sub, fontFamily:"'Crimson Pro',serif", marginBottom:8, fontStyle:"italic" }}>
-Trade any resource for another at a 70% return rate. Use the slider to select how much to trade.
-</div>
+  <div style={{ display:"flex", flexDirection:"column", height:"100%", padding:"10px 14px", gap:10, boxSizing:"border-box" }}>
 
-    {/* FROM / TO selectors */}
-    <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:12 }}>
-      {/* FROM */}
-      <div style={{ flex:1 }}>
-        <div style={{ fontSize:7, color:P.dim, fontFamily:"'Cinzel',serif", letterSpacing:".1em", marginBottom:4 }}>TRADE AWAY</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:3 }}>
-          {RKEYS.map(k => {
-            const r = RSS[k];
-            const active = fromKey === k;
-            return (
-              <button key={k} className="btn" onClick={() => { setFromKey(k); if (toKey===k) setToKey(RKEYS.find(x=>x!==k)); setAmount(0); }}
-                style={{ padding:"5px 4px", textAlign:"center",
-                  background:active?`${r.col}22`:"rgba(255,255,255,.02)",
-                  border:`1px solid ${active?r.col:P.border}`,
-                  color:active?r.col:P.sub, fontSize:8 }}>
-                <div>{r.icon}</div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:7 }}>{r.lbl}</div>
-                <div style={{ fontSize:6, color:active?r.col:"#3a3a4a" }}>{Math.floor(rss[k]).toLocaleString()}</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Arrow */}
-      <div style={{ fontSize:20, color:P.dim, flexShrink:0 }}>→</div>
-
-      {/* TO */}
-      <div style={{ flex:1 }}>
-        <div style={{ fontSize:7, color:P.dim, fontFamily:"'Cinzel',serif", letterSpacing:".1em", marginBottom:4 }}>RECEIVE</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:3 }}>
-          {RKEYS.map(k => {
-            const r = RSS[k];
-            const active = toKey === k;
-            const disabled = k === fromKey;
-            return (
-              <button key={k} className="btn" onClick={() => !disabled && setToKey(k)}
-                style={{ padding:"5px 4px", textAlign:"center",
-                  background:active?`${r.col}22`:"rgba(255,255,255,.02)",
-                  border:`1px solid ${active?r.col:P.border}`,
-                  color:disabled?"#2a2a2a":active?r.col:P.sub,
-                  fontSize:8, opacity:disabled?.35:1, cursor:disabled?"not-allowed":"pointer" }}>
-                <div>{r.icon}</div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:7 }}>{r.lbl}</div>
-                <div style={{ fontSize:6, color:active?r.col:"#3a3a4a" }}>{Math.floor(rss[k]).toLocaleString()}</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+    <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".12em", fontWeight:700,
+      paddingBottom:4, borderBottom:`1px solid ${P.border}`, flexShrink:0 }}>
+      MARKETPLACE
     </div>
 
-    {/* Amount slider */}
-    <div style={{ marginBottom:8 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", fontSize:8,
-        color:"#6a5a4a", fontFamily:"'Cinzel',serif", marginBottom:4 }}>
-        <span>TRADE AMOUNT</span>
-        <span style={{ color:P.gold, fontWeight:700 }}>{safeAmount.toLocaleString()} {RSS[fromKey]?.icon}</span>
-      </div>
-      <input type="range" min={0} max={Math.max(1, maxTrade)} value={safeAmount}
-        onChange={e => setAmount(+e.target.value)}
-        style={{ width:"100%", accentColor:RSS[fromKey]?.col||P.gold, marginBottom:4 }}/>
-      <div style={{ display:"flex", justifyContent:"space-between", fontSize:7, color:"#4a4a5a", marginBottom:8 }}>
-        <span>0</span>
-        <span style={{ color:"#5a6a5a" }}>Available: {maxTrade.toLocaleString()}</span>
-        <span>{maxTrade.toLocaleString()}</span>
-      </div>
-    </div>
+    <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, minHeight:0 }}>
 
-    {/* Trade preview */}
-    {safeAmount > 0 && fromKey !== toKey && (
-      <div style={{ padding:"8px 10px", background:"rgba(240,192,64,.06)",
-        border:"1px solid rgba(240,192,64,.2)", borderRadius:4, marginBottom:8,
-        display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <div style={{ fontSize:9, color:P.sub, fontFamily:"'Cinzel',serif" }}>
-          <span style={{ color:RSS[fromKey]?.col }}>{RSS[fromKey]?.icon} {safeAmount.toLocaleString()}</span>
-          {" → "}
-          <span style={{ color:RSS[toKey]?.col }}>{RSS[toKey]?.icon} {receive.toLocaleString()}</span>
-        </div>
-        <div style={{ fontSize:7, color:"#5a5a3a", fontFamily:"'Crimson Pro',serif" }}>
-          {TRADE_RATE*100}% rate
-        </div>
-      </div>
-    )}
-
-    <button className="btn" disabled={!canTrade} onClick={doTrade}
-      style={{ width:"100%", padding:"10px",
-        background:canTrade?"linear-gradient(135deg,rgba(200,160,64,.4),rgba(200,160,64,.15))":"rgba(255,255,255,.02)",
-        border:`1px solid ${canTrade?"#8a6020":"#181818"}`,
-        color:canTrade?P.gold:"#2a2a2a", fontSize:12, fontWeight:700, letterSpacing:".08em" }}>
-      {canTrade
-        ? `🏪 Trade ${safeAmount.toLocaleString()} ${RSS[fromKey]?.icon} → ${receive.toLocaleString()} ${RSS[toKey]?.icon}`
-        : fromKey===toKey ? "Select different resources" : "Select amount to trade"}
-    </button>
-  </div>
-</div>
-
-{/* ── Void Tap ─────────────────────────────────────────────────────── */}
-{(() => {
-  const tapYield     = voidTapYield(quarterLevels);
-  const msRemaining  = lastVoidTap ? Math.max(0, voidTapCooldown - (now - lastVoidTap)) : 0;
-  const cooldownStr  = fmtCooldown(msRemaining);
-  const fillPct      = mysticOrbsCap > 0 ? Math.min(1, (mysticOrbs || 0) / mysticOrbsCap) : 0;
-  const isFull       = (mysticOrbs || 0) >= mysticOrbsCap;
-  const notBuilt     = !voidTapLvl || voidTapLvl < 1;
-
-  return (
-    <div style={{ marginTop:12 }}>
-      <SectionHeader>VOID TAP</SectionHeader>
-      <div style={{ padding:"10px 12px", background:"rgba(80,10,120,.12)",
-        border:"1px solid rgba(120,40,180,.28)", borderRadius:6 }}>
-
-        {notBuilt ? (
-          <div style={{ textAlign:"center", padding:"12px 0" }}>
-            <div style={{ fontSize:22, marginBottom:6 }}>🌀</div>
-            <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#7a4a9a", letterSpacing:".08em", marginBottom:6 }}>
-              VOID TAP NOT BUILT
-            </div>
-            <div style={{ fontFamily:"'Crimson Pro',serif", fontSize:10, color:P.sub, fontStyle:"italic" }}>
-              Build the Void Tap in Architecture → Buildings to channel Mystic Orbs.
+      {/* LEFT: Trade */}
+      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        <div style={{ display:"flex", gap:6, alignItems:"flex-start" }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".1em", marginBottom:3 }}>TRADE AWAY</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:3 }}>
+              {RKEYS.map(k => {
+                const r = RSS[k];
+                const active = fromKey === k;
+                return (
+                  <button key={k} className="btn"
+                    onClick={() => { setFromKey(k); if (toKey===k) setToKey(RKEYS.find(x=>x!==k)); setAmount(0); }}
+                    style={{ padding:"5px 3px", textAlign:"center",
+                      background:active ? r.col+"22" : "rgba(255,255,255,.02)",
+                      border:"1px solid "+(active ? r.col : P.border),
+                      color:active ? r.col : P.sub, fontSize:7 }}>
+                    <div style={{ fontSize:12 }}>{r.icon}</div>
+                    <div style={{ fontFamily:P.ff, fontSize:6 }}>{r.lbl}</div>
+                    <div style={{ fontSize:5.5, color:active ? r.col : "#3a3a4a", marginTop:1 }}>{Math.floor(rss[k]).toLocaleString()}</div>
+                  </button>
+                );
+              })}
             </div>
           </div>
-        ) : (
-          <>
-            {/* Orb pool status */}
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                <span style={{ fontSize:14 }}>🌀</span>
-                <div>
-                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#bb66ff", letterSpacing:".06em" }}>
-                    MYSTIC ORBS
-                  </div>
-                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:P.sub }}>
-                    Lv{voidTapLvl} · Cap {(mysticOrbsCap||0).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-              <div style={{ textAlign:"right" }}>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:"#cc88ff", fontWeight:700 }}>
-                  {(mysticOrbs||0).toLocaleString()}
-                </div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:P.dim }}>
-                  / {(mysticOrbsCap||0).toLocaleString()}
-                </div>
-              </div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
+            fontSize:16, color:P.dim, flexShrink:0, paddingTop:14 }}>{">"}</div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".1em", marginBottom:3 }}>RECEIVE</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:3 }}>
+              {RKEYS.map(k => {
+                const r = RSS[k];
+                const active = toKey === k;
+                const disabled = k === fromKey;
+                return (
+                  <button key={k} className="btn" onClick={() => { if (!disabled) setToKey(k); }}
+                    style={{ padding:"5px 3px", textAlign:"center",
+                      background:active ? r.col+"22" : "rgba(255,255,255,.02)",
+                      border:"1px solid "+(active ? r.col : P.border),
+                      color:disabled ? "#2a2a2a" : active ? r.col : P.sub,
+                      fontSize:7, opacity:disabled ? 0.35 : 1, cursor:disabled ? "not-allowed" : "pointer" }}>
+                    <div style={{ fontSize:12 }}>{r.icon}</div>
+                    <div style={{ fontFamily:P.ff, fontSize:6 }}>{r.lbl}</div>
+                    <div style={{ fontSize:5.5, color:active ? r.col : "#3a3a4a", marginTop:1 }}>{Math.floor(rss[k]).toLocaleString()}</div>
+                  </button>
+                );
+              })}
             </div>
+          </div>
+        </div>
 
-            {/* Fill bar */}
-            <div style={{ height:4, background:"rgba(255,255,255,.05)", borderRadius:2, marginBottom:10, overflow:"hidden" }}>
-              <div style={{
-                height:"100%", borderRadius:2,
-                width:`${fillPct*100}%`,
-                background: isFull
-                  ? "linear-gradient(90deg,#aa44ff,#cc88ff)"
-                  : "linear-gradient(90deg,#6622aa,#aa44ff)",
-                transition:"width .4s ease",
-                boxShadow: isFull ? "0 0 6px #aa44ff" : "none",
-              }}/>
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:7,
+            color:"#6a5a4a", fontFamily:P.ff, marginBottom:3 }}>
+            <span>AMOUNT</span>
+            <span style={{ color:P.gold, fontWeight:700 }}>{safeAmount.toLocaleString()} {RSS[fromKey] ? RSS[fromKey].icon : ""}</span>
+          </div>
+          <input type="range" min={0} max={Math.max(1, maxTrade)} value={safeAmount}
+            onChange={e => setAmount(+e.target.value)}
+            style={{ width:"100%", accentColor:RSS[fromKey] ? RSS[fromKey].col : P.gold, marginBottom:3 }}/>
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:6, color:"#4a4a5a" }}>
+            <span>0</span>
+            <span style={{ color:"#5a6a5a" }}>{maxTrade.toLocaleString()} avail</span>
+            <span>{maxTrade.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {safeAmount > 0 && fromKey !== toKey && (
+          <div style={{ padding:"6px 8px", background:"rgba(240,192,64,.06)",
+            border:"1px solid rgba(240,192,64,.2)", borderRadius:4,
+            display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div style={{ fontSize:8, color:P.sub, fontFamily:P.ff }}>
+              <span style={{ color:RSS[fromKey] ? RSS[fromKey].col : "" }}>{RSS[fromKey] ? RSS[fromKey].icon : ""} {safeAmount.toLocaleString()}</span>
+              {" -> "}
+              <span style={{ color:RSS[toKey] ? RSS[toKey].col : "" }}>{RSS[toKey] ? RSS[toKey].icon : ""} {receive.toLocaleString()}</span>
             </div>
-
-            {/* Tap yield info */}
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
-              padding:"6px 8px", background:"rgba(255,255,255,.03)",
-              border:"1px solid rgba(120,40,180,.2)", borderRadius:4, marginBottom:10 }}>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:P.sub }}>
-                TAP YIELD
-              </div>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color: tapYield > 0 ? "#cc88ff" : P.dim }}>
-                {tapYield > 0 ? `+${tapYield.toLocaleString()} orbs` : "Upgrade quarters to earn orbs"}
-              </div>
-            </div>
-
-            {/* Cooldown status */}
-            {!voidTapReady && !isFull && (
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
-                padding:"6px 8px", background:"rgba(255,255,255,.02)",
-                border:"1px solid rgba(80,40,120,.2)", borderRadius:4, marginBottom:10 }}>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:P.dim }}>NEXT TAP IN</div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#8855bb" }}>{cooldownStr}</div>
-              </div>
-            )}
-            {isFull && (
-              <div style={{ textAlign:"center", padding:"4px 0 8px",
-                fontFamily:"'Cinzel',serif", fontSize:8, color:"#aa55ff", letterSpacing:".06em" }}>
-                ✦ POOL FULL — SPEND ORBS BEFORE TAPPING ✦
-              </div>
-            )}
-
-            {/* Tap button */}
-            <button className="btn" disabled={!voidTapReady} onClick={doVoidTap}
-              style={{ width:"100%", padding:"12px",
-                background: voidTapReady
-                  ? "linear-gradient(135deg,rgba(140,40,220,.5),rgba(80,10,140,.4))"
-                  : "rgba(255,255,255,.02)",
-                border:`1px solid ${voidTapReady?"#8833cc":"#1a1020"}`,
-                color: voidTapReady ? "#cc88ff" : "#3a2a4a",
-                fontSize:12, fontWeight:700, letterSpacing:".1em",
-                boxShadow: voidTapReady ? "0 0 12px rgba(140,40,220,.3)" : "none",
-                transition:"all .2s",
-              }}>
-              {isFull ? "🌀 POOL FULL"
-                : voidTapReady ? `🌀 VOID TAP  +${tapYield.toLocaleString()} ORBS`
-                : `🌀 VOID TAP  (${cooldownStr})`}
-            </button>
-          </>
+            <div style={{ fontSize:6, color:"#5a5a3a" }}>{TRADE_RATE*100}{"% rate"}</div>
+          </div>
         )}
-      </div>
-    </div>
-  );
-})()}
 
+        <button className="btn" disabled={!canTrade} onClick={doTrade}
+          style={{ width:"100%", padding:"10px", marginTop:"auto",
+            background:canTrade ? "linear-gradient(135deg,rgba(200,160,64,.4),rgba(200,160,64,.15))" : "rgba(255,255,255,.02)",
+            border:"1px solid "+(canTrade ? "#8a6020" : "#181818"),
+            color:canTrade ? P.gold : "#2a2a2a", fontSize:11, fontWeight:700 }}>
+          {canTrade
+            ? ("Trade " + safeAmount.toLocaleString() + " " + (RSS[fromKey] ? RSS[fromKey].icon : "") + " -> " + receive.toLocaleString() + " " + (RSS[toKey] ? RSS[toKey].icon : ""))
+            : (fromKey===toKey ? "Select different resources" : "Select amount")}
+        </button>
+      </div>
+
+      {/* RIGHT: Void Tap */}
+      {(function() {
+        var tapYield    = voidTapYield(quarterLevels);
+        var msRemaining = lastVoidTap ? Math.max(0, voidTapCooldown - (now - lastVoidTap)) : 0;
+        var cooldownStr = fmtCooldown(msRemaining);
+        var fillPct     = mysticOrbsCap > 0 ? Math.min(1, (mysticOrbs || 0) / mysticOrbsCap) : 0;
+        var isFull      = (mysticOrbs || 0) >= mysticOrbsCap;
+        var notBuilt    = !voidTapLvl || voidTapLvl < 1;
+        return (
+          <div style={{ display:"flex", flexDirection:"column", gap:8,
+            padding:"10px 12px", background:"rgba(80,10,120,.12)",
+            border:"1px solid rgba(120,40,180,.28)", borderRadius:6 }}>
+            <div style={{ fontSize:6, color:"#9955cc", fontFamily:P.ff, letterSpacing:".12em",
+              fontWeight:700, paddingBottom:4, borderBottom:"1px solid rgba(120,40,180,.2)" }}>
+              VOID TAP
+            </div>
+            {notBuilt ? (
+              <div style={{ flex:1, display:"flex", flexDirection:"column",
+                alignItems:"center", justifyContent:"center", textAlign:"center", gap:6 }}>
+                <div style={{ fontFamily:P.ff, fontSize:8, color:"#7a4a9a" }}>NOT BUILT</div>
+                <div style={{ fontFamily:"'Crimson Pro',serif", fontSize:9, color:P.sub, fontStyle:"italic" }}>
+                  Build the Void Tap in Architecture
+                </div>
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:8, flex:1 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                    <div>
+                      <div style={{ fontFamily:P.ff, fontSize:8, color:"#bb66ff", letterSpacing:".06em" }}>MYSTIC ORBS</div>
+                      <div style={{ fontFamily:P.ff, fontSize:7, color:P.sub }}>{"Lv"+voidTapLvl+" Cap "+(mysticOrbsCap||0).toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <div style={{ fontFamily:P.ff, fontSize:13, color:"#cc88ff", fontWeight:700 }}>{(mysticOrbs||0).toLocaleString()}</div>
+                    <div style={{ fontFamily:P.ff, fontSize:6, color:P.dim }}>{"/ "+(mysticOrbsCap||0).toLocaleString()}</div>
+                  </div>
+                </div>
+                <div style={{ height:5, background:"rgba(255,255,255,.05)", borderRadius:3, overflow:"hidden" }}>
+                  <div style={{ height:"100%", borderRadius:3, width:(fillPct*100)+"%",
+                    background: isFull ? "linear-gradient(90deg,#aa44ff,#cc88ff)" : "linear-gradient(90deg,#6622aa,#aa44ff)",
+                    transition:"width .4s ease", boxShadow: isFull ? "0 0 6px #aa44ff" : "none" }}/>
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+                  padding:"5px 8px", background:"rgba(255,255,255,.03)",
+                  border:"1px solid rgba(120,40,180,.2)", borderRadius:4 }}>
+                  <div style={{ fontFamily:P.ff, fontSize:7, color:P.sub }}>TAP YIELD</div>
+                  <div style={{ fontFamily:P.ff, fontSize:8, color: tapYield > 0 ? "#cc88ff" : P.dim }}>
+                    {tapYield > 0 ? "+"+tapYield.toLocaleString()+" orbs" : "Upgrade quarters"}
+                  </div>
+                </div>
+                {(!voidTapReady && !isFull) ? (
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+                    padding:"5px 8px", background:"rgba(255,255,255,.02)",
+                    border:"1px solid rgba(80,40,120,.2)", borderRadius:4 }}>
+                    <div style={{ fontFamily:P.ff, fontSize:7, color:P.dim }}>NEXT TAP IN</div>
+                    <div style={{ fontFamily:P.ff, fontSize:8, color:"#8855bb" }}>{cooldownStr}</div>
+                  </div>
+                ) : null}
+                {isFull ? (
+                  <div style={{ textAlign:"center", fontFamily:P.ff, fontSize:7, color:"#aa55ff", letterSpacing:".06em" }}>
+                    POOL FULL
+                  </div>
+                ) : null}
+                <button className="btn" disabled={!voidTapReady} onClick={doVoidTap}
+                  style={{ width:"100%", padding:"12px", marginTop:"auto",
+                    background: voidTapReady
+                      ? "linear-gradient(135deg,rgba(140,40,220,.5),rgba(80,10,140,.4))"
+                      : "rgba(255,255,255,.02)",
+                    border:"1px solid "+(voidTapReady ? "#8833cc" : "#1a1020"),
+                    color: voidTapReady ? "#cc88ff" : "#3a2a4a",
+                    fontSize:12, fontWeight:700, letterSpacing:".1em",
+                    boxShadow: voidTapReady ? "0 0 12px rgba(140,40,220,.3)" : "none",
+                    transition:"all .2s" }}>
+                  {isFull ? "POOL FULL"
+                    : voidTapReady ? ("VOID TAP +" + tapYield.toLocaleString() + " ORBS")
+                    : ("VOID TAP (" + cooldownStr + ")")}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+    </div>
   </div>
-</div>
 );
 }
 
-// -----------------------------------------------------------------------------
-//  ROOT HQMenu
-// -----------------------------------------------------------------------------
-export default memo(function HQMenu({
-hqOpen, setHqOpen, hqTab, setHqTab,
-cmds, setCmds, tiles, rss, setRss, gems, pKeys,
-bldgs, setBldgs, barracksPool, troopCounts, setTroopCounts, woundedTroops, woundedQueue,
-trainingQueue, trainSlider, setTrainSlider,
-upgQueue, sliderVals, setSliderVals, bLog,
-upgrade, canAfford, assignTroops, setTroopSlot, returnTroops, queueTraining,
-recallMarch, setScreen, gearInventory, playerHqKey,
-facKey, unlockedBranches, setUnlockedBranches,
-quarterLevels, setQuarterLevels,
-mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady,
-lastVoidTap, voidTapCooldown, doVoidTap,
-}) {
-if (!hqOpen) return null;
-
-const isHub = hqTab === "hub";
-
-// Parchment shell constants
-const PARCHMENT_BG = "#b8986a";
-const PAPER_BG_OUTER = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")`;
-
-return (
-<div style={{ position:"fixed", inset:0, zIndex:400,
-background: isHub ? PARCHMENT_BG : P.bg,
-display:"flex", flexDirection:"column",
-boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
-
-  {/* Parchment texture overlay -- only on hub */}
-  {isHub && <>
-    <div style={{ position:"absolute", inset:0, backgroundImage:PAPER_BG_OUTER,
-      backgroundSize:"200px 200px", opacity:0.5, pointerEvents:"none", zIndex:0 }}/>
-    <div style={{ position:"absolute", inset:0,
-      background:"radial-gradient(ellipse at center, transparent 40%, rgba(40,10,0,.5) 100%)",
-      pointerEvents:"none", zIndex:0 }}/>
-    <div style={{ position:"absolute", inset:0,
-      backgroundImage:"repeating-linear-gradient(0deg, transparent, transparent 22px, rgba(60,25,5,.06) 22px, rgba(60,25,5,.06) 23px)",
-      pointerEvents:"none", zIndex:0 }}/>
-    {/* Double border frame */}
-    <div style={{ position:"absolute", inset:7, border:"3px double #7a5028", borderRadius:3, pointerEvents:"none", zIndex:10 }}/>
-    <div style={{ position:"absolute", inset:13, border:"1px solid #7a502844", borderRadius:2, pointerEvents:"none", zIndex:10 }}/>
-    {/* Corner brackets */}
-    {[[0,0],[0,1],[1,0],[1,1]].map(([yt,xl],i) => (
-      <div key={i} style={{ position:"absolute", zIndex:11, pointerEvents:"none",
-        top:yt===0?9:"auto", bottom:yt===1?9:"auto", left:xl===0?9:"auto", right:xl===1?9:"auto",
-        width:22, height:22,
-        borderTop:yt===0?"2px solid #7a5028":"none", borderBottom:yt===1?"2px solid #7a5028":"none",
-        borderLeft:xl===0?"2px solid #7a5028":"none", borderRight:xl===1?"2px solid #7a5028":"none" }}/>
-    ))}
-  </>}
-
-  {/* Title bar */}
-  <div style={{ position:"relative", zIndex:5,
-    padding:"18px 24px 14px",
-    borderBottom: isHub ? "2px solid #7a5028" : `1px solid ${P.border}`,
-    display:"flex", alignItems:"center", justifyContent:"center",
-    flexShrink:0,
-    background: isHub ? "transparent" : "rgba(0,0,0,.4)" }}>
-
-    {/* Back button */}
-    {hqTab !== "hub" && (
-      <button onClick={() => setHqTab("hub")}
-        style={{ position:"absolute", left:24,
-          background:"rgba(255,255,255,.06)", border:`1px solid ${P.border}`,
-          color:P.sub, fontSize:11, padding:"4px 12px", borderRadius:4, cursor:"pointer" }}>
-        ← Back
-      </button>
-    )}
-
-    {/* Title */}
-    <div style={{ textAlign:"center" }}>
-      {isHub ? (
-        <>
-          <div style={{ fontFamily:"'Cinzel Decorative', serif", fontSize:30,
-            color:"#2a1005", letterSpacing:".25em",
-            textShadow:"1px 1px 0 rgba(255,210,120,.4), 0 2px 6px rgba(60,20,0,.3)" }}>HQ</div>
-          <div style={{ height:1, background:"linear-gradient(90deg, transparent, #7a5028 20%, #7a5028 80%, transparent)", marginTop:5 }}/>
-          <div style={{ fontFamily:"'IM Fell English', serif", fontSize:9, color:"#7a5028",
-            letterSpacing:".2em", fontStyle:"italic", marginTop:4, textTransform:"uppercase" }}>Headquarters</div>
-        </>
-      ) : (
-        <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14,
-          background:"linear-gradient(135deg,#f0c040,#c8803a,#f0c040)",
-          backgroundSize:"200% auto", WebkitBackgroundClip:"text",
-          WebkitTextFillColor:"transparent", animation:"shimmer 3s linear infinite" }}>
-          🏰 HEADQUARTERS {hqTab !== "hub" && `-- ${HUB_TILES_PARCHMENT.find(t=>t.id===hqTab)?.label??""}`}
-        </div>
-      )}
-    </div>
-
-    {/* Close button */}
-    <button onClick={() => setHqOpen(false)}
-      style={{ position:"absolute", right:24,
-        background: isHub ? "radial-gradient(ellipse at 40% 35%, #d8c080, #b89050)" : "rgba(200,50,50,.15)",
-        border: isHub ? "2px solid #7a5028" : "1px solid rgba(200,50,50,.4)",
-        color: isHub ? "#3a1a05" : "#dd6060",
-        fontSize:12, padding:"4px 14px", borderRadius:4, cursor:"pointer" }}>
-      {isHub ? "✕" : "✕ Close"}
-    </button>
-  </div>
-
-  {/* Content */}
-  {(() => {
-    const splitLayout = hqTab === "buildings" || hqTab === "army";
-    return (
-      <div className="scr" style={{ flex:1, overflowY: splitLayout ? "hidden" : "auto",
-        minHeight:0, padding: (isHub || splitLayout) ? 0 : 14,
-        display: isHub ? "flex" : splitLayout ? "flex" : "block",
-        flexDirection:"column", position:"relative", zIndex:2 }}>
-
-        {hqTab === "hub" && <HubScreen setHqTab={setHqTab}/>}
-
-        {hqTab === "buildings" && (
-          <InfrastructureScreen
-            bldgs={bldgs} setBldgs={setBldgs} rss={rss} setRss={setRss} canAfford={canAfford}
-            upgrade={upgrade} upgQueue={upgQueue} cmds={cmds} facKey={facKey}
-            quarterLevels={quarterLevels} setQuarterLevels={setQuarterLevels}
-            setUnlockedBranches={setUnlockedBranches}/>
-        )}
-        {hqTab === "commandcenter" && (
-          <CommandCenterScreen cmds={cmds} pKeys={pKeys} rss={rss} gems={gems}
-            bldgs={bldgs} bLog={bLog} tiles={tiles}/>
-        )}
-        {hqTab === "troops" && (
-          <StrikeCraftScreen bldgs={bldgs} barracksPool={barracksPool} troopCounts={troopCounts}
-            trainingQueue={trainingQueue} canAfford={canAfford}
-            queueTraining={queueTraining} rss={rss} cmds={cmds}
-            unlockedBranches={unlockedBranches}
-            discardTroops={(bKey, n) => setTroopCounts(prev => ({
-              ...prev,
-              [bKey]: Math.max(0, (prev[bKey] || 0) - n)
-            }))}/>
-        )}
-        {hqTab === "army" && (
-          <BattleGroupsScreen cmds={cmds} setCmds={setCmds} bldgs={bldgs}
-            barracksPool={barracksPool} troopCounts={troopCounts}
-            sliderVals={sliderVals} setSliderVals={setSliderVals}
-            setTroopSlot={setTroopSlot} returnTroops={returnTroops}
-            playerHqKey={playerHqKey} unlockedBranches={unlockedBranches}/>
-        )}
-        {hqTab === "repairbay" && (
-          <RepairBayScreen bldgs={bldgs} woundedTroops={woundedTroops}
-            woundedQueue={woundedQueue} bLog={bLog}/>
-        )}
-        {hqTab === "marketplace" && (
-          <MarketplaceScreen rss={rss} setRss={setRss}
-            mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap}
-            voidTapLvl={voidTapLvl} voidTapReady={voidTapReady}
-            lastVoidTap={lastVoidTap} voidTapCooldown={voidTapCooldown}
-            doVoidTap={doVoidTap} quarterLevels={quarterLevels}
-          />
-        )}
-      </div>
-    );
-  })()}
-
-  {/* Parchment bottom stamp -- hub only */}
-  {isHub && (
-    <div style={{ position:"absolute", bottom:16, left:"50%", transform:"translateX(-50%)",
-      zIndex:12, pointerEvents:"none",
-      fontFamily:"'IM Fell English', serif", fontSize:7.5, color:"#7a5028",
-      opacity:0.5, letterSpacing:".25em", fontStyle:"italic", whiteSpace:"nowrap" }}>
-      -- BY ROYAL DECREE --
-    </div>
-  )}
-</div>
-
-);
-});
