@@ -499,11 +499,12 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // Use the tile's actual terrain so the P10+ footprint blends with its cluster
       const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
       // Overdraw by 4px on every edge to fully cover neighbor tile stroke artifacts,
-      // but skip overdraw on sides adjacent to an HQ tile to avoid painting over it.
-      const hqN = tiles[`${c},${r-1}`]?.isHQ || tiles[`${c+1},${r-1}`]?.isHQ;
-      const hqE = tiles[`${c+2},${r}`]?.isHQ || tiles[`${c+2},${r+1}`]?.isHQ;
-      const hqS = tiles[`${c},${r+2}`]?.isHQ || tiles[`${c+1},${r+2}`]?.isHQ;
-      const hqW = tiles[`${c-1},${r}`]?.isHQ || tiles[`${c-1},${r+1}`]?.isHQ;
+      // but skip overdraw on sides adjacent to an HQ tile (any part of 3x3) to avoid painting over it.
+      const isHQTile = (key) => { const t = tiles[key]; return t?.isHQ || t?.isHQPart; };
+      const hqN = isHQTile(`${c},${r-1}`)   || isHQTile(`${c+1},${r-1}`) || isHQTile(`${c+2},${r-1}`);
+      const hqE = isHQTile(`${c+2},${r}`)   || isHQTile(`${c+2},${r+1}`) || isHQTile(`${c+2},${r+2}`);
+      const hqS = isHQTile(`${c},${r+2}`)   || isHQTile(`${c+1},${r+2}`) || isHQTile(`${c+2},${r+2}`);
+      const hqW = isHQTile(`${c-1},${r}`)   || isHQTile(`${c-1},${r+1}`) || isHQTile(`${c-1},${r+2}`);
       const OD = 2.2;
       const odN = hqN ? 0 : OD;
       const odE = hqE ? 0 : OD;

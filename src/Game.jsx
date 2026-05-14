@@ -475,7 +475,7 @@ export default function RiseToWar() {
   // powerPerHr = sum of ringPower for all player-owned tiles
   const powerPerHr = useMemo(() => {
     return Object.values(tilesMapRef.current)
-      .filter(t => t.owner === "player" && t.powerLevel)
+      .filter(t => t.owner === "player" && t.powerLevel && !t.isHQ && !t.isHQPart)
       .reduce((sum, t) => sum + (POWER_DEFS[t.powerLevel]?.ringPower ?? 0), 0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tiles]); // recalculate when tiles change
@@ -485,7 +485,7 @@ export default function RiseToWar() {
     const TICK_MS = 10 * 1000; // every 10 seconds for smooth visual accumulation
     const id = setInterval(() => {
       const pph = Object.values(tilesMapRef.current)
-        .filter(t => t.owner === "player" && t.powerLevel)
+        .filter(t => t.owner === "player" && t.powerLevel && !t.isHQ && !t.isHQPart)
         .reduce((sum, t) => sum + (POWER_DEFS[t.powerLevel]?.ringPower ?? 0), 0);
       if (pph <= 0) return;
       const gain = pph / 360; // 1/360th of hourly rate per 10-second tick
@@ -633,7 +633,8 @@ export default function RiseToWar() {
             defeatedWaves: [], resetAt: null,
           };
           const [hc, hr] = playerSpawn.split(",").map(Number);
-          [[1,0],[0,1],[1,1]].forEach(([dc,dr]) => {
+          // 3x3 HQ footprint — all 8 cells surrounding the top-left primary
+          [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
             const fk = `${hc+dc},${hr+dr}`;
             if (rawMap[fk]) {
               rawMap[fk] = { ...rawMap[fk], isHQPart: true, hqPrimaryKey: playerSpawn,
@@ -665,7 +666,8 @@ export default function RiseToWar() {
               defeatedWaves: [], resetAt: null,
             };
             const [ahc, ahr] = spawn.split(",").map(Number);
-            [[1,0],[0,1],[1,1]].forEach(([dc,dr]) => {
+            // 3x3 HQ footprint — all 8 cells surrounding the top-left primary
+            [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
               const fk = `${ahc+dc},${ahr+dr}`;
               if (rawMap[fk]) {
                 rawMap[fk] = { ...rawMap[fk], isHQPart: true, hqPrimaryKey: spawn,
