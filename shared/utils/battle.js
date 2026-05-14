@@ -254,7 +254,9 @@ export function garrisonWaveCount(tile) {
 export function garrisonWaveDefCmd(tile, waveIndex, playerFaction) {
   const c      = tile.c ?? tile.cx ?? 0;
   const r      = tile.r ?? tile.cy ?? 0;
-  const budget = tile.garrisonTroops || tile.garrison || 2100;
+  const plvl   = tile.powerLevel || 1;
+  const pd     = POWER_DEFS[plvl] || POWER_DEFS[1];
+  const budget = tile.garrisonTroops || tile.garrison || pd.command;
 
   // Per-wave seed: incorporate wave index so each wave gets a distinct commander
   const baseSeed = (((c + 1) * 73856093) ^ ((r + 1) * 19349663)) >>> 0;
@@ -263,13 +265,12 @@ export function garrisonWaveDefCmd(tile, waveIndex, playerFaction) {
   // Offset tile coords per wave so factionDefCmdForTile picks a different commander
   const waveC      = (c + waveIndex * 997) | 0;
   const waveR      = (r + waveIndex * 1009) | 0;
-  const powerLevel = tile.powerLevel || 1;
   // P1–P3: use NPC path (same as garrisonDefCmd) — no faction commander available
-  if (powerLevel < 4) return garrisonDefCmd(tile, playerFaction);
-  const baseCmd    = factionDefCmdForTile(waveC, waveR, playerFaction, powerLevel, waveIndex);
+  if (plvl < 4) return garrisonDefCmd(tile, playerFaction);
+  const baseCmd    = factionDefCmdForTile(waveC, waveR, playerFaction, plvl, waveIndex);
   if (!baseCmd) return garrisonDefCmd(tile, playerFaction);
 
-  const split = tierSplitForPowerLevel(powerLevel, budget);
+  const split = tierSplitForPowerLevel(plvl, budget);
   const slots = buildTroopSlots(baseCmd.faction, split, waveSeed);
   const totalTroops = slots.reduce((s, sl) => s + sl.troops, 0);
 
