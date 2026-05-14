@@ -627,7 +627,7 @@ export default function RiseToWar() {
         if (playerSpawn && rawMap[playerSpawn]) {
           rawMap[playerSpawn] = {
             ...rawMap[playerSpawn],
-            owner: "player", isHQ: true, garrison: 0,
+            owner: "player", isHQ: true, garrison: 0, faction: facKey,
             terrain: "grass", rss: null, defCmd: null,
             siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
             defeatedWaves: [], resetAt: null,
@@ -660,7 +660,7 @@ export default function RiseToWar() {
           if (spawn && rawMap[spawn]) {
             rawMap[spawn] = {
               ...rawMap[spawn],
-              owner: "ai", isHQ: true, garrison: 0,
+              owner: "ai", isHQ: true, garrison: 0, faction: aiFk,
               terrain: "grass", rss: null, defCmd: null,
               siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
               defeatedWaves: [], resetAt: null,

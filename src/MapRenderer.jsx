@@ -1445,6 +1445,158 @@ const _keepStateCache = new Map(); // tileKey → { owner, isSelected }
 // Call this whenever the tile map is fully reset (e.g. new game) so keeps rebuild from scratch.
 export function clearKeepCache() { _keepStateCache.clear(); }
 
+// ── HQ Sprite Layer ───────────────────────────────────────────────────────────
+// Each player/AI HQ renders as a faction-specific sprite centered on the 3×3
+// footprint. The primary tile is the top-left corner (isHQ===true); the other
+// 8 cells are isHQPart===true. We track the primary tile key only.
+//
+// Faction → sprite filename mapping. Files live in /public/hq/
+const HQ_SPRITES = {
+  pirates:       "hq_pirates.webp",
+  orcs:          "hq_orcs.webp",
+  nightcreatures:"hq_nightcreatures.webp",
+  holyknights:   "hq_holyknights.webp",
+  dragons:       "hq_dragons.webp",
+  bountyhunters: "hq_arcane.webp",
+  player:        "hq_pirates.webp",
+  ai:            "hq_orcs.webp",
+};
+
+const _hqStateCache = new Map(); // tileKey → { faction, owner, isSelected }
+export function clearHQCache() { _hqStateCache.clear(); }
+
+// 3×3 footprint: primary tile is top-left (c,r); parts go to (c+2,r+2)
+// The visual centre of a 3×3 in isometric space is the centre tile (c+1,r+1).
+// isoXY gives us the diamond centre of any tile; the 3×3 centre is at (c+1,r+1).
+// We size the sprite to cover the full 3×3 diamond footprint.
+function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache) {
+  const [pc, pr] = tileKey.split(",").map(Number);
+  // Visual centre = middle tile of 3×3
+  const { cx: bx, cy: worldCY } = isoXY(pc + 1, pr + 1);
+  const elev = 14;
+
+  // 3×3 outer diamond corners (for hit area + selection outline)
+  // N=(pc+1,pr), E=(pc+2,pr+1), S=(pc+1,pr+2), W=(pc,pr+1) — all shifted by elev
+  const nPt = isoXY(pc + 1, pr);
+  const ePt = isoXY(pc + 2, pr + 1);
+  const sPt = isoXY(pc + 1, pr + 2);
+  const wPt = isoXY(pc,     pr + 1);
+
+  const FOOTPRINT = [
+    nPt.cx, nPt.cy - elev,
+    ePt.cx, ePt.cy - elev,
+    sPt.cx, sPt.cy - elev,
+    wPt.cx, wPt.cy - elev,
+  ];
+
+  const isSelected = selKey === tileKey;
+  const owner      = tile.owner || null;
+  const faction    = tile.faction || owner || "player";
+
+  const group = new PIXI.Container();
+  group.__hqKey = tileKey;
+
+  // ── Selection outline ──
+  if (isSelected) {
+    const outlineGfx = new PIXI.Graphics();
+    const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+    outlineGfx.lineStyle(3, 0xffffff, 0.95);
+    outlineGfx.drawPolygon(FOOTPRINT);
+    outlineGfx.lineStyle(0);
+    group.addChild(outlineGfx);
+  }
+
+  // ── Sprite ──
+  const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
+  const spriteUrl  = `/hq/${spriteName}`;
+
+  // 3×3 diamond width = 3 tile widths; height = 3 tile heights + elev headroom
+  const targetW = TW * 3.2;
+  const targetH = TH * 6.5; // tall to accommodate spires/towers above the base
+
+  if (texCache[spriteUrl]) {
+    const sp = new PIXI.Sprite(texCache[spriteUrl]);
+    sp.anchor.set(0.5, 0.78); // anchor near base of building
+    sp.width  = targetW;
+    sp.height = targetH;
+    sp.x = bx;
+    sp.y = worldCY - elev;
+    group.addChild(sp);
+  } else {
+    // Load async — replace placeholder gfx once loaded
+    const placeholderGfx = new PIXI.Graphics();
+    const fc = owner === "player" ? 0x1ea0b4 : owner === "ai" ? 0xdc3c28 : 0x888888;
+    placeholderGfx.beginFill(fc, 0.3);
+    placeholderGfx.drawPolygon(FOOTPRINT);
+    placeholderGfx.endFill();
+    group.addChild(placeholderGfx);
+
+    PIXI.Texture.fromURL(spriteUrl).then(tex => {
+      texCache[spriteUrl] = tex;
+      // Remove placeholder, add real sprite
+      if (placeholderGfx.parent) placeholderGfx.parent.removeChild(placeholderGfx);
+      placeholderGfx.destroy();
+      if (!group.destroyed) {
+        const sp = new PIXI.Sprite(tex);
+        sp.anchor.set(0.5, 0.78);
+        sp.width  = targetW;
+        sp.height = targetH;
+        sp.x = bx;
+        sp.y = worldCY - elev;
+        group.addChildAt(sp, 0);
+      }
+    }).catch(() => {
+      // Sprite not found — placeholder stays, that's fine
+    });
+  }
+
+  // ── Hit area ──
+  const hit = new PIXI.Graphics();
+  hit.beginFill(0xffffff, 0.001);
+  hit.drawPolygon(FOOTPRINT);
+  hit.endFill();
+  hit.hitArea     = new PIXI.Polygon(FOOTPRINT);
+  hit.interactive = true;
+  hit.buttonMode  = true;
+  hit.cursor      = "pointer";
+  hit.on("pointerdown", (e) => {
+    if (isPanningRef?.current) return;
+    e.stopPropagation();
+    onHQClick(tileKey, e.data?.originalEvent || e);
+  });
+  group.addChild(hit);
+  return group;
+}
+
+const _hqTexCache = {}; // shared texture cache across rebuilds
+
+function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef) {
+  // Find all primary HQ tiles (isHQ === true, not isHQPart)
+  for (const [tileKey, tile] of Object.entries(tiles)) {
+    if (!tile?.isHQ) continue;
+
+    const isSelected = selKey === tileKey;
+    const owner      = tile.owner || null;
+    const faction    = tile.faction || owner || null;
+    const prev       = _hqStateCache.get(tileKey);
+
+    if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected) continue;
+
+    // Remove old group for this HQ
+    for (let i = hqCont.children.length - 1; i >= 0; i--) {
+      const child = hqCont.children[i];
+      if (child.__hqKey === tileKey) {
+        hqCont.removeChild(child);
+        child.destroy({ children: true });
+        break;
+      }
+    }
+
+    hqCont.addChild(_buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache));
+    _hqStateCache.set(tileKey, { faction, owner, isSelected });
+  }
+}
+
 function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningRef) {
   const { cx: bx, cy: worldCY } = isoXY(reg.cx, reg.cy);
   const elev = 8;
@@ -1625,6 +1777,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const cmdGfxRef      = useRef(null);
   const cmdTextContRef = useRef(null);
   const keepContRef    = useRef(null);
+  const hqContRef      = useRef(null);
 
   const lastBoundsRef  = useRef(null);
   const redrawRef      = useRef(null);
@@ -1677,6 +1830,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       redrawRef.current?.markPropsDirty();
       redrawRef.current?.redraw(true);
       redrawRef.current?.redrawKeeps();
+      redrawRef.current?.redrawHQs();
     },
   }), []);
 
@@ -1767,6 +1921,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const keepCont = new PIXI.Container(); 
     keepCont.interactiveChildren = true;
     world.addChild(keepCont); keepContRef.current = keepCont;
+
+    const hqCont = new PIXI.Container();
+    hqCont.interactiveChildren = true;
+    world.addChild(hqCont); hqContRef.current = hqCont;
     const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
     const cmdGfx = new PIXI.Graphics(); world.addChild(cmdGfx); cmdGfxRef.current = cmdGfx;
@@ -2022,19 +2180,32 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       }, PIXI, isPanning);
     }
 
+    function redrawHQs() {
+      if (!hqContRef.current) return;
+      buildHQLayer(hqContRef.current, tilesRef.current, selRef.current, (key, e) => {
+        selRef.current = key;
+        selGfx.clear();
+        drawSelection(key);
+        lastBoundsRef.current = null;
+        onTileClickRef.current(key, e);
+      }, PIXI, isPanning);
+    }
+
     redrawRef.current = {
       redraw,
       redrawOverlays,
       redrawKeeps,
+      redrawHQs,
       markPropsDirty,
-      clearSel: () => { selGfx.clear(); redrawKeeps(); },
-      redrawSelection: (key) => { selGfx.clear(); if (key) drawSelection(key); redrawKeeps(); },
+      clearSel: () => { selGfx.clear(); redrawKeeps(); redrawHQs(); },
+      redrawSelection: (key) => { selGfx.clear(); if (key) drawSelection(key); redrawKeeps(); redrawHQs(); },
       checkAndStartHellfire,
     };
 
     redraw(true);
     redrawOverlays();
     redrawKeeps();
+    redrawHQs();
 
     // ── Hellfire animation ticker ─────────────────────────────────────────────
     // Dedicated Graphics layer above tileGfx. Runs every frame via app.ticker.
@@ -2440,6 +2611,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     redrawRef.current?.markPropsDirty(); // Fix #9: tiles changed → props need repaint
     redrawRef.current?.redraw(true);
     redrawRef.current?.redrawKeeps();
+    redrawRef.current?.redrawHQs();
   }, [tiles]);
 
   useEffect(() => {
