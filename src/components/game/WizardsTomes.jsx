@@ -387,11 +387,43 @@ export default memo(function WizardsTomes({
 
           {/* SVG Tree — 4 columns */}
           <div style={{flex:1, overflow:"hidden", display:"flex", position:"relative"}}>
-
+            {/* HTML Level Up button overlaid on top of SVG — reliable click target */}
+            {canLevelUp && (
+              <button
+                onClick={doLevelUp}
+                style={{
+                  position:"absolute", bottom:8, right:8,
+                  zIndex:10,
+                  padding:"10px 22px",
+                  background:"rgba(110,40,220,.75)",
+                  border:"1.5px solid #aa66ff",
+                  borderRadius:6,
+                  color:"#f0e8ff",
+                  fontFamily:"'Cinzel',serif",
+                  fontSize:12,
+                  fontWeight:700,
+                  letterSpacing:".06em",
+                  cursor:"pointer",
+                  boxShadow:"0 0 16px rgba(150,80,255,.5)",
+                  WebkitTapHighlightColor:"transparent",
+                  touchAction:"manipulation",
+                  minWidth:160,
+                }}
+              >
+                {levelsBuyable > 1
+                  ? `▲ LV ${tomesLevel} → ${tomesLevel + levelsBuyable}`
+                  : "▲ LEVEL UP"}
+                {levelsBuyable > 1 && (
+                  <div style={{fontSize:9, color:"#cc99ff", marginTop:2}}>
+                    Gain +{levelsBuyable} upgrade points
+                  </div>
+                )}
+              </button>
+            )}
             <svg
               viewBox={`0 0 ${SVG_W} ${SVG_H}`}
               style={{width:"100%", height:"100%", display:"block"}}
-              preserveAspectRatio="xMidYMid meet"
+              preserveAspectRatio="none"
             >
               <defs>
                 <linearGradient id="pp_bar_fill" x1="0" y1="0" x2="1" y2="0">
@@ -530,7 +562,7 @@ export default memo(function WizardsTomes({
 
                   {/* Level up button — only shown when ready */}
                   {canLevelUp && (
-                    <g onClick={doLevelUp} style={{cursor:"pointer"}}>
+                    <g style={{pointerEvents:"none"}}>
                       <rect x={682} y={PP_Y+2} width={300} height={44} rx={6}
                         fill="rgba(110,40,220,.55)" stroke="#aa66ff" strokeWidth="1.5"/>
                       <rect x={682} y={PP_Y+2} width={300} height={44} rx={6}
