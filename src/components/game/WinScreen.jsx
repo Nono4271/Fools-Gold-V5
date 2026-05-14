@@ -2,7 +2,7 @@ import { memo } from "react";
 import { FAC } from "../../../shared/constants/factions.js";
 import { barracksCapacity } from "../../../shared/constants/buildings.js";
 
-export default memo(function WinScreen({ winner, aiFaction, setWinner, setTiles, setCmds, setMode, setSelKey, setUpgQueue, setBldgs, setBarracks, setAiRss, setAiBldgs, setAiBarracksPool, aiLastActionRef, setScreen, setWounded, setWoundedQueue, setRss, setReinMarches, setTrainingQueue, setBLog, setBattles, setUnseenBattles, setDeletingTiles, setDeletingSecsLeft, setPlayerHqKey, setAiHqKeys }) {
+export default memo(function WinScreen({ winner, aiFaction, setWinner, setTiles, setCmds, setMode, setSelKey, setUpgQueue, setBldgs, setTroopCounts, setAiRss, setAiBldgs, setAiBarracksPool, aiLastActionRef, setScreen, setWounded, setWoundedQueue, setRss, setReinMarches, setTrainingQueue, setBLog, setBattles, setUnseenBattles, setDeletingTiles, setDeletingSecsLeft, setPlayerHqKey, setAiHqKeys }) {
   const isVictory = winner === "player";
   const aiName = aiFaction ? (FAC[aiFaction]?.n || aiFaction) : "Enemy";
 
@@ -29,7 +29,7 @@ export default memo(function WinScreen({ winner, aiFaction, setWinner, setTiles,
           setMode("view"); setSelKey(null);
           setUpgQueue({});
           setBldgs({hq:1,quarry:0,lumber:0,forge:0,refinery:0,barracks:0,training:0,commandcenter:0,healingtent:0,walls:0});
-          setBarracks(barracksCapacity(0));
+          setTroopCounts({});
           setWounded(0);
           setWoundedQueue(0);
           if (setRss)              setRss({ stone:300, wood:300, ore:300, gas:300 });

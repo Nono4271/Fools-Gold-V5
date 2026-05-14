@@ -1045,7 +1045,7 @@ borderBottom:"1px solid rgba(255,255,255,.02)", paddingBottom:2 }}>{l}</div>
 // -----------------------------------------------------------------------------
 //  TROOPS (Training)
 // -----------------------------------------------------------------------------
-function StrikeCraftScreen({ bldgs, barracksPool, trainingQueue, canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches }) {
+function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueue, canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches }) {
 const [activePanel, setActivePanel] = useState(null); // { key, mode:"train"|"discard" }
 const [panelSlider, setPanelSlider] = useState(0);
 
@@ -1063,27 +1063,34 @@ Object.entries(FACTION_TROOPS).forEach(([fKey, fDef]) => {
 fDef.branches.forEach(branch => {
 const ubKey = `${fKey}:${branch.key}`;
 if (!(ubKey in ub)) return;
-const maxTier = ub[ubKey];
-const tier = branch.tiers[maxTier];
-if (!tier) return;
-const key = `${fKey}_${branch.key}_${maxTier}`;
-const fColor = FACTION_META[fKey]?.c || "#888";
-const assigned = (cmds||[])
-.filter(x=>x.owner==="player")
-.reduce((s,x)=>{
-  // Sum only the slot(s) matching this branch key, not the raw command budget
-  if (x.troopSlots?.length>0) {
-    return s + x.troopSlots.filter(sl=>sl.branch?.faction===fKey&&sl.branch?.branch===branch.key).reduce((a,sl)=>a+(sl.troops||0),0);
-  }
-  // Legacy single-branch commander
-  if (x.troopBranch?.faction===fKey&&x.troopBranch?.branch===branch.key) return s+(x.troops||0);
-  return s;
-},0);
-cards.push({ key, tier, branch, fColor, assigned, fKey });
+const maxTier = ub[ubKey]; // highest unlocked tier index (0-based)
+// Emit one card per unlocked tier so each troop type has its own pool
+for (let tierIdx = 0; tierIdx <= maxTier; tierIdx++) {
+  const tier = branch.tiers[tierIdx];
+  if (!tier) continue;
+  const bKey = `${fKey}:${branch.key}:${tierIdx}`; // pool key
+  const key  = bKey; // card identity key
+  const fColor = FACTION_META[fKey]?.c || "#888";
+  const poolCount = (troopCounts || {})[bKey] || 0;
+  // Assigned = troops in any commander slot matching this exact faction:branch:tier
+  const assigned = (cmds||[])
+    .filter(x=>x.owner==="player")
+    .reduce((s,x)=>{
+      if (x.troopSlots?.length>0) {
+        return s + x.troopSlots
+          .filter(sl=>sl.branch?.faction===fKey && sl.branch?.branch===branch.key && (sl.branch?.tier??0)===tierIdx)
+          .reduce((a,sl)=>a+(sl.troops||0),0);
+      }
+      if (x.troopBranch?.faction===fKey && x.troopBranch?.branch===branch.key && (x.troopBranch?.tier??0)===tierIdx)
+        return s+(x.troops||0);
+      return s;
+    },0);
+  cards.push({ key, bKey, tier, tierIdx, branch, fColor, poolCount, assigned, fKey });
+}
 });
 });
 return cards;
-}, [ub, cmds]);
+}, [ub, cmds, troopCounts]);
 
 return (
 <div>
@@ -1159,7 +1166,7 @@ borderRadius:3, transition:"width .3s" }}/>
             <div style={{ fontSize:7, color:card.fColor }}>{card.branch?.size} . {card.branch?.dmgType}</div>
             <div style={{ fontSize:7, color:P.dim, marginTop:1 }}>
               Assigned: <span style={{ color:P.text }}>{card.assigned.toLocaleString()}</span>
-              &nbsp;. Pool: <span style={{ color:P.text }}>{barracksPool.toLocaleString()}</span>
+              &nbsp;. Pool: <span style={{ color:P.text }}>{card.poolCount.toLocaleString()}</span>
             </div>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
@@ -1183,14 +1190,15 @@ borderRadius:3, transition:"width .3s" }}/>
         {/* Expanded slider panel */}
         {isActive && (() => {
           const isTrain   = activePanel.mode === "train";
+          const cardPool  = card.poolCount; // troops of this exact type in barracks
           const sliderMax = isTrain
             ? Math.max(1, Math.min(maxBatch, room))
-            : Math.max(1, barracksPool);
+            : Math.max(1, cardPool);
           const sv        = Math.min(panelSlider, sliderMax);
           const trainCost = isTrain ? { stone:sv*2, wood:sv*2, ore:sv, gas:Math.floor(sv*0.5) } : null;
           const canAct    = isTrain
             ? (!trainingQueue && sv>0 && canAfford(trainCost) && room>0)
-            : (sv>0 && barracksPool>0);
+            : (sv>0 && cardPool>0);
           return (
             <div style={{ padding:"8px 12px 12px", borderTop:`1px solid ${P.border}` }}>
               <div style={{ display:"flex", justifyContent:"space-between", fontSize:8,
@@ -1208,13 +1216,13 @@ borderRadius:3, transition:"width .3s" }}/>
               )}
               {!isTrain && (
                 <div style={{ fontSize:7, color:P.dim, fontFamily:P.ffb, marginBottom:6 }}>
-                  Permanently remove {sv.toLocaleString()} troops from your barracks pool.
+                  Permanently remove {sv.toLocaleString()} {card.tier.label}s from your barracks.
                 </div>
               )}
               <button className="btn" disabled={!canAct}
                 onClick={() => {
-                  if (isTrain) queueTraining(sv);
-                  else if (discardTroops) discardTroops(sv);
+                  if (isTrain) queueTraining(card.bKey, sv);
+                  else if (discardTroops) discardTroops(card.bKey, sv);
                   setActivePanel(null); setPanelSlider(0);
                 }}
                 style={{ width:"100%", padding:"8px",
@@ -1243,7 +1251,7 @@ borderRadius:3, transition:"width .3s" }}/>
 // -----------------------------------------------------------------------------
 //  ARMY
 // -----------------------------------------------------------------------------
-function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, setBarracks, sliderVals, setSliderVals, assignTroops, returnTroops, playerHqKey, unlockedBranches }) {
+function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, troopCounts, sliderVals, setSliderVals, assignTroops, returnTroops, playerHqKey, unlockedBranches }) {
 const hqKey      = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
 const playerCmds = cmds.filter(c => c.owner==="player");
 const [selUid, setSelUid] = useState(null);
@@ -1447,7 +1455,13 @@ return (
             // sum across all slots and can't be compared directly to a single-slot slider).
             const slot0Troops = cmd.troopSlots?.length > 0 ? (cmd.troopSlots[0]?.troops || 0) : (cmd.troops || 0);
             const sv        = sliderVals[cmd.uid] ?? slot0Troops;
-            const maxSlider = Math.min(Math.floor(commandCap/cmdCost), barracksPool+slot0Troops);
+            // Pool for THIS specific troop type (faction:branch:tier)
+            const slot0Branch = cmd.troopSlots?.[0]?.branch ?? cmd.troopBranch;
+            const slot0BKey = slot0Branch
+              ? `${slot0Branch.faction}:${slot0Branch.branch}:${slot0Branch.tier ?? 0}`
+              : null;
+            const slot0Pool = slot0BKey ? ((troopCounts || {})[slot0BKey] || 0) : 0;
+            const maxSlider = Math.min(Math.floor(commandCap/cmdCost), slot0Pool + slot0Troops);
             const delta     = sv - slot0Troops;
             return (
               <div>
@@ -1465,7 +1479,7 @@ return (
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:7,
                   color:"#4a4a5a", marginBottom:8 }}>
                   <span>0</span>
-                  <span style={{color:"#5a7a5a"}}>Pool: {barracksPool.toLocaleString()}</span>
+                  <span style={{color:"#5a7a5a"}}>Pool: {slot0Pool.toLocaleString()}</span>
                   <span>{Math.floor(commandCap/cmdCost).toLocaleString()}</span>
                 </div>
                 {delta !== 0 ? (
@@ -2001,7 +2015,7 @@ Trade any resource for another at a 70% return rate. Use the slider to select ho
 export default memo(function HQMenu({
 hqOpen, setHqOpen, hqTab, setHqTab,
 cmds, setCmds, tiles, rss, setRss, gems, pKeys,
-bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
+bldgs, setBldgs, barracksPool, troopCounts, setTroopCounts, woundedTroops, woundedQueue,
 trainingQueue, trainSlider, setTrainSlider,
 upgQueue, sliderVals, setSliderVals, bLog,
 upgrade, canAfford, assignTroops, returnTroops, queueTraining,
@@ -2121,15 +2135,18 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             bldgs={bldgs} bLog={bLog} tiles={tiles}/>
         )}
         {hqTab === "troops" && (
-          <StrikeCraftScreen bldgs={bldgs} barracksPool={barracksPool}
+          <StrikeCraftScreen bldgs={bldgs} barracksPool={barracksPool} troopCounts={troopCounts}
             trainingQueue={trainingQueue} canAfford={canAfford}
             queueTraining={queueTraining} rss={rss} cmds={cmds}
             unlockedBranches={unlockedBranches}
-            discardTroops={n => setBarracks(p => Math.max(0, p - n))}/>
+            discardTroops={(bKey, n) => setTroopCounts(prev => ({
+              ...prev,
+              [bKey]: Math.max(0, (prev[bKey] || 0) - n)
+            }))}/>
         )}
         {hqTab === "army" && (
           <BattleGroupsScreen cmds={cmds} setCmds={setCmds} bldgs={bldgs}
-            barracksPool={barracksPool} setBarracks={setBarracks}
+            barracksPool={barracksPool} troopCounts={troopCounts}
             sliderVals={sliderVals} setSliderVals={setSliderVals}
             assignTroops={assignTroops} returnTroops={returnTroops}
             playerHqKey={playerHqKey} unlockedBranches={unlockedBranches}/>
