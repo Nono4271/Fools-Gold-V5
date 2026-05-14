@@ -61,7 +61,7 @@ export default function FactionScreen({
   setScreen, setFacKey, setFacName, setAiFaction,
   setAiRss, setAiBldgs, setAiBarracksPool, aiLastActionRef,
   setCmds, setColl, setTiles,
-  setUnlockedBranches, setQuarterLevels,
+  setTroopCounts, setUnlockedBranches, setQuarterLevels,
 }) {
   const [selected, setSelected] = useState(PLAYABLE_FACTIONS[0]);
 
