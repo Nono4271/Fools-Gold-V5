@@ -894,7 +894,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
   const lvl = cmd.lvl ?? 5;
   const xpNeeded = lvl < CMD_LVL_MAX ? xpToNext(lvl) : null;
   const xpPct = xpNeeded ? Math.min(100, Math.round(((cmd.xp ?? 0) / xpNeeded) * 100)) : 100;
-  const cmdCap = cmdCommand(lvl, bldgs?.commandcenter ?? 0, (cmd.cls==="leader"&&lvl>=25)?500:0);
+  const cmdCap = cmdCommand(lvl, bldgs?.commandcenter ?? 0, (cmd.cls==="leader"&&lvl>=25)?5:0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
@@ -1179,7 +1179,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
           { icon: "⚔",  label: "ATK", val: Math.round(bc.atk ?? 0), color: "#e08050", growth: growth.ATK },
           { icon: "✦",  label: "FOC", val: Math.round(bc.foc ?? 0), color: "#aa66ff", growth: growth.FOC },
           { icon: "💨", label: "SPD", val: Math.round(bc.spd ?? 0), color: "#40a8e0", growth: growth.SPD },
-          { icon: "📡", label: "CMD", val: cmdCap,                   color: "#60c0a0", growth: null },
+          { icon: "📡", label: "CMD", val: cmdCap, color: "#60c0a0", growth: null },
         ]})().map(({ icon, label, val, color, growth }) => (
           <div key={label}
             onClick={() => growth != null && setShowClassPopup(showClassPopup === `stat_${label}` ? null : `stat_${label}`)}
