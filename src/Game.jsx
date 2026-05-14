@@ -262,7 +262,45 @@ export default function RiseToWar() {
     });
   }, [aiBldgs.walls, mapReady]);
 
-  const [barracksPool,   setBarracks]      = useState(barracksCapacity(0));
+  // troopCounts: { "faction:branch:tier" => number }
+  // 54 independent pools — one per distinct troop type (e.g. "pirates:swashbucklers:0" = Deckhands)
+  // Total of all values must not exceed barracksCapacity(bldgs.barracks)
+  const [troopCounts, setTroopCounts] = useState({});
+
+  // Convenience: total troops across all pools (for capacity checks)
+  const barracksPool = Object.values(troopCounts).reduce((s, n) => s + (n || 0), 0);
+
+  // Helper: get count for one specific troop type key
+  const troopPoolFor = (branch) => {
+    if (!branch?.faction || !branch?.branch || branch?.tier == null) return 0;
+    return troopCounts[`${branch.faction}:${branch.branch}:${branch.tier}`] || 0;
+  };
+
+  // Mutate one pool entry by delta (positive = add, negative = remove), clamped to [0, cap]
+  const adjustTroopCount = (branchKey, delta, cap) => {
+    setTroopCounts(prev => {
+      const cur = prev[branchKey] || 0;
+      const next = cap != null
+        ? Math.min(cap - (barracksPool - cur), Math.max(0, cur + delta))
+        : Math.max(0, cur + delta);
+      if (next === cur) return prev;
+      return { ...prev, [branchKey]: next };
+    });
+  };
+
+  // Legacy setBarracks shim — only used by useUpgrades to clamp pools when
+  // barracks is downgraded. It receives pool => Math.min(pool, newCap).
+  const setBarracks = (fn) => {
+    setTroopCounts(prev => {
+      const total = Object.values(prev).reduce((s, n) => s + (n || 0), 0);
+      const newTotal = fn(total);
+      if (newTotal >= total) return prev; // no clamping needed
+      const ratio = newTotal / total;
+      const next = {};
+      for (const [k, v] of Object.entries(prev)) next[k] = Math.floor((v || 0) * ratio);
+      return next;
+    });
+  };
   // unlockedBranches: { "faction:branchKey": maxTier }  (0-indexed tier)
   // Derived from bldgs so the Army tab works without visiting quarters first
   const [unlockedBranches, setUnlockedBranches] = useState({});
@@ -707,7 +745,7 @@ export default function RiseToWar() {
     setAiRss, setAiBldgs, setAiBarracksPool,
   });
 
-  useTraining({ screen, bldgs, setTrainingQueue, setBarracks, setWounded, woundedQueue, setWoundedQueue });
+  useTraining({ screen, bldgs, setTrainingQueue, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue });
 
   useUpgrades({ screen, setUpgQueue, setBldgs, setBarracks });
 
@@ -824,10 +862,13 @@ export default function RiseToWar() {
                   ));
                 } else {
                   setReinMarches(cur => cur.filter(r => r.uid !== capturedRm.uid));
-                  setBarracks(pool => {
+                  setTroopCounts(counts => {
+                    if (!capturedRm.branchKey) return counts;
                     const cap   = barracksCapacity(bldgs.barracks || 0);
-                    const space = Math.max(0, cap - pool);
-                    return pool + Math.min(capturedRm.amount, space);
+                    const total = Object.values(counts).reduce((s, n) => s + (n || 0), 0);
+                    const space = Math.max(0, cap - total);
+                    const add   = Math.min(capturedRm.amount, space);
+                    return { ...counts, [capturedRm.branchKey]: (counts[capturedRm.branchKey] || 0) + add };
                   });
                 }
               });
@@ -842,10 +883,13 @@ export default function RiseToWar() {
           const nextStep = rm.step + 1;
           if (nextStep >= rm.path.length) {
             if (rm.returning) {
-              setBarracks(pool => {
+              setTroopCounts(counts => {
+                if (!rm.branchKey) return counts;
                 const cap   = barracksCapacity(bldgs.barracks || 0);
-                const space = Math.max(0, cap - pool);
-                return pool + Math.min(rm.amount, space);
+                const total = Object.values(counts).reduce((s, n) => s + (n || 0), 0);
+                const space = Math.max(0, cap - total);
+                const add   = Math.min(rm.amount, space);
+                return { ...counts, [rm.branchKey]: (counts[rm.branchKey] || 0) + add };
               });
               floaty(`🏰 ${rm.amount} reinforcements returned to barracks`, "#88aaff", hqKey);
             } else {
@@ -855,10 +899,13 @@ export default function RiseToWar() {
                 const newTroops = Math.min(cap, (c.troops||0) + rm.amount);
                 const overflow  = ((c.troops||0) + rm.amount) - newTroops;
                 if (overflow > 0) {
-                  setBarracks(pool => {
+                  setTroopCounts(counts => {
+                    if (!rm.branchKey) return counts;
                     const bCap  = barracksCapacity(bldgs.barracks || 0);
-                    const space = Math.max(0, bCap - pool);
-                    return pool + Math.min(overflow, space);
+                    const total = Object.values(counts).reduce((s, n) => s + (n || 0), 0);
+                    const space = Math.max(0, bCap - total);
+                    const add   = Math.min(overflow, space);
+                    return { ...counts, [rm.branchKey]: (counts[rm.branchKey] || 0) + add };
                   });
                   floaty(`↩ ${overflow} troops returned (cmd full)`, "#88aaff", rm.path[rm.path.length-1]);
                 }
@@ -1092,37 +1139,51 @@ export default function RiseToWar() {
       if (!path || path.length < 2) return;
       setReinMarches(prev => {
         if (prev.some(r => r.cmdUid === cmd.uid && !r.returning)) return prev;
-        setBarracks(pool => Math.max(0, pool - amount));
-        return [...prev, { uid:`rein_${Date.now()}`, cmdUid:cmd.uid, amount, path, step:0, stepMs, lastStepTime:Date.now() }];
+        // Determine which troop type pool to draw from.
+        // Use the first slot of the destination commander as the source type.
+        const slots = normaliseTroopSlots(cmd);
+        const srcBranch = slots[0]?.branch ?? cmd.troopBranch;
+        const srcKey = srcBranch ? `${srcBranch.faction}:${srcBranch.branch}:${srcBranch.tier ?? 0}` : null;
+        setTroopCounts(counts => {
+          if (!srcKey) return counts;
+          return { ...counts, [srcKey]: Math.max(0, (counts[srcKey] || 0) - amount) };
+        });
+        return [...prev, { uid:`rein_${Date.now()}`, cmdUid:cmd.uid, amount, branchKey:srcKey, path, step:0, stepMs, lastStepTime:Date.now() }];
       });
     });
   }, [gearInventory, findPath]);
 
   const canAfford = useCallback(c => Object.entries(c).every(([k,v]) => (rss[k]||0)>=v), [rss]);
 
-  const queueTraining = useCallback((amount) => {
+  // queueTraining(branchKey, amount)
+  // branchKey: "faction:branch:tier" e.g. "pirates:swashbucklers:0"
+  const queueTraining = useCallback((branchKey, amount) => {
     if (trainingQueue) return;
     const cap = barracksCapacity(bldgs.barracks||0);
     if (barracksPool + amount > cap) return;
     const cost = { stone:amount*2, wood:amount*2, ore:amount, gas:Math.floor(amount*0.5) };
     if (!canAfford(cost)) return;
     setRss(p => ({ stone:p.stone-cost.stone, wood:p.wood-cost.wood, ore:p.ore-cost.ore, gas:p.gas-cost.gas }));
-    setTrainingQueue({ amount, remaining:amount, total:amount, cost });
+    setTrainingQueue({ branchKey, amount, remaining:amount, total:amount, cost });
   }, [canAfford, bldgs.barracks, barracksPool, trainingQueue]);
 
+  // bKey: "faction:branch:tier" — unique key for one troop type pool
+  const bKey = (b) => (b && b.faction && b.branch && b.tier != null)
+    ? `${b.faction}:${b.branch}:${b.tier}` : null;
+
   // setTroopSlot(uid, slotIndex, branch, troops) — set one slot on a commander.
-  // slotIndex: 0-2. If troops===0, remove the slot. Max 3 slots.
+  // slotIndex: 0-2. If troops===0 or branch null, remove the slot. Max 3 slots.
+  // Draws from / returns to the per-troop-type pool in troopCounts.
   const setTroopSlot = useCallback((uid, slotIndex, branch, newTroops) => {
     setCmds(prev => {
       const cmd = prev.find(c => c.uid===uid);
       if (!cmd) return prev;
       const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?500:0);
 
-      // Build new slots array (start from existing troopSlots or legacy single slot)
       const existingSlots = normaliseTroopSlots(cmd);
       const newSlots = [...existingSlots];
 
-      // Compute command already used by OTHER slots
+      // Command used by OTHER slots
       const otherUsed = newSlots.reduce((sum, sl, idx) => {
         if (idx === slotIndex) return sum;
         const bSize = sl.branch ? (FACTION_TROOPS[sl.branch.faction]?.branches?.find(b => b.key===sl.branch.branch)?.size ?? "small") : "small";
@@ -1133,36 +1194,43 @@ export default function RiseToWar() {
       const cmdCost    = COMMAND_COST[branchSize] ?? 1;
       const maxByCmd   = Math.floor(remainingCap / cmdCost);
 
-      // Old troops in THIS slot (to return to barracks)
-      const oldSlot      = existingSlots[slotIndex];
-      const oldTroops    = oldSlot?.troops || 0;
-      const branchChanged = JSON.stringify(oldSlot?.branch) !== JSON.stringify(branch);
-      const returning    = branchChanged ? oldTroops : 0;
+      const oldSlot       = existingSlots[slotIndex];
+      const oldTroops     = oldSlot?.troops || 0;
+      const oldKey        = bKey(oldSlot?.branch);
+      const newKey        = bKey(branch);
+      const branchChanged = oldKey !== newKey;
+
+      // Troops in old slot return to old pool if branch changed
+      const returningOld = branchChanged ? oldTroops : 0;
       const curInSlot    = branchChanged ? 0 : oldTroops;
 
-      const capped   = Math.min(newTroops, maxByCmd);
-      const canDraw  = barracksPool + returning;
-      const delta    = capped - curInSlot;
-      const final    = delta > 0 ? curInSlot + Math.min(delta, canDraw) : capped;
+      // Draw from the specific pool for the new branch type
+      const availInPool = (troopCounts[newKey] || 0);
+      const capped      = Math.min(newTroops, maxByCmd);
+      const delta       = capped - curInSlot;
+      const drawn       = delta > 0 ? Math.min(delta, availInPool) : 0;
+      const returned    = delta < 0 ? Math.min(-delta, curInSlot) : 0;
+      const final       = curInSlot + drawn - returned;
 
-      setBarracks(pool => {
-        const poolAfterReturn = pool + returning;
-        const drawn   = Math.max(0, final - curInSlot);
-        const returned= Math.max(0, curInSlot - final);
-        return poolAfterReturn - drawn + returned;
+      // Update the per-type pools
+      setTroopCounts(counts => {
+        const next = { ...counts };
+        if (branchChanged && oldKey && returningOld > 0)
+          next[oldKey] = (next[oldKey] || 0) + returningOld;
+        if (newKey)
+          next[newKey] = Math.max(0, (next[newKey] || 0) - drawn + returned);
+        return next;
       });
 
       if (final === 0 || !branch) {
-        // Remove this slot
         const filtered = newSlots.filter((_, i) => i !== slotIndex);
         return prev.map(c => c.uid===uid ? { ...c, troopSlots: filtered, troops: filtered.reduce((s,sl)=>s+(sl.troops||0),0), troopBranch: filtered[0]?.branch ?? null } : c);
       }
-      // Upsert slot
       newSlots[slotIndex] = { branch, troops: final };
       const trimmed = newSlots.filter(Boolean).slice(0, 3);
       return prev.map(c => c.uid===uid ? { ...c, troopSlots: trimmed, troops: trimmed.reduce((s,sl)=>s+(sl.troops||0),0), troopBranch: trimmed[0]?.branch ?? null } : c);
     });
-  }, [barracksPool, bldgs.commandcenter]);
+  }, [troopCounts, bldgs.commandcenter]);
 
   // Legacy alias: assignTroops(uid, branch, total) maps to slot 0
   const assignTroops = useCallback((uid, troopBranch, newTotal) => {
@@ -1173,11 +1241,24 @@ export default function RiseToWar() {
     setCmds(prev => {
       const cmd = prev.find(c => c.uid===uid);
       if (!cmd) return prev;
-      const total = normaliseTroopSlots(cmd).reduce((s,sl)=>s+(sl.troops||0), 0) || cmd.troops || 0;
-      setBarracks(pool => pool + total);
+      const slots = normaliseTroopSlots(cmd);
+      setTroopCounts(counts => {
+        const next = { ...counts };
+        // Return each slot's troops to its own per-type pool
+        for (const sl of slots) {
+          const k = bKey(sl.branch);
+          if (k && sl.troops > 0) next[k] = (next[k] || 0) + sl.troops;
+        }
+        // Fallback: legacy cmd.troops with no slots
+        if (!slots.length && cmd.troops > 0) {
+          const k = bKey(cmd.troopBranch);
+          if (k) next[k] = (next[k] || 0) + cmd.troops;
+        }
+        return next;
+      });
       return prev.map(c => c.uid===uid ? { ...c, troopSlots:[], troops:0, troopBranch:null } : c);
     });
-  }, [setBarracks]);
+  }, [setTroopCounts]);
 
   const upgrade = useCallback(type => {
     const lvl = bldgs[type]||0;
@@ -1396,7 +1477,7 @@ export default function RiseToWar() {
       setAiFaction={setAiFaction} setAiRss={setAiRss} setAiBldgs={setAiBldgs}
       setAiBarracksPool={setAiBarracksPool} aiLastActionRef={aiLastActionRef}
       setCmds={setCmds} setColl={setColl} setTiles={setTiles}
-      setBarracks={setBarracks} setUnlockedBranches={setUnlockedBranches}
+      setTroopCounts={setTroopCounts} setUnlockedBranches={setUnlockedBranches}
       setQuarterLevels={setQuarterLevels}
     />
   );
@@ -1592,7 +1673,7 @@ export default function RiseToWar() {
       <HQMenu
         hqOpen={hqOpen} setHqOpen={setHqOpen} hqTab={hqTab} setHqTab={setHqTab}
         cmds={cmds} setCmds={setCmds} tiles={tiles} rss={rss} setRss={setRss} gems={gems} pKeys={pKeys}
-        bldgs={bldgs} setBldgs={setBldgs} barracksPool={barracksPool} setBarracks={setBarracks}
+        bldgs={bldgs} setBldgs={setBldgs} barracksPool={barracksPool} troopCounts={troopCounts} setTroopCounts={setTroopCounts}
         woundedTroops={woundedTroops} woundedQueue={woundedQueue} trainingQueue={trainingQueue}
         trainSlider={trainSlider} setTrainSlider={setTrainSlider}
         upgQueue={upgQueue} sliderVals={sliderVals} setSliderVals={setSliderVals}
@@ -1615,7 +1696,7 @@ export default function RiseToWar() {
           winner={winner} aiFaction={aiFaction}
           setWinner={setWinner} setTiles={setTiles} setCmds={setCmds}
           setMode={setMode} setSelKey={setSelKey} setUpgQueue={setUpgQueue}
-          setBldgs={setBldgs} setBarracks={setBarracks}
+          setBldgs={setBldgs} setTroopCounts={setTroopCounts}
           setAiRss={setAiRss} setAiBldgs={setAiBldgs} setAiBarracksPool={setAiBarracksPool}
           aiLastActionRef={aiLastActionRef} setScreen={setScreen}
           setWounded={setWounded} setWoundedQueue={setWoundedQueue}
