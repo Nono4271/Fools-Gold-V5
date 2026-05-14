@@ -42,7 +42,6 @@ export default memo(function TilePopup({
 
     return (
       <>
-      <div style={{ position:"fixed", inset:0, zIndex:499 }} onClick={closeHqPopup} />
       <div style={{
         position:"fixed", left:popupPos.x, top:popupPos.y,
         width:130, zIndex:500,
