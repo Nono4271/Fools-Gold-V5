@@ -1140,6 +1140,26 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         </div>
       </div>
 
+      {/* ── Stamina ── */}
+      {(() => {
+        const stam = cmd.stamina ?? 200;
+        const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
+        return (
+          <div style={{ padding: "4px 14px", borderBottom: "1px solid #161210" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: "#8a7a60", letterSpacing: ".08em" }}>⚡ STAMINA</div>
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: sc, fontWeight: 700 }}>{Math.floor(stam)} / 200</div>
+            </div>
+            <div style={{ height: 4, background: "rgba(0,0,0,.5)", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${(stam / 200) * 100}%`, background: sc, borderRadius: 3, transition: "width .3s" }}/>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Spacer ── */}
+      <div style={{ height: 18, flexShrink: 0 }} />
+
       {/* ── 4-stat row ── */}
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(4,1fr)",
@@ -1197,23 +1217,6 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
           </div>
         ))}
       </div>
-
-      {/* ── Stamina ── */}
-      {(() => {
-        const stam = cmd.stamina ?? 200;
-        const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
-        return (
-          <div style={{ padding: "4px 14px", borderBottom: "1px solid #161210" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
-              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: "#8a7a60", letterSpacing: ".08em" }}>⚡ STAMINA</div>
-              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: sc, fontWeight: 700 }}>{Math.floor(stam)} / 200</div>
-            </div>
-            <div style={{ height: 4, background: "rgba(0,0,0,.5)", borderRadius: 3, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(stam / 200) * 100}%`, background: sc, borderRadius: 3, transition: "width .3s" }}/>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ── March status ── */}
       {cmd.march && (() => {

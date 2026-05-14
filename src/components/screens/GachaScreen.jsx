@@ -327,7 +327,7 @@ function SummonResultsModal({ pullResults, coll, onClose }) {
 
 export default function GachaScreen({
   screen, tiles, gems, pull,
-  pullResults, coll, gearInventory, respectSchematics,
+  pullResults, pullKey, coll, gearInventory, respectSchematics,
   cmds, setCmds, onSchematicUsed,
   pityCounters, isFreeAvailable, isHalfAvailable, playerAlignment, setScreen, onOpenCommander,
 }) {
@@ -343,7 +343,7 @@ export default function GachaScreen({
   // Auto-open results modal whenever a new pull lands
   useEffect(() => {
     if (pullResults?.length) setShowResults(true);
-  }, [pullResults?.length]);
+  }, [pullKey]);
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#0a0c10",
