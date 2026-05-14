@@ -1729,11 +1729,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     // After that, every props update just repositions Sprite instances
     // (textured quads = 2 trivial triangles, zero tessellation ever again).
     // Textures are in world-pixel space; zoom is handled by the world container.
-    const TEX_W      = TW;                       // 80 px
-    const TEX_H      = Math.round(TH * 2);       // 106 px
-    const TEX_BASE_Y = Math.round(TEX_H * 0.72); // ~76 px — tile surface centre in texture
+    const TEX_W      = Math.round(TW * 2.0);     // 160 px — wide enough for P13 ore carts
+    const TEX_H      = Math.round(TH * 3.5);     // 186 px — tall enough for P13 props
+    const TEX_BASE_Y = Math.round(TEX_H * 0.82); // ~153 px — tile surface centre in texture
     const TEX_SY     = TEX_BASE_Y - TH / 2;      // sy arg = top-of-tile-face in texture
-    const TEX_CX     = TEX_W / 2;                // 40 px
+    const TEX_CX     = TEX_W / 2;                // 80 px
 
     const rssTextures       = {};   // rss string → PIXI.RenderTexture
     const propsSpritePool   = [];   // recycled PIXI.Sprite instances
