@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, useMemo } from "react";
-import { FACTION_TROOPS, COMMAND_COST, getTierSkills } from "../../../shared/constants/troops.js";
+import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
 import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
@@ -342,7 +342,7 @@ const BRANCH_LVL_BONUS = [
 
 
   // -- Troop stat modal ----------------------------------------------------------
-  function TroopStatModal({ troop, fColor, fDef, onClose }) {
+  function TroopStatModal({ troop, fColor, fDef, onClose, troopSkillLevels, setTroopSkillLevels, mysticOrbs, setMysticOrbs }) {
   const { branch, tierIdx, tier, isLocked, branchOpen } = troop;
   const cmdCost = COMMAND_COST[branch.size] ?? 1;
   const dmgColor = branch.dmgType === "magical" ? "#a855f7" : "#e08050";
@@ -447,21 +447,83 @@ const BRANCH_LVL_BONUS = [
   <div style={{ marginBottom:14 }}>
   <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
   marginBottom:8, textTransform:"uppercase" }}>Skills</div>
-  {skills.map(skill => (
+  {skills.map(skill => {
+  const skillLvl = troopSkillLevels?.[skill.key] ?? 1;
+  const isMax = skillLvl >= 10;
+  const orbCost = skillOrbCost(skillLvl);
+  const canUpgrade = !isMax && (mysticOrbs ?? 0) >= orbCost;
+  const currentProc = Math.round(skillProcAtLevel(skill, skillLvl) * 100);
+  const nextProc = !isMax ? Math.round(skillProcAtLevel(skill, skillLvl + 1) * 100) : null;
+  return (
   <div key={skill.key} style={{ padding:"10px 12px", background:"rgba(255,255,255,.02)",
-  border:`1px solid ${P.border}`, borderRadius:8, marginBottom:6 }}>
-  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+  border:`1px solid ${isMax ? fColor+"55" : P.border}`, borderRadius:8, marginBottom:6 }}>
+  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
   <span style={{ fontSize:18, lineHeight:1 }}>{skill.icon}</span>
   <div style={{ flex:1 }}>
   <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:fColor }}>{skill.name}</div>
   <div style={{ fontSize:7, color:"#88aaff", fontFamily:P.ff, marginTop:1 }}>
-  {TRIGGER_LABEL[skill.trigger] || skill.trigger} · {Math.round(skill.procBase*100)}%–{Math.round(skill.procMax*100)}% proc
+  {TRIGGER_LABEL[skill.trigger] || skill.trigger} · {currentProc}% proc
+  {nextProc !== null && <span style={{color:`${fColor}99`}}> → {nextProc}%</span>}
   </div>
   </div>
+  <div style={{ textAlign:"center", minWidth:36 }}>
+  <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
+  color: isMax ? fColor : P.sub,
+  background: isMax ? `${fColor}22` : "rgba(255,255,255,.04)",
+  border:`1px solid ${isMax ? fColor+"55" : P.border}`,
+  borderRadius:4, padding:"2px 6px", lineHeight:1.4 }}>
+  {isMax ? "MAX" : `Lv${skillLvl}`}
   </div>
-  <div style={{ fontSize:9, color:P.sub, fontFamily:P.ffb, lineHeight:1.65 }}>{skill.desc}</div>
+  {!isMax && <div style={{ fontSize:6, color:P.dim, marginTop:2 }}>/ 10</div>}
   </div>
+  </div>
+  <div style={{ display:"flex", gap:2, marginBottom:8 }}>
+  {Array.from({length:10}).map((_,i) => (
+  <div key={i} style={{ flex:1, height:3, borderRadius:2, minWidth:3,
+  background: i < skillLvl ? fColor : `${fColor}22` }}/>
   ))}
+  </div>
+  <div style={{ fontSize:9, color:P.sub, fontFamily:P.ffb, lineHeight:1.65, marginBottom:8 }}>{skill.desc}</div>
+  {!isMax && (
+  <div style={{ display:"flex", alignItems:"center", gap:8,
+  padding:"6px 8px", background:"rgba(0,0,0,.2)",
+  border:`1px solid ${P.border}`, borderRadius:6 }}>
+  <div style={{ flex:1 }}>
+  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, marginBottom:2 }}>UPGRADE COST</div>
+  <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+  <span style={{ fontSize:14 }}>🔮</span>
+  <span style={{ fontFamily:P.ff, fontSize:12, fontWeight:700,
+  color: canUpgrade ? "#cc88ff" : "#5a3a7a" }}>
+  {orbCost.toLocaleString()}
+  </span>
+  <span style={{ fontSize:7, color:P.dim }}>mystic orbs</span>
+  </div>
+  <div style={{ fontSize:7, color:`${fColor}77`, marginTop:2 }}>
+  Have: <span style={{color: canUpgrade ? "#cc88ff" : "#5a3a7a"}}>{(mysticOrbs??0).toLocaleString()}</span>
+  </div>
+  </div>
+  <button
+  disabled={!canUpgrade}
+  onClick={() => {
+  if (!canUpgrade) return;
+  setTroopSkillLevels(prev => ({ ...prev, [skill.key]: (prev[skill.key] ?? 1) + 1 }));
+  setMysticOrbs(prev => prev - orbCost);
+  }}
+  style={{ padding:"6px 14px", borderRadius:5, fontFamily:P.ff, fontSize:9, fontWeight:700,
+  background: canUpgrade
+  ? "linear-gradient(135deg, #9933cc44, #6611aa22)"
+  : "rgba(255,255,255,.02)",
+  border:`1px solid ${canUpgrade ? "#aa55ee" : "#2a1a3a"}`,
+  color: canUpgrade ? "#cc88ff" : "#3a2a4a",
+  cursor: canUpgrade ? "pointer" : "default",
+  transition:"all .15s" }}>
+  ↑ Lv{skillLvl + 1}
+  </button>
+  </div>
+  )}
+  </div>
+  );
+  })}
   </div>
   )}
 
@@ -505,7 +567,7 @@ const BRANCH_LVL_BONUS = [
   );
   }
 
-  function QuarterDetail({ fKey, fDef, slot, bldgs, setBldgs, rss, setRss, canAfford, quarterLevels, setQuarterLevels, setUnlockedBranches }) {
+  function QuarterDetail({ fKey, fDef, slot, bldgs, setBldgs, rss, setRss, canAfford, quarterLevels, setQuarterLevels, setUnlockedBranches, troopSkillLevels, setTroopSkillLevels, mysticOrbs, setMysticOrbs }) {
   const [selTroop, setSelTroop] = useState(null); // { branch, tierIdx, tier }
   const hqLvl   = bldgs.hq || 1;
   const qCeil   = quarterMaxLevel(slot, hqLvl);
@@ -776,6 +838,10 @@ const BRANCH_LVL_BONUS = [
   fColor={selTroop.fColor}
   fDef={selTroop.fDef}
   onClose={() => setSelTroop(null)}
+  troopSkillLevels={troopSkillLevels}
+  setTroopSkillLevels={setTroopSkillLevels}
+  mysticOrbs={mysticOrbs}
+  setMysticOrbs={setMysticOrbs}
   />
   )}
 
@@ -800,7 +866,7 @@ function getAlignment(fk) {
 return ALIGN_FACTIONS.humans.includes(fk) ? "humans" : "creatures";
 }
 
-function InfrastructureScreen({ bldgs, setBldgs, rss, setRss, canAfford, upgrade, upgQueue, cmds, facKey, quarterLevels, setQuarterLevels, setUnlockedBranches }) {
+function InfrastructureScreen({ bldgs, setBldgs, rss, setRss, canAfford, upgrade, upgQueue, cmds, facKey, quarterLevels, setQuarterLevels, setUnlockedBranches, troopSkillLevels, setTroopSkillLevels, mysticOrbs, setMysticOrbs }) {
 const [leftSel, setLeftSel]     = useState("buildings");
 const [selBuilding, setSelBuilding] = useState(null);
 
@@ -956,7 +1022,9 @@ return (
           bldgs={bldgs} setBldgs={setBldgs}
           rss={rss} setRss={setRss} canAfford={canAfford}
           quarterLevels={quarterLevels} setQuarterLevels={setQuarterLevels}
-          setUnlockedBranches={setUnlockedBranches} />
+          setUnlockedBranches={setUnlockedBranches}
+          troopSkillLevels={troopSkillLevels} setTroopSkillLevels={setTroopSkillLevels}
+          mysticOrbs={mysticOrbs} setMysticOrbs={setMysticOrbs} />
       );
     })()}
 
@@ -2033,6 +2101,7 @@ facKey, unlockedBranches, setUnlockedBranches,
 quarterLevels, setQuarterLevels,
 mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady,
 lastVoidTap, voidTapCooldown, doVoidTap,
+troopSkillLevels, setTroopSkillLevels, setMysticOrbs,
 }) {
 if (!hqOpen) return null;
 
@@ -2137,7 +2206,9 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             bldgs={bldgs} setBldgs={setBldgs} rss={rss} setRss={setRss} canAfford={canAfford}
             upgrade={upgrade} upgQueue={upgQueue} cmds={cmds} facKey={facKey}
             quarterLevels={quarterLevels} setQuarterLevels={setQuarterLevels}
-            setUnlockedBranches={setUnlockedBranches}/>
+            setUnlockedBranches={setUnlockedBranches}
+            troopSkillLevels={troopSkillLevels} setTroopSkillLevels={setTroopSkillLevels}
+            mysticOrbs={mysticOrbs} setMysticOrbs={setMysticOrbs}/>
         )}
         {hqTab === "commandcenter" && (
           <CommandCenterScreen cmds={cmds} pKeys={pKeys} rss={rss} gems={gems}
