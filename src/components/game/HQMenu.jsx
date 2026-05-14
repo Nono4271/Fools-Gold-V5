@@ -1251,7 +1251,205 @@ borderRadius:3, transition:"width .3s" }}/>
 // -----------------------------------------------------------------------------
 //  ARMY
 // -----------------------------------------------------------------------------
-function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, troopCounts, sliderVals, setSliderVals, assignTroops, returnTroops, playerHqKey, unlockedBranches }) {
+
+// SlotEditor: controls one troop slot (pick branch+tier, set count via slider)
+function SlotEditor({ cmd, slotIdx, setTroopSlot, troopCounts, bldgs, commandCap, unlockedBranches }) {
+  const ub = unlockedBranches || {};
+  const existingSlot   = cmd.troopSlots?.[slotIdx] ?? null;
+  const existingBranch = existingSlot?.branch ?? null;
+  const existingTroops = existingSlot?.troops ?? 0;
+
+  // Local picker state
+  const [pickFac, setPickFac] = useState(existingBranch?.faction ?? null);
+  const [pickBr,  setPickBr]  = useState(existingBranch?.branch  ?? null);
+
+  // Derive pool key and pool count for whatever is currently in this slot
+  const slotBKey = existingBranch
+    ? `${existingBranch.faction}:${existingBranch.branch}:${existingBranch.tier ?? 0}`
+    : null;
+  const slotPool = slotBKey ? ((troopCounts || {})[slotBKey] || 0) : 0;
+
+  // Command cost for other slots (to know how much cap is left for this slot)
+  const otherCmdUsed = (cmd.troopSlots ?? []).reduce((s, sl, i) => {
+    if (i === slotIdx) return s;
+    const slBr = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(b => b.key === sl.branch?.branch);
+    return s + (sl.troops || 0) * (COMMAND_COST[slBr?.size] ?? 1);
+  }, 0);
+  const remainingCap = Math.max(0, commandCap - otherCmdUsed);
+
+  const slBrDef = existingBranch
+    ? FACTION_TROOPS[existingBranch.faction]?.branches?.find(b => b.key === existingBranch.branch)
+    : null;
+  const slCmdCost = COMMAND_COST[slBrDef?.size] ?? 1;
+  const maxByCmd  = Math.floor(remainingCap / slCmdCost);
+  const maxSlider = Math.min(maxByCmd, slotPool + existingTroops);
+
+  const [sv, setSv] = useState(existingTroops);
+  // Keep slider in sync when external changes happen (e.g. return troops)
+  const svClamped = Math.min(sv, maxSlider);
+
+  const factions = Object.entries(FACTION_TROOPS).filter(([fKey, fDef]) =>
+    fDef.branches.some(br => `${fKey}:${br.key}` in ub)
+  );
+
+  const slotColor = existingBranch ? (FACTION_META[existingBranch.faction]?.c || P.gold) : P.border;
+  const tierLabel = existingBranch && slBrDef
+    ? slBrDef.tiers[existingBranch.tier ?? 0]?.label ?? ""
+    : null;
+
+  return (
+    <div style={{ marginBottom:10, padding:"8px 10px", borderRadius:6,
+      background:"rgba(255,255,255,.025)", border:`1px solid ${slotColor}33` }}>
+
+      {/* Slot header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+        <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".1em" }}>
+          SLOT {slotIdx + 1}
+        </div>
+        {existingBranch && (
+          <div style={{ fontSize:7, color:slotColor, fontFamily:P.ff }}>
+            {tierLabel} · {existingTroops.toLocaleString()} troops
+          </div>
+        )}
+        {existingBranch && (
+          <button className="btn" onClick={() => { setTroopSlot(cmd.uid, slotIdx, null, 0); setSv(0); }}
+            style={{ fontSize:7, padding:"2px 7px", color:"#cc5050",
+              background:"rgba(200,50,50,.1)", border:"1px solid rgba(200,50,50,.3)", borderRadius:3 }}>
+            ✕ Clear
+          </button>
+        )}
+      </div>
+
+      {/* Troop picker — faction → branch → tier */}
+      <div style={{ display:"flex", flexDirection:"column", gap:3, marginBottom:existingBranch ? 8 : 0 }}>
+        {factions.map(([fKey, fDef]) => {
+          const isExpF = pickFac === fKey;
+          return (
+            <div key={fKey}>
+              <button className="btn" onClick={() => setPickFac(isExpF ? null : fKey)}
+                style={{ width:"100%", textAlign:"left", padding:"4px 8px",
+                  background:isExpF ? "rgba(240,192,64,.08)" : "rgba(255,255,255,.02)",
+                  border:`1px solid ${isExpF ? "#5a4020" : P.border}`,
+                  color:isExpF ? P.gold : P.sub, fontSize:8, fontFamily:P.ff,
+                  display:"flex", justifyContent:"space-between" }}>
+                <span>{FACTION_META[fKey]?.s} {fDef.quarters}</span>
+                <span style={{ fontSize:6 }}>{isExpF ? "▲" : "▼"}</span>
+              </button>
+              {isExpF && (
+                <div style={{ paddingLeft:6, paddingTop:3, display:"flex", flexDirection:"column", gap:2 }}>
+                  {fDef.branches.filter(br => `${fKey}:${br.key}` in ub).map(br => {
+                    const isExpB  = pickBr === br.key;
+                    const maxTier = ub[`${fKey}:${br.key}`] ?? 0;
+                    const brColor = FACTION_META[fKey]?.c || P.gold;
+                    return (
+                      <div key={br.key}>
+                        <button className="btn" onClick={() => setPickBr(isExpB ? null : br.key)}
+                          style={{ width:"100%", textAlign:"left", padding:"3px 7px",
+                            background:isExpB ? "rgba(240,192,64,.05)" : "rgba(255,255,255,.02)",
+                            border:`1px solid ${isExpB ? "#3a2a10" : P.border}`,
+                            color:isExpB ? P.gold : P.sub, fontSize:7.5, fontFamily:P.ff,
+                            display:"flex", justifyContent:"space-between" }}>
+                          <span>{br.label} <span style={{ color:"#4a4a6a", fontSize:6.5 }}>({br.size} · {br.dmgType})</span></span>
+                          <span style={{ fontSize:6 }}>{isExpB ? "▲" : "▼"}</span>
+                        </button>
+                        {isExpB && (
+                          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:3, padding:"3px 0 3px 6px" }}>
+                            {br.tiers.slice(0, maxTier + 1).map((t, idx) => {
+                              const newBranch = { faction:fKey, branch:br.key, tier:idx };
+                              const isActive  = existingBranch?.faction===fKey
+                                && existingBranch?.branch===br.key
+                                && (existingBranch?.tier??0)===idx;
+                              // Pool available for this specific troop type
+                              const thisBKey  = `${fKey}:${br.key}:${idx}`;
+                              const thisPool  = (troopCounts || {})[thisBKey] || 0;
+                              const inOtherSlots = (cmd.troopSlots ?? []).reduce((s, sl, i) => {
+                                if (i === slotIdx) return s;
+                                const k = sl.branch ? `${sl.branch.faction}:${sl.branch.branch}:${sl.branch.tier??0}` : null;
+                                return k === thisBKey ? s + (sl.troops || 0) : s;
+                              }, 0);
+                              const available = thisPool - inOtherSlots;
+                              return (
+                                <button key={idx} className="btn"
+                                  onClick={() => {
+                                    // Use setTroopSlot to properly account for pools.
+                                    // Keep existing troop count if same branch, else 0 (slider will set it).
+                                    const keepTroops = isActive ? existingTroops : 0;
+                                    setTroopSlot(cmd.uid, slotIdx, newBranch, keepTroops);
+                                    setSv(keepTroops);
+                                    // Collapse picker after selection
+                                    setPickFac(null); setPickBr(null);
+                                  }}
+                                  style={{ padding:"5px 3px", textAlign:"center",
+                                    background:isActive ? "rgba(240,192,64,.15)" : "rgba(255,255,255,.02)",
+                                    border:`1px solid ${isActive ? brColor : P.border}`,
+                                    color:isActive ? brColor : P.sub, fontSize:7,
+                                    boxShadow:isActive ? `0 0 6px ${brColor}44` : "none" }}>
+                                  <div style={{ fontFamily:P.ff, fontWeight:700, fontSize:7.5, marginBottom:1, color:isActive?brColor:P.text }}>{t.label}</div>
+                                  <div style={{ fontSize:5.5, color:"#5a5a7a" }}>{br.size}</div>
+                                  <div style={{ fontSize:5.5, color: available > 0 ? "#3daa60" : "#5a3a3a", marginTop:1 }}>
+                                    {available > 0 ? `${available.toLocaleString()} avail` : "none"}
+                                  </div>
+                                  {isActive && <div style={{ fontSize:6, color:brColor, marginTop:1 }}>✓</div>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Amount slider — only shown when a troop type is selected for this slot */}
+      {existingBranch && (
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:7,
+            color:"#6a5a4a", fontFamily:P.ff, marginBottom:3 }}>
+            <span>AMOUNT</span>
+            <span style={{ color:"#c8a060" }}>
+              {svClamped.toLocaleString()} troops · {(svClamped * slCmdCost).toLocaleString()} cmd
+            </span>
+          </div>
+          <input type="range" min={0} max={Math.max(1, maxSlider)} value={svClamped}
+            onChange={e => setSv(+e.target.value)}
+            style={{ width:"100%", accentColor:slotColor, marginBottom:6 }}/>
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:6,
+            color:"#4a4a5a", marginBottom:6 }}>
+            <span>0</span>
+            <span style={{ color:"#5a7a5a" }}>Pool: {slotPool.toLocaleString()}</span>
+            <span>{maxSlider.toLocaleString()}</span>
+          </div>
+          {svClamped !== existingTroops ? (
+            <button className="btn"
+              onClick={() => { setTroopSlot(cmd.uid, slotIdx, existingBranch, svClamped); }}
+              style={{ width:"100%", padding:"7px",
+                background: svClamped > existingTroops
+                  ? "linear-gradient(135deg,rgba(40,100,60,.5),rgba(40,100,60,.2))"
+                  : "linear-gradient(135deg,rgba(150,40,40,.4),rgba(150,40,40,.15))",
+                border:`1px solid ${svClamped > existingTroops ? "#3daa60" : "#cc4444"}`,
+                color: svClamped > existingTroops ? "#3dcc70" : "#dd6666",
+                fontSize:10, fontWeight:700 }}>
+              {svClamped > existingTroops
+                ? `✓ Add ${svClamped - existingTroops} troops`
+                : `✓ Remove ${existingTroops - svClamped} troops`}
+            </button>
+          ) : (
+            <div style={{ fontSize:7, color:"#3a3a4a", fontFamily:P.ffb, fontStyle:"italic", textAlign:"center" }}>
+              Move slider to assign
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, troopCounts, sliderVals, setSliderVals, setTroopSlot, returnTroops, playerHqKey, unlockedBranches }) {
 const hqKey      = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
 const playerCmds = cmds.filter(c => c.owner==="player");
 const [selUid, setSelUid] = useState(null);
@@ -1271,46 +1469,44 @@ return (
     )}
     {playerCmds.map(cmd => {
       const isActive = selCmd?.uid === cmd.uid;
-      const tb = cmd.troopBranch;
-      const faction = tb ? FACTION_TROOPS[tb.faction] : null;
-      const branch  = faction?.branches.find(b=>b.key===tb?.branch);
-      const tier    = branch?.tiers[tb?.tier??0];
-      const fColor  = FACTION_META[tb?.faction]?.c || P.gold;
-      const isAtHQ  = cmd.tk === hqKey;
+      const slots    = cmd.troopSlots?.filter(sl => sl.troops > 0) ?? [];
+      const isAtHQ   = cmd.tk === hqKey;
       return (
         <button key={cmd.uid} onClick={() => setSelUid(cmd.uid)}
           style={{ width:"100%", textAlign:"left", marginBottom:4, padding:"8px 6px",
             borderRadius:6, cursor:"pointer",
             background:isActive?"rgba(240,192,64,.1)":"rgba(255,255,255,.02)",
             border:`1px solid ${isActive?P.gold+"44":P.border}`, transition:"all .12s" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
             <div style={{ fontSize:18 }}>{cmd.icon}</div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontFamily:P.ff, fontSize:8, fontWeight:700,
                 color:isActive?P.gold:P.text, whiteSpace:"nowrap",
                 overflow:"hidden", textOverflow:"ellipsis" }}>{cmd.n}</div>
-              <div style={{ fontSize:6, color:P.sub }}>Lv{cmd.lvl} . {cmd.cls}</div>
+              <div style={{ fontSize:6, color:P.sub }}>Lv{cmd.lvl} · {cmd.cls}</div>
             </div>
-            {/* Stamina badge */}
             {(() => {
               const stam = cmd.stamina ?? 200;
               const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
-              return (
-                <div style={{ textAlign:"center", flexShrink:0 }}>
-                  <div style={{ fontSize:5, color:sc }}>⚡{Math.floor(stam)}</div>
-                  <div style={{ width:24, height:3, background:"rgba(0,0,0,.4)", borderRadius:2, overflow:"hidden", marginTop:1 }}>
-                    <div style={{ height:"100%", width:`${(stam/200)*100}%`, background:sc, borderRadius:2 }}/>
-                  </div>
-                </div>
-              );
+              return <div style={{ fontSize:5, color:sc, flexShrink:0 }}>⚡{Math.floor(stam)}</div>;
             })()}
           </div>
-          {tier && (
-            <div style={{ fontSize:6, color:fColor, fontFamily:P.ff,
-              background:`${fColor}15`, padding:"2px 5px", borderRadius:3,
-              display:"inline-block", marginBottom:2 }}>{tier.label}</div>
-          )}
-          <div style={{ fontSize:5, color:isAtHQ?"#3daa60":"#6a5a3a", fontFamily:P.ff }}>
+          {slots.length > 0
+            ? slots.map((sl, i) => {
+                const brDef = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(b=>b.key===sl.branch?.branch);
+                const td    = brDef?.tiers[sl.branch?.tier??0];
+                const fc    = FACTION_META[sl.branch?.faction]?.c || P.gold;
+                return (
+                  <div key={i} style={{ fontSize:6, color:fc, fontFamily:P.ff,
+                    background:`${fc}15`, padding:"1px 5px", borderRadius:3,
+                    display:"inline-block", marginRight:3, marginBottom:2 }}>
+                    {td?.label ?? "?"} ×{sl.troops.toLocaleString()}
+                  </div>
+                );
+              })
+            : <div style={{ fontSize:6, color:"#3a3028", fontFamily:P.ff }}>No troops</div>
+          }
+          <div style={{ fontSize:5, color:isAtHQ?"#3daa60":"#6a5a3a", fontFamily:P.ff, marginTop:2 }}>
             {isAtHQ?"🏰 At HQ":"📍 Away"}
           </div>
         </button>
@@ -1323,28 +1519,17 @@ return (
     {!selCmd ? (
       <div style={{ textAlign:"center", padding:"40px 20px", color:P.dim,
         fontFamily:P.ffb, fontStyle:"italic", fontSize:9 }}>
-        No commanders available. Pull from the Gacha to recruit.
+        No commanders available.
       </div>
     ) : (() => {
-      const cmd = selCmd;
+      const cmd        = selCmd;
       const isAtHQ     = cmd.tk === hqKey;
-      const tb         = cmd.troopBranch;
-      const faction    = tb ? FACTION_TROOPS[tb.faction] : null;
-      const branch     = faction?.branches.find(b=>b.key===tb?.branch);
-      const tier       = branch?.tiers[tb?.tier??0];
       const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?500:0);
-      const cmdCost    = COMMAND_COST[branch?.size] ?? 1;
-      // For multi-slot commanders, sum command consumption per slot (units × slot's own cost).
-      // cmd.troops alone is the raw unit sum and doesn't account for mixed slot sizes.
-      const cmdUsed = cmd.troopSlots?.length > 0
-        ? cmd.troopSlots.reduce((s, sl) => {
-            const slBranch = FACTION_TROOPS[sl.branch?.faction]?.branches.find(b=>b.key===sl.branch?.branch);
-            const slCost   = COMMAND_COST[slBranch?.size] ?? 1;
-            return s + (sl.troops || 0) * slCost;
-          }, 0)
-        : (cmd.troops || 0) * cmdCost;
-      const troopPct   = Math.round((cmdUsed / commandCap) * 100);
-      const fColor     = FACTION_META[tb?.faction]?.c || P.gold;
+      const cmdUsed    = (cmd.troopSlots ?? []).reduce((s, sl) => {
+        const slBr = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(b=>b.key===sl.branch?.branch);
+        return s + (sl.troops || 0) * (COMMAND_COST[slBr?.size] ?? 1);
+      }, 0);
+      const troopPct = Math.min(100, Math.round((cmdUsed / commandCap) * 100));
 
       return (
         <div>
@@ -1355,30 +1540,16 @@ return (
             <div style={{ fontSize:28 }}>{cmd.icon}</div>
             <div style={{ flex:1 }}>
               <div style={{ fontFamily:P.ff, fontSize:12, fontWeight:700, color:P.gold }}>{cmd.n}</div>
-              <div style={{ fontSize:8, color:P.sub, marginTop:1 }}>Lv{cmd.lvl} . {cmd.cls}</div>
+              <div style={{ fontSize:8, color:P.sub }}>Lv{cmd.lvl} · {cmd.cls}</div>
               <div style={{ fontSize:7, color:isAtHQ?"#3daa60":"#7a5a3a", marginTop:1 }}>
-                {isAtHQ ? "🏰 At HQ" : "📍 Away -- recall to HQ to modify"}
+                {isAtHQ ? "🏰 At HQ" : "📍 Away — recall to HQ to modify"}
               </div>
-              {/* Stamina bar */}
-              {(() => {
-                const stam = cmd.stamina ?? 200;
-                const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
-                return (
-                  <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:4 }}>
-                    <span style={{ fontSize:7, color:sc }}>⚡</span>
-                    <div style={{ flex:1, height:4, background:"rgba(0,0,0,.4)", borderRadius:2, overflow:"hidden" }}>
-                      <div style={{ height:"100%", width:`${(stam/200)*100}%`, background:sc, borderRadius:2, transition:"width .3s" }}/>
-                    </div>
-                    <span style={{ fontSize:7, color:sc, fontFamily:P.ff, minWidth:30 }}>{Math.floor(stam)}/200</span>
-                  </div>
-                );
-              })()}
             </div>
             {(cmd.troops||0) > 0 && (
               <button className="btn" onClick={() => returnTroops(cmd.uid)}
                 style={{ padding:"4px 8px", background:"rgba(200,50,50,.15)",
                   border:"1px solid rgba(200,50,50,.4)", color:"#cc5050", fontSize:8 }}>
-                Return
+                Return All
               </button>
             )}
           </div>
@@ -1399,48 +1570,26 @@ return (
             </div>
           </div>
 
-          {/* 3 Troop composition boxes */}
-          <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff, letterSpacing:".1em", marginBottom:6 }}>
-            TROOP COMPOSITION
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginBottom:12 }}>
-            {[0,1,2].map(slotIdx => {
-              const isPrimary   = slotIdx === 0;
-              const hasAssigned = isPrimary && tier;
-              return (
-                <div key={slotIdx} style={{ borderRadius:8, minHeight:88,
-                  border:`1px solid ${hasAssigned?fColor+"44":P.border}`,
-                  background:hasAssigned?`${fColor}0a`:"rgba(255,255,255,.02)",
-                  display:"flex", flexDirection:"column",
-                  alignItems:"center", justifyContent:"center", padding:8,
-                  opacity: !isPrimary ? 0.4 : 1 }}>
-                  {hasAssigned ? (
-                    <>
-                      <div style={{ fontSize:8, fontFamily:P.ff, color:fColor,
-                        fontWeight:700, marginBottom:2, textAlign:"center" }}>{tier.label}</div>
-                      <div style={{ fontSize:7, color:P.sub }}>{branch.label}</div>
-                      <div style={{ fontSize:14, color:P.text, fontWeight:700, marginTop:4 }}>
-                        {(cmd.troops||0).toLocaleString()}
-                      </div>
-                      <div style={{ fontSize:6, color:P.dim }}>troops</div>
-                    </>
-                  ) : (
-                    <div style={{ fontSize:7, color:"#2a2020", fontFamily:P.ff, textAlign:"center" }}>
-                      {isPrimary ? "No troops" : "--"}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Troop branch selector + assign slider (at HQ only) */}
-          {isAtHQ && (
-            <TroopBranchSelector cmd={cmd} setCmds={setCmds}
-              faction={faction} branch={branch} tier={tier} tb={tb}
-              unlockedBranches={unlockedBranches} />
-          )}
-          {!isAtHQ && tb && tier && (
+          {/* Per-slot editors — only at HQ */}
+          {isAtHQ ? (
+            <>
+              <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff, letterSpacing:".1em", marginBottom:8 }}>
+                TROOP SLOTS (up to 3)
+              </div>
+              {[0,1,2].map(slotIdx => (
+                <SlotEditor
+                  key={slotIdx}
+                  cmd={cmd}
+                  slotIdx={slotIdx}
+                  setTroopSlot={setTroopSlot}
+                  troopCounts={troopCounts}
+                  bldgs={bldgs}
+                  commandCap={commandCap}
+                  unlockedBranches={unlockedBranches}
+                />
+              ))}
+            </>
+          ) : (
             <div style={{ padding:"8px 10px", background:"rgba(150,80,20,.08)",
               border:"1px solid rgba(150,80,20,.25)", borderRadius:4 }}>
               <div style={{ fontFamily:P.ff, fontSize:9, color:"#c8903a" }}>🔒 AWAY FROM HQ</div>
@@ -1449,160 +1598,10 @@ return (
               </div>
             </div>
           )}
-          {isAtHQ && tb && (() => {
-            // Slider controls slot 0 only (assignTroops is an alias for setTroopSlot slot 0).
-            // Use slot 0 unit count as the baseline, not cmd.troops (which is the total unit
-            // sum across all slots and can't be compared directly to a single-slot slider).
-            const slot0Troops = cmd.troopSlots?.length > 0 ? (cmd.troopSlots[0]?.troops || 0) : (cmd.troops || 0);
-            const sv        = sliderVals[cmd.uid] ?? slot0Troops;
-            // Pool for THIS specific troop type (faction:branch:tier)
-            const slot0Branch = cmd.troopSlots?.[0]?.branch ?? cmd.troopBranch;
-            const slot0BKey = slot0Branch
-              ? `${slot0Branch.faction}:${slot0Branch.branch}:${slot0Branch.tier ?? 0}`
-              : null;
-            const slot0Pool = slot0BKey ? ((troopCounts || {})[slot0BKey] || 0) : 0;
-            const maxSlider = Math.min(Math.floor(commandCap/cmdCost), slot0Pool + slot0Troops);
-            const delta     = sv - slot0Troops;
-            return (
-              <div>
-                <div style={{ display:"flex", justifyContent:"space-between", fontSize:8,
-                  color:"#6a5a4a", fontFamily:P.ff, marginBottom:4 }}>
-                  <span>ASSIGN TROOPS</span>
-                  <span style={{ color:delta>0?"#3daa60":delta<0?"#cc5050":"#5a5060" }}>
-                    {(sv*cmdCost).toLocaleString()} / {commandCap.toLocaleString()}
-                    {delta!==0&&<span style={{marginLeft:4}}>{delta>0?`(+${delta})`:delta}</span>}
-                  </span>
-                </div>
-                <input type="range" min={0} max={maxSlider} value={sv}
-                  onChange={e => setSliderVals(v=>({...v,[cmd.uid]:+e.target.value}))}
-                  style={{ width:"100%", accentColor:"#3daa60", marginBottom:8, boxSizing:"border-box", paddingRight:4 }}/>
-                <div style={{ display:"flex", justifyContent:"space-between", fontSize:7,
-                  color:"#4a4a5a", marginBottom:8 }}>
-                  <span>0</span>
-                  <span style={{color:"#5a7a5a"}}>Pool: {slot0Pool.toLocaleString()}</span>
-                  <span>{Math.floor(commandCap/cmdCost).toLocaleString()}</span>
-                </div>
-                {delta !== 0 ? (
-                  <button className="btn" onClick={() => assignTroops(cmd.uid, cmd.troopBranch, sv)}
-                    style={{ width:"100%", padding:"8px",
-                      background:delta>0?"linear-gradient(135deg,rgba(40,100,60,.5),rgba(40,100,60,.2))"
-                                      :"linear-gradient(135deg,rgba(150,40,40,.4),rgba(150,40,40,.15))",
-                      border:`1px solid ${delta>0?"#3daa60":"#cc4444"}`,
-                      color:delta>0?"#3dcc70":"#dd6666", fontSize:11, fontWeight:700 }}>
-                    {delta>0?`✓ Add ${delta} troops`:`✓ Remove ${Math.abs(delta)} troops`}
-                  </button>
-                ) : (
-                  <div style={{ fontSize:8, color:"#4a4a5a", fontFamily:P.ffb,
-                    fontStyle:"italic", textAlign:"center" }}>Move slider to assign</div>
-                )}
-              </div>
-            );
-          })()}
-          {!tb && isAtHQ && (
-            <div style={{ fontSize:8, color:"#5a5060", fontFamily:P.ffb, fontStyle:"italic" }}>
-              Select a troop branch above first.
-            </div>
-          )}
-          {!tb && !isAtHQ && (
-            <div style={{ fontSize:8, color:"#6a7a9a", fontFamily:P.ffb, fontStyle:"italic" }}>
-              🔄 No troops assigned. Recall to HQ to assign a troop branch.
-            </div>
-          )}
         </div>
       );
     })()}
   </div>
-</div>
-
-);
-}
-
-// -- Troop branch selector sub-component --------------------------------------
-function TroopBranchSelector({ cmd, setCmds, faction, branch, tier, tb, unlockedBranches }) {
-const [expandedFaction, setExpandedFaction] = useState(tb?.faction ?? null);
-const [expandedBranch,  setExpandedBranch]  = useState(tb?.branch  ?? null);
-
-const ub = unlockedBranches || {};
-// Only show factions that have at least one unlocked branch
-const factions = Object.entries(FACTION_TROOPS).filter(([fKey, fDef]) =>
-fDef.branches.some(br => `${fKey}:${br.key}` in ub)
-);
-
-return (
-<div style={{ marginBottom:10 }}>
-<div style={{ fontSize:8, color:"#6a5a4a", letterSpacing:".1em", fontFamily:"'Cinzel',serif", marginBottom:6 }}>
-SELECT TROOP BRANCH
-</div>
-{factions.map(([fKey, fDef]) => {
-const isExpF = expandedFaction === fKey;
-return (
-<div key={fKey} style={{ marginBottom:4 }}>
-<button className="btn" onClick={() => setExpandedFaction(isExpF ? null : fKey)}
-style={{ width:"100%", textAlign:"left", padding:"6px 10px",
-background:isExpF?"rgba(240,192,64,.08)":"rgba(255,255,255,.02)",
-border:`1px solid ${isExpF?"#5a4020":P.border}`,
-color:isExpF?P.gold:P.sub, fontSize:9, fontFamily:"'Cinzel',serif",
-display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-<span>{fDef.quarters}</span>
-<span style={{ fontSize:7 }}>{isExpF ? "^" : "v"}</span>
-</button>
-{isExpF && (
-<div style={{ paddingLeft:8, paddingTop:4, display:"flex", flexDirection:"column", gap:3 }}>
-{fDef.branches.filter(br => `${fKey}:${br.key}` in ub).map(br => {
-const isExpB = expandedBranch === br.key;
-const maxTier = ub[`${fKey}:${br.key}`] ?? 0;
-return (
-<div key={br.key}>
-<button className="btn" onClick={() => setExpandedBranch(isExpB ? null : br.key)}
-style={{ width:"100%", textAlign:"left", padding:"5px 8px",
-background:isExpB?"rgba(240,192,64,.05)":"rgba(255,255,255,.02)",
-border:`1px solid ${isExpB?"#3a2a10":P.border}`,
-color:isExpB?P.gold:P.sub, fontSize:8, fontFamily:"'Cinzel',serif",
-display:"flex", justifyContent:"space-between" }}>
-<span>{br.label} <span style={{ color:"#5a5a7a", fontSize:7 }}>({br.size} . {br.dmgType})</span></span>
-<span style={{ fontSize:7 }}>{isExpB ? "^" : "v"}</span>
-</button>
-{isExpB && (
-<div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:3, padding:"4px 0 4px 8px" }}>
-{br.tiers.slice(0, maxTier + 1).map((t, idx) => {
-const isActive = tb?.faction===fKey && tb?.branch===br.key && (tb?.tier??0)===idx;
-return (
-<button key={idx} className="btn"
-onClick={() => {
-  const newBranch = { faction:fKey, branch:br.key, tier:idx };
-  setCmds(p => p.map(c => {
-    if (c.uid !== cmd.uid) return c;
-    const existingTroops = c.troopSlots?.[0]?.troops ?? c.troops ?? 0;
-    const newSlots = [{ branch: newBranch, troops: existingTroops },
-      ...(c.troopSlots?.slice(1) ?? [])];
-    return { ...c, troopBranch: newBranch, troopSlots: newSlots };
-  }));
-}}
-style={{ padding:"6px 4px", textAlign:"center",
-background:isActive?"rgba(240,192,64,.15)":"rgba(255,255,255,.02)",
-border:`1px solid ${isActive?P.gold:P.border}`,
-color:isActive?P.gold:P.sub, fontSize:8,
-boxShadow:isActive?`0 0 8px rgba(240,192,64,.2)`:"none" }}>
-<div style={{ fontFamily:"'Cinzel',serif", fontWeight:700, fontSize:8, marginBottom:2 }}>
-{t.label}
-</div>
-<div style={{ fontSize:6, color:"#5a5a7a" }}>
-Lv{idx+1} . {br.size}
-</div>
-{isActive && <div style={{ fontSize:6, color:P.gold, marginTop:2 }}>✓</div>}
-</button>
-);
-})}
-</div>
-)}
-</div>
-);
-})}
-</div>
-)}
-</div>
-);
-})}
 </div>
 );
 }
@@ -2148,7 +2147,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
           <BattleGroupsScreen cmds={cmds} setCmds={setCmds} bldgs={bldgs}
             barracksPool={barracksPool} troopCounts={troopCounts}
             sliderVals={sliderVals} setSliderVals={setSliderVals}
-            assignTroops={assignTroops} returnTroops={returnTroops}
+            setTroopSlot={setTroopSlot} returnTroops={returnTroops}
             playerHqKey={playerHqKey} unlockedBranches={unlockedBranches}/>
         )}
         {hqTab === "repairbay" && (
