@@ -899,6 +899,13 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         borderBottom: "1px solid #1c1610",
         flexShrink: 0,
       }}>
+        {/* Commander name — above chips */}
+        <div style={{
+          fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 13,
+          color: "#c8b890", letterSpacing: ".04em",
+          marginBottom: 6,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>{cmd.n}</div>
         {/* Chips — single nowrap scrollable line */}
         <div style={{ display: "flex", gap: 4, overflowX: "auto", flexWrap: "nowrap",
           scrollbarWidth: "none", WebkitOverflowScrolling: "touch", position: "relative",
@@ -2027,14 +2034,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                     marginBottom: 12,
                   }}>{selectedCmd.icon}</div>
               }
-              {/* Name */}
-              <div style={{
-                fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 10,
-                color: selectedCmd._isStub ? "#666" : "#c8b890", letterSpacing: ".04em", textAlign: "center",
-                padding: "0 8px",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                maxWidth: "100%",
-              }}>{selectedCmd.n}</div>
+              {/* Name moved to top of col3 */}
               {/* Opposite alignment warning in col2 */}
               {selectedCmd._isStub && (() => {
                 const _alnKey = getFactionAlignment(selectedCmd.faction);
