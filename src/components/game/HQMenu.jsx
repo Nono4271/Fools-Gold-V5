@@ -1637,7 +1637,7 @@ return (
     ) : (() => {
       const cmd        = selCmd;
       const isAtHQ     = cmd.tk === hqKey;
-      const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?500:0);
+      const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?5:0);
       const cmdUsed    = (cmd.troopSlots ?? []).reduce((s, sl) => {
         const slBr = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(b=>b.key===sl.branch?.branch);
         return s + (sl.troops || 0) * (COMMAND_COST[slBr?.size] ?? 1);
@@ -1673,7 +1673,7 @@ return (
               color:"#5a5060", fontFamily:P.ff, marginBottom:2 }}>
               <span>📡 COMMAND</span>
               <span style={{ color:troopPct>=100?"#cc3030":troopPct>=75?"#d0a030":"#3daa60" }}>
-                {cmdUsed.toLocaleString()} / {commandCap.toLocaleString()}
+                {+cmdUsed.toFixed(2)} / {commandCap} cmd
               </span>
             </div>
             <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>

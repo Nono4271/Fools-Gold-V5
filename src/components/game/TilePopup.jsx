@@ -270,40 +270,24 @@ export default memo(function TilePopup({
               : (isAiOwned || isNeutral) ? garrisonDefCmd(selTile, facKey)
               : selTile.defCmd;
             if (!dc) return null;
-            const tt = tbInfo(dc.troopBranch);
             const plvl = selTile.powerLevel || 1;
-            const pd = POWER_DEFS[plvl] || POWER_DEFS[1];
             const totalWaves    = selTile.garrisonWaves ?? (plvl >= 10 ? 2 : (selTile.isGate || selTile.isKeep ? 2 : 1));
             const defeatedCount = selTile.defeatedWaves?.length ?? 0;
             const wavesLeft     = Math.max(0, totalWaves - defeatedCount);
-            // Show the POWER_DEFS command budget — not raw troop count (which is budget/COMMAND_COST)
-            // For live AI cmds, use their stored commandBudget if available, else pd.command
-            const perWaveBudget = aiCmdPresent
-              ? (dc.commandBudget ?? pd.command)
-              : (selTile.garrisonTroops ?? selTile.garrison ?? dc.commandBudget ?? pd.command);
-            const armyCommand = perWaveBudget;
             return (
               <div style={{marginBottom:4,padding:"3px 6px",background:"rgba(200,40,40,.06)",borderRadius:3,border:"1px solid rgba(200,40,40,.2)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                  <span style={{fontSize:7,color:"#8a5a4a",fontFamily:"'Cinzel',serif",letterSpacing:".06em"}}>
-                    {isAiOwned ? (aiCmdPresent?"ENEMY COMMANDER":"GARRISON") : "GARRISON"}
-                  </span>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:7,color:"#8a5a4a",fontFamily:"'Cinzel',serif",letterSpacing:".06em"}}>
+                      {isAiOwned ? (aiCmdPresent?"ENEMY COMMANDER":"GARRISON") : "GARRISON"}
+                    </span>
+                    <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>Lv{dc.lvl??"?"}</span>
+                  </div>
                   {totalWaves > 1 && (
                     <span style={{fontSize:6,color:wavesLeft>0?"#d08030":"#6a4a30",fontFamily:"'Cinzel',serif",fontWeight:700}}>
-                      {wavesLeft}/{totalWaves} waves left
+                      {wavesLeft}/{totalWaves} waves
                     </span>
                   )}
-                </div>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <div style={{textAlign:"center"}}><div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#e07050",fontWeight:700}}>Lv{dc.lvl??"?"}</div><div style={{fontSize:6,color:"#5a4a40"}}>Cmd Lv</div></div>
-                  <div style={{textAlign:"center"}}>
-                    <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:"#c08040",fontWeight:700,display:"flex",alignItems:"center",gap:2}}>
-                      {armyCommand.toLocaleString()}
-                      {totalWaves > 1 && <span style={{fontSize:7,color:"#d08030",fontWeight:700}}>×{totalWaves}</span>}
-                    </div>
-                    <div style={{fontSize:6,color:"#5a4a40"}}>Army Cmd{totalWaves > 1 ? " /wave" : ""}</div>
-                  </div>
-                  {isAiOwned && <div style={{marginLeft:"auto",fontSize:7,color:"#5a4040",fontFamily:"'Cinzel',serif",fontStyle:"italic"}}>Enemy Commander</div>}
                 </div>
               </div>
             );
