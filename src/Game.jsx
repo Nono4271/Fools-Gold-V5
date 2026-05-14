@@ -325,6 +325,7 @@ export default function RiseToWar() {
 
   // Void Tap state
   const [mysticOrbs,    setMysticOrbs]    = useState(0);
+  const [troopSkillLevels, setTroopSkillLevels] = useState({});
   const [lastVoidTap,   setLastVoidTap]   = useState(null); // timestamp ms or null
 
   // Wizard's Tomes
@@ -783,6 +784,7 @@ export default function RiseToWar() {
     emitTileCapture, emitTileSiege,
     gatePartners,
     facKey,
+    troopSkillLevels,
   });
 
   useGameLoop({
@@ -1696,6 +1698,8 @@ export default function RiseToWar() {
         voidTapLvl={voidTapLvl} voidTapReady={voidTapReady}
         lastVoidTap={lastVoidTap} voidTapCooldown={voidTapCooldown}
         doVoidTap={doVoidTap}
+        troopSkillLevels={troopSkillLevels} setTroopSkillLevels={setTroopSkillLevels}
+        setMysticOrbs={setMysticOrbs}
       />
 
       {winner && (
