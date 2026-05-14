@@ -12,19 +12,19 @@ const RKEYS      = ["stone","wood","ore","gas"];
 const TROOP_KEYS = ["infantry","mage","spearmen","horsemen"];
 
 const POWER_DEFS = {
-  1: { cmdLvl:1,  command:36   },
-  2: { cmdLvl:4,  command:300  },
-  3: { cmdLvl:6,  command:480  },
-  4: { cmdLvl:8,  command:960  },
-  5: { cmdLvl:10, command:1200 },
-  6: { cmdLvl:15, command:1800 },
-  7: { cmdLvl:18, command:2160 },
-  8: { cmdLvl:25, command:3600 },
-  9: { cmdLvl:28, command:4200 },
-  10:{ cmdLvl:35, command:6600 },
-  11:{ cmdLvl:40, command:7800 },
-  12:{ cmdLvl:45, command:9000 },
-  13:{ cmdLvl:50, command:10800 },
+  1: { cmdLvl:1,  command:0.30  },
+  2: { cmdLvl:4,  command:2.50  },
+  3: { cmdLvl:6,  command:4.00  },
+  4: { cmdLvl:8,  command:8.00  },
+  5: { cmdLvl:10, command:10.00 },
+  6: { cmdLvl:15, command:15.00 },
+  7: { cmdLvl:18, command:18.00 },
+  8: { cmdLvl:25, command:30.00 },
+  9: { cmdLvl:28, command:35.00 },
+  10:{ cmdLvl:35, command:55.00 },
+  11:{ cmdLvl:40, command:65.00 },
+  12:{ cmdLvl:45, command:75.00 },
+  13:{ cmdLvl:50, command:90.00 },
 };
 const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 }; // kept for keeps only
 
