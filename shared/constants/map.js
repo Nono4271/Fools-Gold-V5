@@ -44,7 +44,7 @@ export const POWER_DEFS = {
 };
 
 // XP per command point consumed, by troop tier (0-indexed)
-export const XP_PER_COMMAND = { 0: 4.8, 1: 7.2, 2: 10.2 };
+export const XP_PER_COMMAND = { 0: 400, 1: 600, 2: 850 };
 
 export const SIEGE_BASE          = 50;
 export const SIEGE_HQ_BASE       = 50000;
