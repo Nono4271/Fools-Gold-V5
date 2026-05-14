@@ -92,14 +92,15 @@ const TREE_NODES = [
   { id:"tl_b2", col:0, x:C1x+72,  y:Y_LEAF2, r:R_LEAF, icon:"👑",  label:"Warlord's Pact",accent:"#f0c040", desc:"+5% attack & +5% defence.",                              prereqs:["tl_b"], unlockLv:1 },
 
   // ── COL 2: MARCHING (Lv10) accent:#5588ff ──
-  // Root → Far Marcher (shallow left), → Arcane Sight (right) → 4 leaves staggered
+  // Root → Far Marcher (left mid), → Arcane Sight (right mid) → 4 leaves fan out from Arcane Sight
+  // tr_b4 hangs below tr_b3 (rightmost leaf chain)
   { id:"tr",    col:1, x:C2x,      y:Y_ROOT,  r:R_ROOT, icon:"⚡",  label:"Swift March",    accent:"#5588ff", desc:"+5% march speed for all commanders.",                    prereqs:[], unlockLv:10 },
   { id:"tr_t",  col:1, x:C2x-58,  y:Y_MID_L, r:R_MID,  icon:"🗺",  label:"Far Marcher",    accent:"#6688ee", desc:"+2 maximum march range.",                                prereqs:["tr"], unlockLv:10 },
-  { id:"tr_b",  col:1, x:C2x+42,  y:Y_MID_R, r:R_MID,  icon:"🔍",  label:"Arcane Sight",   accent:"#44ccee", desc:"Reveal enemy troop counts when scouting.",               prereqs:["tr"], unlockLv:10 },
-  { id:"tr_b1", col:1, x:C2x-20,  y:Y_LEAF,  r:R_LEAF, icon:"👁",  label:"All-Seeing",     accent:"#40ddcc", desc:"Fog of war radius +2 tiles.",                            prereqs:["tr_b"], unlockLv:10 },
-  { id:"tr_b2", col:1, x:C2x+38,  y:Y_LEAF,  r:R_LEAF, icon:"🔮",  label:"Omniscience",    accent:"#40aaff", desc:"No fog of war — full map awareness.",                    prereqs:["tr_b"], unlockLv:10 },
-  { id:"tr_b3", col:1, x:C2x+90,  y:Y_MID_R, r:R_LEAF, icon:"⚔️",  label:"Twin Legions",   accent:"#5577ff", desc:"Unlock a 3rd simultaneous march.",                       prereqs:["tr_b"], unlockLv:10 },
-  { id:"tr_b4", col:1, x:C2x+90,  y:Y_LEAF2, r:R_LEAF, icon:"🌀",  label:"Void Attunement",accent:"#aa55ff", desc:"Void Tap cooldown reduced by 10%.",                      prereqs:["tr_b3"], unlockLv:10 },
+  { id:"tr_b",  col:1, x:C2x+30,  y:Y_MID_R, r:R_MID,  icon:"🔍",  label:"Arcane Sight",   accent:"#44ccee", desc:"Reveal enemy troop counts when scouting.",               prereqs:["tr"], unlockLv:10 },
+  { id:"tr_b1", col:1, x:C2x-30,  y:Y_LEAF,  r:R_LEAF, icon:"👁",  label:"All-Seeing",     accent:"#40ddcc", desc:"Fog of war radius +2 tiles.",                            prereqs:["tr_b"], unlockLv:10 },
+  { id:"tr_b2", col:1, x:C2x+10,  y:Y_LEAF,  r:R_LEAF, icon:"🔮",  label:"Omniscience",    accent:"#40aaff", desc:"No fog of war — full map awareness.",                    prereqs:["tr_b"], unlockLv:10 },
+  { id:"tr_b3", col:1, x:C2x+52,  y:Y_LEAF,  r:R_LEAF, icon:"⚔️",  label:"Twin Legions",   accent:"#5577ff", desc:"Unlock a 3rd simultaneous march.",                       prereqs:["tr_b"], unlockLv:10 },
+  { id:"tr_b4", col:1, x:C2x+90,  y:Y_LEAF,  r:R_LEAF, icon:"🌀",  label:"Void Attunement",accent:"#aa55ff", desc:"Void Tap cooldown reduced by 10%.",                      prereqs:["tr_b"], unlockLv:10 },
 
   // ── COL 3: DEFENSE (Lv30) accent:#44cc88 ──
   { id:"bl",    col:2, x:C3x,      y:Y_ROOT,  r:R_ROOT, icon:"🛡",  label:"Fortify",        accent:"#44cc88", desc:"+500 HQ siege HP.",                                      prereqs:[], unlockLv:30 },
@@ -128,8 +129,7 @@ const EDGES = [
   ["tl_b","tl_b1"], ["tl_b","tl_b2"],
 
   ["tr","tr_t"], ["tr","tr_b"],
-  ["tr_b","tr_b1"], ["tr_b","tr_b2"], ["tr_b","tr_b3"],
-  ["tr_b3","tr_b4"],
+  ["tr_b","tr_b1"], ["tr_b","tr_b2"], ["tr_b","tr_b3"], ["tr_b","tr_b4"],
 
   ["bl","bl_t"], ["bl","bl_b"],
   ["bl_b","bl_b1"], ["bl_b","bl_b2"],
@@ -386,11 +386,44 @@ export default memo(function WizardsTomes({
           </div>
 
           {/* SVG Tree — 4 columns */}
-          <div style={{flex:1, overflow:"hidden", display:"flex"}}>
+          <div style={{flex:1, overflow:"hidden", display:"flex", position:"relative"}}>
+            {/* HTML Level Up button overlaid on top of SVG — reliable click target */}
+            {canLevelUp && (
+              <button
+                onClick={doLevelUp}
+                style={{
+                  position:"absolute", bottom:8, right:8,
+                  zIndex:10,
+                  padding:"10px 22px",
+                  background:"rgba(110,40,220,.75)",
+                  border:"1.5px solid #aa66ff",
+                  borderRadius:6,
+                  color:"#f0e8ff",
+                  fontFamily:"'Cinzel',serif",
+                  fontSize:12,
+                  fontWeight:700,
+                  letterSpacing:".06em",
+                  cursor:"pointer",
+                  boxShadow:"0 0 16px rgba(150,80,255,.5)",
+                  WebkitTapHighlightColor:"transparent",
+                  touchAction:"manipulation",
+                  minWidth:160,
+                }}
+              >
+                {levelsBuyable > 1
+                  ? `▲ LV ${tomesLevel} → ${tomesLevel + levelsBuyable}`
+                  : "▲ LEVEL UP"}
+                {levelsBuyable > 1 && (
+                  <div style={{fontSize:9, color:"#cc99ff", marginTop:2}}>
+                    Gain +{levelsBuyable} upgrade points
+                  </div>
+                )}
+              </button>
+            )}
             <svg
               viewBox={`0 0 ${SVG_W} ${SVG_H}`}
               style={{width:"100%", height:"100%", display:"block"}}
-              preserveAspectRatio="xMidYMid meet"
+              preserveAspectRatio="none"
             >
               <defs>
                 <linearGradient id="pp_bar_fill" x1="0" y1="0" x2="1" y2="0">
@@ -529,7 +562,7 @@ export default memo(function WizardsTomes({
 
                   {/* Level up button — only shown when ready */}
                   {canLevelUp && (
-                    <g onClick={doLevelUp} style={{cursor:"pointer"}}>
+                    <g style={{pointerEvents:"none"}}>
                       <rect x={682} y={PP_Y+2} width={300} height={44} rx={6}
                         fill="rgba(110,40,220,.55)" stroke="#aa66ff" strokeWidth="1.5"/>
                       <rect x={682} y={PP_Y+2} width={300} height={44} rx={6}
