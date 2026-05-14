@@ -206,8 +206,8 @@ export default memo(function TilePopup({
               </div>
               <span style={{fontSize:7,color:"#6a7a5a",fontFamily:"'Cinzel',serif"}}>
                 +{selTile.powerLevel === 1
-                  ? "60/hr (all)"
-                  : `${({2:288,3:336,4:432,5:504,6:672,7:768,8:864,9:960,10:1200,11:1440,12:1680,13:1920}[selTile.powerLevel]??288)}/hr`}
+                  ? "50/hr (all)"
+                  : `${({2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600}[selTile.powerLevel]??240)}/hr`}
               </span>
             </div>
           )}
