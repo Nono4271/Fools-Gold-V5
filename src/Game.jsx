@@ -925,7 +925,7 @@ export default function RiseToWar() {
             } else {
               setPlayerCmds(cmds => cmds.map(c => {
                 if (c.uid !== rm.cmdUid) return c;
-                const cap       = cmdCommand(c.lvl||5, bldgs.commandcenter||0, (c.cls==="leader"&&(c.lvl||5)>=25)?500:0);
+                const cap       = cmdCommand(c.lvl||5, bldgs.commandcenter||0, (c.cls==="leader"&&(c.lvl||5)>=25)?5:0);
                 const newTroops = Math.min(cap, (c.troops||0) + rm.amount);
                 const overflow  = ((c.troops||0) + rm.amount) - newTroops;
                 if (overflow > 0) {
@@ -1208,7 +1208,7 @@ export default function RiseToWar() {
     setCmds(prev => {
       const cmd = prev.find(c => c.uid===uid);
       if (!cmd) return prev;
-      const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?500:0);
+      const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?5:0);
 
       const existingSlots = normaliseTroopSlots(cmd);
       const newSlots = [...existingSlots];
