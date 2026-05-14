@@ -59,6 +59,15 @@ export function skillProcAtLevel(skill, level) {
   return skill.procBase + t * (skill.procMax - skill.procBase);
 }
 
+// ── Mystic Orb cost to upgrade a skill from `level` → `level+1` ─────────────
+// Costs: 100 / 250 / 600 / 1500 / 4000 / 10000 / 22000 / 50000 / 100000
+// (level is the CURRENT level, 1–9; returns 0 if already max)
+const _SKILL_ORB_COSTS = [0, 100, 250, 600, 1500, 4000, 10000, 22000, 50000, 100000];
+export function skillOrbCost(currentLevel) {
+  if (currentLevel >= 10) return 0;
+  return _SKILL_ORB_COSTS[currentLevel] ?? 0;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  FACTION TROOPS
 // ─────────────────────────────────────────────────────────────────────────────
