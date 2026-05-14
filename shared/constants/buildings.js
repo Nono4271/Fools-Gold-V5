@@ -9,7 +9,7 @@ refinery:      { n:"Refinery",         icon:"⚗",  max:20, desc:"Produces Gas. 
 storage:       { n:"Storage",          icon:"🏦", max:20, desc:"Increases max resource capacity for all 4 resources. Lv0=200k, Lv20=2M.",       cost:{ stone:100, wood:80,  ore:40,  gas:20 } },
 barracks:      { n:"Barracks",         icon:"🏕",  max:10, desc:"Increases max troop capacity. Lv1=2k, Lv10=90k.",                              cost:{ stone:80,  wood:80,  ore:40,  gas:20 } },
 training:      { n:"Training Grounds", icon:"⚔️",  max:10, desc:"Increases max training batch size. Always trainable even at Lv0.",             cost:{ stone:60,  wood:60,  ore:30,  gas:10 } },
-commandcenter: { n:"Command Center",   icon:"📡", max:10, desc:"+300 Command to all commanders per level.",                                      cost:{ stone:150, wood:120, ore:80,  gas:60 } },
+commandcenter: { n:"Command Center",   icon:"📡", max:10, desc:"Increases commander command capacity. +2/+2/+3/+3/+3/+4/+4/+4/+5/+5 per level (total +35 at Lv10).", cost:{ stone:150, wood:120, ore:80,  gas:60 } },
 healingtent:   { n:"Healing Tent",     icon:"⛺", max:10, desc:"Heals wounded troops. +5/s per level.",                                         cost:{ stone:60,  wood:80,  ore:60,  gas:0  } },
 walls:         { n:"Walls",            icon:"🛡",  max:10, desc:"Increases HQ siege HP. Lv1=+10k, Lv10=+100k.",                                cost:{ stone:100, wood:60,  ore:0,   gas:0  } },
 voidtap:       { n:"Void Tap",         icon:"🌀", max:10, desc:"Channels arcane energy into Mystic Orbs. Higher levels increase capacity and reduce cooldown between taps.", cost:{ stone:120, wood:80, ore:100, gas:60 } },
@@ -70,8 +70,17 @@ const isMilitary = ["barracks","training","commandcenter","walls","healingtent"]
 return newLevel * (isMilitary ? 30000 : 20000);
 }
 
+// Command Center bonus per level (cumulative): +2,+2,+3,+3,+3,+4,+4,+4,+5,+5 = +35 at Lv10
+const CC_BONUS_BY_LVL = [0, 2, 4, 7, 10, 13, 17, 21, 25, 30, 35];
+export function ccBonus(ccLvl) {
+  return CC_BONUS_BY_LVL[Math.min(10, Math.max(0, ccLvl || 0))];
+}
+
+// Command: level × 1 + CC bonus + optional leader bonus (always whole numbers for players)
+// Small units cost 0.01 cmd (100/cmd), medium 0.02 (50/cmd), large 0.25 (4/cmd)
+// Max: Lv50 = 50, + CC Lv10 = 85, + leader = 90
 export function cmdCommand(lvl, ccLvl, leaderBonus = 0) {
-return (lvl || 5) * 120 + (ccLvl || 0) * 300 + leaderBonus;
+  return (lvl || 1) + ccBonus(ccLvl) + leaderBonus;
 }
 
 // Quarter level gates — indexed by HQ level (0-10)

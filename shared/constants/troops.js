@@ -40,7 +40,8 @@ export function troopSizeModifier(atkSize, defSize) {
 }
 
 // ── Command cost by size ──────────────────────────────────────────────────────
-export const COMMAND_COST = { small: 1, medium: 2, large: 25 };
+// RTW-style command costs: 100 small / 50 medium / 4 large per command point
+export const COMMAND_COST = { small: 0.01, medium: 0.02, large: 0.25 };
 
 // ── Legacy troopModifier (kept for battle.js compatibility) ──────────────────
 export function troopModifier(atkType, defType) { return 1.0; }

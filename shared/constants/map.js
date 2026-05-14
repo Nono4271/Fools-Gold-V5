@@ -28,19 +28,19 @@ export const WIN_R = 407;
 export const WIN_KEY = `${WIN_C},${WIN_R}`;
 
 export const POWER_DEFS = {
-1: { label:"1/hr",   color:"#6a9a6a", cmdLvl:1,  command:36,   ringPower:1   },
-2: { label:"10/hr",  color:"#9a8a30", cmdLvl:4,  command:300,  ringPower:10  },
-3: { label:"15/hr",  color:"#9a5a30", cmdLvl:6,  command:480,  ringPower:15  },
-4: { label:"30/hr",  color:"#9a3030", cmdLvl:8,  command:960,  ringPower:30  },
-5: { label:"40/hr",  color:"#7a3090", cmdLvl:10, command:1200, ringPower:40  },
-6: { label:"60/hr",  color:"#4a30a0", cmdLvl:15, command:1800, ringPower:60  },
-7: { label:"90/hr",  color:"#2030b0", cmdLvl:18, command:2160, ringPower:90  },
-8: { label:"130/hr", color:"#1040c0", cmdLvl:25, command:3600, ringPower:130 },
-9: { label:"150/hr", color:"#0858d0", cmdLvl:28, command:4200, ringPower:150 },
-10:{ label:"200/hr", color:"#7010e0", cmdLvl:35, command:6600, ringPower:200 },
-11:{ label:"230/hr", color:"#9010c0", cmdLvl:40, command:7800, ringPower:230 },
-12:{ label:"260/hr", color:"#b010a0", cmdLvl:45, command:9000, ringPower:260 },
-13:{ label:"300/hr", color:"#d01080", cmdLvl:50, command:10800, ringPower:300 },
+1: { label:"1/hr",   color:"#6a9a6a", cmdLvl:1,  command:0.30,  ringPower:1   },
+2: { label:"10/hr",  color:"#9a8a30", cmdLvl:4,  command:2.50,  ringPower:10  },
+3: { label:"15/hr",  color:"#9a5a30", cmdLvl:6,  command:4.00,  ringPower:15  },
+4: { label:"30/hr",  color:"#9a3030", cmdLvl:8,  command:8.00,  ringPower:30  },
+5: { label:"40/hr",  color:"#7a3090", cmdLvl:10, command:10.00, ringPower:40  },
+6: { label:"60/hr",  color:"#4a30a0", cmdLvl:15, command:15.00, ringPower:60  },
+7: { label:"90/hr",  color:"#2030b0", cmdLvl:18, command:18.00, ringPower:90  },
+8: { label:"130/hr", color:"#1040c0", cmdLvl:25, command:30.00, ringPower:130 },
+9: { label:"150/hr", color:"#0858d0", cmdLvl:28, command:35.00, ringPower:150 },
+10:{ label:"200/hr", color:"#7010e0", cmdLvl:35, command:55.00, ringPower:200 },
+11:{ label:"230/hr", color:"#9010c0", cmdLvl:40, command:65.00, ringPower:230 },
+12:{ label:"260/hr", color:"#b010a0", cmdLvl:45, command:75.00, ringPower:260 },
+13:{ label:"300/hr", color:"#d01080", cmdLvl:50, command:90.00, ringPower:300 },
 };
 
 // XP per command point consumed, by troop tier (0-indexed)
