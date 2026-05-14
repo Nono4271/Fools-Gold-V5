@@ -497,95 +497,72 @@ export default memo(function WizardsTomes({
                 );
               })}
 
-              {/* ── Power strip at bottom of SVG ── */}
-              {/* background */}
-              <rect x={0} y={PP_Y-8} width={SVG_W} height={PP_H+16}
-                fill="rgba(8,6,24,.92)" stroke="rgba(120,80,255,.18)" strokeWidth="1"/>
+              {/* ── Power strip at bottom of SVG — pointerEvents:none so nodes stay clickable ── */}
+              <g style={{pointerEvents:"none"}}>
+                {/* background */}
+                <rect x={0} y={PP_Y-8} width={SVG_W} height={PP_H+16}
+                  fill="rgba(8,6,24,.92)" stroke="rgba(120,80,255,.18)" strokeWidth="1"/>
 
-              {/* Tomes level */}
-              <text x={46} y={PP_Y+10} textAnchor="middle" style={{
-                fontSize:22, fontFamily:"'Cinzel Decorative',serif", fill:"#d0c0ff", fontWeight:700,
-              }}>{tomesLevel}</text>
-              <text x={46} y={PP_Y+22} textAnchor="middle" style={{
-                fontSize:6.5, fontFamily:"'Cinzel',serif", fill:"#6650aa", letterSpacing:".1em",
-              }}>TOMES LV</text>
-              {tomesUnspentPoints > 0 && (
-                <>
-                  <circle cx={68} cy={PP_Y-4} r={10} fill="#cc4400" stroke="#ff6622" strokeWidth="1.5"/>
-                  <text x={68} y={PP_Y} textAnchor="middle" style={{
-                    fontSize:9, fontFamily:"'Cinzel',serif", fill:"#fff", fontWeight:700,
-                  }}>{tomesUnspentPoints}</text>
-                </>
-              )}
+                {/* Tomes level */}
+                <text x={46} y={PP_Y+10} textAnchor="middle" style={{
+                  fontSize:22, fontFamily:"'Cinzel Decorative',serif", fill:"#d0c0ff", fontWeight:700,
+                }}>{tomesLevel}</text>
+                <text x={46} y={PP_Y+22} textAnchor="middle" style={{
+                  fontSize:6.5, fontFamily:"'Cinzel',serif", fill:"#6650aa", letterSpacing:".1em",
+                }}>TOMES LV</text>
+                {tomesUnspentPoints > 0 && (
+                  <>
+                    <circle cx={68} cy={PP_Y-4} r={10} fill="#cc4400" stroke="#ff6622" strokeWidth="1.5"/>
+                    <text x={68} y={PP_Y} textAnchor="middle" style={{
+                      fontSize:9, fontFamily:"'Cinzel',serif", fill:"#fff", fontWeight:700,
+                    }}>{tomesUnspentPoints}</text>
+                  </>
+                )}
 
-              {/* Divider */}
-              <line x1={90} y1={PP_Y-4} x2={90} y2={PP_Y+PP_H-4} stroke="rgba(120,80,255,.2)" strokeWidth="1"/>
+                {/* Divider */}
+                <line x1={90} y1={PP_Y-4} x2={90} y2={PP_Y+PP_H-4} stroke="rgba(120,80,255,.2)" strokeWidth="1"/>
 
-              {atMaxLevel ? (
-                <text x={SVG_W/2} y={PP_Y+20} textAnchor="middle" style={{
-                  fontSize:13, fontFamily:"'Cinzel',serif", fill:"#d0c0ff", fontWeight:700,
-                }}>✦ MAX LEVEL ✦</text>
-              ) : (
-                <>
-                  {/* /hr */}
-                  <text x={108} y={PP_Y+8} style={{
-                    fontSize:9.5, fontFamily:"'Cinzel',serif",
-                    fill: powerPerHr > 0 ? "#9977cc" : "#3a2a50",
-                  }}>
-                    {powerPerHr > 0 ? `+${powerPerHr.toLocaleString()}/hr` : "no power — capture tiles"}
-                  </text>
+                {atMaxLevel ? (
+                  <text x={SVG_W/2} y={PP_Y+20} textAnchor="middle" style={{
+                    fontSize:13, fontFamily:"'Cinzel',serif", fill:"#d0c0ff", fontWeight:700,
+                  }}>✦ MAX LEVEL ✦</text>
+                ) : (
+                  <>
+                    {/* /hr */}
+                    <text x={108} y={PP_Y+8} style={{
+                      fontSize:9.5, fontFamily:"'Cinzel',serif",
+                      fill: powerPerHr > 0 ? "#9977cc" : "#3a2a50",
+                    }}>
+                      {powerPerHr > 0 ? `+${powerPerHr.toLocaleString()}/hr` : "no power — capture tiles"}
+                    </text>
 
-                  {/* progress bar bg */}
-                  <rect x={108} y={PP_Y+13} width={560} height={9} rx={4}
-                    fill="rgba(80,40,180,.25)" stroke="rgba(120,80,255,.3)" strokeWidth="1"/>
-                  {/* progress bar fill */}
-                  {progressPct > 0 && (
-                    <rect x={108} y={PP_Y+13} width={Math.min(560, 560*progressPct/100)} height={9} rx={4}
-                      fill={canLevelUp ? "url(#pp_bar_fill)" : "rgba(100,60,220,.55)"}
-                      style={{filter: canLevelUp ? "drop-shadow(0 0 4px #aa55ff)" : "none"}}/>
-                  )}
-
-                  {/* pool / cost */}
-                  <text x={108} y={PP_Y+36} style={{
-                    fontSize:9.5, fontFamily:"'Cinzel',serif",
-                    fill: canLevelUp ? "#c8b0ff" : "#5544aa",
-                  }}>
-                    {poolDisplay.toLocaleString()}
-                    <tspan fill="#2a1a50" dx="4">/</tspan>
-                    <tspan dx="4">{costToNext.toLocaleString()}</tspan>
-                    {!canLevelUp && (
-                      <tspan fill="#3a2860" fontSize="8.5" dx="8">
-                        ({Math.max(0, costToNext-poolDisplay).toLocaleString()} more)
-                      </tspan>
+                    {/* progress bar bg */}
+                    <rect x={108} y={PP_Y+13} width={560} height={9} rx={4}
+                      fill="rgba(80,40,180,.25)" stroke="rgba(120,80,255,.3)" strokeWidth="1"/>
+                    {/* progress bar fill */}
+                    {progressPct > 0 && (
+                      <rect x={108} y={PP_Y+13} width={Math.min(560, 560*progressPct/100)} height={9} rx={4}
+                        fill={canLevelUp ? "url(#pp_bar_fill)" : "rgba(100,60,220,.55)"}
+                        style={{filter: canLevelUp ? "drop-shadow(0 0 4px #aa55ff)" : "none"}}/>
                     )}
-                  </text>
 
-                  {/* Level up button — only shown when ready */}
-                  {canLevelUp && (
-                    <g style={{pointerEvents:"none"}}>
-                      <rect x={682} y={PP_Y+2} width={300} height={44} rx={6}
-                        fill="rgba(110,40,220,.55)" stroke="#aa66ff" strokeWidth="1.5"/>
-                      <rect x={682} y={PP_Y+2} width={300} height={44} rx={6}
-                        fill="none" stroke="#cc99ff" strokeWidth=".5" opacity=".5"/>
-                      <text x={832} y={PP_Y+20} textAnchor="middle" style={{
-                        fontSize:11, fontFamily:"'Cinzel',serif", fill:"#f0e8ff",
-                        fontWeight:700, letterSpacing:".06em",
-                      }}>
-                        {levelsBuyable > 1
-                          ? `▲ LV ${tomesLevel} → ${tomesLevel+levelsBuyable}`
-                          : "▲ LEVEL UP"}
-                      </text>
-                      {levelsBuyable > 1 && (
-                        <text x={832} y={PP_Y+36} textAnchor="middle" style={{
-                          fontSize:9, fontFamily:"'Cinzel',serif", fill:"#9966ff",
-                        }}>
-                          Gain +{levelsBuyable} upgrade points
-                        </text>
+                    {/* pool / cost */}
+                    <text x={108} y={PP_Y+36} style={{
+                      fontSize:9.5, fontFamily:"'Cinzel',serif",
+                      fill: canLevelUp ? "#c8b0ff" : "#5544aa",
+                    }}>
+                      {poolDisplay.toLocaleString()}
+                      <tspan fill="#2a1a50" dx="4">/</tspan>
+                      <tspan dx="4">{costToNext.toLocaleString()}</tspan>
+                      {!canLevelUp && (
+                        <tspan fill="#3a2860" fontSize="8.5" dx="8">
+                          ({Math.max(0, costToNext-poolDisplay).toLocaleString()} more)
+                        </tspan>
                       )}
-                    </g>
-                  )}
-                </>
-              )}
+                    </text>
+                  </>
+                )}
+              </g>
             </svg>
           </div>
         </div>
