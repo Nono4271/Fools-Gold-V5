@@ -3,11 +3,11 @@ import { rssRate, storageMax } from "../../shared/constants/buildings.js";
 
 // ── RSS rates per power level (per hour) ─────────────────────────────────────
 // P1: 60/hr flat all types. P2+: matching rss type only.
-const RATE_P1_PER_HR = 60;
+const RATE_P1_PER_HR = 50;
 const RATE_BY_PL = {
-  2:288, 3:336, 4:432, 5:504, 6:672, 7:768,
-  8:864, 9:960,
-  10:1200, 11:1440, 12:1680, 13:1920,
+  2:240, 3:280, 4:360, 5:420, 6:560, 7:640,
+  8:720, 9:800,
+  10:1000, 11:1200, 12:1400, 13:1600,
 };
 
 // Base passive income every player gets regardless of tiles or buildings
@@ -64,7 +64,7 @@ export function useResources({ screen, tilesRef, setRss, bldgs }) {
         for (const tile of cache) {
           const pl = tile.powerLevel || 1;
           if (pl === 1) {
-            // P1: flat 60/hr across all four types
+            // P1: flat 50/hr across all four types
             const perTick = RATE_P1_PER_HR / TICKS_PER_HOUR;
             gain.stone += perTick;
             gain.wood  += perTick;
