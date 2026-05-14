@@ -160,9 +160,7 @@ function NodeShape({ node, unlocked, active, onClick, colAccent }) {
   const r  = node.r;
   const isRoot = r === R_ROOT;
   return (
-    <g onClick={onClick} style={{cursor:"pointer"}} transform={`translate(${node.x},${node.y})`}>
-      {/* tap target — transparent, larger than visual */}
-      <circle cx={0} cy={0} r={r+12} fill="transparent"/>
+    <g style={{pointerEvents:"none"}} transform={`translate(${node.x},${node.y})`}>
       {/* glow ring when unlocked */}
       {unlocked && <circle cx={0} cy={0} r={r+8} fill={node.accent} opacity=".12"/>}
       {/* active ring */}
@@ -564,6 +562,39 @@ export default memo(function WizardsTomes({
                 )}
               </g>
             </svg>
+
+            {/* HTML button overlays — one per node, positioned as % of SVG viewBox (1000×620).
+                Because the SVG is stretched (preserveAspectRatio="none"), SVG onClick coords are
+                wrong on mobile. These transparent absolute buttons capture the real taps. */}
+            {TREE_NODES.map(node => {
+              const n = getNode(node.id);
+              const hitR = node.r + 14; // slightly larger than visual radius
+              const leftPct  = ((node.x - hitR) / SVG_W) * 100;
+              const topPct   = ((node.y - hitR) / SVG_H) * 100;
+              const wPct     = (hitR * 2 / SVG_W) * 100;
+              const hPct     = (hitR * 2 / SVG_H) * 100;
+              return (
+                <button
+                  key={`hit-${node.id}`}
+                  onClick={() => setSelected(node.id)}
+                  style={{
+                    position:"absolute",
+                    left:`${leftPct}%`,
+                    top:`${topPct}%`,
+                    width:`${wPct}%`,
+                    height:`${hPct}%`,
+                    background:"transparent",
+                    border:"none",
+                    cursor:"pointer",
+                    zIndex:5,
+                    WebkitTapHighlightColor:"transparent",
+                    touchAction:"manipulation",
+                    padding:0,
+                  }}
+                  aria-label={n.label}
+                />
+              );
+            })}
           </div>
         </div>
       )}
