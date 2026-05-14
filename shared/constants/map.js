@@ -97,3 +97,30 @@ export function calcSiegePower(troopsOrSlots, troopBranchOrNull, armySiegeBonus 
   const siegeRate = troopTierData ? (troopTierData.siege / troops) : 0.5;
   return Math.round(troops * siegeRate + (armySiegeBonus || 0));
 }
+
+// ── Wizard's Tomes level-up power costs ──────────────────────────────────────
+// Index n = power needed to go from level n → level n+1
+// 126 entries → supports levels 0–125
+// Lv0→1 costs 1 (tutorial hook). Targets: Lv10 ~day 2-3, Lv30 ~day 7, Lv50 ~day 14.
+// Cost to go from level N → N+1 (index = current level, 0-indexed, 125 entries for levels 0–124).
+// Lv0→1 costs 1 (tutorial hook).
+// Calibrated to: Lv10 ≈ day 1 (12hrs @ 2k/hr), Lv30 ≈ day 8, Lv50 ≈ day 14,
+//   Lv80 ≈ day 21, Lv100 ≈ day 28, Lv120 ≈ day 35, Lv125 ≈ day 38 (40-day season).
+// Power rates: day1 2k/hr (12hr), days2-4 5k/hr, days5-8 8k/hr,
+//   days9-14 12.5k/hr, days15-21 18.5k/hr, days22-28 23.5k/hr, days29+ 26.5k/hr.
+export const TOMES_LEVEL_COST = [
+  1, 400, 700, 1100, 1600, 2200, 2900, 3700, 4700, 6599,
+  38000, 39579, 41158, 42737, 44316, 45895, 47474, 49053, 50632, 52211,
+  53789, 55368, 56947, 58526, 60105, 61684, 63263, 64842, 66421, 68000,
+  80000, 81053, 82105, 83158, 84211, 85263, 86316, 87368, 88421, 89474,
+  90526, 91579, 92632, 93684, 94737, 95789, 96842, 97895, 98947, 100000,
+  92000, 92793, 93586, 94379, 95172, 95966, 96759, 97552, 98345, 99138,
+  99931, 100724, 101517, 102310, 103103, 103897, 104690, 105483, 106276, 107069,
+  107862, 108655, 109448, 110241, 111034, 111828, 112621, 113414, 114207, 115000,
+  180000, 181842, 183684, 185526, 187368, 189211, 191053, 192895, 194737, 196579,
+  198421, 200263, 202105, 203947, 205789, 207632, 209474, 211316, 213158, 215000,
+  214000, 214947, 215895, 216842, 217789, 218737, 219684, 220632, 221579, 222526,
+  223474, 224421, 225368, 226316, 227263, 228211, 229158, 230105, 231053, 232000,
+  360000, 375000, 388000, 395000, 390000,
+];
+export const TOMES_MAX_LEVEL = 125;
