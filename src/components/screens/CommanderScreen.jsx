@@ -1243,6 +1243,9 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         );
       })()}
 
+      {/* ── Spacer ── */}
+      <div style={{ height: 18, flexShrink: 0 }} />
+
       {/* ── Gear slots ── */}
       {(() => {
         const SLOT_DEFS = { helmet:{n:"Helmet",icon:"⛑"}, armor:{n:"Armor",icon:"🛡"}, bracers:{n:"Bracers",icon:"🥊"}, accessory:{n:"Accessory",icon:"💍"} };
@@ -1635,7 +1638,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
       })()}
 
       {/* ── Skill Trees button ── */}
-      <div style={{ height: 8, flexShrink: 0 }} />
+      <div style={{ height: 18, flexShrink: 0 }} />
       <div style={{ padding: "0 14px 10px", flexShrink: 0 }}>
         <button onClick={() => setShowSkills(true)} style={{
           width: "100%", padding: "9px 0",
