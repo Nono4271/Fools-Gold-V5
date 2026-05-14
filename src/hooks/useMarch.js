@@ -109,6 +109,7 @@ playerHqKey, aiHqKeys,
 emitTileCapture, emitTileSiege,
 gatePartners,
 facKey,
+troopSkillLevels,
 }) {
 // Server-sync helpers — no-op if server not connected yet
 const _emitCapture = (key, patch) => emitTileCapture?.(key, patch);
@@ -181,7 +182,7 @@ arrivedAttackers.forEach(staleCmd => {
   }
 
   const wallLvl = bldgs.walls || 0;
-  const boostedCmd = applyGearToCmd(cmd, gearInventory);
+  const boostedCmd = { ...applyGearToCmd(cmd, gearInventory), troopSkillLevels: troopSkillLevels || {} };
   const SLOT_KEYS = ["helmet", "armor", "bracers", "accessory"];
   const atkGearSnapshot = SLOT_KEYS.map(slot => {
     const instanceId = cmd.gear?.[slot];
@@ -440,7 +441,7 @@ useEffect(() => {
       floaty("⚔ REMATCH!", "#c0a020", destKey);
 
       const wallLvl    = bldgs.walls || 0;
-      const boostedCmd = applyGearToCmd(cmd, gearInventory);
+      const boostedCmd = { ...applyGearToCmd(cmd, gearInventory), troopSkillLevels: troopSkillLevels || {} };
 
       // Build ordered enemy list: AI commanders newest-first, then NPC garrison
       const aiCmdsOnTile = cmdsRef.current
