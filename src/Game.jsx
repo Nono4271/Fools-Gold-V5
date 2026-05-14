@@ -1204,23 +1204,28 @@ export default function RiseToWar() {
       const returningOld = branchChanged ? oldTroops : 0;
       const curInSlot    = branchChanged ? 0 : oldTroops;
 
-      // Draw from the specific pool for the new branch type
-      const availInPool = (troopCounts[newKey] || 0);
-      const capped      = Math.min(newTroops, maxByCmd);
-      const delta       = capped - curInSlot;
-      const drawn       = delta > 0 ? Math.min(delta, availInPool) : 0;
-      const returned    = delta < 0 ? Math.min(-delta, curInSlot) : 0;
-      const final       = curInSlot + drawn - returned;
-
-      // Update the per-type pools
+      // All pool accounting happens inside the setTroopCounts updater so it
+      // always reads the latest counts (avoids stale-closure overflow bugs).
+      // We capture `final` via a ref so setCmds can use it synchronously after.
+      let finalTroops = curInSlot; // default: no change
       setTroopCounts(counts => {
         const next = { ...counts };
+        // Return old-branch troops first (so they're available if same pool)
         if (branchChanged && oldKey && returningOld > 0)
           next[oldKey] = (next[oldKey] || 0) + returningOld;
+        // Now compute draw from fresh counts
+        const availInPool = next[newKey] || 0;
+        const capped      = Math.min(newTroops, maxByCmd);
+        const delta       = capped - curInSlot;
+        const drawn       = delta > 0 ? Math.min(delta, availInPool) : 0;
+        const returned    = delta < 0 ? Math.min(-delta, curInSlot) : 0;
+        finalTroops       = curInSlot + drawn - returned;
         if (newKey)
-          next[newKey] = Math.max(0, (next[newKey] || 0) - drawn + returned);
+          next[newKey] = Math.max(0, availInPool - drawn + returned);
         return next;
       });
+
+      const final = finalTroops;
 
       if (final === 0 || !branch) {
         const filtered = newSlots.filter((_, i) => i !== slotIndex);
