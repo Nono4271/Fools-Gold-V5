@@ -125,7 +125,7 @@ const tickAiEcon = useCallback(() => {
   const idleNoTroops = aiCmds.filter(c => !c.march && !(c.troops || 0) && aiHQTileKeys.has(c.tk));
   if (idleNoTroops.length && curAiPool > 0) {
     const cmd = idleNoTroops[0];
-    const leaderBonus = (cmd.cls === "leader" && (cmd.lvl || 5) >= 25) ? 500 : 0;
+    const leaderBonus = (cmd.cls === "leader" && (cmd.lvl || 5) >= 25) ? 5 : 0;
     const cmdCap = cmdCommand(cmd.lvl || 5, curAiBldgs.commandcenter || 0, leaderBonus);
     const assign = Math.min(cmdCap, curAiPool);
     // Pick a random faction branch for the AI commander
