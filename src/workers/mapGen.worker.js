@@ -605,7 +605,7 @@ self.onmessage = function(e) {
       troopArr[idx]    = TROOP_ENC[trpKey] ?? 0;
       powerArr[idx]    = pl;
       regionArr[idx]   = regIdx;
-      garrisonArr[idx] = pd.command;
+      garrisonArr[idx] = Math.round(pd.command * 100); // stored ×100, divide on read
       siegeArr[idx]    = SIEGE_BASE;
       siegeMaxArr[idx] = SIEGE_BASE;
     }
@@ -691,7 +691,7 @@ self.onmessage = function(e) {
 
       // Primary tile — preserve natural terrain and rss for prop rendering
       flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
-      garrisonArr[idx2] = POWER_DEFS[pl2].command;
+      garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100); // stored ×100, divide on read
       siegeArr[idx2]    = siege2;
       siegeMaxArr[idx2] = siege2;
 
@@ -1008,7 +1008,7 @@ self.onmessage = function(e) {
         const idx = r*COLS+c;
         if (powerArr[idx] !== 1) {
           powerArr[idx]    = 1;
-          garrisonArr[idx] = POWER_DEFS[1].command;
+          garrisonArr[idx] = Math.round(POWER_DEFS[1].command * 100); // stored ×100
           forced++;
         }
       }
@@ -1162,7 +1162,7 @@ self.onmessage = function(e) {
       terrainArr[idx]  = TERRAIN_ENC.hellfire;
       if (powerArr[idx] !== 1) {
         powerArr[idx]    = 1;
-        garrisonArr[idx] = POWER_DEFS[1].command;
+        garrisonArr[idx] = Math.round(POWER_DEFS[1].command * 100); // stored ×100
       }
     };
 
