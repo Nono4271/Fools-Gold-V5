@@ -126,12 +126,21 @@ export default memo(function HUD({
     let total = 0;
     for (const key of pKeys) {
       const t = tiles[key];
-      if (t && t.powerLevel) total += POWER_DEFS[t.powerLevel]?.ringPower ?? 0;
+      if (t && t.powerLevel && !t.isHQ && !t.isHQPart) total += POWER_DEFS[t.powerLevel]?.ringPower ?? 0;
     }
     return total;
   }, [tiles, pKeys]);
 
-  const tileCount = pKeys?.size ?? 0;
+  // HQ 3x3 tiles (isHQ + isHQPart) are base tiles — don't count toward the cap
+  const tileCount = useMemo(() => {
+    if (!tiles || !pKeys) return 0;
+    let n = 0;
+    for (const key of pKeys) {
+      const t = tiles[key];
+      if (t && !t.isHQ && !t.isHQPart) n++;
+    }
+    return n;
+  }, [tiles, pKeys]);
   const rssRate   = { stone: 200, wood: 200, ore: 200, gas: 2400 }; // TODO: wire
 
   // Dragon Egg regen: capacity fills in 24 hrs regardless of cap size
@@ -260,7 +269,7 @@ export default memo(function HUD({
               <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:2 }}>
                 <span style={{ fontSize:8 }}>⬛</span>
                 <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#6a9060", whiteSpace:"nowrap" }}>
-                  {tileCount}/31
+                  {tileCount}/60
                 </span>
               </div>
             </div>
