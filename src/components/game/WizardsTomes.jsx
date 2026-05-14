@@ -1,5 +1,6 @@
-import { useState, useMemo, memo } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { PLAYABLE_FACTIONS } from "../../../shared/constants/factions.js";
+import { TOMES_LEVEL_COST, TOMES_MAX_LEVEL } from "../../../shared/constants/map.js";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    WIZARD'S TOMES — A Wizard's Ancient Knowledge
@@ -114,12 +115,59 @@ const LINES = [
   ["br","br_t"],["br","br_m"],["br","br_b"],["br_t","br_t1"],["br_b","br_b1"],["br_m","faction"],
 ];
 
-export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 0 }) {
+export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 0, setTomesLevel, powerPool = 0, setPowerPool, powerPerHr = 0, tomesUnspentPoints = 0, setTomesUnspentPoints }) {
   const [tab,      setTab]      = useState("knowledge");
   const [unlocked, setUnlocked] = useState(new Set());
   const [selected, setSelected] = useState(null);
 
   const facDef = useMemo(()=>PLAYABLE_FACTIONS.find(f=>f.key===facKey),[facKey]);
+
+  // ── Power / level-up helpers ─────────────────────────────────────────────
+  const atMaxLevel = tomesLevel >= TOMES_MAX_LEVEL;
+  const costToNext = atMaxLevel ? Infinity : (TOMES_LEVEL_COST[tomesLevel] ?? Infinity);
+  // How many levels can we buy right now with pooled power?
+  const levelsAvailable = useCallback(() => {
+    if (atMaxLevel) return 0;
+    let pool = powerPool;
+    let lvl  = tomesLevel;
+    let count = 0;
+    while (lvl < TOMES_MAX_LEVEL) {
+      const cost = TOMES_LEVEL_COST[lvl];
+      if (cost == null || pool < cost) break;
+      pool -= cost;
+      lvl++;
+      count++;
+    }
+    return count;
+  }, [powerPool, tomesLevel, atMaxLevel]);
+
+  const canLevelUp = !atMaxLevel && powerPool >= costToNext;
+  const levelsBuyable = levelsAvailable();
+
+  const doLevelUp = useCallback(() => {
+    if (!canLevelUp) return;
+    let pool = powerPool;
+    let lvl  = tomesLevel;
+    let gained = 0;
+    while (lvl < TOMES_MAX_LEVEL) {
+      const cost = TOMES_LEVEL_COST[lvl];
+      if (cost == null || pool < cost) break;
+      pool -= cost;
+      lvl++;
+      gained++;
+    }
+    setPowerPool(pool);
+    setTomesLevel(lvl);
+    setTomesUnspentPoints(prev => prev + gained);
+  }, [canLevelUp, powerPool, tomesLevel, setPowerPool, setTomesLevel, setTomesUnspentPoints]);
+
+  const fmtNum = n => {
+    if (n >= 1_000_000) return (n/1_000_000).toFixed(1)+"M";
+    if (n >= 1_000)     return (n/1_000).toFixed(1)+"K";
+    return Math.floor(n).toLocaleString();
+  };
+  const poolDisplay   = Math.floor(powerPool);
+  const progressPct   = atMaxLevel ? 100 : Math.min(100, (powerPool / costToNext) * 100);
 
   const getNode = id => {
     const n = NODE_MAP[id];
@@ -129,10 +177,11 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
     return n;
   };
 
-  const canUnlock = node => !unlocked.has(node.id) && node.prereqs.every(p=>unlocked.has(p));
+  const canUnlock = node => !unlocked.has(node.id) && node.prereqs.every(p=>unlocked.has(p)) && tomesUnspentPoints > 0;
   const doUnlock  = node => {
     if (!canUnlock(node)) return;
     setUnlocked(prev=>new Set([...prev,node.id]));
+    setTomesUnspentPoints(prev => Math.max(0, prev - 1));
     setSelected(node.id);
   };
 
@@ -159,6 +208,9 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
             </div>
             <div style={{fontSize:7,color:"#4a3a20",letterSpacing:".14em"}}>
               WIZARD'S TOMES · {unlocked.size} / {NODES.length} UNLOCKED
+              {tomesUnspentPoints > 0 && (
+                <span style={{color:"#ff8844",marginLeft:6}}>· {tomesUnspentPoints} PT{tomesUnspentPoints!==1?"S":""} TO SPEND</span>
+              )}
             </div>
           </div>
         </div>
@@ -213,7 +265,9 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
                     color:canUnlock(selNode)?"#e8e0ff":"#2a1866",
                     fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:".07em",
                     borderRadius:3,cursor:canUnlock(selNode)?"pointer":"not-allowed"}}>
-                    {canUnlock(selNode)?"✦ UNLOCK":"LOCKED"}
+                    {canUnlock(selNode) ? "✦ UNLOCK (1 pt)"
+                      : !unlocked.has(selNode.id) && selNode.prereqs.every(p=>unlocked.has(p)) && tomesUnspentPoints === 0
+                      ? "NO POINTS" : "LOCKED"}
                   </button>
                 )}
               </>
@@ -268,6 +322,67 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
                 {tomesLevel}
               </text>
 
+              {/* Power counter + level-up button below orb */}
+              {!atMaxLevel && (
+                <g>
+                  {/* "POWER" label */}
+                  <text x={CX} y={CY+40} textAnchor="middle"
+                    style={{fontSize:5.5,fontFamily:"'Cinzel',serif",fill:"#5a4a80",letterSpacing:".12em"}}>
+                    POWER
+                  </text>
+                  {/* Progress bar background */}
+                  <rect x={CX-58} y={CY+43} width={116} height={5} rx={2.5}
+                    fill="rgba(100,60,255,.15)" stroke="rgba(120,80,255,.2)" strokeWidth="0.5"/>
+                  {/* Progress bar fill */}
+                  <rect x={CX-58} y={CY+43} width={Math.min(116, 116 * progressPct / 100)} height={5} rx={2.5}
+                    fill={canLevelUp ? "#9966ff" : "rgba(120,80,255,.5)"}/>
+                  {/* Pool / cost text — full numbers */}
+                  <text x={CX} y={CY+57} textAnchor="middle"
+                    style={{fontSize:6.5,fontFamily:"'Cinzel',serif",fill: canLevelUp ? "#c0a8ff" : "#6655aa",letterSpacing:".03em"}}>
+                    {poolDisplay.toLocaleString()} / {costToNext.toLocaleString()}
+                  </text>
+                  {/* /hr label */}
+                  <text x={CX} y={CY+67} textAnchor="middle"
+                    style={{fontSize:5.5,fontFamily:"'Cinzel',serif",fill: powerPerHr > 0 ? "#7755aa" : "#3a2a50",letterSpacing:".06em"}}>
+                    {powerPerHr > 0 ? `+${powerPerHr.toLocaleString()}/hr` : "no power — capture tiles"}
+                  </text>
+                  {canLevelUp && (
+                    <g onClick={doLevelUp} style={{cursor:"pointer"}}>
+                      <rect x={CX-44} y={CY+72} width={88} height={18} rx={4}
+                        fill="rgba(120,60,255,.4)" stroke="#aa77ff" strokeWidth="1.2"/>
+                      <rect x={CX-44} y={CY+72} width={88} height={18} rx={4}
+                        fill="none" stroke="#cc99ff" strokeWidth="0.5" opacity="0.4"/>
+                      <text x={CX} y={CY+84} textAnchor="middle"
+                        style={{fontSize:7.5,fontFamily:"'Cinzel',serif",fill:"#e8d8ff",letterSpacing:".06em",fontWeight:700}}>
+                        {levelsBuyable > 1 ? `▲ LV ${tomesLevel} → ${tomesLevel + levelsBuyable}  (+${levelsBuyable} pts)` : `▲ LEVEL UP`}
+                      </text>
+                    </g>
+                  )}
+                  {!canLevelUp && (
+                    <text x={CX} y={CY+80} textAnchor="middle"
+                      style={{fontSize:5,fontFamily:"'Cinzel',serif",fill:"#3a2a50",letterSpacing:".06em"}}>
+                      {Math.round((1 - progressPct/100) * costToNext).toLocaleString()} more needed
+                    </text>
+                  )}
+                </g>
+              )}
+              {atMaxLevel && (
+                <text x={CX} y={CY+52} textAnchor="middle"
+                  style={{fontSize:7,fontFamily:"'Cinzel',serif",fill:"#d0c0ff",letterSpacing:".08em"}}>
+                  ✦ MAX ✦
+                </text>
+              )}
+              {/* Unspent points badge */}
+              {tomesUnspentPoints > 0 && (
+                <g>
+                  <circle cx={CX+32} cy={CY-32} r={11} fill="#cc4400" stroke="#ff6622" strokeWidth="1.5"/>
+                  <text x={CX+32} y={CY-28} textAnchor="middle"
+                    style={{fontSize:9,fontFamily:"'Cinzel',serif",fill:"#fff",fontWeight:700}}>
+                    {tomesUnspentPoints}
+                  </text>
+                </g>
+              )}
+
               {/* Nodes */}
               {NODES.map(node=>{
                 const n = getNode(node.id);
@@ -307,9 +422,21 @@ export default memo(function WizardsTomes({ open, onClose, facKey, tomesLevel = 
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
             padding:"8px 12px",marginBottom:14,
             background:"rgba(100,60,255,.08)",border:"1px solid rgba(120,80,255,.25)",borderRadius:5}}>
-            <div style={{fontSize:8,color:"#4a3a20",letterSpacing:".1em"}}>TOMES LEVEL</div>
-            <div style={{fontSize:20,color:"#d0c0ff",
-              fontFamily:"'Cinzel Decorative',serif"}}>{tomesLevel}</div>
+            <div>
+              <div style={{fontSize:8,color:"#4a3a20",letterSpacing:".1em"}}>TOMES LEVEL</div>
+              {!atMaxLevel && (
+                <div style={{fontSize:7,color:"#5540aa",marginTop:2}}>
+                  {fmtNum(poolDisplay)} / {fmtNum(costToNext)} power
+                  {powerPerHr > 0 && <span style={{color:"#6655aa"}}> · +{fmtNum(powerPerHr)}/hr</span>}
+                </div>
+              )}
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:20,color:"#d0c0ff",fontFamily:"'Cinzel Decorative',serif"}}>{tomesLevel}</div>
+              {tomesUnspentPoints > 0 && (
+                <div style={{fontSize:8,color:"#ff8844"}}>{tomesUnspentPoints} pts to spend</div>
+              )}
+            </div>
           </div>
 
           <div style={{marginBottom:18}}>
