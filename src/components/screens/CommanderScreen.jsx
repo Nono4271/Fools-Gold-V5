@@ -1675,9 +1675,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
 // ── Locked commander detail panel ────────────────────────────────────────────
 // Extracted into its own component so useState is called at the top level,
 // fixing the black-screen crash that occurred when clicking a locked commander.
-function LockedCommanderDetail({ selectedCmd, playerAlnKey, setCmds, gems, setGems }) {
-  const [showSkillsStub, setShowSkillsStub] = useState(false);
-
+function LockedCommanderDetail({ selectedCmd, playerAlnKey, onShowSkills }) {
   const r3 = RARITY[selectedCmd.rarity] ?? RARITY.soldier;
   const cmdAlnKey3 = getFactionAlignment(selectedCmd.faction);
   const isOpp3 = playerAlnKey && cmdAlnKey3 !== playerAlnKey;
@@ -1685,10 +1683,6 @@ function LockedCommanderDetail({ selectedCmd, playerAlnKey, setCmds, gems, setGe
 
   return (
     <div style={{ height: "100%", overflowY: "auto", padding: "14px 12px 40px", position: "relative" }}>
-      {showSkillsStub && (
-        <SkillTreeOverlay cmd={selectedCmd} setCmds={setCmds} gems={gems} setGems={setGems}
-          onClose={() => setShowSkillsStub(false)} readOnly={true} />
-      )}
       {/* Locked banner */}
       <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid #2a2010",
         borderRadius: 8, padding: "10px 14px", marginBottom: 12, textAlign: "center" }}>
@@ -1742,7 +1736,7 @@ function LockedCommanderDetail({ selectedCmd, playerAlnKey, setCmds, gems, setGe
         </div>
       )}
       {/* Skill tree preview button */}
-      <div onClick={() => setShowSkillsStub(true)}
+      <div onClick={() => onShowSkills()}
         style={{ background: "rgba(100,60,180,.12)", border: "1px solid rgba(140,80,220,.35)",
           borderRadius: 8, padding: "12px 14px", cursor: "pointer", display: "flex",
           justifyContent: "space-between", alignItems: "center" }}>
@@ -1916,6 +1910,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
   const [filterSubspecies, setFilterSubspecies] = useState(null);
   const [sortBy,           setSortBy]           = useState("rarity");
   const [showFilter,       setShowFilter]       = useState(false);
+  const [showSkillsStub,   setShowSkillsStub]   = useState(false);
 
   // Allow touch scroll events through the main.tsx touchstart guard
   useEffect(() => {
@@ -2001,6 +1996,12 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
     }}>
       <style>{CSS}</style>
 
+      {/* Stub skill tree overlay — rendered at top level to avoid overflow:hidden clipping */}
+      {showSkillsStub && selectedCmd?._isStub && (
+        <SkillTreeOverlay cmd={selectedCmd} setCmds={setCmds} gems={gems} setGems={setGems}
+          onClose={() => setShowSkillsStub(false)} readOnly={true} />
+      )}
+
       {/* Filter popup */}
       {showFilter && (
         <FilterPopup
@@ -2073,7 +2074,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                   key={cmd.uid}
                   cmd={cmd}
                   selected={cmd.uid === resolvedUid}
-                  onClick={() => setSelectedUid(cmd.uid)}
+                  onClick={() => { setSelectedUid(cmd.uid); setShowSkillsStub(false); }}
                   isLocked={isLocked}
                   isOppositeAlignment={!isLocked && isOppositeAlignment}
                 />
@@ -2165,9 +2166,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
             ? <LockedCommanderDetail
                 selectedCmd={selectedCmd}
                 playerAlnKey={playerAlnKey}
-                setCmds={setCmds}
-                gems={gems}
-                setGems={setGems}
+                onShowSkills={() => setShowSkillsStub(true)}
               />
             : selectedCmd
             ? <CommanderDetail cmd={selectedCmd} bldgs={bldgs} gearInventory={gearInventory} setGearInventory={setGearInventory} respectSchematics={respectSchematics} setCmds={setCmds} onSchematicUsed={onSchematicUsed} gems={gems} setGems={setGems} />
