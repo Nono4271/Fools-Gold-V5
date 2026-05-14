@@ -699,7 +699,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
               background:"rgba(0,0,0,.5)", padding:"2px 5px", borderRadius:2 }}>YOU</div>
             {/* Troop boxes overlapping portrait bottom */}
             <div style={{ position:"absolute", bottom:38, left:6, zIndex:10 }}>
-              <TroopSlotBoxes b={b} isEnemy={false} />
+              <TroopSlotBoxes b={b} isEnemy={false} onSlotClick={branch => setSubPopup({ type:"troop", branch })} />
             </div>
           </div>
 
@@ -745,7 +745,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
             {/* Troop boxes overlapping portrait bottom, right-aligned */}
             <div style={{ position:"absolute", bottom:38, right:6, zIndex:10,
               display:"flex", justifyContent:"flex-end" }}>
-              <TroopSlotBoxes b={b} isEnemy={true} />
+              <TroopSlotBoxes b={b} isEnemy={true} onSlotClick={branch => setSubPopup({ type:"troop", branch })} />
             </div>
           </div>
         </div>
@@ -807,8 +807,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup }) {
       {/* Sub-popups — rendered at top level, above everything */}
       {subPopup === "atkCmd" && <CommanderPopup b={b} side="atk" onClose={() => setSubPopup(null)} />}
       {subPopup === "defCmd" && <CommanderPopup b={b} side="def" onClose={() => setSubPopup(null)} />}
-      {subPopup === "atkTroop" && <TroopPopup troopBranch={b.atkTroopBranch} onClose={() => setSubPopup(null)} />}
-      {subPopup === "defTroop" && <TroopPopup troopBranch={b.defTroopBranch} onClose={() => setSubPopup(null)} />}
+      {subPopup?.type === "troop" && <TroopPopup troopBranch={subPopup.branch} onClose={() => setSubPopup(null)} />}
     </>
   );
 }
@@ -873,14 +872,14 @@ function BattleListItem({ b, selected, onClick }) {
 const TIER_COLORS = ["#8a8aaa", "#4488cc", "#a855f7"];
 const TIER_ROMAN  = ["I", "II", "III"];
 
-function TroopSlotBoxes({ b, isEnemy }) {
+function TroopSlotBoxes({ b, isEnemy, onSlotClick }) {
   let slots = [];
   if (!isEnemy) {
     const raw = b.atkTroopSlots ?? (b.atkTroopBranch ? [{ branch: b.atkTroopBranch, troops: b.atkTroopsStart }] : []);
-    slots = raw.map(sl => ({ res: resolveTroopBranch(sl.branch), troops: sl.troops ?? 0 }));
+    slots = raw.map(sl => ({ res: resolveTroopBranch(sl.branch), troops: sl.troops ?? 0, branch: sl.branch }));
   } else {
     const raw = b.defTroopSlots ?? (b.defTroopBranch ? [{ branch: b.defTroopBranch, troops: b.defTroopsStart ?? 0 }] : []);
-    slots = raw.map(sl => ({ res: resolveTroopBranch(sl.branch), troops: sl.troops ?? 0 }));
+    slots = raw.map(sl => ({ res: resolveTroopBranch(sl.branch), troops: sl.troops ?? 0, branch: sl.branch }));
   }
   if (slots.length === 0) return null;
 
@@ -901,17 +900,22 @@ function TroopSlotBoxes({ b, isEnemy }) {
         const count = sl.troops > 999
           ? `${(sl.troops / 1000).toFixed(1)}k`
           : sl.troops.toLocaleString();
+        const clickable = !!onSlotClick && !!sl.branch;
         return (
-          <div key={i} style={{
-            width:40, height:46, flexShrink:0,
-            display:"flex", flexDirection:"column",
-            alignItems:"center", justifyContent:"center",
-            gap:1,
-            background:"rgba(6,4,2,.9)",
-            border:`1px solid ${tierColor}88`,
-            borderRadius:4,
-            boxShadow:"0 2px 10px rgba(0,0,0,.8)",
-          }}>
+          <div key={i}
+            onClick={clickable ? (e) => { e.stopPropagation(); onSlotClick(sl.branch); } : undefined}
+            style={{
+              width:40, height:46, flexShrink:0,
+              display:"flex", flexDirection:"column",
+              alignItems:"center", justifyContent:"center",
+              gap:1,
+              background:"rgba(6,4,2,.9)",
+              border:`1px solid ${tierColor}${clickable ? "cc" : "88"}`,
+              borderRadius:4,
+              boxShadow:`0 2px 10px rgba(0,0,0,.8)${clickable ? `, 0 0 6px ${tierColor}33` : ""}`,
+              cursor: clickable ? "pointer" : "default",
+              transition:"border-color .15s, box-shadow .15s",
+            }}>
             <div style={{ fontSize:15, lineHeight:1 }}>{icon}</div>
             <div style={{
               fontSize:7, fontWeight:700, color:tierColor,
@@ -930,6 +934,7 @@ function TroopSlotBoxes({ b, isEnemy }) {
 
 // ── Simple summary right-column detail panel ──────────────────────────────────
 function SimpleSummaryPanel({ b, onOpen }) {
+  const [troopModal, setTroopModal] = useState(null); // troopBranch object
   const oc = outcomeOf(b);
 
   if (!b) return (
@@ -992,7 +997,7 @@ function SimpleSummaryPanel({ b, onOpen }) {
             background:"rgba(0,0,0,.55)", padding:"2px 5px", borderRadius:2 }}>YOU</div>
           {/* Troop boxes — overlapping bottom of portrait */}
           <div style={{ position:"absolute", bottom:36, left:6, zIndex:10 }}>
-            <TroopSlotBoxes b={b} isEnemy={false} />
+            <TroopSlotBoxes b={b} isEnemy={false} onSlotClick={branch => setTroopModal(branch)} />
           </div>
         </div>
 
@@ -1053,7 +1058,7 @@ function SimpleSummaryPanel({ b, onOpen }) {
           {/* Troop boxes — overlapping bottom of portrait, right-aligned */}
           <div style={{ position:"absolute", bottom:36, right:6, zIndex:10,
             display:"flex", justifyContent:"flex-end" }}>
-            <TroopSlotBoxes b={b} isEnemy={true} />
+            <TroopSlotBoxes b={b} isEnemy={true} onSlotClick={branch => setTroopModal(branch)} />
           </div>
         </div>
       </div>
@@ -1085,6 +1090,19 @@ function SimpleSummaryPanel({ b, onOpen }) {
           FULL REPORT →
         </button>
       </div>
+
+      {/* Troop modal portal */}
+      {troopModal && createPortal(
+        <>
+          <div onClick={() => setTroopModal(null)} style={{
+            position:"fixed", inset:0, zIndex:5010, background:"rgba(0,0,0,.6)",
+          }} />
+          <div style={{ pointerEvents:"auto" }}>
+            <TroopPopup troopBranch={troopModal} onClose={() => setTroopModal(null)} />
+          </div>
+        </>,
+        document.getElementById("portal-root")
+      )}
 
     </div>
   );
