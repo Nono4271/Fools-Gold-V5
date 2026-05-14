@@ -194,6 +194,7 @@ export default function RiseToWar() {
   });
   const [respectSchematics,   setRespectSchematics]   = useState([]);
   const [pullResults,         setPullResults]         = useState([]);
+  const [pullKey,             setPullKey]             = useState(0);
   const [lastFreePull,   setLastFreePull]   = useState(null);
   const [dailyHalfUsed, setDailyHalfUsed]  = useState(false);
   const [bldgs,  setBldgs]   = useState({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, storage:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 });
@@ -1335,6 +1336,7 @@ export default function RiseToWar() {
 
     setPityCounters(newPity);
     setPullResults(allPullResults);
+    setPullKey(k => k + 1);
 
     if (newGear.length) setGearInventory(prev => [...prev, ...newGear]);
 
@@ -1489,7 +1491,7 @@ export default function RiseToWar() {
   if (screen==="gacha")   return (
     <GachaScreen
       screen={screen} tiles={tiles} gems={gems} pull={pull}
-      pullResults={pullResults} coll={coll}
+      pullResults={pullResults} pullKey={pullKey} coll={coll}
       gearInventory={gearInventory} setGearInventory={setGearInventory}
       respectSchematics={respectSchematics}
       cmds={cmds} setCmds={setCmds}
