@@ -7,7 +7,7 @@ import { CSS } from "./constants/css.js";
 import { ALIGNMENT, getFactionAlignment, PLAYABLE_FACTIONS } from "../shared/constants/factions.js";
 import { HDEFS, RC, RARITY, CLASS, rollGacha, addRespect, RESPECT_DUPE_POINTS, RESPECT_OVERFLOW_POINTS, RESPECT_MAX, npcForPowerLevel, factionDefCmdForTile } from "../shared/constants/heroes.js";
 import { rollFullPull, rollGearSchematic, createRespectSchematic, createGearInstance, GEAR_RARITY, GEAR_SLOTS, GEAR_PIECES, rollFullPullCmdRarity } from "../shared/constants/gear.js";
-import { HQP, AI_HQ_KEY, WIN_KEY, RKEYS, RSS, POWER_DEFS, SIEGE_BASE, SIEGE_KEEP_BASE, calcSiegePower, hqSiegeValue } from "../shared/constants/map.js";
+import { HQP, AI_HQ_KEY, WIN_KEY, RKEYS, RSS, POWER_DEFS, SIEGE_BASE, SIEGE_KEEP_BASE, calcSiegePower, hqSiegeValue, TOMES_LEVEL_COST, TOMES_MAX_LEVEL } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST, CMD_LVL_MAX, xpToNext } from "../shared/constants/troops.js";
 import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainRate, maxTrainBatch, tierFromBranchLevel, storageMax, voidTapCapacity, voidTapCooldownMs, voidTapYield } from "../shared/constants/buildings.js";
 import { isoXY, TW, TH, ISO_W, ISO_H } from "../shared/constants/geometry.js";
@@ -331,6 +331,8 @@ export default function RiseToWar() {
   // Wizard's Tomes
   const [tomesOpen,  setTomesOpen]  = useState(false);
   const [tomesLevel, setTomesLevel] = useState(0);
+  const [powerPool,  setPowerPool]  = useState(0);   // accumulated power (persists, can exceed next cost)
+  const [tomesUnspentPoints, setTomesUnspentPoints] = useState(0); // upgrade points ready to spend
 
   // Derived void tap values from bldgs
   const voidTapLvl  = bldgs.voidtap || 0;
@@ -466,6 +468,29 @@ export default function RiseToWar() {
         return { ...c, stamina: Math.min(STAMINA_MAX, cur + REGEN_PER_TICK) };
       }));
     }, INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [screen]);
+
+  // ── Power accumulation tick (1 min intervals, adds powerPerHr/60 each tick) ─
+  // powerPerHr = sum of ringPower for all player-owned tiles
+  const powerPerHr = useMemo(() => {
+    return Object.values(tilesMapRef.current)
+      .filter(t => t.owner === "player" && t.powerLevel)
+      .reduce((sum, t) => sum + (POWER_DEFS[t.powerLevel]?.ringPower ?? 0), 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tiles]); // recalculate when tiles change
+
+  useEffect(() => {
+    if (screen !== "game") return;
+    const TICK_MS = 60 * 1000; // 1 minute
+    const id = setInterval(() => {
+      const pph = Object.values(tilesMapRef.current)
+        .filter(t => t.owner === "player" && t.powerLevel)
+        .reduce((sum, t) => sum + (POWER_DEFS[t.powerLevel]?.ringPower ?? 0), 0);
+      if (pph <= 0) return;
+      const gain = pph / 60; // per-minute portion
+      setPowerPool(prev => prev + gain);
+    }, TICK_MS);
     return () => clearInterval(id);
   }, [screen]);
 
@@ -1743,6 +1768,12 @@ export default function RiseToWar() {
           onClose={()=>setTomesOpen(false)}
           facKey={facKey}
           tomesLevel={tomesLevel}
+          setTomesLevel={setTomesLevel}
+          powerPool={powerPool}
+          setPowerPool={setPowerPool}
+          powerPerHr={powerPerHr}
+          tomesUnspentPoints={tomesUnspentPoints}
+          setTomesUnspentPoints={setTomesUnspentPoints}
         />
       )}
 
