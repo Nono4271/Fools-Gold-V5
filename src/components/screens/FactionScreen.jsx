@@ -133,6 +133,13 @@ export default function FactionScreen({
     setTiles({});
     if (setQuarterLevels) setQuarterLevels(startingQuarterLevels);
     if (setUnlockedBranches) setUnlockedBranches(startingUB);
+    // Seed starting troop pool: first branch of the chosen faction at tier 0
+    // barracksCapacity(0) = 2000, which is the starting pool size at barracks level 0
+    if (setTroopCounts && fDef && fDef.branches.length > 0) {
+      const firstBranch = fDef.branches[0];
+      const startKey = `${f.key}:${firstBranch.key}:0`;
+      setTroopCounts({ [startKey]: barracksCapacity(0) });
+    }
     setScreen("game");
   }
 
