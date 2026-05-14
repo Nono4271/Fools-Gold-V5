@@ -459,7 +459,7 @@ function utcDateKey() {
 }
 
 // ── Skill tree overlay ────────────────────────────────────────────────────────
-function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
+function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
   const rLvl = cmd.respectLevel ?? 0;
   const rarityDef = RARITY[cmd.rarity] ?? RARITY.soldier;
   const skillPoints = cmd.skillPoints ?? {};
@@ -484,6 +484,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
   }
 
   function handleRespec() {
+    if (readOnly) return; // preview only for locked commanders
     if (!canRespec) return;
     if (canPaidRespec && gems < RESPEC_GEM_COST) {
       setRespecError(`Need ${RESPEC_GEM_COST} 💎 gems (you have ${gems})`);
@@ -517,6 +518,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
   }
 
   function handleLevelUp(skillKey, mainSkillKeyForBranch) {
+    if (readOnly) return; // preview only for locked commanders
     if (unspent <= 0) return;
     setCmds(prev => prev.map(c => {
       if (c.uid !== cmd.uid) return c;
@@ -555,7 +557,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
   }
 
   // Live read from cmds for reactivity
-  const liveUnspent = cmd.unspentSkillPoints ?? 0;
+  const liveUnspent = readOnly ? 0 : (cmd.unspentSkillPoints ?? 0);
   const liveSkillPts = cmd.skillPoints ?? {};
   const liveTotalSpent = totalSpentPoints(liveSkillPts);
 
@@ -611,6 +613,12 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose }) {
           <div style={{ fontSize: 8, color: fColor, fontFamily: "'Cinzel',serif", marginTop: 1 }}>
             SKILL TREES · R{rLvl} · Lv{cmd.lvl ?? 5}
           </div>
+          {readOnly && (
+            <div style={{ fontSize: 7, color: "#aa77ee", fontFamily: "'Cinzel',serif",
+              marginTop: 3, letterSpacing: ".06em" }}>
+              👁 PREVIEW — Summon to unlock skill spending
+            </div>
+          )}
         </div>
 
         {/* Points badge */}
@@ -2072,8 +2080,13 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
             const cmdAlnKey3 = getFactionAlignment(selectedCmd.faction);
             const isOpp3 = playerAlnKey && cmdAlnKey3 !== playerAlnKey;
             const f3 = PLAYABLE_FACTIONS.find(f => f.key === selectedCmd.faction);
+            const [showSkillsStub, setShowSkillsStub] = React.useState(false);
             return (
-              <div style={{ height: "100%", overflowY: "auto", padding: "14px 12px 40px" }}>
+              <div style={{ height: "100%", overflowY: "auto", padding: "14px 12px 40px", position: "relative" }}>
+                {showSkillsStub && (
+                  <SkillTreeOverlay cmd={selectedCmd} setCmds={setCmds} gems={gems} setGems={setGems}
+                    onClose={() => setShowSkillsStub(false)} readOnly={true} />
+                )}
                 {/* Locked banner */}
                 <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid #2a2010",
                   borderRadius: 8, padding: "10px 14px", marginBottom: 12, textAlign: "center" }}>
@@ -2116,7 +2129,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                 {/* Faction */}
                 {f3 && (
                   <div style={{ background: `${f3.c}10`, border: `1px solid ${f3.c}30`,
-                    borderRadius: 5, padding: "7px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+                    borderRadius: 5, padding: "7px 10px", display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                     <span style={{ fontSize: 14 }}>{f3.s}</span>
                     <div>
                       <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: f3.c,
@@ -2126,6 +2139,19 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
                     </div>
                   </div>
                 )}
+                {/* Skill tree preview button */}
+                <div onClick={() => setShowSkillsStub(true)}
+                  style={{ background: "rgba(100,60,180,.12)", border: "1px solid rgba(140,80,220,.35)",
+                    borderRadius: 8, padding: "12px 14px", cursor: "pointer", display: "flex",
+                    justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: "#aa77ee",
+                      letterSpacing: ".06em", fontWeight: 700 }}>SKILL TREES</div>
+                    <div style={{ fontSize: 7, color: "#6a5a8a", fontFamily: "'Cinzel',serif",
+                      marginTop: 2 }}>Preview only — summon to unlock</div>
+                  </div>
+                  <span style={{ fontSize: 18, color: "#aa77ee" }}>👁</span>
+                </div>
               </div>
             );
           })() : selectedCmd
