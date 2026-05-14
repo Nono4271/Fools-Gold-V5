@@ -1736,10 +1736,13 @@ function LockedCommanderDetail({ selectedCmd, playerAlnKey, onShowSkills }) {
         </div>
       )}
       {/* Skill tree preview button */}
-      <div onClick={() => onShowSkills()}
+      <div
+        onClick={() => onShowSkills()}
+        onTouchEnd={(e) => { e.preventDefault(); onShowSkills(); }}
         style={{ background: "rgba(100,60,180,.12)", border: "1px solid rgba(140,80,220,.35)",
           borderRadius: 8, padding: "12px 14px", cursor: "pointer", display: "flex",
-          justifyContent: "space-between", alignItems: "center" }}>
+          justifyContent: "space-between", alignItems: "center",
+          touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}>
         <div>
           <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: "#aa77ee",
             letterSpacing: ".06em", fontWeight: 700 }}>SKILL TREES</div>
