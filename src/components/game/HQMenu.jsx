@@ -1259,60 +1259,87 @@ function SlotEditor({ cmd, slotIdx, setTroopSlot, troopCounts, bldgs, commandCap
   const existingBranch = existingSlot?.branch ?? null;
   const existingTroops = existingSlot?.troops ?? 0;
 
-  // Local picker state
-  const [pickFac, setPickFac] = useState(existingBranch?.faction ?? null);
-  const [pickBr,  setPickBr]  = useState(existingBranch?.branch  ?? null);
+  // Picker expand state
+  const [pickFac, setPickFac] = useState(null);
+  const [pickBr,  setPickBr]  = useState(null);
 
-  // Derive pool key and pool count for whatever is currently in this slot
-  const slotBKey = existingBranch
-    ? `${existingBranch.faction}:${existingBranch.branch}:${existingBranch.tier ?? 0}`
-    : null;
-  const slotPool = slotBKey ? ((troopCounts || {})[slotBKey] || 0) : 0;
+  // pendingBranch: troop type selected in picker but not yet confirmed via slider.
+  // null means we operate on existingBranch (adjusting current slot).
+  const [pendingBranch, setPendingBranch] = useState(null);
 
-  // Command cost for other slots (to know how much cap is left for this slot)
+  // The branch driving the slider: pending takes priority over existing
+  const activeBranch = pendingBranch ?? existingBranch;
+  const activeBKey   = activeBranch
+    ? `${activeBranch.faction}:${activeBranch.branch}:${activeBranch.tier ?? 0}` : null;
+
+  // Pool available for the active branch (minus troops in OTHER slots)
+  const activePool = activeBKey ? ((troopCounts || {})[activeBKey] || 0) : 0;
+  const inOtherSlotsFn = (bk) => (cmd.troopSlots ?? []).reduce((s, sl, i) => {
+    if (i === slotIdx) return s;
+    const k = sl.branch ? `${sl.branch.faction}:${sl.branch.branch}:${sl.branch.tier??0}` : null;
+    return k === bk ? s + (sl.troops || 0) : s;
+  }, 0);
+  const activeAvail = activePool - inOtherSlotsFn(activeBKey);
+
+  // Command headroom for this slot
   const otherCmdUsed = (cmd.troopSlots ?? []).reduce((s, sl, i) => {
     if (i === slotIdx) return s;
     const slBr = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(b => b.key === sl.branch?.branch);
     return s + (sl.troops || 0) * (COMMAND_COST[slBr?.size] ?? 1);
   }, 0);
   const remainingCap = Math.max(0, commandCap - otherCmdUsed);
-
-  const slBrDef = existingBranch
-    ? FACTION_TROOPS[existingBranch.faction]?.branches?.find(b => b.key === existingBranch.branch)
+  const activeBrDef  = activeBranch
+    ? FACTION_TROOPS[activeBranch.faction]?.branches?.find(b => b.key === activeBranch.branch)
     : null;
-  const slCmdCost = COMMAND_COST[slBrDef?.size] ?? 1;
+  const slCmdCost = COMMAND_COST[activeBrDef?.size] ?? 1;
   const maxByCmd  = Math.floor(remainingCap / slCmdCost);
-  const maxSlider = Math.min(maxByCmd, slotPool + existingTroops);
+
+  // If pending branch differs from existing, slider starts at 0 (no troops yet).
+  // If same branch, slider starts at existingTroops.
+  const isSameBranch = pendingBranch === null ||
+    (pendingBranch.faction === existingBranch?.faction &&
+     pendingBranch.branch  === existingBranch?.branch  &&
+     (pendingBranch.tier ?? 0) === (existingBranch?.tier ?? 0));
+  const baselineExisting = isSameBranch ? existingTroops : 0;
+  const maxSlider = Math.min(maxByCmd, activeAvail + baselineExisting);
 
   const [sv, setSv] = useState(existingTroops);
-  // Keep slider in sync when external changes happen (e.g. return troops)
-  const svClamped = Math.min(sv, maxSlider);
+  const svClamped = Math.min(sv, Math.max(0, maxSlider));
 
   const factions = Object.entries(FACTION_TROOPS).filter(([fKey, fDef]) =>
     fDef.branches.some(br => `${fKey}:${br.key}` in ub)
   );
 
   const slotColor = existingBranch ? (FACTION_META[existingBranch.faction]?.c || P.gold) : P.border;
-  const tierLabel = existingBranch && slBrDef
-    ? slBrDef.tiers[existingBranch.tier ?? 0]?.label ?? ""
+  const pendingColor = pendingBranch ? (FACTION_META[pendingBranch.faction]?.c || P.gold) : null;
+  const activeColor  = pendingColor ?? slotColor;
+
+  const existingBrDef = existingBranch
+    ? FACTION_TROOPS[existingBranch.faction]?.branches?.find(b => b.key === existingBranch.branch)
     : null;
+  const tierLabel = existingBranch && existingBrDef
+    ? existingBrDef.tiers[existingBranch.tier ?? 0]?.label ?? "" : null;
 
   return (
     <div style={{ marginBottom:10, padding:"8px 10px", borderRadius:6,
-      background:"rgba(255,255,255,.025)", border:`1px solid ${slotColor}33` }}>
+      background:"rgba(255,255,255,.025)", border:`1px solid ${activeColor}33` }}>
 
       {/* Slot header */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
         <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".1em" }}>
           SLOT {slotIdx + 1}
+          {pendingBranch && <span style={{ color:pendingColor, marginLeft:5 }}>— selecting…</span>}
         </div>
-        {existingBranch && (
+        {existingBranch && !pendingBranch && (
           <div style={{ fontSize:7, color:slotColor, fontFamily:P.ff }}>
             {tierLabel} · {existingTroops.toLocaleString()} troops
           </div>
         )}
         {existingBranch && (
-          <button className="btn" onClick={() => { setTroopSlot(cmd.uid, slotIdx, null, 0); setSv(0); }}
+          <button className="btn" onClick={() => {
+              setTroopSlot(cmd.uid, slotIdx, null, 0);
+              setSv(0); setPendingBranch(null); setPickFac(null); setPickBr(null);
+            }}
             style={{ fontSize:7, padding:"2px 7px", color:"#cc5050",
               background:"rgba(200,50,50,.1)", border:"1px solid rgba(200,50,50,.3)", borderRadius:3 }}>
             ✕ Clear
@@ -1321,12 +1348,12 @@ function SlotEditor({ cmd, slotIdx, setTroopSlot, troopCounts, bldgs, commandCap
       </div>
 
       {/* Troop picker — faction → branch → tier */}
-      <div style={{ display:"flex", flexDirection:"column", gap:3, marginBottom:existingBranch ? 8 : 0 }}>
+      <div style={{ display:"flex", flexDirection:"column", gap:3, marginBottom:8 }}>
         {factions.map(([fKey, fDef]) => {
           const isExpF = pickFac === fKey;
           return (
             <div key={fKey}>
-              <button className="btn" onClick={() => setPickFac(isExpF ? null : fKey)}
+              <button className="btn" onClick={() => { setPickFac(isExpF ? null : fKey); setPickBr(null); }}
                 style={{ width:"100%", textAlign:"left", padding:"4px 8px",
                   background:isExpF ? "rgba(240,192,64,.08)" : "rgba(255,255,255,.02)",
                   border:`1px solid ${isExpF ? "#5a4020" : P.border}`,
@@ -1355,41 +1382,36 @@ function SlotEditor({ cmd, slotIdx, setTroopSlot, troopCounts, bldgs, commandCap
                         {isExpB && (
                           <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:3, padding:"3px 0 3px 6px" }}>
                             {br.tiers.slice(0, maxTier + 1).map((t, idx) => {
-                              const newBranch = { faction:fKey, branch:br.key, tier:idx };
-                              const isActive  = existingBranch?.faction===fKey
-                                && existingBranch?.branch===br.key
-                                && (existingBranch?.tier??0)===idx;
-                              // Pool available for this specific troop type
-                              const thisBKey  = `${fKey}:${br.key}:${idx}`;
-                              const thisPool  = (troopCounts || {})[thisBKey] || 0;
-                              const inOtherSlots = (cmd.troopSlots ?? []).reduce((s, sl, i) => {
-                                if (i === slotIdx) return s;
-                                const k = sl.branch ? `${sl.branch.faction}:${sl.branch.branch}:${sl.branch.tier??0}` : null;
-                                return k === thisBKey ? s + (sl.troops || 0) : s;
-                              }, 0);
-                              const available = thisPool - inOtherSlots;
+                              const thisBranch = { faction:fKey, branch:br.key, tier:idx };
+                              const thisBKey   = `${fKey}:${br.key}:${idx}`;
+                              const thisPool   = (troopCounts || {})[thisBKey] || 0;
+                              const available  = thisPool - inOtherSlotsFn(thisBKey);
+                              const isPending  = pendingBranch?.faction===fKey && pendingBranch?.branch===br.key && (pendingBranch?.tier??0)===idx;
+                              const isConfirmed = !pendingBranch && existingBranch?.faction===fKey && existingBranch?.branch===br.key && (existingBranch?.tier??0)===idx;
+                              const isHighlit  = isPending || isConfirmed;
                               return (
                                 <button key={idx} className="btn"
                                   onClick={() => {
-                                    // Use setTroopSlot to properly account for pools.
-                                    // Keep existing troop count if same branch, else 0 (slider will set it).
-                                    const keepTroops = isActive ? existingTroops : 0;
-                                    setTroopSlot(cmd.uid, slotIdx, newBranch, keepTroops);
-                                    setSv(keepTroops);
-                                    // Collapse picker after selection
-                                    setPickFac(null); setPickBr(null);
+                                    // Set as pending — don't call setTroopSlot yet.
+                                    // Slider appears below; user confirms with the button.
+                                    const isSame = existingBranch?.faction===fKey
+                                      && existingBranch?.branch===br.key
+                                      && (existingBranch?.tier??0)===idx;
+                                    setPendingBranch(isSame ? null : thisBranch);
+                                    setSv(isSame ? existingTroops : 0);
                                   }}
                                   style={{ padding:"5px 3px", textAlign:"center",
-                                    background:isActive ? "rgba(240,192,64,.15)" : "rgba(255,255,255,.02)",
-                                    border:`1px solid ${isActive ? brColor : P.border}`,
-                                    color:isActive ? brColor : P.sub, fontSize:7,
-                                    boxShadow:isActive ? `0 0 6px ${brColor}44` : "none" }}>
-                                  <div style={{ fontFamily:P.ff, fontWeight:700, fontSize:7.5, marginBottom:1, color:isActive?brColor:P.text }}>{t.label}</div>
+                                    background:isHighlit ? `${brColor}22` : "rgba(255,255,255,.02)",
+                                    border:`1px solid ${isHighlit ? brColor : P.border}`,
+                                    color:isHighlit ? brColor : P.sub, fontSize:7,
+                                    boxShadow:isHighlit ? `0 0 6px ${brColor}33` : "none" }}>
+                                  <div style={{ fontFamily:P.ff, fontWeight:700, fontSize:7.5, marginBottom:1, color:isHighlit?brColor:P.text }}>{t.label}</div>
                                   <div style={{ fontSize:5.5, color:"#5a5a7a" }}>{br.size}</div>
                                   <div style={{ fontSize:5.5, color: available > 0 ? "#3daa60" : "#5a3a3a", marginTop:1 }}>
                                     {available > 0 ? `${available.toLocaleString()} avail` : "none"}
                                   </div>
-                                  {isActive && <div style={{ fontSize:6, color:brColor, marginTop:1 }}>✓</div>}
+                                  {isConfirmed && <div style={{ fontSize:6, color:brColor, marginTop:1 }}>✓</div>}
+                                  {isPending   && <div style={{ fontSize:6, color:brColor, marginTop:1 }}>→</div>}
                                 </button>
                               );
                             })}
@@ -1405,9 +1427,14 @@ function SlotEditor({ cmd, slotIdx, setTroopSlot, troopCounts, bldgs, commandCap
         })}
       </div>
 
-      {/* Amount slider — only shown when a troop type is selected for this slot */}
-      {existingBranch && (
-        <div>
+      {/* Amount slider — shown whenever a branch is active (pending or confirmed) */}
+      {activeBranch && (
+        <div style={{ borderTop:`1px solid ${activeColor}22`, paddingTop:8 }}>
+          {pendingBranch && (
+            <div style={{ fontSize:7, color:pendingColor, fontFamily:P.ff, marginBottom:5 }}>
+              {activeBrDef?.tiers[pendingBranch.tier??0]?.label} selected — set amount below
+            </div>
+          )}
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:7,
             color:"#6a5a4a", fontFamily:P.ff, marginBottom:3 }}>
             <span>AMOUNT</span>
@@ -1417,31 +1444,43 @@ function SlotEditor({ cmd, slotIdx, setTroopSlot, troopCounts, bldgs, commandCap
           </div>
           <input type="range" min={0} max={Math.max(1, maxSlider)} value={svClamped}
             onChange={e => setSv(+e.target.value)}
-            style={{ width:"100%", accentColor:slotColor, marginBottom:6 }}/>
+            style={{ width:"100%", accentColor:activeColor, marginBottom:6 }}/>
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:6,
             color:"#4a4a5a", marginBottom:6 }}>
             <span>0</span>
-            <span style={{ color:"#5a7a5a" }}>Pool: {slotPool.toLocaleString()}</span>
+            <span style={{ color:"#5a7a5a" }}>Pool: {activeAvail.toLocaleString()}</span>
             <span>{maxSlider.toLocaleString()}</span>
           </div>
-          {svClamped !== existingTroops ? (
+          {svClamped !== baselineExisting ? (
             <button className="btn"
-              onClick={() => { setTroopSlot(cmd.uid, slotIdx, existingBranch, svClamped); }}
+              onClick={() => {
+                setTroopSlot(cmd.uid, slotIdx, activeBranch, svClamped);
+                setPendingBranch(null);
+                setPickFac(null); setPickBr(null);
+              }}
               style={{ width:"100%", padding:"7px",
-                background: svClamped > existingTroops
+                background: svClamped > baselineExisting
                   ? "linear-gradient(135deg,rgba(40,100,60,.5),rgba(40,100,60,.2))"
                   : "linear-gradient(135deg,rgba(150,40,40,.4),rgba(150,40,40,.15))",
-                border:`1px solid ${svClamped > existingTroops ? "#3daa60" : "#cc4444"}`,
-                color: svClamped > existingTroops ? "#3dcc70" : "#dd6666",
+                border:`1px solid ${svClamped > baselineExisting ? "#3daa60" : "#cc4444"}`,
+                color: svClamped > baselineExisting ? "#3dcc70" : "#dd6666",
                 fontSize:10, fontWeight:700 }}>
-              {svClamped > existingTroops
-                ? `✓ Add ${svClamped - existingTroops} troops`
-                : `✓ Remove ${existingTroops - svClamped} troops`}
+              {svClamped > baselineExisting
+                ? `✓ Assign ${svClamped} ${activeBrDef?.tiers[activeBranch.tier??0]?.label ?? "troops"}`
+                : `✓ Remove ${baselineExisting - svClamped} troops`}
             </button>
           ) : (
             <div style={{ fontSize:7, color:"#3a3a4a", fontFamily:P.ffb, fontStyle:"italic", textAlign:"center" }}>
-              Move slider to assign
+              {pendingBranch ? "Move slider to set amount" : "Move slider to adjust"}
             </div>
+          )}
+          {pendingBranch && (
+            <button className="btn" onClick={() => { setPendingBranch(null); setSv(existingTroops); }}
+              style={{ width:"100%", marginTop:4, padding:"4px",
+                background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`,
+                color:P.dim, fontSize:7 }}>
+              Cancel
+            </button>
           )}
         </div>
       )}
