@@ -462,7 +462,38 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (owner) {
         const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
         gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
-        if (!isSel) { gfx.lineStyle(2, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
+        // For HQ tiles: only stroke the outer edges of the 3×3 footprint,
+        // not interior tile borders which show through under the sprite.
+        if (!isSel && !drawAsHQ) {
+          gfx.lineStyle(2, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+        } else if (!isSel && drawAsHQ) {
+          // Determine which edges of this tile are on the outer boundary of the 3×3.
+          // Primary tile key stored on isHQPart tiles as keepPrimaryKey (reused for HQ).
+          const hqPrimKey = isHQ ? key : tile.hqPrimaryKey;
+          if (hqPrimKey) {
+            const [hpc, hpr] = hqPrimKey.split(",").map(Number);
+            const dc = c - hpc, dr = r - hpr; // 0..2, 0..2
+            // Draw only the outer-facing edges as line segments
+            const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
+            // NE edge (top-right): outer if dc===2
+            // SE edge (bottom-right): outer if dr===2
+            // SW edge (bottom-left): outer if dc===0
+            // NW edge (top-left): outer if dr===0
+            const edges = [
+              { p0:0, p1:1, outer: dc===2 }, // NE
+              { p0:1, p1:2, outer: dr===2 }, // SE
+              { p0:2, p1:3, outer: dc===0 }, // SW
+              { p0:3, p1:0, outer: dr===0 }, // NW
+            ];
+            gfx.lineStyle(2, ot, 0.95);
+            for (const e of edges) {
+              if (!e.outer) continue;
+              gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
+              gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
+            }
+            gfx.lineStyle(0);
+          }
+        }
       }
 
       if (mode === "selectMarchDest" && owner !== "player") {
@@ -1486,9 +1517,9 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // in the sprite image, rotated by the same angle as the sprite (-0.0902 rad).
   const _sW  = TW * 3.0;
   const _sH  = _sW * 0.85;
-  const _aY  = 0.92;
+  const _aY  = 0.905;
   const _sx  = bx;
-  const _sy  = sPt.cy - elev + TH * 0.65;
+  const _sy  = sPt.cy - elev;
   const _rot = -0.0902;
   const _cos = Math.cos(_rot);
   const _sin = Math.sin(_rot);
@@ -1542,10 +1573,10 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const targetH = targetW * 0.78;
 
   const spriteX = bx;
-  const spriteY = sPt.cy - elev + TH * 0.65;
+  const spriteY = sPt.cy - elev;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.92);
+    sp.anchor.set(0.5, 0.905);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
