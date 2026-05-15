@@ -1525,9 +1525,9 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // spriteY = centre tile top-face so base lands on the ground plane;
   // the top (back) two tiles of the 3×3 stay visible above the base.
   const targetW = TW * 2.6;
-  const targetH = targetW * 0.90;
+  const targetH = targetW * 0.75;
 
-  const spriteX = bx + TW * 0.1;
+  const spriteX = bx - TW * 0.1;
   const spriteY = worldCY - elev + TH * 0.5;
 
   const applySprite = (sp) => {
