@@ -1524,7 +1524,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // anchor.y = 0.68 → base of building sits 68% down the image, towers in top 32%.
   // spriteY = centre tile top-face so base lands on the ground plane;
   // the top (back) two tiles of the 3×3 stay visible above the base.
-  const targetW = TW * 2.6;
+  const targetW = TW * 2.34;
   const targetH = targetW * 1.20;
 
   const spriteX = bx;
@@ -2107,7 +2107,13 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       cancelPropsIdle();
       if (firstPropsDraw) {
         firstPropsDraw = false;
-        doProps(true); // draw synchronously on very first render
+        // Defer even the first draw — running synchronously here blocks the main
+        // thread for 2+ seconds on iOS when called right after map gen dumps tiles.
+        if (typeof window.requestIdleCallback === "function") {
+          propsIdleHandle = window.requestIdleCallback(doProps);
+        } else {
+          propsIdleHandle = setTimeout(doProps, 100);
+        }
         return;
       }
       if (typeof window.requestIdleCallback === "function") {
