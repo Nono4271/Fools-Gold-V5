@@ -1483,22 +1483,23 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const wPt = isoXY(pc,     pr + 1);
 
   // Sprite-aligned footprint — corners derived from measured base diamond
-  // in the sprite image (2048x2048), mapped into world space using the same
-  // anchor/size/position as applySprite.
-  // Measured anchor fractions: N=(0.500,0.423), E=(0.974,0.703), S=(0.426,0.995), W=(0.052,0.714)
-  // spriteX=bx, spriteY=sPt.cy+TH*0.65, anchor=(0.5,0.92), w=TW*3, h=TW*0.85 (after rotation applied separately)
-  // In local sprite space (origin = anchor point):
-  //   localX = (fracX - 0.5) * targetW
-  //   localY = (fracY - anchorY) * targetH
-  const _sW = TW * 3.0;
-  const _sH = _sW * 0.85;
-  const _aY = 0.92;
-  const _sx = bx;
-  const _sy = sPt.cy - elev + TH * 0.65;
-  const _fp = (fx, fy) => ({
-    x: _sx + (fx - 0.5) * _sW,
-    y: _sy + (fy - _aY) * _sH,
-  });
+  // in the sprite image, rotated by the same angle as the sprite (-0.0902 rad).
+  const _sW  = TW * 3.0;
+  const _sH  = _sW * 0.85;
+  const _aY  = 0.92;
+  const _sx  = bx;
+  const _sy  = sPt.cy - elev + TH * 0.65;
+  const _rot = -0.0902;
+  const _cos = Math.cos(_rot);
+  const _sin = Math.sin(_rot);
+  const _fp  = (fx, fy) => {
+    const lx = (fx - 0.5) * _sW;
+    const ly = (fy - _aY) * _sH;
+    return {
+      x: _sx + lx * _cos - ly * _sin,
+      y: _sy + lx * _sin + ly * _cos,
+    };
+  };
   const _fpN = _fp(0.500, 0.423);
   const _fpE = _fp(0.974, 0.703);
   const _fpS = _fp(0.426, 0.995);
