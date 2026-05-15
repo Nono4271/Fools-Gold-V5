@@ -731,6 +731,19 @@ export const TREE_DISPLAY_NAMES = {
 // Full skill definitions — alias for ALL_SKILLS
 export const SKILLS = ALL_SKILLS;
 
+// Per-skill mechanic metadata — maps skill key to its primary mechanic field and base value
+export const SKILL_MECHANICS = Object.fromEntries(
+  Object.entries(ALL_SKILLS).map(([k, def]) => {
+    const fields = ["cmdMult","cmdPctDmg","healPct","troopAtkMult","troopDefMult","dmgReduce",
+      "troopDmgReduce","enemyDmgReduce","enemyAtkReduce","enemyMissChance","enemyDmgTakenUp",
+      "nullifySkill","blockHeal","lifesteal","critBonus","garrisonIgnore","cmdAoe","cmdHits",
+      "passiveCmdAtk","passiveCritChance","passiveDmgReduce","passiveEnemyAtk",
+      "passiveTroopAtk","passiveTroopDef","passiveHealPerRound","passiveGarrisonIgnore"];
+    const key = fields.find(f => def[f] !== undefined) ?? null;
+    return [k, { key, value: key ? def[key] : null, type: def.type ?? "active" }];
+  })
+);
+
 // Returns the mechanic key (e.g. "cmdMult", "healPct") that drives a branch's main skill
 export function getBranchMechanicKey(cls, branchIndex, cmd) {
   const key = getBranchMainSkill(cls, branchIndex, cmd);
