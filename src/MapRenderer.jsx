@@ -1531,7 +1531,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const targetH = targetW; // square canvas
 
   const spriteX = bx;
-  const spriteY = worldCY + TH * 0.6; // slightly above full tile bottom
+  const spriteY = worldCY - elev; // top face of elevated HQ tile (elev=14)
 
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.970);
