@@ -1524,14 +1524,19 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // anchor.y = 0.68 → base of building sits 68% down the image, towers in top 32%.
   // spriteY = centre tile top-face so base lands on the ground plane;
   // the top (back) two tiles of the 3×3 stay visible above the base.
-  const targetW = TW * 2.6;
-  const targetH = targetW * 1.20;
+  // Sprite is 2048×2048; castle content fills cols 107–1996 (1889px wide).
+  // Scale so the content width = 3×TW (the full 3-tile diamond width).
+  // Canvas/content ratio = 2048/1889 ≈ 1.084, so targetW covers the full canvas.
+  const targetW = TW * 3 * (2048 / 1889);
+  const targetH = targetW; // square canvas
 
   const spriteX = bx;
-  const spriteY = worldCY - elev;
+  const spriteY = worldCY + TH; // ground plane = bottom of centre tile diamond
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.68);
+    // Base sits at row 2037/2048 ≈ 99.5% from top → anchor.y = 0.995
+    // But we want it grounded at the centre tile's ground plane (worldCY).
+    sp.anchor.set(0.5, 0.995);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
