@@ -1544,8 +1544,8 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     sp.x = spriteX;
     sp.y = spriteY;
 
-    sp.rotation = 0.9;
-    sp.skew.x = 0.9;
+    sp.rotation = 0.09;
+    sp.skew.x = 0.09;
     // sp.skew.y = 0;
   };
 
