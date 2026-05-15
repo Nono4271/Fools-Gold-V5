@@ -554,7 +554,8 @@ export function getDefCmdBranches(cmd) {
   const branches = factionMap
     ? (factionMap[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker)
     : (BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker);
-  return [branches[0]?.main, branches[1]?.main].filter(Boolean);
+  // Return full branch objects { main, sides } so callers can access b0.main and b0.sides
+  return [branches[0], branches[1]].filter(Boolean);
 }
 
 export function getCommanderTrees(cmd) {
