@@ -1538,7 +1538,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // spriteY is the top-face centre of the middle tile (c+1,r+1), which is
   // the visual "ground centre" of the 3×3 — base lands here, towers rise above.
   const targetW = TW * 3.0;
-  const targetH = targetW * 1.15;
+  const targetH = targetW * 0.75;
 
   const { cy: midCY } = isoXY(pc + 1, pr + 1);
   const spriteX = bx;
