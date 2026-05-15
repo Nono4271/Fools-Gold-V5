@@ -1546,7 +1546,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
     sp.rotation = -0.02;
     sp.skew.x = -0.06;
-    sp.scale.y = 0.94;
   };
 
   if (texCache[spriteUrl]) {
