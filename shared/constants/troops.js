@@ -84,7 +84,7 @@ export const FACTION_TROOPS = {
         label: "Swashbucklers",
         size: "small",
         dmgType: "physical",
-        role: "glass_cannon",
+        role: "melee",
         skills: {
           a: {
             key: "bladestorm",
@@ -148,7 +148,7 @@ export const FACTION_TROOPS = {
         label: "Sea Beasts",
         size: "large",
         dmgType: "physical",
-        role: "normal",
+        role: "melee",
         skills: {
           a: {
             key: "crushing_grip",
@@ -187,7 +187,7 @@ export const FACTION_TROOPS = {
         label: "Spellblades",
         size: "small",
         dmgType: "physical",
-        role: "normal",
+        role: "melee",
         skills: {
           a: {
             key: "spellstrike",
@@ -219,7 +219,7 @@ export const FACTION_TROOPS = {
         label: "Acolytes",
         size: "small",
         dmgType: "magical",
-        role: "siege_ranged",
+        role: "siege",
         skills: {
           a: {
             key: "arcane_march",
@@ -251,7 +251,7 @@ export const FACTION_TROOPS = {
         label: "Golems",
         size: "large",
         dmgType: "magical",
-        role: "siege_ranged",
+        role: "melee",
         skills: {
           a: {
             key: "arcane_suppression",
@@ -290,7 +290,7 @@ export const FACTION_TROOPS = {
         label: "Grunts",
         size: "small",
         dmgType: "physical",
-        role: "normal",
+        role: "melee",
         skills: {
           a: {
             key: "bloodlust",
@@ -322,7 +322,7 @@ export const FACTION_TROOPS = {
         label: "Warg Riders",
         size: "medium",
         dmgType: "physical",
-        role: "normal",
+        role: "mounted",
         skills: {
           a: {
             key: "pack_hunter",
@@ -354,7 +354,7 @@ export const FACTION_TROOPS = {
         label: "Trolls",
         size: "large",
         dmgType: "physical",
-        role: "siege_tanky",
+        role: "siege",
         skills: {
           a: {
             key: "lumber_haul",
@@ -410,7 +410,7 @@ export const FACTION_TROOPS = {
         label: "Dragonkin",
         size: "small",
         dmgType: "physical",
-        role: "fast",
+        role: "melee",
         skills: {
           a: {
             key: "predators_dive",
@@ -442,7 +442,7 @@ export const FACTION_TROOPS = {
         label: "Drake Riders",
         size: "medium",
         dmgType: "magical",
-        role: "ranged",
+        role: "mounted",
         skills: {
           a: {
             key: "flame_breath",
@@ -474,7 +474,7 @@ export const FACTION_TROOPS = {
         label: "Elder Dragons",
         size: "large",
         dmgType: "physical",
-        role: "normal",
+        role: "melee",
         skills: {
           a: {
             key: "scales_of_iron",
@@ -529,7 +529,7 @@ export const FACTION_TROOPS = {
         label: "Templars",
         size: "small",
         dmgType: "physical",
-        role: "normal",
+        role: "melee",
         skills: {
           a: {
             key: "holy_strike",
@@ -561,7 +561,7 @@ export const FACTION_TROOPS = {
         label: "BattlePriests",
         size: "small",
         dmgType: "magical",
-        role: "support",
+        role: "ranged",
         skills: {
           a: {
             key: "mend",
@@ -593,7 +593,7 @@ export const FACTION_TROOPS = {
         label: "Inquisitors",
         size: "medium",
         dmgType: "physical",
-        role: "fast",
+        role: "mounted",
         skills: {
           a: {
             key: "judgment",
@@ -648,7 +648,7 @@ export const FACTION_TROOPS = {
         label: "Vampires",
         size: "small",
         dmgType: "physical",
-        role: "normal",
+        role: "melee",
         skills: {
           a: {
             key: "blood_feast",
@@ -680,7 +680,7 @@ export const FACTION_TROOPS = {
         label: "Werewolves",
         size: "medium",
         dmgType: "physical",
-        role: "fast",
+        role: "mounted",
         skills: {
           a: {
             key: "feral_lunge",
