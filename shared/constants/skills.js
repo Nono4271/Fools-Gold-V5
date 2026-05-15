@@ -677,3 +677,74 @@ for (const map of [HOLYKNIGHTS_BRANCH_SKILL_MAP, NIGHTCREATURES_BRANCH_SKILL_MAP
 }
 export const MAIN_SKILLS = Object.fromEntries([..._mainKeys].filter(k => ALL_SKILLS[k]).map(k => [k, ALL_SKILLS[k]]));
 export const SIDE_SKILLS = Object.fromEntries([..._sideKeys].filter(k => ALL_SKILLS[k]).map(k => [k, ALL_SKILLS[k]]));
+
+// ── Backward-compat exports expected by heroes.js re-export ──────────────────
+
+// Display names for the 4 branch slots of each generic tree
+export const MAIN_BRANCH_NAMES = {
+  combat:  ["Killing Instinct","Quick Strike","Savage Blow","Execute"],
+  defense: ["Iron Will","Shield Wall","Iron Bastion","Bulwark Stance"],
+  command: ["Warchief's Aura","Warchief's Roar","Grand Strategy","Forced March"],
+  tactics: ["Field Medic","Mending Wave","Rally Cry","Battle Hymn"],
+};
+
+// Per-faction overrides — maps faction id → array of 4 branch display names
+export const FACTION_MAIN_NAMES = {
+  holyknights:    {},
+  nightcreatures: {},
+  dragons:        {},
+  bountyhunters:  {},
+  orcs:           {},
+  pirates:        {},
+};
+
+// Returns the 4 main branch display names for a given commander
+export function getMainBranchNames(cmd) {
+  const cls = cmd?.cls ?? "attacker";
+  const tree = { attacker:"combat", defender:"defense", leader:"command", support:"tactics", balanced:"combat", strategist:"tactics" }[cls] ?? "combat";
+  if (cmd?.faction && FACTION_MAIN_NAMES[cmd.faction]?.[cmd.id]) {
+    return FACTION_MAIN_NAMES[cmd.faction][cmd.id];
+  }
+  return MAIN_BRANCH_NAMES[tree] ?? MAIN_BRANCH_NAMES.combat;
+}
+
+// Flat key→display-name map for every skill
+export const SKILL_NAMES = Object.fromEntries(
+  Object.entries(ALL_SKILLS).map(([k, v]) => [k, v.name ?? k])
+);
+
+// Returns skill display name for a given key (with optional commander context)
+export function getSkillNames(cmd) {
+  return SKILL_NAMES;
+}
+
+// Alias — heroes.js re-exports this as TREE_DISPLAY_NAMES
+export const TREE_DISPLAY_NAMES = {
+  attacker:   { primary:"Combat",   secondary:"Combat"   },
+  leader:     { primary:"Command",  secondary:"Command"  },
+  support:    { primary:"Tactics",  secondary:"Tactics"  },
+  balanced:   { primary:"Mixed",    secondary:"Mixed"    },
+  strategist: { primary:"Tactics",  secondary:"Combat"   },
+  defender:   { primary:"Defense",  secondary:"Defense"  },
+};
+
+// Full skill definitions — alias for ALL_SKILLS
+export const SKILLS = ALL_SKILLS;
+
+// Returns the mechanic key (e.g. "cmdMult", "healPct") that drives a branch's main skill
+export function getBranchMechanicKey(cls, branchIndex, cmd) {
+  const key = getBranchMainSkill(cls, branchIndex, cmd);
+  if (!key) return null;
+  const def = ALL_SKILLS[key];
+  if (!def) return null;
+  const fields = ["cmdMult","cmdPctDmg","healPct","troopAtkMult","troopDefMult","dmgReduce","enemyDmgReduce","enemyAtkReduce","nullifySkill","passiveCmdAtk","passiveCritChance","passiveDmgReduce","passiveTroopAtk","passiveTroopDef","passiveHealPerRound"];
+  return fields.find(f => def[f] !== undefined) ?? null;
+}
+
+// Returns the mechanic value (at base level) for a branch's main skill
+export function getBranchMechanic(cls, branchIndex, cmd) {
+  const key = getBranchMechanicKey(cls, branchIndex, cmd);
+  if (!key) return null;
+  const skillKey = getBranchMainSkill(cls, branchIndex, cmd);
+  return ALL_SKILLS[skillKey]?.[key] ?? null;
+}
