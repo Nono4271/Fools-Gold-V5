@@ -627,3 +627,16 @@ export function skillFiresOnRound(def, round) {
   if (round < off) return false;
   return (round - off) % cd === 0;
 }
+
+// Returns the main skill key for branch b of a given commander (or class fallback).
+// Used by AI to decide which skill to level up next.
+export function getBranchMainSkill(cls, branchIndex, cmd) {
+  const map = cmd ? resolveBranchMap(cmd, cls) : (BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker);
+  return map[branchIndex]?.main ?? null;
+}
+
+// Returns the side skill keys (array) for branch b of a given commander (or class fallback).
+export function getBranchSideSkills(cls, branchIndex, cmd) {
+  const map = cmd ? resolveBranchMap(cmd, cls) : (BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker);
+  return map[branchIndex]?.sides ?? [];
+}
