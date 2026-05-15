@@ -1482,11 +1482,33 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const sPt = isoXY(pc + 1, pr + 2);
   const wPt = isoXY(pc,     pr + 1);
 
+  // Sprite-aligned footprint — corners derived from measured base diamond
+  // in the sprite image (2048x2048), mapped into world space using the same
+  // anchor/size/position as applySprite.
+  // Measured anchor fractions: N=(0.500,0.423), E=(0.974,0.703), S=(0.426,0.995), W=(0.052,0.714)
+  // spriteX=bx, spriteY=sPt.cy+TH*0.65, anchor=(0.5,0.92), w=TW*3, h=TW*0.85 (after rotation applied separately)
+  // In local sprite space (origin = anchor point):
+  //   localX = (fracX - 0.5) * targetW
+  //   localY = (fracY - anchorY) * targetH
+  const _sW = TW * 3.0;
+  const _sH = _sW * 0.85;
+  const _aY = 0.92;
+  const _sx = bx;
+  const _sy = sPt.cy - elev + TH * 0.65;
+  const _fp = (fx, fy) => ({
+    x: _sx + (fx - 0.5) * _sW,
+    y: _sy + (fy - _aY) * _sH,
+  });
+  const _fpN = _fp(0.500, 0.423);
+  const _fpE = _fp(0.974, 0.703);
+  const _fpS = _fp(0.426, 0.995);
+  const _fpW = _fp(0.052, 0.714);
+
   const FOOTPRINT = [
-    nPt.cx, nPt.cy - elev,
-    ePt.cx, ePt.cy - elev,
-    sPt.cx, sPt.cy - elev,
-    wPt.cx, wPt.cy - elev,
+    _fpN.x, _fpN.y,
+    _fpE.x, _fpE.y,
+    _fpS.x, _fpS.y,
+    _fpW.x, _fpW.y,
   ];
 
   const isSelected = selKey === tileKey;
@@ -1516,7 +1538,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // Source image is 2048x2048 (square) — preserve aspect ratio to avoid lean.
   // Scale so width fits the 3x3 footprint; height follows naturally.
   const targetW = TW * 3.0;
-  const targetH = targetW * 0.85;
+  const targetH = targetW * 0.78;
 
   const spriteX = bx;
   const spriteY = sPt.cy - elev + TH * 0.65;
