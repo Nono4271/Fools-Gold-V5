@@ -1530,23 +1530,33 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // - anchor.y = 0.82 so the building base lands on the ground plane,
   //   covering the front south tiles without the image bottom floating up.
   // - spriteY pushed down by TH * 1.5 to cover the front tiles.
-  const targetW = TW * 3.2;
-  const targetH = targetW * (TH / TW) * 0.85;
+  // Iso horizontal shear: the 3×3 diamond's left edge rises TH/2 per TW/2 step,
+  // so skew.x = -(TH/TW) makes the sprite's left/right sides run exactly parallel
+  // to the W→N and S→E edges of the footprint. With TW=80, TH=53: -0.6625.
+  const isoSkewX = -(TH / TW);  // -0.6625
 
-  // Centre horizontally; push down to cover front tiles.
-  const spriteX = bx + TW * 0.0;
-  const spriteY = sPt.cy - elev + TH * 0.65;
+  // Width = 3 tile-widths exactly spans the 3×3 diamond left↔right.
+  // Height is sized to give the building enough vertical room for towers;
+  // the skew does not affect rendering width.
+  const targetW = TW * 3.0;
+  const targetH = targetW * (TH / TW) * 1.4;
+
+  // anchor.y = 0.72 → building base sits 72% down the image.
+  // spriteY  = south tip of the 3×3 footprint minus a small nudge upward,
+  // so the base lands on the ground plane of the front tile row.
+  const spriteX = bx;
+  const spriteY = sPt.cy - elev - TH * 0.15;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.88);
+    sp.anchor.set(0.5, 0.72);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
     sp.y = spriteY;
 
-    sp.rotation = -0.02;
-    sp.skew.x = 0;
-    sp.skew.y = 0;
+    sp.rotation = 0;
+    sp.skew.x   = isoSkewX;   // shears sides parallel to iso diamond edges
+    sp.skew.y   = 0;
   };
 
   if (texCache[spriteUrl]) {
