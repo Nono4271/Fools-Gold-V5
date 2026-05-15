@@ -1531,10 +1531,10 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   //   covering the front south tiles without the image bottom floating up.
   // - spriteY pushed down by TH * 1.5 to cover the front tiles.
   const targetW = TW * 3.0;
-  const targetH = targetW * (TH / TW) * 1.15;
+  const targetH = targetW * (TH / TW) * 0.85;
 
   // Centre horizontally; push down to cover front tiles.
-  const spriteX = bx + TW * 0.05;
+  const spriteX = bx;
   const spriteY = sPt.cy - elev;
 
   const applySprite = (sp) => {
