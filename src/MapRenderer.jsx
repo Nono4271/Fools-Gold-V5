@@ -1524,7 +1524,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // anchor.y = 0.68 → base of building sits 68% down the image, towers in top 32%.
   // spriteY = centre tile top-face so base lands on the ground plane;
   // the top (back) two tiles of the 3×3 stay visible above the base.
-  const targetW = TW * 2.34;
+  const targetW = TW * 2.6;
   const targetH = targetW * 1.20;
 
   const spriteX = bx;
