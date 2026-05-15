@@ -502,14 +502,20 @@ const combinedCmdStat = cmdAtkStat + cmdFocStat * 0.5; // foc is secondary unles
 const CMD_ATK_SCALE   = Math.max(8, troopDmgEstimate * (65 / 35) / Math.max(combinedCmdStat, 1));
 const atkCmdAtkBase   = cmdAtkStat * CMD_ATK_SCALE * passives.cmdAtkMult;
 const atkCmdFocBase   = cmdFocStat * CMD_ATK_SCALE * passives.cmdAtkMult;
-const atkCmdAtk       = atkCmdAtkBase; // used for physical-type troop commanders
-const atkCmdFoc       = atkCmdFocBase; // used for focus/magical-type troop commanders
+const attackerPhysMult  = attackerBonus   ? 1.10 : 1.0;
+const strategistFocMult = strategistBonus ? 1.10 : 1.0;
+const atkCmdAtk         = atkCmdAtkBase * attackerPhysMult;  // physical cmd dmg
+const atkCmdFoc         = atkCmdFocBase * strategistFocMult; // focus/elemental cmd dmg
 const atkCmdSpd     = cmd.spd || 60;
 const defCmdAtkStat   = dc ? (dc.atk || 80) : 80;
 const defCmdFocStat   = dc ? (dc.foc || 0) : 0;
 const defCmdAtk     = (defCmdAtkStat + defCmdFocStat * 0.5) * CMD_ATK_SCALE;
 
-const bastionActive = (cmd.cls === "defender") && ((cmd.lvl ?? 5) >= 25);
+// Class bonuses — unlock at Lv20
+const cmdRespectLevel = cmd.respectLevel ?? cmd.lvl ?? 5;
+const bastionActive   = (cmd.cls === "balanced")   && (cmdRespectLevel >= 20); // balanced gets bastion
+const attackerBonus   = (cmd.cls === "attacker")   && (cmdRespectLevel >= 20); // +10% physical cmd dmg
+const strategistBonus = (cmd.cls === "strategist") && (cmdRespectLevel >= 20); // +10% focus/elemental cmd dmg
 const bastionHpMult = bastionActive ? 2 : 1;
 
 let atkTroopHp     = totalAtkTroops * atkTroopHpPer * bastionHpMult;
@@ -588,7 +594,9 @@ else if (def.passiveGarrisonIgnore) et = `Ignore ${Math.round(v*100)}% Garrison 
 if (et) phase0.actions.push({ actor:cmd.n, action:`${cmd.n} — ${def.icon??"✦"} ${def.name}: ${et}`, dmg:0, isSkill:true, isPhase0:true });
 }
 
-if (bastionActive) phase0.actions.push({ actor:cmd.n, action:`Passive: 🛡 Bastion — double HP & DEF (rounds 1-2)`, dmg:0, isSkill:true, isPhase0:true });
+if (bastionActive)   phase0.actions.push({ actor:cmd.n, action:`Passive: ⚖ Balanced — double HP & DEF (rounds 1-2)`, dmg:0, isSkill:true, isPhase0:true });
+if (attackerBonus)   phase0.actions.push({ actor:cmd.n, action:`Passive: ⚔ Attacker — +10% physical commander damage`, dmg:0, isSkill:true, isPhase0:true });
+if (strategistBonus) phase0.actions.push({ actor:cmd.n, action:`Passive: 🔮 Strategist — +10% focus/elemental commander damage`, dmg:0, isSkill:true, isPhase0:true });
 
 const gb2 = cmd.gearBonuses || {};
 if (gb2.armyAtk  > 0) phase0.actions.push({ actor:"Gear", action:`Gear: +${gb2.armyAtk}% Army ATK`,       dmg:0, isPhase0:true, isGear:true });
@@ -604,7 +612,7 @@ if (atkTroopHp <= 0 && defTroopHp <= 0) break;
 if (atkTroopHp <= 0) { roundLog.actions.push({ actor:"SYSTEM", action:"Attackers routed!", dmg:0 }); report.rounds.push(roundLog); break; }
 if (defTroopHp <= 0) { roundLog.actions.push({ actor:"SYSTEM", action:"Defenders defeated!", dmg:0 }); report.rounds.push(roundLog); break; }
 
-if (bastionActive && round === 1) roundLog.actions.push({ actor:cmd.n, action:"🛡 BASTION — double HP & DEF (rounds 1-2)", dmg:0, isSkill:true });
+if (bastionActive && round === 1) roundLog.actions.push({ actor:cmd.n, action:"⚖ BALANCED — double HP & DEF (rounds 1-2)", dmg:0, isSkill:true });
 const bastionDefMult = (bastionActive && round <= 2) ? 2 : 1;
 
 // Build round state
