@@ -1530,32 +1530,29 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // - anchor.y = 0.82 so the building base lands on the ground plane,
   //   covering the front south tiles without the image bottom floating up.
   // - spriteY pushed down by TH * 1.5 to cover the front tiles.
-  // Iso horizontal shear: the 3×3 diamond's left edge rises TH/2 per TW/2 step,
-  // so skew.x = -(TH/TW) makes the sprite's left/right sides run exactly parallel
-  // to the W→N and S→E edges of the footprint. With TW=80, TH=53: -0.6625.
-  const isoSkewX = -(TH / TW);  // -0.6625
-
-  // Width = 3 tile-widths exactly spans the 3×3 diamond left↔right.
-  // Height is sized to give the building enough vertical room for towers;
-  // the skew does not affect rendering width.
+  // Sprite sits upright — no skew or rotation needed.
+  // The 3×3 diamond spans TW*3 wide and TH*3 tall on the ground plane.
+  // Width is set to cover the full left↔right extent of the footprint.
+  // Height is proportionally taller to include towers above the base.
+  // anchor.y = 0.75 → base of building sits 75% down the image.
+  // spriteY is the top-face centre of the middle tile (c+1,r+1), which is
+  // the visual "ground centre" of the 3×3 — base lands here, towers rise above.
   const targetW = TW * 3.0;
-  const targetH = targetW * (TH / TW) * 1.4;
+  const targetH = targetW * 1.15;
 
-  // anchor.y = 0.72 → building base sits 72% down the image.
-  // spriteY  = south tip of the 3×3 footprint minus a small nudge upward,
-  // so the base lands on the ground plane of the front tile row.
+  const { cy: midCY } = isoXY(pc + 1, pr + 1);
   const spriteX = bx;
-  const spriteY = sPt.cy - elev - TH * 0.15;
+  const spriteY = midCY - elev + TH * 0.5;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.72);
+    sp.anchor.set(0.5, 0.75);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
     sp.y = spriteY;
 
     sp.rotation = 0;
-    sp.skew.x   = isoSkewX;   // shears sides parallel to iso diamond edges
+    sp.skew.x   = 0;
     sp.skew.y   = 0;
   };
 
