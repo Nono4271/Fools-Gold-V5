@@ -1516,19 +1516,19 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // Source image is 2048x2048 (square) — preserve aspect ratio to avoid lean.
   // Scale so width fits the 3x3 footprint; height follows naturally.
   const targetW = TW * 3.0;
-  const targetH = targetW;
+  const targetH = targetW * 0.85;
 
   const spriteX = bx;
   const spriteY = sPt.cy - elev + TH * 0.65;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.88);
+    sp.anchor.set(0.5, 0.92);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
     sp.y = spriteY;
 
-    sp.rotation = 0;
+    sp.rotation = -0.0902; // counter-rotates 5.17° lean baked into sprite
     sp.skew.x   = 0;
     sp.skew.y   = 0;
   };
