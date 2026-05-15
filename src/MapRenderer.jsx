@@ -1535,18 +1535,18 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
   // Centre horizontally; push down to cover front tiles.
   const spriteX = bx + TW * 0.05;
-  const spriteY = worldCY - elev + TH * 1.35;
+  const spriteY = worldCY - elev + TH * 1.20;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.92);
+    sp.anchor.set(0.5, 0.90);
     sp.width  = targetW;
     sp.height = targetH * 0.97;
     sp.x = spriteX;
     sp.y = spriteY;
 
-    sp.rotation = -0.06;
-    sp.skew.x = -0.08;
-    sp.skew.y = 0.04;
+    sp.rotation = 0;
+    sp.skew.x = 0;
+    sp.skew.y = 0;
   };
 
   if (texCache[spriteUrl]) {
