@@ -1,6 +1,9 @@
 import { HOLYKNIGHTS_SKILLS, HOLYKNIGHTS_BRANCH_SKILL_MAP } from "./holyknights_skills.js";
 import { NIGHTCREATURES_SKILLS, NIGHTCREATURES_BRANCH_SKILL_MAP } from "./nightcreatures_skills.js";
 import { DRAGONS_SKILLS, DRAGONS_BRANCH_SKILL_MAP } from "./dragons_skills.js";
+import { BOUNTYHUNTERS_SKILLS, BOUNTYHUNTERS_BRANCH_SKILL_MAP } from "./bountyhunters_skills.js";
+import { ORCS_SKILLS, ORCS_BRANCH_SKILL_MAP } from "./orcs_skills.js";
+import { PIRATES_SKILLS, PIRATES_BRANCH_SKILL_MAP } from "./pirates_skills.js";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    skills.js — V5 Skill System
@@ -463,9 +466,13 @@ export const ALL_SKILLS = {
   ...HOLYKNIGHTS_SKILLS,
   ...NIGHTCREATURES_SKILLS,
   ...DRAGONS_SKILLS,
+  ...BOUNTYHUNTERS_SKILLS,
+  ...ORCS_SKILLS,
+  ...PIRATES_SKILLS,
 };
 
 // ── Branch layout for skill tree UI ──────────────────────────────────────────
+// Note: MAIN_SKILLS and SIDE_SKILLS are derived after BRANCH_SKILL_MAP is defined (see bottom of file).
 // 4 branches × (1 main + 2 sides) = 12 skills per commander
 const BRANCH_SKILL_MAP = {
   attacker: [
@@ -517,14 +524,17 @@ const TREE_TO_CLS = { combat:"attacker", defense:"balanced", tactics:"support", 
 // Resolve the correct branch map for a commander — Holy Knights use per-commander maps keyed by id
 function resolveBranchMap(cmdOrCls, treeOrCls) {
   const cls = TREE_TO_CLS[treeOrCls] ?? treeOrCls;
-  if (cmdOrCls && typeof cmdOrCls === "object" && cmdOrCls.faction === "holyknights") {
-    return HOLYKNIGHTS_BRANCH_SKILL_MAP[cmdOrCls.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
-  }
-  if (cmdOrCls && typeof cmdOrCls === "object" && cmdOrCls.faction === "nightcreatures") {
-    return NIGHTCREATURES_BRANCH_SKILL_MAP[cmdOrCls.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
-  }
-  if (cmdOrCls && typeof cmdOrCls === "object" && cmdOrCls.faction === "dragons") {
-    return DRAGONS_BRANCH_SKILL_MAP[cmdOrCls.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
+  if (cmdOrCls && typeof cmdOrCls === "object") {
+    const { faction, id } = cmdOrCls;
+    const factionMap = {
+      holyknights:    HOLYKNIGHTS_BRANCH_SKILL_MAP,
+      nightcreatures: NIGHTCREATURES_BRANCH_SKILL_MAP,
+      dragons:        DRAGONS_BRANCH_SKILL_MAP,
+      bountyhunters:  BOUNTYHUNTERS_BRANCH_SKILL_MAP,
+      orcs:           ORCS_BRANCH_SKILL_MAP,
+      pirates:        PIRATES_BRANCH_SKILL_MAP,
+    }[faction];
+    if (factionMap) return factionMap[id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
   }
   return BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
 }
@@ -533,12 +543,16 @@ function resolveBranchMap(cmdOrCls, treeOrCls) {
 // to assign skill points without creating a circular dependency.
 export function getDefCmdBranches(cmd) {
   const cls = cmd.cls ?? "attacker";
-  const branches = cmd.faction === "holyknights"
-    ? (HOLYKNIGHTS_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker)
-    : cmd.faction === "nightcreatures"
-    ? (NIGHTCREATURES_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker)
-    : cmd.faction === "dragons"
-    ? (DRAGONS_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker)
+  const factionMap = {
+    holyknights:    HOLYKNIGHTS_BRANCH_SKILL_MAP,
+    nightcreatures: NIGHTCREATURES_BRANCH_SKILL_MAP,
+    dragons:        DRAGONS_BRANCH_SKILL_MAP,
+    bountyhunters:  BOUNTYHUNTERS_BRANCH_SKILL_MAP,
+    orcs:           ORCS_BRANCH_SKILL_MAP,
+    pirates:        PIRATES_BRANCH_SKILL_MAP,
+  }[cmd.faction];
+  const branches = factionMap
+    ? (factionMap[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker)
     : (BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker);
   return [branches[0]?.main, branches[1]?.main].filter(Boolean);
 }
@@ -640,3 +654,26 @@ export function getBranchSideSkills(cls, branchIndex, cmd) {
   const map = cmd ? resolveBranchMap(cmd, cls) : (BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker);
   return map[branchIndex]?.sides ?? [];
 }
+
+// ── MAIN_SKILLS / SIDE_SKILLS ─────────────────────────────────────────────────
+// Derived from BRANCH_SKILL_MAP so CommanderScreen can distinguish main skills
+// (max level 10) from side skills (max level 5) and look up their definitions.
+const _mainKeys = new Set();
+const _sideKeys = new Set();
+for (const branches of Object.values(BRANCH_SKILL_MAP)) {
+  for (const branch of branches) {
+    if (branch.main) _mainKeys.add(branch.main);
+    for (const s of (branch.sides ?? [])) _sideKeys.add(s);
+  }
+}
+// Also sweep faction-specific maps
+for (const map of [HOLYKNIGHTS_BRANCH_SKILL_MAP, NIGHTCREATURES_BRANCH_SKILL_MAP, DRAGONS_BRANCH_SKILL_MAP, BOUNTYHUNTERS_BRANCH_SKILL_MAP, ORCS_BRANCH_SKILL_MAP, PIRATES_BRANCH_SKILL_MAP]) {
+  for (const branches of Object.values(map)) {
+    for (const branch of branches) {
+      if (branch.main) _mainKeys.add(branch.main);
+      for (const s of (branch.sides ?? [])) _sideKeys.add(s);
+    }
+  }
+}
+export const MAIN_SKILLS = Object.fromEntries([..._mainKeys].filter(k => ALL_SKILLS[k]).map(k => [k, ALL_SKILLS[k]]));
+export const SIDE_SKILLS = Object.fromEntries([..._sideKeys].filter(k => ALL_SKILLS[k]).map(k => [k, ALL_SKILLS[k]]));
