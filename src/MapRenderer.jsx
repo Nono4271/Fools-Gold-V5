@@ -1535,7 +1535,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
   // Centre horizontally; push down to cover front tiles.
   const spriteX = bx + TW * 0.0;
-  const spriteY = sPt.cy - elev + TH * 0.5;
+  const spriteY = sPt.cy - elev + TH * 0.7;
 
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.96);
