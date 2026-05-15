@@ -91,7 +91,7 @@ function worldToKey(wx, wy, tiles) {
         continue;
       }
 
-      const elev = tile.isHQ ? 14 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
+      const elev = tile.isHQ ? 0 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
       if (inTile(wx, wy, c, r, elev)) return key;
     }
   }
@@ -434,7 +434,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const isSel    = selKey === key;
       const isMvTgt  = mode === "selectMarchDest" && mvCmdUid && owner === "player";
       const hasCmds  = Boolean(cByTile[key]?.length);
-      const elev     = (isHQ||isHQPart) ? 14 : isWin ? 10 : (isKeep && !isGate) ? 8 : 4;
+      const elev     = (isHQ||isHQPart) ? 0 : isWin ? 10 : (isKeep && !isGate) ? 8 : 4;
       const { cx, cy } = isoXY(c, r);
       const sy  = cy - elev;
       const mid = sy + TH / 2;
@@ -1473,7 +1473,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const [pc, pr] = tileKey.split(",").map(Number);
   // Visual centre = middle tile of 3×3
   const { cx: bx, cy: worldCY } = isoXY(pc + 1, pr + 1);
-  const elev = 14;
+  const elev = 0;
 
   // 3×3 outer diamond corners (for hit area + selection outline)
   // N=(pc+1,pr), E=(pc+2,pr+1), S=(pc+1,pr+2), W=(pc,pr+1) — all shifted by elev
@@ -1524,17 +1524,14 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // anchor.y = 0.68 → base of building sits 68% down the image, towers in top 32%.
   // spriteY = centre tile top-face so base lands on the ground plane;
   // the top (back) two tiles of the 3×3 stay visible above the base.
-  // Sprite is 2048×2048 square. Castle base (widest stone row) sits at ~row 1986
-  // (anchor 0.970). We size the sprite so the castle fills roughly the inner
-  // 2-tile-wide diamond of the 3×3 footprint, leaving the surrounding ring visible.
-  const targetW = TW * 1.7;
-  const targetH = targetW; // square canvas
+  const targetW = TW * 2.6;
+  const targetH = targetW * 1.20;
 
   const spriteX = bx;
-  const spriteY = worldCY - elev; // top face of elevated HQ tile (elev=14)
+  const spriteY = worldCY - elev;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.970);
+    sp.anchor.set(0.5, 0.68);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
@@ -1706,7 +1703,7 @@ function drawMarchLines(gfx, cmds, reinMarches, tiles) {
     const pts = path.map(k => {
       const [tc, tr] = k.split(",").map(Number);
       const t = tiles[k];
-      const elev = t?.isHQ ? 14 : t?.isWin ? 10 : t?.isKeep ? 8 : 4;
+      const elev = t?.isHQ ? 0 : t?.isWin ? 10 : t?.isKeep ? 8 : 4;
       const { cx, cy } = isoXY(tc, tr);
       return { x: cx, y: cy - elev + TH / 2 };
     });
@@ -1739,7 +1736,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles) {
     const tile = tiles[key];
     if (!tile) continue;
     const { cx, cy } = isoXY(tile.c, tile.r);
-    const elev = tile.isHQ ? 14 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
+    const elev = tile.isHQ ? 0 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
     const sy = cy - elev;
     const playerG = tileCmds.filter(c => c.owner === "player");
     const aiG = tileCmds.filter(c => c.owner !== "player");
@@ -1980,7 +1977,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
       // Static keeps handled by keep layer; gates/regular tiles handled here
       if ((tile.isKeep && !tile.isGate) || tile.isKeepPart) return;
-      const elev = (tile.isHQ||tile.isHQPart) ? 14 : tile.isWin ? 10 : (tile.isKeep||tile.isKeepPart) ? 8 : 4;
+      const elev = (tile.isHQ||tile.isHQPart) ? 0 : tile.isWin ? 10 : (tile.isKeep||tile.isKeepPart) ? 8 : 4;
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
       const mid = sy2 + TH / 2;
