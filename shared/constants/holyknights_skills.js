@@ -347,7 +347,7 @@ export const SERAPH_UNIQUE_SKILLS = {
     type:"active", cooldown:4, offset:2, duration:1,
     desc:"A devastating strike of divine judgment, amplified by holy fury.",
     cmdMult:2.8, critBonus:0.40, base:2.8, perLevel:0.20,
-    nextDesc:(lvl)=>`Cmd ×${(2.8+lvl*0.20).toFixed(2)} dmg + 40% crit — rounds 2,6,10`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((2.8+lvl*0.20).toFixed(2)*100)}% damage + 40% crit — rounds 2,6,10`,
   },
   warden_ascendant: {
     name:"Warden Ascendant", icon:"☀️", tree:"combat", cls:"attacker",
@@ -376,7 +376,7 @@ export const SERAPH_RESKIN_SKILLS = {
     type:"active", cooldown:2, offset:1, duration:1,
     desc:"The Warden strikes with divine speed every other round.",
     cmdMult:1.4, base:1.4, perLevel:0.15,
-    nextDesc:(lvl)=>`Cmd ×${(1.4+lvl*0.15).toFixed(2)} dmg — rounds 1,3,5,7,9`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((1.4+lvl*0.15).toFixed(2)*100)}% damage — rounds 1,3,5,7,9`,
   },
   divine_savage_blow: {
     name:"Divine Savage Blow", icon:"🗡", tree:"combat", cls:"attacker",
@@ -384,7 +384,7 @@ export const SERAPH_RESKIN_SKILLS = {
     type:"active", cooldown:3, offset:3, duration:1,
     desc:"A heavy holy strike every 3 rounds.",
     cmdMult:2.2, base:2.2, perLevel:0.20,
-    nextDesc:(lvl)=>`Cmd ×${(2.2+lvl*0.20).toFixed(2)} dmg — rounds 3,6,9`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((2.2+lvl*0.20).toFixed(2)*100)}% damage — rounds 3,6,9`,
   },
   warden_execute: {
     name:"Warden's Execute", icon:"💀", tree:"combat", cls:"attacker",
@@ -392,7 +392,7 @@ export const SERAPH_RESKIN_SKILLS = {
     type:"active", cooldown:5, offset:1, duration:1,
     desc:"A devastating holy opener, then again mid-fight.",
     cmdMult:3.0, base:3.0, perLevel:0.25,
-    nextDesc:(lvl)=>`Cmd ×${(3.0+lvl*0.25).toFixed(2)} dmg — rounds 1,6`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((3.0+lvl*0.25).toFixed(2)*100)}% damage — rounds 1,6`,
   },
   seraph_double_strike: {
     name:"Seraph's Double Strike", icon:"⚔", tree:"combat", cls:"attacker",
@@ -426,13 +426,14 @@ export const SERAPH_RESKIN_SKILLS = {
     cmdPctDmg:0.06, base:0.06, perLevel:0.02,
     nextDesc:(lvl)=>`${Math.round((0.06+lvl*0.02)*100)}% enemy max HP dmg — rounds 5,10`,
   },
-  seraph_lifesteal: {
-    name:"Seraph's Lifesteal", icon:"🧛", tree:"combat", cls:"attacker",
+  divine_fortitude: {
+    name:"Divine Fortitude", icon:"☀️", tree:"combat", cls:"attacker",
     faction:"holyknights", commander:"h40",
     type:"active", cooldown:3, offset:1, duration:1,
     desc:"Seraph draws strength from the enemy, healing her troops.",
     cmdMult:1.3, lifesteal:0.25, base:0.25, perLevel:0.05,
-    nextDesc:(lvl)=>`Heal ${Math.round((0.25+lvl*0.05)*100)}% of cmd dmg — rounds 1,4,7,10`,
+    desc:"Commander attacks for 130% damage, restoring troops equal to 25% of damage dealt through divine energy.",
+    nextDesc:(lvl)=>`130% damage, restore troops = ${Math.round((0.25+lvl*0.05)*100)}% of damage dealt — rounds 1,4,7,10`,
   },
   divine_flurry: {
     name:"Divine Flurry", icon:"🌪", tree:"combat", cls:"attacker",
@@ -592,7 +593,7 @@ export const MOURNE_RESKIN_SKILLS = {
     type:"active", cooldown:2, offset:1, duration:1,
     desc:"Mourne strikes with inquisitor speed every other round.",
     cmdMult:1.4, base:1.4, perLevel:0.15,
-    nextDesc:(lvl)=>`Cmd ×${(1.4+lvl*0.15).toFixed(2)} dmg — rounds 1,3,5,7,9`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((1.4+lvl*0.15).toFixed(2)*100)}% damage — rounds 1,3,5,7,9`,
   },
   inquisitor_savage_blow: {
     name:"Inquisitor's Savage Blow", icon:"🗡", tree:"combat", cls:"attacker",
@@ -600,7 +601,7 @@ export const MOURNE_RESKIN_SKILLS = {
     type:"active", cooldown:3, offset:3, duration:1,
     desc:"A punishing inquisitor strike every 3 rounds.",
     cmdMult:2.2, base:2.2, perLevel:0.20,
-    nextDesc:(lvl)=>`Cmd ×${(2.2+lvl*0.20).toFixed(2)} dmg — rounds 3,6,9`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((2.2+lvl*0.20).toFixed(2)*100)}% damage — rounds 3,6,9`,
   },
   mourne_execute: {
     name:"Mourne's Execute", icon:"💀", tree:"combat", cls:"attacker",
@@ -608,7 +609,7 @@ export const MOURNE_RESKIN_SKILLS = {
     type:"active", cooldown:5, offset:1, duration:1,
     desc:"A devastating inquisitor opener, then again mid-fight.",
     cmdMult:3.0, base:3.0, perLevel:0.25,
-    nextDesc:(lvl)=>`Cmd ×${(3.0+lvl*0.25).toFixed(2)} dmg — rounds 1,6`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((3.0+lvl*0.25).toFixed(2)*100)}% damage — rounds 1,6`,
   },
   inquisitor_double_strike: {
     name:"Inquisitor's Double Strike", icon:"⚔", tree:"combat", cls:"attacker",
@@ -648,7 +649,8 @@ export const MOURNE_RESKIN_SKILLS = {
     type:"active", cooldown:3, offset:1, duration:1,
     desc:"Mourne drains the life from his enemies to sustain his forces.",
     cmdMult:1.3, lifesteal:0.25, base:0.25, perLevel:0.05,
-    nextDesc:(lvl)=>`Heal ${Math.round((0.25+lvl*0.05)*100)}% of cmd dmg — rounds 1,4,7,10`,
+    desc:"Commander attacks for 130% damage, restoring troops equal to 25% of damage dealt through divine energy.",
+    nextDesc:(lvl)=>`130% damage, restore troops = ${Math.round((0.25+lvl*0.05)*100)}% of damage dealt — rounds 1,4,7,10`,
   },
   mourne_relentless: {
     name:"Mourne's Relentless", icon:"🔥", tree:"combat", cls:"attacker",
@@ -656,7 +658,7 @@ export const MOURNE_RESKIN_SKILLS = {
     type:"active", cooldown:1, offset:1, duration:1,
     desc:"A relentless inquisitor strike every single round.",
     cmdMult:1.08, base:1.08, perLevel:0.04,
-    nextDesc:(lvl)=>`Cmd ×${(1.08+lvl*0.04).toFixed(2)} dmg — every round`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((1.08+lvl*0.04).toFixed(2)*100)}% damage — every round`,
   },
 };
 
@@ -706,7 +708,7 @@ export const HOLYKNIGHTS_BRANCH_SKILL_MAP = {
     { main:"warden_ascendant",       sides:["seraph_killing_instinct","warden_predator_eyes"]  },
     { main:"warden_quick_strike",    sides:["holy_frenzy",           "divine_flurry"]          },
     { main:"seraph_judgment",        sides:["divine_savage_blow",    "warden_killing_edge"]    },
-    { main:"warden_execute",         sides:["seraph_double_strike",  "seraph_lifesteal"]       },
+    { main:"warden_execute",         sides:["seraph_double_strike",  "divine_fortitude"]       },
   ],
   // Sister Vivara (support)
   h41: [

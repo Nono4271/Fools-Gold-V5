@@ -23,7 +23,7 @@ export const SERAVA_UNIQUE_SKILLS = {
     type:"active", cooldown:4, offset:2, duration:1,
     desc:"The Countess strikes deep and drinks — her wounds close as her enemy's open.",
     cmdMult:2.6, lifesteal:0.45, base:2.6, perLevel:0.20,
-    nextDesc:(lvl)=>`Cmd ×${(2.6+lvl*0.20).toFixed(2)} dmg + heal ${Math.round((0.45)*100)}% of cmd dmg — rounds 2,6,10`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((2.6+lvl*0.20).toFixed(2)*100)}% damage + heal ${Math.round((0.45)*100)}% of cmd dmg — rounds 2,6,10`,
   },
   bloodlust_ascendant: {
     name:"Bloodlust Ascendant", icon:"🩸", tree:"combat", cls:"attacker",
@@ -52,7 +52,7 @@ export const SERAVA_RESKIN_SKILLS = {
     type:"active", cooldown:2, offset:1, duration:1,
     desc:"She moves between heartbeats — faster than any mortal eye can follow.",
     cmdMult:1.4, base:1.4, perLevel:0.15,
-    nextDesc:(lvl)=>`Cmd ×${(1.4+lvl*0.15).toFixed(2)} dmg — rounds 1,3,5,7,9`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((1.4+lvl*0.15).toFixed(2)*100)}% damage — rounds 1,3,5,7,9`,
   },
   night_savage_blow: {
     name:"Night's Savage Blow", icon:"🗡", tree:"combat", cls:"attacker",
@@ -60,7 +60,7 @@ export const SERAVA_RESKIN_SKILLS = {
     type:"active", cooldown:3, offset:3, duration:1,
     desc:"A brutally elegant strike — regal form hiding vicious intent.",
     cmdMult:2.2, base:2.2, perLevel:0.20,
-    nextDesc:(lvl)=>`Cmd ×${(2.2+lvl*0.20).toFixed(2)} dmg — rounds 3,6,9`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((2.2+lvl*0.20).toFixed(2)*100)}% damage — rounds 3,6,9`,
   },
   serava_execute: {
     name:"Serava's Execute", icon:"💀", tree:"combat", cls:"attacker",
@@ -68,7 +68,7 @@ export const SERAVA_RESKIN_SKILLS = {
     type:"active", cooldown:5, offset:1, duration:1,
     desc:"She opens with absolute violence. The second strike is a courtesy.",
     cmdMult:3.0, base:3.0, perLevel:0.25,
-    nextDesc:(lvl)=>`Cmd ×${(3.0+lvl*0.25).toFixed(2)} dmg — rounds 1,6`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((3.0+lvl*0.25).toFixed(2)*100)}% damage — rounds 1,6`,
   },
   serava_double_strike: {
     name:"Serava's Double Strike", icon:"⚔", tree:"combat", cls:"attacker",
@@ -239,7 +239,7 @@ export const GROTH_UNIQUE_SKILLS = {
     type:"active", cooldown:3, offset:1, duration:1,
     desc:"He hits like a boulder wrapped in muscle and rage — and keeps coming.",
     cmdMult:2.0, troopAtkMult:1.20, base:2.0, perLevel:0.15,
-    nextDesc:(lvl)=>`Cmd ×${(2.0+lvl*0.15).toFixed(2)} dmg + Troops ×${(1.20).toFixed(2)} ATK — rounds 1,4,7,10`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((2.0+lvl*0.15).toFixed(2)*100)}% damage + Troops ×${(1.20).toFixed(2)} ATK — rounds 1,4,7,10`,
   },
   pack_fury: {
     name:"Pack Fury", icon:"🌕", tree:"combat", cls:"attacker",
@@ -268,7 +268,7 @@ export const GROTH_RESKIN_SKILLS = {
     type:"active", cooldown:2, offset:1, duration:1,
     desc:"Four legs are faster than two. He's already there before they see him coming.",
     cmdMult:1.4, base:1.4, perLevel:0.15,
-    nextDesc:(lvl)=>`Cmd ×${(1.4+lvl*0.15).toFixed(2)} dmg — rounds 1,3,5,7,9`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((1.4+lvl*0.15).toFixed(2)*100)}% damage — rounds 1,3,5,7,9`,
   },
   feral_savage_blow: {
     name:"Feral Savage Blow", icon:"🗡", tree:"combat", cls:"attacker",
@@ -276,7 +276,7 @@ export const GROTH_RESKIN_SKILLS = {
     type:"active", cooldown:3, offset:3, duration:1,
     desc:"A blow born of wild fury — not technique, but sheer devastating force.",
     cmdMult:2.2, base:2.2, perLevel:0.20,
-    nextDesc:(lvl)=>`Cmd ×${(2.2+lvl*0.20).toFixed(2)} dmg — rounds 3,6,9`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((2.2+lvl*0.20).toFixed(2)*100)}% damage — rounds 3,6,9`,
   },
   groth_execute: {
     name:"Groth's Execute", icon:"💀", tree:"combat", cls:"attacker",
@@ -284,7 +284,7 @@ export const GROTH_RESKIN_SKILLS = {
     type:"active", cooldown:5, offset:1, duration:1,
     desc:"He goes for the throat — every time, without hesitation.",
     cmdMult:3.0, base:3.0, perLevel:0.25,
-    nextDesc:(lvl)=>`Cmd ×${(3.0+lvl*0.25).toFixed(2)} dmg — rounds 1,6`,
+    nextDesc:(lvl)=>`Commander attacks for ${Math.round((3.0+lvl*0.25).toFixed(2)*100)}% damage — rounds 1,6`,
   },
   groth_double_strike: {
     name:"Groth's Double Strike", icon:"⚔", tree:"combat", cls:"attacker",
