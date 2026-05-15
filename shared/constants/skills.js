@@ -1,5 +1,6 @@
 import { HOLYKNIGHTS_SKILLS, HOLYKNIGHTS_BRANCH_SKILL_MAP } from "./holyknights_skills.js";
 import { NIGHTCREATURES_SKILLS, NIGHTCREATURES_BRANCH_SKILL_MAP } from "./nightcreatures_skills.js";
+import { DRAGONS_SKILLS, DRAGONS_BRANCH_SKILL_MAP } from "./dragons_skills.js";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    skills.js — V5 Skill System
@@ -461,6 +462,7 @@ export const ALL_SKILLS = {
   ...LEADER_SKILLS,
   ...HOLYKNIGHTS_SKILLS,
   ...NIGHTCREATURES_SKILLS,
+  ...DRAGONS_SKILLS,
 };
 
 // ── Branch layout for skill tree UI ──────────────────────────────────────────
@@ -521,6 +523,9 @@ function resolveBranchMap(cmdOrCls, treeOrCls) {
   if (cmdOrCls && typeof cmdOrCls === "object" && cmdOrCls.faction === "nightcreatures") {
     return NIGHTCREATURES_BRANCH_SKILL_MAP[cmdOrCls.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
   }
+  if (cmdOrCls && typeof cmdOrCls === "object" && cmdOrCls.faction === "dragons") {
+    return DRAGONS_BRANCH_SKILL_MAP[cmdOrCls.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
+  }
   return BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker;
 }
 
@@ -532,6 +537,8 @@ export function getDefCmdBranches(cmd) {
     ? (HOLYKNIGHTS_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker)
     : cmd.faction === "nightcreatures"
     ? (NIGHTCREATURES_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker)
+    : cmd.faction === "dragons"
+    ? (DRAGONS_BRANCH_SKILL_MAP[cmd.id] ?? BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker)
     : (BRANCH_SKILL_MAP[cls] ?? BRANCH_SKILL_MAP.attacker);
   return [branches[0]?.main, branches[1]?.main].filter(Boolean);
 }
