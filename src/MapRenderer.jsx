@@ -1524,11 +1524,11 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // anchor.y = 0.68 → base of building sits 68% down the image, towers in top 32%.
   // spriteY = centre tile top-face so base lands on the ground plane;
   // the top (back) two tiles of the 3×3 stay visible above the base.
-  const targetW = TW * 2.6;
+  const targetW = TW * 3.5;
   const targetH = targetW * (TH / TW); // match iso projection = 0.5
 
   const spriteX = bx - TW * 0.1;
-  const spriteY = worldCY - elev + TH * 0.5;
+  const spriteY = worldCY - elev + TH * 2.0;
 
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.68);
