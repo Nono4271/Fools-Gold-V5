@@ -472,11 +472,12 @@ const BRANCH_SKILL_MAP = {
     { main:"savage_blow",      sides:["killing_edge",    "deathblow"]        },
     { main:"execute",          sides:["double_strike",   "sweeping_strike"]  },
   ],
-  defender: [
-    { main:"iron_will",               sides:["demoralise",            "fortified_ranks"]  },
-    { main:"shield_wall",             sides:["blinding_light",        "hold_the_line"]    },
-    { main:"iron_bastion",            sides:["terror_aura",           "counter_intel"]    },
-    { main:"bulwark_stance",          sides:["intimidating_presence", "last_stand"]       },
+  // balanced: versatile mix of combat + defense + tactics
+  balanced: [
+    { main:"iron_will",        sides:["killing_instinct", "inspiring_presence"] },
+    { main:"shield_wall",      sides:["quick_strike",     "battle_hymn"]        },
+    { main:"grand_strategy",   sides:["iron_bastion",     "expose_weakness"]    },
+    { main:"bulwark_stance",   sides:["forced_march",     "last_stand"]         },
   ],
   support: [
     { main:"field_medic",      sides:["hex_curse",           "guardian_aura"]    },
@@ -490,12 +491,26 @@ const BRANCH_SKILL_MAP = {
     { main:"grand_strategy",   sides:["war_council",        "siege_protocol"]    },
     { main:"forced_march",     sides:["siege_mastery",      "overwhelm"]         },
   ],
+  // strategist: focus-heavy debuffer with combat secondaries
+  strategist: [
+    { main:"field_medic",      sides:["hex_curse",           "expose_weakness"]  },
+    { main:"expose_weakness",  sides:["blind_strike",        "battle_frenzy"]    },
+    { main:"killing_edge",     sides:["supply_cut_support",  "foresight"]        },
+    { main:"execute",          sides:["deathblow",           "battle_hunger"]    },
+  ],
+  // defender kept as internal fallback only — no playable heroes use this class
+  defender: [
+    { main:"iron_will",               sides:["demoralise",            "fortified_ranks"]  },
+    { main:"shield_wall",             sides:["blinding_light",        "hold_the_line"]    },
+    { main:"iron_bastion",            sides:["terror_aura",           "counter_intel"]    },
+    { main:"bulwark_stance",          sides:["intimidating_presence", "last_stand"]       },
+  ],
 };
 
 // ── Public helpers ────────────────────────────────────────────────────────────
 
 // Map tree key (from heroes.js SKILL_TREES) to cls key (used in BRANCH_SKILL_MAP)
-const TREE_TO_CLS = { combat:"attacker", defense:"defender", tactics:"support", command:"leader" };
+const TREE_TO_CLS = { combat:"attacker", defense:"balanced", tactics:"support", command:"leader", balanced:"balanced", strategist:"strategist" };
 
 // Resolve the correct branch map for a commander — Holy Knights use per-commander maps keyed by id
 function resolveBranchMap(cmdOrCls, treeOrCls) {
@@ -523,17 +538,25 @@ export function getDefCmdBranches(cmd) {
 
 export function getCommanderTrees(cmd) {
   const cls  = cmd?.cls ?? "attacker";
-  const tree = { attacker:"combat", defender:"defense", support:"tactics", leader:"command" }[cls] ?? "combat";
-  return { primary: tree, secondary: tree };
+  const primary = {
+    attacker:   "combat",
+    leader:     "command",
+    support:    "tactics",
+    balanced:   "combat",    // mixed — primary tree shown as combat
+    strategist: "tactics",   // tactics-heavy
+  }[cls] ?? "combat";
+  return { primary, secondary: primary };
 }
 
 export function getTreeDisplayNames(cmd) {
   const cls = cmd?.cls ?? "attacker";
   const names = {
-    attacker:{ primary:"Combat",   secondary:"Combat"   },
-    defender:{ primary:"Defense",  secondary:"Defense"  },
-    support: { primary:"Tactics",  secondary:"Tactics"  },
-    leader:  { primary:"Command",  secondary:"Command"  },
+    attacker:   { primary:"Combat",   secondary:"Combat"   },
+    leader:     { primary:"Command",  secondary:"Command"  },
+    support:    { primary:"Tactics",  secondary:"Tactics"  },
+    balanced:   { primary:"Mixed",    secondary:"Mixed"    },
+    strategist: { primary:"Tactics",  secondary:"Combat"   },
+    defender:   { primary:"Defense",  secondary:"Defense"  }, // NPC fallback
   };
   return names[cls] ?? names.attacker;
 }
