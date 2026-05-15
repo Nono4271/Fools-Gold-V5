@@ -2132,7 +2132,6 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           return (
             <div style={{
               width: "28%", flexShrink: 0,
-              borderRight: "1px solid #1e1508",
               background: selectedCmd.portrait ? "transparent" : `radial-gradient(ellipse at 50% 30%, ${fCol}18 0%, #04030a 65%)`,
               borderRight: selectedCmd.portrait ? "none" : "1px solid #1e1508",
               display: "flex", flexDirection: "column",
