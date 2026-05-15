@@ -1520,19 +1520,21 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // remain visible on all four sides — matching the RotW reference style.
   // The 3×3 footprint is occupied but we only fill ~2 tile-widths visually so
   // the near-side ground rows are not obscured by the building base.
-  // Fill the full 3×3 diamond edge-to-edge like RotW.
-  // 3-tile diamond width = TW * 3. Sprite width matches that exactly.
-  const targetW = TW * 3.0;
-  const targetH = targetW * 1.35;
+  // Sprite spans the inner 2-tile diamond so all 4 outer corner tiles stay visible,
+  // matching the RotW perspective. Building base aligns with the top vertex of the
+  // 3×3 so towers rise upward from there.
+  const targetW = TW * 2.2;          // inner diamond width (2 tiles across)
+  const targetH = targetW * 1.55;    // tall enough for towers; ~1.5–1.6 looks natural
 
-  // spriteY: anchor the base to the TOP vertex of the 3×3 diamond (the back corner),
-  // so the building rises from there and the near-side tiles remain fully visible.
-  // Top vertex = isoXY(pc+1, pr) which is nPt.cy - elev.
+  // Pin the building base to the top (back) vertex of the 3×3 diamond.
+  // nPt.cy - elev is the exact screen-Y of that vertex.
+  // anchor.y = 0.52 means 52% down the image = where the base of the building is.
+  // Towers occupy the top 52%, base+steps occupy the bottom 48%.
   const spriteX = bx;
   const spriteY = nPt.cy - elev;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.78); // 78% down = base of building; top 22% = towers
+    sp.anchor.set(0.5, 0.52);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
