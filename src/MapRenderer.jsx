@@ -1524,21 +1524,21 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // anchor.y = 0.68 → base of building sits 68% down the image, towers in top 32%.
   // spriteY = centre tile top-face so base lands on the ground plane;
   // the top (back) two tiles of the 3×3 stay visible above the base.
-  // The 3×3 isometric footprint spans 3 tile-widths across (N→E→S→W diamond).
-  // Width  = 3 × TW = 240px covers the full left-to-right extent of the diamond.
-  // Height must reach all 4 corners: the footprint is 3 tiles tall in iso space
-  // (3 × TH = 159px for the ground plane) plus tower height above.
-  // We use TW * 3.0 wide and scale height to keep square pixels (TH/TW ratio),
-  // then add extra vertical room (× 1.6) so towers clear the top N corner.
+  // Sprite sizing strategy:
+  // - Width = TW * 3.0 to span left/right corners of the 3x3 diamond.
+  // - Height kept proportional (1.15x) so towers don't block tiles behind.
+  // - anchor.y = 0.82 so the building base lands on the ground plane,
+  //   covering the front south tiles without the image bottom floating up.
+  // - spriteY pushed down by TH * 1.5 to cover the front tiles.
   const targetW = TW * 3.0;
-  const targetH = targetW * (TH / TW) * 1.6;
+  const targetH = targetW * (TH / TW) * 1.15;
 
-  // Centre the sprite exactly on the 3×3 footprint midpoint — no horizontal offset.
+  // Centre horizontally; push down to cover front tiles.
   const spriteX = bx;
-  const spriteY = worldCY - elev + TH * 1.0;
+  const spriteY = worldCY - elev + TH * 1.5;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.97);
+    sp.anchor.set(0.5, 0.82);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
