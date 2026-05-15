@@ -12,10 +12,11 @@ import { getPassiveBonuses, getActiveSkills } from "../../shared/constants/skill
 
 // Per-class stat growth per level
 const CLASS_GROWTH = {
-  attacker: { atk: 1.5, foc: 0.2, spd: 0.6 },
-  defender: { atk: 0.7, foc: 1.1, spd: 0.3 },
-  support:  { atk: 0.2, foc: 1.3, spd: 0.8 },
-  leader:   { atk: 0.8, foc: 0.8, spd: 0.8 },
+  attacker:   { atk: 1.5, foc: 0.2, spd: 0.6 },
+  leader:     { atk: 0.8, foc: 0.8, spd: 0.8 },
+  support:    { atk: 0.2, foc: 1.3, spd: 0.8 },
+  balanced:   { atk: 0.8, foc: 0.8, spd: 1.0 },  // higher spd growth, even spread
+  strategist: { atk: 0.2, foc: 1.5, spd: 0.7 },  // focus-heavy like support but more foc
 };
 
 // ── Slot-aware army helpers ────────────────────────────────────────────────────
@@ -83,20 +84,30 @@ const newAtk = Math.round((cmd.atk || 0) + growth.atk * levelsGained);
 const newFoc = Math.round((cmd.foc || 0) + growth.foc * levelsGained);
 const newSpd = Math.round((cmd.spd || 0) + growth.spd * levelsGained);
 
-// Lv25 class bonuses — apply once when crossing level 25
-const crossedLv25 = prevLvl < 25 && newLvl >= 25;
-const attackerBonus = (cmd.cls === "attacker" && crossedLv25) ? 15 : 0;
-const supportBonus  = (cmd.cls === "support"  && crossedLv25) ? 5  : 0;
-// Bug 18 fix: Leader Lv25 unlocks +500 Command (handled in cmdCommand via leaderBonus param).
-// Defender Lv25 unlocks Bastion (checked in battle.js via cmd.lvl >= 25).
-// Neither needed a stat delta here, but both were silently missing their floaty notification.
-if (crossedLv25 && cmd.cls === "leader"   && floaty && cmd.tk) floaty("⭐ Lv25: +500 Command!", "#f0c040", cmd.tk);
-if (crossedLv25 && cmd.cls === "defender" && floaty && cmd.tk) floaty("⭐ Lv25: Bastion unlocked!", "#88bbff", cmd.tk);
+// Lv20 class bonuses — apply once when crossing level 20
+const crossedLv20 = prevLvl < 20 && newLvl >= 20;
+let bonusAtk = 0, bonusFoc = 0, bonusSpd = 0, bonusSkillPts = 0, bonusCmd = 0;
+if (crossedLv20) {
+  if (cmd.cls === "attacker")   { bonusAtk = 25; bonusSkillPts = 2; }
+  if (cmd.cls === "leader")     { bonusCmd = 5; }
+  if (cmd.cls === "support")    { bonusFoc = 25; bonusSkillPts = 5; }
+  if (cmd.cls === "balanced")   { bonusAtk = 25; bonusFoc = 25; bonusSpd = 25; bonusSkillPts = 2; }
+  if (cmd.cls === "strategist") { bonusFoc = 25; bonusSkillPts = 2; }
+}
+// Floaty notifications
+if (crossedLv20 && cmd.cls === "attacker"   && floaty && cmd.tk) floaty("⭐ Lv20: +25 ATK, +2 skill pts!", "#e08050", cmd.tk);
+if (crossedLv20 && cmd.cls === "leader"     && floaty && cmd.tk) floaty("⭐ Lv20: +5 Command!", "#f0c040", cmd.tk);
+if (crossedLv20 && cmd.cls === "support"    && floaty && cmd.tk) floaty("⭐ Lv20: +25 FOC, +5 skill pts!", "#50d090", cmd.tk);
+if (crossedLv20 && cmd.cls === "balanced"   && floaty && cmd.tk) floaty("⭐ Lv20: +25 ATK/FOC/SPD, +2 skill pts!", "#a080ff", cmd.tk);
+if (crossedLv20 && cmd.cls === "strategist" && floaty && cmd.tk) floaty("⭐ Lv20: +25 FOC, +2 skill pts!", "#cc66ff", cmd.tk);
 
 return {
   xp: newXp, lvl: newLvl,
-  unspentSkillPoints: newSkillPoints + supportBonus,
-  atk: newAtk + attackerBonus, foc: newFoc, spd: newSpd,
+  unspentSkillPoints: newSkillPoints + bonusSkillPts,
+  atk: newAtk + bonusAtk,
+  foc: newFoc + bonusFoc,
+  spd: newSpd + bonusSpd,
+  commandBonus: (cmd.commandBonus || 0) + bonusCmd,
 };
 }
 
