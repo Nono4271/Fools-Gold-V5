@@ -1482,6 +1482,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const sPt = isoXY(pc + 1, pr + 2);
   const wPt = isoXY(pc,     pr + 1);
 
+  // Hit area uses original tile-derived footprint so clicks register correctly
   const FOOTPRINT = [
     nPt.cx, nPt.cy - elev,
     ePt.cx, ePt.cy - elev,
@@ -1496,12 +1497,29 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
 
-  // ── Selection outline ──
+  // ── Sprite sizing & positioning ──
+  // spriteY is the single source of truth for vertical placement.
+  // The selection outline is derived from spriteY so they always stay in sync.
+  const targetW = TW * 3.3;
+  const targetH = targetW * (TH / TW) * 0.85;
+  const spriteX = bx;
+  const spriteY = sPt.cy - elev + TH * 1.15;   // tuned: front base lands on ground
+
+  // ── Selection outline — grounded at sprite base, never floats ──
   if (isSelected) {
     const outlineGfx = new PIXI.Graphics();
-    const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+    // Centre the outline diamond at the sprite ground plane
+    const outlineY  = spriteY - TH * 0.10;    // slightly above sprite base
+    const outlineHW = TW * 1.5;               // half-width spanning 3×3 diamond
+    const outlineHH = TH * 1.5;               // half-height spanning 3×3 diamond
+    const OUTLINE_POLY = [
+      bx,               outlineY - outlineHH,  // N
+      bx + outlineHW,   outlineY,              // E
+      bx,               outlineY + outlineHH,  // S
+      bx - outlineHW,   outlineY,              // W
+    ];
     outlineGfx.lineStyle(3, 0xffffff, 0.95);
-    outlineGfx.drawPolygon(FOOTPRINT);
+    outlineGfx.drawPolygon(OUTLINE_POLY);
     outlineGfx.lineStyle(0);
     group.addChild(outlineGfx);
   }
@@ -1510,35 +1528,8 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
   const spriteUrl  = `/hq/${spriteName}`;
 
-  // The 3×3 isometric footprint:
-  //   width  = 3 tile-widths  = 3 × TW = 240px
-  //   height = 3 tile-heights = 3 × TH = 159px (ground plane only)
-  // Sprite needs extra vertical room for towers above the base.
-  // Width is fixed to exactly span the 3-tile diamond (TW*3).
-  // Height is width * sprite aspect so it scales proportionally — cap at TH*5.
-  // Sprite is sized to fit within the inner 2-tile diamond so surrounding tiles
-  // remain visible on all four sides — matching the RotW reference style.
-  // The 3×3 footprint is occupied but we only fill ~2 tile-widths visually so
-  // the near-side ground rows are not obscured by the building base.
-  // Sprite sized to fill the 3×3 diamond width exactly.
-  // anchor.y = 0.68 → base of building sits 68% down the image, towers in top 32%.
-  // spriteY = centre tile top-face so base lands on the ground plane;
-  // the top (back) two tiles of the 3×3 stay visible above the base.
-  // Sprite sizing strategy:
-  // - Width = TW * 3.0 to span left/right corners of the 3x3 diamond.
-  // - Height kept proportional (1.15x) so towers don't block tiles behind.
-  // - anchor.y = 0.82 so the building base lands on the ground plane,
-  //   covering the front south tiles without the image bottom floating up.
-  // - spriteY pushed down by TH * 1.5 to cover the front tiles.
-  const targetW = TW * 3.3;
-  const targetH = targetW * (TH / TW) * 0.85;
-
-  // Centre horizontally; push down to cover front tiles.
-  const spriteX = bx + TW * 0.0;
-  const spriteY = sPt.cy - elev + TH * 1.35;
-
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.88);
+    sp.anchor.set(0.5, 0.88);  // 88% down image = base; top 12% = towers above
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
