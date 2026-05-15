@@ -212,12 +212,12 @@ export const HDEFS = [
   { id:"h41", n:"Maniacal Priest Dante",    faction:"holyknights",     rarity:"veteran",  cls:"leader",  atk:45,  foc:145, spd:62, icon:"🌟", subspecies:"Inquisitor",   portrait:"/commanders/h41_maniacal_priest_dante_portrait.webp", bust:"/commanders/h41_maniacal_priest_dante_bust.webp" },
   { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"strategist", atk:182, foc:20,  spd:58, icon:"🌑", subspecies:"Inquisitor",   portrait:"/commanders/h42_grand_inquistor_mourne_portrait.webp", bust:"/commanders/h42_grand_inquistor_mourne_bust.webp" },
 
-  { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"attacker", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire",      portrait:"/commanders/h43_countess_serava_portrait.webp",  bust:"/commanders/h43_countess_serava_bust.webp" },
+  { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"strategist", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire",      portrait:"/commanders/h43_countess_serava_portrait.webp",  bust:"/commanders/h43_countess_serava_bust.webp" },
   { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"strategist",  atk:65,  foc:170, spd:72, icon:"🩸", subspecies:"Vampire",      portrait:"/commanders/h44_lord_malachar_portrait.webp",          bust:"/commanders/h44_lord_malachar_bust.webp" },
   { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"balanced", atk:92,  foc:0,   spd:80, icon:"🐺", subspecies:"Werewolf",     portrait:"/commanders/h45_fang_groth_portrait.webp",       bust:"/commanders/h45_fang_groth_bust.webp" },
   { id:"h46", n:"Alpha Korrax",         faction:"nightcreatures",  rarity:"champion", cls:"leader",   atk:185, foc:0,   spd:85, icon:"🌕", subspecies:"Werewolf",     portrait:"/commanders/h46_alpha_korrax_portrait.webp",           bust:"/commanders/h46_alpha_korrax_bust.webp" },
   { id:"h47", n:"Skitter Vex",          faction:"nightcreatures",  rarity:"soldier",  cls:"support", atk:70,  foc:20,  spd:60, icon:"🕷", subspecies:"Spider",       portrait:"/commanders/h47_skitter_vex_portrait.webp",          bust:"/commanders/h47_skitter_vex_bust.webp" },
-  { id:"h48", n:"Thaelor the Silkbound", faction:"nightcreatures",  rarity:"veteran",  cls:"strategist",  atk:40,  foc:145, spd:65, icon:"🕸", subspecies:"Spider",       portrait:"/commanders/h48_thaelor_the_silkbound_portrait.webp", bust:"/commanders/h48_thaelor_the_silkbound_bust.webp" },
+  { id:"h48", n:"Thaelor the Silkbound", faction:"nightcreatures",  rarity:"veteran",  cls:"attacker",  atk:40,  foc:145, spd:65, icon:"🕸", subspecies:"Spider",       portrait:"/commanders/h48_thaelor_the_silkbound_portrait.webp", bust:"/commanders/h48_thaelor_the_silkbound_bust.webp" },
 ];
 
 
