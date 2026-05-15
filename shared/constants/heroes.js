@@ -15,51 +15,60 @@ export const PROMO = {
 
 // ── V4 Classes ───────────────────────────────────────────────────────────────
 export const CLASS = {
-  leader:   {
-    n: "Leader",   icon: "⚑",
-    desc: "Masters of logistics and morale. Leaders extend command range and accelerate marches.",
-    bonus: "Iron Will — At Lv25: +500 Command (troop capacity).",
-    synergy: "Command tree",
-    primaryTree: "command",
-  },
   attacker: {
     n: "Attacker", icon: "⚔",
     desc: "Frontline destroyers built for overwhelming offensive power and rapid conquest.",
-    bonus: "Bloodlust — At Lv25: +15 Attack stat.",
+    bonus: "Bloodlust — At Lv20: +25 ATK, +2 skill points, +10% physical commander damage.",
     synergy: "Combat tree",
     primaryTree: "combat",
+  },
+  leader: {
+    n: "Leader",   icon: "⚑",
+    desc: "Masters of logistics and morale. Leaders extend command range and control larger armies.",
+    bonus: "Iron Will — At Lv20: +5 Command.",
+    synergy: "Command tree",
+    primaryTree: "command",
   },
   support:  {
     n: "Support",  icon: "✦",
     desc: "Tactical specialists who amplify allies, heal troops, and turn the tide through cunning.",
-    bonus: "Grand Strategy — At Lv25: +5 bonus skill points.",
+    bonus: "Grand Strategy — At Lv20: +25 FOC, +5 skill points.",
     synergy: "Tactics tree",
     primaryTree: "tactics",
   },
-  defender: {
-    n: "Defender", icon: "🛡",
-    desc: "Unyielding fortresses. Defenders make held tiles nearly impregnable.",
-    bonus: "Bastion — At Lv25: Troops gain double HP and DEF for the first 2 rounds of each battle.",
-    synergy: "Defense tree",
-    primaryTree: "defense",
+  balanced: {
+    n: "Balanced", icon: "⚖",
+    desc: "Versatile all-rounders who excel in any situation — equally dangerous attacking or defending.",
+    bonus: "Adaptable — At Lv20: +25 ATK, +25 FOC, +25 SPD, +2 skill points.",
+    synergy: "Mixed trees",
+    primaryTree: "combat",
+  },
+  strategist: {
+    n: "Strategist", icon: "🔮",
+    desc: "Cunning commanders who weaponize focus energy, poison, and elemental forces.",
+    bonus: "Dark Arts — At Lv20: +25 FOC, +2 skill points, +10% focus/poison/burn/elemental commander damage.",
+    synergy: "Tactics & Combat",
+    primaryTree: "tactics",
   },
 };
 
 // ── Class → which 3 trees they get (primary x3) + 1 random secondary ─────────
 // The 4th tree per commander is seeded from their ID so it's static across runs
 export const CLASS_TREES = {
-  attacker: ["combat", "combat", "combat"],     // 3 combat branches + 1 random
-  defender: ["defense", "defense", "defense"],  // 3 defense branches + 1 random
-  leader:   ["command", "command", "command"],  // 3 command branches + 1 random
-  support:  ["tactics", "tactics", "tactics"],  // 3 tactics branches + 1 random
+  attacker:   ["combat",  "combat",  "combat"],    // 3 combat + 1 secondary
+  leader:     ["command", "command", "command"],   // 3 command + 1 secondary
+  support:    ["tactics", "tactics", "tactics"],   // 3 tactics + 1 secondary
+  balanced:   ["combat",  "tactics", "command"],   // mixed primary trees
+  strategist: ["tactics", "tactics", "combat"],    // tactics-heavy with combat
 };
 
 // Secondary tree options per class (the 4th tree, randomized but static per commander)
 export const CLASS_SECONDARY_OPTIONS = {
-  attacker: ["command", "defense", "tactics"],
-  defender: ["command", "combat", "tactics"],
-  leader:   ["combat", "defense", "tactics"],
-  support:  ["combat", "defense", "command"],
+  attacker:   ["command", "tactics", "defense"],
+  leader:     ["combat",  "defense", "tactics"],
+  support:    ["combat",  "defense", "command"],
+  balanced:   ["defense", "combat",  "tactics"],
+  strategist: ["combat",  "command", "defense"],
 };
 
 // Get a commander's 4 trees: 3 of their class + 1 static secondary
@@ -157,11 +166,11 @@ export function getSubspecies(faction, rarity) {
 export const HDEFS = [
   // ── Pirates ── (leader, attacker, support, defender covered; extras: attacker+leader)
   { id:"h1",  n:"Redwake Fynn",         faction:"pirates",        rarity:"veteran",  cls:"attacker", atk:130, foc:0,   spd:88, icon:"🏴‍☠️", subspecies:"Shipwright", portrait:"/commanders/h1_redwake_fynn_portrait.webp", bust:"/commanders/h1_redwake_fynn_bust.webp" },
-  { id:"h2",  n:"Pirate Cook Samuel",   faction:"pirates",        rarity:"veteran",  cls:"defender", atk:105, foc:0,   spd:78, icon:"🍳",          subspecies:"Shipwright", portrait:"/commanders/h2_pirate_cook_samuel_portrait.webp", bust:"/commanders/h2_pirate_cook_samuel_bust.webp" },
+  { id:"h2",  n:"Pirate Cook Samuel",   faction:"pirates",        rarity:"veteran",  cls:"balanced", atk:105, foc:0,   spd:78, icon:"🍳",          subspecies:"Shipwright", portrait:"/commanders/h2_pirate_cook_samuel_portrait.webp", bust:"/commanders/h2_pirate_cook_samuel_bust.webp" },
   { id:"h13", n:"Admiral Brine",        faction:"pirates",        rarity:"soldier",  cls:"leader",   atk:95,  foc:0,   spd:65, icon:"⚓",          subspecies:"First Mate",  portrait:"/commanders/h13_admiral_brine_portrait.webp",    bust:"/commanders/h13_admiral_brine_bust.webp" },
   { id:"h14", n:"Saltwhisper",          faction:"pirates",        rarity:"soldier",  cls:"support",  atk:55,  foc:110, spd:72, icon:"🪝",          subspecies:"First Mate",  portrait:"/commanders/h14_saltwhisper_portrait.webp",         bust:"/commanders/h14_saltwhisper_bust.webp" },
   { id:"h25", n:"Ironjaw Reck",         faction:"pirates",        rarity:"champion", cls:"attacker", atk:175, foc:0,   spd:90, icon:"💀",          subspecies:"Captain",    portrait:"/commanders/h25_ironjaw_reck_portrait.webp",     bust:"/commanders/h25_ironjaw_reck_bust.webp" },
-  { id:"h26", n:"Navigator Seyne",      faction:"pirates",        rarity:"champion", cls:"leader",   atk:110, foc:60,  spd:80, icon:"🧭",          subspecies:"Captain",    portrait:"/commanders/h26_navigator_seyne_portrait.webp",  bust:"/commanders/h26_navigator_seyne_bust.webp" },
+  { id:"h26", n:"Navigator Seyne",      faction:"pirates",        rarity:"champion", cls:"strategist",   atk:110, foc:60,  spd:80, icon:"🧭",          subspecies:"Captain",    portrait:"/commanders/h26_navigator_seyne_portrait.webp",  bust:"/commanders/h26_navigator_seyne_bust.webp" },
   // ── Marines ── (leader, attacker, support, defender covered; extras: defender+support)
 
 
@@ -172,9 +181,9 @@ export const HDEFS = [
   { id:"h5",  n:"Solarius Vex",         faction:"bountyhunters",  rarity:"veteran",  cls:"support",  atk:20,  foc:180, spd:62, icon:"🔮",          subspecies:"Sage", portrait:"/commanders/h5_solarius_vex_portrait.webp", bust:"/commanders/h5_solarius_vex_bust.webp" },
   { id:"h6",  n:"Mira Ashveil",         faction:"bountyhunters",  rarity:"veteran",  cls:"attacker", atk:120, foc:100, spd:70, icon:"✨",          subspecies:"Sage",       portrait:"/commanders/h6_mira_ashveil_portrait.webp",         bust:"/commanders/h6_mira_ashveil_bust.webp" },
   { id:"h17", n:"Runekeeper Dov",       faction:"bountyhunters",  rarity:"soldier",  cls:"leader",   atk:75,  foc:80,  spd:58, icon:"📜",          subspecies:"Apprentice", portrait:"/commanders/h17_runekeeper_dov_portrait.webp", bust:"/commanders/h17_runekeeper_dov_bust.webp" },
-  { id:"h18", n:"Hexblade Oren",        faction:"bountyhunters",  rarity:"soldier",  cls:"defender", atk:90,  foc:60,  spd:55, icon:"🔯",          subspecies:"Apprentice", portrait:"/commanders/h18_hexblade_oren_portrait.webp",       bust:"/commanders/h18_hexblade_oren_bust.webp" },
+  { id:"h18", n:"Hexblade Oren",        faction:"bountyhunters",  rarity:"soldier",  cls:"balanced", atk:90,  foc:60,  spd:55, icon:"🔯",          subspecies:"Apprentice", portrait:"/commanders/h18_hexblade_oren_portrait.webp",       bust:"/commanders/h18_hexblade_oren_bust.webp" },
   { id:"h29", n:"Archmage Theon",       faction:"bountyhunters",  rarity:"champion", cls:"support",  atk:40,  foc:210, spd:65, icon:"🌟",          subspecies:"Warlock",    portrait:"/commanders/h29_archmage_theon_portrait.webp",   bust:"/commanders/h29_archmage_theon_bust.webp" },
-  { id:"h30", n:"Spellblade Ryn",       faction:"bountyhunters",  rarity:"champion", cls:"attacker", atk:155, foc:130, spd:72, icon:"⚡",          subspecies:"Warlock",    portrait:"/commanders/h30_spellblade_ryn_portrait.webp",   bust:"/commanders/h30_spellblade_ryn_bust.webp" },
+  { id:"h30", n:"Spellblade Ryn",       faction:"bountyhunters",  rarity:"champion", cls:"strategist", atk:155, foc:130, spd:72, icon:"⚡",          subspecies:"Warlock",    portrait:"/commanders/h30_spellblade_ryn_portrait.webp",   bust:"/commanders/h30_spellblade_ryn_bust.webp" },
   // ── MerFolk ── (leader, attacker, support, defender covered; extras: attacker+defender)
 
 
@@ -183,32 +192,32 @@ export const HDEFS = [
 
   // ── Orcs ── (leader, attacker, support, defender covered; extras: attacker+defender)
   { id:"h9",  n:"Grimtusk",             faction:"orcs",           rarity:"veteran",  cls:"attacker", atk:155, foc:0,   spd:60, icon:"⚔️",         subspecies:"Marauder", portrait:"/commanders/h9_grimtusk_portrait.webp", bust:"/commanders/h9_grimtusk_bust.webp" },
-  { id:"h10", n:"Ashgrip",              faction:"orcs",           rarity:"veteran",  cls:"defender", atk:115, foc:0,   spd:65, icon:"🪓",          subspecies:"Marauder",   portrait:"/commanders/h10_ashgrip_portrait.webp",             bust:"/commanders/h10_ashgrip_bust.webp" },
+  { id:"h10", n:"Ashgrip",              faction:"orcs",           rarity:"veteran",  cls:"balanced", atk:115, foc:0,   spd:65, icon:"🪓",          subspecies:"Marauder",   portrait:"/commanders/h10_ashgrip_portrait.webp",             bust:"/commanders/h10_ashgrip_bust.webp" },
   { id:"h21", n:"Warcroak",             faction:"orcs",           rarity:"soldier",  cls:"leader",   atk:80,  foc:0,   spd:58, icon:"🥁",          subspecies:"Raider", portrait:"/commanders/h21_warcroak_portrait.webp", bust:"/commanders/h21_warcroak_bust.webp" },
-  { id:"h22", n:"Shaman Grix",          faction:"orcs",           rarity:"soldier",  cls:"support",  atk:30,  foc:100, spd:60, icon:"💀",          subspecies:"Raider",     portrait:"/commanders/h22_shaman_grix_portrait.webp",         bust:"/commanders/h22_shaman_grix_bust.webp" },
+  { id:"h22", n:"Shaman Grix",          faction:"orcs",           rarity:"soldier",  cls:"strategist",  atk:30,  foc:100, spd:60, icon:"💀",          subspecies:"Raider",     portrait:"/commanders/h22_shaman_grix_portrait.webp",         bust:"/commanders/h22_shaman_grix_bust.webp" },
   { id:"h33", n:"Warlord Korgath",      faction:"orcs",           rarity:"champion", cls:"attacker", atk:185, foc:0,   spd:62, icon:"🗡",          subspecies:"Warlord",    portrait:"/commanders/h33_warlord_korgath_portrait.webp",  bust:"/commanders/h33_warlord_korgath_bust.webp" },
-  { id:"h34", n:"Ironhide Bruk",        faction:"orcs",           rarity:"champion", cls:"defender", atk:140, foc:0,   spd:55, icon:"🦴",          subspecies:"Warlord",    portrait:"/commanders/h34_ironhide_bruk_portrait.webp",    bust:"/commanders/h34_ironhide_bruk_bust.webp" },
+  { id:"h34", n:"Ironhide Bruk",        faction:"orcs",           rarity:"champion", cls:"support", atk:140, foc:0,   spd:55, icon:"🦴",          subspecies:"Warlord",    portrait:"/commanders/h34_ironhide_bruk_portrait.webp",    bust:"/commanders/h34_ironhide_bruk_bust.webp" },
   // ── Dragons ── (leader, attacker, support, defender covered; extras: attacker+support)
-  { id:"h11", n:"Emberclaw",            faction:"dragons",        rarity:"veteran",  cls:"attacker", atk:155, foc:0,   spd:75, icon:"🐉",          subspecies:"Adult", portrait:"/commanders/h11_emberclaw_portrait.webp", bust:"/commanders/h11_emberclaw_bust.webp" },
+  { id:"h11", n:"Emberclaw",            faction:"dragons",        rarity:"veteran",  cls:"balanced", atk:155, foc:0,   spd:75, icon:"🐉",          subspecies:"Adult", portrait:"/commanders/h11_emberclaw_portrait.webp", bust:"/commanders/h11_emberclaw_bust.webp" },
   { id:"h12", n:"Scaleveil Dusk",       faction:"dragons",        rarity:"veteran",  cls:"support",  atk:50,  foc:140, spd:80, icon:"🔥",          subspecies:"Adult",      portrait:"/commanders/h12_scaleveil_dusk_portrait.webp",       bust:"/commanders/h12_scaleveil_dusk_bust.webp" },
   { id:"h23", n:"Ashen Kraul",          faction:"dragons",        rarity:"soldier",  cls:"leader",   atk:78,  foc:0,   spd:68, icon:"🦎",          subspecies:"Hatchling", portrait:"/commanders/h23_ashen_kraul_portrait.webp", bust:"/commanders/h23_ashen_kraul_bust.webp" },
-  { id:"h24", n:"Cinderfang",           faction:"dragons",        rarity:"soldier",  cls:"defender", atk:100, foc:0,   spd:58, icon:"🪨",          subspecies:"Hatchling",  portrait:"/commanders/h24_cinderfang_portrait.webp",           bust:"/commanders/h24_cinderfang_bust.webp" },
+  { id:"h24", n:"Cinderfang",           faction:"dragons",        rarity:"soldier",  cls:"balanced", atk:100, foc:0,   spd:58, icon:"🪨",          subspecies:"Hatchling",  portrait:"/commanders/h24_cinderfang_portrait.webp",           bust:"/commanders/h24_cinderfang_bust.webp" },
   { id:"h35", n:"Pyrewing Skar",        faction:"dragons",         rarity:"champion", cls:"attacker", atk:180, foc:0,   spd:78, icon:"🌋", subspecies:"Elder",    portrait:"/commanders/h35_pyrewing_skar_portrait.webp",    bust:"/commanders/h35_pyrewing_skar_bust.webp" },
-  { id:"h36", n:"Voidscale Nyxara",     faction:"dragons",         rarity:"champion", cls:"support",  atk:60,  foc:175, spd:82, icon:"🌑", subspecies:"Elder",    portrait:"/commanders/h36_voidscale_nyxara_portrait.webp", bust:"/commanders/h36_voidscale_nyxara_bust.webp" },
+  { id:"h36", n:"Voidscale Nyxara",     faction:"dragons",         rarity:"champion", cls:"strategist",  atk:60,  foc:175, spd:82, icon:"🌑", subspecies:"Elder",    portrait:"/commanders/h36_voidscale_nyxara_portrait.webp", bust:"/commanders/h36_voidscale_nyxara_bust.webp" },
 
-  { id:"h37", n:"Brother Aldric",          faction:"holyknights",     rarity:"soldier",  cls:"defender", atk:78,  foc:20,  spd:48, icon:"🛡", subspecies:"Templar", portrait:"/commanders/h37_brother_aldric_portrait.webp", bust:"/commanders/h37_brother_aldric_bust.webp" },
+  { id:"h37", n:"Brother Aldric",          faction:"holyknights",     rarity:"soldier",  cls:"balanced", atk:78,  foc:20,  spd:48, icon:"🛡", subspecies:"Templar", portrait:"/commanders/h37_brother_aldric_portrait.webp", bust:"/commanders/h37_brother_aldric_bust.webp" },
   { id:"h38", n:"Commander Vayne",         faction:"holyknights",     rarity:"veteran",  cls:"leader",   atk:130, foc:30,  spd:55, icon:"⚔️", subspecies:"Templar", portrait:"/commanders/h38_commander_vayne_portrait.webp", bust:"/commanders/h38_commander_vayne_bust.webp" },
   { id:"h39", n:"Friar Brennan",           faction:"holyknights",     rarity:"soldier",  cls:"support",  atk:40,  foc:120, spd:52, icon:"✝️", subspecies:"BattlePriest", portrait:"/commanders/h39_friar_brennan_portrait.webp",         bust:"/commanders/h39_friar_brennan_bust.webp" },
   { id:"h40", n:"High Warden Seraph",      faction:"holyknights",     rarity:"champion", cls:"attacker", atk:178, foc:40,  spd:60, icon:"☀️", subspecies:"BattlePriest", portrait:"/commanders/h40_high_warden_seraph_portrait.webp",    bust:"/commanders/h40_high_warden_seraph_bust.webp" },
-  { id:"h41", n:"Maniacal Priest Dante",    faction:"holyknights",     rarity:"veteran",  cls:"support",  atk:45,  foc:145, spd:62, icon:"🌟", subspecies:"Inquisitor",   portrait:"/commanders/h41_maniacal_priest_dante_portrait.webp", bust:"/commanders/h41_maniacal_priest_dante_bust.webp" },
-  { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"attacker", atk:182, foc:20,  spd:58, icon:"🌑", subspecies:"Inquisitor",   portrait:"/commanders/h42_grand_inquistor_mourne_portrait.webp", bust:"/commanders/h42_grand_inquistor_mourne_bust.webp" },
+  { id:"h41", n:"Maniacal Priest Dante",    faction:"holyknights",     rarity:"veteran",  cls:"leader",  atk:45,  foc:145, spd:62, icon:"🌟", subspecies:"Inquisitor",   portrait:"/commanders/h41_maniacal_priest_dante_portrait.webp", bust:"/commanders/h41_maniacal_priest_dante_bust.webp" },
+  { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"strategist", atk:182, foc:20,  spd:58, icon:"🌑", subspecies:"Inquisitor",   portrait:"/commanders/h42_grand_inquistor_mourne_portrait.webp", bust:"/commanders/h42_grand_inquistor_mourne_bust.webp" },
 
   { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"attacker", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire",      portrait:"/commanders/h43_countess_serava_portrait.webp",  bust:"/commanders/h43_countess_serava_bust.webp" },
-  { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"support",  atk:65,  foc:170, spd:72, icon:"🩸", subspecies:"Vampire",      portrait:"/commanders/h44_lord_malachar_portrait.webp",          bust:"/commanders/h44_lord_malachar_bust.webp" },
-  { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"attacker", atk:92,  foc:0,   spd:80, icon:"🐺", subspecies:"Werewolf",     portrait:"/commanders/h45_fang_groth_portrait.webp",       bust:"/commanders/h45_fang_groth_bust.webp" },
+  { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"strategist",  atk:65,  foc:170, spd:72, icon:"🩸", subspecies:"Vampire",      portrait:"/commanders/h44_lord_malachar_portrait.webp",          bust:"/commanders/h44_lord_malachar_bust.webp" },
+  { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"balanced", atk:92,  foc:0,   spd:80, icon:"🐺", subspecies:"Werewolf",     portrait:"/commanders/h45_fang_groth_portrait.webp",       bust:"/commanders/h45_fang_groth_bust.webp" },
   { id:"h46", n:"Alpha Korrax",         faction:"nightcreatures",  rarity:"champion", cls:"leader",   atk:185, foc:0,   spd:85, icon:"🌕", subspecies:"Werewolf",     portrait:"/commanders/h46_alpha_korrax_portrait.webp",           bust:"/commanders/h46_alpha_korrax_bust.webp" },
-  { id:"h47", n:"Skitter Vex",          faction:"nightcreatures",  rarity:"soldier",  cls:"defender", atk:70,  foc:20,  spd:60, icon:"🕷", subspecies:"Spider",       portrait:"/commanders/h47_skitter_vex_portrait.webp",          bust:"/commanders/h47_skitter_vex_bust.webp" },
-  { id:"h48", n:"Thaelor the Silkbound", faction:"nightcreatures",  rarity:"veteran",  cls:"support",  atk:40,  foc:145, spd:65, icon:"🕸", subspecies:"Spider",       portrait:"/commanders/h48_thaelor_the_silkbound_portrait.webp", bust:"/commanders/h48_thaelor_the_silkbound_bust.webp" },
+  { id:"h47", n:"Skitter Vex",          faction:"nightcreatures",  rarity:"soldier",  cls:"support", atk:70,  foc:20,  spd:60, icon:"🕷", subspecies:"Spider",       portrait:"/commanders/h47_skitter_vex_portrait.webp",          bust:"/commanders/h47_skitter_vex_bust.webp" },
+  { id:"h48", n:"Thaelor the Silkbound", faction:"nightcreatures",  rarity:"veteran",  cls:"strategist",  atk:40,  foc:145, spd:65, icon:"🕸", subspecies:"Spider",       portrait:"/commanders/h48_thaelor_the_silkbound_portrait.webp", bust:"/commanders/h48_thaelor_the_silkbound_bust.webp" },
 ];
 
 
@@ -246,13 +255,15 @@ export function npcForPowerLevel(pl) {
 //   leader   → "warchief_aura"   / "warchief_roar"
 const FACTION_CMD_FIRST_SKILL = {
   attacker: "killing_instinct",
-  defender: "iron_will",
+  balanced:   "iron_will",
+  strategist: "field_medic",
   support:  "field_medic",
   leader:   "warchief_aura",
 };
 const FACTION_CMD_SECOND_SKILL = {
   attacker: "quick_strike",
-  defender: "shield_wall",
+  balanced:   "shield_wall",
+  strategist: "mending_wave",
   support:  "mending_wave",
   leader:   "warchief_roar",
 };
@@ -430,8 +441,17 @@ export function addRespect(cmd, points) {
 
   const newSkillPoints = (cmd.unspentSkillPoints ?? 0) + levelsGained;
 
-  // Support Lv25 Grand Strategy: grant +5 bonus skill points the first time they hit Lv25
-  const supportBonus = (cmd.cls === "support" && prevLevel < 25 && info.level >= 25) ? 5 : 0;
+  // Class Lv20 bonuses (granted once when crossing level 20)
+  const crossedLv20 = prevLevel < 20 && info.level >= 20;
+  let classBonusAtk = 0, classBonusFoc = 0, classBonusSpd = 0, classBonusCmd = 0, classBonusSkillPts = 0;
+  if (crossedLv20) {
+    if (cmd.cls === "attacker")   { classBonusAtk = 25; classBonusSkillPts = 2; }
+    if (cmd.cls === "leader")     { classBonusCmd = 5; }
+    if (cmd.cls === "support")    { classBonusFoc = 25; classBonusSkillPts = 5; }
+    if (cmd.cls === "balanced")   { classBonusAtk = 25; classBonusFoc = 25; classBonusSpd = 25; classBonusSkillPts = 2; }
+    if (cmd.cls === "strategist") { classBonusFoc = 25; classBonusSkillPts = 2; }
+  }
+  const supportBonus = classBonusSkillPts; // renamed for compat
 
   return {
     ...cmd,
@@ -439,8 +459,13 @@ export function addRespect(cmd, points) {
     rarity,
     respectPoints:      newTotal,
     respectLevel:       info.level,
+    atk:                (cmd.atk  || 0) + classBonusAtk,
+    foc:                (cmd.foc  || 0) + classBonusFoc,
+    spd:                (cmd.spd  || 0) + classBonusSpd,
+    commandBonus:       (cmd.commandBonus || 0) + classBonusCmd,
     unspentSkillPoints: newSkillPoints + supportBonus,
     _justPromoted:      promoted ? rarity : null,
+    _classBonus:        crossedLv20 ? cmd.cls : null,
   };
 }
 
