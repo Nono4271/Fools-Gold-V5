@@ -1513,8 +1513,10 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // Width covers the full 3x3 diamond left<->right extent.
   // Height = 0.75x width so towers stay visible without blocking back tiles.
   // anchor.y = 0.78 keeps the base grounded on the front tile row.
+  // Source image is 2048x2048 (square) — preserve aspect ratio to avoid lean.
+  // Scale so width fits the 3x3 footprint; height follows naturally.
   const targetW = TW * 3.0;
-  const targetH = targetW * 0.75;
+  const targetH = targetW;
 
   const spriteX = bx;
   const spriteY = sPt.cy - elev + TH * 0.65;
