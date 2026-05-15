@@ -1637,7 +1637,7 @@ return (
     ) : (() => {
       const cmd        = selCmd;
       const isAtHQ     = cmd.tk === hqKey;
-      const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, (cmd.cls==="leader"&&(cmd.lvl||5)>=25)?5:0);
+      const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, cmd.commandBonus??0);
       const cmdUsed    = (cmd.troopSlots ?? []).reduce((s, sl) => {
         const slBr = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(b=>b.key===sl.branch?.branch);
         return s + (sl.troops || 0) * (COMMAND_COST[slBr?.size] ?? 1);

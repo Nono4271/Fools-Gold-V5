@@ -27,7 +27,7 @@ function outcomeOf(b) {
   return { text:"DRAW", color:"#d0a030" };
 }
 
-const CLS_COLOR = { attacker:"#e08050", defender:"#5080e0", support:"#50d090", leader:"#d0a030" };
+const CLS_COLOR = { attacker:"#e08050", leader:"#d0a030", support:"#50d090", balanced:"#a080ff", strategist:"#cc66ff" };
 
 // ── Tri-colour troop bar ──────────────────────────────────────────────────────
 function TroopBar({ start, end, wounded, isEnemy }) {
@@ -1072,7 +1072,7 @@ function SimpleSummaryPanel({ b, onOpen }) {
             </span>
           )}
           {b.bastionActive && (
-            <span style={{ fontSize:8, color:"#5080e0" }}>🛡 Bastion</span>
+            <span style={{ fontSize:8, color:"#a080ff" }}>⚖ Balanced</span>
           )}
           {b.isStage2 && (
             <span style={{ fontSize:8, color:"#5a4a38" }}>Stage 2</span>
@@ -1162,7 +1162,7 @@ function DetailedLog({ b }) {
 
         {b.bastionActive && (
           <div style={{ marginTop:6, fontSize:7, color:"#5080e0" }}>
-            🛡 Bastion passive — double HP &amp; DEF active rounds 1-2
+            ⚖ Balanced passive — double HP &amp; DEF active rounds 1-2
           </div>
         )}
       </div>

@@ -41,7 +41,7 @@ export default memo(function BottomPanel({
 
         {/* ── REINFORCE ── */}
         {mode==="reinforce" && reinCmd && (() => {
-          const cap     = cmdCommand(reinCmd.lvl||5, bldgs.commandcenter||0, (reinCmd.cls==="leader"&&(reinCmd.lvl||5)>=25)?5:0);
+          const cap     = cmdCommand(reinCmd.lvl||5, bldgs.commandcenter||0, reinCmd.commandBonus??0);
           const cur     = reinCmd.troops||0;
           // Fix: subtract troops already en route so displayed room is accurate
           const inTransit = (reinMarches||[]).filter(r => r.cmdUid === reinCmd.uid && !r.returning)
