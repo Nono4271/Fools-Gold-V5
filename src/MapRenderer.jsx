@@ -1527,14 +1527,14 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // Sprite is 2048×2048 square. Castle base (widest stone row) sits at ~row 1986
   // (anchor 0.970). We size the sprite so the castle fills roughly the inner
   // 2-tile-wide diamond of the 3×3 footprint, leaving the surrounding ring visible.
-  const targetW = TW * 2.2;
+  const targetW = TW * 2.0;
   const targetH = targetW; // square canvas
 
   const spriteX = bx;
-  const spriteY = worldCY + TH / 2; // ground plane of centre tile
+  const spriteY = worldCY + TH; // bottom edge of centre tile diamond
 
   const applySprite = (sp) => {
-    // anchor.y=0.970 → bottom of stone base lands on spriteY (ground plane)
+    // anchor.y=0.970 → stone base row in sprite lands flush on ground plane
     sp.anchor.set(0.5, 0.970);
     sp.width  = targetW;
     sp.height = targetH;
