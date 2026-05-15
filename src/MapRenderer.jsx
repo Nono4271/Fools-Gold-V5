@@ -1540,7 +1540,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.9);
     sp.width  = targetW;
-    sp.height = targetH;
+    sp.height = targetH * 0.94;
     sp.x = spriteX;
     sp.y = spriteY;
 
