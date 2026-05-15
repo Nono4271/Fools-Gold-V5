@@ -1519,7 +1519,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const _sH  = _sW * 0.85;
   const _aY  = 0.905;
   const _sx  = bx;
-  const _sy  = sPt.cy - elev + TH * 1.1;
+  const _sy  = sPt.cy - elev + TH * 0.95;
   const _rot = -0.0902;
   const _cos = Math.cos(_rot);
   const _sin = Math.sin(_rot);
@@ -1573,7 +1573,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const targetH = targetW * 0.78;
 
   const spriteX = bx;
-  const spriteY = sPt.cy - elev + TH * 1.1;
+  const spriteY = sPt.cy - elev + TH * 0.95;
 
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.905);
