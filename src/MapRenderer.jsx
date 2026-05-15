@@ -1520,17 +1520,19 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // remain visible on all four sides — matching the RotW reference style.
   // The 3×3 footprint is occupied but we only fill ~2 tile-widths visually so
   // the near-side ground rows are not obscured by the building base.
-  const targetW = TW * 1.85;         // ~148px — smaller footprint, ground visible on all sides
-  const targetH = targetW * 1.45;   // ~215px — taller ratio so spires don't get clipped
+  // Fill the full 3×3 diamond edge-to-edge like RotW.
+  // 3-tile diamond width = TW * 3. Sprite width matches that exactly.
+  const targetW = TW * 3.0;
+  const targetH = targetW * 1.35;   // aspect ratio: tall enough for towers above base
 
-  // Anchor at 0.65: base sits 65% down, leaving more tower height above.
-  // spriteY pushed down by TH*0.7 so base lands closer to ground-plane centre,
-  // revealing the near-side tile rows like the RotW camera angle.
+  // Anchor Y at 0.60: base of building = 60% down the image.
+  // spriteY = top-face centre of middle tile (worldCY - elev) so the base
+  // sits flush on the diamond ground plane, towers rise above.
   const spriteX = bx;
-  const spriteY = worldCY - elev + TH * 0.7; // lower base onto ground plane
+  const spriteY = worldCY - elev;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.65); // 65% down = building base; 35% above = towers/spires
+    sp.anchor.set(0.5, 0.60);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
