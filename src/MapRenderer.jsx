@@ -1530,12 +1530,12 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // - anchor.y = 0.82 so the building base lands on the ground plane,
   //   covering the front south tiles without the image bottom floating up.
   // - spriteY pushed down by TH * 1.5 to cover the front tiles.
-  const targetW = TW * 4.2;
+  const targetW = TW * 3.6;
   const targetH = targetW * (TH / TW) * 0.85;
 
   // Centre horizontally; push down to cover front tiles.
   const spriteX = bx + TW * 0.0;
-  const spriteY = sPt.cy - elev + TH * 0.3;
+  const spriteY = sPt.cy - elev + TH * 0.5;
 
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.96);
