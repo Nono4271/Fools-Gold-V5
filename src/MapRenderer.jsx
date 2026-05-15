@@ -1523,16 +1523,16 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // Fill the full 3×3 diamond edge-to-edge like RotW.
   // 3-tile diamond width = TW * 3. Sprite width matches that exactly.
   const targetW = TW * 3.0;
-  const targetH = targetW * 1.35;   // aspect ratio: tall enough for towers above base
+  const targetH = targetW * 1.35;
 
-  // Anchor Y at 0.60: base of building = 60% down the image.
-  // spriteY = top-face centre of middle tile (worldCY - elev) so the base
-  // sits flush on the diamond ground plane, towers rise above.
+  // spriteY: anchor the base to the TOP vertex of the 3×3 diamond (the back corner),
+  // so the building rises from there and the near-side tiles remain fully visible.
+  // Top vertex = isoXY(pc+1, pr) which is nPt.cy - elev.
   const spriteX = bx;
-  const spriteY = worldCY - elev;
+  const spriteY = nPt.cy - elev;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.60);
+    sp.anchor.set(0.5, 0.78); // 78% down = base of building; top 22% = towers
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
