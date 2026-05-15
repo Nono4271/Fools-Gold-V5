@@ -1538,15 +1538,15 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const spriteY = worldCY - elev + TH * 1.20;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.90);
+    sp.anchor.set(0.5, 0.93);
     sp.width  = targetW;
-    sp.height = targetH * 0.97;
+    sp.height = targetW * (TH / TW) * 0.85;
     sp.x = spriteX;
     sp.y = spriteY;
 
     sp.rotation = 0;
     sp.skew.x = 0;
-    sp.skew.y = 0;
+    sp.skew.y = 0.02;
   };
 
   if (texCache[spriteUrl]) {
