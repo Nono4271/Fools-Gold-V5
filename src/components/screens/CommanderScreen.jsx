@@ -894,7 +894,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
   const lvl = cmd.lvl ?? 5;
   const xpNeeded = lvl < CMD_LVL_MAX ? xpToNext(lvl) : null;
   const xpPct = xpNeeded ? Math.min(100, Math.round(((cmd.xp ?? 0) / xpNeeded) * 100)) : 100;
-  const cmdCap = cmdCommand(lvl, bldgs?.commandcenter ?? 0, (cmd.cls==="leader"&&lvl>=25)?5:0);
+  const cmdCap = cmdCommand(lvl, bldgs?.commandcenter ?? 0, cmd.commandBonus ?? 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
@@ -947,12 +947,12 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                   </div>
                   <div style={{ fontSize: 9, fontFamily: "'Crimson Pro',serif",
                     color: "#7a6a50", lineHeight: 1.5, marginBottom: 8 }}>{cls.desc}</div>
-                  <div style={{ fontSize: 7, color: lvl >= 25 ? "#f0c040" : "#5a4a2a",
+                  <div style={{ fontSize: 7, color: lvl >= 20 ? "#f0c040" : "#5a4a2a",
                     fontFamily: "'Cinzel',serif", letterSpacing: ".08em", marginBottom: 4 }}>
-                    ⭐ LV25 BONUS{lvl >= 25 ? " — ACTIVE" : ` — unlocks at Lv25`}
+                    ⭐ LV20 BONUS{lvl >= 20 ? " — ACTIVE" : ` — unlocks at Lv20`}
                   </div>
                   <div style={{ fontSize: 9, fontFamily: "'Crimson Pro',serif",
-                    color: lvl >= 25 ? "#c0a070" : "#3a3020", lineHeight: 1.5 }}>{cls.bonus}</div>
+                    color: lvl >= 20 ? "#c0a070" : "#3a3020", lineHeight: 1.5 }}>{cls.bonus}</div>
                 </div>
               )}
             </div>
@@ -1169,10 +1169,11 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         {(() => {
           const bc = applyGearToCmd(cmd, gearInventory);
           const GROWTH = {
-            attacker: { ATK: 1.5, FOC: 0.2, SPD: 0.6 },
-            defender: { ATK: 0.7, FOC: 1.1, SPD: 0.3 },
-            support:  { ATK: 0.2, FOC: 1.3, SPD: 0.8 },
-            leader:   { ATK: 0.8, FOC: 0.8, SPD: 0.8 },
+            attacker:   { ATK: 1.5, FOC: 0.2, SPD: 0.6 },
+            leader:     { ATK: 0.8, FOC: 0.8, SPD: 0.8 },
+            support:    { ATK: 0.2, FOC: 1.3, SPD: 0.8 },
+            balanced:   { ATK: 0.8, FOC: 0.8, SPD: 1.0 },
+            strategist: { ATK: 0.2, FOC: 1.5, SPD: 0.7 },
           };
           const growth = GROWTH[cmd.cls] ?? GROWTH.leader;
           return [
@@ -1216,6 +1217,30 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
             )}
           </div>
         ))}
+
+        {/* Lv20 class bonus indicator */}
+        {lvl >= 20 && (() => {
+          const bonuses = {
+            attacker:   "+25 ATK · +2 SP · +10% Physical Dmg",
+            leader:     "+5 Command",
+            support:    "+25 FOC · +5 SP",
+            balanced:   "+25 ATK/FOC/SPD · +2 SP · Bastion",
+            strategist: "+25 FOC · +2 SP · +10% Focus Dmg",
+          };
+          const txt = bonuses[cmd.cls];
+          if (!txt) return null;
+          const clsColors = { attacker:"#e08050", leader:"#d0a030", support:"#50d090", balanced:"#a080ff", strategist:"#cc66ff" };
+          return (
+            <div style={{
+              gridColumn: "1 / -1", padding: "4px 10px",
+              background: "rgba(255,255,255,.02)", borderTop: "1px solid #1a1510",
+              display: "flex", alignItems: "center", gap: 6,
+            }}>
+              <span style={{ fontSize: 8, color: clsColors[cmd.cls] ?? "#f0c040" }}>⭐ Lv20</span>
+              <span style={{ fontSize: 7, color: "#7a6a4a", fontFamily: "'Crimson Pro',serif" }}>{txt}</span>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── March status ── */}
