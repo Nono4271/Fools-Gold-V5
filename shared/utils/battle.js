@@ -272,6 +272,45 @@ switch (eff.type) {
     rs.healPct    += eff.healPct || 0.12;
     rs.healCleanse = { cleanseChance: eff.cleanseChance || 0.70, targets: eff.targets || 2 };
     break;
+  // Mourne mechanics
+  case "enemy_dmg_down_early_foc":
+    if (round <= (eff.maxRound || 4)) rs.enemyDmgDownEarlyFoc += eff.value || 0.01;
+    break;
+  case "post_attack_focus_dmg":
+    rs.postAtkFocusDmgOne = { chance: eff.chance || 0.50, value: eff.value || 0.10 };
+    break;
+  case "focus_damage_stun_guaranteed":
+    rs.focusDmgBonus += eff.value || 0;
+    rs.focusStunGuaranteed = true;
+    rs.enemyStunned = Math.max(rs.enemyStunned || 0, eff.stunDuration || 1);
+    roundLog.actions.push({ actor:actorLabel, action:`⚡ Got Ya — Enemy stunned!`, dmg:0, isTroopSkill:true });
+    break;
+  case "faction_def_bonus":
+    rs.factionDefBonus += eff.value || 0;
+    break;
+  case "dual_instance_buff_foc":
+    rs.dualInstanceBuff   = { instances: eff.instances || 3, dmgReduce: eff.dmgReduce || 0.008, dmgUp: eff.dmgUp || 0.008 };
+    rs.dualInstancesLeft  = eff.instances || 3;
+    break;
+  case "inquisitor_rally":
+    rs.inquisitorRally = { followupChance: eff.followupChance || 0.05, stunImmuneChance: eff.stunImmuneChance || 0.07, maxRound: eff.maxRound || 5 };
+    break;
+  case "branch_heal_then_block":
+    rs.healPct += eff.healPct || 0.50;
+    rs.branchHealThenBlock = { branch: eff.branch, permanentHealBlock: eff.permanentHealBlock };
+    break;
+  case "cmd_normal_atk_aoe_focus":
+    rs.postAtkFocusDmgAll += eff.value || 0.06;
+    break;
+  case "vs_all_dmg_up":
+    rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.value || 0.03);
+    break;
+  case "dmg_type_resist_all":
+    rs.dmgTypeResistAll += eff.focusResist || 0.03;
+    break;
+  case "per_round_cleanse_chance":
+    rs.perRoundCleanseChance += eff.chance || 0.06;
+    break;
   // Thaelor mechanics
   case "post_attack_vulnerability":
     // Stacks tracked as array — applied after each commander attack
@@ -902,6 +941,19 @@ const rs = {
   cotnMultiBranchBuff:null,  // Creature Power: { spider, vampire, werewolf } procs
   vulnerabilityStunChance:0, // Trapped: stun chance per round while vulnerable
   healCleanse:null,          // Skitter's Resilience: { healPct, cleanseChance, targets }
+  // Mourne mechanics
+  enemyDmgDownEarlyFoc:0,    // Will of an Inquisitor: FOC-modified enemy DMG down early rounds
+  postAtkFocusDmgAll:0,      // Mourne's Special: AoE focus on every normal attack
+  postAtkFocusDmgOne:null,   // The Wise: { chance, value } post-attack single focus
+  focusStunGuaranteed:false, // Got Ya: guaranteed stun on focus hit
+  factionDefBonus:0,         // Protect the Weak: flat DEF for human faction units
+  dualInstanceBuff:null,     // Inquisitor's Domain: { instances, dmgReduce, dmgUp, modifiedBy }
+  dualInstancesLeft:0,       // Inquisitor's Domain: remaining instances
+  inquisitorRally:null,      // Rally the Inquisitors: { followupChance, stunImmuneChance, maxRound }
+  branchHealThenBlock:null,  // Last Hope: { branch, healPct, permanentHealBlock }
+  perRoundCleanseChance:0,   // Cleansing Faith: once per round cleanse chance
+  vsAllDmgUp:0,              // Battle Tactics: all enemy damage received up
+  dmgTypeResistAll:0,        // Inquisitor's Protection: focus+poison resist all allies
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
