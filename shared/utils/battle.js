@@ -901,7 +901,6 @@ for (const ent of order) {
       roundLog.actions.push({ actor:"Enemy Cmd", action:"🎵 Enemy commander silenced — skill delayed!", dmg:0 });
       continue;
     }
-    }
     if (rs.enemyConfused > 0) {
       rs.enemyConfused--;
       if (Math.random() < 0.5) {
