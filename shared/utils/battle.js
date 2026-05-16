@@ -118,7 +118,6 @@ switch (eff.type) {
     rs.cmdSpdBonus += eff.value || 0;
     break;
   case "day_night_conditional": {
-    // UTC hour 6–18 = day, otherwise night
     const utcHour = new Date().getUTCHours();
     const isNight = utcHour < 6 || utcHour >= 18;
     rs.nightBuff = isNight;
@@ -131,7 +130,42 @@ switch (eff.type) {
     }
     break;
   }
-  default: break;
+  // Serava mechanics
+  case "silence":
+    if (Math.random() < (eff.chance || 0.06)) {
+      rs.enemySilenced = true;
+      roundLog.actions.push({ actor:actorLabel, action:`🎵 ${skill.name} — Enemy commander silenced! Skill delayed.`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "focus_damage_venom":
+    rs.focusDmgBonus += eff.value || 0;
+    if (Math.random() < (eff.venomChance || 0.05)) {
+      rs.venomApplied = true;
+      roundLog.actions.push({ actor:actorLabel, action:`🐍 Venom applied — SPD -20%, focus damage next round`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "focus_damage_delayed":
+    rs.focusDmgBonus += eff.initialDmg || 0;
+    rs.pendingVenomDmg = Math.max(rs.pendingVenomDmg, eff.delayedDmg || 0);
+    break;
+  case "dual_dmg_shift":
+    rs.allyDmgBonus  += eff.allyDmgUp   || 0;
+    rs.enemyDmgDown  += eff.enemyDmgDown || 0;
+    break;
+  case "skill_dmg_bonus":
+    rs.skillDmgBonus += eff.value || 0;
+    break;
+  case "followup_normal_attack":
+    if (round <= (eff.maxRound || 5)) rs.followupChance += eff.chance || 0;
+    break;
+  case "melee_max_dmg_chance":
+    // Applied during troop damage calculation — flag it on rs for the damage loop
+    rs.meleeMaxDmgChance = Math.min(1, (rs.meleeMaxDmgChance || 0) + (eff.chance || 0));
+    break;
+  case "focus_damage_heal_creatures":
+    rs.focusDmgBonus += eff.value || 0;
+    rs.healPct       += eff.healPct || 0;
+    break;
 }
 roundLog.actions.push({ actor:actorLabel, action:`${skill.icon} ${skill.name}`, dmg:0, isTroopSkill:true });
 
@@ -568,6 +602,7 @@ let defSlotHp = defSlotResolved.length > 0
   : [defTroopHp];
 let totalAtkLostHp = 0;
 let blockHealRounds= 0;
+let prevRoundVenomDmg = 0; // venom delayed focus damage carries over round to round
 
 const atkLvlMult = Math.pow(1.20, atkLvl - 5);
 const defLvlMult = Math.pow(1.20, Math.max(0, defLvl - 2));
@@ -672,10 +707,28 @@ const rs = {
   gearStatBonus:0,           // % bonus to gear-derived base stats (Lord's Experience)
   vsRangedDmgUp:0,           // enemy ranged units take X% more damage (Vampire Assassins)
   nightBuff:false,           // Night Terror: true = night, false = day
+  // Serava mechanics
+  enemySilenced:false,       // Siren Song: enemy commander skill delayed 1 round
+  venomApplied:false,        // Assassin's Blade: venom on target (SPD -20%, delayed focus dmg)
+  skillDmgBonus:0,           // Thrill of the Hunt: % bonus to all active skill damage
+  followupChance:0,          // Did You Want More: chance for follow-up normal attack (rounds 1-5)
+  pendingVenomDmg:0,         // carry-over venom focus damage to apply next round
+  allyDmgBonus:0,            // A Countess's Seduction: allied DMG up
+  enemyDmgDown:0,            // A Countess's Seduction: enemy DMG down
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
 applyInstantEffects(atkHeroSkills, round, rs);
+
+// ── Venom tick — apply carried-over focus damage from previous round ──────
+if (prevRoundVenomDmg > 0) {
+  const venomHit = Math.max(1, Math.round(cmdFocStat * prevRoundVenomDmg));
+  const prevDef  = defTroopHp;
+  defTroopHp     = Math.max(0, defTroopHp - venomHit);
+  roundLog.actions.push({ actor:cmd.n, action:`🐍 Venom — ${Math.round(prevRoundVenomDmg*100)}% focus damage`, dmg:venomHit,
+    defKilled:Math.max(0, Math.round((prevDef-defTroopHp)/(defTroopHpPer||1))), isSkill:true });
+}
+prevRoundVenomDmg = rs.pendingVenomDmg; // carry forward for next round
 
 // round_start troop skills — all atk slots apply to enemy
 for (const sl of atkSlotResolved) {
@@ -842,6 +895,12 @@ for (const ent of order) {
       rs.enemyStunned--;
       roundLog.actions.push({ actor:"Enemy Cmd", action:"⚡ Enemy commander is stunned!", dmg:0 });
       continue;
+    }
+    if (rs.enemySilenced) {
+      rs.enemySilenced = false; // consumed — skill fires next round naturally
+      roundLog.actions.push({ actor:"Enemy Cmd", action:"🎵 Enemy commander silenced — skill delayed!", dmg:0 });
+      continue;
+    }
     }
     if (rs.enemyConfused > 0) {
       rs.enemyConfused--;
