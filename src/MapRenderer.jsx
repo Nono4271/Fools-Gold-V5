@@ -1543,13 +1543,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
 
-  // ── Ownership outline — applied as OutlineFilter on the sprite ──
-  // Color and thickness are set here; the filter is attached in applySprite()
-  // so it traces the actual sprite alpha rather than a geometric diamond.
-  const ownerColor = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
-  const outlineThickness = isSelected ? 4 : 2;
-  const outlineAlpha    = isSelected ? 1.0 : 0.65;
-
   // ── Sprite ──
   const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
   const spriteUrl  = `/hq/${spriteName}`;
@@ -1578,27 +1571,38 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const spriteX = bx + off.xOff;
   const spriteY = sPt.cy - elev + TH * 0.60 + off.yOff;
 
+  // ── Ownership outline — double-sprite technique ──
+  // A second copy of the sprite, tinted to the owner color, scaled up by a
+  // small uniform margin and rendered beneath the main sprite.  Because it
+  // uses the same texture alpha the outline follows every contour of the art.
+  const ownerColor   = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+  const outlineScale = isSelected ? 1.055 : 1.032; // larger ring when selected
+  const outlineAlpha = isSelected ? 0.95  : 0.60;
+
+  const applyOutlineSprite = (sp) => {
+    sp.anchor.set(0.5, 0.905);
+    sp.width  = targetW  * outlineScale;
+    sp.height = targetH  * outlineScale;
+    sp.x = spriteX;
+    sp.y = spriteY;
+    sp.tint  = ownerColor;
+    sp.alpha = outlineAlpha;
+  };
+
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.905);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
     sp.y = spriteY;
-
-    sp.rotation = 0;
-    sp.skew.x   = 0;
-    sp.skew.y   = 0;
-
-    // OutlineFilter traces the actual sprite alpha — works regardless of
-    // faction-specific scale/anchor tuning.  Thickness scales up on selection.
-    if (owner && PIXI.filters?.OutlineFilter) {
-      sp.filters = [
-        new PIXI.filters.OutlineFilter(outlineThickness, ownerColor, outlineAlpha),
-      ];
-    }
   };
 
   if (texCache[spriteUrl]) {
+    if (owner) {
+      const ol = new PIXI.Sprite(texCache[spriteUrl]);
+      applyOutlineSprite(ol);
+      group.addChild(ol);
+    }
     const sp = new PIXI.Sprite(texCache[spriteUrl]);
     applySprite(sp);
     group.addChild(sp);
@@ -1616,9 +1620,14 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       if (placeholderGfx.parent) placeholderGfx.parent.removeChild(placeholderGfx);
       placeholderGfx.destroy();
       if (!group.destroyed) {
+        if (owner) {
+          const ol = new PIXI.Sprite(tex);
+          applyOutlineSprite(ol);
+          group.addChildAt(ol, 0);
+        }
         const sp = new PIXI.Sprite(tex);
         applySprite(sp);
-        group.addChildAt(sp, 0);
+        group.addChild(sp);
       }
     }).catch(() => {
       // Sprite not found — placeholder stays, that's fine
