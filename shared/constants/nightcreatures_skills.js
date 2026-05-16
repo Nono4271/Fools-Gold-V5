@@ -13,111 +13,136 @@
 ───────────────────────────────────────────────────────────────────────────── */
 
 // ── COUNTESS SERAVA (veteran, strategist, Vampire) ────────────────────────────
-// High FOC not present in stats (atk:150, foc:0) — but strategist class bonus
-// gives +25 FOC at Lv20. She is a physical vampire who debuffs through blood
-// magic rather than raw focus damage. Mix of expose/drain/debuff with hit skills.
+// High FOC via strategist bonus. Aggressive focus damage dealer with lifesteal,
+// venom, silence and self-sustaining mechanics. Fights forward, feeds on kills.
 
 export const SERAVA_UNIQUE_SKILLS = {
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  // Round 1 + 2CD → rounds 1, 4, 7, 10
   serava_crimson_embrace: {
     name:"Crimson Embrace", icon:"🦇", tree:"combat", cls:"strategist",
     faction:"nightcreatures", commander:"h43",
-    type:"active", cooldown:4, offset:2, duration:1,
-    desc:"Serava strikes deep and drinks — her troops restore as the enemy bleeds out.",
-    cmdMult:2.4, lifesteal:0.40, base:2.4, perLevel:0.18,
-    nextDesc:(lvl) => `240% damage, restore troops = ${Math.round((0.4+lvl*0.05)*100)}% of damage dealt — rounds 2, 6, 10`,
+    type:"active", cooldown:2, offset:1, duration:1,
+    desc:"[Round 1] [2 Enemy Units] 24% Focus Damage (modified by FOC) | [Creature of the Night Units] heal 40% HP. (Rounds 1, 4, 7, 10)",
+    effect:{ type:"focus_damage_heal_creatures", targets:2, healPct:0.40, modifiedBy:"foc" },
+    base:0.24, perLevel:0.2257,
+    maxLevelEffect:{ bonusHealPct:0.15 },
+    nextDesc:(lvl) => `[2 Enemy Units] ${Math.round((0.24+lvl*0.2257)*100)}% Focus DMG (FOC mod) | Creatures heal ${lvl >= 14 ? "55" : "40"}% HP — rounds 1,4,7,10`,
   },
-  serava_blood_curse: {
-    name:"Blood Curse", icon:"🩸", tree:"tactics", cls:"strategist",
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  ser_countess_seduction: {
+    name:"A Countess's Seduction", icon:"💋", tree:"tactics", cls:"strategist",
     faction:"nightcreatures", commander:"h43",
-    type:"active", cooldown:3, offset:1, duration:2,
-    desc:"A vampiric hex poisons the enemy's will — they strike slower and take more from every wound.",
-    enemyAtkReduce:0.14, enemyDmgTakenUp:0.12, base:0.14, perLevel:0.03,
-    nextDesc:(lvl) => `-${Math.round((0.14+lvl*0.03)*100)}% enemy attack + ${Math.round((0.12+lvl*0.02)*100)}% vulnerability (2 rnd) — rounds 1,4,7,10`,
+    type:"passive",
+    desc:"[All Enemy Units] Damage Dealt -1.0% | [All Allied Units] Damage Dealt +1.0%. (Passive)",
+    effect:{ type:"dual_dmg_shift", enemyDmgDown:0.01, allyDmgUp:0.01 },
+    base:0.01, perLevel:0.01,
+    nextDesc:(lvl) => `Enemy DMG -${Math.round((0.01+lvl*0.01)*100)}% | Allied DMG +${Math.round((0.01+lvl*0.01)*100)}% (permanent)`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  ser_siren_song: {
+    name:"Siren Song", icon:"🎵", tree:"tactics", cls:"strategist",
+    faction:"nightcreatures", commander:"h43",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[Enemy Commander] 6% chance to inflict Silence for 1 round — skill is skipped but fires next round. (Rounds 3, 6, 9)",
+    effect:{ type:"silence", target:"enemyCommander", chance:0.06 },
+    base:0.06, perLevel:0.06,
+    nextDesc:(lvl) => `${Math.round((0.06+lvl*0.06)*100)}% chance to Silence enemy commander (1 rnd) — rounds 3,6,9`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  ser_brawler: {
+    name:"Brawler", icon:"👊", tree:"combat", cls:"strategist",
+    faction:"nightcreatures", commander:"h43",
+    type:"passive",
+    desc:"[Commander] Normal Attacks deal an additional 5.0% Focus Damage. (Passive)",
+    effect:{ type:"focus_damage", value:0.05 },
+    base:0.05, perLevel:0.05,
+    maxLevelEffect:{ focusBonus:15 },
+    nextDesc:(lvl) => `Normal Attacks +${Math.round((0.05+lvl*0.05)*100*10)/10}% Focus DMG${lvl >= 14 ? " | Max: FOC +15" : ""} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  ser_fight_with_me: {
+    name:"Fight With Me", icon:"⚔️", tree:"combat", cls:"strategist",
+    faction:"nightcreatures", commander:"h43",
+    type:"passive",
+    desc:"[Allied Melee Units] 5.0% chance to attack for maximum damage. (Passive)",
+    effect:{ type:"melee_max_dmg_chance", chance:0.05 },
+    base:0.05, perLevel:0.05,
+    nextDesc:(lvl) => `Allied Melee Units ${Math.round((0.05+lvl*0.05)*100)}% chance to deal max damage (permanent)`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  ser_overpower: {
+    name:"Overpower", icon:"💥", tree:"combat", cls:"strategist",
+    faction:"nightcreatures", commander:"h43",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[Enemy Unit with lowest DEF] 20% Focus Damage + 30% Focus Damage follow-up after 1 round. (Rounds 3, 6, 9)",
+    effect:{ type:"focus_damage_delayed", target:"lowestDef", initialDmg:0.20, delayedDmg:0.30, delayRounds:1 },
+    base:0.20, perLevel:0.10,
+    nextDesc:(lvl) => {
+      const init = Math.round((0.20+lvl*0.10)*100);
+      const follow = Math.round((0.30+lvl*0.15)*100);
+      return `[Lowest DEF Unit] ${init}% Focus DMG + ${follow}% follow-up next round — rounds 3,6,9`;
+    },
+  },
+
+  // ── R3 — Main (shared with Malachar) ──────────────────────────────────────
+  // mal_compulsion referenced directly in branch map
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  // mal_vampires_thrall referenced directly in branch map
+
+  ser_hk_eradicator: {
+    name:"Holy Knight Eradicator", icon:"🔥", tree:"combat", cls:"strategist",
+    faction:"nightcreatures", commander:"h43",
+    type:"passive",
+    desc:"[2 Friendly Units] DMG +0.5% against Holy Knight units. (Passive)",
+    effect:{ type:"dmg_bonus_vs_faction", faction:"holyknights", value:0.005 },
+    base:0.005, perLevel:0.005,
+    nextDesc:(lvl) => `Friendly units DMG +${Math.round((0.005+lvl*0.005)*100*10)/10}% vs Holy Knights (permanent)`,
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  // Round 2 + 1CD → rounds 2, 4, 6, 8, 10
+  ser_assassins_blade: {
+    name:"Assassin's Blade", icon:"🗡️", tree:"combat", cls:"strategist",
+    faction:"nightcreatures", commander:"h43",
+    type:"active", cooldown:1, offset:2, duration:1,
+    desc:"[Round 2] [2 Enemy Units, prioritises Ranged] 30% Focus Damage (modified by SPD) | 5% chance to apply Venom. (Rounds 2, 4, 6, 8, 10)",
+    effect:{ type:"focus_damage_venom", targets:2, prioritise:"ranged", venomChance:0.05, modifiedBy:"spd" },
+    base:0.30, perLevel:0.30,
+    maxLevelEffect:{ spdBonus:15 },
+    nextDesc:(lvl) => `[2 Units, Ranged first] ${Math.round((0.30+lvl*0.30)*100)}% Focus DMG (SPD mod) + ${Math.round((0.05+lvl*0.05)*100)}% Venom chance${lvl >= 14 ? " | Max: SPD +15" : ""} — rounds 2,4,6,8,10`,
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  ser_thrill_of_the_hunt: {
+    name:"Thrill of the Hunt", icon:"🏹", tree:"combat", cls:"strategist",
+    faction:"nightcreatures", commander:"h43",
+    type:"passive",
+    desc:"[Commander] Skill damage +2.0%. (Passive)",
+    effect:{ type:"skill_dmg_bonus", value:0.02 },
+    base:0.02, perLevel:0.02,
+    nextDesc:(lvl) => `All active skill damage +${Math.round((0.02+lvl*0.02)*100*10)/10}% (permanent)`,
+  },
+
+  ser_did_you_want_more: {
+    name:"Did You Want More", icon:"😈", tree:"combat", cls:"strategist",
+    faction:"nightcreatures", commander:"h43",
+    type:"passive",
+    desc:"[Commander] 5% chance per round (rounds 1–5) to gain a follow-up normal attack. Follow-up does not trigger secondary effects. (Passive)",
+    effect:{ type:"followup_normal_attack", chance:0.05, maxRound:5 },
+    base:0.05, perLevel:0.05,
+    nextDesc:(lvl) => `${Math.round((0.05+lvl*0.05)*100)}% chance for follow-up normal attack (rounds 1–5, no secondary effects)`,
   },
 };
 
-export const SERAVA_RESKIN_SKILLS = {
-  serava_killing_instinct: {
-    name:"Predator's Hunger", icon:"⚔", tree:"combat", cls:"strategist",
-    faction:"nightcreatures", commander:"h43",
-    type:"passive",
-    desc:"Centuries of predation have honed her instincts. She permanently strikes harder.",
-    passiveCmdAtk:0.08, base:0.08, perLevel:0.06,
-    nextDesc:(lvl) => `+${Math.round((0.08+lvl*0.06)*100)}% commander damage (permanent)`,
-  },
-  serava_quick_strike: {
-    name:"Blur of Claws", icon:"⚡", tree:"combat", cls:"strategist",
-    faction:"nightcreatures", commander:"h43",
-    type:"active", cooldown:2, offset:1, duration:1,
-    desc:"She moves between heartbeats — faster than any mortal eye can follow.",
-    cmdMult:1.4, base:1.4, perLevel:0.15,
-    nextDesc:(lvl) => `Deals ${Math.round((1.4+lvl*0.15)*100)}% Physical Damage — rounds 1, 3, 5, 7, 9`,
-  },
-  serava_expose_weakness: {
-    name:"Exposed Veins", icon:"🎯", tree:"tactics", cls:"strategist",
-    faction:"nightcreatures", commander:"h43",
-    type:"active", cooldown:3, offset:2, duration:2,
-    desc:"She reads every weakness in the enemy line — they bleed more from everything that follows.",
-    enemyDmgTakenUp:0.12, base:0.12, perLevel:0.03,
-    nextDesc:(lvl) => `Enemy takes ${Math.round((0.12+lvl*0.03)*100)}% more damage (2 rnd) — rounds 2, 5, 8`,
-  },
-  serava_savage_blow: {
-    name:"Noble Savagery", icon:"🗡", tree:"combat", cls:"strategist",
-    faction:"nightcreatures", commander:"h43",
-    type:"active", cooldown:3, offset:3, duration:1,
-    desc:"Regal form hiding vicious intent — 220% damage that leaves the target reeling.",
-    cmdMult:2.2, enemyDmgTakenUp:0.15, base:2.2, perLevel:0.20,
-    nextDesc:(lvl) => `Deals ${Math.round((2.2+lvl*0.2)*100)}% Physical Damage + target takes 15% more damage for 1 round — rounds 3, 6, 9`,
-  },
-  serava_hex_curse: {
-    name:"Mesmer's Hex", icon:"🔮", tree:"tactics", cls:"strategist",
-    faction:"nightcreatures", commander:"h43",
-    type:"active", cooldown:4, offset:2, duration:2,
-    desc:"A vampiric gaze clouds enemy minds — their attacks lose all precision.",
-    enemyMissChance:0.18, base:0.18, perLevel:0.04,
-    nextDesc:(lvl) => `${Math.round((0.18+lvl*0.04)*100)}% enemy miss chance (2 rnd) — rounds 2, 6, 10`,
-  },
-  serava_killing_edge: {
-    name:"Jugular Strike", icon:"🔪", tree:"combat", cls:"strategist",
-    faction:"nightcreatures", commander:"h43",
-    type:"active", cooldown:5, offset:5, duration:1,
-    desc:"She strikes for the heart of an army — not its soldiers, but its will to stand.",
-    cmdPctDmg:0.06, base:0.06, perLevel:0.02,
-    nextDesc:(lvl) => `${Math.round((0.06+lvl*0.02)*100)}% of enemy max HP as direct damage — rounds 5, 10`,
-  },
-  serava_blind_strike: {
-    name:"Hypnotic Strike", icon:"👁", tree:"tactics", cls:"strategist",
-    faction:"nightcreatures", commander:"h43",
-    type:"active", cooldown:3, offset:1, duration:2,
-    desc:"A single look into her eyes robs the enemy of aggression.",
-    enemyAtkReduce:0.12, base:0.12, perLevel:0.03,
-    nextDesc:(lvl) => `-${Math.round((0.12+lvl*0.03)*100)}% enemy attack (2 rnd) — rounds 1, 4, 7, 10`,
-  },
-  serava_predator_eyes: {
-    name:"Crimson Sight", icon:"🦅", tree:"combat", cls:"strategist",
-    faction:"nightcreatures", commander:"h43",
-    type:"passive",
-    desc:"Those crimson eyes see everything — every weakness, every opening. +6% permanent crit.",
-    passiveCritChance:0.06, base:0.06, perLevel:0.04,
-    nextDesc:(lvl) => `+${Math.round((0.06+lvl*0.04)*100)}% critical hit chance (permanent)`,
-  },
-  serava_supply_cut: {
-    name:"Sever the Lifeline", icon:"✂", tree:"tactics", cls:"strategist",
-    faction:"nightcreatures", commander:"h43",
-    type:"active", cooldown:5, offset:3, duration:1,
-    desc:"She cuts the enemy's ability to recover — a war of attrition she always wins.",
-    blockHeal:3, base:3, perLevel:1,
-    nextDesc:(lvl) => `Block enemy healing for ${Math.round(3+lvl*1.0)} rounds — rounds 3, 8`,
-  },
-  serava_field_medic: {
-    name:"Blood Mending", icon:"💚", tree:"tactics", cls:"strategist",
-    faction:"nightcreatures", commander:"h43",
-    type:"passive",
-    desc:"Her vampiric aura passively restores fallen troops each round through stolen vitality.",
-    passiveHealPerRound:0.02, base:0.02, perLevel:0.01,
-    nextDesc:(lvl) => `Restore ${Math.round((0.02+lvl*0.01)*100)}% of lost troops each round`,
-  },
-};
+export const SERAVA_RESKIN_SKILLS = {};
 
 // ── LORD MALACHAR (champion, strategist, Vampire) ─────────────────────────────
 // High FOC (170) — true focus strategist. Debuffer/vulnerability specialist.
@@ -723,10 +748,10 @@ export const NIGHTCREATURES_SKILLS = {
 export const NIGHTCREATURES_BRANCH_SKILL_MAP = {
   // Countess Serava (strategist, Vampire) — blood curse debuffer + drain striker
   h43: [
-    { main:"serava_killing_instinct", sides:["serava_predator_eyes",   "serava_field_medic"]     },
-    { main:"serava_blood_curse",      sides:["serava_hex_curse",        "serava_blind_strike"]    },
-    { main:"serava_crimson_embrace",  sides:["serava_expose_weakness",  "serava_killing_edge"]    },
-    { main:"serava_savage_blow",      sides:["serava_quick_strike",     "serava_supply_cut"]      },
+    { main:"serava_crimson_embrace", sides:["ser_countess_seduction", "ser_siren_song"]       }, // R0 top
+    { main:"ser_brawler",            sides:["ser_fight_with_me",      "ser_overpower"]         }, // R0 bottom
+    { main:"mal_compulsion",         sides:["mal_vampires_thrall",    "ser_hk_eradicator"]    }, // R3 (shared Compulsion/Thrall)
+    { main:"ser_assassins_blade",    sides:["ser_thrill_of_the_hunt", "ser_did_you_want_more"] }, // R5
   ],
   // Lord Malachar (strategist, Vampire) — vulnerability stacker + army debuffer
   h44: [
