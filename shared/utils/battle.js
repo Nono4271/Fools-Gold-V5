@@ -205,9 +205,32 @@ switch (eff.type) {
     rs.focusPoisonResist += eff.focusResist || 0.01;
     break;
   case "mounted_spd_modified_dmg":
-    // Applied during troop damage calculation using SPD stat
     rs.mountedSpdDmgUp   = (eff.dmgUp  || 0.01);
     rs.mountedSpdDmgDown = (eff.dmgDown || 0.01);
+    break;
+  // Groth mechanics
+  case "mounted_atk_stack_spd":
+    // Stacks build during combat via on_hit; flagged here as passive config
+    rs.mountedAtkStackBonus = eff.valuePerStack || 0.006;
+    break;
+  case "heal_branch":
+    rs.healPct += eff.healPct || 0;
+    break;
+  case "branch_dmg_reduce":
+    rs.troopDmgReduce += eff.value || 0;
+    break;
+  case "branch_madness_immunity_chance":
+    if (Math.random() < (eff.chance || 0.14)) rs.branchMadnessImmune = true;
+    break;
+  case "physical_damage_stun":
+    rs.focusDmgBonus += eff.value || 0;
+    if (Math.random() < (eff.stunChance || 0.40)) {
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, 1);
+      roundLog.actions.push({ actor:actorLabel, action:`🌑 ${skill.name} — Enemy stunned!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "march_speed_bonus":
+    rs.marchSpeedBonus += eff.value || 0;
     break;
 }
 roundLog.actions.push({ actor:actorLabel, action:`${skill.icon} ${skill.name}`, dmg:0, isTroopSkill:true });
@@ -773,6 +796,11 @@ const rs = {
   multiHitDmgLo:0.20,        // Pack's Charge: damage range low
   multiHitDmgHi:0.40,        // Pack's Charge: damage range high
   focusPoisonResist:0,       // Thick Skin: focus + poison resistance for mounted
+  // Groth mechanics
+  mountedAtkStack:0,         // Mounted Specialist: current stack count
+  mountedAtkStackBonus:0,    // Mounted Specialist: bonus per stack (SPD modified)
+  branchMadnessImmune:false, // Protect the Troops: madness immunity chance for mounted
+  marchSpeedBonus:0,         // Lifeline of the Pack: non-combat march speed
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
