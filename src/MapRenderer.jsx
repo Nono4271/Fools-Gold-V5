@@ -1513,28 +1513,21 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const sPt = isoXY(pc + 1, pr + 2);
   const wPt = isoXY(pc,     pr + 1);
 
-  // Sprite-aligned footprint — corners derived from measured base diamond
-  // in the sprite image, rotated by the same angle as the sprite (-0.0902 rad).
+  // Sprite-aligned footprint — corners map to the 3x3 iso diamond.
+  // rotation=0 so no trig needed; fractions derived from sprite dims + anchor.
   const _sW  = TW * 3.0;
-  const _sH  = _sW * 0.85;
-  const _aY  = 0.905;
+  const _sH  = _sW * 0.80;
+  const _aY  = 0.875;
   const _sx  = bx;
-  const _sy  = sPt.cy - elev + TH * 0.95;
-  const _rot = -0.0902;
-  const _cos = Math.cos(_rot);
-  const _sin = Math.sin(_rot);
-  const _fp  = (fx, fy) => {
-    const lx = (fx - 0.5) * _sW;
-    const ly = (fy - _aY) * _sH;
-    return {
-      x: _sx + lx * _cos - ly * _sin,
-      y: _sy + lx * _sin + ly * _cos,
-    };
-  };
-  const _fpN = _fp(0.500, 0.423);
-  const _fpE = _fp(0.974, 0.703);
-  const _fpS = _fp(0.426, 0.995);
-  const _fpW = _fp(0.052, 0.714);
+  const _sy  = sPt.cy - elev + TH * 0.95 - TH * 0.42;
+  const _fp  = (fx, fy) => ({
+    x: _sx + (fx - 0.5) * _sW,
+    y: _sy + (fy - _aY) * _sH,
+  });
+  const _fpN = _fp(0.6667, 0.3146);
+  const _fpE = _fp(0.6667, 0.5907);
+  const _fpS = _fp(0.3333, 0.5907);
+  const _fpW = _fp(0.3333, 0.3146);
 
   const FOOTPRINT = [
     _fpN.x, _fpN.y,
@@ -1570,19 +1563,19 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // Source image is 2048x2048 (square) — preserve aspect ratio to avoid lean.
   // Scale so width fits the 3x3 footprint; height follows naturally.
   const targetW = TW * 3.0;
-  const targetH = targetW * 0.78;
+  const targetH = targetW * 0.80;
 
   const spriteX = bx;
-  const spriteY = sPt.cy - elev + TH * 0.95;
+  const spriteY = sPt.cy - elev + TH * 0.95 - TH * 0.42;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.905);
+    sp.anchor.set(0.5, 0.875);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
     sp.y = spriteY;
 
-    sp.rotation = -0.0902; // counter-rotates 5.17° lean baked into sprite
+    sp.rotation = 0;
     sp.skew.x   = 0;
     sp.skew.y   = 0;
   };
