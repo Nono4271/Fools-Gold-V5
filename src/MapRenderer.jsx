@@ -1562,11 +1562,24 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // anchor.y = 0.78 keeps the base grounded on the front tile row.
   // Source image is 2048x2048 (square) — preserve aspect ratio to avoid lean.
   // Scale so width fits the 3x3 footprint; height follows naturally.
+  // Per-faction fine-tuning offsets (xOff/yOff in pixels, positive = right/down)
+  const HQ_OFFSETS = {
+    pirates:        { xOff:  0,    yOff:  0    },
+    player:         { xOff:  0,    yOff:  0    },
+    orcs:           { xOff:  0,    yOff:  0    },
+    ai:             { xOff:  0,    yOff:  0    },
+    bountyhunters:  { xOff:  5,    yOff: -5    },
+    dragons:        { xOff:  5,    yOff:  10   },
+    holyknights:    { xOff: -5,    yOff:  10   },
+    nightcreatures: { xOff:  0,    yOff:  10   },
+  };
+  const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0 };
+
   const targetW = TW * 2.2;
   const targetH = targetW * 0.80;
 
-  const spriteX = bx;
-  const spriteY = sPt.cy - elev + TH * 0.60;
+  const spriteX = bx + off.xOff;
+  const spriteY = sPt.cy - elev + TH * 0.60 + off.yOff;
 
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.905);
