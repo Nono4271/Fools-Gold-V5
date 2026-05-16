@@ -159,12 +159,55 @@ switch (eff.type) {
     if (round <= (eff.maxRound || 5)) rs.followupChance += eff.chance || 0;
     break;
   case "melee_max_dmg_chance":
-    // Applied during troop damage calculation — flag it on rs for the damage loop
     rs.meleeMaxDmgChance = Math.min(1, (rs.meleeMaxDmgChance || 0) + (eff.chance || 0));
     break;
   case "focus_damage_heal_creatures":
     rs.focusDmgBonus += eff.value || 0;
     rs.healPct       += eff.healPct || 0;
+    break;
+  // Korrax mechanics
+  case "physical_damage_bleed":
+    rs.bleedApplied = Math.random() < (eff.bleedChance || 0.60);
+    rs.pendingBleedDmg = eff.bleedDmg || 0.30;
+    rs.bleedRoundsLeft = eff.bleedDuration || 2;
+    if (eff.bleedPreventsEvasion) rs.bleedPreventsEvasion = true;
+    break;
+  case "multi_hit_lowest_def":
+    rs.multiHitCount  = eff.hitsBase || 1;
+    rs.multiHitDmgLo  = eff.dmgLo || 0.20;
+    rs.multiHitDmgHi  = eff.dmgHi || 0.40;
+    break;
+  case "reactive_cmd_dmg_on_ally_hit":
+    rs.leaderRageBonus = eff.bonus || 0.10;
+    break;
+  case "first_hits_dmg_reduce":
+    rs.firstHitProtection  = eff.reduction || 0.02;
+    rs.firstHitsRemaining  = eff.instances || 3;
+    break;
+  case "branch_evasion_first_hit":
+    rs.branchEvasionChance = eff.chance || 0.08;
+    break;
+  case "stun_chance":
+    if (Math.random() < (eff.chance || 0.07)) {
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, 1);
+      roundLog.actions.push({ actor:actorLabel, action:`🌕 ${skill.name} — Enemy stunned!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "heal_creatures_mounted_bonus":
+    rs.healPct += eff.healPct || 0.30;
+    // mounted bonus applied separately in heal section
+    rs.mountedHealBonus = eff.mountedBonus || 0.75;
+    break;
+  case "night_max_dmg_chance":
+    rs.meleeMaxDmgChance = Math.min(1, (rs.meleeMaxDmgChance || 0) + (eff.chance || 0.10));
+    break;
+  case "dmg_type_resist":
+    rs.focusPoisonResist += eff.focusResist || 0.01;
+    break;
+  case "mounted_spd_modified_dmg":
+    // Applied during troop damage calculation using SPD stat
+    rs.mountedSpdDmgUp   = (eff.dmgUp  || 0.01);
+    rs.mountedSpdDmgDown = (eff.dmgDown || 0.01);
     break;
 }
 roundLog.actions.push({ actor:actorLabel, action:`${skill.icon} ${skill.name}`, dmg:0, isTroopSkill:true });
@@ -603,6 +646,8 @@ let defSlotHp = defSlotResolved.length > 0
 let totalAtkLostHp = 0;
 let blockHealRounds= 0;
 let prevRoundVenomDmg = 0; // venom delayed focus damage carries over round to round
+let bleedDmgPerRound  = 0; // bleed physical damage per round
+let bleedRoundsActive = 0; // rounds of bleed remaining
 
 const atkLvlMult = Math.pow(1.20, atkLvl - 5);
 const defLvlMult = Math.pow(1.20, Math.max(0, defLvl - 2));
@@ -715,6 +760,19 @@ const rs = {
   pendingVenomDmg:0,         // carry-over venom focus damage to apply next round
   allyDmgBonus:0,            // A Countess's Seduction: allied DMG up
   enemyDmgDown:0,            // A Countess's Seduction: enemy DMG down
+  // Korrax mechanics
+  bleedApplied:false,        // Wolf's Rage: bleed on target (30% DMG/round for 2 rounds)
+  bleedPreventsEvasion:false,// Max level Wolf's Rage: bleed targets cannot evade
+  pendingBleedDmg:0,         // carry-over bleed damage
+  bleedRoundsLeft:0,         // rounds of bleed remaining
+  leaderRageBonus:0,         // Leader's Rage: next CMD attack bonus
+  firstHitProtection:0,      // Leader's Protection: % reduction on first 3 hits
+  firstHitsRemaining:3,      // Leader's Protection: hits remaining
+  branchEvasionChance:0,     // Pack's Connection: werewolf unit first-hit evasion
+  multiHitCount:0,           // Pack's Charge: number of hits to perform
+  multiHitDmgLo:0.20,        // Pack's Charge: damage range low
+  multiHitDmgHi:0.40,        // Pack's Charge: damage range high
+  focusPoisonResist:0,       // Thick Skin: focus + poison resistance for mounted
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
@@ -729,6 +787,20 @@ if (prevRoundVenomDmg > 0) {
     defKilled:Math.max(0, Math.round((prevDef-defTroopHp)/(defTroopHpPer||1))), isSkill:true });
 }
 prevRoundVenomDmg = rs.pendingVenomDmg; // carry forward for next round
+
+// ── Bleed tick — apply carry-over bleed damage ────────────────────────────
+if (bleedRoundsActive > 0 && bleedDmgPerRound > 0) {
+  const bleedHit = Math.max(1, Math.round(cmdAtkStat * bleedDmgPerRound));
+  const prevDef  = defTroopHp;
+  defTroopHp     = Math.max(0, defTroopHp - bleedHit);
+  roundLog.actions.push({ actor:cmd.n, action:`🩸 Bleed — ${Math.round(bleedDmgPerRound*100)}% physical damage`, dmg:bleedHit,
+    defKilled:Math.max(0, Math.round((prevDef-defTroopHp)/(defTroopHpPer||1))), isSkill:true });
+  bleedRoundsActive--;
+}
+if (rs.bleedApplied) {
+  bleedDmgPerRound  = rs.pendingBleedDmg;
+  bleedRoundsActive = rs.bleedRoundsLeft;
+}
 
 // round_start troop skills — all atk slots apply to enemy
 for (const sl of atkSlotResolved) {
