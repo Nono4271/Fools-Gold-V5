@@ -148,10 +148,11 @@ function Connector({ x1, y1, x2, y2, color, lit, dashed }) {
 function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canLevelUp, gateLocked, branchLocked, onLevelUp, onClose, nodeX, nodeY }) {
   if (!skillDef) return null;
   const atMax = level >= maxLevel;
+  const hasMaxEffect = !!skillDef.maxLevelEffect;
 
-  // Tooltip dimensions
+  // Tooltip dimensions — taller if max level effect is present
   const TW = 220;
-  const TH = 280;
+  const TH = hasMaxEffect ? 340 : 300;
   const MARGIN = 10;
   const screenW = window.innerWidth;
   const screenH = window.innerHeight;
@@ -165,6 +166,22 @@ function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canL
   // Vertical: centre on node, clamp within screen
   let anchorTop = nodeY - TH / 2;
   anchorTop = Math.max(MARGIN, Math.min(screenH - TH - MARGIN, anchorTop));
+
+  // Build max level effect description string
+  function maxEffectDesc(eff) {
+    if (!eff) return null;
+    const parts = [];
+    if (eff.atkDown)                parts.push(`ATK -${eff.atkDown}`);
+    if (eff.spdDown)                parts.push(`SPD -${eff.spdDown}`);
+    if (eff.bonusFocus)             parts.push(`FOC +${eff.bonusFocus}`);
+    if (eff.focusBonus)             parts.push(`FOC +${eff.focusBonus}`);
+    if (eff.spdBonus)               parts.push(`SPD +${eff.spdBonus}`);
+    if (eff.bonusHealPct)           parts.push(`Creature Heal +${Math.round(eff.bonusHealPct*100)}%`);
+    if (eff.stunImmunityWhileInvis) parts.push(`Stun Immunity while Invisible`);
+    if (eff.bonusHeal)              parts.push(`Heal +${Math.round(eff.bonusHeal*100)}%`);
+    return parts.join(" | ") || null;
+  }
+  const maxEffStr = maxEffectDesc(skillDef.maxLevelEffect);
 
   return (
     <div
@@ -220,6 +237,26 @@ function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canL
       <div style={{ fontSize: 9, color: "#7a6a50", fontFamily: "'Crimson Pro',serif",
         lineHeight: 1.5, marginBottom: 8 }}>{skillDef.desc}</div>
 
+      {/* Max Level Effect — always visible if it exists */}
+      {maxEffStr && (
+        <div style={{
+          padding: "5px 8px", marginBottom: 8,
+          background: `${accent}10`,
+          border: `1px solid ${accent}35`,
+          borderRadius: 5,
+          display: "flex", alignItems: "flex-start", gap: 5,
+        }}>
+          <span style={{ fontSize: 9, flexShrink: 0, marginTop: 1 }}>⚜️</span>
+          <div>
+            <div style={{ fontSize: 6, color: accent, fontFamily: "'Cinzel',serif",
+              letterSpacing: ".07em", marginBottom: 2 }}>MAX LEVEL EFFECT</div>
+            <div style={{ fontSize: 8, color: "#d4b870", fontFamily: "'Crimson Pro',serif", lineHeight: 1.4 }}>
+              {maxEffStr}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Current / Next level boxes */}
       <div style={{ display: "grid", gridTemplateColumns: level > 0 ? "1fr 1fr" : "1fr", gap: 6, marginBottom: 10 }}>
         {level > 0 && (
@@ -268,7 +305,7 @@ function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canL
             : branchLocked
               ? "Locked — earn Respect"
               : gateLocked
-                ? "Upgrade main skill first"
+                ? "Level up main skill first"
                 : "No skill points"}
         </button>
       )}
@@ -398,7 +435,7 @@ function BranchRow({
                   <text x={sideSz / 2} y={sideSz + 11} textAnchor="middle"
                     fontSize={7} fill={lvl > 0 ? color : "#2a2018"}
                     fontFamily="'Cinzel',serif">{lvl}/7</text>
-                  {gateLocked && lvl < 5 && (
+                  {gateLocked && lvl < 7 && (
                     <text x={sideSz / 2} y={sideSz + 21} textAnchor="middle"
                       fontSize={5.5} fill="#c07830" fontFamily="'Cinzel',serif">🔒 need main lv{cap * 2 > 14 ? 15 : cap * 2}</text>
                   )}
@@ -432,7 +469,7 @@ function BranchRow({
                   <text x={sideSz / 2} y={sideSz + 11} textAnchor="middle"
                     fontSize={7} fill={lvl > 0 ? color : "#2a2018"}
                     fontFamily="'Cinzel',serif">{lvl}/7</text>
-                  {gateLocked && lvl < 5 && (
+                  {gateLocked && lvl < 7 && (
                     <text x={sideSz / 2} y={sideSz + 21} textAnchor="middle"
                       fontSize={5.5} fill="#c07830" fontFamily="'Cinzel',serif">🔒 need main lv{cap * 2 > 14 ? 15 : cap * 2}</text>
                   )}
@@ -791,7 +828,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
         {/* Skill info panel — bottom sheet on tap */}
         {selectedNode && (() => {
           const liveLevel = liveSkillPts[selectedNode.skillKey] ?? 0;
-          const maxLvl    = selectedNode.isMain ? 10 : 5;
+          const maxLvl    = selectedNode.isMain ? 15 : 7;
           const liveGate  = selectedNode.isMain ? false :
             (selectedNode.mainKeyForBranch
               ? liveLevel >= getSideCap(selectedNode.mainKeyForBranch)
