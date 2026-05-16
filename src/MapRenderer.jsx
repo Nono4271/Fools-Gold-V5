@@ -1476,55 +1476,6 @@ const _keepStateCache = new Map(); // tileKey → { owner, isSelected }
 // Call this whenever the tile map is fully reset (e.g. new game) so keeps rebuild from scratch.
 export function clearKeepCache() { _keepStateCache.clear(); }
 
-// ── Custom outline filter (alpha-dilation, no external package needed) ────────
-// Samples a ring of neighbours; if current pixel is transparent but a neighbour
-// is opaque, it draws the outline color.  Thickness is in texels (≈ CSS px at
-// zoom 1).  Works on any sprite with transparent background (webp with alpha).
-let _HQOutlineFilter = null;
-function getHQOutlineFilter(PIXI) {
-  if (_HQOutlineFilter) return _HQOutlineFilter;
-
-  const FRAG = `
-    precision mediump float;
-    varying vec2 vTextureCoord;
-    uniform sampler2D uSampler;
-    uniform vec4 inputSize;
-    uniform float thickness;
-    uniform vec3 outlineColor;
-    uniform float outlineAlpha;
-    void main(void) {
-      vec4 src = texture2D(uSampler, vTextureCoord);
-      if (src.a > 0.5) { gl_FragColor = src; return; }
-      vec2 step = thickness * inputSize.zw;
-      float hit = 0.0;
-      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2( step.x,  0.0   )).a);
-      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2(-step.x,  0.0   )).a);
-      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2( 0.0,     step.y)).a);
-      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2( 0.0,    -step.y)).a);
-      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2( step.x,  step.y)).a);
-      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2(-step.x,  step.y)).a);
-      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2( step.x, -step.y)).a);
-      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2(-step.x, -step.y)).a);
-      if (hit > 0.5) {
-        gl_FragColor = vec4(outlineColor * outlineAlpha, outlineAlpha);
-      } else {
-        gl_FragColor = vec4(0.0);
-      }
-    }
-  `;
-  _HQOutlineFilter = class HQOutlineFilter extends PIXI.Filter {
-    constructor(thickness, color, alpha) {
-      super(undefined, FRAG, {
-        thickness:    thickness,
-        outlineColor: [(color >> 16 & 0xff) / 255, (color >> 8 & 0xff) / 255, (color & 0xff) / 255],
-        outlineAlpha: alpha,
-      });
-      this.padding = Math.ceil(thickness) + 4;
-    }
-  };
-  return _HQOutlineFilter;
-}
-
 // ── HQ Sprite Layer ───────────────────────────────────────────────────────────
 // Each player/AI HQ renders as a faction-specific sprite centered on the 3×3
 // footprint. The primary tile is the top-left corner (isHQ===true); the other
@@ -1592,7 +1543,15 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
 
-
+  // ── Selection outline ──
+  if (isSelected) {
+    const outlineGfx = new PIXI.Graphics();
+    const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+    outlineGfx.lineStyle(3, 0xffffff, 0.95);
+    outlineGfx.drawPolygon(FOOTPRINT);
+    outlineGfx.lineStyle(0);
+    group.addChild(outlineGfx);
+  }
 
   // ── Sprite ──
   const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
@@ -1622,20 +1581,16 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const spriteX = bx + off.xOff;
   const spriteY = sPt.cy - elev + TH * 0.60 + off.yOff;
 
-  const outlineColor = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
-  const outlineThick = isSelected ? 4 : 2.5;
-  const outlineAlpha = isSelected ? 1.0 : 0.8;
-
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.905);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
     sp.y = spriteY;
-    if (owner) {
-      const OFilter = getHQOutlineFilter(PIXI);
-      sp.filters = [new OFilter(outlineThick, outlineColor, outlineAlpha)];
-    }
+
+    sp.rotation = 0;
+    sp.skew.x   = 0;
+    sp.skew.y   = 0;
   };
 
   if (texCache[spriteUrl]) {
