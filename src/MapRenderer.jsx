@@ -1476,6 +1476,72 @@ const _keepStateCache = new Map(); // tileKey → { owner, isSelected }
 // Call this whenever the tile map is fully reset (e.g. new game) so keeps rebuild from scratch.
 export function clearKeepCache() { _keepStateCache.clear(); }
 
+// ── Custom outline filter (alpha-dilation, no external package needed) ────────
+// Samples a ring of neighbours; if current pixel is transparent but a neighbour
+// is opaque, it draws the outline color.  Thickness is in texels (≈ CSS px at
+// zoom 1).  Works on any sprite with transparent background (webp with alpha).
+let _HQOutlineFilter = null;
+function getHQOutlineFilter(PIXI) {
+  if (_HQOutlineFilter) return _HQOutlineFilter;
+  const VERT = `
+    attribute vec2 aVertexPosition;
+    uniform mat3 projectionMatrix;
+    varying vec2 vTextureCoord;
+    uniform vec4 inputSize;
+    uniform vec4 outputFrame;
+    vec4 filterVertexPosition(void) {
+      vec2 position = aVertexPosition * max(outputFrame.zw, vec2(0.)) + outputFrame.xy;
+      return vec4((projectionMatrix * vec3(position, 1.0)).xy, 0., 1.);
+    }
+    vec2 filterTextureCoord(void) {
+      return aVertexPosition * (outputFrame.zw * inputSize.zw);
+    }
+    void main(void) {
+      gl_Position = filterVertexPosition();
+      vTextureCoord = filterTextureCoord();
+    }
+  `;
+  const FRAG = `
+    varying vec2 vTextureCoord;
+    uniform sampler2D uSampler;
+    uniform vec4 inputSize;
+    uniform float thickness;
+    uniform vec3 outlineColor;
+    uniform float outlineAlpha;
+    void main(void) {
+      vec4 src = texture2D(uSampler, vTextureCoord);
+      if (src.a > 0.5) { gl_FragColor = src; return; }
+      vec2 px = vec2(thickness) * inputSize.zw;
+      float maxA = 0.0;
+      for (int x = -2; x <= 2; x++) {
+        for (int y = -2; y <= 2; y++) {
+          if (x == 0 && y == 0) continue;
+          float dist = sqrt(float(x*x + y*y));
+          if (dist > 2.5) continue;
+          vec2 uv = vTextureCoord + vec2(float(x), float(y)) * px;
+          maxA = max(maxA, texture2D(uSampler, uv).a);
+        }
+      }
+      if (maxA > 0.5) {
+        gl_FragColor = vec4(outlineColor * outlineAlpha, outlineAlpha);
+      } else {
+        gl_FragColor = vec4(0.0);
+      }
+    }
+  `;
+  _HQOutlineFilter = class HQOutlineFilter extends PIXI.Filter {
+    constructor(thickness, color, alpha) {
+      super(VERT, FRAG, {
+        thickness:    { value: thickness, type: 'float' },
+        outlineColor: { value: [(color >> 16 & 0xff) / 255, (color >> 8 & 0xff) / 255, (color & 0xff) / 255], type: 'vec3' },
+        outlineAlpha: { value: alpha, type: 'float' },
+      });
+      this.padding = Math.ceil(thickness) + 2;
+    }
+  };
+  return _HQOutlineFilter;
+}
+
 // ── HQ Sprite Layer ───────────────────────────────────────────────────────────
 // Each player/AI HQ renders as a faction-specific sprite centered on the 3×3
 // footprint. The primary tile is the top-left corner (isHQ===true); the other
@@ -1543,28 +1609,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
 
-  // ── Ownership outline — stroked polygon on the sprite footprint ──
-  // _fpN/E/S/W are already calibrated to the sprite's base edge.
-  // We draw a colored stroke around those points as a Graphics object
-  // underneath the sprite, with a small outward expansion so it peeks out.
-  if (owner) {
-    const ownerColor   = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
-    const strokeW      = isSelected ? 5 : 3;
-    const strokeAlpha  = isSelected ? 1.0 : 0.75;
-    const OD           = strokeW / 2 + 2; // expand outward by half stroke + 2px
 
-    // Centroid of the footprint for outward expansion
-    const fcx = (_fpN.x + _fpE.x + _fpS.x + _fpW.x) / 4;
-    const fcy = (_fpN.y + _fpE.y + _fpS.y + _fpW.y) / 4;
-    const ex  = (pt) => ({ x: pt.x + Math.sign(pt.x - fcx) * OD, y: pt.y + Math.sign(pt.y - fcy) * OD });
-    const eN  = ex(_fpN), eE = ex(_fpE), eS = ex(_fpS), eW = ex(_fpW);
-
-    const olGfx = new PIXI.Graphics();
-    olGfx.lineStyle(strokeW, ownerColor, strokeAlpha, 0); // 0 = outer alignment
-    olGfx.drawPolygon([eN.x, eN.y, eE.x, eE.y, eS.x, eS.y, eW.x, eW.y]);
-    olGfx.lineStyle(0);
-    group.addChild(olGfx);
-  }
 
   // ── Sprite ──
   const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
@@ -1594,12 +1639,20 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const spriteX = bx + off.xOff;
   const spriteY = sPt.cy - elev + TH * 0.60 + off.yOff;
 
+  const outlineColor = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+  const outlineThick = isSelected ? 4 : 2.5;
+  const outlineAlpha = isSelected ? 1.0 : 0.8;
+
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.905);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
     sp.y = spriteY;
+    if (owner) {
+      const OFilter = getHQOutlineFilter(PIXI);
+      sp.filters = [new OFilter(outlineThick, outlineColor, outlineAlpha)];
+    }
   };
 
   if (texCache[spriteUrl]) {
