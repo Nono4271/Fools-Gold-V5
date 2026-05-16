@@ -367,7 +367,7 @@ function BranchRow({
                 filled={lvl > 0} color={color} accent={accent}
                 locked={nodeLocked} isMain={false} selected={sel} />
               <LevelPips cx={sideSz/2} cy={sideSz/2} r={sideSz*0.42}
-                level={lvl} maxLevel={5} color={color} accent={accent} />
+                level={lvl} maxLevel={7} color={color} accent={accent} />
               {!nodeLocked && (
                 <>
                   <text x={sideSz / 2} y={-8} textAnchor="middle"
@@ -375,10 +375,10 @@ function BranchRow({
                     fontFamily="'Cinzel',serif" letterSpacing=".03em">{sk.name}</text>
                   <text x={sideSz / 2} y={sideSz + 11} textAnchor="middle"
                     fontSize={7} fill={lvl > 0 ? color : "#2a2018"}
-                    fontFamily="'Cinzel',serif">{lvl}/5</text>
+                    fontFamily="'Cinzel',serif">{lvl}/7</text>
                   {gateLocked && lvl < 5 && (
                     <text x={sideSz / 2} y={sideSz + 21} textAnchor="middle"
-                      fontSize={5.5} fill="#c07830" fontFamily="'Cinzel',serif">🔒 need main lv{cap * 2}</text>
+                      fontSize={5.5} fill="#c07830" fontFamily="'Cinzel',serif">🔒 need main lv{cap * 2 > 14 ? 15 : cap * 2}</text>
                   )}
                 </>
               )}
@@ -401,7 +401,7 @@ function BranchRow({
                 filled={lvl > 0} color={color} accent={accent}
                 locked={nodeLocked} isMain={false} selected={sel} />
               <LevelPips cx={sideSz/2} cy={sideSz/2} r={sideSz*0.42}
-                level={lvl} maxLevel={5} color={color} accent={accent} />
+                level={lvl} maxLevel={7} color={color} accent={accent} />
               {!nodeLocked && (
                 <>
                   <text x={sideSz / 2} y={-8} textAnchor="middle"
@@ -409,10 +409,10 @@ function BranchRow({
                     fontFamily="'Cinzel',serif" letterSpacing=".03em">{sk.name}</text>
                   <text x={sideSz / 2} y={sideSz + 11} textAnchor="middle"
                     fontSize={7} fill={lvl > 0 ? color : "#2a2018"}
-                    fontFamily="'Cinzel',serif">{lvl}/5</text>
+                    fontFamily="'Cinzel',serif">{lvl}/7</text>
                   {gateLocked && lvl < 5 && (
                     <text x={sideSz / 2} y={sideSz + 21} textAnchor="middle"
-                      fontSize={5.5} fill="#c07830" fontFamily="'Cinzel',serif">🔒 need main lv{cap * 2}</text>
+                      fontSize={5.5} fill="#c07830" fontFamily="'Cinzel',serif">🔒 need main lv{cap * 2 > 14 ? 15 : cap * 2}</text>
                   )}
                 </>
               )}
@@ -429,7 +429,7 @@ function BranchRow({
             filled={mainFilled} color={color} accent={accent}
             locked={locked} isMain={true} selected={selectedKey === mainSkill.key} />
           <LevelPips cx={mainSz/2} cy={mainSz/2} r={mainSz*0.42}
-            level={mainLvl} maxLevel={10} color={color} accent={accent} />
+            level={mainLvl} maxLevel={15} color={color} accent={accent} />
           <>
             <text x={mainSz / 2} y={mainSz / 2 + 7} textAnchor="middle"
               fontSize={locked ? 16 : 20} style={{ pointerEvents: "none" }}>
@@ -514,7 +514,8 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
   function getSideCap(mainSkillKey) {
     const liveSkillPts = cmd.skillPoints ?? {};
     const mainLvl = liveSkillPts[mainSkillKey] ?? 0;
-    return Math.floor(mainLvl / 2);
+    // 2:1 ratio up to side cap 6 (main lv12), then requires main 15 for side 7
+    return mainLvl >= 15 ? 7 : Math.min(6, Math.floor(mainLvl / 2));
   }
 
   function handleLevelUp(skillKey, mainSkillKeyForBranch) {
@@ -525,13 +526,14 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
       const prev_pts = c.skillPoints ?? {};
       const curLvl = prev_pts[skillKey] ?? 0;
       const isMain = !!MAIN_SKILLS[skillKey];
-      const maxLvl = isMain ? 10 : 5;
+      const maxLvl = isMain ? 15 : 7;
       if (curLvl >= maxLvl) return c;
 
-      // Gatekeep side skills
+      // Gatekeep side skills — 2:1 ratio until main=12 (side cap 6),
+      // then side can only reach 7 once main is at 15.
       if (!isMain && mainSkillKeyForBranch) {
         const mainLvl = prev_pts[mainSkillKeyForBranch] ?? 0;
-        const sideCap = Math.floor(mainLvl / 2);
+        const sideCap = mainLvl >= 15 ? 7 : Math.min(6, Math.floor(mainLvl / 2));
         if (curLvl >= sideCap) return c; // blocked
       }
 
@@ -572,7 +574,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
 
   // selected node's live data
   const selLevel   = selectedNode ? (liveSkillPts[selectedNode.skillKey] ?? 0) : 0;
-  const selMaxLvl  = selectedNode?.isMain ? 10 : 5;
+  const selMaxLvl  = selectedNode?.isMain ? 15 : 7;
   const selCanUp   = liveUnspent > 0 && selLevel < selMaxLvl && !selectedNode?.gateLocked && !selectedNode?.branchLocked;
 
   return (
