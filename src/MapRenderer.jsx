@@ -1543,6 +1543,29 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
 
+  // ── Ownership outline — stroked polygon on the sprite footprint ──
+  // _fpN/E/S/W are already calibrated to the sprite's base edge.
+  // We draw a colored stroke around those points as a Graphics object
+  // underneath the sprite, with a small outward expansion so it peeks out.
+  if (owner) {
+    const ownerColor   = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+    const strokeW      = isSelected ? 5 : 3;
+    const strokeAlpha  = isSelected ? 1.0 : 0.75;
+    const OD           = strokeW / 2 + 2; // expand outward by half stroke + 2px
+
+    // Centroid of the footprint for outward expansion
+    const fcx = (_fpN.x + _fpE.x + _fpS.x + _fpW.x) / 4;
+    const fcy = (_fpN.y + _fpE.y + _fpS.y + _fpW.y) / 4;
+    const ex  = (pt) => ({ x: pt.x + Math.sign(pt.x - fcx) * OD, y: pt.y + Math.sign(pt.y - fcy) * OD });
+    const eN  = ex(_fpN), eE = ex(_fpE), eS = ex(_fpS), eW = ex(_fpW);
+
+    const olGfx = new PIXI.Graphics();
+    olGfx.lineStyle(strokeW, ownerColor, strokeAlpha, 0); // 0 = outer alignment
+    olGfx.drawPolygon([eN.x, eN.y, eE.x, eE.y, eS.x, eS.y, eW.x, eW.y]);
+    olGfx.lineStyle(0);
+    group.addChild(olGfx);
+  }
+
   // ── Sprite ──
   const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
   const spriteUrl  = `/hq/${spriteName}`;
@@ -1571,24 +1594,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const spriteX = bx + off.xOff;
   const spriteY = sPt.cy - elev + TH * 0.60 + off.yOff;
 
-  // ── Ownership outline — double-sprite technique ──
-  // A second copy of the sprite, tinted to the owner color, scaled up by a
-  // small uniform margin and rendered beneath the main sprite.  Because it
-  // uses the same texture alpha the outline follows every contour of the art.
-  const ownerColor   = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
-  const outlineScale = isSelected ? 1.055 : 1.032; // larger ring when selected
-  const outlineAlpha = isSelected ? 0.95  : 0.60;
-
-  const applyOutlineSprite = (sp) => {
-    sp.anchor.set(0.5, 0.905);
-    sp.width  = targetW  * outlineScale;
-    sp.height = targetH  * outlineScale;
-    sp.x = spriteX;
-    sp.y = spriteY;
-    sp.tint  = ownerColor;
-    sp.alpha = outlineAlpha;
-  };
-
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.905);
     sp.width  = targetW;
@@ -1598,11 +1603,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   };
 
   if (texCache[spriteUrl]) {
-    if (owner) {
-      const ol = new PIXI.Sprite(texCache[spriteUrl]);
-      applyOutlineSprite(ol);
-      group.addChild(ol);
-    }
     const sp = new PIXI.Sprite(texCache[spriteUrl]);
     applySprite(sp);
     group.addChild(sp);
@@ -1620,14 +1620,9 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       if (placeholderGfx.parent) placeholderGfx.parent.removeChild(placeholderGfx);
       placeholderGfx.destroy();
       if (!group.destroyed) {
-        if (owner) {
-          const ol = new PIXI.Sprite(tex);
-          applyOutlineSprite(ol);
-          group.addChildAt(ol, 0);
-        }
         const sp = new PIXI.Sprite(tex);
         applySprite(sp);
-        group.addChild(sp);
+        group.addChildAt(sp, 0);
       }
     }).catch(() => {
       // Sprite not found — placeholder stays, that's fine
