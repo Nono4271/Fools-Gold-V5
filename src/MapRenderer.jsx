@@ -1543,15 +1543,12 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
 
-  // ── Selection outline ──
-  if (isSelected) {
-    const outlineGfx = new PIXI.Graphics();
-    const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
-    outlineGfx.lineStyle(3, 0xffffff, 0.95);
-    outlineGfx.drawPolygon(FOOTPRINT);
-    outlineGfx.lineStyle(0);
-    group.addChild(outlineGfx);
-  }
+  // ── Ownership outline — applied as OutlineFilter on the sprite ──
+  // Color and thickness are set here; the filter is attached in applySprite()
+  // so it traces the actual sprite alpha rather than a geometric diamond.
+  const ownerColor = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+  const outlineThickness = isSelected ? 4 : 2;
+  const outlineAlpha    = isSelected ? 1.0 : 0.65;
 
   // ── Sprite ──
   const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
@@ -1591,6 +1588,14 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     sp.rotation = 0;
     sp.skew.x   = 0;
     sp.skew.y   = 0;
+
+    // OutlineFilter traces the actual sprite alpha — works regardless of
+    // faction-specific scale/anchor tuning.  Thickness scales up on selection.
+    if (owner && PIXI.filters?.OutlineFilter) {
+      sp.filters = [
+        new PIXI.filters.OutlineFilter(outlineThickness, ownerColor, outlineAlpha),
+      ];
+    }
   };
 
   if (texCache[spriteUrl]) {
