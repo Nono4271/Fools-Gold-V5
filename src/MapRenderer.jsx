@@ -1562,7 +1562,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // anchor.y = 0.78 keeps the base grounded on the front tile row.
   // Source image is 2048x2048 (square) — preserve aspect ratio to avoid lean.
   // Scale so width fits the 3x3 footprint; height follows naturally.
-  const targetW = TW * 3.0;
+  const targetW = TW * 2.2;
   const targetH = targetW * 0.80;
 
   const spriteX = bx;
