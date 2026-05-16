@@ -408,110 +408,161 @@ export const GROTH_RESKIN_SKILLS = {
 };
 
 // ── ALPHA KORRAX (champion, leader, Werewolf) ─────────────────────────────────
-// ATK:185, FOC:0, SPD:85 — dominant pack alpha. Pure leader: army buffs,
-// garrison breaker, mounted/melee troop synergy. The pack obeys absolutely.
+// ATK:185, FOC:0, SPD:85 — dominant pack alpha. Speed-modified mounted buffs,
+// bleed, multi-hit charge, night bonuses. The pack's strength flows through him.
 
 export const KORRAX_UNIQUE_SKILLS = {
-  korrax_alpha_call: {
-    name:"Alpha's Call", icon:"🌕", tree:"command", cls:"leader",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  kor_pack_leader: {
+    name:"Pack Leader", icon:"🐺", tree:"command", cls:"leader",
     faction:"nightcreatures", commander:"h46",
-    type:"active", cooldown:3, offset:1, duration:2,
-    desc:"The Alpha howls and the pack answers — surging in attack while the enemy falters.",
-    troopAtkMult:1.22, enemyAtkReduce:0.14, base:1.22, perLevel:0.06,
-    nextDesc:(lvl) => `+${Math.round((1.22+lvl*0.06-1)*100)}% attack, -${Math.round((0.14+lvl*0.03)*100)}% enemy attack (2 rnd) — rounds 1, 4, 7, 10`,
+    type:"passive",
+    desc:"[Mounted Units] Damage Dealt +1.0% | Damage Received -1.0% (both modified by SPD). (Passive)",
+    effect:{ type:"mounted_spd_modified_dmg", dmgUp:0.01, dmgDown:0.01 },
+    base:0.01, perLevel:0.01,
+    maxLevelEffect:{ werewolfBonusDmg:0.10 },
+    nextDesc:(lvl) => `[Mounted] DMG +${Math.round((0.01+lvl*0.01)*100)}% / DMG Received -${Math.round((0.01+lvl*0.01)*100)}% (SPD mod)${lvl >= 14 ? " | Max: Werewolf Units +10% DMG" : ""} (permanent)`,
   },
-  moon_tide_charge: {
-    name:"Moon-Tide Charge", icon:"🐺", tree:"command", cls:"leader",
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  // Round 2 + 2CD → rounds 2, 5, 8
+  kor_commanders_howl: {
+    name:"Commander's Howl", icon:"🌕", tree:"command", cls:"leader",
     faction:"nightcreatures", commander:"h46",
-    type:"active", cooldown:5, offset:5, duration:1,
-    desc:"Under the full moon the pack becomes a tide — unstoppable, consuming, absolute.",
-    troopAtkMult:1.60, garrisonIgnore:0.20, base:1.60, perLevel:0.10,
-    nextDesc:(lvl) => `+${Math.round((1.6+lvl*0.08-1)*100)}% attack + ignore ${Math.round((0.2+lvl*0.03)*100)}% garrison — rounds 5, 10`,
+    type:"active", cooldown:2, offset:2, duration:1,
+    desc:"[Round 2] [2 Enemy Units] 7% chance to inflict Stun for 1 round. (Rounds 2, 5, 8)",
+    effect:{ type:"stun_chance", targets:2, chance:0.07 },
+    base:0.07, perLevel:0.0643,
+    nextDesc:(lvl) => `[2 Enemy Units] ${Math.round((0.07+lvl*0.0643)*100)}% chance to Stun (1 rnd) — rounds 2,5,8`,
+  },
+
+  kor_pack_protection: {
+    name:"Pack Protection", icon:"🛡️", tree:"command", cls:"leader",
+    faction:"nightcreatures", commander:"h46",
+    type:"passive",
+    desc:"[Werewolf Units] Defence +2.0. (Passive)",
+    effect:{ type:"troop_def_bonus_vs_branch", branch:"werewolves", value:2.0 },
+    base:2.0, perLevel:2.0,
+    nextDesc:(lvl) => `[Werewolf Units] DEF +${2.0 + lvl * 2.0} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  kor_wolfs_rage: {
+    name:"Wolf's Rage", icon:"⚔️", tree:"command", cls:"leader",
+    faction:"nightcreatures", commander:"h46",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[Enemy Unit with highest DEF] 15% Physical Damage (modified by ATK) | 60% chance to inflict Bleed | DEF -1.0 for 2 rounds. (Rounds 3, 6, 9)",
+    effect:{ type:"physical_damage_bleed", target:"highestDef", bleedChance:0.60, defDown:1.0, bleedDmg:0.30, bleedDuration:2, modifiedBy:"atk" },
+    base:0.15, perLevel:0.15,
+    maxLevelEffect:{ bleedPreventsEvasion:true },
+    nextDesc:(lvl) => {
+      const dmg = Math.round((0.15+lvl*0.15)*100);
+      const def = (1.0+lvl*1.0).toFixed(1);
+      return `[Highest DEF Unit] ${dmg}% Physical DMG (ATK mod) + 60% Bleed + DEF -${def}${lvl >= 14 ? " | Max: Bleed prevents evasion" : ""} — rounds 3,6,9`;
+    },
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // 3CD → rounds 4, 8
+  kor_moonlight: {
+    name:"Moonlight", icon:"🌙", tree:"command", cls:"leader",
+    faction:"nightcreatures", commander:"h46",
+    type:"active", cooldown:3, offset:4, duration:1,
+    desc:"[2 Creature of the Night Units] Heals 30% HP | [Mounted Units] Heal an additional 75% HP. (Rounds 4, 8)",
+    effect:{ type:"heal_creatures_mounted_bonus", healPct:0.30, mountedBonus:0.75, targets:2 },
+    base:0.30, perLevel:0.30,
+    nextDesc:(lvl) => {
+      const base = Math.round((0.30+lvl*0.30)*100);
+      return `[2 Creature Units] ${base}% HP | [Mounted] +75% additional (${base+75}% total) — rounds 4,8`;
+    },
+  },
+
+  kor_moons_blessing: {
+    name:"Moon's Blessing", icon:"✨", tree:"command", cls:"leader",
+    faction:"nightcreatures", commander:"h46",
+    type:"passive",
+    desc:"[Werewolf Units] At Night: 10.0% chance to deal maximum damage. (Passive)",
+    effect:{ type:"night_max_dmg_chance", branch:"werewolves", chance:0.10 },
+    base:0.10, perLevel:0.10,
+    nextDesc:(lvl) => `[Werewolf Units] Night: ${Math.round((0.10+lvl*0.10)*100)}% chance for max damage (permanent)`,
+  },
+
+  // ── R3 — Main ─────────────────────────────────────────────────────────────
+  kor_power_of_alpha: {
+    name:"Power of an Alpha", icon:"👑", tree:"command", cls:"leader",
+    faction:"nightcreatures", commander:"h46",
+    type:"passive",
+    desc:"[Commander] ATK +1.0 | SPD +1.0 | +10 ATK bonus if army is all Mounted units. (Passive)",
+    effect:{ type:"cmd_stat_bonus", atkPerLevel:1.0, spdPerLevel:1.0, allMountedAtkBonus:10 },
+    base:1.0, perLevel:1.0,
+    maxLevelEffect:{ madnessImmunity:true },
+    nextDesc:(lvl) => `ATK +${1.0+lvl*1.0} | SPD +${1.0+lvl*1.0} | All-Mounted army: +10 ATK${lvl >= 14 ? " | Max: Madness Immunity" : ""} (permanent)`,
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  // Round 3 + 1CD → rounds 3, 5, 7, 9
+  kor_packs_connection: {
+    name:"Pack's Connection", icon:"🔗", tree:"command", cls:"leader",
+    faction:"nightcreatures", commander:"h46",
+    type:"active", cooldown:1, offset:3, duration:1,
+    desc:"[Round 3] [Werewolf Units] 8% chance to evade the first hit this round. (Rounds 3, 5, 7, 9)",
+    effect:{ type:"branch_evasion_first_hit", branch:"werewolves", chance:0.08 },
+    base:0.08, perLevel:0.08,
+    nextDesc:(lvl) => `[Werewolf Units] ${Math.round((0.08+lvl*0.08)*100)}% chance to evade first hit — rounds 3,5,7,9`,
+  },
+
+  kor_leaders_rage: {
+    name:"Leader's Rage", icon:"😤", tree:"command", cls:"leader",
+    faction:"nightcreatures", commander:"h46",
+    type:"passive",
+    desc:"[Commander] Whenever a Werewolf Unit receives damage, next attack deals +10.0% damage. Resets after each attack. (Passive)",
+    effect:{ type:"reactive_cmd_dmg_on_ally_hit", branch:"werewolves", bonus:0.10 },
+    base:0.10, perLevel:0.10,
+    nextDesc:(lvl) => `Next CMD attack +${Math.round((0.10+lvl*0.10)*100)}% DMG when Werewolf takes damage (resets on attack)`,
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  // Round 3 + 2CD → rounds 3, 6, 9
+  kor_packs_charge: {
+    name:"Pack's Charge", icon:"💨", tree:"command", cls:"leader",
+    faction:"nightcreatures", commander:"h46",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[Round 3] [Enemy Unit with lowest DEF] Performs 1 attack dealing 20–40% damage (modified by SPD). (Rounds 3, 6, 9)",
+    effect:{ type:"multi_hit_lowest_def", hitsBase:1, dmgLo:0.20, dmgHi:0.40, modifiedBy:"spd" },
+    base:1, perLevel:1,
+    maxLevelEffect:{ nightDmgLo:0.30, nightDmgHi:0.50 },
+    nextDesc:(lvl) => {
+      const hits = 1 + lvl;
+      return `[Lowest DEF Unit] ${hits} hit${hits>1?"s":""} × 20–40% DMG (SPD mod)${lvl >= 14 ? " | Night: 30–50% per hit" : ""} — rounds 3,6,9`;
+    },
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  kor_leaders_protection: {
+    name:"Leader's Protection", icon:"🪖", tree:"command", cls:"leader",
+    faction:"nightcreatures", commander:"h46",
+    type:"passive",
+    desc:"[All Allied Units] First 3 instances of damage received -2.0%. (Passive)",
+    effect:{ type:"first_hits_dmg_reduce", instances:3, reduction:0.02 },
+    base:0.02, perLevel:0.02,
+    nextDesc:(lvl) => `[All Allied Units] First 3 hits: DMG received -${Math.round((0.02+lvl*0.02)*100)}% (permanent)`,
+  },
+
+  kor_thick_skin: {
+    name:"Thick Skin", icon:"🐗", tree:"command", cls:"leader",
+    faction:"nightcreatures", commander:"h46",
+    type:"passive",
+    desc:"[Mounted Units] Focus and Poison Damage received -1.0%. (Passive)",
+    effect:{ type:"dmg_type_resist", branch:"mounted", focusResist:0.01, poisonResist:0.01 },
+    base:0.01, perLevel:0.01,
+    nextDesc:(lvl) => `[Mounted Units] Focus & Poison DMG received -${Math.round((0.01+lvl*0.01)*100)}% (permanent)`,
   },
 };
 
-export const KORRAX_RESKIN_SKILLS = {
-  korrax_warchief_aura: {
-    name:"Alpha's Aura", icon:"📡", tree:"command", cls:"leader",
-    faction:"nightcreatures", commander:"h46",
-    type:"passive",
-    desc:"The Alpha doesn't ask for loyalty — he radiates it. Troops permanently fight harder under his command.",
-    passiveTroopAtk:0.07, base:0.07, perLevel:0.04,
-    nextDesc:(lvl) => `+${Math.round((0.07+lvl*0.04)*100)}% troop attack (permanent)`,
-  },
-  korrax_warchief_roar: {
-    name:"Pack Roar", icon:"📣", tree:"command", cls:"leader",
-    faction:"nightcreatures", commander:"h46",
-    type:"active", cooldown:2, offset:2, duration:2,
-    desc:"A pack howl that shakes the ground and ignites every wolf's fighting spirit.",
-    troopAtkMult:1.15, base:1.15, perLevel:0.05,
-    nextDesc:(lvl) => `+${Math.round((1.15+lvl*0.05-1)*100)}% troop attack (2 rnd) — rounds 2, 4, 6, 8, 10`,
-  },
-  korrax_grand_strategy: {
-    name:"Hunt Formation", icon:"🗺", tree:"command", cls:"leader",
-    faction:"nightcreatures", commander:"h46",
-    type:"active", cooldown:4, offset:1, duration:3,
-    desc:"The pack doesn't read maps — Korrax just knows where the weak point is.",
-    troopAtkMult:1.20, troopDefMult:1.10, base:1.20, perLevel:0.06,
-    nextDesc:(lvl) => `+${Math.round((1.2+lvl*0.06-1)*100)}% attack & +${Math.round((1.1+lvl*0.04-1)*100)}% defence (3 rnd) — rounds 1, 5, 9`,
-  },
-  korrax_forced_march: {
-    name:"The Run", icon:"💨", tree:"command", cls:"leader",
-    faction:"nightcreatures", commander:"h46",
-    type:"active", cooldown:5, offset:5, duration:1,
-    desc:"He doesn't march — he runs. And the pack runs with him at devastating speed.",
-    troopAtkMult:1.50, base:1.50, perLevel:0.10,
-    nextDesc:(lvl) => `+${Math.round((1.5+lvl*0.1-1)*100)}% troop attack (1 rnd) — rounds 5, 10`,
-  },
-  korrax_siege_mastery: {
-    name:"Wall Breaker", icon:"🪨", tree:"command", cls:"leader",
-    faction:"nightcreatures", commander:"h46",
-    type:"passive",
-    desc:"Walls mean nothing to a pack. Korrax finds the gap every time, permanently.",
-    passiveGarrisonIgnore:0.06, base:0.06, perLevel:0.04,
-    nextDesc:(lvl) => `Ignore ${Math.round((0.06+lvl*0.04)*100)}% of garrison bonus (permanent)`,
-  },
-  korrax_supply_cut: {
-    name:"Cut the Stragglers", icon:"✂", tree:"command", cls:"leader",
-    faction:"nightcreatures", commander:"h46",
-    type:"active", cooldown:3, offset:1, duration:1,
-    desc:"He disrupts the enemy's reinforcements — cut off the stragglers and the rest collapse.",
-    blockHeal:2, base:2, perLevel:1,
-    nextDesc:(lvl) => `Block enemy healing for ${Math.round(2+lvl*1.0)} rounds — rounds 1, 4, 7, 10`,
-  },
-  korrax_tactical_advance: {
-    name:"Alpha Advance", icon:"♟", tree:"command", cls:"leader",
-    faction:"nightcreatures", commander:"h46",
-    type:"active", cooldown:4, offset:3, duration:2,
-    desc:"He surges forward with the pack — every step gaining momentum, every enemy giving ground.",
-    troopAtkMult:1.12, enemyDmgReduce:0.10, base:1.12, perLevel:0.04,
-    nextDesc:(lvl) => `+${Math.round((1.12+lvl*0.04-1)*100)}% attack, -10% enemy damage (2 rnd) — rounds 3, 7`,
-  },
-  korrax_war_council: {
-    name:"Pack Council", icon:"📜", tree:"command", cls:"leader",
-    faction:"nightcreatures", commander:"h46",
-    type:"active", cooldown:5, offset:2, duration:1,
-    desc:"He silences an enemy commander mid-strike and surges the pack forward.",
-    nullifySkill:true, troopAtkMult:1.18, base:1.18, perLevel:0.05,
-    nextDesc:(lvl) => `Nullify enemy skill + +${Math.round((1.18+lvl*0.05-1)*100)}% troop attack — rounds 2, 7`,
-  },
-  korrax_legion_discipline: {
-    name:"Pack Discipline", icon:"🪖", tree:"command", cls:"leader",
-    faction:"nightcreatures", commander:"h46",
-    type:"passive",
-    desc:"The pack never breaks. Korrax's authority keeps them fighting through wounds that would end others.",
-    passiveTroopDef:0.06, base:0.06, perLevel:0.04,
-    nextDesc:(lvl) => `+${Math.round((0.06+lvl*0.04)*100)}% troop defence (permanent)`,
-  },
-  korrax_mounted_charge: {
-    name:"Wolf Rider Surge", icon:"🐴", tree:"command", cls:"leader",
-    faction:"nightcreatures", commander:"h46",
-    type:"active", cooldown:3, offset:1, duration:2,
-    desc:"Korrax signals the mounted wolves forward — they hit harder than anything on two legs.",
-    troopAtkMult:1.20, troopRole:"mounted", base:1.20, perLevel:0.05,
-    nextDesc:(lvl) => `Mounted units +${Math.round((1.2+lvl*0.05-1)*100)}% attack (2 rnd) — rounds 1, 4, 7, 10`,
-  },
-};
+export const KORRAX_RESKIN_SKILLS = {};
+
 
 // ── SKITTER VEX (soldier, support, Spider) ────────────────────────────────────
 // ATK:70, FOC:20, SPD:60 — spider tactician. Support = webs + debuffs + troop
@@ -769,10 +820,10 @@ export const NIGHTCREATURES_BRANCH_SKILL_MAP = {
   ],
   // Alpha Korrax (leader, Werewolf) — army commander, pack surge, garrison breaker
   h46: [
-    { main:"korrax_warchief_aura",    sides:["korrax_legion_discipline", "korrax_siege_mastery"]  },
-    { main:"korrax_alpha_call",       sides:["korrax_warchief_roar",     "korrax_mounted_charge"] },
-    { main:"korrax_grand_strategy",   sides:["korrax_war_council",       "korrax_tactical_advance"]},
-    { main:"moon_tide_charge",        sides:["korrax_forced_march",      "korrax_supply_cut"]     },
+    { main:"kor_pack_leader",     sides:["kor_commanders_howl",    "kor_pack_protection"]  }, // R0 top
+    { main:"kor_wolfs_rage",      sides:["kor_moonlight",          "kor_moons_blessing"]   }, // R0 bottom
+    { main:"kor_power_of_alpha",  sides:["kor_packs_connection",   "kor_leaders_rage"]     }, // R3
+    { main:"kor_packs_charge",    sides:["kor_leaders_protection", "kor_thick_skin"]       }, // R5
   ],
   // Skitter Vex (support, Spider) — web trapper, team healer, debuffer
   h47: [
