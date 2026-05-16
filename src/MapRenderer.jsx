@@ -1483,25 +1483,9 @@ export function clearKeepCache() { _keepStateCache.clear(); }
 let _HQOutlineFilter = null;
 function getHQOutlineFilter(PIXI) {
   if (_HQOutlineFilter) return _HQOutlineFilter;
-  const VERT = `
-    attribute vec2 aVertexPosition;
-    uniform mat3 projectionMatrix;
-    varying vec2 vTextureCoord;
-    uniform vec4 inputSize;
-    uniform vec4 outputFrame;
-    vec4 filterVertexPosition(void) {
-      vec2 position = aVertexPosition * max(outputFrame.zw, vec2(0.)) + outputFrame.xy;
-      return vec4((projectionMatrix * vec3(position, 1.0)).xy, 0., 1.);
-    }
-    vec2 filterTextureCoord(void) {
-      return aVertexPosition * (outputFrame.zw * inputSize.zw);
-    }
-    void main(void) {
-      gl_Position = filterVertexPosition();
-      vTextureCoord = filterTextureCoord();
-    }
-  `;
+
   const FRAG = `
+    precision mediump float;
     varying vec2 vTextureCoord;
     uniform sampler2D uSampler;
     uniform vec4 inputSize;
@@ -1511,18 +1495,17 @@ function getHQOutlineFilter(PIXI) {
     void main(void) {
       vec4 src = texture2D(uSampler, vTextureCoord);
       if (src.a > 0.5) { gl_FragColor = src; return; }
-      vec2 px = vec2(thickness) * inputSize.zw;
-      float maxA = 0.0;
-      for (int x = -2; x <= 2; x++) {
-        for (int y = -2; y <= 2; y++) {
-          if (x == 0 && y == 0) continue;
-          float dist = sqrt(float(x*x + y*y));
-          if (dist > 2.5) continue;
-          vec2 uv = vTextureCoord + vec2(float(x), float(y)) * px;
-          maxA = max(maxA, texture2D(uSampler, uv).a);
-        }
-      }
-      if (maxA > 0.5) {
+      vec2 step = thickness * inputSize.zw;
+      float hit = 0.0;
+      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2( step.x,  0.0   )).a);
+      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2(-step.x,  0.0   )).a);
+      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2( 0.0,     step.y)).a);
+      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2( 0.0,    -step.y)).a);
+      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2( step.x,  step.y)).a);
+      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2(-step.x,  step.y)).a);
+      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2( step.x, -step.y)).a);
+      hit = max(hit, texture2D(uSampler, vTextureCoord + vec2(-step.x, -step.y)).a);
+      if (hit > 0.5) {
         gl_FragColor = vec4(outlineColor * outlineAlpha, outlineAlpha);
       } else {
         gl_FragColor = vec4(0.0);
@@ -1531,12 +1514,12 @@ function getHQOutlineFilter(PIXI) {
   `;
   _HQOutlineFilter = class HQOutlineFilter extends PIXI.Filter {
     constructor(thickness, color, alpha) {
-      super(VERT, FRAG, {
-        thickness:    { value: thickness, type: 'float' },
-        outlineColor: { value: [(color >> 16 & 0xff) / 255, (color >> 8 & 0xff) / 255, (color & 0xff) / 255], type: 'vec3' },
-        outlineAlpha: { value: alpha, type: 'float' },
+      super(undefined, FRAG, {
+        thickness:    thickness,
+        outlineColor: [(color >> 16 & 0xff) / 255, (color >> 8 & 0xff) / 255, (color & 0xff) / 255],
+        outlineAlpha: alpha,
       });
-      this.padding = Math.ceil(thickness) + 2;
+      this.padding = Math.ceil(thickness) + 4;
     }
   };
   return _HQOutlineFilter;
