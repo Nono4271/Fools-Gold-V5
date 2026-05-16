@@ -232,6 +232,50 @@ switch (eff.type) {
   case "march_speed_bonus":
     rs.marchSpeedBonus += eff.value || 0;
     break;
+  // Thaelor mechanics
+  case "post_attack_vulnerability":
+    // Stacks tracked as array — applied after each commander attack
+    rs.weakSpotStacks.push({ value: eff.value || 0.015, roundsLeft: eff.duration || 2 });
+    if (rs.weakSpotStacks.length > (eff.maxStacks || 2))
+      rs.weakSpotStacks.shift(); // remove oldest if over cap
+    break;
+  case "multi_hit_escalating":
+    rs.multiHitEscalating = eff.hits || [0.15, 0.17, 0.19];
+    break;
+  case "physical_damage_followup":
+    rs.cmdMult = eff.initialDmg || 0.27;
+    if (Math.random() < (eff.followupChance || 0.50))
+      rs.cmdMult += eff.followupDmg || 0.27;
+    break;
+  case "aoe_physical_stun":
+    rs.cmdAoe = true;
+    if (Math.random() < (eff.stunChance || 0.35))
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, 1);
+    break;
+  case "physical_damage_self_debuff":
+    rs.cmdMult = eff.dmg || 1.00;
+    rs.selfDebuffNextHit = eff.selfDebuff || 0.40;
+    break;
+  case "confusion_immunity_chance":
+    if (Math.random() < (eff.chance || 0.10))
+      rs.enemyConfused = 0; // clear any confusion immediately
+    break;
+  case "physical_damage_large_bonus":
+    rs.cmdMult = eff.primaryDmg || 0.30;
+    rs.largeBonusDmg = eff.largeBonusDmg || 0.20;
+    break;
+  case "first_skills_dmg_bonus":
+    if (rs.firstSkillsRemaining > 0) {
+      rs.firstSkillsBonus = eff.bonus || 0.05;
+      rs.firstSkillsRemaining--;
+    }
+    break;
+  case "physical_damage_heal_block":
+    rs.blockHeal = Math.max(rs.blockHeal, eff.healBlockDuration || 1);
+    break;
+  case "cmd_normal_atk_bonus":
+    rs.cmdMult = (rs.cmdMult || 1) + (eff.value || 0);
+    break;
 }
 roundLog.actions.push({ actor:actorLabel, action:`${skill.icon} ${skill.name}`, dmg:0, isTroopSkill:true });
 
@@ -801,6 +845,13 @@ const rs = {
   mountedAtkStackBonus:0,    // Mounted Specialist: bonus per stack (SPD modified)
   branchMadnessImmune:false, // Protect the Troops: madness immunity chance for mounted
   marchSpeedBonus:0,         // Lifeline of the Pack: non-combat march speed
+  // Thaelor mechanics
+  weakSpotStacks:[],         // Weak Spot: [{value, roundsLeft}, ...] independent stacks
+  selfDebuffNextHit:0,       // Spider's Gambit: next damage dealt -40%
+  confusionImmuneChance:0,   // Eight Eyes: chance for confusion immunity first 4 rounds
+  firstSkillsBonus:0,        // Many Trades: bonus on first 4 skills
+  firstSkillsRemaining:4,    // Many Trades: skills remaining with bonus
+  multiHitEscalating:null,   // All Out Assault: escalating hit ratios
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
@@ -828,6 +879,12 @@ if (bleedRoundsActive > 0 && bleedDmgPerRound > 0) {
 if (rs.bleedApplied) {
   bleedDmgPerRound  = rs.pendingBleedDmg;
   bleedRoundsActive = rs.bleedRoundsLeft;
+}
+// Tick down Weak Spot independent stacks
+if (rs.weakSpotStacks.length > 0) {
+  rs.weakSpotStacks = rs.weakSpotStacks
+    .map(s => ({ ...s, roundsLeft: s.roundsLeft - 1 }))
+    .filter(s => s.roundsLeft > 0);
 }
 
 // round_start troop skills — all atk slots apply to enemy
