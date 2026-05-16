@@ -145,48 +145,70 @@ function Connector({ x1, y1, x2, y2, color, lit, dashed }) {
 }
 
 // ── Skill info panel (shown when a node is tapped) ────────────────────────────
-function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canLevelUp, gateLocked, branchLocked, onLevelUp, onClose }) {
+function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canLevelUp, gateLocked, branchLocked, onLevelUp, onClose, nodeX, nodeY }) {
   if (!skillDef) return null;
   const atMax = level >= maxLevel;
+
+  // Tooltip dimensions
+  const TW = 220;
+  const TH = 280;
+  const MARGIN = 10;
+  const screenW = window.innerWidth;
+  const screenH = window.innerHeight;
+
+  // Horizontal: prefer right of node, flip left if not enough room
+  const spaceRight = screenW - nodeX;
+  const anchorLeft = spaceRight >= TW + MARGIN
+    ? nodeX + 8
+    : nodeX - TW - 8;
+
+  // Vertical: centre on node, clamp within screen
+  let anchorTop = nodeY - TH / 2;
+  anchorTop = Math.max(MARGIN, Math.min(screenH - TH - MARGIN, anchorTop));
+
   return (
-    <div style={{
-      position: "fixed", left: 0, right: 0, bottom: 0,
-      background: "rgba(6,4,2,.97)",
-      border: `1px solid ${color}40`,
-      borderRadius: "12px 12px 0 0",
-      padding: "14px 16px 20px",
-      zIndex: 9300,
-      boxShadow: `0 -8px 32px ${color}18`,
-      animation: "fadeUp .18s ease",
-    }}>
-      {/* drag handle + close */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 20 }}>{skillDef.icon}</span>
-            <div>
-              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 12, fontWeight: 700, color: "#e0d0b0" }}>
-                {skillDef.name}
-              </div>
-              <div style={{ fontSize: 8, color, fontFamily: "'Cinzel',serif", marginTop: 1 }}>
-                {isMain ? "Main Skill" : "Side Skill"} · {level}/{maxLevel}
-              </div>
-            </div>
+    <div
+      onClick={e => e.stopPropagation()}
+      style={{
+        position: "fixed",
+        left: anchorLeft,
+        top: anchorTop,
+        width: TW,
+        background: "rgba(6,4,2,.97)",
+        border: `1px solid ${color}55`,
+        borderRadius: 10,
+        padding: "12px 13px 14px",
+        zIndex: 9300,
+        boxShadow: `0 4px 28px rgba(0,0,0,.7), 0 0 16px ${color}18`,
+        animation: "fadeUp .15s ease",
+        pointerEvents: "auto",
+      }}>
+
+      {/* Header row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>{skillDef.icon}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "'Cinzel',serif", fontSize: 11, fontWeight: 700,
+            color: "#e0d0b0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {skillDef.name}
+          </div>
+          <div style={{ fontSize: 7, color, fontFamily: "'Cinzel',serif", marginTop: 1 }}>
+            {isMain ? "Main Skill" : "Side Skill"} · {level}/{maxLevel}
           </div>
         </div>
         <button onClick={onClose} style={{
-          width: 28, height: 28, borderRadius: "50%",
-          background: "rgba(255,255,255,.04)", border: `1px solid #2a2010`,
-          color: "#5a4a30", fontSize: 14, cursor: "pointer",
+          width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+          background: "rgba(255,255,255,.04)", border: "1px solid #2a2010",
+          color: "#5a4a30", fontSize: 12, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>✕</button>
       </div>
 
-      {/* level pips */}
-      <div style={{ display: "flex", gap: 3, marginBottom: 10 }}>
+      {/* Level pips */}
+      <div style={{ display: "flex", gap: 2, marginBottom: 8 }}>
         {Array.from({ length: maxLevel }).map((_, i) => (
           <div key={i} style={{
-            flex: 1, height: 4, borderRadius: 2,
+            flex: 1, height: 3, borderRadius: 2,
             background: i < level ? `linear-gradient(90deg,${color},${accent})` : "#1a1410",
             border: `1px solid ${i < level ? color + "60" : "#241c0e"}`,
             transition: "background .2s",
@@ -194,60 +216,60 @@ function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canL
         ))}
       </div>
 
-      {/* desc */}
-      <div style={{ fontSize: 10, color: "#7a6a50", fontFamily: "'Crimson Pro',serif",
+      {/* Description */}
+      <div style={{ fontSize: 9, color: "#7a6a50", fontFamily: "'Crimson Pro',serif",
         lineHeight: 1.5, marginBottom: 8 }}>{skillDef.desc}</div>
 
-      {/* current / next */}
-      <div style={{ display: "grid", gridTemplateColumns: level > 0 ? "1fr 1fr" : "1fr", gap: 8, marginBottom: 12 }}>
+      {/* Current / Next level boxes */}
+      <div style={{ display: "grid", gridTemplateColumns: level > 0 ? "1fr 1fr" : "1fr", gap: 6, marginBottom: 10 }}>
         {level > 0 && (
-          <div style={{ padding: "7px 9px", background: "rgba(255,255,255,.03)",
+          <div style={{ padding: "6px 7px", background: "rgba(255,255,255,.03)",
             border: `1px solid ${color}20`, borderRadius: 5 }}>
-            <div style={{ fontSize: 7, color: "#5a4a2a", fontFamily: "'Cinzel',serif",
-              letterSpacing: ".06em", marginBottom: 3 }}>CURRENT Lv{level}</div>
-            <div style={{ fontSize: 9, color: "#c0a070", fontFamily: "'Crimson Pro',serif" }}>
+            <div style={{ fontSize: 6, color: "#5a4a2a", fontFamily: "'Cinzel',serif",
+              letterSpacing: ".06em", marginBottom: 2 }}>CURRENT Lv{level}</div>
+            <div style={{ fontSize: 8, color: "#c0a070", fontFamily: "'Crimson Pro',serif", lineHeight: 1.4 }}>
               {skillDef.nextDesc(level - 1)}
             </div>
           </div>
         )}
         {!atMax && (
-          <div style={{ padding: "7px 9px", background: `${color}08`,
+          <div style={{ padding: "6px 7px", background: `${color}08`,
             border: `1px solid ${color}25`, borderRadius: 5 }}>
-            <div style={{ fontSize: 7, color, fontFamily: "'Cinzel',serif",
-              letterSpacing: ".06em", marginBottom: 3 }}>NEXT Lv{level + 1}</div>
-            <div style={{ fontSize: 9, color: "#a0c080", fontFamily: "'Crimson Pro',serif" }}>
+            <div style={{ fontSize: 6, color, fontFamily: "'Cinzel',serif",
+              letterSpacing: ".06em", marginBottom: 2 }}>NEXT Lv{level + 1}</div>
+            <div style={{ fontSize: 8, color: "#a0c080", fontFamily: "'Crimson Pro',serif", lineHeight: 1.4 }}>
               {skillDef.nextDesc(level)}
             </div>
           </div>
         )}
       </div>
 
-      {/* action button */}
+      {/* Upgrade button */}
       {atMax ? (
-        <div style={{ textAlign: "center", padding: "10px 0",
-          fontFamily: "'Cinzel',serif", fontSize: 9, color: accent,
+        <div style={{ textAlign: "center", padding: "8px 0",
+          fontFamily: "'Cinzel',serif", fontSize: 8, color: accent,
           letterSpacing: ".08em" }}>✦ MAX LEVEL ✦</div>
       ) : (
-        <button onClick={() => { if (canLevelUp) { onLevelUp(); } }}
+        <button onClick={() => { if (canLevelUp) onLevelUp(); }}
           disabled={!canLevelUp}
           style={{
-            width: "100%", padding: "11px 0",
+            width: "100%", padding: "9px 0",
             background: canLevelUp ? `linear-gradient(135deg,${color}30,${color}18)` : "rgba(255,255,255,.02)",
             border: `1px solid ${canLevelUp ? color + "60" : gateLocked ? "rgba(200,120,40,.35)" : "#1e1810"}`,
             borderRadius: 6, cursor: canLevelUp ? "pointer" : "not-allowed",
-            fontFamily: "'Cinzel',serif", fontSize: 10, fontWeight: 700,
+            fontFamily: "'Cinzel',serif", fontSize: 9, fontWeight: 700,
             color: canLevelUp ? accent : gateLocked ? "#c07830" : "#2e2418",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             transition: "all .15s", opacity: canLevelUp ? 1 : 0.7,
           }}>
-          <span style={{ fontSize: 14 }}>{branchLocked ? "🔒" : gateLocked ? "🔒" : "✦"}</span>
+          <span style={{ fontSize: 12 }}>{branchLocked ? "🔒" : gateLocked ? "🔒" : "✦"}</span>
           {canLevelUp
             ? "Upgrade (1 point)"
             : branchLocked
-              ? "Skill locked — earn Respect to unlock"
+              ? "Locked — earn Respect"
               : gateLocked
                 ? "Upgrade main skill first"
-                : "No skill points available"}
+                : "No skill points"}
         </button>
       )}
     </div>
@@ -360,8 +382,8 @@ function BranchRow({
           const gateLocked = lvl >= cap;
           return (
             <g transform={`translate(${leftX - sideSz / 2},${mainY - sideSz / 2})`}
-              onClick={() => onNodeClick(sk, false, gateLocked && lvl < 5, nodeLocked)}
-              onTouchEnd={(e) => { e.preventDefault(); onNodeClick(sk, false, gateLocked && lvl < 5, nodeLocked); }}
+              onClick={(e) => onNodeClick(sk, false, gateLocked && lvl < 7, nodeLocked, e)}
+              onTouchEnd={(e) => { e.preventDefault(); onNodeClick(sk, false, gateLocked && lvl < 7, nodeLocked, e); }}
               style={{ cursor: "pointer", touchAction: "manipulation" }}>
               <FactionNode faction={faction} size={sideSz}
                 filled={lvl > 0} color={color} accent={accent}
@@ -394,8 +416,8 @@ function BranchRow({
           const gateLocked = lvl >= cap;
           return (
             <g transform={`translate(${rightX - sideSz / 2},${mainY - sideSz / 2})`}
-              onClick={() => onNodeClick(sk, false, gateLocked && lvl < 5, nodeLocked)}
-              onTouchEnd={(e) => { e.preventDefault(); onNodeClick(sk, false, gateLocked && lvl < 5, nodeLocked); }}
+              onClick={(e) => onNodeClick(sk, false, gateLocked && lvl < 7, nodeLocked, e)}
+              onTouchEnd={(e) => { e.preventDefault(); onNodeClick(sk, false, gateLocked && lvl < 7, nodeLocked, e); }}
               style={{ cursor: "pointer", touchAction: "manipulation" }}>
               <FactionNode faction={faction} size={sideSz}
                 filled={lvl > 0} color={color} accent={accent}
@@ -422,8 +444,8 @@ function BranchRow({
 
         {/* MAIN spine node */}
         <g transform={`translate(${spineX - mainSz / 2},${mainY - mainSz / 2})`}
-          onClick={() => onNodeClick(mainSkill, true, false, locked, null)}
-          onTouchEnd={(e) => { e.preventDefault(); onNodeClick(mainSkill, true, false, locked, null); }}
+          onClick={(e) => onNodeClick(mainSkill, true, false, locked, null, e)}
+          onTouchEnd={(e) => { e.preventDefault(); onNodeClick(mainSkill, true, false, locked, null, e); }}
           style={{ cursor: "pointer", touchAction: "manipulation" }}>
           <FactionNode faction={faction} size={mainSz}
             filled={mainFilled} color={color} accent={accent}
@@ -547,15 +569,15 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
 
   // ── Selected node state for info panel ───────────────────────────────────
   const [selectedNode, setSelectedNode] = useState(null);
-  // selectedNode: { skillDef, isMain, skillKey, mainKeyForBranch, gateLocked }
+  // selectedNode: { skillDef, isMain, skillKey, mainKeyForBranch, gateLocked, nodeX, nodeY }
 
   const factionTheme = FACTION_THEME[cmd.faction] ?? FACTION_THEME.pirates;
   const fColor = factionTheme.color;
   const fAccent = factionTheme.accent;
 
-  function handleNodeClick(skillDef, isMain, gateLocked, branchLocked, mainKeyForBranch) {
+  function handleNodeClick(skillDef, isMain, gateLocked, branchLocked, mainKeyForBranch, nodeX, nodeY) {
     const key = skillDef.key;
-    setSelectedNode({ skillDef, isMain, skillKey: key, mainKeyForBranch, gateLocked, branchLocked });
+    setSelectedNode({ skillDef, isMain, skillKey: key, mainKeyForBranch, gateLocked, branchLocked, nodeX: nodeX ?? 0, nodeY: nodeY ?? 0 });
   }
 
   // Live read from cmds for reactivity
@@ -745,15 +767,20 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
                   tag={tag}
                   treeIcon={tree.icon}
                   unlocksAt={unlocksAt}
-                  onNodeClick={(sk, isMain, gL, nodeLk) =>
+                  onNodeClick={(sk, isMain, gL, nodeLk, e) => {
+                    const rect = e?.currentTarget?.getBoundingClientRect?.();
+                    const nx = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+                    const ny = rect ? rect.top  + rect.height / 2 : window.innerHeight / 2;
                     handleNodeClick(
                       isMain ? { ...mainSkill, ...MAIN_SKILLS[mainSkill.key] } : { ...sk, ...SIDE_SKILLS[sk.key] },
                       isMain,
                       gL,
                       nodeLk,
                       isMain ? null : mainSkill.key,
-                    )
-                  }
+                      nx,
+                      ny,
+                    );
+                  }}
                 />
                 </div>
               </div>
@@ -771,7 +798,6 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
               : false);
           const canUp = liveUnspent > 0 && liveLevel < maxLvl && !liveGate && !selectedNode.branchLocked;
           return (
-            <div onClick={e => e.stopPropagation()}>
             <SkillInfoPanel
               skillDef={selectedNode.skillDef}
               isMain={selectedNode.isMain}
@@ -784,8 +810,9 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
               branchLocked={selectedNode.branchLocked}
               onLevelUp={() => handleLevelUp(selectedNode.skillKey, selectedNode.mainKeyForBranch)}
               onClose={() => setSelectedNode(null)}
+              nodeX={selectedNode.nodeX}
+              nodeY={selectedNode.nodeY}
             />
-            </div>
           );
         })()}
       </div>
