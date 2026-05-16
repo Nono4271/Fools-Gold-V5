@@ -232,6 +232,46 @@ switch (eff.type) {
   case "march_speed_bonus":
     rs.marchSpeedBonus += eff.value || 0;
     break;
+  // Skitter mechanics
+  case "post_attack_proc_heal":
+    rs.postAtkProcHeal = { chance: eff.chance || 0.04, healPct: eff.healPct || 0.05, targets: eff.targets || 2 };
+    break;
+  case "aoe_focus_venom":
+    rs.focusDmgBonus  += eff.value || 0;
+    rs.aoeVenomChance  = eff.venomChance || 0.60;
+    break;
+  case "focus_damage_poison":
+    rs.focusDmgBonus  += eff.value || 0;
+    rs.pendingVenomDmg = Math.max(rs.pendingVenomDmg, eff.poisonDmg || 0.20);
+    break;
+  case "all_spider_army_bonus":
+    rs.allSpiderBonus += eff.value || 0;
+    break;
+  case "enemy_spd_down_early":
+    if (round <= (eff.maxRound || 4)) rs.enemySpdDownEarly += eff.value || 2.0;
+    break;
+  case "ally_followup_chance_early":
+    if (round <= (eff.maxRound || 3)) rs.allyFollowupEarly += eff.chance || 0.08;
+    break;
+  case "cotn_multi_branch_buff":
+    rs.cotnMultiBranchBuff = { spider: eff.spider, vampire: eff.vampire, werewolf: eff.werewolf };
+    break;
+  case "focus_damage_spider_stack":
+    rs.focusDmgBonus += eff.value || 0;
+    rs.spiderDmgStacks = Math.min((rs.spiderDmgStacks || 0) + 1, eff.maxStacks || 4);
+    break;
+  case "vulnerability_stun_chance":
+    rs.enemyDmgTakenUp       += eff.vulnValue || 0.02;
+    rs.vulnerabilityStunChance = eff.stunChance || 0.10;
+    if (Math.random() < rs.vulnerabilityStunChance) {
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, 1);
+      roundLog.actions.push({ actor:actorLabel, action:`🪤 Trapped — Enemy stunned!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "heal_cleanse":
+    rs.healPct    += eff.healPct || 0.12;
+    rs.healCleanse = { cleanseChance: eff.cleanseChance || 0.70, targets: eff.targets || 2 };
+    break;
   // Thaelor mechanics
   case "post_attack_vulnerability":
     // Stacks tracked as array — applied after each commander attack
@@ -852,6 +892,16 @@ const rs = {
   firstSkillsBonus:0,        // Many Trades: bonus on first 4 skills
   firstSkillsRemaining:4,    // Many Trades: skills remaining with bonus
   multiHitEscalating:null,   // All Out Assault: escalating hit ratios
+  // Skitter mechanics
+  spiderDmgStacks:0,         // Spider Queen: damage stacks on spider units
+  postAtkProcHeal:null,      // Heal My Children: { chance, healPct, targets }
+  aoeVenomChance:0,          // Spider Bite: venom chance on AoE focus hit
+  allSpiderBonus:0,          // Power In Numbers: all-spider army stat bonus
+  enemySpdDownEarly:0,       // Spider's Web: SPD reduction first 4 rounds
+  allyFollowupEarly:0,       // Vexing Attack: ally follow-up chance first 3 rounds
+  cotnMultiBranchBuff:null,  // Creature Power: { spider, vampire, werewolf } procs
+  vulnerabilityStunChance:0, // Trapped: stun chance per round while vulnerable
+  healCleanse:null,          // Skitter's Resilience: { healPct, cleanseChance, targets }
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
