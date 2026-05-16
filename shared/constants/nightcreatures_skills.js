@@ -302,110 +302,123 @@ export const MALACHAR_RESKIN_SKILLS = {};
 
 
 // ── FANG GROTH (soldier, balanced, Werewolf) ──────────────────────────────────
-// ATK:92, FOC:0, SPD:80 — physical brawler, fast. Balanced = combat + defense
-// + troop support. Pack fighter: hits hard, protects his wolves, surges forward.
+// ATK:92, FOC:0, SPD:80 — scrappy pack brawler. Early-game utility + mounted
+// specialist. Shares R3 with Korrax (Wolf's Rage / Moonlight / Moon's Blessing).
 
 export const GROTH_UNIQUE_SKILLS = {
-  groth_feral_charge: {
-    name:"Feral Charge", icon:"🐺", tree:"combat", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"active", cooldown:3, offset:1, duration:2,
-    desc:"Groth hits like a boulder wrapped in muscle — his charge drives the pack forward with him.",
-    cmdMult:2.0, troopAtkMult:1.20, base:2.0, perLevel:0.15,
-    nextDesc:(lvl) => `${Math.round((2.0+lvl*0.15)*100)}% damage + +${Math.round((1.20+lvl*0.05-1)*100)}% troop attack (2 rnd) — rounds 1,4,7,10`,
-  },
-  pack_fury: {
-    name:"Pack Fury", icon:"🌕", tree:"command", cls:"balanced",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  groth_lifeline: {
+    name:"Lifeline of the Pack", icon:"🐾", tree:"command", cls:"balanced",
     faction:"nightcreatures", commander:"h45",
     type:"passive",
-    desc:"Groth fights with the pack — his presence permanently sharpens both his own strike and the pack's ferocity.",
-    passiveCmdAtk:0.07, passiveTroopAtk:0.04, base:0.07, perLevel:0.03,
-    nextDesc:(lvl) => `+${Math.round((0.07+lvl*0.04)*100)}% cmd damage & +${Math.round((0.04+lvl*0.02)*100)}% troop attack (permanent)`,
+    desc:"[Army] March Speed +1.0%. (Non-Combat Passive)",
+    effect:{ type:"march_speed_bonus", value:0.01 },
+    base:0.01, perLevel:0.01,
+    maxLevelEffect:{ werewolfCombatSpd:10 },
+    nextDesc:(lvl) => `March Speed +${Math.round((0.01+lvl*0.01)*100)}%${lvl >= 14 ? " | Max: [Werewolf Units] SPD +10 in combat" : ""} (permanent)`,
+  },
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  groth_supply_specialist: {
+    name:"Supply Specialist", icon:"🎒", tree:"command", cls:"balanced",
+    faction:"nightcreatures", commander:"h45",
+    type:"passive",
+    notImplemented:true,
+    desc:"[Gathering] +5.0% extra resources from gathering. (Non-Combat Passive — Coming Soon)",
+    effect:{ type:"gathering_bonus", value:0.05 },
+    base:0.05, perLevel:0.05,
+    nextDesc:(lvl) => `Gathering Resources +${Math.round((0.05+lvl*0.05)*100)}% (permanent)`,
+  },
+
+  groth_fastest: {
+    name:"Fastest in the Pack", icon:"💨", tree:"command", cls:"balanced",
+    faction:"nightcreatures", commander:"h45",
+    type:"passive",
+    desc:"[Commander] SPD +1.0. (Passive)",
+    effect:{ type:"cmd_stat_bonus", spdPerLevel:1.0 },
+    base:1.0, perLevel:1.0,
+    nextDesc:(lvl) => `[Commander] SPD +${1.0+lvl*1.0} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  groth_mounted_specialist: {
+    name:"Mounted Specialist", icon:"🐺", tree:"command", cls:"balanced",
+    faction:"nightcreatures", commander:"h45",
+    type:"passive",
+    desc:"[Mounted Units] Damage +0.6% upon inflicting damage (modified by SPD), up to 3 stacks. (Passive)",
+    effect:{ type:"mounted_atk_stack_spd", valuePerStack:0.006, maxStacks:3, modifiedBy:"spd" },
+    base:0.006, perLevel:0.006,
+    maxLevelEffect:{ mountedHpBonus:15 },
+    nextDesc:(lvl) => `[Mounted] DMG +${((0.006+lvl*0.006)*100).toFixed(1)}% per stack (SPD mod, 3 stacks max)${lvl >= 14 ? " | Max: Mounted Units HP +15" : ""} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // Round 3 only — single trigger, no cooldown repeat
+  groth_frontline_medic: {
+    name:"Frontline Medic", icon:"🩹", tree:"command", cls:"balanced",
+    faction:"nightcreatures", commander:"h45",
+    type:"active", cooldown:99, offset:3, duration:1,
+    desc:"[Mounted Units] Heals 50% HP. Triggers Round 3 only.",
+    effect:{ type:"heal_branch", branch:"mounted", healPct:0.50 },
+    base:0.50, perLevel:0.50,
+    nextDesc:(lvl) => `[Mounted Units] Heal ${Math.round((0.50+lvl*0.50)*100)}% HP — Round 3 only`,
+  },
+
+  groth_mounted_armor: {
+    name:"Mounted Armor", icon:"🛡️", tree:"command", cls:"balanced",
+    faction:"nightcreatures", commander:"h45",
+    type:"passive",
+    desc:"[Mounted Units] Damage Received -2.5%. (Passive)",
+    effect:{ type:"branch_dmg_reduce", branch:"mounted", value:0.025 },
+    base:0.025, perLevel:0.025,
+    nextDesc:(lvl) => `[Mounted Units] DMG Received -${((0.025+lvl*0.025)*100).toFixed(1)}% (permanent)`,
+  },
+
+  // ── R3 — Shared with Korrax ───────────────────────────────────────────────
+  // kor_wolfs_rage, kor_moonlight, kor_moons_blessing referenced in branch map
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  // Round 1 + 2CD → rounds 1, 4, 7, 10
+  groth_fangs_assault: {
+    name:"Fang's Assault", icon:"⚔️", tree:"combat", cls:"balanced",
+    faction:"nightcreatures", commander:"h45",
+    type:"active", cooldown:2, offset:1, duration:1,
+    desc:"[Round 1] [1 Enemy Unit] 40% Physical Damage (modified by ATK) | 70% chance to inflict Bleed. (Rounds 1, 4, 7, 10)",
+    effect:{ type:"physical_damage_bleed", target:"single", bleedChance:0.70, bleedDmg:0.30, bleedDuration:2, modifiedBy:"atk" },
+    base:0.40, perLevel:0.3714,
+    maxLevelEffect:{ bleedSpreadChance:0.35 },
+    nextDesc:(lvl) => {
+      const dmg = Math.round((0.40+lvl*0.3714)*100);
+      return `${dmg}% Physical DMG (ATK mod) + 70% Bleed${lvl >= 14 ? " | Max: 35% chance to spread Bleed to random enemy" : ""} — rounds 1,4,7,10`;
+    },
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  groth_fangs_ambush: {
+    name:"Fang's Ambush", icon:"🌑", tree:"combat", cls:"balanced",
+    faction:"nightcreatures", commander:"h45",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[2 Enemy Units] 40% Physical Damage (modified by SPD) | 40% chance to Stun for 1 round. (Rounds 3, 6, 9)",
+    effect:{ type:"physical_damage_stun", targets:2, stunChance:0.40, modifiedBy:"spd" },
+    base:0.40, perLevel:0.40,
+    nextDesc:(lvl) => `[2 Units] ${Math.round((0.40+lvl*0.40)*100)}% Physical DMG (SPD mod) + 40% Stun — rounds 3,6,9`,
+  },
+
+  groth_protect_troops: {
+    name:"Protect the Troops", icon:"🐗", tree:"combat", cls:"balanced",
+    faction:"nightcreatures", commander:"h45",
+    type:"passive",
+    desc:"[Mounted Units] 14% chance to gain Madness Immunity. (Passive)",
+    effect:{ type:"branch_madness_immunity_chance", branch:"mounted", chance:0.14 },
+    base:0.14, perLevel:0.14,
+    nextDesc:(lvl) => `[Mounted Units] ${Math.round((0.14+lvl*0.14)*100)}% chance for Madness Immunity (permanent)`,
   },
 };
 
-export const GROTH_RESKIN_SKILLS = {
-  groth_killing_instinct: {
-    name:"Born Predator", icon:"⚔", tree:"combat", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"passive",
-    desc:"Born a predator, sharpened by every kill — his attack grows without limit.",
-    passiveCmdAtk:0.08, base:0.08, perLevel:0.06,
-    nextDesc:(lvl) => `+${Math.round((0.08+lvl*0.06)*100)}% commander damage (permanent)`,
-  },
-  groth_quick_strike: {
-    name:"Wolf Speed", icon:"⚡", tree:"combat", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"active", cooldown:2, offset:1, duration:1,
-    desc:"Four legs are faster than two. He's already there before they see him coming.",
-    cmdMult:1.4, base:1.4, perLevel:0.15,
-    nextDesc:(lvl) => `Deals ${Math.round((1.4+lvl*0.15)*100)}% Physical Damage — rounds 1, 3, 5, 7, 9`,
-  },
-  groth_iron_will: {
-    name:"Thick Hide", icon:"🛡", tree:"defense", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"passive",
-    desc:"Werewolf hide absorbs punishment. Groth permanently reduces all damage taken.",
-    passiveDmgReduce:0.04, base:0.04, perLevel:0.03,
-    nextDesc:(lvl) => `-${Math.round((0.04+lvl*0.02)*100)}% all incoming damage (permanent)`,
-  },
-  groth_shield_wall: {
-    name:"Pack Wall", icon:"🏰", tree:"defense", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"active", cooldown:2, offset:2, duration:2,
-    desc:"The wolves close ranks — a living wall that reduces all incoming damage.",
-    dmgReduce:0.12, base:0.12, perLevel:0.04,
-    nextDesc:(lvl) => `-${Math.round((0.12+lvl*0.04)*100)}% all damage (2 rnd) — rounds 2, 4, 6, 8, 10`,
-  },
-  groth_warchief_roar: {
-    name:"Alpha Howl", icon:"📣", tree:"command", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"active", cooldown:2, offset:2, duration:2,
-    desc:"A howl that ignites the pack — every wolf fights harder in its wake.",
-    troopAtkMult:1.15, base:1.15, perLevel:0.05,
-    nextDesc:(lvl) => `+${Math.round((1.15+lvl*0.05-1)*100)}% troop attack (2 rnd) — rounds 2, 4, 6, 8, 10`,
-  },
-  groth_demoralise: {
-    name:"Terror Howl", icon:"📣", tree:"defense", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"active", cooldown:3, offset:1, duration:2,
-    desc:"A howl that breaks enemy morale — they flinch before the first blow lands.",
-    enemyAtkReduce:0.15, base:0.15, perLevel:0.04,
-    nextDesc:(lvl) => `-${Math.round((0.15+lvl*0.04)*100)}% enemy attack (2 rnd) — rounds 1, 4, 7, 10`,
-  },
-  groth_savage_blow: {
-    name:"Savage Mauling", icon:"🗡", tree:"combat", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"active", cooldown:3, offset:3, duration:1,
-    desc:"A blow born of wild fury — raw, devastating force that leaves the target exposed.",
-    cmdMult:2.2, enemyDmgTakenUp:0.15, base:2.2, perLevel:0.20,
-    nextDesc:(lvl) => `Deals ${Math.round((2.2+lvl*0.2)*100)}% Physical Damage + target takes 15% more damage for 1 round — rounds 3, 6, 9`,
-  },
-  groth_hold_the_line: {
-    name:"Hold Ground", icon:"🚩", tree:"defense", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"active", cooldown:2, offset:2, duration:1,
-    desc:"The pack braces every other round — no ground given, no retreat.",
-    troopDmgReduce:0.14, base:0.14, perLevel:0.04,
-    nextDesc:(lvl) => `-${Math.round((0.14+lvl*0.04)*100)}% troop damage — rounds 2, 4, 6, 8, 10`,
-  },
-  groth_battle_hymn: {
-    name:"War Song", icon:"🎵", tree:"command", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"active", cooldown:3, offset:3, duration:2,
-    desc:"A guttural war howl drives the pack into a heightened fighting state.",
-    troopAtkMult:1.18, base:1.18, perLevel:0.06,
-    nextDesc:(lvl) => `+${Math.round((1.18+lvl*0.06-1)*100)}% troop attack (2 rnd) — rounds 3, 6, 9`,
-  },
-  groth_execute: {
-    name:"Kill Shot", icon:"💀", tree:"combat", cls:"balanced",
-    faction:"nightcreatures", commander:"h45",
-    type:"active", cooldown:5, offset:1, duration:1,
-    desc:"He goes for the throat — every time, without hesitation.",
-    cmdMult:3.0, base:3.0, perLevel:0.25,
-    nextDesc:(lvl) => `Deals ${Math.round((3.0+lvl*0.25)*100)}% Physical Damage — rounds 1, 6`,
-  },
-};
+export const GROTH_RESKIN_SKILLS = {};
+
 
 // ── ALPHA KORRAX (champion, leader, Werewolf) ─────────────────────────────────
 // ATK:185, FOC:0, SPD:85 — dominant pack alpha. Speed-modified mounted buffs,
@@ -813,10 +826,10 @@ export const NIGHTCREATURES_BRANCH_SKILL_MAP = {
   ],
   // Fang Groth (balanced, Werewolf) — pack brawler, combat + defense + troop buff
   h45: [
-    { main:"pack_fury",               sides:["groth_killing_instinct",  "groth_iron_will"]        },
-    { main:"groth_feral_charge",      sides:["groth_quick_strike",      "groth_warchief_roar"]    },
-    { main:"groth_savage_blow",       sides:["groth_shield_wall",       "groth_demoralise"]       },
-    { main:"groth_execute",           sides:["groth_hold_the_line",     "groth_battle_hymn"]      },
+    { main:"groth_lifeline",          sides:["groth_supply_specialist", "groth_fastest"]         }, // R0 top
+    { main:"groth_mounted_specialist",sides:["groth_frontline_medic",   "groth_mounted_armor"]   }, // R0 bottom
+    { main:"kor_wolfs_rage",          sides:["kor_moonlight",           "kor_moons_blessing"]    }, // R3 shared
+    { main:"groth_fangs_assault",     sides:["groth_fangs_ambush",      "groth_protect_troops"]  }, // R5
   ],
   // Alpha Korrax (leader, Werewolf) — army commander, pack surge, garrison breaker
   h46: [
