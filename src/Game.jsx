@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { flushSync, unstable_batchedUpdates } from "react-dom";
-import { MapRenderer, clearKeepCache } from "./MapRenderer";
+import { MapRenderer, clearKeepCache, clearHQCache } from "./MapRenderer";
 
 // Constants
 import { CSS } from "./constants/css.js";
@@ -705,6 +705,7 @@ export default function RiseToWar() {
         setCrossingsState(crossings || []);
         perfLog(`impass: ${(impassKeys||[]).length} border tiles sent`);
         clearKeepCache();
+        clearHQCache();
         setTiles(rawMap);
         setTimeout(() => {
           mapRendererRef.current?.teleport(panRef.current.x, panRef.current.y);
@@ -731,6 +732,7 @@ export default function RiseToWar() {
     if (screen === "title" || screen === "faction") {
       setMapReady(false);
       clearKeepCache();
+      clearHQCache();
       setTiles({});
       setLoadPct(0);
       setLoadLabel("Generating world...");
