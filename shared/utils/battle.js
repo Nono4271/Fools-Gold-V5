@@ -96,6 +96,41 @@ switch (eff.type) {
   case "atk_stack":     rs.troopAtkMult       *= (1 + (eff.valuePerStack || 0.04)); break;
   case "counter_attack":rs.troopCounterAtk    = true; break;
   case "immunity":      break;
+  // New mechanics
+  case "invisibility":
+    rs.invisibleUnits = Math.max(rs.invisibleUnits, eff.units || 2);
+    if (eff.stunImmune) rs.invisStunImmune = true;
+    break;
+  case "focus_damage":
+    rs.focusDmgBonus += eff.value || 0;
+    break;
+  case "confusion_focus_down":
+    rs.enemyFocusDown = Math.max(rs.enemyFocusDown, eff.value || 0);
+    rs.enemyConfused  = Math.max(rs.enemyConfused || 0, eff.duration || 1);
+    break;
+  case "vs_ranged_dmg_up":
+    rs.vsRangedDmgUp += eff.value || 0;
+    break;
+  case "gear_stat_bonus":
+    rs.gearStatBonus += eff.value || 0;
+    break;
+  case "spd_bonus":
+    rs.cmdSpdBonus += eff.value || 0;
+    break;
+  case "day_night_conditional": {
+    // UTC hour 6–18 = day, otherwise night
+    const utcHour = new Date().getUTCHours();
+    const isNight = utcHour < 6 || utcHour >= 18;
+    rs.nightBuff = isNight;
+    if (isNight) {
+      rs.troopAtkMult *= (1 + (eff.nightBonus || 0));
+      rs.troopDefMult *= (1 + (eff.nightBonus || 0));
+    } else {
+      rs.troopAtkMult *= (1 - (eff.dayPenalty || 0));
+      rs.troopDefMult *= (1 - (eff.dayPenalty || 0));
+    }
+    break;
+  }
   default: break;
 }
 roundLog.actions.push({ actor:actorLabel, action:`${skill.icon} ${skill.name}`, dmg:0, isTroopSkill:true });
@@ -628,6 +663,15 @@ const rs = {
   // Troop skill state
   troopDoubleAtk:false, troopBonusDmgMult:0, troopCounterAtk:false,
   enemyStunned:0, enemyConfused:0, enemyDefDown:0, enemyTargetsTaunted:false,
+  // New mechanics
+  invisibleUnits:0,          // friendly units with 30% evade this round
+  invisStunImmune:false,     // max-level Invisible Enemy: stun immunity while invisible
+  focusDmgBonus:0,           // extra focus damage on commander attack (modified by FOC)
+  enemyFocusDown:0,          // enemy FOC stat reduction for 1 round (Compulsion)
+  cmdSpdBonus:0,             // speed bonus (Lord's Experience max level)
+  gearStatBonus:0,           // % bonus to gear-derived base stats (Lord's Experience)
+  vsRangedDmgUp:0,           // enemy ranged units take X% more damage (Vampire Assassins)
+  nightBuff:false,           // Night Terror: true = night, false = day
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
@@ -823,6 +867,7 @@ for (const ent of order) {
       roundLog.actions.push({ actor:"Enemy Cmd", action:"🎯 Taunted — forced to attack!", dmg:0 });
     }
     if (Math.random() < rs.enemyMissChance) { roundLog.actions.push({ actor:"Enemy Cmd", action:"Enemy commander missed!", dmg:0 }); continue; }
+    if (rs.invisibleUnits > 0 && Math.random() < 0.30) { roundLog.actions.push({ actor:"Enemy Cmd", action:"🌑 Attack evaded — target invisible!", dmg:0 }); continue; }
     const atkRes3  = atkTroopDef * bastionDefMult * rs.troopDefMult;
     const red3     = Math.max(0, 1 - atkRes3/(atkRes3+60));
     const eMod     = (1 - rs.enemyAtkReduce) * (1 - rs.enemyDmgReduce) * (1 - rs.dmgReduce);
