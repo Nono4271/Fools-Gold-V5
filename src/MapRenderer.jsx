@@ -1517,9 +1517,9 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // rotation=0 so no trig needed; fractions derived from sprite dims + anchor.
   const _sW  = TW * 3.0;
   const _sH  = _sW * 0.80;
-  const _aY  = 0.875;
+  const _aY  = 0.905;
   const _sx  = bx;
-  const _sy  = sPt.cy - elev + TH * 0.95 - TH * 0.42;
+  const _sy  = sPt.cy - elev + TH * 0.95;
   const _fp  = (fx, fy) => ({
     x: _sx + (fx - 0.5) * _sW,
     y: _sy + (fy - _aY) * _sH,
@@ -1566,10 +1566,10 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const targetH = targetW * 0.80;
 
   const spriteX = bx;
-  const spriteY = sPt.cy - elev + TH * 0.95 - TH * 0.42;
+  const spriteY = sPt.cy - elev + TH * 0.95;
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.875);
+    sp.anchor.set(0.5, 0.905);
     sp.width  = targetW;
     sp.height = targetH;
     sp.x = spriteX;
