@@ -684,111 +684,164 @@ export const SKITTER_RESKIN_SKILLS = {
 };
 
 // ── THAELOR THE SILKBOUND (veteran, attacker, Spider) ─────────────────────────
-// ATK:40, FOC:145, SPD:65 — spider ambush assassin. Attacker class bonus gives
-// +25 ATK at Lv20. High FOC makes her a rare focus-damage attacker — venom
-// strikes, ambush bursts, lifedrain through silk.
+// ATK:40, FOC:145, SPD:65 — silk assassin, patient and precise. High physical
+// damage output through stacking debuffs, self-buff skills, and multi-hit bursts.
 
 export const THAELOR_UNIQUE_SKILLS = {
-  thaelor_silk_ambush: {
-    name:"Silk Ambush", icon:"🕸", tree:"combat", cls:"attacker",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  tha_spider_assassin: {
+    name:"Spider Assassin", icon:"🕷️", tree:"combat", cls:"attacker",
     faction:"nightcreatures", commander:"h48",
-    type:"active", cooldown:4, offset:1, duration:1,
-    desc:"She drops from above with no warning — 280% damage from a position the enemy never saw coming.",
-    cmdMult:2.8, base:2.8, perLevel:0.20,
-    nextDesc:(lvl) => `Deals ${Math.round((2.8+lvl*0.2)*100)}% Physical Damage — rounds 1, 5, 9`,
+    type:"passive",
+    desc:"[Commander] Normal Attack Damage +2%. (Passive)",
+    effect:{ type:"cmd_normal_atk_bonus", value:0.02 },
+    base:0.02, perLevel:0.02,
+    maxLevelEffect:{ atkBonus:15 },
+    nextDesc:(lvl) => `Normal Attack DMG +${Math.round((0.02+lvl*0.02)*100)}%${lvl >= 14 ? " | Max: ATK +15" : ""} (permanent)`,
   },
-  venom_kiss: {
-    name:"Venom Kiss", icon:"🕷", tree:"combat", cls:"attacker",
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  tha_exerted_pressure: {
+    name:"Exerted Pressure", icon:"👊", tree:"combat", cls:"attacker",
     faction:"nightcreatures", commander:"h48",
-    type:"active", cooldown:3, offset:2, duration:2,
-    desc:"A touch that poisons and drains — her troops are restored as the venom does its work.",
-    cmdMult:1.6, lifesteal:0.30, enemyDmgTakenUp:0.10, base:1.6, perLevel:0.12,
-    nextDesc:(lvl) => `${Math.round((1.6+lvl*0.15)*100)}% damage + restore ${Math.round((0.30+lvl*0.05)*100)}% dealt + 10% vulnerability — rounds 2,5,8`,
+    type:"passive",
+    desc:"[Commander] Normal Attacks deal an additional 10% Physical Damage. (Passive)",
+    effect:{ type:"cmd_normal_atk_bonus", value:0.10 },
+    base:0.10, perLevel:0.10,
+    nextDesc:(lvl) => `Normal Attacks +${Math.round((0.10+lvl*0.10)*100)}% extra Physical Damage (permanent)`,
+  },
+
+  tha_weak_spot: {
+    name:"Weak Spot", icon:"🎯", tree:"combat", cls:"attacker",
+    faction:"nightcreatures", commander:"h48",
+    type:"passive",
+    desc:"[After Commander attacks] Target takes +1.5% more damage (modified by ATK) for 2 rounds. Stacks up to 2 times independently. (Passive)",
+    effect:{ type:"post_attack_vulnerability", value:0.015, duration:2, maxStacks:2, modifiedBy:"atk" },
+    base:0.015, perLevel:0.015,
+    nextDesc:(lvl) => `Post-attack: Target DMG Received +${((0.015+lvl*0.015)*100).toFixed(1)}% (ATK mod, 2 rnd, 2 independent stacks) (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  tha_all_out_assault: {
+    name:"All Out Assault", icon:"⚔️", tree:"combat", cls:"attacker",
+    faction:"nightcreatures", commander:"h48",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"Deals 15% / 17% / 19% Physical Damage three times — each hit targets a different unit. (Rounds 3, 6, 9)",
+    effect:{ type:"multi_hit_escalating", hits:[0.15,0.17,0.19], differentTargets:true },
+    base:0.15, perLevel:0.15,
+    maxLevelEffect:{ atkBonus:15 },
+    nextDesc:(lvl) => {
+      const h1 = Math.round((0.15+lvl*0.15)*100);
+      const h2 = Math.round((0.17+lvl*0.17)*100);
+      const h3 = Math.round((0.19+lvl*0.19)*100);
+      return `3 hits on different targets: ${h1}% / ${h2}% / ${h3}% Physical DMG${lvl >= 14 ? " | Max: ATK +15" : ""} — rounds 3,6,9`;
+    },
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // 3CD → rounds 4, 8
+  tha_brutal_strike: {
+    name:"Brutal Strike", icon:"💥", tree:"combat", cls:"attacker",
+    faction:"nightcreatures", commander:"h48",
+    type:"active", cooldown:3, offset:4, duration:1,
+    desc:"[1 Enemy Unit, prioritises Melee] 27% Physical Damage | 50% chance for additional 27% Physical Damage. (Rounds 4, 8)",
+    effect:{ type:"physical_damage_followup", target:"prioritiseMelee", initialDmg:0.27, followupDmg:0.27, followupChance:0.50 },
+    base:0.27, perLevel:0.2471,
+    nextDesc:(lvl) => {
+      const dmg = Math.round((0.27+lvl*0.2471)*100);
+      return `[Melee priority] ${dmg}% + 50% chance ${dmg}% follow-up Physical DMG — rounds 4,8`;
+    },
+  },
+
+  // Round 1 + 2CD → rounds 1, 4, 7, 10
+  tha_surprise_assault: {
+    name:"Surprise Assault", icon:"🌑", tree:"combat", cls:"attacker",
+    faction:"nightcreatures", commander:"h48",
+    type:"active", cooldown:2, offset:1, duration:1,
+    desc:"[Round 1] [All Enemy Units] 30% Physical Damage | 35% chance to Stun each target for 1 round. (Rounds 1, 4, 7, 10)",
+    effect:{ type:"aoe_physical_stun", stunChance:0.35 },
+    base:0.30, perLevel:0.30,
+    nextDesc:(lvl) => `All enemies ${Math.round((0.30+lvl*0.30)*100)}% Physical DMG + 35% Stun each — rounds 1,4,7,10`,
+  },
+
+  // ── R3 — Main ─────────────────────────────────────────────────────────────
+  tha_ancestral_knowledge: {
+    name:"Ancestral Knowledge", icon:"📖", tree:"combat", cls:"attacker",
+    faction:"nightcreatures", commander:"h48",
+    type:"passive",
+    desc:"[Commander] Skill Damage +2.0% in combat. (Passive)",
+    effect:{ type:"skill_dmg_bonus", value:0.02 },
+    base:0.02, perLevel:0.02,
+    maxLevelEffect:{ atkBonus:15 },
+    nextDesc:(lvl) => `All active skill damage +${Math.round((0.02+lvl*0.02)*100)}%${lvl >= 14 ? " | Max: ATK +15" : ""} (permanent)`,
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  // 3CD → rounds 4, 8
+  tha_spiders_gambit: {
+    name:"Spider's Gambit", icon:"🎲", tree:"combat", cls:"attacker",
+    faction:"nightcreatures", commander:"h48",
+    type:"active", cooldown:3, offset:4, duration:1,
+    desc:"[1 Enemy Unit] 100% Physical Damage | [Self] Next damage dealt -40%. (Rounds 4, 8)",
+    effect:{ type:"physical_damage_self_debuff", dmg:1.00, selfDebuff:0.40, debuffDuration:"next_hit" },
+    base:1.00, perLevel:1.00,
+    nextDesc:(lvl) => `${Math.round((1.00+lvl*1.00)*100)}% Physical DMG | Self: Next DMG -40% — rounds 4,8`,
+  },
+
+  tha_eight_eyes: {
+    name:"Eight Eyes", icon:"👁️", tree:"combat", cls:"attacker",
+    faction:"nightcreatures", commander:"h48",
+    type:"passive",
+    desc:"[Commander and Allied Units] 10% chance to gain Confusion Immunity for first 4 rounds. (Passive)",
+    effect:{ type:"confusion_immunity_chance", chance:0.10, rounds:4 },
+    base:0.10, perLevel:0.0667,
+    nextDesc:(lvl) => `${Math.round((0.10+lvl*0.0667)*100)}% chance for Confusion Immunity (first 4 rounds) (permanent)`,
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  tha_beast_hunter: {
+    name:"Beast Hunter", icon:"🗡️", tree:"combat", cls:"attacker",
+    faction:"nightcreatures", commander:"h48",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[1 Enemy Unit] 30% Physical Damage | [1 Random Large Enemy Unit] Additional 20% Physical Damage. (Rounds 3, 6, 9)",
+    effect:{ type:"physical_damage_large_bonus", primaryDmg:0.30, largeBonusDmg:0.20 },
+    base:0.30, perLevel:0.30,
+    maxLevelEffect:{ atkBonus:15 },
+    nextDesc:(lvl) => {
+      const p = Math.round((0.30+lvl*0.30)*100);
+      const b = Math.round((0.20+lvl*0.20)*100);
+      return `${p}% Physical DMG + ${b}% bonus vs Large unit${lvl >= 14 ? " | Max: ATK +15" : ""} — rounds 3,6,9`;
+    },
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  tha_many_trades: {
+    name:"Many Trades", icon:"🃏", tree:"combat", cls:"attacker",
+    faction:"nightcreatures", commander:"h48",
+    type:"passive",
+    desc:"[Commander] First 4 skills activated each battle deal +5% extra damage. (Passive)",
+    effect:{ type:"first_skills_dmg_bonus", instances:4, bonus:0.05 },
+    base:0.05, perLevel:0.05,
+    nextDesc:(lvl) => `First 4 skills: +${Math.round((0.05+lvl*0.05)*100)}% extra damage (permanent)`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  tha_constant_pressure: {
+    name:"Constant Pressure", icon:"🔩", tree:"combat", cls:"attacker",
+    faction:"nightcreatures", commander:"h48",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[2 Enemy Units] 20% Physical Damage (modified by ATK) | Apply Heal Block for 1 round. (Rounds 3, 6, 9)",
+    effect:{ type:"physical_damage_heal_block", targets:2, healBlockDuration:1, modifiedBy:"atk" },
+    base:0.20, perLevel:0.20,
+    nextDesc:(lvl) => `[2 Units] ${Math.round((0.20+lvl*0.20)*100)}% Physical DMG (ATK mod) + Heal Block 1 rnd — rounds 3,6,9`,
   },
 };
 
-export const THAELOR_RESKIN_SKILLS = {
-  thaelor_killing_instinct: {
-    name:"Silkbound Instinct", icon:"⚔", tree:"combat", cls:"attacker",
-    faction:"nightcreatures", commander:"h48",
-    type:"passive",
-    desc:"Bound in silk from birth, her instincts are woven with lethal patience. Permanently strikes harder.",
-    passiveCmdAtk:0.08, base:0.08, perLevel:0.06,
-    nextDesc:(lvl) => `+${Math.round((0.08+lvl*0.06)*100)}% commander damage (permanent)`,
-  },
-  thaelor_quick_strike: {
-    name:"Silk Strike", icon:"⚡", tree:"combat", cls:"attacker",
-    faction:"nightcreatures", commander:"h48",
-    type:"active", cooldown:2, offset:1, duration:1,
-    desc:"A strike wrapped in thread — fast, precise, impossible to see coming.",
-    cmdMult:1.4, base:1.4, perLevel:0.15,
-    nextDesc:(lvl) => `Deals ${Math.round((1.4+lvl*0.15)*100)}% Physical Damage — rounds 1, 3, 5, 7, 9`,
-  },
-  thaelor_predator_eyes: {
-    name:"Eight Eyes", icon:"🦅", tree:"combat", cls:"attacker",
-    faction:"nightcreatures", commander:"h48",
-    type:"passive",
-    desc:"Eight eyes see every angle. No target escapes. +6% permanent critical hit chance.",
-    passiveCritChance:0.06, base:0.06, perLevel:0.04,
-    nextDesc:(lvl) => `+${Math.round((0.06+lvl*0.04)*100)}% critical hit chance (permanent)`,
-  },
-  thaelor_battle_frenzy: {
-    name:"Venom Frenzy", icon:"🩸", tree:"combat", cls:"attacker",
-    faction:"nightcreatures", commander:"h48",
-    type:"active", cooldown:2, offset:2, duration:1,
-    desc:"Venom floods her system — every other round she strikes with heightened speed and lethality.",
-    critBonus:0.30, cmdMult:1.15, base:0.30, perLevel:0.05,
-    nextDesc:(lvl) => `${Math.round((1.15+lvl*0.05)*100)}% damage + 30% crit chance — rounds 2, 4, 6, 8, 10`,
-  },
-  thaelor_execute: {
-    name:"Death Drop", icon:"💀", tree:"combat", cls:"attacker",
-    faction:"nightcreatures", commander:"h48",
-    type:"active", cooldown:5, offset:1, duration:1,
-    desc:"She falls from the dark and ends it — 300% damage on the opener, again mid-fight.",
-    cmdMult:3.0, base:3.0, perLevel:0.25,
-    nextDesc:(lvl) => `Deals ${Math.round((3.0+lvl*0.25)*100)}% Physical Damage — rounds 1, 6`,
-  },
-  thaelor_double_strike: {
-    name:"Dual Fang Strike", icon:"⚔", tree:"combat", cls:"attacker",
-    faction:"nightcreatures", commander:"h48",
-    type:"active", cooldown:4, offset:2, duration:1,
-    desc:"Two strikes in one blur — fangs and silk, landing before the enemy can react.",
-    cmdHits:2, cmdMult:1.2, base:1.2, perLevel:0.10,
-    nextDesc:(lvl) => `2 hits × ${Math.round((1.2+lvl*0.1)*100)}% Physical Damage — rounds 2, 6, 10`,
-  },
-  thaelor_killing_edge: {
-    name:"Silkbound Reckoning", icon:"🔪", tree:"combat", cls:"attacker",
-    faction:"nightcreatures", commander:"h48",
-    type:"active", cooldown:5, offset:5, duration:1,
-    desc:"She doesn't strike soldiers — she strikes armies. 6% of their total strength stripped away.",
-    cmdPctDmg:0.06, base:0.06, perLevel:0.02,
-    nextDesc:(lvl) => `${Math.round((0.06+lvl*0.02)*100)}% of enemy max HP as direct damage — rounds 5, 10`,
-  },
-  thaelor_battle_hunger: {
-    name:"Web Drain", icon:"🕸", tree:"combat", cls:"attacker",
-    faction:"nightcreatures", commander:"h48",
-    type:"active", cooldown:3, offset:1, duration:1,
-    desc:"She drains through silk — 130% damage and restores troops equal to 25% of what she deals.",
-    cmdMult:1.3, lifesteal:0.25, base:0.25, perLevel:0.05,
-    nextDesc:(lvl) => `130% damage, restore troops = ${Math.round((0.25+lvl*0.05)*100)}% of damage dealt — rounds 1, 4, 7, 10`,
-  },
-  thaelor_flurry: {
-    name:"Silk Flurry", icon:"🌪", tree:"combat", cls:"attacker",
-    faction:"nightcreatures", commander:"h48",
-    type:"active", cooldown:4, offset:4, duration:1,
-    desc:"Three strikes wrapped in thread — the enemy can't track the blows.",
-    cmdHits:3, cmdMult:0.9, base:0.9, perLevel:0.08,
-    nextDesc:(lvl) => `3 hits × ${Math.round((0.9+lvl*0.08)*100)}% Physical Damage — rounds 4, 8`,
-  },
-  thaelor_deathblow: {
-    name:"Widow's Mark", icon:"💥", tree:"combat", cls:"attacker",
-    faction:"nightcreatures", commander:"h48",
-    type:"active", cooldown:5, offset:3, duration:1,
-    desc:"She marks the enemy's heart and strikes it directly — 10% max HP damage with high crit.",
-    cmdPctDmg:0.10, critBonus:0.50, base:0.10, perLevel:0.02,
-    nextDesc:(lvl) => `${Math.round((0.1+lvl*0.02)*100)}% max HP direct damage + 50% crit — rounds 3, 8`,
-  },
-};
+export const THAELOR_RESKIN_SKILLS = {};
+
 
 // ── Merged export ─────────────────────────────────────────────────────────────
 
@@ -847,9 +900,9 @@ export const NIGHTCREATURES_BRANCH_SKILL_MAP = {
   ],
   // Thaelor the Silkbound (attacker, Spider) — ambush assassin, venom striker
   h48: [
-    { main:"thaelor_killing_instinct",sides:["thaelor_predator_eyes",  "thaelor_battle_hunger"]  },
-    { main:"thaelor_battle_frenzy",   sides:["thaelor_quick_strike",   "thaelor_double_strike"]  },
-    { main:"thaelor_silk_ambush",     sides:["thaelor_execute",        "thaelor_killing_edge"]   },
-    { main:"venom_kiss",              sides:["thaelor_flurry",         "thaelor_deathblow"]      },
+    { main:"tha_spider_assassin",    sides:["tha_exerted_pressure",   "tha_weak_spot"]          }, // R0 top
+    { main:"tha_all_out_assault",    sides:["tha_brutal_strike",      "tha_surprise_assault"]   }, // R0 bottom
+    { main:"tha_ancestral_knowledge",sides:["tha_spiders_gambit",     "tha_eight_eyes"]         }, // R3
+    { main:"tha_beast_hunter",       sides:["tha_many_trades",        "tha_constant_pressure"]  }, // R5
   ],
 };
