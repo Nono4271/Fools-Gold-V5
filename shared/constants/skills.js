@@ -638,9 +638,10 @@ export function skillProcAtLevel(skillDef, level) {
 export function skillFiresOnRound(def, round) {
   if (!def || def.type !== "active") return false;
   const cd  = def.cooldown ?? 1;
-  const off = def.offset   ?? cd;
+  const off = def.offset   ?? (cd + 1); // default: starts on cooldown, fires round cd+1
   if (round < off) return false;
-  return (round - off) % cd === 0;
+  if (cd === 0) return true; // fires every round
+  return (round - off) % (cd + 1) === 0;
 }
 
 // Returns the main skill key for branch b of a given commander (or class fallback).
