@@ -578,110 +578,159 @@ export const KORRAX_RESKIN_SKILLS = {};
 
 
 // ── SKITTER VEX (soldier, support, Spider) ────────────────────────────────────
-// ATK:70, FOC:20, SPD:60 — spider tactician. Support = webs + debuffs + troop
-// durability. He doesn't fight alone — he traps the enemy so others can finish.
+// ATK:70, FOC:20, SPD:60 — spider support tactician. Heals, debuffs, poisons,
+// and buffs the whole COTN faction simultaneously. Best in mixed spider armies.
 
 export const SKITTER_UNIQUE_SKILLS = {
-  skitter_web_trap: {
-    name:"Web Trap", icon:"🕷", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"active", cooldown:4, offset:2, duration:2,
-    desc:"He weaves the battlefield with silk — the enemy stumbles in and can't break free.",
-    enemyAtkReduce:0.14, enemyMissChance:0.12, base:0.14, perLevel:0.03,
-    nextDesc:(lvl) => `-${Math.round((0.14+lvl*0.03)*100)}% enemy attack + ${Math.round((0.12+lvl*0.03)*100)}% miss chance (2 rnd) — rounds 2,6,10`,
-  },
-  exoskeleton_stance: {
-    name:"Exoskeleton Stance", icon:"🛡", tree:"tactics", cls:"support",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  skit_heal_my_children: {
+    name:"Heal My Children", icon:"🕸️", tree:"tactics", cls:"support",
     faction:"nightcreatures", commander:"h47",
     type:"passive",
-    desc:"Skitter's chitinous shell shrugs off blows that would shatter iron. His troops share that resilience.",
-    passiveTroopDef:0.05, passiveDmgReduce:0.02, base:0.05, perLevel:0.02,
-    nextDesc:(lvl) => `-${Math.round((0.02+lvl*0.01)*100)}% damage received & +${Math.round((0.05+lvl*0.02)*100)}% troop defence (permanent)`,
+    desc:"[After Commander deals damage] [2 Allied Units] 4% chance to heal 5% HP. (Passive)",
+    effect:{ type:"post_attack_proc_heal", targets:2, chance:0.04, healPct:0.05 },
+    base:0.04, perLevel:0.04,
+    maxLevelEffect:{ focusBonus:15 },
+    nextDesc:(lvl) => `Post-attack: ${Math.round((0.04+lvl*0.04)*100)}% chance to heal 2 allies for ${Math.round((0.05+lvl*0.05)*100)}% HP${lvl >= 14 ? " | Max: FOC +15" : ""} (permanent)`,
+  },
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  skit_jumping_spiders: {
+    name:"Jumping Spiders", icon:"🕷️", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[Spider Units] 10% chance to evade the next instance of damage this round. (Rounds 3, 6, 9)",
+    effect:{ type:"branch_evasion_first_hit", branch:"spiders", chance:0.10 },
+    base:0.10, perLevel:0.10,
+    nextDesc:(lvl) => `[Spider Units] ${Math.round((0.10+lvl*0.10)*100)}% chance to evade next hit — rounds 3,6,9`,
+  },
+
+  skit_spider_bite: {
+    name:"Spider Bite", icon:"🩸", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[All Enemy Units] 9% Focus Damage | 60% chance to apply Venom per unit. (Rounds 3, 6, 9)",
+    effect:{ type:"aoe_focus_venom", venomChance:0.60 },
+    base:0.09, perLevel:0.09,
+    nextDesc:(lvl) => `All enemies ${Math.round((0.09+lvl*0.09)*100)}% Focus DMG + 60% Venom each — rounds 3,6,9`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  skit_hidden_in_webs: {
+    name:"Hidden in the Webs", icon:"🌑", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[1 Enemy Unit] 20% Focus Damage | Applies Poison (20% damage/round for 2 rounds). (Rounds 3, 6, 9)",
+    effect:{ type:"focus_damage_poison", poisonDmg:0.20, poisonDuration:2 },
+    base:0.20, perLevel:0.20,
+    nextDesc:(lvl) => `${Math.round((0.20+lvl*0.20)*100)}% Focus DMG + Poison 20%/rnd (2 rnd) — rounds 3,6,9`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  skit_power_in_numbers: {
+    name:"Power In Numbers", icon:"💪", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"passive",
+    desc:"[If all units are Spiders] [Spider Units] All stats +1.0%. (Passive)",
+    effect:{ type:"all_spider_army_bonus", value:0.01 },
+    base:0.01, perLevel:0.01,
+    nextDesc:(lvl) => `[All-Spider army] Spider Units: all stats +${Math.round((0.01+lvl*0.01)*100)}% (permanent)`,
+  },
+
+  skit_scurrier: {
+    name:"Scurrier", icon:"💨", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"passive",
+    notImplemented:true,
+    desc:"[Army] March Speed +2%. (Non-Combat Passive — Coming Soon)",
+    effect:{ type:"march_speed_bonus", value:0.02 },
+    base:0.02, perLevel:0.02,
+    nextDesc:(lvl) => `March Speed +${Math.round((0.02+lvl*0.02)*100)}% (permanent)`,
+  },
+
+  // ── R3 — Main ─────────────────────────────────────────────────────────────
+  skit_spiders_web: {
+    name:"Spider's Web", icon:"🕸️", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"passive",
+    desc:"[First 4 Rounds] [All Enemies] SPD -2.0 (modified by SPD). (Passive)",
+    effect:{ type:"enemy_spd_down_early", value:2.0, maxRound:4, modifiedBy:"spd" },
+    base:2.0, perLevel:2.0,
+    maxLevelEffect:{ cmdSpdBonus:10 },
+    nextDesc:(lvl) => `[Rounds 1–4] All enemies SPD -${2.0+lvl*2.0} (SPD mod)${lvl >= 14 ? " | Max: CMD SPD +10" : ""} (permanent)`,
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  skit_vexing_attack: {
+    name:"Vexing Attack", icon:"⚡", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"passive",
+    desc:"[All Allied Units] First 3 rounds: 8% chance to gain a follow-up attack. (Passive)",
+    effect:{ type:"ally_followup_chance_early", chance:0.08, maxRound:3 },
+    base:0.08, perLevel:0.08,
+    nextDesc:(lvl) => `[Rounds 1–3] All allies ${Math.round((0.08+lvl*0.08)*100)}% chance for follow-up attack (permanent)`,
+  },
+
+  // 3CD → rounds 4, 8
+  skit_creature_power: {
+    name:"Creature Power", icon:"🌕", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"active", cooldown:3, offset:4, duration:1,
+    desc:"[Spider Units] 10% chance to evade | [Vampire Units] 10% chance for max damage | [Werewolf Units] 10% chance for SPD +10. All proc independently. (Rounds 4, 8)",
+    effect:{ type:"cotn_multi_branch_buff",
+      spider:{ type:"evasion", chance:0.10 },
+      vampire:{ type:"max_damage", chance:0.10 },
+      werewolf:{ type:"spd_bonus", chance:0.10, value:10 }
+    },
+    base:0.10, perLevel:0.10,
+    nextDesc:(lvl) => {
+      const pct = Math.round((0.10+lvl*0.10)*100);
+      return `Spider ${pct}% evade | Vampire ${pct}% max DMG | Werewolf ${pct}% SPD+10 — rounds 4,8`;
+    },
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  // Round 1 + 2CD → rounds 1, 4, 7, 10
+  skit_spider_queen: {
+    name:"Spider Queen", icon:"👑", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"active", cooldown:2, offset:1, duration:1,
+    desc:"[Round 1] [1 Enemy Unit] 12% Focus Damage | [Spider Units] gain +2% damage (stacks up to 4×). (Rounds 1, 4, 7, 10)",
+    effect:{ type:"focus_damage_spider_stack", spiderDmgPerStack:0.02, maxStacks:4 },
+    base:0.12, perLevel:0.12,
+    maxLevelEffect:{ spiderStunImmunity:true },
+    nextDesc:(lvl) => `${Math.round((0.12+lvl*0.12)*100)}% Focus DMG + Spider Units +2% DMG stack (max 4×/+8%)${lvl >= 14 ? " | Max: Spider Units Stun Immune" : ""} — rounds 1,4,7,10`,
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  skit_trapped: {
+    name:"Trapped", icon:"🪤", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"active", cooldown:2, offset:3, duration:2,
+    desc:"[2 Enemy Units] Damage Received +2% | 10% chance to Stun each round while active. (Rounds 3, 6, 9)",
+    effect:{ type:"vulnerability_stun_chance", targets:2, vulnValue:0.02, stunChance:0.10, duration:2 },
+    base:0.02, perLevel:0.02,
+    nextDesc:(lvl) => `[2 Units] DMG Received +${Math.round((0.02+lvl*0.02)*100)}% + 10% Stun/rnd (2 rnd) — rounds 3,6,9`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  skit_resilience: {
+    name:"Skitter's Resilience", icon:"💚", tree:"tactics", cls:"support",
+    faction:"nightcreatures", commander:"h47",
+    type:"active", cooldown:2, offset:3, duration:1,
+    desc:"[2 Allied Units] Recover 12% HP | 70% chance to remove 1 random debuff per unit. (Rounds 3, 6, 9)",
+    effect:{ type:"heal_cleanse", targets:2, healPct:0.12, cleanseChance:0.70 },
+    base:0.12, perLevel:0.12,
+    nextDesc:(lvl) => `[2 Allied Units] ${Math.round((0.12+lvl*0.12)*100)}% HP + 70% cleanse 1 debuff — rounds 3,6,9`,
   },
 };
 
-export const SKITTER_RESKIN_SKILLS = {
-  skitter_field_medic: {
-    name:"Silk Bindings", icon:"💚", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"passive",
-    desc:"He wraps wounds with silk — passively restoring fallen soldiers each round.",
-    passiveHealPerRound:0.02, base:0.02, perLevel:0.01,
-    nextDesc:(lvl) => `Restore ${Math.round((0.02+lvl*0.01)*100)}% of lost troops each round`,
-  },
-  skitter_mending_wave: {
-    name:"Regenerative Silk", icon:"✨", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"active", cooldown:2, offset:2, duration:1,
-    desc:"A pulse of restorative webbing threads through the ranks every other round.",
-    healPct:0.06, base:0.06, perLevel:0.02,
-    nextDesc:(lvl) => `Restore ${Math.round((0.06+lvl*0.02)*100)}% of lost troops — rounds 2, 4, 6, 8, 10`,
-  },
-  skitter_rally_cry: {
-    name:"Signal Web", icon:"🚩", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"active", cooldown:5, offset:1, duration:1,
-    desc:"Vibrations through the web rally fallen soldiers with sudden urgency.",
-    healPct:0.18, base:0.18, perLevel:0.04,
-    nextDesc:(lvl) => `Restore ${Math.round((0.18+lvl*0.04)*100)}% of lost troops — rounds 1, 6`,
-  },
-  skitter_hex_curse: {
-    name:"Venom Fog", icon:"🔮", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"active", cooldown:4, offset:2, duration:2,
-    desc:"A cloud of paralytic mist floods the field — enemies swing blindly through the haze.",
-    enemyMissChance:0.18, base:0.18, perLevel:0.04,
-    nextDesc:(lvl) => `${Math.round((0.18+lvl*0.04)*100)}% enemy miss chance (2 rnd) — rounds 2, 6, 10`,
-  },
-  skitter_blind_strike: {
-    name:"Venom Rebuke", icon:"👁", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"active", cooldown:3, offset:1, duration:2,
-    desc:"A spray of venom weakens enemy muscle and slows their strikes for 2 rounds.",
-    enemyAtkReduce:0.12, base:0.12, perLevel:0.03,
-    nextDesc:(lvl) => `-${Math.round((0.12+lvl*0.03)*100)}% enemy attack (2 rnd) — rounds 1, 4, 7, 10`,
-  },
-  skitter_supply_cut: {
-    name:"Sever Supply", icon:"✂", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"active", cooldown:5, offset:3, duration:1,
-    desc:"He cuts the enemy's recovery threads — sealing their wounds against them.",
-    blockHeal:3, base:3, perLevel:1,
-    nextDesc:(lvl) => `Block enemy healing for ${Math.round(3+lvl*1.0)} rounds — rounds 3, 8`,
-  },
-  skitter_guardian_aura: {
-    name:"Web Armor", icon:"🌿", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"passive",
-    desc:"Silk threads woven through troop armor permanently harden their defense.",
-    passiveTroopDef:0.05, base:0.05, perLevel:0.03,
-    nextDesc:(lvl) => `+${Math.round((0.05+lvl*0.03)*100)}% troop defence (permanent)`,
-  },
-  skitter_ember_shield: {
-    name:"Silk Barrier", icon:"🔆", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"active", cooldown:2, offset:1, duration:1,
-    desc:"A flash of woven silk deflects incoming harm every other round.",
-    troopDefMult:1.15, base:1.15, perLevel:0.05,
-    nextDesc:(lvl) => `+${Math.round((1.15+lvl*0.05-1)*100)}% troop defence — rounds 1, 3, 5, 7, 9`,
-  },
-  skitter_expose_weakness: {
-    name:"Exposed Joints", icon:"🎯", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"active", cooldown:3, offset:2, duration:2,
-    desc:"He identifies gaps in enemy armor — all attacks against them land with greater effect.",
-    enemyDmgTakenUp:0.12, base:0.12, perLevel:0.03,
-    nextDesc:(lvl) => `Enemy takes ${Math.round((0.12+lvl*0.03)*100)}% more damage (2 rnd) — rounds 2, 5, 8`,
-  },
-  skitter_foresight: {
-    name:"Web Sense", icon:"🔭", tree:"tactics", cls:"support",
-    faction:"nightcreatures", commander:"h47",
-    type:"active", cooldown:4, offset:4, duration:1,
-    desc:"Vibrations through the web alert Skitter before the enemy moves — he nullifies their skill entirely.",
-    nullifySkill:true, base:1, perLevel:0,
-    nextDesc:() => `Nullify enemy skill — rounds 4, 8`,
-  },
-};
+export const SKITTER_RESKIN_SKILLS = {};
+
 
 // ── THAELOR THE SILKBOUND (veteran, attacker, Spider) ─────────────────────────
 // ATK:40, FOC:145, SPD:65 — silk assassin, patient and precise. High physical
@@ -893,10 +942,10 @@ export const NIGHTCREATURES_BRANCH_SKILL_MAP = {
   ],
   // Skitter Vex (support, Spider) — web trapper, team healer, debuffer
   h47: [
-    { main:"exoskeleton_stance",      sides:["skitter_field_medic",    "skitter_guardian_aura"]  },
-    { main:"skitter_web_trap",        sides:["skitter_mending_wave",   "skitter_ember_shield"]   },
-    { main:"skitter_hex_curse",       sides:["skitter_blind_strike",   "skitter_expose_weakness"]},
-    { main:"skitter_foresight",       sides:["skitter_rally_cry",      "skitter_supply_cut"]     },
+    { main:"skit_heal_my_children", sides:["skit_jumping_spiders",  "skit_spider_bite"]      }, // R0 top
+    { main:"skit_hidden_in_webs",   sides:["skit_power_in_numbers", "skit_scurrier"]          }, // R0 bottom
+    { main:"skit_spiders_web",      sides:["skit_vexing_attack",    "skit_creature_power"]    }, // R3
+    { main:"skit_spider_queen",     sides:["skit_trapped",          "skit_resilience"]        }, // R5
   ],
   // Thaelor the Silkbound (attacker, Spider) — ambush assassin, venom striker
   h48: [
