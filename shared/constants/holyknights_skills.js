@@ -13,334 +13,400 @@
 ───────────────────────────────────────────────────────────────────────────── */
 
 // ── BROTHER ALDRIC (balanced, Templar) ───────────────────────────────────────
-// Balanced: mix of combat, defense, tactics. Disciplined shield-bearing stalwart.
-// Stats: ATK 78, FOC 20, SPD 48 — low-speed tank; passive durability + steady strikes.
-
-// ★ 2 Unique Skills
+// ATK:78, FOC:20, SPD:48 — veteran soldier. Day/night cycle specialist,
+// self-sacrifice mechanics, gets stronger as he takes hits. Shares R3 with Vayne.
 
 export const ALDRIC_UNIQUE_SKILLS = {
-  aldric_sacred_bulwark: {
-    name: "Sacred Bulwark", icon: "🛡", tree: "defense", cls: "balanced",
-    faction: "holyknights", commander: "h37",
-    type: "active", cooldown: 4, offset: 2, duration: 3,
-    desc: "Aldric plants himself like a wall of faith — all damage is reduced and his troops hold the line for 3 full rounds.",
-    dmgReduce: 0.16, troopDefMult: 1.14, base: 0.16, perLevel: 0.03,
-    nextDesc: (lvl) => `-${Math.round((0.16+lvl*0.04)*100)}% damage + +${Math.round((1.14+lvl*0.04-1)*100)}% troop def (3 rnd) — rounds 2, 6, 10`,
-  },
-  aldric_templar_oath: {
-    name: "Templar's Oath", icon: "✝️", tree: "defense", cls: "balanced",
-    faction: "holyknights", commander: "h37",
-    type: "passive",
-    desc: "A sworn defender's vow — permanently reduces incoming damage and steadies troop defense.",
-    passiveDmgReduce: 0.04, passiveTroopDef: 0.05, base: 0.04, perLevel: 0.02,
-    nextDesc: (lvl) => `-${Math.round((0.04+lvl*0.02)*100)}% damage received & +${Math.round((0.05+lvl*0.02)*100)}% troop defence (permanent)`,
-  },
-};
 
-// 10 Reskins — balanced draw: 4 defense, 3 combat, 3 tactics
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  ald_veterans_presence: {
+    name: "Veteran's Presence", icon: "🎖️", tree: "tactics", cls: "balanced",
+    faction: "holyknights", commander: "h37",
+    type: "passive",
+    desc: "[Holy Knight Units] DMG +0.6% | DEF +6 | SPD +6. (Passive)",
+    effect: { type: "hk_triple_stat_bonus", dmgUp: 0.006, defBonus: 6, spdBonus: 6 },
+    base: 0.006, perLevel: 0.006,
+    maxLevelEffect: { dmgRangeMin: 1, dmgRangeMax: 1 },
+    nextDesc: (lvl) => `[HK Units] DMG +${((0.006+lvl*0.006)*100).toFixed(1)}% | DEF +${6+lvl*6} | SPD +${6+lvl*6}${lvl >= 14 ? " | Max: Damage range +1-1" : ""} (permanent)`,
+  },
 
-export const ALDRIC_RESKIN_SKILLS = {
-  aldric_iron_will: {
-    name: "Aldric's Iron Will", icon: "🛡", tree: "defense", cls: "balanced",
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  ald_stoic_hero: {
+    name: "Stoic Hero", icon: "🧱", tree: "tactics", cls: "balanced",
     faction: "holyknights", commander: "h37",
     type: "passive",
-    desc: "Aldric's unbreakable conviction permanently reduces all damage he and his troops receive.",
-    passiveDmgReduce: 0.04, base: 0.04, perLevel: 0.03,
-    nextDesc: (lvl) => `-${Math.round((0.04+lvl*0.02)*100)}% all incoming damage (permanent)`,
+    desc: "[Aldric] At the start of each round: 5% chance to gain Stun Immunity for that round. (Passive)",
+    effect: { type: "per_round_stun_immune_chance", chance: 0.05 },
+    base: 0.05, perLevel: 0.05,
+    nextDesc: (lvl) => `Each round: ${Math.round((0.05+lvl*0.05)*100)}% chance for Stun Immunity (permanent)`,
   },
-  templar_shield_wall: {
-    name: "Templar's Shield Wall", icon: "🏰", tree: "defense", cls: "balanced",
-    faction: "holyknights", commander: "h37",
-    type: "active", cooldown: 2, offset: 1, duration: 2,
-    desc: "Aldric raises a wall of holy shields every other round.",
-    dmgReduce: 0.12, base: 0.12, perLevel: 0.04,
-    nextDesc: (lvl) => `-${Math.round((0.12+lvl*0.04)*100)}% all damage (2 rnd) — rounds 1, 3, 5, 7, 9`,
-  },
-  hold_the_sacred_line: {
-    name: "Hold the Sacred Line", icon: "🚩", tree: "defense", cls: "balanced",
-    faction: "holyknights", commander: "h37",
-    type: "active", cooldown: 2, offset: 2, duration: 1,
-    desc: "Aldric orders his troops to brace every other round — no ground given.",
-    troopDmgReduce: 0.14, base: 0.14, perLevel: 0.04,
-    nextDesc: (lvl) => `-${Math.round((0.14+lvl*0.04)*100)}% troop damage — rounds 2, 4, 6, 8, 10`,
-  },
-  aldric_fortified_ranks: {
-    name: "Aldric's Fortified Ranks", icon: "🪖", tree: "defense", cls: "balanced",
+
+  ald_strong_in_faith: {
+    name: "Strong in My Faith", icon: "✝️", tree: "tactics", cls: "balanced",
     faction: "holyknights", commander: "h37",
     type: "passive",
-    desc: "The Templar's discipline permanently hardens every soldier in his ranks.",
-    passiveTroopDef: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.06+lvl*0.04)*100)}% troop defence (permanent)`,
+    desc: "[Holy Knight Units] Recover 5% HP each round. (Passive)",
+    effect: { type: "branch_heal_per_round", branch: "holyknights", healPct: 0.05 },
+    base: 0.05, perLevel: 0.05,
+    nextDesc: (lvl) => `[HK Units] Recover ${Math.round((0.05+lvl*0.05)*100)}% HP each round (permanent)`,
   },
-  templar_strike: {
-    name: "Templar's Strike", icon: "⚔", tree: "combat", cls: "balanced",
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  ald_power_of_sun: {
+    name: "Power of Sun", icon: "☀️", tree: "tactics", cls: "balanced",
+    faction: "holyknights", commander: "h37",
+    type: "passive",
+    desc: "[Holy Knight Units] At Day: 4% chance to deal maximum damage. (Passive)",
+    effect: { type: "day_max_dmg_chance", branch: "holyknights", chance: 0.04 },
+    base: 0.04, perLevel: 0.04,
+    maxLevelEffect: { hkHpBonus: 10 },
+    nextDesc: (lvl) => `[HK Units] Day: ${Math.round((0.04+lvl*0.04)*100)}% chance for max damage${lvl >= 14 ? " | Max: HK Units HP +10" : ""} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // Round 4 only — single trigger
+  ald_warriors_burden: {
+    name: "Warrior's Burden", icon: "⚖️", tree: "tactics", cls: "balanced",
+    faction: "holyknights", commander: "h37",
+    type: "active", cooldown: 99, offset: 4, duration: 1,
+    desc: "[Round 4] [Aldric] FOC and SPD halved permanently | [HK Units] HP and DEF +3 permanently. (Round 4 only)",
+    effect: { type: "self_sacrifice_for_army", cmdFocHalf: true, cmdSpdHalf: true, armyHpBonus: 3, armyDefBonus: 3, branch: "holyknights" },
+    base: 3, perLevel: 3,
+    nextDesc: (lvl) => `[Round 4] Aldric FOC & SPD halved | HK Units HP +${3+lvl*3} & DEF +${3+lvl*3} (permanent)`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  ald_old_reliable: {
+    name: "Old Reliable", icon: "⚔️", tree: "combat", cls: "balanced",
+    faction: "holyknights", commander: "h37",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Enemy Units] 20% Physical Damage (modified by ATK). (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_multi", targets: 2, modifiedBy: "atk" },
+    base: 0.20, perLevel: 0.20,
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.20+lvl*0.20)*100)}% Physical DMG (ATK mod) — rounds 3,6,9`,
+  },
+
+  // ── R3 — Shared with Vayne ────────────────────────────────────────────────
+  // vay_commander_guidance, vay_protected_by_faith, vay_experienced_army
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  ald_here_we_go_again: {
+    name: "Here We Go Again", icon: "🌙", tree: "tactics", cls: "balanced",
+    faction: "holyknights", commander: "h37",
+    type: "passive",
+    desc: "[HK Units] At Night: DMG Received from COTN -1.5% | At Day (max level): DMG Dealt to COTN +10%. (Passive)",
+    effect: { type: "day_night_faction_split", branch: "holyknights", nightResist: 0.015, dayBonus: 0.10, dayBonusVsFaction: "nightcreatures" },
+    base: 0.015, perLevel: 0.015,
+    maxLevelEffect: { dayDmgBonus: 0.10 },
+    nextDesc: (lvl) => `Night: HK DMG Received from COTN -${((0.015+lvl*0.015)*100).toFixed(1)}%${lvl >= 14 ? " | Max: Day: HK DMG vs COTN +10%" : ""} (permanent)`,
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  // Round 1 + 2CD → rounds 1, 4, 7, 10
+  ald_last_ride: {
+    name: "Last Ride", icon: "🐴", tree: "combat", cls: "balanced",
     faction: "holyknights", commander: "h37",
     type: "active", cooldown: 2, offset: 1, duration: 1,
-    desc: "A reliable sword blow landed with disciplined timing every other round.",
-    cmdMult: 1.4, base: 1.4, perLevel: 0.15,
-    nextDesc: (lvl) => `Deals ${Math.round((1.4+lvl*0.15)*100)}% Physical Damage — rounds 1, 3, 5, 7, 9`,
+    desc: "[All Enemy Units] 30% Physical Damage (modified by ATK, prioritises Ranged). (Rounds 1, 4, 7, 10)",
+    effect: { type: "aoe_physical_atk_mod", prioritise: "ranged", modifiedBy: "atk" },
+    base: 0.30, perLevel: 0.30,
+    nextDesc: (lvl) => `All enemies ${Math.round((0.30+lvl*0.30)*100)}% Physical DMG (ATK mod, Ranged first) — rounds 1,4,7,10`,
   },
-  aldric_measured_blow: {
-    name: "Aldric's Measured Blow", icon: "🗡", tree: "combat", cls: "balanced",
-    faction: "holyknights", commander: "h37",
-    type: "active", cooldown: 3, offset: 3, duration: 1,
-    desc: "Aldric waits for the right moment — a heavy blow every 3 rounds that also exposes the enemy.",
-    cmdMult: 2.0, enemyDmgTakenUp: 0.12, base: 2.0, perLevel: 0.18,
-    nextDesc: (lvl) => `Deals ${Math.round((2.0+lvl*0.18)*100)}% Physical Damage + target takes 12% more damage for 1 round — rounds 3, 6, 9`,
-  },
-  aldric_steadfast_instinct: {
-    name: "Aldric's Steadfast Instinct", icon: "🦅", tree: "combat", cls: "balanced",
+
+  ald_promise_land: {
+    name: "Promise Land", icon: "⬆️", tree: "combat", cls: "balanced",
     faction: "holyknights", commander: "h37",
     type: "passive",
-    desc: "Years of templar training have sharpened Aldric's commander instincts permanently.",
-    passiveCmdAtk: 0.08, base: 0.08, perLevel: 0.05,
-    nextDesc: (lvl) => `+${Math.round((0.08+lvl*0.06)*100)}% commander damage (permanent)`,
-  },
-  templar_blessing: {
-    name: "Templar's Blessing", icon: "✨", tree: "tactics", cls: "balanced",
-    faction: "holyknights", commander: "h37",
-    type: "active", cooldown: 2, offset: 2, duration: 1,
-    desc: "Aldric calls on his faith to restore fallen troops every other round.",
-    healPct: 0.06, base: 0.06, perLevel: 0.02,
-    nextDesc: (lvl) => `Restore ${Math.round((0.06+lvl*0.02)*100)}% of lost troops — rounds 2, 4, 6, 8, 10`,
-  },
-  templar_rebuke: {
-    name: "Templar's Rebuke", icon: "📣", tree: "tactics", cls: "balanced",
-    faction: "holyknights", commander: "h37",
-    type: "active", cooldown: 3, offset: 1, duration: 2,
-    desc: "Aldric's commanding voice weakens enemy attacks for 2 rounds.",
-    enemyAtkReduce: 0.12, base: 0.12, perLevel: 0.03,
-    nextDesc: (lvl) => `-${Math.round((0.12+lvl*0.03)*100)}% enemy attack (2 rnd) — rounds 1, 4, 7, 10`,
-  },
-  aldric_inspiring_presence: {
-    name: "Aldric's Inspiring Presence", icon: "⭐", tree: "tactics", cls: "balanced",
-    faction: "holyknights", commander: "h37",
-    type: "passive",
-    desc: "The sight of Aldric standing firm permanently emboldens every soldier around him.",
-    passiveTroopAtk: 0.05, base: 0.05, perLevel: 0.03,
-    nextDesc: (lvl) => `+${Math.round((0.05+lvl*0.03)*100)}% troop attack (permanent)`,
+    desc: "[Aldric] On damage received: +1.0 ATK permanently (max 6 stacks). (Passive)",
+    effect: { type: "reactive_cmd_atk_stack", atkPerStack: 1.0, maxStacks: 6 },
+    base: 1.0, perLevel: 1.0,
+    nextDesc: (lvl) => `On hit received: +${1.0+lvl*1.0} ATK permanently (max 6 stacks/+${(1.0+lvl*1.0)*6} ATK total)`,
   },
 };
+
+export const ALDRIC_RESKIN_SKILLS = {};
 
 // ── COMMANDER VAYNE (leader, Templar) ─────────────────────────────────────────
-// Leader: command tree. Disciplined, shield-bearing, stalwart Templar commander.
-// Stats: ATK 130, FOC 30, SPD 55 — physical-leaning leader; strong army buffs.
-
-// ★ 2 Unique Skills
+// ATK:130, FOC:30, SPD:55 — disciplined military leader. Front-loads damage
+// rounds 1-2, anti-COTN specialist, stacking DEF. The calculated general.
 
 export const VAYNE_UNIQUE_SKILLS = {
-  vayne_edict: {
-    name: "Vayne's Edict", icon: "⚔️", tree: "command", cls: "leader",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  // 1CD → rounds 2, 4, 6, 8, 10
+  vay_commander_faith: {
+    name: "Commander Faith", icon: "⚔️", tree: "command", cls: "leader",
     faction: "holyknights", commander: "h38",
-    type: "active", cooldown: 3, offset: 1, duration: 2,
-    desc: "A commanding decree that surges troop attack and blunts enemy retaliation simultaneously.",
-    troopAtkMult: 1.18, enemyAtkReduce: 0.12, base: 1.18, perLevel: 0.05,
-    nextDesc: (lvl) => `+${Math.round((1.18+lvl*0.05-1)*100)}% attack, -${Math.round((0.12+lvl*0.03)*100)}% enemy attack (2 rnd) — rounds 1, 4, 7, 10`,
+    type: "active", cooldown: 1, offset: 2, duration: 1,
+    desc: "[2 Enemy Units] 12% Physical Damage (modified by ATK). (Rounds 2, 4, 6, 8, 10)",
+    effect: { type: "physical_damage_multi", targets: 2, modifiedBy: "atk" },
+    base: 0.12, perLevel: 0.12,
+    maxLevelEffect: { bonusDmg: 0.15, prioritise: "melee" },
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.12+lvl*0.12)*100)}% Physical DMG (ATK mod)${lvl >= 14 ? " | Max: +15% bonus, prioritise Melee" : ""} — rounds 2,4,6,8,10`,
   },
-  crusader_advance: {
-    name: "Crusader's Advance", icon: "📜", tree: "command", cls: "leader",
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  vay_silent_authority: {
+    name: "Silent Authority", icon: "🎖️", tree: "command", cls: "leader",
     faction: "holyknights", commander: "h38",
-    type: "active", cooldown: 5, offset: 5, duration: 1,
-    desc: "The holy order marches as one — an unstoppable surge that ignores fortifications and overwhelms all resistance.",
-    troopAtkMult: 1.55, garrisonIgnore: 0.18, base: 1.55, perLevel: 0.10,
-    nextDesc: (lvl) => `+${Math.round((1.55+lvl*0.08-1)*100)}% attack + ignore ${Math.round((0.18+lvl*0.03)*100)}% garrison — rounds 5, 10`,
+    type: "passive",
+    desc: "[Holy Knight Units] Damage Dealt +3%. (Passive)",
+    effect: { type: "branch_dmg_bonus", branch: "holyknights", value: 0.03 },
+    base: 0.03, perLevel: 0.03,
+    nextDesc: (lvl) => `[HK Units] DMG +${Math.round((0.03+lvl*0.03)*100)}% (permanent)`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  vay_see_you: {
+    name: "See You!", icon: "🎯", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h38",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[1 Enemy Unit, prioritises Ranged] 60% Physical Damage (modified by ATK). (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_single", target: "prioritiseRanged", modifiedBy: "atk" },
+    base: 0.60, perLevel: 0.60,
+    nextDesc: (lvl) => `[Ranged priority] ${Math.round((0.60+lvl*0.60)*100)}% Physical DMG (ATK mod) — rounds 3,6,9`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  vay_commander_guidance: {
+    name: "Commander Guidance", icon: "📜", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h38",
+    type: "passive",
+    desc: "[First 2 Rounds] [Allied Units] Damage Dealt +3.0%. (Passive)",
+    effect: { type: "early_round_dmg_up", value: 0.03, maxRound: 2 },
+    base: 0.03, perLevel: 0.03,
+    maxLevelEffect: { stunImmunityWhileActive: true },
+    nextDesc: (lvl) => `[Rounds 1-2] All allies DMG +${Math.round((0.03+lvl*0.03)*100)}%${lvl >= 14 ? " | Max: Stun Immune while active" : ""} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  vay_protected_by_faith: {
+    name: "Protected by Faith", icon: "🙏", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h38",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[1 Enemy Unit] 12% Physical Damage | [1 Allied Unit] Recovers 13% HP. (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_and_heal", enemyDmg: 0.12, allyHeal: 0.13, modifiedBy: "atk" },
+    base: 0.12, perLevel: 0.1214,
+    nextDesc: (lvl) => {
+      const dmg = Math.round((0.12+lvl*0.1214)*100);
+      const heal = Math.round((0.13+lvl*0.1114)*100);
+      return `1 enemy ${dmg}% Physical DMG | 1 ally heals ${heal}% HP — rounds 3,6,9`;
+    },
+  },
+
+  vay_experienced_army: {
+    name: "Experienced Army", icon: "🪖", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h38",
+    type: "passive",
+    desc: "[Allied Units] Damage Received from COTN Units -1.0%. (Passive)",
+    effect: { type: "dmg_resist_vs_faction", faction: "nightcreatures", value: 0.01 },
+    base: 0.01, perLevel: 0.01,
+    nextDesc: (lvl) => `All allies DMG Received from COTN -${Math.round((0.01+lvl*0.01)*100)}% (permanent)`,
+  },
+
+  // ── R3 — Main ─────────────────────────────────────────────────────────────
+  vay_will_of_templar: {
+    name: "Will of the Templar", icon: "⚜️", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h38",
+    type: "passive",
+    desc: "[First 4 Rounds] [All Enemies] Damage Dealt -0.7% (modified by ATK). (Passive)",
+    effect: { type: "enemy_dmg_down_early_atk", value: 0.007, maxRound: 4, modifiedBy: "atk" },
+    base: 0.007, perLevel: 0.007,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => `[Rounds 1-4] All enemies DMG -${((0.007+lvl*0.007)*100).toFixed(1)}% (ATK mod)${lvl >= 14 ? " | Max: ATK +15" : ""} (permanent)`,
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  // mou_anything_goes referenced in branch map
+
+  vay_templars_guidance: {
+    name: "Templar's Guidance", icon: "🛡️", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h38",
+    type: "passive",
+    desc: "[Allied Units] Focus Damage Received -6%. (Passive)",
+    effect: { type: "dmg_type_resist_all", value: 0.06 },
+    base: 0.06, perLevel: 0.06,
+    nextDesc: (lvl) => `All allies Focus DMG Received -${Math.round((0.06+lvl*0.06)*100)}% (permanent)`,
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  vay_horn_of_heavens: {
+    name: "Horn of the Heavens", icon: "📯", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h38",
+    type: "passive",
+    desc: "[Commander and Allied Troops] [First 2 Rounds] Damage Dealt +1.4%. (Passive)",
+    effect: { type: "early_round_dmg_up_all", value: 0.014, maxRound: 2 },
+    base: 0.014, perLevel: 0.014,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => `[Rounds 1-2] CMD and all troops DMG +${((0.014+lvl*0.014)*100).toFixed(1)}%${lvl >= 14 ? " | Max: ATK +15" : ""} (permanent)`,
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  vay_find_the_opening: {
+    name: "Find the Opening", icon: "💥", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h38",
+    type: "passive",
+    desc: "[Commander and Army] On hit: 7% chance to deal an additional 50% Physical Damage. (Passive)",
+    effect: { type: "on_hit_bonus_dmg", chance: 0.07, bonusDmg: 0.50 },
+    base: 0.07, perLevel: 0.07,
+    nextDesc: (lvl) => `On hit: ${Math.round((0.07+lvl*0.07)*100)}% chance +50% Physical DMG (permanent)`,
+  },
+
+  vay_defense_in_numbers: {
+    name: "Defense in Numbers", icon: "🏰", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h38",
+    type: "passive",
+    desc: "[Human Units] Once per round: 9% chance to gain DEF +5 (max 10 stacks). (Passive)",
+    effect: { type: "per_round_def_stack", faction: "humans", chance: 0.09, defPerStack: 5, maxStacks: 10 },
+    base: 0.09, perLevel: 0.09,
+    nextDesc: (lvl) => `[Human Units] ${Math.round((0.09+lvl*0.09)*100)}% chance for DEF +5 each round (max 10 stacks/+50 DEF) (permanent)`,
   },
 };
 
-// 10 Reskins — leader pool
-
-export const VAYNE_RESKIN_SKILLS = {
-  vayne_command_aura: {
-    name: "Vayne's Command Aura", icon: "📡", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h38",
-    type: "passive",
-    desc: "Troops permanently fight with greater ferocity under Vayne's banner.",
-    passiveTroopAtk: 0.07, base: 0.07, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.07+lvl*0.04)*100)}% troop attack (permanent)`,
-  },
-  templar_roar: {
-    name: "Templar's Roar", icon: "📣", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h38",
-    type: "active", cooldown: 2, offset: 2, duration: 2,
-    desc: "A battle cry that boosts troop attack every other round.",
-    troopAtkMult: 1.15, base: 1.15, perLevel: 0.05,
-    nextDesc: (lvl) => `+${Math.round((1.15+lvl*0.05-1)*100)}% troop attack (2 rnd) — rounds 2, 4, 6, 8, 10`,
-  },
-  grand_holy_strategy: {
-    name: "Grand Holy Strategy", icon: "🗺", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h38",
-    type: "active", cooldown: 4, offset: 1, duration: 3,
-    desc: "A holy tactical plan that buffs both attack and defense for 3 rounds.",
-    troopAtkMult: 1.20, troopDefMult: 1.10, base: 1.20, perLevel: 0.06,
-    nextDesc: (lvl) => `+${Math.round((1.2+lvl*0.06-1)*100)}% attack & +${Math.round((1.1+lvl*0.04-1)*100)}% defence (3 rnd) — rounds 1, 5, 9`,
-  },
-  vayne_forced_march: {
-    name: "Vayne's Forced March", icon: "💨", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h38",
-    type: "active", cooldown: 5, offset: 5, duration: 1,
-    desc: "Troops surge with overwhelming holy force at the critical moment.",
-    troopAtkMult: 1.50, base: 1.50, perLevel: 0.10,
-    nextDesc: (lvl) => `+${Math.round((1.5+lvl*0.1-1)*100)}% troop attack (1 rnd) — rounds 5, 10`,
-  },
-  holy_siege_mastery: {
-    name: "Holy Siege Mastery", icon: "🪨", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h38",
-    type: "passive",
-    desc: "Divine conviction permanently ignores a portion of garrison fortifications.",
-    passiveGarrisonIgnore: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `Ignore ${Math.round((0.06+lvl*0.04)*100)}% of garrison bonus (permanent)`,
-  },
-  vayne_supply_cut: {
-    name: "Vayne's Supply Cut", icon: "✂", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h38",
-    type: "active", cooldown: 3, offset: 1, duration: 1,
-    desc: "Vayne's forces repeatedly disrupt enemy supply lines, blocking their healing.",
-    blockHeal: 2, base: 2, perLevel: 1,
-    nextDesc: (lvl) => `Block enemy healing for ${Math.round(2+lvl*1.0)} rounds — rounds 1, 4, 7, 10`,
-  },
-  templar_advance: {
-    name: "Templar's Advance", icon: "♟", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h38",
-    type: "active", cooldown: 4, offset: 3, duration: 2,
-    desc: "A tactical advance that boosts troop attack and weakens incoming enemy damage.",
-    troopAtkMult: 1.12, enemyDmgReduce: 0.10, base: 1.12, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((1.12+lvl*0.04-1)*100)}% attack, -10% enemy damage (2 rnd) — rounds 3, 7`,
-  },
-  vayne_war_council: {
-    name: "Vayne's War Council", icon: "📜", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h38",
-    type: "active", cooldown: 5, offset: 2, duration: 1,
-    desc: "Vayne nullifies an enemy skill and surges his troops' attack in the same moment.",
-    nullifySkill: true, troopAtkMult: 1.18, base: 1.18, perLevel: 0.05,
-    nextDesc: (lvl) => `Nullify enemy skill + +${Math.round((1.18+lvl*0.05-1)*100)}% troop attack — rounds 2, 7`,
-  },
-  holy_legion_discipline: {
-    name: "Holy Legion Discipline", icon: "🪖", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h38",
-    type: "passive",
-    desc: "Vayne's iron discipline permanently hardens every soldier's defense.",
-    passiveTroopDef: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.06+lvl*0.04)*100)}% troop defence (permanent)`,
-  },
-  vayne_shield_order: {
-    name: "Vayne's Shield Order", icon: "🛡", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h38",
-    type: "active", cooldown: 2, offset: 1, duration: 1,
-    desc: "Vayne orders his troops to raise shields every other round.",
-    troopDefMult: 1.12, base: 1.12, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((1.12+lvl*0.04-1)*100)}% troop defence — rounds 1, 3, 5, 7, 9`,
-  },
-};
+export const VAYNE_RESKIN_SKILLS = {};
 
 // ── FRIAR BRENNAN (support, BattlePriest) ─────────────────────────────────────
-// Support: tactics tree. Holy flame, righteous healing, divine protection.
-// Stats: ATK 40, FOC 120, SPD 52 — high FOC; lean into healing + debuffs.
-
-// ★ 2 Unique Skills
+// ATK:40, FOC:120, SPD:52 — PvE workhorse support. Heals, sustains, protects
+// ranged units, anti-COTN passive. The human faction's go-to early/mid game pick.
 
 export const BRENNAN_UNIQUE_SKILLS = {
-  brennan_blessing: {
-    name: "Brennan's Blessing", icon: "✝️", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "active", cooldown: 3, offset: 3, duration: 2,
-    desc: "A holy blessing that heals fallen troops and bolsters their defenses against punishment.",
-    healPct: 0.10, troopDefMult: 1.10, base: 0.10, perLevel: 0.02,
-    nextDesc: (lvl) => `Restore ${Math.round((0.1+lvl*0.03)*100)}% lost + +${Math.round((1.1+lvl*0.04-1)*100)}% troop def (2 rnd) — rounds 3, 6, 9`,
-  },
-  friar_resolve: {
-    name: "Friar's Resolve", icon: "🌟", tree: "tactics", cls: "support",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  bre_heal_the_sick: {
+    name: "Heal the Sick", icon: "✝️", tree: "tactics", cls: "support",
     faction: "holyknights", commander: "h39",
     type: "passive",
-    desc: "Quiet, unwavering faith — Brennan continuously restores troops and permanently steadies their defense.",
-    passiveHealPerRound: 0.015, passiveTroopDef: 0.03, base: 0.015, perLevel: 0.005,
-    nextDesc: (lvl) => `+${Math.round((0.03+lvl*0.015)*100)}% troop def & +${Math.round((0.015+lvl*0.01)*100)}% heal/rnd (permanent)`,
+    desc: "[After Commander deals damage] [2 Allied Units] 4% chance to heal 5% HP. (Passive)",
+    effect: { type: "post_attack_proc_heal", targets: 2, chance: 0.04, healPct: 0.05 },
+    base: 0.04, perLevel: 0.04,
+    maxLevelEffect: { focusBonus: 15 },
+    nextDesc: (lvl) => `Post-attack: ${Math.round((0.04+lvl*0.04)*100)}% chance to heal 2 allies for ${Math.round((0.05+lvl*0.05)*100)}% HP${lvl >= 14 ? " | Max: FOC +15" : ""} (permanent)`,
+  },
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  bre_divine_protection: {
+    name: "Divine Protection", icon: "🛡️", tree: "tactics", cls: "support",
+    faction: "holyknights", commander: "h39",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[Human Units] 10% chance to evade the next instance of damage this round. (Rounds 3, 6, 9)",
+    effect: { type: "branch_evasion_first_hit", branch: "humans", chance: 0.10 },
+    base: 0.10, perLevel: 0.10,
+    nextDesc: (lvl) => `[Human Units] ${Math.round((0.10+lvl*0.10)*100)}% chance to evade next hit — rounds 3,6,9`,
+  },
+
+  bre_friars_advance: {
+    name: "Friar's Advance", icon: "⚡", tree: "tactics", cls: "support",
+    faction: "holyknights", commander: "h39",
+    type: "passive",
+    desc: "[All Allied Units] First 3 rounds: 8% chance to gain a follow-up attack. (Passive)",
+    effect: { type: "ally_followup_chance_early", chance: 0.08, maxRound: 3 },
+    base: 0.08, perLevel: 0.08,
+    nextDesc: (lvl) => `[Rounds 1–3] All allies ${Math.round((0.08+lvl*0.08)*100)}% chance for follow-up attack (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  bre_friars_blessing: {
+    name: "Friar's Blessing", icon: "🌟", tree: "tactics", cls: "support",
+    faction: "holyknights", commander: "h39",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Allied Units] Heals 12% HP | Targets gain +15% Defence for 2 rounds. (Rounds 3, 6, 9)",
+    effect: { type: "heal_def_buff", targets: 2, healPct: 0.12, defBonus: 0.15, defDuration: 2 },
+    base: 0.12, perLevel: 0.12,
+    maxLevelEffect: { holyKnightHpBonus: 0.10 },
+    nextDesc: (lvl) => `[2 Allies] ${Math.round((0.12+lvl*0.12)*100)}% HP + DEF +15% (2 rnd)${lvl >= 14 ? " | Max: HK Units HP +10%" : ""} — rounds 3,6,9`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // mou_protect_the_weak referenced in branch map
+
+  bre_ranged_combat: {
+    name: "Ranged Combat", icon: "🏹", tree: "tactics", cls: "support",
+    faction: "holyknights", commander: "h39",
+    type: "passive",
+    desc: "[Allied Ranged Units] Damage Dealt +3%. (Passive)",
+    effect: { type: "role_dmg_bonus", role: "ranged", value: 0.03 },
+    base: 0.03, perLevel: 0.03,
+    nextDesc: (lvl) => `[Allied Ranged Units] DMG +${Math.round((0.03+lvl*0.03)*100)}% (permanent)`,
+  },
+
+  // ── R3 — Main ─────────────────────────────────────────────────────────────
+  bre_patch_you_up: {
+    name: "Patch You Up", icon: "🩹", tree: "tactics", cls: "support",
+    faction: "holyknights", commander: "h39",
+    type: "passive",
+    desc: "[2 Allied Units] 40% chance to recover 4% HP when Physical Damage is sustained. (Passive)",
+    effect: { type: "on_hit_heal_chance", targets: 2, chance: 0.40, healPct: 0.04 },
+    base: 0.40, perLevel: 0.0143,
+    maxLevelEffect: { guaranteedHeal: true },
+    nextDesc: (lvl) => {
+      const chance = Math.min(100, Math.round((0.40+lvl*0.0143)*100));
+      const heal = Math.round((0.04+lvl*0.04)*100);
+      return `[2 Allies] ${chance}% chance to heal ${heal}% HP when hit${lvl >= 14 ? " | Max: Guaranteed (100%)" : ""} (permanent)`;
+    },
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  // 3CD → rounds 4, 8
+  bre_cleanse: {
+    name: "Cleanse", icon: "💧", tree: "tactics", cls: "support",
+    faction: "holyknights", commander: "h39",
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[All Allied Units] Recover 10% HP | 8% chance to remove 1 random debuff per unit. (Rounds 4, 8)",
+    effect: { type: "heal_cleanse_all", healPct: 0.10, cleanseChance: 0.08 },
+    base: 0.10, perLevel: 0.10,
+    nextDesc: (lvl) => `All allies ${Math.round((0.10+lvl*0.10)*100)}% HP + ${Math.round((0.08+lvl*0.08)*100)}% cleanse debuff — rounds 4,8`,
+  },
+
+  // Round 3 + 1CD → rounds 3, 5, 7, 9
+  bre_hk_protector: {
+    name: "Holy Knight's Protector", icon: "⛪", tree: "tactics", cls: "support",
+    faction: "holyknights", commander: "h39",
+    type: "active", cooldown: 1, offset: 3, duration: 1,
+    desc: "[Holy Knight Units] Recover 8% HP | 50% chance to activate a second time. (Rounds 3, 5, 7, 9)",
+    effect: { type: "heal_double_chance", branch: "holyknights", healPct: 0.08, doubleChance: 0.50 },
+    base: 0.08, perLevel: 0.08,
+    nextDesc: (lvl) => `[HK Units] ${Math.round((0.08+lvl*0.08)*100)}% HP + 50% chance to activate again — rounds 3,5,7,9`,
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  bre_peoples_hero: {
+    name: "The People's Hero", icon: "👐", tree: "tactics", cls: "support",
+    faction: "holyknights", commander: "h39",
+    type: "passive",
+    desc: "[All Allied Units] Damage Received -6% | Decays by 1/4 per hit sustained (gone after 4 hits). (Passive)",
+    effect: { type: "decaying_dmg_reduce", value: 0.06, decayFraction: 0.25, maxHits: 4 },
+    base: 0.06, perLevel: 0.06,
+    maxLevelEffect: { decayFraction: 0.20, maxHits: 5 },
+    nextDesc: (lvl) => `All allies DMG Received -${Math.round((0.06+lvl*0.06)*100)}%, decays 1/4 per hit (gone at hit 4)${lvl >= 14 ? " | Max: 1/5 decay, gone at hit 5" : ""} (permanent)`,
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  // Round 8 only — single trigger
+  bre_last_resort: {
+    name: "Last Resort", icon: "🌅", tree: "tactics", cls: "support",
+    faction: "holyknights", commander: "h39",
+    type: "active", cooldown: 99, offset: 8, duration: 1,
+    desc: "[Round 8] [All Allied Units] Heal 50% HP. (Round 8 only)",
+    effect: { type: "heal_all", healPct: 0.50 },
+    base: 0.50, perLevel: 0.50,
+    nextDesc: (lvl) => `All allies heal ${Math.round((0.50+lvl*0.50)*100)}% HP — Round 8 only`,
+  },
+
+  bre_target_practice: {
+    name: "Target Practice", icon: "🎯", tree: "tactics", cls: "support",
+    faction: "holyknights", commander: "h39",
+    type: "passive",
+    desc: "[Allied Ranged Units] Damage Dealt to Creature of the Night units +2%. (Passive)",
+    effect: { type: "role_dmg_bonus_vs_faction", role: "ranged", bonusFaction: "nightcreatures", value: 0.02 },
+    base: 0.02, perLevel: 0.02,
+    nextDesc: (lvl) => `[Allied Ranged] DMG vs COTN +${Math.round((0.02+lvl*0.02)*100)}% (permanent)`,
   },
 };
 
-// 10 Reskins — support pool
-
-export const BRENNAN_RESKIN_SKILLS = {
-  brennan_field_medic: {
-    name: "Brennan's Field Medic", icon: "💚", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "passive",
-    desc: "Brennan moves through the ranks each round, continuously restoring fallen troops.",
-    passiveHealPerRound: 0.02, base: 0.02, perLevel: 0.01,
-    nextDesc: (lvl) => `Restore ${Math.round((0.02+lvl*0.01)*100)}% of lost troops each round`,
-  },
-  holy_mending_wave: {
-    name: "Holy Mending Wave", icon: "✨", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "active", cooldown: 2, offset: 2, duration: 1,
-    desc: "A surge of holy healing washes over Brennan's forces every other round.",
-    healPct: 0.06, base: 0.06, perLevel: 0.02,
-    nextDesc: (lvl) => `Restore ${Math.round((0.06+lvl*0.02)*100)}% of lost troops — rounds 2, 4, 6, 8, 10`,
-  },
-  brennan_rally_cry: {
-    name: "Brennan's Rally Cry", icon: "🚩", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "active", cooldown: 5, offset: 1, duration: 1,
-    desc: "Brennan's thunderous call pulls fallen soldiers back to their feet with divine force.",
-    healPct: 0.18, base: 0.18, perLevel: 0.04,
-    nextDesc: (lvl) => `Restore ${Math.round((0.18+lvl*0.04)*100)}% of lost troops — rounds 1, 6`,
-  },
-  battle_priest_hymn: {
-    name: "Battle Priest's Hymn", icon: "🎵", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "active", cooldown: 3, offset: 3, duration: 2,
-    desc: "An inspiring battle hymn ignites holy fury in every soldier.",
-    troopAtkMult: 1.18, base: 1.18, perLevel: 0.06,
-    nextDesc: (lvl) => `+${Math.round((1.18+lvl*0.06-1)*100)}% troop attack (2 rnd) — rounds 3, 6, 9`,
-  },
-  friar_inspiration: {
-    name: "Friar's Inspiration", icon: "⭐", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "passive",
-    desc: "Brennan's devotion permanently inspires his troops to fight harder.",
-    passiveTroopAtk: 0.05, base: 0.05, perLevel: 0.03,
-    nextDesc: (lvl) => `+${Math.round((0.05+lvl*0.03)*100)}% troop attack (permanent)`,
-  },
-  holy_hex: {
-    name: "Holy Hex", icon: "🔮", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "active", cooldown: 4, offset: 2, duration: 2,
-    desc: "A divine curse causes enemy attacks to falter and miss their mark.",
-    enemyMissChance: 0.18, base: 0.18, perLevel: 0.04,
-    nextDesc: (lvl) => `${Math.round((0.18+lvl*0.04)*100)}% enemy miss chance (2 rnd) — rounds 2, 6, 10`,
-  },
-  brennan_blind_strike: {
-    name: "Brennan's Blind Strike", icon: "👁", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "active", cooldown: 3, offset: 1, duration: 2,
-    desc: "A flash of holy light disorients the enemy, reducing their attack.",
-    enemyAtkReduce: 0.12, base: 0.12, perLevel: 0.03,
-    nextDesc: (lvl) => `-${Math.round((0.12+lvl*0.03)*100)}% enemy attack (2 rnd) — rounds 1, 4, 7, 10`,
-  },
-  friar_supply_cut: {
-    name: "Friar's Supply Cut", icon: "✂", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "active", cooldown: 5, offset: 3, duration: 1,
-    desc: "Brennan cuts the enemy's supply of faith — blocking their healing entirely.",
-    blockHeal: 3, base: 3, perLevel: 1,
-    nextDesc: (lvl) => `Block enemy healing for ${Math.round(3+lvl*1.0)} rounds — rounds 3, 8`,
-  },
-  brennan_guardian_aura: {
-    name: "Brennan's Guardian Aura", icon: "🌿", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "passive",
-    desc: "A permanent aura of holy protection bolsters every soldier's resilience.",
-    passiveTroopDef: 0.05, base: 0.05, perLevel: 0.03,
-    nextDesc: (lvl) => `+${Math.round((0.05+lvl*0.03)*100)}% troop defence (permanent)`,
-  },
-  sacred_ember_shield: {
-    name: "Sacred Ember Shield", icon: "🔆", tree: "tactics", cls: "support",
-    faction: "holyknights", commander: "h39",
-    type: "active", cooldown: 2, offset: 1, duration: 1,
-    desc: "A sacred defensive ward lights up every other round, hardening troop defenses.",
-    troopDefMult: 1.15, base: 1.15, perLevel: 0.05,
-    nextDesc: (lvl) => `+${Math.round((1.15+lvl*0.05-1)*100)}% troop defence — rounds 1, 3, 5, 7, 9`,
-  },
-};
+export const BRENNAN_RESKIN_SKILLS = {};
 
 // ── HIGH WARDEN SERAPH (attacker, BattlePriest) ───────────────────────────────
 // ATK:178, FOC:40, SPD:60 — righteous physical striker. Hits hard, heals allies,
@@ -502,115 +568,118 @@ export const SERAPH_RESKIN_SKILLS = {};
 
 
 // ── MANIACAL PRIEST DANTE (leader, Inquisitor) ────────────────────────────────
-// Leader: command tree. Fanatical, commanding, dark authority over holy armies.
-// Stats: ATK 45, FOC 145, SPD 62 — high FOC leader; debuff-flavored command buffs,
-//        garrison-breaking fervor, healing denial through zealous suppression.
-
-// ★ 2 Unique Skills
+// ATK:45, FOC:145, SPD:62 — high FOC zealot leader. Double-edged buffs, chaos
+// mechanics, COTN specialist, shared R3 with Mourne (The Wise / Got Ya / Protect the Weak).
 
 export const DANTE_UNIQUE_SKILLS = {
-  dante_zealous_edict: {
-    name: "Zealous Edict", icon: "🕯", tree: "command", cls: "leader",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  dan_mad_ruler: {
+    name: "Mad Ruler", icon: "🕯️", tree: "command", cls: "leader",
     faction: "holyknights", commander: "h41",
-    type: "active", cooldown: 4, offset: 1, duration: 3,
-    desc: "Dante's fanatical decree consumes his army with righteous fury — troop attack surges and the enemy's defenses weaken under the pressure of his fervor.",
-    troopAtkMult: 1.22, enemyDmgTakenUp: 0.10, base: 1.22, perLevel: 0.05,
-    nextDesc: (lvl) => `+${Math.round((1.22+lvl*0.06-1)*100)}% attack + 10% enemy vulnerability (3 rnd) — rounds 1, 5, 9`,
+    type: "passive",
+    desc: "[All Units] Damage Dealt +2% | Damage Received +1%. (Passive)",
+    effect: { type: "double_edge_dmg", dmgUp: 0.02, dmgReceivedUp: 0.01 },
+    base: 0.02, perLevel: 0.02,
+    maxLevelEffect: { holyKnightHpBonus: 10 },
+    nextDesc: (lvl) => `All Units DMG +${Math.round((0.02+lvl*0.02)*100)}% | DMG Received +${Math.round((0.01+lvl*0.01)*100)}%${lvl >= 14 ? " | Max: HK Units HP +10" : ""} (permanent)`,
   },
-  dante_inquisition_march: {
-    name: "Inquisition March", icon: "🔥", tree: "command", cls: "leader",
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  dan_whatever_it_takes: {
+    name: "Whatever It Takes", icon: "🔥", tree: "command", cls: "leader",
     faction: "holyknights", commander: "h41",
-    type: "active", cooldown: 5, offset: 5, duration: 1,
-    desc: "The Maniacal Priest drives his army into a frenzied charge — no fortification holds, no enemy heals. Dante's word is the only law.",
-    troopAtkMult: 1.50, garrisonIgnore: 0.20, blockHeal: 2, base: 1.50, perLevel: 0.10,
-    nextDesc: (lvl) => `+${Math.round((1.5+lvl*0.08-1)*100)}% attack + ignore 20% garrison + block heal 2 rnd — rounds 5, 10`,
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[Allied Units] 7% chance to gain Confusion | [Enemy Units] 10% chance to gain Confusion. (Rounds 3, 6, 9)",
+    effect: { type: "chaos_confusion", allyChance: 0.07, enemyChance: 0.10 },
+    base: 0.07, perLevel: 0.07,
+    nextDesc: (lvl) => `Allies ${Math.round((0.07+lvl*0.07)*100)}% Confusion | Enemies ${Math.round((0.10+lvl*0.10)*100)}% Confusion — rounds 3,6,9`,
+  },
+
+  dan_priests_prayer: {
+    name: "Priest's Prayer", icon: "🙏", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h41",
+    type: "passive",
+    desc: "[Holy Knight Units] 8% chance to deal maximum damage each round. (Passive)",
+    effect: { type: "branch_max_dmg_chance", branch: "holyknights", chance: 0.08 },
+    base: 0.08, perLevel: 0.08,
+    nextDesc: (lvl) => `[HK Units] ${Math.round((0.08+lvl*0.08)*100)}% chance for max damage each round (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  dan_erratic_eradication: {
+    name: "Erratic Eradication", icon: "⚔️", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h41",
+    type: "passive",
+    desc: "[HK Units] DMG +2% vs COTN | DMG Received +1% from Dragons, Orcs, Pirates & Bounty Hunters. (Passive)",
+    effect: { type: "double_edge_faction", dmgUpVs: "nightcreatures", dmgUp: 0.02, dmgReceivedUpFrom: ["dragons","orcs","pirates","bountyhunters"], dmgReceivedUp: 0.01 },
+    base: 0.02, perLevel: 0.02,
+    maxLevelEffect: { hkDmgStatMin: 1, hkDmgStatMax: 3 },
+    nextDesc: (lvl) => `HK DMG +${Math.round((0.02+lvl*0.02)*100)}% vs COTN | Received +${Math.round((0.01+lvl*0.01)*100)}% from Dragons/Orcs/Pirates/BH${lvl >= 14 ? " | Max: HK DMG stat +1-3" : ""} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  dan_do_you_believe: {
+    name: "Do You Believe?", icon: "✝️", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h41",
+    type: "passive",
+    desc: "[Holy Knight Units] Focus Damage Received -1%. (Passive)",
+    effect: { type: "branch_focus_resist", branch: "holyknights", value: 0.01 },
+    base: 0.01, perLevel: 0.01,
+    nextDesc: (lvl) => `[HK Units] Focus DMG Received -${Math.round((0.01+lvl*0.01)*100)}% (permanent)`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  dan_healing_touch: {
+    name: "Healing Touch", icon: "💚", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h41",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Human Allied Units] Heal 17% HP. (Rounds 3, 6, 9)",
+    effect: { type: "heal_faction", faction: "humans", targets: 2, healPct: 0.17 },
+    base: 0.17, perLevel: 0.17,
+    nextDesc: (lvl) => `[2 Human Allies] Heal ${Math.round((0.17+lvl*0.17)*100)}% HP — rounds 3,6,9`,
+  },
+
+  // ── R3 — Shared with Mourne ───────────────────────────────────────────────
+  // mou_the_wise, mou_got_ya, mou_protect_the_weak referenced in branch map
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  dan_commander_in_arms: {
+    name: "Commander In Arms", icon: "🛡️", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h41",
+    type: "passive",
+    desc: "[All Allied Units] 4% chance to evade Physical Damage from first 4 hits sustained. (Passive)",
+    effect: { type: "unit_evasion_first_hits", chance: 0.04, maxHits: 4 },
+    base: 0.04, perLevel: 0.04,
+    maxLevelEffect: { focusBonus: 15 },
+    nextDesc: (lvl) => `All allies ${Math.round((0.04+lvl*0.04)*100)}% evade Physical DMG (first 4 hits per unit)${lvl >= 14 ? " | Max: FOC +15" : ""} (permanent)`,
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  dan_power_drain: {
+    name: "Power Drain", icon: "⬇️", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h41",
+    type: "passive",
+    desc: "[Enemy Commander] ATK -7 at battle start, decreasing by 10 each round. (Passive)",
+    effect: { type: "enemy_cmd_atk_drain", initialDrain: 7, decayPerRound: 10 },
+    base: 7, perLevel: 7,
+    nextDesc: (lvl) => `Enemy CMD ATK -${7+lvl*7} at start, -10 per round until gone (permanent)`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  dan_maniacs_poison: {
+    name: "Maniac's Poison", icon: "☠️", tree: "command", cls: "leader",
+    faction: "holyknights", commander: "h41",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Enemy Units] 30% Poison Damage | Targets cannot recover HP for 2 rounds. (Rounds 3, 6, 9)",
+    effect: { type: "poison_damage_heal_block", targets: 2, poisonDmg: 0.30, healBlockDuration: 2 },
+    base: 0.30, perLevel: 0.30,
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.30+lvl*0.30)*100)}% Poison DMG + Heal Block 2 rnd — rounds 3,6,9`,
   },
 };
 
-// 10 Reskins — leader pool, themed around fanatical inquisitor authority
-
-export const DANTE_RESKIN_SKILLS = {
-  dante_fervor_aura: {
-    name: "Dante's Fervor Aura", icon: "🕯", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h41",
-    type: "passive",
-    desc: "Dante's manic devotion permanently drives troops to fight beyond their limits.",
-    passiveTroopAtk: 0.07, base: 0.07, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.07+lvl*0.04)*100)}% troop attack (permanent)`,
-  },
-  inquisitor_war_cry: {
-    name: "Inquisitor's War Cry", icon: "📣", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h41",
-    type: "active", cooldown: 2, offset: 2, duration: 2,
-    desc: "Dante's screaming war cry drives his soldiers into a frenzy every other round.",
-    troopAtkMult: 1.15, base: 1.15, perLevel: 0.05,
-    nextDesc: (lvl) => `+${Math.round((1.15+lvl*0.05-1)*100)}% troop attack (2 rnd) — rounds 2, 4, 6, 8, 10`,
-  },
-  sermon_of_war: {
-    name: "Sermon of War", icon: "📖", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h41",
-    type: "active", cooldown: 4, offset: 3, duration: 2,
-    desc: "A raving sermon that binds troops in holy purpose and weakens enemy resistance.",
-    troopAtkMult: 1.12, enemyDmgReduce: 0.10, base: 1.12, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((1.12+lvl*0.04-1)*100)}% attack, -10% enemy damage (2 rnd) — rounds 3, 7`,
-  },
-  dante_forced_march: {
-    name: "Dante's Forced March", icon: "💨", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h41",
-    type: "active", cooldown: 5, offset: 5, duration: 1,
-    desc: "Dante screams his soldiers forward — no hesitation, no mercy, maximum force.",
-    troopAtkMult: 1.50, base: 1.50, perLevel: 0.10,
-    nextDesc: (lvl) => `+${Math.round((1.5+lvl*0.1-1)*100)}% troop attack (1 rnd) — rounds 5, 10`,
-  },
-  zealot_siege_mastery: {
-    name: "Zealot's Siege Mastery", icon: "🪨", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h41",
-    type: "passive",
-    desc: "Dante's fanatical conviction means no walls, no gates, no garrison can slow his crusade.",
-    passiveGarrisonIgnore: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `Ignore ${Math.round((0.06+lvl*0.04)*100)}% of garrison bonus (permanent)`,
-  },
-  dante_supply_cut: {
-    name: "Dante's Supply Cut", icon: "✂", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h41",
-    type: "active", cooldown: 3, offset: 1, duration: 1,
-    desc: "Dante brands the enemy as heretics — cutting their supply lines and denying all healing.",
-    blockHeal: 2, base: 2, perLevel: 1,
-    nextDesc: (lvl) => `Block enemy healing for ${Math.round(2+lvl*1.0)} rounds — rounds 1, 4, 7, 10`,
-  },
-  inquisitor_war_taxes: {
-    name: "Inquisitor's War Taxes", icon: "💀", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h41",
-    type: "active", cooldown: 5, offset: 3, duration: 1,
-    desc: "The enemy pays a tithe in blood — direct damage dealt equal to a portion of their max strength.",
-    cmdPctDmg: 0.05, base: 0.05, perLevel: 0.01,
-    nextDesc: (lvl) => `${Math.round((0.05+lvl*0.02)*100)}% of enemy max HP as direct damage — rounds 3, 8`,
-  },
-  holy_war_council: {
-    name: "Holy War Council", icon: "📜", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h41",
-    type: "active", cooldown: 5, offset: 2, duration: 1,
-    desc: "Dante convenes a frantic war council — nullifying the enemy's strategy and surging troop attack.",
-    nullifySkill: true, troopAtkMult: 1.18, base: 1.18, perLevel: 0.05,
-    nextDesc: (lvl) => `Nullify enemy skill + +${Math.round((1.18+lvl*0.05-1)*100)}% troop attack — rounds 2, 7`,
-  },
-  crusade_discipline: {
-    name: "Crusade Discipline", icon: "🪖", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h41",
-    type: "passive",
-    desc: "Dante's iron-fisted discipline permanently hardens every soldier who marches under his banner.",
-    passiveTroopDef: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.06+lvl*0.04)*100)}% troop defence (permanent)`,
-  },
-  dante_shield_order: {
-    name: "Dante's Shield Order", icon: "🛡", tree: "command", cls: "leader",
-    faction: "holyknights", commander: "h41",
-    type: "active", cooldown: 2, offset: 1, duration: 1,
-    desc: "Even a madman knows when to shield — Dante orders defensive formations every other round.",
-    troopDefMult: 1.12, base: 1.12, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((1.12+lvl*0.04-1)*100)}% troop defence — rounds 1, 3, 5, 7, 9`,
-  },
-};
+export const DANTE_RESKIN_SKILLS = {};
 
 // ── GRAND INQUISITOR MOURNE (strategist, Inquisitor) ─────────────────────────
 // ATK:182, FOC:20, SPD:58 — the Gandalf the White of human factions.
@@ -788,24 +857,24 @@ export const HOLYKNIGHTS_BRANCH_SKILL_MAP = {
   // Branch 0: passive unique (durable anchor), Branch 1: defense actives,
   // Branch 2: strongest unique (Sacred Bulwark), Branch 3: combat main + tactics sides
   h37: [
-    { main: "aldric_templar_oath",    sides: ["aldric_iron_will",          "aldric_fortified_ranks"]   },
-    { main: "templar_shield_wall",    sides: ["hold_the_sacred_line",      "templar_rebuke"]            },
-    { main: "aldric_sacred_bulwark",  sides: ["aldric_inspiring_presence", "templar_blessing"]          },
-    { main: "aldric_measured_blow",   sides: ["templar_strike",            "aldric_steadfast_instinct"] },
+    { main: "ald_veterans_presence", sides: ["ald_stoic_hero",           "ald_strong_in_faith"]    }, // R0 top
+    { main: "ald_power_of_sun",      sides: ["ald_warriors_burden",      "ald_old_reliable"]       }, // R0 bottom
+    { main: "vay_commander_guidance",sides: ["vay_protected_by_faith",   "vay_experienced_army"]   }, // R3 shared
+    { main: "ald_here_we_go_again",  sides: ["ald_last_ride",            "ald_promise_land"]       }, // R5
   ],
   // Commander Vayne (leader, Templar)
   h38: [
-    { main: "vayne_edict",            sides: ["vayne_command_aura",        "holy_legion_discipline"]    },
-    { main: "templar_roar",           sides: ["templar_advance",           "vayne_shield_order"]        },
-    { main: "grand_holy_strategy",    sides: ["vayne_war_council",         "vayne_supply_cut"]          },
-    { main: "crusader_advance",       sides: ["holy_siege_mastery",        "vayne_forced_march"]        },
+    { main: "vay_commander_faith",    sides: ["vay_silent_authority",    "vay_see_you"]            }, // R0 top
+    { main: "vay_commander_guidance", sides: ["vay_protected_by_faith",  "vay_experienced_army"]   }, // R0 bottom
+    { main: "vay_will_of_templar",    sides: ["mou_anything_goes",       "vay_templars_guidance"]  }, // R3
+    { main: "vay_horn_of_heavens",    sides: ["vay_find_the_opening",    "vay_defense_in_numbers"] }, // R5
   ],
   // Friar Brennan (support, BattlePriest)
   h39: [
-    { main: "friar_resolve",          sides: ["brennan_field_medic",       "brennan_guardian_aura"]     },
-    { main: "holy_mending_wave",      sides: ["brennan_blind_strike",      "sacred_ember_shield"]       },
-    { main: "brennan_blessing",       sides: ["brennan_rally_cry",         "friar_supply_cut"]          },
-    { main: "battle_priest_hymn",     sides: ["friar_inspiration",         "holy_hex"]                  },
+    { main: "bre_heal_the_sick",    sides: ["bre_divine_protection", "bre_friars_advance"]   }, // R0 top
+    { main: "bre_friars_blessing",  sides: ["mou_protect_the_weak",  "bre_ranged_combat"]    }, // R0 bottom
+    { main: "bre_patch_you_up",     sides: ["bre_cleanse",           "bre_hk_protector"]     }, // R3
+    { main: "bre_peoples_hero",     sides: ["bre_last_resort",       "bre_target_practice"]  }, // R5
   ],
   // High Warden Seraph (attacker, BattlePriest)
   h40: [
@@ -816,10 +885,10 @@ export const HOLYKNIGHTS_BRANCH_SKILL_MAP = {
   ],
   // Maniacal Priest Dante (leader, Inquisitor)
   h41: [
-    { main: "dante_zealous_edict",    sides: ["dante_fervor_aura",         "crusade_discipline"]        },
-    { main: "inquisitor_war_cry",     sides: ["sermon_of_war",             "dante_shield_order"]        },
-    { main: "dante_inquisition_march",sides: ["zealot_siege_mastery",      "dante_supply_cut"]          },
-    { main: "holy_war_council",       sides: ["inquisitor_war_taxes",      "dante_forced_march"]        },
+    { main: "dan_mad_ruler",           sides: ["dan_whatever_it_takes",  "dan_priests_prayer"]      }, // R0 top
+    { main: "dan_erratic_eradication", sides: ["dan_do_you_believe",     "dan_healing_touch"]       }, // R0 bottom
+    { main: "mou_the_wise",            sides: ["mou_got_ya",             "mou_protect_the_weak"]    }, // R3 shared
+    { main: "dan_commander_in_arms",   sides: ["dan_power_drain",        "dan_maniacs_poison"]      }, // R5
   ],
   // Grand Inquisitor Mourne (strategist, Inquisitor)
   h42: [
