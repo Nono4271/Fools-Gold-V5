@@ -343,114 +343,163 @@ export const BRENNAN_RESKIN_SKILLS = {
 };
 
 // ── HIGH WARDEN SERAPH (attacker, BattlePriest) ───────────────────────────────
-// Attacker: combat tree. Holy flame, righteous fury — powerful physical striker.
-// Stats: ATK 178, FOC 40, SPD 60 — very high ATK; pure physical damage focus.
-
-// ★ 2 Unique Skills
+// ATK:178, FOC:40, SPD:60 — righteous physical striker. Hits hard, heals allies,
+// anti-COTN specialist. Shares mechanical DNA with Thaelor but holy-flavoured.
 
 export const SERAPH_UNIQUE_SKILLS = {
-  seraph_judgment: {
-    name: "Seraph's Judgment", icon: "☀️", tree: "combat", cls: "attacker",
-    faction: "holyknights", commander: "h40",
-    type: "active", cooldown: 4, offset: 2, duration: 1,
-    desc: "A devastating strike of divine judgment — amplified by holy fury and a punishing crit.",
-    cmdMult: 2.8, critBonus: 0.40, base: 2.8, perLevel: 0.20,
-    nextDesc: (lvl) => `${Math.round((2.8+lvl*0.2)*100)}% damage + 40% crit chance — rounds 2, 6, 10`,
-  },
-  warden_ascendant: {
-    name: "Warden Ascendant", icon: "🌅", tree: "combat", cls: "attacker",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  ser_heavens_hope: {
+    name: "Heaven's Hope", icon: "☀️", tree: "combat", cls: "attacker",
     faction: "holyknights", commander: "h40",
     type: "passive",
-    desc: "Seraph transcends — permanently amplifying her command attack and critical chance through righteous conviction.",
-    passiveCmdAtk: 0.10, passiveCritChance: 0.08, base: 0.10, perLevel: 0.05,
-    nextDesc: (lvl) => `+${Math.round((0.1+lvl*0.05)*100)}% cmd damage & +8% crit (permanent)`,
+    desc: "[Commander] Normal Attack Damage +2%. (Passive)",
+    effect: { type: "cmd_normal_atk_bonus", value: 0.02 },
+    base: 0.02, perLevel: 0.02,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => `Normal Attack DMG +${Math.round((0.02+lvl*0.02)*100)}%${lvl >= 14 ? " | Max: ATK +15" : ""} (permanent)`,
   },
-};
 
-// 10 Reskins — attacker pool
-
-export const SERAPH_RESKIN_SKILLS = {
-  seraph_killing_instinct: {
-    name: "Seraph's Killing Instinct", icon: "⚔", tree: "combat", cls: "attacker",
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  ser_heavenly_practice: {
+    name: "Heavenly Practice", icon: "⚔️", tree: "combat", cls: "attacker",
     faction: "holyknights", commander: "h40",
     type: "passive",
-    desc: "Years of holy combat training permanently sharpen Seraph's killing edge.",
-    passiveCmdAtk: 0.08, base: 0.08, perLevel: 0.06,
-    nextDesc: (lvl) => `+${Math.round((0.08+lvl*0.06)*100)}% commander damage (permanent)`,
+    desc: "[Commander] Normal Attacks deal an additional 10% Physical Damage. (Passive)",
+    effect: { type: "cmd_normal_atk_bonus", value: 0.10 },
+    base: 0.10, perLevel: 0.10,
+    nextDesc: (lvl) => `Normal Attacks +${Math.round((0.10+lvl*0.10)*100)}% extra Physical Damage (permanent)`,
   },
-  warden_quick_strike: {
-    name: "Warden's Quick Strike", icon: "⚡", tree: "combat", cls: "attacker",
+
+  // 2CD → rounds 3, 6, 9
+  ser_heavens_judgment: {
+    name: "Heaven's Judgment", icon: "⚖️", tree: "combat", cls: "attacker",
+    faction: "holyknights", commander: "h40",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Enemy Units] 20% Physical Damage (modified by ATK) | Apply Heal Block for 1 round. (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_heal_block", targets: 2, healBlockDuration: 1, modifiedBy: "atk" },
+    base: 0.20, perLevel: 0.20,
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.20+lvl*0.20)*100)}% Physical DMG (ATK mod) + Heal Block 1 rnd — rounds 3,6,9`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  ser_heavens_hunter: {
+    name: "Heaven's Hunter", icon: "🎯", tree: "combat", cls: "attacker",
+    faction: "holyknights", commander: "h40",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[1 Enemy Unit] 30% Physical Damage | [1 Random COTN Enemy Unit] Additional 20% Physical Damage. (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_faction_bonus", primaryDmg: 0.30, bonusDmg: 0.20, bonusFaction: "nightcreatures" },
+    base: 0.30, perLevel: 0.30,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => {
+      const p = Math.round((0.30+lvl*0.30)*100);
+      const b = Math.round((0.20+lvl*0.20)*100);
+      return `${p}% Physical DMG + ${b}% bonus vs COTN unit${lvl >= 14 ? " | Max: ATK +15" : ""} — rounds 3,6,9`;
+    },
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // 3CD → rounds 4, 8
+  ser_heavens_blunt: {
+    name: "Heaven's Blunt Instrument", icon: "🔨", tree: "combat", cls: "attacker",
+    faction: "holyknights", commander: "h40",
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[1 Enemy Unit, prioritises Melee] 27% Physical Damage | 50% chance for additional 27% Physical Damage. (Rounds 4, 8)",
+    effect: { type: "physical_damage_followup", target: "prioritiseMelee", initialDmg: 0.27, followupDmg: 0.27, followupChance: 0.50 },
+    base: 0.27, perLevel: 0.2471,
+    nextDesc: (lvl) => {
+      const dmg = Math.round((0.27+lvl*0.2471)*100);
+      return `[Melee priority] ${dmg}% + 50% chance ${dmg}% follow-up Physical DMG — rounds 4,8`;
+    },
+  },
+
+  ser_heavens_protection: {
+    name: "Heaven's Protection", icon: "🛡️", tree: "combat", cls: "attacker",
+    faction: "holyknights", commander: "h40",
+    type: "passive",
+    desc: "[Commander and Allied Units] 10% chance to gain Stun Immunity for first 4 rounds. (Passive)",
+    effect: { type: "stun_immunity_chance_early", chance: 0.10, maxRound: 4 },
+    base: 0.10, perLevel: 0.0667,
+    nextDesc: (lvl) => `${Math.round((0.10+lvl*0.0667)*100)}% chance for Stun Immunity (first 4 rounds) (permanent)`,
+  },
+
+  // ── R3 — Main ─────────────────────────────────────────────────────────────
+  ser_knowledge_of_heaven: {
+    name: "Knowledge of Heaven", icon: "📖", tree: "combat", cls: "attacker",
+    faction: "holyknights", commander: "h40",
+    type: "passive",
+    desc: "[Commander] Skill Damage +2.0% in combat. (Passive)",
+    effect: { type: "skill_dmg_bonus", value: 0.02 },
+    base: 0.02, perLevel: 0.02,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => `All active skill damage +${Math.round((0.02+lvl*0.02)*100)}%${lvl >= 14 ? " | Max: ATK +15" : ""} (permanent)`,
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  ser_warriors_training: {
+    name: "Warrior's Training", icon: "🎖️", tree: "combat", cls: "attacker",
+    faction: "holyknights", commander: "h40",
+    type: "passive",
+    desc: "[Commander] First 4 skills activated each battle deal +5% extra damage. (Passive)",
+    effect: { type: "first_skills_dmg_bonus", instances: 4, bonus: 0.05 },
+    base: 0.05, perLevel: 0.05,
+    nextDesc: (lvl) => `First 4 skills: +${Math.round((0.05+lvl*0.05)*100)}% extra damage (permanent)`,
+  },
+
+  // Round 1 + 2CD → rounds 1, 4, 7, 10
+  ser_heavens_hammer: {
+    name: "Heaven's Hammer", icon: "⚡", tree: "combat", cls: "attacker",
     faction: "holyknights", commander: "h40",
     type: "active", cooldown: 2, offset: 1, duration: 1,
-    desc: "Seraph strikes with divine speed every other round — fast and relentless.",
-    cmdMult: 1.4, base: 1.4, perLevel: 0.15,
-    nextDesc: (lvl) => `Deals ${Math.round((1.4+lvl*0.15)*100)}% Physical Damage — rounds 1, 3, 5, 7, 9`,
+    desc: "[Round 1] [1 Enemy Unit] 15% Physical Damage (modified by ATK) | Inflicts Stun for 1 round. (Rounds 1, 4, 7, 10)",
+    effect: { type: "physical_damage_stun_guaranteed", target: "single", stunDuration: 1, modifiedBy: "atk" },
+    base: 0.15, perLevel: 0.15,
+    nextDesc: (lvl) => `${Math.round((0.15+lvl*0.15)*100)}% Physical DMG (ATK mod) + guaranteed Stun — rounds 1,4,7,10`,
   },
-  divine_savage_blow: {
-    name: "Divine Savage Blow", icon: "🗡", tree: "combat", cls: "attacker",
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  // 3CD → rounds 4, 8
+  ser_blessed_judgement: {
+    name: "Blessed Judgement", icon: "🌟", tree: "combat", cls: "attacker",
     faction: "holyknights", commander: "h40",
-    type: "active", cooldown: 3, offset: 3, duration: 1,
-    desc: "A heavy holy strike every 3 rounds that leaves the enemy exposed.",
-    cmdMult: 2.2, enemyDmgTakenUp: 0.15, base: 2.2, perLevel: 0.20,
-    nextDesc: (lvl) => `Deals ${Math.round((2.2+lvl*0.2)*100)}% Physical Damage + target takes 15% more damage for 1 round — rounds 3, 6, 9`,
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[2 Enemy Units] 30% Physical Damage | [Holy Knight Allies] Heal 10% HP | Max: Melee Units +75% additional heal. (Rounds 4, 8)",
+    effect: { type: "physical_damage_faction_heal", targets: 2, healFaction: "holyknights", healPct: 0.10, meleeBonusHeal: 0.75 },
+    base: 0.30, perLevel: 0.30,
+    maxLevelEffect: { meleeBonusHeal: 0.75 },
+    nextDesc: (lvl) => {
+      const dmg = Math.round((0.30+lvl*0.30)*100);
+      const heal = Math.round((0.10+lvl*0.10)*100);
+      return `[2 Units] ${dmg}% Physical DMG | HK Allies heal ${heal}% HP${lvl >= 14 ? " | Melee +75% extra heal" : ""} — rounds 4,8`;
+    },
   },
-  warden_execute: {
-    name: "Warden's Execute", icon: "💀", tree: "combat", cls: "attacker",
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  // 1CD → rounds 2, 4, 6, 8, 10
+  ser_smite: {
+    name: "Smite", icon: "💥", tree: "combat", cls: "attacker",
     faction: "holyknights", commander: "h40",
-    type: "active", cooldown: 5, offset: 1, duration: 1,
-    desc: "A devastating holy opener that fires again at the mid-fight turning point.",
-    cmdMult: 3.0, base: 3.0, perLevel: 0.25,
-    nextDesc: (lvl) => `Deals ${Math.round((3.0+lvl*0.25)*100)}% Physical Damage — rounds 1, 6`,
+    type: "active", cooldown: 1, offset: 2, duration: 1,
+    desc: "[All Enemy Units] 20% Physical Damage (modified by ATK). (Rounds 2, 4, 6, 8, 10)",
+    effect: { type: "aoe_physical_atk_mod", modifiedBy: "atk" },
+    base: 0.20, perLevel: 0.20,
+    nextDesc: (lvl) => `All enemies ${Math.round((0.20+lvl*0.20)*100)}% Physical DMG (ATK mod) — rounds 2,4,6,8,10`,
   },
-  seraph_double_strike: {
-    name: "Seraph's Double Strike", icon: "⚔", tree: "combat", cls: "attacker",
-    faction: "holyknights", commander: "h40",
-    type: "active", cooldown: 4, offset: 2, duration: 1,
-    desc: "Seraph strikes twice with divine precision — two blows as one act of judgment.",
-    cmdHits: 2, cmdMult: 1.2, base: 1.2, perLevel: 0.10,
-    nextDesc: (lvl) => `2 hits × ${Math.round((1.2+lvl*0.1)*100)}% Physical Damage — rounds 2, 6, 10`,
-  },
-  warden_predator_eyes: {
-    name: "Warden's Predator Eyes", icon: "🦅", tree: "combat", cls: "attacker",
+
+  ser_divine_prayer: {
+    name: "Divine Prayer", icon: "🙏", tree: "combat", cls: "attacker",
     faction: "holyknights", commander: "h40",
     type: "passive",
-    desc: "Seraph's battle-hardened eyes permanently lock onto every weakness in the enemy.",
-    passiveCritChance: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.06+lvl*0.04)*100)}% critical hit chance (permanent)`,
-  },
-  holy_frenzy: {
-    name: "Holy Frenzy", icon: "🩸", tree: "combat", cls: "attacker",
-    faction: "holyknights", commander: "h40",
-    type: "active", cooldown: 2, offset: 2, duration: 1,
-    desc: "Righteous battle fury overtakes Seraph every other round — all strikes land harder.",
-    cmdMult: 1.15, critBonus: 0.30, base: 1.15, perLevel: 0.05,
-    nextDesc: (lvl) => `${Math.round((1.15+lvl*0.05)*100)}% damage + 30% crit chance — rounds 2, 4, 6, 8, 10`,
-  },
-  warden_killing_edge: {
-    name: "Warden's Killing Edge", icon: "🔪", tree: "combat", cls: "attacker",
-    faction: "holyknights", commander: "h40",
-    type: "active", cooldown: 5, offset: 5, duration: 1,
-    desc: "Seraph strikes at the enemy's very soul — dealing damage equal to a portion of their max strength.",
-    cmdPctDmg: 0.06, base: 0.06, perLevel: 0.02,
-    nextDesc: (lvl) => `${Math.round((0.06+lvl*0.02)*100)}% of enemy max HP as direct damage — rounds 5, 10`,
-  },
-  divine_fortitude: {
-    name: "Divine Fortitude", icon: "💫", tree: "combat", cls: "attacker",
-    faction: "holyknights", commander: "h40",
-    type: "active", cooldown: 3, offset: 1, duration: 1,
-    desc: "Seraph draws righteous energy from her strikes, restoring troops equal to a portion of the damage dealt.",
-    cmdMult: 1.3, lifesteal: 0.25, base: 0.25, perLevel: 0.05,
-    nextDesc: (lvl) => `130% damage, restore troops = ${Math.round((0.25+lvl*0.05)*100)}% of damage dealt — rounds 1, 4, 7, 10`,
-  },
-  divine_flurry: {
-    name: "Divine Flurry", icon: "🌪", tree: "combat", cls: "attacker",
-    faction: "holyknights", commander: "h40",
-    type: "active", cooldown: 4, offset: 4, duration: 1,
-    desc: "Three rapid divine strikes unleashed in a single explosive burst.",
-    cmdHits: 3, cmdMult: 0.9, base: 0.9, perLevel: 0.08,
-    nextDesc: (lvl) => `3 hits × ${Math.round((0.9+lvl*0.08)*100)}% Physical Damage — rounds 4, 8`,
+    desc: "[Commander] When debuffed: 3% chance to cleanse | On failed cleanse: [All Allied Units] DEF +15 (max 3 stacks). (Passive)",
+    effect: { type: "reactive_cleanse_or_def_stack", cleanseChance: 0.03, defBonus: 15, maxStacks: 3 },
+    base: 0.03, perLevel: 0.03,
+    nextDesc: (lvl) => `When debuffed: ${Math.round((0.03+lvl*0.03)*100)}% cleanse | On fail: All allies DEF +15 (max 3 stacks) (permanent)`,
   },
 };
+
+export const SERAPH_RESKIN_SKILLS = {};
+
 
 // ── MANIACAL PRIEST DANTE (leader, Inquisitor) ────────────────────────────────
 // Leader: command tree. Fanatical, commanding, dark authority over holy armies.
@@ -760,10 +809,10 @@ export const HOLYKNIGHTS_BRANCH_SKILL_MAP = {
   ],
   // High Warden Seraph (attacker, BattlePriest)
   h40: [
-    { main: "warden_ascendant",       sides: ["seraph_killing_instinct",   "warden_predator_eyes"]      },
-    { main: "warden_quick_strike",    sides: ["holy_frenzy",               "divine_flurry"]             },
-    { main: "seraph_judgment",        sides: ["divine_savage_blow",        "warden_killing_edge"]       },
-    { main: "warden_execute",         sides: ["seraph_double_strike",      "divine_fortitude"]          },
+    { main: "ser_heavens_hope",         sides: ["ser_heavenly_practice",  "ser_heavens_judgment"]   }, // R0 top
+    { main: "ser_heavens_hunter",       sides: ["ser_heavens_blunt",      "ser_heavens_protection"] }, // R0 bottom
+    { main: "ser_knowledge_of_heaven",  sides: ["ser_warriors_training",  "ser_heavens_hammer"]     }, // R3
+    { main: "ser_blessed_judgement",    sides: ["ser_smite",              "ser_divine_prayer"]      }, // R5
   ],
   // Maniacal Priest Dante (leader, Inquisitor)
   h41: [
