@@ -493,6 +493,214 @@ switch (eff.type) {
   case "reactive_cmd_atk_stack":
     if (!rs.reactCmdAtkStack) rs.reactCmdAtkStack = { atkPerStack: eff.atkPerStack || 1.0, maxStacks: eff.maxStacks || 6, current: 0 };
     break;
+  // Korgath mechanics
+  case "cmd_normal_atk_aoe_physical":
+    rs.cmdAoePhysical += eff.value || 0.06;
+    rs.cmdAoe = true;
+    break;
+  case "multi_hit_random_def_down":
+    rs.multiHitRandomDefDown = { hits: eff.hits || 5, dmgPct: eff.dmgPct || 0.08, defDown: eff.defDown || 0.10, maxStacks: eff.maxDefStacks || 5 };
+    rs.enemyDefDown = Math.min((rs.enemyDefDown||0) + (eff.defDown||0.10), (eff.maxDefStacks||5) * (eff.defDown||0.10));
+    break;
+  case "on_skill_stun_chance":
+    rs.onSkillStunChance += eff.chance || 0.05;
+    if (Math.random() < rs.onSkillStunChance) {
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, eff.stunDuration || 1);
+      roundLog.actions.push({ actor: actorLabel, action: `👁️ Killer's Aura — Enemy unit stunned!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "cmd_dmg_bonus_vs_stunned":
+    if (rs.enemyStunned > 0) rs.cmdMult *= (1 + (eff.value || 0.04));
+    rs.cmdDmgBonusVsStunned += eff.value || 0.04;
+    break;
+  case "attacking_stance_bonus":
+    rs.attackingStanceDmg += eff.cmdDmgUp || 0.02;
+    rs.attackingStanceDef += eff.armyDefUp || 2.0;
+    rs.cmdMult            *= (1 + (eff.cmdDmgUp || 0.02));
+    rs.troopDefMult       *= (1 + (eff.armyDefUp || 2.0) / 100);
+    break;
+  case "skill_dmg_vs_faction":
+    rs.skillDmgVsFaction = { faction: eff.faction || "humans", value: eff.value || 0.02 };
+    rs.skillDmgBonus     += eff.value || 0.02;
+    break;
+  case "physical_damage_heal_block":
+    rs.cmdMult   *= (1 + (eff.value || 0.20));
+    rs.blockHeal  = Math.max(rs.blockHeal || 0, eff.healBlockDuration || 1);
+    break;
+  // Bruk mechanics
+  case "multi_branch_def_bonus":
+    rs.multiBranchDefBonus = { branches: eff.branches, defBonus: eff.defBonus || 2.0, defendingBonus: eff.defendingBonus || 1.0 };
+    rs.troopDefMult *= (1 + (eff.defBonus || 2.0) / 100);
+    break;
+  case "multi_branch_dmg_reduce":
+    rs.dmgReduce += eff.value || 0.02;
+    break;
+  case "dmg_bonus_vs_status":
+    rs.dmgBonusVsBleed += eff.value || 0.10;
+    if (bleedRoundsActive > 0) rs.troopAtkMult *= (1 + (eff.value || 0.10));
+    break;
+  case "branch_followup_chance":
+    rs.branchFollowupChance = { branch: eff.branch, chance: eff.chance || 0.07, followupDmg: eff.followupDmg || 0.30 };
+    break;
+  case "physical_damage_focus_fire":
+    rs.cmdMult  *= (1 + (eff.value || 0.20));
+    rs.focusFire = { duration: eff.focusFireDuration || 1 };
+    break;
+  case "on_hit_bleed_heal":
+    rs.onHitBleedHeal += eff.healPct || 0.05;
+    break;
+  case "faction_dual_stat_bonus":
+    rs.factionDualStatBonus = { dmgUp: eff.dmgUp || 0.01, dmgReceivedDown: eff.dmgReceivedDown || 0.005 };
+    rs.troopAtkMult *= (1 + (eff.dmgUp || 0.01));
+    rs.dmgReduce    += eff.dmgReceivedDown || 0.005;
+    break;
+  case "flat_troop_def_bonus":
+    rs.flatTroopDefBonus += eff.value || 4;
+    rs.troopDefMult      *= (1 + (eff.value || 4) / 100);
+    break;
+  case "cmd_stun_chance":
+    rs.cmdStunChance += eff.chance || 0.09;
+    if (Math.random() < rs.cmdStunChance) {
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, eff.stunDuration || 1);
+      roundLog.actions.push({ actor: actorLabel, action: `💥 Ground Shake — Enemy commander stunned!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "branch_def_spd_tradeoff":
+    rs.trollDefSpdTradeoff = { defBonus: eff.defBonus || 0.03, spdPenalty: eff.spdPenalty || 0.90 };
+    rs.troopDefMult *= (1 + (eff.defBonus || 0.03));
+    break;
+  // Grix mechanics
+  case "dual_poison_dot_def_down":
+    rs.dualPoisonDotStacks += eff.poisonStacks || 2;
+    rs.pendingVenomDmg = Math.max(rs.pendingVenomDmg, (eff.poisonDmg || 0.03) * (eff.poisonStacks || 2));
+    rs.bleedRoundsLeft = Math.max(rs.bleedRoundsLeft || 0, eff.poisonDuration || 3);
+    rs.enemyDefDown    = Math.min((rs.enemyDefDown || 0) + (eff.defDown || 0.10), 0.50);
+    break;
+  case "focus_dmg_vs_poisoned":
+    rs.focusDmgVsPoisoned += eff.value || 0.10;
+    if (rs.dualPoisonDotStacks > 0 || bleedRoundsActive > 0) rs.focusDmgBonus += eff.value || 0.10;
+    break;
+  case "poison_tick_ally_heal":
+    rs.poisonTickAllyHeal = { triggerRound: eff.triggerRound || 7, healPct: eff.healPct || 0.20 };
+    if (round === (eff.triggerRound || 7) && (bleedRoundsActive > 0 || rs.dualPoisonDotStacks > 0)) {
+      rs.healPct += eff.healPct || 0.20;
+      roundLog.actions.push({ actor: actorLabel, action: `💚 You Hurt, We Win — All allies heal ${Math.round((eff.healPct||0.20)*100)}% HP!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "burn_damage_apply":
+    rs.focusDmgBonus += eff.value || 0.17;
+    if (Math.random() < (eff.burnChance || 0.60)) {
+      rs.burnApplied     = true;
+      rs.burnDmgPenalty  = eff.burnDmgPenalty || 0.20;
+      rs.enemyAtkReduce += eff.burnDmgPenalty || 0.20;
+      roundLog.actions.push({ actor: actorLabel, action: `🔥 Burn applied — enemy DMG -${Math.round((eff.burnDmgPenalty||0.20)*100)}% (1 rnd)`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "heal_highest_def_self_debuff":
+    rs.healPct            += eff.healPct || 0.20;
+    rs.healHighestDefDebuff = { dmgPenalty: eff.dmgPenalty || 0.10, duration: eff.penaltyDuration || 1 };
+    break;
+  case "random_army_effect":
+    if (Math.random() < (eff.chance || 0.08)) {
+      const effects = eff.effects || ["dmg_up","dmg_received_up","confusion_immune","confusion"];
+      const chosen  = effects[Math.floor(Math.random() * effects.length)];
+      if      (chosen === "dmg_up")           { rs.troopAtkMult *= 1.10; roundLog.actions.push({ actor: actorLabel, action: `🎲 Shaman Shenanigans — Army DMG +10%!`, dmg: 0, isTroopSkill: true }); }
+      else if (chosen === "dmg_received_up")  { rs.dmgReduce    -= 0.05; roundLog.actions.push({ actor: actorLabel, action: `🎲 Shaman Shenanigans — Army DMG Received +5%!`, dmg: 0, isTroopSkill: true }); }
+      else if (chosen === "confusion_immune") { rs.invisStunImmune = true; roundLog.actions.push({ actor: actorLabel, action: `🎲 Shaman Shenanigans — Army Confusion Immune!`, dmg: 0, isTroopSkill: true }); }
+      else if (chosen === "confusion")        { roundLog.actions.push({ actor: actorLabel, action: `🎲 Shaman Shenanigans — Army Confused!`, dmg: 0, isTroopSkill: true }); }
+    }
+    break;
+  case "dual_type_damage_apply":
+    rs.focusDmgBonus += (eff.poisonDmg || 0.20) + (eff.burnDmg || 0.20);
+    if (Math.random() < (eff.poisonChance || 0.40)) { rs.pendingVenomDmg = Math.max(rs.pendingVenomDmg, eff.poisonDmg || 0.20); }
+    if (Math.random() < (eff.burnChance  || 0.40)) { rs.burnApplied = true; rs.burnDmgPenalty = 0.20; }
+    rs.dualTypeDmgApply = { allyDefPerDebuff: eff.allyDefPerDebuff || 15, allyDefTargets: eff.allyDefTargets || 2 };
+    break;
+  case "army_siege_bonus":
+    rs.armySiegeBonus += eff.value || 2;
+    break;
+  // Grimtusk mechanics
+  case "physical_damage_self_dmg_up":
+    rs.cmdMult *= (1 + (eff.value || 0.12));
+    if (Math.random() < (eff.procChance || 0.30)) {
+      rs.selfDmgUpOnSkill    = eff.selfDmgUp || 0.10;
+      rs.selfDmgUpRoundsLeft = eff.selfDmgDuration || 2;
+      rs.cmdMult *= (1 + rs.selfDmgUpOnSkill);
+      roundLog.actions.push({ actor: actorLabel, action: `⚔️ Grim's Assault — CMD DMG +${Math.round(rs.selfDmgUpOnSkill*100)}% (2 rnd)!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "physical_damage_ranged_bonus":
+    rs.cmdMult *= (1 + (eff.value || 0.15));
+    // Ranged bonus applied during target selection
+    break;
+  case "reactive_skill_dmg_on_debuff":
+    rs.reactiveSkillDmgOnDebuff = eff.bonus || 0.05;
+    break;
+  case "attacking_defending_split":
+    rs.attackingDefendingSplit = { attackDmgUp: eff.attackDmgUp || 0.015, defendDmgDown: eff.defendDmgDown || 0.01 };
+    rs.cmdMult *= (1 + (eff.attackDmgUp || 0.015)); // assume attacking
+    break;
+  case "reactive_cleanse_chance":
+    rs.reactiveCleanseChance += eff.chance || 0.05;
+    break;
+  case "cmd_dmg_bonus_vs_faction":
+    rs.cmdDmgVsFaction = { faction: eff.faction || "pirates", value: eff.value || 0.02 };
+    rs.cmdMult *= (1 + (eff.value || 0.02));
+    break;
+  case "per_skill_army_def_stack":
+    if (!rs.perSkillArmyDefStack) rs.perSkillArmyDefStack = { branch: eff.branch, defPerStack: eff.defPerStack || 0.5, maxStacks: eff.maxStacks || 15, current: 0 };
+    if (rs.perSkillArmyDefStack.current < rs.perSkillArmyDefStack.maxStacks) {
+      rs.perSkillArmyDefStack.current++;
+      rs.troopDefMult *= (1 + (rs.perSkillArmyDefStack.defPerStack / 100));
+    }
+    break;
+  // Ashgrip mechanics
+  case "reactive_branch_dmg_range_stack":
+    if (!rs.reactiveBranchDmgStack) rs.reactiveBranchDmgStack = { branch: eff.branch, dmgMin: eff.dmgMin||2, dmgMax: eff.dmgMax||3, maxStacks: eff.maxStacks||4, current: 0 };
+    break;
+  case "all_branch_army_bonus":
+    rs.allBranchArmyBonus = { branch: eff.branch, value: eff.value || 0.01 };
+    rs.troopAtkMult *= (1 + (eff.value || 0.01));
+    rs.troopDefMult *= (1 + (eff.value || 0.01));
+    break;
+  case "all_branch_cmd_stats":
+    rs.allBranchCmdStats = { branch: eff.branch, atkPerLevel: eff.atkPerLevel || 1.0 };
+    // Cmd stat bonus applied if all slots are the specified branch
+    break;
+  case "mounted_on_hit_followup":
+    rs.mountedOnHitFollowup = { chance: eff.chance || 0.06, followupDmg: eff.followupDmg || 0.40, defDownChance: eff.followupDefDownChance || 0, defDown: eff.followupDefDown || 0.10 };
+    break;
+  case "physical_damage_mounted_composition":
+    rs.cmdMult *= (1 + (eff.value || 0.20));
+    rs.mountedComposition = { allMountedBonus: eff.allMountedBonus || 0.30, allWargBonus: eff.allWargBonus || 0.60 };
+    break;
+  case "dmg_bonus_vs_size":
+    rs.dmgBonusVsSize += eff.value || 0.01;
+    rs.troopAtkMult   *= (1 + (eff.value || 0.01));
+    rs.cmdMult        *= (1 + (eff.value || 0.01));
+    break;
+  case "physical_damage_multi_prioritise":
+    rs.cmdMult *= (1 + (eff.value || 0.40));
+    rs.physDmgMultiPrioritise = { targets: eff.targets || 2, prioritise: eff.prioritise || "large" };
+    break;
+  // Warcroak mechanics
+  case "command_differential_bonus":
+    rs.commandDifferentialBonus = { defPerCommand: eff.defPerCommand || 1.0, hpPerCommand: eff.hpPerCommand || 1.0 };
+    // Command differential calculated per round during damage — stubbed here
+    break;
+  case "faction_dmg_bonus_conditional":
+    rs.factionDmgBonusConditional = { value: eff.value || 0.01, conditionalFaction: eff.conditionalFaction, conditionalBonus: eff.conditionalBonus || 0.01 };
+    rs.troopAtkMult *= (1 + (eff.value || 0.01));
+    break;
+  case "aoe_multi_status":
+    rs.cmdAoe = true;
+    rs.cmdMult *= (1 + (eff.value || 0.20));
+    rs.aoeMultiStatus = { burnChance: eff.burnChance || 0.30, poisonChance: eff.poisonChance || 0.30, bleedChance: eff.bleedChance || 0.30, stunChance: eff.stunChance || 0 };
+    if (Math.random() < (eff.burnChance  || 0.30)) { rs.burnApplied = true; rs.burnDmgPenalty = 0.20; }
+    if (Math.random() < (eff.poisonChance|| 0.30)) { rs.pendingVenomDmg = Math.max(rs.pendingVenomDmg, 0.20); }
+    if (Math.random() < (eff.bleedChance || 0.30)) { rs.bleedApplied = true; rs.pendingBleedDmg = 0.30; rs.bleedRoundsLeft = 2; }
+    if (eff.stunChance && Math.random() < eff.stunChance) { rs.enemyStunned = Math.max(rs.enemyStunned||0, 1); }
+    break;
   case "post_attack_vulnerability":
     // Stacks tracked as array — applied after each commander attack
     rs.weakSpotStacks.push({ value: eff.value || 0.015, roundsLeft: eff.duration || 2 });
@@ -1178,6 +1386,55 @@ const rs = {
   selfSacrificeActive:false, // Warrior's Burden: flag when triggered
   dayNightFactionSplit:null, // Here We Go Again: { nightResist, dayBonus, faction }
   reactCmdAtkStack:null,     // Promise Land: { atkPerStack, maxStacks, current }
+  // Korgath mechanics
+  multiHitRandomDefDown:null,// Korgath's Brutality: { hits, dmgPct, defDown, maxStacks }
+  onSkillStunChance:0,       // Killer's Aura: chance to stun on skill activation
+  cmdDmgBonusVsStunned:0,    // Killer's Eye: bonus DMG vs stunned targets
+  attackingStanceDmg:0,      // Lead the Charge: CMD DMG up while attacking
+  attackingStanceDef:0,      // Lead the Charge: army DEF up while attacking
+  skillDmgVsFaction:null,    // Human Scum: { faction, value }
+  cmdAoePhysical:0,          // Korgath's Surprise: AoE physical on normal attacks
+  // Bruk mechanics
+  multiBranchDefBonus:null,  // Leader of the Tribe: { branches, defBonus, defendingBonus }
+  dmgBonusVsBleed:0,         // Capitalize!: bonus DMG vs bleeding targets
+  branchFollowupChance:null, // Try Again Boys: { branch, chance, followupDmg }
+  focusFire:null,            // Coordinated Assault: { target, duration }
+  onHitBleedHeal:0,          // Blood Magic: heal on hit vs bleeding target
+  factionDualStatBonus:null, // Mastermind: { dmgUp, dmgReceivedDown }
+  flatTroopDefBonus:0,       // Iron Dense: flat DEF on all troops
+  cmdStunChance:0,           // Ground Shake: stun enemy commander chance
+  trollDefSpdTradeoff:null,  // Troll Master: { defBonus, spdPenalty }
+  // Grix mechanics
+  burnApplied:false,         // Burn status: DMG dealt -20% for 1 round
+  burnDmgPenalty:0,          // Burn penalty on enemy
+  dualPoisonDotStacks:0,     // Voodoo: stacking poison DoTs
+  focusDmgVsPoisoned:0,      // Poison Specialist: focus DMG vs poisoned targets
+  poisonTickAllyHeal:null,   // You Hurt We Win: { triggerRound, healPct }
+  randomArmyEffect:null,     // Shaman Shenanigans: { chance, effects }
+  dualTypeDmgApply:null,     // Shaman's Final Surprise: { poisonDmg, burnDmg, etc }
+  armySiegeBonus:0,          // Orc Explosives: siege stat bonus
+  healHighestDefDebuff:null, // Sacrificial Healing: { healPct, dmgPenalty }
+  // Grimtusk mechanics
+  selfDmgUpOnSkill:0,        // Grim's Assault: commander DMG up on proc
+  selfDmgUpRoundsLeft:0,     // Grim's Assault: rounds remaining on self buff
+  reactiveSkillDmgOnDebuff:0,// Grim's Retaliation: next skill DMG bonus when debuffed
+  reactiveSkillDmgPending:false, // Grim's Retaliation: buff is active
+  attackingDefendingSplit:null,  // I Charge: { attackDmgUp, defendDmgDown }
+  reactiveCleanseChance:0,   // Can't Stop Me: cleanse chance on debuff
+  cmdDmgVsFaction:null,      // Pirate Filth: { faction, value }
+  perSkillArmyDefStack:null, // Hold the Line: { branch, defPerStack, maxStacks, current }
+  aoeMultiStatus:null,       // Master of None: { burnChance, poisonChance, bleedChance }
+  // Ashgrip mechanics
+  reactiveBranchDmgStack:null, // Warg Rider: { branch, dmgMin, dmgMax, maxStacks, current }
+  allBranchArmyBonus:null,   // Me and My Dogs: all-branch army stat bonus
+  allBranchCmdStats:null,    // Power from Friends: all-branch CMD stat bonus
+  mountedOnHitFollowup:null, // Mounted Fury: { chance, followupDmg, defDownChance }
+  mountedComposition:null,   // Mounted Strike: { allMountedBonus, allWargBonus }
+  dmgBonusVsSize:0,          // Giant Slayer: bonus DMG vs large units
+  physDmgMultiPrioritise:null,// Ash's Planned Assault: { targets, prioritise }
+  // Warcroak mechanics
+  commandDifferentialBonus:null, // Leader's Plans: { defPerCommand, hpPerCommand }
+  factionDmgBonusConditional:null, // Orcs Rise: { value, conditionalFaction, conditionalBonus }
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
