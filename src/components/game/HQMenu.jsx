@@ -1555,170 +1555,603 @@ function SlotEditor({ cmd, slotIdx, setTroopSlot, troopCounts, bldgs, commandCap
   );
 }
 
-function BattleGroupsScreen({ cmds, setCmds, bldgs, barracksPool, troopCounts, sliderVals, setSliderVals, setTroopSlot, returnTroops, playerHqKey, unlockedBranches }) {
-const hqKey      = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
-const ARMY_RARITY_ORDER = { champion: 0, veteran: 1, soldier: 2 };
-const playerCmds = cmds.filter(c => c.owner==="player").sort((a, b) => {
-  const lvlDiff = (b.lvl ?? 5) - (a.lvl ?? 5);
-  if (lvlDiff !== 0) return lvlDiff;
-  const rarDiff = (ARMY_RARITY_ORDER[a.rarity] ?? 3) - (ARMY_RARITY_ORDER[b.rarity] ?? 3);
-  if (rarDiff !== 0) return rarDiff;
-  return (a.n ?? "").localeCompare(b.n ?? "");
-});
-const [selUid, setSelUid] = useState(null);
-const selCmd = playerCmds.find(c=>c.uid===selUid) || playerCmds[0] || null;
+// ─────────────────────────────────────────────────────────────────────────────
+//  ARMY TAB  –  Battle Groups Screen  (drop-in replacement)
+//
+//  LEFT  : scrollable commander list
+//            • bust image (or icon fallback)
+//            • level badge, stamina pip
+//            • 3 mini troop-slot boxes (empty = dimmed outline)
+//            • command-fill bar
+//
+//  RIGHT : selected commander detail
+//            • large portrait / bust
+//            • 3 troop boxes (name, tier, count)  ← styled like the ref image
+//            • REFILL  |  EDIT  buttons
+//
+//  Props are identical to the original BattleGroupsScreen so no call-site
+//  changes are needed.
+// ─────────────────────────────────────────────────────────────────────────────
 
-return (
-<div style={{ display:"flex", height:"100%", overflow:"hidden" }}>
+function BattleGroupsScreen({
+  cmds, setCmds, bldgs, barracksPool, troopCounts,
+  sliderVals, setSliderVals, setTroopSlot, returnTroops,
+  playerHqKey, unlockedBranches,
+}) {
+  const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
 
-  {/* -- Left: Commander list -- */}
-  <div style={{ width:132, flexShrink:0, borderRight:`1px solid ${P.border}`,
-    background:"rgba(0,0,0,.3)", overflowY:"auto", padding:"6px 4px" }}>
-    <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
-      textAlign:"center", marginBottom:6 }}>COMMANDERS</div>
-    {playerCmds.length === 0 && (
-      <div style={{ fontSize:8, color:"#3a3028", fontFamily:P.ffb, fontStyle:"italic",
-        textAlign:"center", padding:"12px 6px" }}>No commanders</div>
-    )}
-    {playerCmds.map(cmd => {
-      const isActive = selCmd?.uid === cmd.uid;
-      const slots    = cmd.troopSlots?.filter(sl => sl.troops > 0) ?? [];
-      const isAtHQ   = cmd.tk === hqKey;
-      return (
-        <button key={cmd.uid} onClick={() => setSelUid(cmd.uid)}
-          style={{ width:"100%", textAlign:"left", marginBottom:4, padding:"8px 6px",
-            borderRadius:6, cursor:"pointer",
-            background:isActive?"rgba(240,192,64,.1)":"rgba(255,255,255,.02)",
-            border:`1px solid ${isActive?P.gold+"44":P.border}`, transition:"all .12s" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
-            <div style={{ fontSize:18 }}>{cmd.icon}</div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:P.ff, fontSize:8, fontWeight:700,
-                color:isActive?P.gold:P.text, whiteSpace:"nowrap",
-                overflow:"hidden", textOverflow:"ellipsis" }}>{cmd.n}</div>
-              <div style={{ fontSize:6, color:P.sub }}>Lv{cmd.lvl} · {cmd.cls}</div>
-            </div>
-            {(() => {
-              const stam = cmd.stamina ?? 200;
-              const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
-              return <div style={{ fontSize:5, color:sc, flexShrink:0 }}>⚡{Math.floor(stam)}</div>;
-            })()}
-          </div>
-          {slots.length > 0
-            ? slots.map((sl, i) => {
-                const brDef = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(b=>b.key===sl.branch?.branch);
-                const td    = brDef?.tiers[sl.branch?.tier??0];
-                const fc    = FACTION_META[sl.branch?.faction]?.c || P.gold;
-                return (
-                  <div key={i} style={{ fontSize:6, color:fc, fontFamily:P.ff,
-                    background:`${fc}15`, padding:"1px 5px", borderRadius:3,
-                    display:"inline-block", marginRight:3, marginBottom:2 }}>
-                    {td?.label ?? "?"} ×{sl.troops.toLocaleString()}
-                  </div>
-                );
-              })
-            : <div style={{ fontSize:6, color:"#3a3028", fontFamily:P.ff }}>No troops</div>
-          }
-          <div style={{ fontSize:5, color:isAtHQ?"#3daa60":"#6a5a3a", fontFamily:P.ff, marginTop:2 }}>
-            {isAtHQ?"🏰 At HQ":"📍 Away"}
-          </div>
-        </button>
+  const ARMY_RARITY_ORDER = { champion: 0, veteran: 1, soldier: 2 };
+  const playerCmds = cmds
+    .filter(c => c.owner === "player")
+    .sort((a, b) => {
+      const lvlDiff = (b.lvl ?? 5) - (a.lvl ?? 5);
+      if (lvlDiff !== 0) return lvlDiff;
+      const rarDiff =
+        (ARMY_RARITY_ORDER[a.rarity] ?? 3) -
+        (ARMY_RARITY_ORDER[b.rarity] ?? 3);
+      if (rarDiff !== 0) return rarDiff;
+      return (a.n ?? "").localeCompare(b.n ?? "");
+    });
+
+  const [selUid,    setSelUid]    = useState(null);
+  const [editOpen,  setEditOpen]  = useState(false);   // toggle right-side edit mode
+  const selCmd = playerCmds.find(c => c.uid === selUid) || playerCmds[0] || null;
+
+  // ── helpers ────────────────────────────────────────────────────────────────
+  const TIER_COLORS  = ["#8a8aaa", "#4488cc", "#a855f7"];
+  const TIER_ROMAN   = ["I", "II", "III"];
+
+  function cmdUsedFor(cmd) {
+    return (cmd.troopSlots ?? []).reduce((s, sl) => {
+      const slBr = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(
+        b => b.key === sl.branch?.branch,
       );
-    })}
-  </div>
+      return s + (sl.troops || 0) * (COMMAND_COST[slBr?.size] ?? 1);
+    }, 0);
+  }
 
-  {/* -- Right: Selected commander detail -- */}
-  <div style={{ flex:1, overflowY:"auto", padding:"10px 12px 32px" }}>
-    {!selCmd ? (
-      <div style={{ textAlign:"center", padding:"40px 20px", color:P.dim,
-        fontFamily:P.ffb, fontStyle:"italic", fontSize:9 }}>
-        No commanders available.
-      </div>
-    ) : (() => {
-      const cmd        = selCmd;
-      const isAtHQ     = cmd.tk === hqKey;
-      const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, cmd.commandBonus??0);
-      const cmdUsed    = (cmd.troopSlots ?? []).reduce((s, sl) => {
-        const slBr = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(b=>b.key===sl.branch?.branch);
-        return s + (sl.troops || 0) * (COMMAND_COST[slBr?.size] ?? 1);
-      }, 0);
-      const troopPct = Math.min(100, Math.round((cmdUsed / commandCap) * 100));
+  function commandCapFor(cmd) {
+    return cmdCommand(cmd.lvl || 5, bldgs.commandcenter || 0, cmd.commandBonus ?? 0);
+  }
 
+  function resolveSlot(sl) {
+    if (!sl?.branch) return null;
+    const fDef = FACTION_TROOPS[sl.branch.faction];
+    if (!fDef) return null;
+    const brDef = fDef.branches.find(b => b.key === sl.branch.branch);
+    if (!brDef) return null;
+    const tierData = brDef.tiers[sl.branch.tier ?? 0] ?? null;
+    return { brDef, tierData, tierIdx: sl.branch.tier ?? 0 };
+  }
+
+  // ── Mini troop box used in the left list ──────────────────────────────────
+  function MiniSlotBox({ sl }) {
+    const res = resolveSlot(sl);
+    if (!sl || !res) {
+      // empty placeholder
       return (
-        <div>
-          {/* Commander header */}
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10,
-            padding:"10px 12px", background:"rgba(255,255,255,.04)",
-            border:`1px solid ${P.border}`, borderRadius:8 }}>
-            <div style={{ fontSize:28 }}>{cmd.icon}</div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontFamily:P.ff, fontSize:12, fontWeight:700, color:P.gold }}>{cmd.n}</div>
-              <div style={{ fontSize:8, color:P.sub }}>Lv{cmd.lvl} · {cmd.cls}</div>
-              <div style={{ fontSize:7, color:isAtHQ?"#3daa60":"#7a5a3a", marginTop:1 }}>
-                {isAtHQ ? "🏰 At HQ" : "📍 Away — recall to HQ to modify"}
+        <div style={{
+          width: 34, height: 38, borderRadius: 3,
+          border: "1px solid #2a2418",
+          background: "rgba(0,0,0,.35)",
+          flexShrink: 0,
+        }} />
+      );
+    }
+    const tierColor = TIER_COLORS[Math.min(res.tierIdx, 2)];
+    const icon = res.brDef.dmgType === "magical" ? "✦"
+      : res.brDef.size === "small" ? "🗡"
+      : res.brDef.size === "large" ? "🪃" : "⚔";
+    const count = sl.troops > 999
+      ? `${(sl.troops / 1000).toFixed(1)}k`
+      : (sl.troops || 0).toLocaleString();
+    return (
+      <div style={{
+        width: 34, height: 38, borderRadius: 3, flexShrink: 0,
+        border: `1px solid ${tierColor}99`,
+        background: "rgba(6,4,2,.9)",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: 0,
+      }}>
+        <div style={{ fontSize: 13, lineHeight: 1 }}>{icon}</div>
+        <div style={{ fontSize: 6, fontWeight: 700, color: tierColor, fontFamily: P.ff, lineHeight: 1 }}>
+          {TIER_ROMAN[Math.min(res.tierIdx, 2)]}
+        </div>
+        <div style={{ fontSize: 5.5, fontWeight: 700, color: "#c8a060", fontFamily: P.ff, lineHeight: 1, marginTop: 1 }}>
+          {count}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Large troop box used in the right detail panel ────────────────────────
+  function DetailTroopBox({ sl, onClick }) {
+    const res = resolveSlot(sl);
+    const isEmpty = !sl || !res || !sl.troops;
+
+    if (isEmpty) {
+      return (
+        <div style={{
+          flex: 1, minHeight: 88,
+          borderRadius: 5,
+          border: "1px solid #2a2418",
+          background: "rgba(0,0,0,.35)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#3a3028", fontSize: 8, fontFamily: P.ffb, fontStyle: "italic",
+          cursor: onClick ? "pointer" : "default",
+        }}
+          onClick={onClick}
+        >
+          empty
+        </div>
+      );
+    }
+
+    const tierColor = TIER_COLORS[Math.min(res.tierIdx, 2)];
+    const tierLabel = TIER_ROMAN[Math.min(res.tierIdx, 2)];
+    const icon = res.brDef.dmgType === "magical" ? "✦"
+      : res.brDef.size === "small" ? "🗡"
+      : res.brDef.size === "large" ? "🪃" : "⚔";
+    const fColor = FACTION_META[sl.branch.faction]?.c || P.gold;
+    const count = sl.troops > 9999
+      ? `${(sl.troops / 1000).toFixed(1)}k`
+      : (sl.troops || 0).toLocaleString();
+
+    return (
+      <div
+        onClick={onClick}
+        style={{
+          flex: 1, minHeight: 88, borderRadius: 5,
+          border: `1px solid ${tierColor}cc`,
+          background: "rgba(6,4,2,.92)",
+          boxShadow: `0 2px 12px rgba(0,0,0,.8), 0 0 8px ${tierColor}22`,
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 4,
+          cursor: onClick ? "pointer" : "default",
+          padding: "8px 4px",
+          transition: "border-color .15s, box-shadow .15s",
+        }}
+      >
+        {/* Tier badge */}
+        <div style={{
+          fontSize: 6, fontWeight: 700, color: tierColor,
+          fontFamily: P.ff, letterSpacing: ".12em",
+          border: `1px solid ${tierColor}66`, borderRadius: 2,
+          padding: "1px 5px", lineHeight: 1.4,
+        }}>
+          TIER {tierLabel}
+        </div>
+        {/* Icon */}
+        <div style={{ fontSize: 22, lineHeight: 1 }}>{icon}</div>
+        {/* Troop name */}
+        <div style={{
+          fontSize: 7.5, fontWeight: 700, color: fColor,
+          fontFamily: P.ff, textAlign: "center", lineHeight: 1.2,
+          letterSpacing: ".04em",
+        }}>
+          {res.tierData?.label ?? res.brDef.label}
+        </div>
+        {/* Count */}
+        <div style={{
+          fontSize: 10, fontWeight: 700, color: "#f0e8d8",
+          fontFamily: P.ff, lineHeight: 1,
+        }}>
+          {count}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Left-panel card ────────────────────────────────────────────────────────
+  function CommanderListCard({ cmd }) {
+    const isActive  = selCmd?.uid === cmd.uid;
+    const isAtHQ    = cmd.tk === hqKey;
+    const cap       = commandCapFor(cmd);
+    const used      = cmdUsedFor(cmd);
+    const fillPct   = cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 0;
+    const fillColor = fillPct >= 100 ? "#cc3030" : fillPct >= 75 ? "#d0a030" : "#3daa60";
+    const rarColor  = RC(cmd.rarity);
+
+    const stam      = cmd.stamina ?? 200;
+    const stamColor = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
+
+    // padded 3 slots
+    const slots = [0, 1, 2].map(i => cmd.troopSlots?.[i] ?? null);
+
+    return (
+      <button
+        onClick={() => { setSelUid(cmd.uid); setEditOpen(false); }}
+        style={{
+          width: "100%", textAlign: "left", marginBottom: 5,
+          padding: "7px 6px 6px", borderRadius: 6,
+          cursor: "pointer",
+          background: isActive ? "rgba(240,192,64,.08)" : "rgba(255,255,255,.02)",
+          border: `1px solid ${isActive ? P.gold + "55" : P.border}`,
+          transition: "all .12s",
+        }}
+      >
+        {/* Top row: bust + info */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 5 }}>
+          {/* Bust image */}
+          <div style={{
+            width: 38, height: 46, flexShrink: 0, borderRadius: 4,
+            overflow: "hidden", position: "relative",
+            border: `1px solid ${rarColor}55`,
+            background: "#0a0c10",
+          }}>
+            {cmd.bust ? (
+              <img
+                src={cmd.bust}
+                alt={cmd.n}
+                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
+              />
+            ) : (
+              <div style={{
+                width: "100%", height: "100%",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 20,
+              }}>
+                {cmd.icon}
               </div>
-            </div>
-            {(cmd.troops||0) > 0 && (
-              <button className="btn" onClick={() => returnTroops(cmd.uid)}
-                style={{ padding:"4px 8px", background:"rgba(200,50,50,.15)",
-                  border:"1px solid rgba(200,50,50,.4)", color:"#cc5050", fontSize:8 }}>
-                Return All
-              </button>
             )}
           </div>
 
-          {/* Command bar */}
-          <div style={{ marginBottom:10 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:7,
-              color:"#5a5060", fontFamily:P.ff, marginBottom:2 }}>
-              <span>📡 COMMAND</span>
-              <span style={{ color:troopPct>=100?"#cc3030":troopPct>=75?"#d0a030":"#3daa60" }}>
-                {+cmdUsed.toFixed(2)} / {commandCap} cmd
-              </span>
+          {/* Name / level / stamina */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Level badge */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+              <div style={{
+                fontSize: 7, fontWeight: 700, color: rarColor,
+                fontFamily: P.ff,
+                background: `${rarColor}22`,
+                border: `1px solid ${rarColor}55`,
+                borderRadius: 3, padding: "0px 5px", lineHeight: 1.6,
+                flexShrink: 0,
+              }}>
+                {cmd.lvl ?? 1}
+              </div>
+              <div style={{
+                fontFamily: P.ff, fontSize: 7.5, fontWeight: 700,
+                color: isActive ? P.gold : P.text,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {cmd.n}
+              </div>
             </div>
-            <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
-              <div style={{ height:"100%", width:`${troopPct}%`,
-                background:troopPct>=100?"#cc3030":troopPct>=75?"#d0a030":"#3daa60",
-                borderRadius:2, transition:"width .3s" }}/>
+            {/* Stamina */}
+            <div style={{ fontSize: 6, color: stamColor, fontFamily: P.ff }}>
+              ⚡ {Math.floor(stam)} · {cmd.cls}
+            </div>
+            {/* At HQ indicator */}
+            <div style={{ fontSize: 5.5, color: isAtHQ ? "#3daa60" : "#5a4a2a", marginTop: 2, fontFamily: P.ff }}>
+              {isAtHQ ? "🏰 AT HQ" : "📍 AWAY"}
+            </div>
+          </div>
+        </div>
+
+        {/* Troop slot boxes */}
+        <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
+          {slots.map((sl, i) => <MiniSlotBox key={i} sl={sl} />)}
+        </div>
+
+        {/* Command fill bar */}
+        <div>
+          <div style={{
+            display: "flex", justifyContent: "space-between",
+            fontSize: 5.5, color: "#5a5060", fontFamily: P.ff, marginBottom: 2,
+          }}>
+            <span>COMMAND</span>
+            <span style={{ color: fillColor }}>{fillPct}%</span>
+          </div>
+          <div style={{ height: 3, background: "#181820", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{
+              height: "100%", width: `${fillPct}%`,
+              background: fillColor, borderRadius: 2,
+              transition: "width .3s",
+            }} />
+          </div>
+        </div>
+      </button>
+    );
+  }
+
+  // ── Right-side render ──────────────────────────────────────────────────────
+  const rightPanel = (() => {
+    if (!selCmd) {
+      return (
+        <div style={{
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+          color: P.dim, fontFamily: P.ffb, fontStyle: "italic", fontSize: 9,
+        }}>
+          No commanders available.
+        </div>
+      );
+    }
+
+    const cmd      = selCmd;
+    const isAtHQ   = cmd.tk === hqKey;
+    const cap      = commandCapFor(cmd);
+    const used     = cmdUsedFor(cmd);
+    const fillPct  = cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 0;
+    const fillColor = fillPct >= 100 ? "#cc3030" : fillPct >= 75 ? "#d0a030" : "#3daa60";
+    const rarColor  = RC(cmd.rarity);
+
+    // padded 3 slots
+    const slots = [0, 1, 2].map(i => cmd.troopSlots?.[i] ?? null);
+    const stam   = cmd.stamina ?? 200;
+    const stamColor = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
+
+    if (editOpen && isAtHQ) {
+      // Delegate to the existing SlotEditor UI
+      return (
+        <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px 32px" }}>
+          {/* Back header */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            marginBottom: 12, paddingBottom: 8,
+            borderBottom: `1px solid ${P.border}`,
+          }}>
+            <button className="btn" onClick={() => setEditOpen(false)}
+              style={{
+                fontSize: 7, padding: "3px 10px",
+                background: "rgba(255,255,255,.04)",
+                border: `1px solid ${P.border}`,
+                color: P.dim, borderRadius: 3,
+              }}>
+              ← Back
+            </button>
+            <div style={{ fontFamily: P.ff, fontSize: 9, color: P.gold, fontWeight: 700 }}>
+              EDIT TROOPS — {cmd.n}
             </div>
           </div>
 
-          {/* Per-slot editors — only at HQ */}
-          {isAtHQ ? (
-            <>
-              <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff, letterSpacing:".1em", marginBottom:8 }}>
-                TROOP SLOTS (up to 3)
-              </div>
-              {[0,1,2].map(slotIdx => (
-                <SlotEditor
-                  key={slotIdx}
-                  cmd={cmd}
-                  slotIdx={slotIdx}
-                  setTroopSlot={setTroopSlot}
-                  troopCounts={troopCounts}
-                  bldgs={bldgs}
-                  commandCap={commandCap}
-                  unlockedBranches={unlockedBranches}
-                />
-              ))}
-            </>
+          {/* Return all button */}
+          {(cmd.troops || 0) > 0 && (
+            <button className="btn" onClick={() => returnTroops(cmd.uid)}
+              style={{
+                width: "100%", marginBottom: 10, padding: "5px 8px",
+                background: "rgba(200,50,50,.15)", border: "1px solid rgba(200,50,50,.4)",
+                color: "#cc5050", fontSize: 8, borderRadius: 4,
+              }}>
+              Return All Troops
+            </button>
+          )}
+
+          {/* Slot editors */}
+          <div style={{ fontSize: 8, color: P.dim, fontFamily: P.ff, letterSpacing: ".1em", marginBottom: 8 }}>
+            TROOP SLOTS (up to 3)
+          </div>
+          {[0, 1, 2].map(slotIdx => (
+            <SlotEditor
+              key={slotIdx}
+              cmd={cmd}
+              slotIdx={slotIdx}
+              setTroopSlot={setTroopSlot}
+              troopCounts={troopCounts}
+              bldgs={bldgs}
+              commandCap={cap}
+              unlockedBranches={unlockedBranches}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    // ── VIEW mode (reference-image layout) ──────────────────────────────────
+    return (
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+        {/* Portrait area */}
+        <div style={{
+          flex: 1, position: "relative", overflow: "hidden",
+          background: "linear-gradient(160deg,#0d0b08,#080608)",
+          minHeight: 0,
+        }}>
+          {/* Ambient glow */}
+          <div style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            background: `radial-gradient(ellipse 80% 80% at 50% 100%, ${rarColor}18 0%, transparent 70%)`,
+          }} />
+
+          {/* Commander image */}
+          {(cmd.portrait || cmd.bust) ? (
+            <img
+              src={cmd.portrait ?? cmd.bust}
+              alt={cmd.n}
+              style={{
+                position: "absolute",
+                bottom: 0, left: "50%", transform: "translateX(-50%)",
+                height: "95%", width: "auto",
+                objectFit: "contain", objectPosition: "bottom center",
+                opacity: .93,
+              }}
+            />
           ) : (
-            <div style={{ padding:"8px 10px", background:"rgba(150,80,20,.08)",
-              border:"1px solid rgba(150,80,20,.25)", borderRadius:4 }}>
-              <div style={{ fontFamily:P.ff, fontSize:9, color:"#c8903a" }}>🔒 AWAY FROM HQ</div>
-              <div style={{ fontSize:8, color:"#7a6a4a", marginTop:2 }}>
-                Recall to HQ to modify troop assignment.
+            <div style={{
+              position: "absolute", inset: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 64, opacity: .5,
+            }}>
+              {cmd.icon}
+            </div>
+          )}
+
+          {/* Name overlay (top) */}
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0,
+            padding: "10px 14px",
+            background: "linear-gradient(180deg,rgba(6,4,2,.85) 0%,transparent 100%)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* Rarity / level badge */}
+              <div style={{
+                fontFamily: P.ff, fontSize: 8, fontWeight: 700,
+                color: rarColor,
+                background: `${rarColor}22`,
+                border: `1px solid ${rarColor}55`,
+                borderRadius: 4, padding: "2px 8px", flexShrink: 0,
+              }}>
+                {cmd.lvl ?? 1}
               </div>
+              <div style={{ fontFamily: P.ff, fontSize: 13, fontWeight: 700, color: P.gold }}>
+                {cmd.n}
+              </div>
+              {/* Stamina */}
+              <div style={{ marginLeft: "auto", fontSize: 7, color: stamColor, fontFamily: P.ff, flexShrink: 0 }}>
+                ⚡ {Math.floor(stam)}/{cmd.maxStamina ?? 200}
+              </div>
+            </div>
+            <div style={{ fontSize: 7, color: P.sub, fontFamily: P.ff, marginTop: 2 }}>
+              {cmd.cls} · {isAtHQ ? "🏰 At HQ" : "📍 Away"}
+            </div>
+          </div>
+
+          {/* Command bar overlay (bottom) */}
+          <div style={{
+            position: "absolute", bottom: 0, left: 0, right: 0,
+            padding: "6px 14px 8px",
+            background: "linear-gradient(0deg,rgba(6,4,2,.9) 0%,transparent 100%)",
+          }}>
+            <div style={{
+              display: "flex", justifyContent: "space-between",
+              fontSize: 6.5, color: "#5a5060", fontFamily: P.ff, marginBottom: 3,
+            }}>
+              <span>📡 COMMAND</span>
+              <span style={{ color: fillColor }}>{+used.toFixed(1)} / {cap}</span>
+            </div>
+            <div style={{ height: 4, background: "#181820", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", width: `${fillPct}%`,
+                background: fillColor, borderRadius: 2,
+                transition: "width .3s",
+              }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Troop boxes row  ─  always visible, matches reference image */}
+        <div style={{
+          flexShrink: 0,
+          padding: "10px 12px 6px",
+          background: "#0a0c10",
+          borderTop: `1px solid ${P.border}`,
+        }}>
+          {/* Section label */}
+          <div style={{
+            fontSize: 7, color: "#c8903a", fontFamily: P.ff,
+            fontWeight: 700, letterSpacing: ".18em",
+            marginBottom: 8,
+          }}>
+            STRIKE CRAFT
+          </div>
+
+          {/* Three boxes */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            {slots.map((sl, i) => (
+              <DetailTroopBox
+                key={i}
+                sl={sl}
+                onClick={isAtHQ ? () => setEditOpen(true) : undefined}
+              />
+            ))}
+          </div>
+
+          {/* REFILL | EDIT buttons */}
+          <div style={{ display: "flex", gap: 8 }}>
+            {/* REFILL – returns all troops to barracks */}
+            <button
+              className="btn"
+              disabled={!isAtHQ || !slots.some(sl => sl?.troops > 0)}
+              onClick={() => returnTroops(cmd.uid)}
+              style={{
+                flex: 1, padding: "8px 0",
+                background: "rgba(200,180,140,.08)",
+                border: "1px solid rgba(200,180,140,.3)",
+                color: slots.some(sl => sl?.troops > 0) && isAtHQ ? "#d0c090" : "#3a3028",
+                fontFamily: P.ff, fontSize: 9, fontWeight: 700,
+                letterSpacing: ".1em", borderRadius: 4,
+                cursor: isAtHQ && slots.some(sl => sl?.troops > 0) ? "pointer" : "not-allowed",
+                transition: "all .12s",
+              }}
+            >
+              REFILL
+            </button>
+
+            {/* EDIT */}
+            <button
+              className="btn"
+              disabled={!isAtHQ}
+              onClick={() => setEditOpen(true)}
+              style={{
+                flex: 1, padding: "8px 0",
+                background: isAtHQ
+                  ? "linear-gradient(135deg,#c8903a,#a06828)"
+                  : "rgba(255,255,255,.03)",
+                border: isAtHQ ? "1px solid #7a5018" : `1px solid ${P.border}`,
+                color: isAtHQ ? "#0a0806" : "#3a3028",
+                fontFamily: P.ff, fontSize: 9, fontWeight: 700,
+                letterSpacing: ".1em", borderRadius: 4,
+                cursor: isAtHQ ? "pointer" : "not-allowed",
+                transition: "all .12s",
+              }}
+            >
+              EDIT
+            </button>
+          </div>
+
+          {!isAtHQ && (
+            <div style={{
+              marginTop: 6, fontSize: 7, color: "#7a5a2a",
+              fontFamily: P.ffb, fontStyle: "italic", textAlign: "center",
+            }}>
+              Recall to HQ to modify troops
             </div>
           )}
         </div>
-      );
-    })()}
-  </div>
-</div>
-);
-}
+      </div>
+    );
+  })();
 
+  // ── Outer shell ────────────────────────────────────────────────────────────
+  return (
+    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+
+      {/* ── Left: Commander list ── */}
+      <div style={{
+        width: 148, flexShrink: 0,
+        borderRight: `1px solid ${P.border}`,
+        background: "rgba(0,0,0,.3)",
+        overflowY: "auto",
+        padding: "6px 5px",
+      }}>
+        {/* Header */}
+        <div style={{
+          fontSize: 6, color: P.dim, fontFamily: P.ff,
+          letterSpacing: ".1em", textAlign: "center", marginBottom: 6,
+          paddingBottom: 5, borderBottom: `1px solid ${P.border}`,
+        }}>
+          {playerCmds.length} COMMANDERS
+        </div>
+
+        {playerCmds.length === 0 ? (
+          <div style={{
+            fontSize: 8, color: "#3a3028", fontFamily: P.ffb,
+            fontStyle: "italic", textAlign: "center", padding: "12px 6px",
+          }}>
+            No commanders
+          </div>
+        ) : (
+          playerCmds.map(cmd => <CommanderListCard key={cmd.uid} cmd={cmd} />)
+        )}
+      </div>
+
+      {/* ── Right: Detail ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {rightPanel}
+      </div>
+    </div>
+  );
+}
 // -----------------------------------------------------------------------------
 //  HEALING TENT
 // -----------------------------------------------------------------------------
