@@ -340,6 +340,159 @@ switch (eff.type) {
     rs.enemyStunned = Math.max(rs.enemyStunned || 0, eff.stunDuration || 1);
     roundLog.actions.push({ actor: actorLabel, action: `⚡ ${skill.name} — Enemy stunned!`, dmg: 0, isTroopSkill: true });
     break;
+  // Dante mechanics
+  case "double_edge_dmg":
+    rs.doubleEdgeDmgUp    += eff.dmgUp || 0.02;
+    rs.doubleEdgeDmgRecUp += eff.dmgReceivedUp || 0.01;
+    rs.troopAtkMult       *= (1 + (eff.dmgUp || 0.02));
+    rs.dmgReduce          -= (eff.dmgReceivedUp || 0.01); // penalty: less damage reduction
+    break;
+  case "double_edge_faction":
+    // Applied during damage calculation per unit faction check
+    rs.doubleEdgeDmgUp    += eff.dmgUp || 0.02;
+    rs.doubleEdgeDmgRecUp += eff.dmgReceivedUp || 0.01;
+    break;
+  case "chaos_confusion":
+    rs.chaosConfusionAlly  = eff.allyChance  || 0.07;
+    rs.chaosConfusionEnemy = eff.enemyChance || 0.10;
+    // Apply enemy confusion
+    if (Math.random() < rs.chaosConfusionEnemy) {
+      rs.enemyConfused = Math.max(rs.enemyConfused || 0, 1);
+      roundLog.actions.push({ actor: actorLabel, action: `🔥 Whatever It Takes — Enemy confused!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "enemy_cmd_atk_drain":
+    rs.enemyCmdAtkDrain = Math.max(0, (eff.initialDrain || 7) - ((round - 1) * (eff.decayPerRound || 10)));
+    break;
+  case "unit_evasion_first_hits":
+    rs.unitEvasionFirstHits = { chance: eff.chance || 0.04, maxHits: eff.maxHits || 4 };
+    break;
+  case "poison_damage_heal_block":
+    rs.pendingVenomDmg = Math.max(rs.pendingVenomDmg, eff.poisonDmg || 0.30);
+    rs.blockHeal       = Math.max(rs.blockHeal, eff.healBlockDuration || 2);
+    break;
+  case "branch_max_dmg_chance":
+    rs.meleeMaxDmgChance = Math.min(1, (rs.meleeMaxDmgChance || 0) + (eff.chance || 0.08));
+    break;
+  case "branch_focus_resist":
+    rs.focusPoisonResist += eff.value || 0.01;
+    break;
+  case "heal_faction":
+    rs.healPct += eff.healPct || 0.17;
+    break;
+  // Brennan mechanics
+  case "heal_def_buff":
+    rs.healPct     += eff.healPct || 0.12;
+    rs.healDefBuff  = { targets: eff.targets || 2, defBonus: eff.defBonus || 0.15, defDuration: eff.defDuration || 2 };
+    break;
+  case "on_hit_heal_chance":
+    rs.onHitHealChance = { targets: eff.targets || 2, chance: eff.chance || 0.40, healPct: eff.healPct || 0.04, guaranteed: eff.guaranteed || false };
+    break;
+  case "heal_cleanse_all":
+    rs.healPct       += eff.healPct || 0.10;
+    rs.healCleansAll  = { cleanseChance: eff.cleanseChance || 0.08 };
+    break;
+  case "heal_double_chance":
+    rs.healPct         += eff.healPct || 0.08;
+    rs.healDoubleChance = { branch: eff.branch || "holyknights", healPct: eff.healPct || 0.08, doubleChance: eff.doubleChance || 0.50 };
+    break;
+  case "decaying_dmg_reduce":
+    rs.decayingDmgReduce = eff.value || 0.06;
+    rs.decayFraction     = eff.decayFraction || 0.25;
+    rs.hitsUntilDecayGone = eff.maxHits || 4;
+    rs.dmgReduce         += rs.decayingDmgReduce;
+    break;
+  case "role_dmg_bonus":
+    rs.roleDmgBonus += eff.value || 0.03;
+    rs.troopAtkMult *= (1 + (eff.value || 0.03));
+    break;
+  case "role_dmg_bonus_vs_faction":
+    rs.roleDmgBonusVsFaction = { role: eff.role, bonusFaction: eff.bonusFaction, value: eff.value || 0.02 };
+    break;
+  case "heal_all":
+    rs.healPct += eff.healPct || 0.50;
+    break;
+  // Vayne mechanics
+  case "early_round_dmg_up":
+    if (round <= (eff.maxRound || 2)) {
+      rs.earlyRoundDmgUp += eff.value || 0.03;
+      rs.troopAtkMult    *= (1 + (eff.value || 0.03));
+      if (eff.stunImmunityWhileActive) rs.earlyRoundStunImmune = true;
+    }
+    break;
+  case "early_round_dmg_up_all":
+    if (round <= (eff.maxRound || 2)) {
+      rs.earlyRoundDmgUp += eff.value || 0.014;
+      rs.troopAtkMult    *= (1 + (eff.value || 0.014));
+      rs.cmdMult         *= (1 + (eff.value || 0.014));
+    }
+    break;
+  case "on_hit_bonus_dmg":
+    rs.onHitBonusDmg = { chance: eff.chance || 0.07, bonusDmg: eff.bonusDmg || 0.50 };
+    break;
+  case "per_round_def_stack":
+    if (!rs.perRoundDefStack) rs.perRoundDefStack = { faction: eff.faction, chance: eff.chance, defPerStack: eff.defPerStack, maxStacks: eff.maxStacks, current: 0 };
+    if (rs.perRoundDefStack.current < rs.perRoundDefStack.maxStacks && Math.random() < rs.perRoundDefStack.chance) {
+      rs.perRoundDefStack.current++;
+      rs.troopDefMult *= (1 + (rs.perRoundDefStack.defPerStack / 100));
+    }
+    break;
+  case "physical_damage_and_heal":
+    rs.cmdMult        *= (1 + (eff.enemyDmg || 0.12));
+    rs.physDmgAndHeal  = { allyHeal: eff.allyHeal || 0.13 };
+    break;
+  case "dmg_resist_vs_faction":
+    rs.dmgResistVsFaction += eff.value || 0.01;
+    rs.dmgReduce          += eff.value || 0.01;
+    break;
+  case "enemy_dmg_down_early_atk":
+    if (round <= (eff.maxRound || 4)) rs.enemyDmgDown += eff.value || 0.007;
+    break;
+  case "branch_dmg_bonus":
+    rs.branchDmgBonus += eff.value || 0.03;
+    rs.troopAtkMult   *= (1 + (eff.value || 0.03));
+    break;
+  case "physical_damage_multi":
+    rs.cmdMult *= (1 + (eff.value || 0.12));
+    break;
+  case "physical_damage_single":
+    rs.cmdMult *= (1 + (eff.value || 0.60));
+    break;
+  // Aldric mechanics
+  case "hk_triple_stat_bonus":
+    rs.hkTripleStatBonus = { dmgUp: eff.dmgUp || 0.006, defBonus: eff.defBonus || 6, spdBonus: eff.spdBonus || 6 };
+    rs.troopAtkMult *= (1 + (eff.dmgUp || 0.006));
+    break;
+  case "per_round_stun_immune_chance":
+    if (Math.random() < (eff.chance || 0.05)) {
+      rs.invisStunImmune = true;
+      roundLog.actions.push({ actor: actorLabel, action: `🧱 Stoic Hero — Stun Immunity gained this round!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "branch_heal_per_round":
+    rs.healPct += eff.healPct || 0.05;
+    break;
+  case "day_max_dmg_chance":
+    rs.dayMaxDmgChance = eff.chance || 0.04;
+    rs.meleeMaxDmgChance = Math.min(1, (rs.meleeMaxDmgChance || 0) + rs.dayMaxDmgChance);
+    break;
+  case "self_sacrifice_for_army":
+    if (!rs.selfSacrificeActive && round === 4) {
+      rs.selfSacrificeActive = true;
+      // Halve commander FOC and SPD — flagged for stat application
+      roundLog.actions.push({ actor: actorLabel, action: `⚖️ Warrior's Burden — Aldric sacrifices FOC & SPD for his troops!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "day_night_faction_split": {
+    const utcHour = new Date().getUTCHours();
+    const isNight = utcHour < 6 || utcHour >= 18;
+    rs.dayNightFactionSplit = { isNight, nightResist: eff.nightResist || 0.015, dayBonus: eff.dayBonus || 0.10 };
+    if (isNight) rs.dmgReduce += eff.nightResist || 0.015;
+    break;
+  }
+  case "reactive_cmd_atk_stack":
+    if (!rs.reactCmdAtkStack) rs.reactCmdAtkStack = { atkPerStack: eff.atkPerStack || 1.0, maxStacks: eff.maxStacks || 6, current: 0 };
+    break;
   case "post_attack_vulnerability":
     // Stacks tracked as array — applied after each commander attack
     rs.weakSpotStacks.push({ value: eff.value || 0.015, roundsLeft: eff.duration || 2 });
@@ -990,6 +1143,41 @@ const rs = {
   stunImmuneChanceEarly:0,   // Heaven's Protection: stun immunity chance first 4 rounds
   physDmgFactionBonus:null,  // Heaven's Hunter: { bonusDmg, bonusFaction }
   aoePhysAtkMod:0,           // Smite: AoE physical damage ATK-modified
+  // Dante mechanics
+  doubleEdgeDmgUp:0,         // Mad Ruler: allied DMG up + DMG received up
+  doubleEdgeDmgRecUp:0,      // Mad Ruler: the penalty side
+  chaosConfusionAlly:0,      // Whatever It Takes: ally confusion chance
+  chaosConfusionEnemy:0,     // Whatever It Takes: enemy confusion chance
+  enemyCmdAtkDrain:0,        // Power Drain: current ATK drain on enemy commander
+  unitEvasionFirstHits:null, // Commander In Arms: { chance, maxHits } per-unit evasion
+  poisonDmgHealBlock:null,   // Maniac's Poison: { targets, poisonDmg, healBlockDuration }
+  // Brennan mechanics
+  decayingDmgReduce:0,       // The People's Hero: current remaining damage reduction
+  decayFraction:0.25,        // The People's Hero: decay rate per hit (0.25 or 0.20 at max)
+  hitsUntilDecayGone:4,      // The People's Hero: hits remaining before protection gone
+  onHitHealChance:null,      // Patch You Up: { targets, chance, healPct, guaranteed }
+  healDefBuff:null,          // Friar's Blessing: { targets, healPct, defBonus, defDuration }
+  healDoubleChance:null,     // HK Protector: { branch, healPct, doubleChance }
+  healCleansAll:null,        // Cleanse: { healPct, cleanseChance } army-wide
+  roleDmgBonus:0,            // Ranged Combat: ranged unit DMG bonus
+  roleDmgBonusVsFaction:null,// Target Practice: { role, bonusFaction, value }
+  // Vayne mechanics
+  earlyRoundDmgUp:0,         // Commander Guidance / Horn: DMG up first N rounds
+  earlyRoundStunImmune:false,// Commander Guidance max: stun immune while buff active
+  onHitBonusDmg:null,        // Find the Opening: { chance, bonusDmg }
+  perRoundDefStack:null,     // Defense in Numbers: { faction, chance, defPerStack, maxStacks, current }
+  physDmgAndHeal:null,       // Protected by Faith: { enemyDmg, allyHeal }
+  dmgResistVsFaction:0,      // Experienced Army: DMG resist vs specific faction
+  enemyDmgDownEarlyAtk:0,   // Will of the Templar: ATK-modified enemy DMG down
+  branchDmgBonus:0,          // Silent Authority: branch-specific DMG bonus
+  // Aldric mechanics
+  hkTripleStatBonus:null,    // Veteran's Presence: { dmgUp, defBonus, spdBonus }
+  perRoundStunImmuneChance:0,// Stoic Hero: per-round stun immunity chance
+  branchHealPerRound:0,      // Strong in My Faith: HK units heal per round
+  dayMaxDmgChance:0,         // Power of Sun: day-only max damage chance
+  selfSacrificeActive:false, // Warrior's Burden: flag when triggered
+  dayNightFactionSplit:null, // Here We Go Again: { nightResist, dayBonus, faction }
+  reactCmdAtkStack:null,     // Promise Land: { atkPerStack, maxStacks, current }
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
