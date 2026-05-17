@@ -311,7 +311,35 @@ switch (eff.type) {
   case "per_round_cleanse_chance":
     rs.perRoundCleanseChance += eff.chance || 0.06;
     break;
-  // Thaelor mechanics
+  // Seraph mechanics
+  case "physical_damage_faction_bonus":
+    rs.cmdMult = (rs.cmdMult || 1) * (1 + (eff.primaryDmg || 0.30));
+    rs.physDmgFactionBonus = { bonusDmg: eff.bonusDmg || 0.20, bonusFaction: eff.bonusFaction || "nightcreatures" };
+    break;
+  case "physical_damage_faction_heal":
+    rs.cmdMult = (rs.cmdMult || 1) * (1 + (eff.value || 0.30));
+    rs.factionHealPct    = eff.healPct || 0.10;
+    rs.meleeBonusHealPct = eff.meleeBonusHeal || 0.75;
+    break;
+  case "aoe_physical_atk_mod":
+    rs.aoePhysAtkMod += eff.value || 0.20;
+    rs.cmdAoe = true;
+    break;
+  case "reactive_cleanse_or_def_stack":
+    rs.divinePrayerCleanse = eff.cleanseChance || 0.03;
+    // Applied reactively when debuff lands — handled in debuff application logic
+    break;
+  case "stun_immunity_chance_early":
+    if (round <= (eff.maxRound || 4) && Math.random() < (eff.chance || 0.10)) {
+      rs.invisStunImmune = true; // reuse existing stun immunity flag
+      roundLog.actions.push({ actor: actorLabel, action: `🛡️ ${skill.name} — Stun Immunity gained!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "physical_damage_stun_guaranteed":
+    rs.focusDmgBonus += eff.value || 0.15;
+    rs.enemyStunned = Math.max(rs.enemyStunned || 0, eff.stunDuration || 1);
+    roundLog.actions.push({ actor: actorLabel, action: `⚡ ${skill.name} — Enemy stunned!`, dmg: 0, isTroopSkill: true });
+    break;
   case "post_attack_vulnerability":
     // Stacks tracked as array — applied after each commander attack
     rs.weakSpotStacks.push({ value: eff.value || 0.015, roundsLeft: eff.duration || 2 });
@@ -954,6 +982,14 @@ const rs = {
   perRoundCleanseChance:0,   // Cleansing Faith: once per round cleanse chance
   vsAllDmgUp:0,              // Battle Tactics: all enemy damage received up
   dmgTypeResistAll:0,        // Inquisitor's Protection: focus+poison resist all allies
+  // Seraph mechanics
+  divinePrayerCleanse:0,     // Divine Prayer: cleanse chance when commander debuffed
+  divinePrayerDefStacks:0,   // Divine Prayer: current DEF stacks on failed cleanse (max 3)
+  factionHealPct:0,          // Blessed Judgement: heal for faction allies
+  meleeBonusHealPct:0,       // Blessed Judgement: extra heal for melee units
+  stunImmuneChanceEarly:0,   // Heaven's Protection: stun immunity chance first 4 rounds
+  physDmgFactionBonus:null,  // Heaven's Hunter: { bonusDmg, bonusFaction }
+  aoePhysAtkMod:0,           // Smite: AoE physical damage ATK-modified
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
