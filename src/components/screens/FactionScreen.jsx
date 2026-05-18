@@ -1,4 +1,18 @@
 import { useState } from "react";
+
+const BAD_WORDS = ["fuck","shit","bitch","cunt","dick","cock","pussy","nigger","nigga","faggot","fag","retard","rape","nazi"];
+function containsProfanity(s) {
+  const lower = s.toLowerCase().replace(/[^a-z0-9]/g,"");
+  return BAD_WORDS.some(w => lower.includes(w));
+}
+function validateName(s) {
+  const t = s.trim();
+  if (t.length < 4)  return "Name must be at least 4 characters.";
+  if (t.length > 20) return "Name must be 20 characters or fewer.";
+  if (!/^[a-zA-Z0-9 _-]+$/.test(t)) return "Letters, numbers, spaces, _ and - only.";
+  if (containsProfanity(t)) return "Name contains disallowed words.";
+  return null;
+}
 import { CSS } from "../../constants/css.js";
 import { ALIGNMENT, PLAYABLE_FACTIONS, getFactionAlignment } from "../../../shared/constants/factions.js";
 import { HDEFS, SC, SS } from "../../../shared/constants/heroes.js";
@@ -62,8 +76,12 @@ export default function FactionScreen({
   setAiRss, setAiBldgs, setAiBarracksPool, aiLastActionRef,
   setCmds, setColl, setTiles,
   setTroopCounts, setUnlockedBranches, setQuarterLevels,
+  setPlayerName: setPlayerNameGlobal,
 }) {
-  const [selected, setSelected] = useState(PLAYABLE_FACTIONS[0]);
+  const [selected,   setSelected]   = useState(PLAYABLE_FACTIONS[0]);
+  const [step,       setStep]       = useState("faction"); // "faction" | "name"
+  const [playerName, setPlayerName] = useState("");
+  const [nameError,  setNameError]  = useState("");
 
   const faction = selected;
   const alignment = getFactionAlignment(faction.key);
@@ -77,6 +95,10 @@ export default function FactionScreen({
   ].filter(Boolean);
 
   function handleJoin() {
+    if (step === "faction") { setStep("name"); return; }
+    const err = validateName(playerName);
+    if (err) { setNameError(err); return; }
+    if (setPlayerNameGlobal) setPlayerNameGlobal(playerName.trim());
     const f = faction;
     const TEMP_HQK = "1,1";
     const seed = Date.now();
@@ -144,6 +166,105 @@ export default function FactionScreen({
   }
 
   const rows = [PLAYABLE_FACTIONS.slice(0,3), PLAYABLE_FACTIONS.slice(3,6)];
+
+  // ── NAME STEP ───────────────────────────────────────────────────────────
+  if (step === "name") return (
+    <div style={{
+      width:"100vw", height:"100vh", background:"#08080f",
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      fontFamily:"'Cinzel',serif",
+    }}>
+      <style>{CSS}{EXTRA_CSS}</style>
+
+      {/* Faction badge */}
+      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:36 }}>
+        <div style={{
+          width:44, height:54,
+          background:`linear-gradient(180deg,${faction.c}cc,${faction.c}55)`,
+          borderRadius:"3px 3px 0 0",
+          clipPath:"polygon(0 0,100% 0,100% 80%,50% 100%,0 80%)",
+          display:"flex", alignItems:"center", justifyContent:"center", fontSize:22,
+        }}>{FACTION_ICONS[faction.key]}</div>
+        <div>
+          <div style={{ fontSize:17, fontWeight:900, color:"#f0ece4", letterSpacing:".1em" }}>
+            {faction.n.toUpperCase()}
+          </div>
+          <div style={{ fontSize:9, color:faction.c, letterSpacing:".1em", marginTop:3 }}>
+            Choose your commander name
+          </div>
+        </div>
+      </div>
+
+      {/* Card */}
+      <div style={{
+        width:"min(340px, 88vw)",
+        background:"rgba(255,255,255,.025)", border:"1px solid #1e1a2a",
+        borderRadius:8, padding:"28px 22px",
+        display:"flex", flexDirection:"column", gap:14,
+      }}>
+        <div style={{ fontSize:9, color:"#5a4a7a", letterSpacing:".14em", textAlign:"center" }}>
+          PLAYER NAME
+        </div>
+
+        <input
+          autoFocus
+          type="text"
+          maxLength={20}
+          value={playerName}
+          onChange={e => { setPlayerName(e.target.value); setNameError(""); }}
+          onKeyDown={e => { if (e.key === "Enter") handleJoin(); }}
+          placeholder="4–20 characters"
+          style={{
+            width:"100%", boxSizing:"border-box",
+            padding:"12px 14px",
+            background:"rgba(255,255,255,.04)",
+            border:`1px solid ${nameError ? "#cc3030" : "#2a2438"}`,
+            borderRadius:5, color:"#f0ece4",
+            fontFamily:"'Cinzel',serif", fontSize:15, fontWeight:700,
+            letterSpacing:".08em", outline:"none", textAlign:"center",
+          }}
+        />
+
+        <div style={{ display:"flex", justifyContent:"space-between", marginTop:-6 }}>
+          <span style={{ fontSize:7.5, color:"#3a3048", fontFamily:"'Crimson Pro',serif", fontStyle:"italic" }}>
+            Letters, numbers, spaces, _ and -
+          </span>
+          <span style={{ fontSize:7.5, color: playerName.length > 17 ? "#cc8030" : "#3a3048" }}>
+            {playerName.length}/20
+          </span>
+        </div>
+
+        {nameError && (
+          <div style={{ fontSize:8, color:"#cc4040", textAlign:"center",
+            fontFamily:"'Crimson Pro',serif", fontStyle:"italic", marginTop:-6 }}>
+            {nameError}
+          </div>
+        )}
+
+        <div style={{ display:"flex", gap:10, marginTop:4 }}>
+          <button onClick={() => { setStep("faction"); setNameError(""); }}
+            style={{
+              flex:1, padding:"10px 0",
+              background:"none", border:"1px solid #222",
+              color:"#4a4060", fontSize:10, cursor:"pointer",
+              borderRadius:4, fontFamily:"'Cinzel',serif", letterSpacing:".1em",
+            }}>
+            ← BACK
+          </button>
+          <button onClick={handleJoin} className="join-btn"
+            style={{
+              flex:2, padding:"10px 0",
+              background:"transparent", border:"2px solid #3ddc84",
+              borderRadius:4, color:"#3ddc84",
+              fontSize:12, fontWeight:700, letterSpacing:".18em",
+              cursor:"pointer", fontFamily:"'Cinzel',serif", transition:"all 0.2s ease",
+            }}>
+            JOIN WAR
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   // Header is ~45px, body fills the rest
   return (
