@@ -701,6 +701,486 @@ switch (eff.type) {
     if (Math.random() < (eff.bleedChance || 0.30)) { rs.bleedApplied = true; rs.pendingBleedDmg = 0.30; rs.bleedRoundsLeft = 2; }
     if (eff.stunChance && Math.random() < eff.stunChance) { rs.enemyStunned = Math.max(rs.enemyStunned||0, 1); }
     break;
+  // ── Reck mechanics ────────────────────────────────────────────────────────
+  case "aoe_physical_drunk":
+    rs.cmdAoe = true;
+    rs.cmdMult *= (1 + (eff.value || 0.06));
+    if (Math.random() < (eff.drunkChance || 0.60)) {
+      rs.drunkApplied = true;
+      rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance || 0) + (eff.drunkMissChance || 0.30));
+      roundLog.actions.push({ actor:actorLabel, action:`🛢️ Drunk applied — 30% miss, no evade!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "aoe_physical_bonus_vs_drunk":
+    rs.cmdAoe  = true;
+    rs.cmdMult *= (1 + (eff.value || 0.07));
+    if (rs.drunkApplied) rs.cmdMult *= (1 + (eff.bonusDmgIfDrunk || 1.40));
+    break;
+  case "dmg_bonus_vs_faction_all":
+    rs.dmgBonusVsFactionAll += eff.value || 0.01;
+    rs.cmdMult      *= (1 + (eff.value || 0.01));
+    rs.troopAtkMult *= (1 + (eff.value || 0.01));
+    break;
+  case "multi_hit_random_faction_heal":
+    rs.cmdMult *= (1 + (eff.dmgPct || 0.11));
+    rs.healPct += eff.healPct || 0.60;
+    break;
+  case "physical_damage_heal_block_chance":
+    rs.cmdMult *= (1 + (eff.value || 0.14));
+    if (Math.random() < (eff.healBlockChance || 0.70)) rs.blockHeal = Math.max(rs.blockHeal || 0, eff.healBlockDuration || 2);
+    break;
+  case "per_round_confusion_immune_chance":
+    rs.perRoundConfusionImmune += eff.chance || 0.03;
+    if (Math.random() < rs.perRoundConfusionImmune) {
+      rs.invisStunImmune = true;
+      roundLog.actions.push({ actor:actorLabel, action:`🌊 Sea Earned Resilience — Confusion Immune!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "all_faction_skill_dmg_bonus":
+    rs.allFactionSkillDmg = { faction: eff.faction || "pirates", value: eff.value || 0.03 };
+    rs.skillDmgBonus += eff.value || 0.03;
+    break;
+  case "confusion_vs_alignment":
+    rs.confusionVsAlignment = { alignment: eff.alignment, chance: eff.chance || 0.10 };
+    if (Math.random() < (eff.chance || 0.10)) {
+      rs.enemyConfused = Math.max(rs.enemyConfused || 0, 1);
+      roundLog.actions.push({ actor:actorLabel, action:`💨 Smokescreen — Creature units confused!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "cmd_atk_per_faction_slot":
+    rs.cmdAtkPerFactionSlot = { faction: eff.faction || "pirates", atkPerSlot: eff.atkPerSlot || 0.5, maxSlots: eff.maxSlots || 3 };
+    break;
+  case "physical_damage_stun_chance":
+    rs.cmdMult *= (1 + (eff.value || 0.15));
+    if (Math.random() < (eff.stunChance || 0.55)) {
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, eff.stunDuration || 1);
+      roundLog.actions.push({ actor:actorLabel, action:`🃏 Pirate's Trick — Enemy stunned!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  // ── Seyne mechanics ───────────────────────────────────────────────────────
+  case "aoe_def_down":
+    rs.aoeDefDown     += eff.value || 1.0;
+    rs.enemyDefDown    = Math.min((rs.enemyDefDown||0) + (eff.value||1.0), 50);
+    break;
+  case "dmg_bonus_vs_debuffed":
+    rs.dmgBonusVsDebuffed += eff.value || 0.02;
+    if (rs.enemyDefDown > 0) rs.troopAtkMult *= (1 + (eff.value || 0.02));
+    break;
+  case "faction_dmg_bonus":
+    rs.factionDmgBonus += eff.value || 0.01;
+    rs.troopAtkMult    *= (1 + (eff.value || 0.01));
+    break;
+  case "faction_followup_per_round":
+    rs.factionFollowupPerRound += eff.chance || 0.03;
+    break;
+  case "drunk_chance_multi":
+    rs.drunkChanceMulti += eff.drunkChance || 0.10;
+    if (Math.random() < rs.drunkChanceMulti) {
+      rs.drunkApplied    = true;
+      rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance||0) + 0.30);
+      roundLog.actions.push({ actor:actorLabel, action:`🍺 Beers On Me — Drunk applied!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "on_drunk_apply_venom":
+    rs.onDrunkApplyVenom += eff.chance || 0.06;
+    if (rs.drunkApplied && Math.random() < rs.onDrunkApplyVenom) {
+      rs.pendingVenomDmg = Math.max(rs.pendingVenomDmg, 0.20);
+      roundLog.actions.push({ actor:actorLabel, action:`🧪 Poison the Drink — Venom applied!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "cmd_stun_or_confuse_by_faction":
+    rs.cmdStunOrConfuse = { humanChance: eff.humanChance || 0.04, creatureChance: eff.creatureChance || 0.04 };
+    if (Math.random() < (eff.humanChance || 0.04)) {
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, 1);
+      roundLog.actions.push({ actor:actorLabel, action:`📋 Know Your Enemy — Enemy CMD stunned!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "dmg_bonus_vs_role":
+    rs.dmgBonusVsRole += eff.value || 0.01;
+    rs.troopAtkMult   *= (1 + (eff.value || 0.01));
+    rs.cmdMult        *= (1 + (eff.value || 0.01));
+    break;
+  case "size_type_conditional_debuff":
+    rs.sizeTypeDebuff = { largeHpDown: eff.largeHpDown||0.10, mountedSpdDown: eff.mountedSpdDown||0.10, smallDmgDown: eff.smallDmgDown||0.10, chance: eff.chance||0.04 };
+    break;
+  case "cmd_followup_vs_alignment":
+    rs.cmdFollowupVsAlignment += eff.chance || 0.07;
+    break;
+  // ── Samuel mechanics ──────────────────────────────────────────────────────
+  case "dmg_bonus_vs_alignment":
+    rs.dmgBonusVsAlignment += eff.value || 0.01;
+    rs.troopAtkMult *= (1 + (eff.value || 0.01));
+    rs.cmdMult      *= (1 + (eff.value || 0.01));
+    break;
+  case "per_round_blind_chance":
+    rs.perRoundBlindChance += eff.chance || 0.09;
+    if (Math.random() < rs.perRoundBlindChance) {
+      rs.blindApplied = true;
+      roundLog.actions.push({ actor:actorLabel, action:`🌶️ Spice Attack — Enemy Blinded!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "on_enemy_attack_burn_chance":
+    rs.onEnemyAttackBurnChance += eff.chance || 0.015;
+    break;
+  case "multi_hit_different_targets_burn":
+    rs.cmdMult *= (1 + (eff.dmgPct || 0.10) * (eff.hits || 3));
+    if (eff.burnChancePerHit) {
+      for (let i = 0; i < (eff.hits || 3); i++) {
+        if (Math.random() < eff.burnChancePerHit) { rs.burnApplied = true; rs.burnDmgPenalty = 0.20; }
+      }
+    }
+    break;
+  case "cmd_burn_dmg_bonus":
+    rs.cmdBurnDmgBonus += eff.value || 0.03;
+    rs.cmdMult         *= (1 + (eff.value || 0.03));
+    break;
+  case "dmg_bonus_vs_burn":
+    rs.dmgBonusVsBurn += eff.value || 0.03;
+    if (rs.burnApplied) rs.troopAtkMult *= (1 + (eff.value || 0.03));
+    break;
+  case "aoe_burn_guaranteed":
+    rs.cmdAoe      = true;
+    rs.cmdMult    *= (1 + (eff.value || 0.20));
+    rs.burnApplied = true;
+    rs.burnDmgPenalty = eff.burnDmgPenalty || 0.20;
+    rs.enemyAtkReduce += rs.burnDmgPenalty;
+    roundLog.actions.push({ actor:actorLabel, action:`🌡️ Hot Sauce — All enemies Burned!`, dmg:0, isTroopSkill:true });
+    break;
+  case "followup_vs_burn":
+    rs.followupVsBurn += eff.chance || 0.06;
+    break;
+  case "cmd_normal_atk_burn":
+    rs.cmdBurnDmgBonus += eff.value || 0.03;
+    rs.cmdMult         *= (1 + (eff.value || 0.03));
+    break;
+  case "on_burn_dmg_ally_def_stack":
+    if (!rs.onBurnDmgAllyDefStack) rs.onBurnDmgAllyDefStack = { branch: eff.branch, defPerStack: eff.defPerStack||1.0, maxStacks: eff.maxStacks||6, current:0 };
+    if (rs.burnApplied && rs.onBurnDmgAllyDefStack.current < rs.onBurnDmgAllyDefStack.maxStacks) {
+      rs.onBurnDmgAllyDefStack.current++;
+      rs.troopDefMult *= (1 + (rs.onBurnDmgAllyDefStack.defPerStack / 100));
+    }
+    break;
+  case "conditional_round_start_heal":
+    rs.conditionalRoundHeal = { condition: eff.condition, healPct: eff.healPct || 0.08 };
+    if (rs.burnApplied) rs.healPct += eff.healPct || 0.08;
+    break;
+  // ── Fynn mechanics ────────────────────────────────────────────────────────
+  case "physical_damage_multi_heal_all":
+    rs.cmdMult *= (1 + (eff.value || 0.15));
+    rs.healPct += eff.healPct || 0.50;
+    break;
+  case "cmd_bonus_attack_chance":
+    rs.cmdBonusAttackChance += eff.chance || 0.10;
+    break;
+  case "attacking_stance_cmd_bonus":
+    rs.cmdMult *= (1 + (eff.value || 0.01));
+    break;
+  // Brine mechanics
+  case "early_round_pursuit_chance":
+    if (round <= (eff.maxRound || 4) && Math.random() < (eff.chance || 0.15)) {
+      rs.pursuitActive = true;
+      roundLog.actions.push({ actor: actorLabel, action: `🌫️ Pursuit — Attacks cannot be avoided!`, dmg: 0, isTroopSkill: true });
+    }
+    rs.earlyRoundPursuitChance += eff.chance || 0.15;
+    break;
+  case "self_confuse_army_dmg_up":
+    rs.selfConfuseArmyDmg = { selfConfusion: eff.selfConfusion || 1, armyDmgUp: eff.armyDmgUp || 0.20 };
+    rs.troopAtkMult *= (1 + (eff.armyDmgUp || 0.20));
+    roundLog.actions.push({ actor: actorLabel, action: `🕯️ Captain's Honor — Brine confused, troops +20% DMG!`, dmg: 0, isTroopSkill: true });
+    break;
+  case "enemy_faction_vulnerability":
+    rs.enemyFactionVuln = { faction: eff.faction || "orcs", value: eff.value || 0.025 };
+    rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.value || 0.025);
+    break;
+  case "multi_hit_random_faction_buff":
+    rs.cmdMult *= (1 + (eff.dmgPct || 0.08) * (eff.hits || 5));
+    rs.troopAtkMult *= (1 + (eff.allyDmgUp || 0.05));
+    rs.multiHitRandomFactionBuff = { hits: eff.hits || 5, bonusHitVsOrc: eff.bonusHitVsOrc || false };
+    break;
+  // Saltwhisper mechanics
+  case "heal_received_bonus":
+    rs.healReceivedBonus += eff.value || 0.02;
+    rs.healPct *= (1 + (eff.value || 0.02));
+    break;
+  case "sequential_immunity_then_aoe":
+    rs.sequentialImmunityAoe = { immunityRound: eff.immunityRound || 0, attackRound: eff.attackRound || 1, focusDmg: eff.focusDmg || 0.30, drunkChance: eff.drunkChance || 0.70 };
+    // Phase determined by which round within the 2-round duration we're in
+    // Round 4 = immunity, Round 5 = attack
+    rs.focusDmgBonus += eff.focusDmg || 0.30;
+    rs.cmdAoe = true;
+    if (Math.random() < (eff.drunkChance || 0.70)) {
+      rs.drunkApplied = true;
+      rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance || 0) + 0.30);
+      roundLog.actions.push({ actor: actorLabel, action: `🥃 Shadow's Drunken Warrior — All enemies Drunk!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "army_evasion_two_hits":
+    rs.armyEvasionTwoHits += eff.chance || 0.08;
+    // 2-hit evasion window — tracked separately from single-hit evasion
+    break;
+  // Skar mechanics
+  case "aoe_physical_slow":
+    rs.cmdAoe = true;
+    rs.cmdMult *= (1 + (eff.value || 0.12));
+    if (Math.random() < (eff.slowChance || 0.50)) {
+      rs.slowApplied = true;
+      rs.slowValue   = eff.slowValue || 20;
+      roundLog.actions.push({ actor: actorLabel, action: `🌋 Earthquake — Enemy Slowed (-${eff.slowValue||20} SPD)!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "burn_apply_only":
+    if (Math.random() < (eff.burnChance || 0.10)) {
+      rs.burnApplied    = true;
+      rs.burnDmgPenalty = eff.burnDmgPenalty || 0.20;
+      rs.enemyAtkReduce += rs.burnDmgPenalty;
+      roundLog.actions.push({ actor: actorLabel, action: `🔥 Dragon Fire — Burn applied!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "cmd_dmg_bonus_vs_burn":
+    rs.cmdDmgVsBurn += eff.value || 0.03;
+    if (rs.burnApplied) rs.cmdMult *= (1 + (eff.value || 0.03));
+    break;
+  case "branch_first_hits_dmg_reduce":
+    rs.branchFirstHitsDmgReduce = { branch: eff.branch || "dragons", reduction: eff.reduction || 0.015, instances: eff.instances || 4 };
+    rs.dmgReduce += eff.reduction || 0.015;
+    break;
+  case "branch_battle_start_immunity":
+    rs.branchBattleStartImmune = { branch: eff.branch || "dragons", immunity: eff.immunity || ["poison","venom"], chance: eff.chance || 0.07 };
+    if (Math.random() < (eff.chance || 0.07)) {
+      roundLog.actions.push({ actor: actorLabel, action: `🦎 Dragon Scales — Poison/Venom Immunity!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "dragon_supremacy_bonus":
+    rs.dragonSupremacyBonus = { cmdAtkPerLevel: eff.cmdAtkPerLevel||1.0, cmdSpdPerLevel: eff.cmdSpdPerLevel||1.0 };
+    rs.troopDefMult *= (1 + (eff.dragonDefPerLevel||1.0) / 100);
+    break;
+  case "thorns_physical":
+    rs.thornsPhysical += eff.value || 0.01;
+    break;
+  case "physical_damage_multi_melee_bonus":
+    rs.cmdMult *= (1 + (eff.value || 0.20));
+    // Melee bonus applied during target selection
+    break;
+  case "burn_damage_atk_mod":
+    rs.cmdMult *= (1 + (eff.value || 0.40));
+    if (Math.random() < (eff.burnChance || 0.50)) {
+      rs.burnApplied    = true;
+      rs.burnDmgPenalty = eff.burnDmgPenalty || 0.20;
+      rs.enemyAtkReduce += rs.burnDmgPenalty;
+      roundLog.actions.push({ actor: actorLabel, action: `🌋 Dragon Inferno — Burn applied!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  // Nyxara mechanics
+  case "branch_on_hit_followup":
+    rs.branchOnHitFollowup = { branch: eff.branch || "dragons", chance: eff.chance || 0.04, bonusDmg: eff.bonusDmg || 0.50 };
+    break;
+  case "focus_damage_single":
+    rs.focusDmgBonus += eff.value || 0.60;
+    break;
+  case "dual_cmd_foc_shift":
+    rs.dualCmdFocShift = { selfFocUp: eff.selfFocUp || 1.0, enemyFocDown: eff.enemyFocDown || 1.0 };
+    // Applied to commander stats; enemy FOC tracked as debuff
+    break;
+  case "heal_alignment_dragon_bonus":
+    rs.healPct += eff.healPct || 0.30;
+    rs.healAlignmentDragonBonus = { dragonBonus: eff.dragonBonus || 0.75 };
+    break;
+  case "focus_damage_stun_chance":
+    rs.focusDmgBonus += eff.value || 0.15;
+    if (Math.random() < (eff.stunChance || 0.50)) {
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, 1);
+      roundLog.actions.push({ actor: actorLabel, action: `⚡ Lightning Storm — Enemy stunned!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "cmd_stun_atk_drain":
+    rs.enemyStunned = Math.max(rs.enemyStunned || 0, eff.stunDuration || 1);
+    rs.cmdStunAtkDrain = { atkDrain: eff.atkDrain || 1.0, drainDuration: eff.drainDuration || 2 };
+    roundLog.actions.push({ actor: actorLabel, action: `🌀 Mind over Matter — Enemy CMD stunned + ATK -${eff.atkDrain||1}!`, dmg: 0, isTroopSkill: true });
+    break;
+  case "cmd_normal_atk_bonus_focus":
+    rs.focusDmgBonus += eff.value || 0.03;
+    break;
+  // Emberclaw mechanics
+  case "conditional_cmd_atk_while_burn":
+    rs.conditionalCmdAtkWhileBurn += eff.value || 2.0;
+    if (rs.burnApplied) rs.cmdMult *= (1 + (eff.value || 2.0) / 100);
+    break;
+  case "multi_hit_random_burn_chance":
+    rs.cmdMult *= (1 + (eff.dmgPct || 0.08) * (eff.hits || 5));
+    rs.multiHitRandomBurnChance = { hits: eff.hits || 5, burnChance: eff.burnChance || 0.20 };
+    for (let i = 0; i < (eff.hits || 5); i++) {
+      if (Math.random() < (eff.burnChance || 0.20)) {
+        rs.burnApplied    = true;
+        rs.burnDmgPenalty = 0.20;
+        rs.enemyAtkReduce += 0.20;
+      }
+    }
+    break;
+  case "cmd_normal_atk_aoe_burn":
+    rs.cmdNormalAtkAoeBurn += eff.value || 0.06;
+    rs.cmdAoe = true;
+    rs.cmdMult *= (1 + (eff.value || 0.06));
+    break;
+  // ── Scaleveil mechanics ───────────────────────────────────────────────────
+  case "heal_two_units_dragon_bonus":
+    // Heal 2 allied units; dragon units get extra healPct on top
+    rs.healPct += eff.healPct || 0.05;
+    rs.healTwoUnitsDragonBonus = { dragonBonusPct: eff.dragonBonusPct || 0.25 };
+    break;
+  case "neutral_tile_dmg_bonus":
+    // Battle-context: tile.owner === 'neutral' grants DMG bonus (and at max level DMG received down)
+    if (defTile?.owner === "neutral" || defTile?.owner === "ai") {
+      rs.cmdMult      *= (1 + (eff.value || 0.01));
+      rs.troopAtkMult *= (1 + (eff.value || 0.01));
+      if (eff.maxLevelEffect?.neutralDmgReceivedDown) rs.dmgReduce += eff.maxLevelEffect.neutralDmgReceivedDown;
+      roundLog.actions.push({ actor: actorLabel, action: `🏹 Hunter — Unowned tile: DMG +${Math.round((eff.value||0.01)*100)}%!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "gathering_bonus":
+    // Non-combat world-map bonus — no battle effect
+    rs.gatheringBonus = (rs.gatheringBonus || 0) + (eff.value || 0.05);
+    break;
+  case "aoe_blind_or_burn_chance":
+    // Each enemy unit independently rolls — apply one status to all that proc
+    rs.aoeBlindOrBurnChance = { chance: eff.chance || 0.03, duration: eff.duration || 1 };
+    if (Math.random() < (eff.chance || 0.03)) {
+      if (Math.random() < 0.50) {
+        rs.blindApplied = true;
+        roundLog.actions.push({ actor: actorLabel, action: `🌑 Smoke and Fire — Enemy Blinded!`, dmg: 0, isTroopSkill: true });
+      } else {
+        rs.burnApplied    = true;
+        rs.burnDmgPenalty = 0.20;
+        rs.enemyAtkReduce += 0.20;
+        roundLog.actions.push({ actor: actorLabel, action: `🌑 Smoke and Fire — Enemy Burned!`, dmg: 0, isTroopSkill: true });
+      }
+    }
+    break;
+  case "branch_flat_def_bonus":
+    // Flat DEF bonus to a specific branch (Dragon Garrison, Me Little Army Big)
+    rs.branchFlatDefBonus = { branch: eff.branch || "dragons", value: eff.value || 3 };
+    rs.troopDefMult *= (1 + (eff.value || 3) / 100);
+    break;
+  case "branch_dmg_bonus_vs_alignment":
+    // Dragon units deal bonus DMG vs a specific alignment (The Superior Race)
+    rs.branchDmgBonusVsAlignment = { branch: eff.branch || "dragons", alignment: eff.alignment || "humans", value: eff.value || 0.01 };
+    rs.troopAtkMult *= (1 + (eff.value || 0.01));
+    break;
+  case "cmd_foc_up_atk_down_passive":
+    // Pre-battle stat shift: FOC up, ATK down. At max level: Dragon Units Confusion Immune.
+    rs.cmdFocUpAtkDown = { focPerLevel: eff.focPerLevel || 1.0, atkDownPerLevel: eff.atkDownPerLevel || 1.0 };
+    // Confusion immunity for dragon units at max level — applied as branch immunity
+    if (eff.maxLevelEffect?.dragonConfusionImmunity) {
+      rs.dragonConfusionImmune = true;
+      roundLog.actions.push({ actor: actorLabel, action: `🌙 To Become an Elder — Dragon Units: Confusion Immune!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "branch_dmg_up_duration":
+    // Dragon units DMG up for N rounds (Locked In)
+    rs.branchDmgUpDuration = { branch: eff.branch || "dragons", value: eff.value || 0.03 };
+    rs.troopAtkMult *= (1 + (eff.value || 0.03));
+    break;
+  case "aoe_focus_damage_foc_mod":
+    // AoE focus damage modified by FOC stat (Dusk's Blast)
+    rs.cmdAoe       = true;
+    rs.focusDmgBonus += eff.value || 0.80;
+    roundLog.actions.push({ actor: actorLabel, action: `💥 Dusk's Blast — All enemies hit!`, dmg: 0, isTroopSkill: true });
+    break;
+  // ── Kraul mechanics ───────────────────────────────────────────────────────
+  case "dual_branch_stat_bonus":
+    // Two different branches each get a different stat bonus (I'll Work With It)
+    rs.dualBranchStatBonus = {
+      branch1: eff.branch1, branch1Stat: eff.branch1Stat, branch1Value: eff.branch1Value || 2.0,
+      branch2: eff.branch2, branch2Stat: eff.branch2Stat, branch2Value: eff.branch2Value || 0.01,
+    };
+    if (eff.branch1Stat === "def") rs.troopDefMult *= (1 + (eff.branch1Value || 2.0) / 100);
+    if (eff.branch2Stat === "dmg") rs.troopAtkMult *= (1 + (eff.branch2Value || 0.01));
+    break;
+  case "on_attack_bonus_dmg_chance":
+    // On attack: chance for flat bonus damage (Fire Fight)
+    rs.onAttackBonusDmgChance = { chance: eff.chance || 0.05, bonusDmg: eff.bonusDmg || 0.40 };
+    break;
+  case "branch_phys_dmg_reduce":
+    // Physical damage received reduction for a branch (Tough Scales)
+    rs.branchPhysDmgReduce = { branch: eff.branch || "dragons", value: eff.value || 0.01 };
+    rs.dmgReduce += eff.value || 0.01;
+    break;
+  case "all_dragon_army_cmd_atk":
+    // If all allied units are dragons: CMD ATK bonus (Future King)
+    rs.allDragonArmyCmdAtk = { value: eff.value || 2.0 };
+    // Check if all troop slots are dragon faction — apply if so
+    {
+      const allDragon = atkSlotResolved.length > 0 && atkSlotResolved.every(sl => sl.branch?.faction === "dragons");
+      if (allDragon) {
+        rs.cmdMult *= (1 + (eff.value || 2.0) / 100);
+        roundLog.actions.push({ actor: actorLabel, action: `👑 Future King — All-Dragon army: CMD ATK +${eff.value||2}!`, dmg: 0, isTroopSkill: true });
+      }
+    }
+    break;
+  case "aoe_physical_stun_chance":
+    // AoE physical + stun chance (Kraul on the Prowl)
+    rs.cmdAoe  = true;
+    rs.cmdMult *= (1 + (eff.value || 0.40));
+    if (Math.random() < (eff.stunChance || 0.40)) {
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, eff.stunDuration || 1);
+      roundLog.actions.push({ actor: actorLabel, action: `💥 Kraul on the Prowl — All enemies hit + Stunned!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  // ── Cinderfang mechanics ──────────────────────────────────────────────────
+  case "physical_damage_multi_burn_chance":
+    // Multi-target physical + burn chance (I Can Help)
+    rs.cmdMult *= (1 + (eff.value || 0.10));
+    {
+      const burnChance = eff.maxLevelEffect?.burnChance ?? eff.burnChance ?? 0.35;
+      if (Math.random() < burnChance) {
+        rs.burnApplied    = true;
+        rs.burnDmgPenalty = eff.burnDmgPenalty || 0.20;
+        rs.enemyAtkReduce += rs.burnDmgPenalty;
+        roundLog.actions.push({ actor: actorLabel, action: `🔥 I Can Help — Burn applied!`, dmg: 0, isTroopSkill: true });
+      }
+    }
+    break;
+  case "branch_flat_hp_def_bonus":
+    // Flat HP and DEF bonus to a branch (Me Little, Army Big)
+    rs.branchFlatHpDefBonus = { branch: eff.branch || "dragons", hpValue: eff.hpValue || 1, defValue: eff.defValue || 1 };
+    rs.troopDefMult *= (1 + (eff.defValue || 1) / 100);
+    break;
+  case "physical_damage_confusion_chance":
+    // Physical damage + confusion chance (Don't Underestimate Me)
+    rs.cmdMult *= (1 + (eff.value || 0.40));
+    if (Math.random() < (eff.confusionChance || 0.45)) {
+      rs.enemyConfused = Math.max(rs.enemyConfused || 0, eff.confusionDuration || 1);
+      roundLog.actions.push({ actor: actorLabel, action: `😤 Don't Underestimate Me — Enemy Confused!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "aoe_enemy_buff_strip_chance":
+    // Chance to strip all positive buffs from enemy army (Clear the Air)
+    if (Math.random() < (eff.chance || 0.04)) {
+      rs.enemyBuffStripped = true;
+      // Reset key enemy positive buffs
+      rs.enemyDmgTakenUp  = Math.max(0, rs.enemyDmgTakenUp);  // can't strip vulnerability as it's an enemy debuff
+      roundLog.actions.push({ actor: actorLabel, action: `🌬️ Clear the Air — All enemy buffs stripped!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "branch_heal_on_debuff":
+    // Dragon units heal on receiving a debuff (You Get a Heal!)
+    rs.branchHealOnDebuff = { branch: eff.branch || "dragons", healPct: eff.healPct || 0.06, maxPerRound: eff.maxPerRound || 1, usedThisRound: 0 };
+    break;
+    rs.debuffChanceReduction += eff.value || 0.07;
+    break;
+  case "burst_then_penalty":
+    if (round <= (eff.earlyRounds || 2)) {
+      rs.cmdMult      *= (1 + (eff.earlyBonus || 0.14));
+      rs.troopAtkMult *= (1 + (eff.earlyBonus || 0.14));
+    } else if ((eff.penaltyRounds||[3,4,5]).includes(round)) {
+      rs.cmdMult      *= (1 - (eff.penaltyValue || 0.50));
+      rs.troopAtkMult *= (1 - (eff.penaltyValue || 0.50));
+    }
+    break;
+  case "physical_damage_delayed_followup":
+    rs.cmdMult *= (1 + (eff.initialDmg || 0.20));
+    // Follow-up queued for next round — flagged
+    rs.pendingFollowupDmg = eff.followupDmg || 0.30;
+    break;
   case "post_attack_vulnerability":
     // Stacks tracked as array — applied after each commander attack
     rs.weakSpotStacks.push({ value: eff.value || 0.015, roundsLeft: eff.duration || 2 });
@@ -1435,6 +1915,87 @@ const rs = {
   // Warcroak mechanics
   commandDifferentialBonus:null, // Leader's Plans: { defPerCommand, hpPerCommand }
   factionDmgBonusConditional:null, // Orcs Rise: { value, conditionalFaction, conditionalBonus }
+  // Reck mechanics
+  drunkApplied:false,        // Drunk: 30% miss, cannot evade
+  drunkDmgBonus:0,           // King of the Sea max: bonus vs drunk
+  cmdAtkPerFactionSlot:null, // Pirate Captain: { faction, atkPerSlot, maxSlots }
+  allFactionSkillDmg:null,   // King of the Sea: { faction, value }
+  confusionVsAlignment:null, // Smokescreen: { alignment[], chance }
+  perRoundConfusionImmune:0, // Sea Earned Resilience
+  dmgBonusVsFactionAll:0,    // Enemy of the Orcs
+  // Seyne mechanics
+  aoeDefDown:0,              // Chart the Course: flat DEF down all enemies
+  dmgBonusVsDebuffed:0,      // Exploiting Weakness
+  factionFollowupPerRound:0, // Sea Shanty
+  drunkChanceMulti:0,        // Beers On Me
+  onDrunkApplyVenom:0,       // Poison the Drink
+  cmdStunOrConfuse:null,     // Know Your Enemy
+  dmgBonusVsRole:0,          // Mounted Slayer
+  sizeTypeDebuff:null,       // Right Tool
+  cmdFollowupVsAlignment:0,  // Creature Hunter
+  factionDmgBonus:0,         // Gather My Crew
+  // Samuel mechanics
+  blindApplied:false,        // Blind: guaranteed miss next attack
+  perRoundBlindChance:0,     // Spice Attack
+  onEnemyAttackBurnChance:0, // Soup's Hot
+  cmdBurnDmgBonus:0,         // Used to the Heat
+  dmgBonusVsBurn:0,          // Cook's Barrage
+  followupVsBurn:0,          // Keeping the Heat Up
+  onBurnDmgAllyDefStack:null,// Pirate Cook: { branch, defPerStack, maxStacks, current }
+  conditionalRoundHeal:null, // Chef's Kiss: { condition, healPct }
+  dmgBonusVsAlignment:0,     // Creature Sorbet
+  // Fynn mechanics
+  burstThenPenalty:null,     // Pirate's Roar: { earlyBonus, earlyRounds, penaltyValue, penaltyRounds }
+  debuffChanceReduction:0,   // Around the Block
+  cmdBonusAttackChance:0,    // Pirate Vet
+  // Brine mechanics
+  pursuitActive:false,       // Pursuit status: attacks cannot be avoided
+  selfConfuseArmyDmg:null,   // Captain's Honor: { selfConfusion, armyDmgUp }
+  earlyRoundPursuitChance:0, // Seeing Through the Fog: pursuit chance first N rounds
+  enemyFactionVuln:null,     // Orc Rivalry: { faction, value }
+  multiHitRandomFactionBuff:null, // Cannon Volley: { hits, dmgPct, allyFaction, allyDmgUp }
+  // Saltwhisper mechanics
+  healReceivedBonus:0,       // Steady Hands: incoming heal amplifier
+  sequentialImmunityAoe:null,// Shadow's Drunken Warrior: { immunityRound, attackRound }
+  armyEvasionTwoHits:0,      // Fog of War: evasion chance for next 2 hits
+  // Skar mechanics
+  slowApplied:false,         // Slow status: -20 SPD for 1 round
+  slowValue:0,               // Slow: flat SPD reduction amount
+  burnApplyOnly:null,        // Dragon Fire: pure burn application, no damage
+  cmdDmgVsBurn:0,            // Charred: CMD bonus vs burning targets
+  armyDmgVsBleedOrBurn:0,   // Dragon Claw max: army bonus vs bleed/burn targets
+  branchFirstHitsDmgReduce:null, // Elder Dragon: { branch, reduction, instances }
+  branchBattleStartImmune:null,  // Dragon Scales: { branch, immunity[], chance }
+  dragonSupremacyBonus:null, // Dragon Supremacy: split cmd/dragon stats
+  thornsPhysical:0,          // Tough Skin: reflect damage on physical hits vs dragons
+  // Nyxara mechanics
+  dualCmdFocShift:null,      // My Will vs Yours: { selfFocUp, enemyFocDown }
+  healAlignmentDragonBonus:null, // Dragon's Song: { healPct, dragonBonus, targets }
+  branchOnHitFollowup:null,  // Dragon Dance: { branch, chance, bonusDmg }
+  focusDmgStunChance:0,      // Lightning Storm: focus + stun chance
+  cmdStunAtkDrain:null,      // Mind over Matter: { stunDuration, atkDrain, drainDuration }
+  // Emberclaw mechanics
+  conditionalCmdAtkWhileBurn:0, // Flame Dancer: CMD ATK bonus while any enemy burns
+  multiHitRandomBurnChance:null, // Fire Volley: { hits, dmgPct, burnChance }
+  cmdNormalAtkAoeBurn:0,     // Ember's Entertainment: AoE burn on normal attacks
+  // Scaleveil mechanics
+  healTwoUnitsDragonBonus:null,  // Back Line Healer: { dragonBonusPct }
+  gatheringBonus:0,              // Gatherer: non-combat gathering yield bonus
+  aoeBlindOrBurnChance:null,     // Smoke and Fire: { chance, duration }
+  branchFlatDefBonus:null,       // Dragon Garrison: { branch, value }
+  branchDmgBonusVsAlignment:null,// The Superior Race: { branch, alignment, value }
+  cmdFocUpAtkDown:null,          // To Become an Elder: pre-battle FOC/ATK shift
+  dragonConfusionImmune:false,   // To Become an Elder max: Dragon Units confusion immune
+  branchDmgUpDuration:null,      // Locked In: { branch, value }
+  // Kraul mechanics
+  dualBranchStatBonus:null,      // I'll Work With It: { branch1, branch1Stat, branch1Value, branch2... }
+  onAttackBonusDmgChance:null,   // Fire Fight: { chance, bonusDmg }
+  branchPhysDmgReduce:null,      // Tough Scales: { branch, value }
+  allDragonArmyCmdAtk:null,      // Future King: { value }
+  // Cinderfang mechanics
+  branchFlatHpDefBonus:null,     // Me Little, Army Big: { branch, hpValue, defValue }
+  enemyBuffStripped:false,       // Clear the Air: all enemy positive buffs stripped
+  branchHealOnDebuff:null,       // You Get a Heal!: { branch, healPct, maxPerRound, usedThisRound }
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
