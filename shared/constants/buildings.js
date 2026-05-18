@@ -2,32 +2,50 @@ export const RSS_BLDGS = new Set(["quarry", "lumber", "forge", "refinery", "stor
 
 export const BLDG = {
 hq:            { n:"HQ",               icon:"🏰", max:10, desc:"Seat of power. Gates all other building upgrades. Most costly to upgrade.",    cost:{ stone:800, wood:600, ore:400, gas:300 } },
-quarry:        { n:"Quarry",           icon:"🪨", max:20, desc:"Produces Stone. Lv0=0/hr, Lv1=+300/hr, Lv20=+6000/hr.",                        cost:{ stone:50,  wood:30,  ore:10,  gas:0  }, rss:"stone" },
-lumber:        { n:"Lumber Mill",      icon:"🪵", max:20, desc:"Produces Wood. Lv0=0/hr, Lv1=+300/hr, Lv20=+6000/hr.",                         cost:{ stone:30,  wood:50,  ore:10,  gas:0  }, rss:"wood"  },
-forge:         { n:"Ore Forge",        icon:"⛏",  max:20, desc:"Produces Ore. Lv0=0/hr, Lv1=+300/hr, Lv20=+6000/hr.",                          cost:{ stone:40,  wood:20,  ore:0,   gas:0  }, rss:"ore"   },
-refinery:      { n:"Refinery",         icon:"⚗",  max:20, desc:"Produces Gas. Lv0=0/hr, Lv1=+300/hr, Lv20=+6000/hr.",                          cost:{ stone:60,  wood:40,  ore:30,  gas:0  }, rss:"gas"   },
-storage:       { n:"Storage",          icon:"🏦", max:20, desc:"Increases max resource capacity for all 4 resources. Lv0=200k, Lv20=2M.",       cost:{ stone:100, wood:80,  ore:40,  gas:20 } },
-barracks:      { n:"Barracks",         icon:"🏕",  max:10, desc:"Increases max troop capacity. Lv1=2k, Lv10=90k.",                              cost:{ stone:80,  wood:80,  ore:40,  gas:20 } },
-training:      { n:"Training Grounds", icon:"⚔️",  max:10, desc:"Increases max training batch size. Always trainable even at Lv0.",             cost:{ stone:60,  wood:60,  ore:30,  gas:10 } },
-commandcenter: { n:"Command Center",   icon:"📡", max:10, desc:"Increases commander command capacity. +2/+2/+3/+3/+3/+4/+4/+4/+5/+5 per level (total +35 at Lv10).", cost:{ stone:150, wood:120, ore:80,  gas:60 } },
-healingtent:   { n:"Healing Tent",     icon:"⛺", max:10, desc:"Heals wounded troops. +5/s per level.",                                         cost:{ stone:60,  wood:80,  ore:60,  gas:0  } },
-walls:         { n:"Walls",            icon:"🛡",  max:10, desc:"Increases HQ siege HP. Lv1=+10k, Lv10=+100k.",                                cost:{ stone:100, wood:60,  ore:0,   gas:0  } },
-voidtap:       { n:"Void Tap",         icon:"🌀", max:10, desc:"Channels arcane energy into Mystic Orbs. Higher levels increase capacity and reduce cooldown between taps.", cost:{ stone:120, wood:80, ore:100, gas:60 } },
+quarry:        { n:"Quarry",           icon:"🪨", max:20, desc:"Produces Stone. Each level increases output by ~300/hr.",                        cost:{ stone:50,  wood:30,  ore:10,  gas:0  }, rss:"stone" },
+lumber:        { n:"Lumber Mill",      icon:"🪵", max:20, desc:"Produces Wood. Each level increases output by ~300/hr.",                         cost:{ stone:30,  wood:50,  ore:10,  gas:0  }, rss:"wood"  },
+forge:         { n:"Ore Forge",        icon:"⛏",  max:20, desc:"Produces Ore. Each level increases output by ~300/hr.",                          cost:{ stone:40,  wood:20,  ore:0,   gas:0  }, rss:"ore"   },
+refinery:      { n:"Refinery",         icon:"⚗",  max:20, desc:"Produces Gas. Each level increases output by ~300/hr.",                          cost:{ stone:60,  wood:40,  ore:30,  gas:0  }, rss:"gas"   },
+storage:       { n:"Storage",          icon:"🏦", max:20, desc:"Increases max resource capacity for all 4 resources.",                            cost:{ stone:100, wood:80,  ore:40,  gas:20 } },
+barracks:      { n:"Barracks",         icon:"🏕",  max:10, desc:"Stores troops. Increases max troop capacity and command pool size.",             cost:{ stone:80,  wood:80,  ore:40,  gas:20 } },
+training:      { n:"Training Grounds", icon:"⚔️",  max:10, desc:"Increases training speed and batch size. Unlocks additional queues at Lv3, Lv6, and Lv9.", cost:{ stone:60,  wood:60,  ore:30,  gas:10 } },
+commandcenter: { n:"Command Center",   icon:"📡", max:10, desc:"Increases all commanders' command capacity. Gains +2 to +5 per level (total +35 at Lv10).",         cost:{ stone:150, wood:120, ore:80,  gas:60 } },
+healingtent:   { n:"Healing Tent",     icon:"⛺", max:10, desc:"Heals wounded troops over time. Each level adds +5 healed per second.",           cost:{ stone:60,  wood:80,  ore:60,  gas:0  } },
+walls:         { n:"Walls",            icon:"🛡",  max:10, desc:"Increases HQ siege HP by +10k per level.",                                       cost:{ stone:100, wood:60,  ore:0,   gas:0  } },
+voidtap:       { n:"Void Tap",         icon:"🌀", max:10, desc:"Generates Mystic Orbs on tap. Each level increases capacity and reduces cooldown.",                          cost:{ stone:120, wood:80, ore:100, gas:60 } },
+marketplace:   { n:"Marketplace",       icon:"🏪", max:10, desc:"Trade resources at a loss. Higher levels improve the exchange rate.",                   cost:{ stone:80,  wood:80,  ore:40,  gas:20 } },
 };
 
 export function barracksCapacity(lvl) {
-if (lvl <= 0) return 2000;
-return Math.round(2000 * Math.pow(45, (lvl - 1) / 9));
+  if (lvl <= 0) return 2000;
+  return Math.round(2000 * Math.pow(45, (lvl - 1) / 9));
+}
+
+// Max command units the barracks can hold in reserve (pool for army assignment)
+// Lv1 = 20 cmd, Lv10 = 300 cmd — linear
+export function barracksCommandPool(lvl) {
+  const l = Math.max(0, Math.min(10, lvl || 0));
+  if (l <= 0) return 0;
+  return Math.round(20 + (l - 1) * (280 / 9));
 }
 
 export function trainingBatches(lvl) {
-const base = [100, 300];
-if (lvl >= 2)  base.push(500);
-if (lvl >= 4)  base.push(1000);
-if (lvl >= 6)  base.push(2000);
-if (lvl >= 8)  base.push(5000);
-if (lvl >= 10) base.push(10000);
-return base;
+  const base = [100, 300];
+  if (lvl >= 2)  base.push(500);
+  if (lvl >= 4)  base.push(1000);
+  if (lvl >= 6)  base.push(2000);
+  if (lvl >= 8)  base.push(5000);
+  if (lvl >= 10) base.push(10000);
+  return base;
+}
+
+// Number of simultaneous training queues: 1 base + 1 each at Lv3, Lv6, Lv9 (max 4)
+export function trainingQueueCount(lvl) {
+  let count = 1;
+  if (lvl >= 3) count++;
+  if (lvl >= 6) count++;
+  if (lvl >= 9) count++;
+  return count;
 }
 
 export function maxTrainBatch(lvl) {
@@ -49,6 +67,13 @@ return Math.round(300 + (lvl - 1) * (5700 / 19));
 export function storageMax(lvl) {
 const l = Math.max(0, Math.min(20, lvl || 0));
 return Math.round(200_000 + l * (1_800_000 / 20));
+}
+
+// Marketplace trade rate: Lv1 = 40%, Lv10 = 70% — linear
+export function marketplaceRate(lvl) {
+  const l = Math.max(0, Math.min(10, lvl || 0));
+  if (l <= 0) return 0.35; // unbuilt: slightly below L1 to show upgrade value
+  return +(0.40 + (l - 1) * (0.30 / 9)).toFixed(4);
 }
 
 export function maxAvailLevel(type, hqLvl) {
