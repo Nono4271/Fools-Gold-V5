@@ -2,8 +2,7 @@
 // Communicates via postMessage:
 //   incoming: { facKey }
 //   outgoing: { type:'progress', pct, label }
-//             { type:'done', rawMap, spawnKeys, playerSpawn, aiHqMap, crossings, impassKeys }
-//             rawMap is built fully here (Fix 1) so the main thread has no reconstruction loop.
+//             { type:'done', buffers, meta, spawnKeys, aiHqMap, playerSpawn }  ← transferable, zero-copy
 
 const COLS = 1400, ROWS = 1000;
 const SIZE = COLS * ROWS;
@@ -1187,100 +1186,48 @@ self.onmessage = function(e) {
     if (key){spawnKeys[fk]=key;usedKeys.add(key);}
   }
 
-  // Fix 1 ── Build the full rawMap object here in the worker so the main
-  // thread never runs the 1.4M-iteration reconstruction loop.
-  // The object is sent via structured clone (serialised off the main thread),
-  // keeping the main thread free to paint the loading screen.
-  postMessage({ type:"progress", pct:98, label:"Building tile map..." });
+  postMessage({ type:"progress", pct:98, label:"Finishing up..." });
 
-  // Build region lookup by index
-  const regionByIdx = {};
-  REGION_LIST.forEach((reg, i) => { regionByIdx[i+1] = reg; });
+  // Send typed arrays as zero-copy transferables (32 MB total, no structured clone cost).
+  // Main thread reconstructs tile objects — but does so in async chunks to stay responsive.
+  const transferables = [
+    terrainArr.buffer, ownerArr.buffer, rssArr.buffer, troopArr.buffer,
+    powerArr.buffer, regionArr.buffer, flagArr.buffer,
+    garrisonArr.buffer, siegeArr.buffer, siegeMaxArr.buffer, keepPrimArr.buffer,
+  ];
 
-  // Build keepPrimaryKey lookup: flat index → "cx,cy" string
-  const keepPrimKeyCache = {};
-
-  const rawMap = {};
-  for (let r=0; r<ROWS; r++) {
-    for (let c=0; c<COLS; c++) {
-      const idx   = r*COLS+c;
-      const flags = flagArr[idx];
-      const k     = `${c},${r}`;
-      const reg   = regionByIdx[regionArr[idx]] || null;
-
-      const isKeep     = !!(flags & F_KEEP);
-      const isKeepPart = !!(flags & F_KEEPPART);
-      const isHQ       = !!(flags & F_HQ);
-      const isHQPart   = !!(flags & F_HQPART);
-      const isWin      = !!(flags & F_WIN);
-      const isGate     = !!(flags & F_GATE);
-      const isBorder   = !!(flags & F_BORDER);
-      const isPGGate   = !!(flags & F_PGGATE);
-
-      const owner = OWNER_DEC[ownerArr[idx]] || null;
-
-      let keepPrimaryKey = null;
-      if (isKeepPart) {
-        const pi = keepPrimArr[idx];
-        if (!keepPrimKeyCache[pi]) {
-          const pc = pi % COLS, pr = Math.floor(pi / COLS);
-          keepPrimKeyCache[pi] = `${pc},${pr}`;
-        }
-        keepPrimaryKey = keepPrimKeyCache[pi];
-      }
-
-      const km = (isKeep && keepMeta[k]) ? keepMeta[k] : null;
-
-      rawMap[k] = {
-        c, r, k,
-        terrain:    TERRAIN_DEC[terrainArr[idx]] || "grass",
-        rss:        RSS_DEC[rssArr[idx]] || null,
-        troopBranch: null,
-        powerLevel: powerArr[idx],
-        regionKey:  reg?.key   || null,
-        regionName: reg?.name  || null,
-        keepName:   km?.keepName || (isKeepPart && reg ? reg.keepName : null),
-        owner,
-        garrison:   garrisonArr[idx] / 100,
-        garrisonTroops: garrisonArr[idx] / 100,
-        hasAiCommander: false,
-        siege:      siegeArr[idx],
-        siegeMax:   siegeMaxArr[idx],
-        garrisonWaves:   km?.garrisonWaves ?? 1,
-        defeatedWaves:   [],
-        // garrisonDefeated is a getter — structured clone strips it, so Game.jsx
-        // re-attaches it via patchTile after map ready (already done there).
-        garrisonDefeated: false,
-        resetAt:    null,
-        isKeep, isKeepPart, isHQ, isHQPart, isWin,
-        isGate, isBorder,
-        isPeninsulaGate: isPGGate,
-        homeFaction:     km?.homeFaction || null,
-        crossingType: km?.type || null,
-        keepPrimaryKey,
-        defCmd:     km?.defCmd || null,
-      };
-    }
-  }
-
-  // Determine AI primary faction for the main thread
+  // Determine AI factions for the main thread
   const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
-  // facKey was posted to us in the incoming message
   const aiFactions  = allFactions.filter(f => f !== facKey);
   const aiHqMap     = {};
   aiFactions.forEach(aiFk => { aiHqMap[aiFk] = spawnKeys[aiFk] || null; });
-  const primaryAiFk = aiFactions[0]; // main thread will refine based on alignment
-
-  rawMap.__facKey = facKey; // hint for main thread HQ placement
 
   postMessage({
     type: "done",
-    rawMap,
+    buffers: {
+      terrain:  terrainArr.buffer,
+      owner:    ownerArr.buffer,
+      rss:      rssArr.buffer,
+      troop:    troopArr.buffer,
+      power:    powerArr.buffer,
+      region:   regionArr.buffer,
+      flags:    flagArr.buffer,
+      garrison: garrisonArr.buffer,
+      siege:    siegeArr.buffer,
+      siegeMax: siegeMaxArr.buffer,
+      keepPrim: keepPrimArr.buffer,
+    },
+    meta: {
+      COLS, ROWS,
+      regionList: REGION_LIST,
+      keepMeta,
+      crossings: CROSSINGS,
+      impassKeys,
+      TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
+      F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER, F_PGGATE,
+    },
     spawnKeys,
-    playerSpawn: spawnKeys[facKey] || null,
     aiHqMap,
-    primaryAiFk,
-    crossings: CROSSINGS,
-    impassKeys,
-  });
+    playerSpawn: spawnKeys[facKey] || null,
+  }, transferables);
 };
