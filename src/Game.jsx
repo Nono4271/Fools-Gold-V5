@@ -518,152 +518,236 @@ export default function RiseToWar() {
     );
 
     worker.onmessage = (e) => {
-      const { type, pct, label, rawMap, spawnKeys, crossings, impassKeys,
-              playerSpawn, aiHqMap, primaryAiFk } = e.data;
+      const { type, pct, label, buffers, meta, spawnKeys, aiHqMap, playerSpawn } = e.data;
 
       if (type === "progress") {
-        // Fix 2: batch progress updates — one render per tick
-        unstable_batchedUpdates(() => {
-          setLoadPct(pct);
-          if (label) setLoadLabel(label);
-        });
+        setLoadPct(pct);
+        if (label) setLoadLabel(label);
         return;
       }
 
       if (type === "done") {
         worker.terminate();
+        setLoadPct(100);
+        setLoadLabel("Building world...");
 
-        // ── All sync work done in worker; rawMap is ready to use ─────────────
-        // Fix 1: tile reconstruction loop runs in the worker, not here.
-        // The worker serialises rawMap via structured clone — heavier message
-        // but the main thread is free to paint the loading screen while it arrives.
+        // ── Reconstruct tile map from zero-copy typed arrays ──────────────
+        // Typed arrays are 32 MB total transferred at zero cost (no structured clone).
+        // We reconstruct the 1.4M tile objects here on the main thread, but break
+        // the loop into 50k-tile chunks with setTimeout(0) between chunks so the
+        // loading overlay stays responsive and we don't block the paint thread.
+        const terrainArr  = new Uint8Array(buffers.terrain);
+        const ownerArr    = new Uint8Array(buffers.owner);
+        const rssArr      = new Uint8Array(buffers.rss);
+        const troopArr    = new Uint8Array(buffers.troop);
+        const powerArr    = new Uint8Array(buffers.power);
+        const regionArr   = new Uint8Array(buffers.region);
+        const flagArr     = new Uint16Array(buffers.flags);
+        const garrisonArr = new Uint32Array(buffers.garrison);
+        const siegeArr    = new Uint32Array(buffers.siege);
+        const siegeMaxArr = new Uint32Array(buffers.siegeMax);
+        const keepPrimArr = new Int32Array(buffers.keepPrim);
 
-        // Place player HQ tiles (tiny — only 9 cells)
-        const playerSpawnKey = spawnKeys[rawMap.__facKey || ""] || playerSpawn;
-        if (playerSpawnKey && rawMap[playerSpawnKey]) {
-          const [hc, hr] = playerSpawnKey.split(",").map(Number);
-          rawMap[playerSpawnKey] = {
-            ...rawMap[playerSpawnKey],
-            owner: "player", isHQ: true, garrison: 0, faction: rawMap.__facKey,
-            terrain: "grass", rss: null, defCmd: null,
-            siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
-            defeatedWaves: [], resetAt: null,
-          };
-          [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
-            const fk = `${hc+dc},${hr+dr}`;
-            if (rawMap[fk]) rawMap[fk] = { ...rawMap[fk], isHQPart: true,
-              hqPrimaryKey: playerSpawnKey, terrain: "grass", rss: null, owner: "player" };
-          });
-        }
+        const {
+          COLS: C, ROWS: R,
+          regionList, keepMeta, crossings, impassKeys,
+          TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
+          F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER, F_PGGATE,
+        } = meta;
 
-        // Place AI HQ tiles
-        const newAiHqKeys = {};
-        Object.entries(aiHqMap || {}).forEach(([aiFk, spawn]) => {
-          if (!spawn || !rawMap[spawn]) return;
-          const [ahc, ahr] = spawn.split(",").map(Number);
-          rawMap[spawn] = {
-            ...rawMap[spawn],
-            owner: "ai", isHQ: true, garrison: 0, faction: aiFk,
-            terrain: "grass", rss: null, defCmd: null,
-            siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
-            defeatedWaves: [], resetAt: null,
-          };
-          [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
-            const fk = `${ahc+dc},${ahr+dr}`;
-            if (rawMap[fk]) rawMap[fk] = { ...rawMap[fk], isHQPart: true,
-              hqPrimaryKey: spawn, terrain: "grass", rss: null, owner: "ai" };
-          });
-          newAiHqKeys[aiFk] = spawn;
-        });
+        // Build region lookup by index
+        const regionByIdx = {};
+        regionList.forEach((reg, i) => { regionByIdx[i+1] = reg; });
 
-        // Fix 4: build pKeys/aiKeys directly from the spawn data —
-        // no O(1.4M) Object.keys scan needed at mapReady time.
-        const newPKeys  = new Set();
-        const newAiKeys = new Set();
-        if (playerSpawnKey) {
-          const [hc, hr] = playerSpawnKey.split(",").map(Number);
-          [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
-            newPKeys.add(`${hc+dc},${hr+dr}`);
-          });
-        }
-        Object.values(aiHqMap || {}).forEach(spawn => {
-          if (!spawn) return;
-          const [ahc, ahr] = spawn.split(",").map(Number);
-          [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
-            newAiKeys.add(`${ahc+dc},${ahr+dr}`);
-          });
-        });
-        pKeysRef.current      = newPKeys;
-        aiTileKeysRef.current = newAiKeys;
+        // Build keepPrimaryKey lookup: flat index → "cx,cy" string
+        const keepPrimKeyCache = {};
 
-        // Pan camera to player HQ
-        if (playerSpawnKey) {
-          const [hc, hr] = playerSpawnKey.split(",").map(Number);
-          const { cx, cy } = isoXY(hc, hr);
-          const initZoom = 1.25;
-          panRef.current = {
-            x: -cx * initZoom + window.innerWidth  / 2,
-            y: -cy * initZoom + window.innerHeight / 2,
-          };
-          zoomRef.current = initZoom;
-        }
+        const rawMap = {};
+        const CHUNK = 50000; // tiles per chunk — keeps each slice under ~16ms
+        const total  = C * R;
+        let   idx0   = 0;
 
-        // Re-attach the garrisonDefeated getter that structured-clone strips.
-        // Only garrison tiles need it (keeps + HQ-adjacent); plain tiles stay false.
-        // We do a single targeted pass over known keep positions rather than
-        // iterating all 1.4M tiles.
-        const gDefPatch = { configurable:true, enumerable:true,
-          get() { return (this.defeatedWaves?.length??0)>=(this.garrisonWaves??1)&&(this.garrisonWaves??1)>0; } };
-        for (const k of Object.keys(rawMap)) {
-          const t = rawMap[k];
-          if (t && (t.isKeep || t.isHQ || t.garrisonWaves > 1)) {
-            Object.defineProperty(t, 'garrisonDefeated', gDefPatch);
-          }
-        }
+        const processChunk = () => {
+          const end = Math.min(idx0 + CHUNK, total);
+          for (let idx = idx0; idx < end; idx++) {
+            const r = Math.floor(idx / C);
+            const c = idx % C;
+            const flags = flagArr[idx];
+            const k     = `${c},${r}`;
+            const reg   = regionByIdx[regionArr[idx]] || null;
 
-        rawMap.__ready = true;
-        setImpassableTiles(impassKeys || []);
-        initPathfinding(impassKeys || []);
-        clearKeepCache();
-        clearHQCache();
+            const isKeep    = !!(flags & F_KEEP);
+            const isKeepPart= !!(flags & F_KEEPPART);
+            const isHQ      = !!(flags & F_HQ);
+            const isHQPart  = !!(flags & F_HQPART);
+            const isWin     = !!(flags & F_WIN);
+            const isGate    = !!(flags & F_GATE);
+            const isBorder  = !!(flags & F_BORDER);
+            const isPGGate  = !!(flags & F_PGGATE);
 
-        // Fix 2: all state updates in a single batched transaction → one render pass
-        // Fix 3: setMapReady(true) called here directly, eliminating the
-        //        tileVersion → useEffect → setState round-trip (saves ~1 frame).
-        unstable_batchedUpdates(() => {
-          setLoadPct(100);
-          setLoadLabel("Ready");
-          setCrossingsState(crossings || []);
-          setAiHqKeys(newAiHqKeys);
-          // Pick the AI primary faction based on alignment (opposite to player)
-          const _allFactions  = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
-          const _aiFactions   = _allFactions.filter(f => f !== facKey);
-          const _oppAlign     = playerAlignment === "humans" ? "creatures" : "humans";
-          const _humanFacs    = ["pirates","bountyhunters","holyknights"];
-          const _creatureFacs = ["orcs","dragons","nightcreatures"];
-          const _computed     = _aiFactions.find(f =>
-            (_oppAlign === "humans" ? _humanFacs : _creatureFacs).includes(f)
-          ) || _aiFactions[0];
-          setAiFaction(_computed);
-          setPlayerHqKey(playerSpawnKey);
-          setZoomState(1.25);
-          setPlayerCmds(prev => prev.map(cmd => {
-            if (cmd.owner === "player") return playerSpawnKey ? { ...cmd, tk: playerSpawnKey } : cmd;
-            if (cmd.owner === "ai" && cmd.faction) {
-              const spawn = (aiHqMap || {})[cmd.faction];
-              return spawn ? { ...cmd, tk: spawn } : cmd;
+            const owner = OWNER_DEC[ownerArr[idx]] || null;
+
+            let keepPrimaryKey = null;
+            if (isKeepPart) {
+              const pi = keepPrimArr[idx];
+              if (!keepPrimKeyCache[pi]) {
+                const pc = pi % C, pr = Math.floor(pi / C);
+                keepPrimKeyCache[pi] = `${pc},${pr}`;
+              }
+              keepPrimaryKey = keepPrimKeyCache[pi];
             }
-            return cmd;
-          }));
-          setPKeys(new Set(newPKeys));
-          setTiles(rawMap);        // bumps tileVersion
-          setMapReady(true);       // Fix 3: no longer waits for useEffect([tileVersion])
-        });
 
-        perfLog(`impass: ${(impassKeys||[]).length} border tiles sent`);
-        setTimeout(() => {
-          mapRendererRef.current?.teleport(panRef.current.x, panRef.current.y);
-        }, 100);
+            const km = (isKeep && keepMeta[k]) ? keepMeta[k] : null;
+
+            rawMap[k] = {
+              c, r, k,
+              terrain:    TERRAIN_DEC[terrainArr[idx]] || "grass",
+              rss:        RSS_DEC[rssArr[idx]] || null,
+              troopBranch: null,
+              powerLevel: powerArr[idx],
+              regionKey:  reg?.key   || null,
+              regionName: reg?.name  || null,
+              keepName:   km?.keepName || (isKeepPart && reg ? reg.keepName : null),
+              owner,
+              garrison:   garrisonArr[idx] / 100,
+              garrisonTroops: garrisonArr[idx] / 100,
+              hasAiCommander: false,
+              siege:      siegeArr[idx],
+              siegeMax:   siegeMaxArr[idx],
+              garrisonWaves:   km?.garrisonWaves ?? 1,
+              defeatedWaves:   [],
+              get garrisonDefeated() { return (this.defeatedWaves?.length ?? 0) >= (this.garrisonWaves ?? 1) && (this.garrisonWaves ?? 1) > 0; },
+              resetAt:    null,
+              isKeep, isKeepPart, isHQ, isHQPart, isWin,
+              isGate, isBorder,
+              isPeninsulaGate: isPGGate,
+              homeFaction:     km?.homeFaction || null,
+              crossingType: km?.type || null,
+              keepPrimaryKey,
+              defCmd:     km?.defCmd || null,
+            };
+          }
+          idx0 = end;
+
+          // Update progress bar while chunking
+          const pct = 70 + Math.round((idx0 / total) * 25);
+          setLoadPct(Math.min(95, pct));
+
+          if (idx0 < total) {
+            // Yield to the browser between chunks
+            setTimeout(processChunk, 0);
+            return;
+          }
+
+          // ── All chunks done — finalise map ────────────────────────────────
+          const playerSpawnKey = spawnKeys[facKey] || playerSpawn;
+          if (playerSpawnKey && rawMap[playerSpawnKey]) {
+            const [hc, hr] = playerSpawnKey.split(",").map(Number);
+            rawMap[playerSpawnKey] = {
+              ...rawMap[playerSpawnKey],
+              owner: "player", isHQ: true, garrison: 0, faction: facKey,
+              terrain: "grass", rss: null, defCmd: null,
+              siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
+              defeatedWaves: [], resetAt: null,
+            };
+            [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
+              const fk = `${hc+dc},${hr+dr}`;
+              if (rawMap[fk]) rawMap[fk] = { ...rawMap[fk], isHQPart: true,
+                hqPrimaryKey: playerSpawnKey, terrain: "grass", rss: null, owner: "player" };
+            });
+            const { cx, cy } = isoXY(hc, hr);
+            const initZoom = 1.25;
+            panRef.current = {
+              x: -cx * initZoom + window.innerWidth  / 2,
+              y: -cy * initZoom + window.innerHeight / 2,
+            };
+            zoomRef.current = initZoom;
+          }
+
+          // Place AI HQ tiles
+          const newAiHqKeys = {};
+          Object.entries(aiHqMap || {}).forEach(([aiFk, spawn]) => {
+            if (!spawn || !rawMap[spawn]) return;
+            const [ahc, ahr] = spawn.split(",").map(Number);
+            rawMap[spawn] = {
+              ...rawMap[spawn],
+              owner: "ai", isHQ: true, garrison: 0, faction: aiFk,
+              terrain: "grass", rss: null, defCmd: null,
+              siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
+              defeatedWaves: [], resetAt: null,
+            };
+            [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
+              const fk = `${ahc+dc},${ahr+dr}`;
+              if (rawMap[fk]) rawMap[fk] = { ...rawMap[fk], isHQPart: true,
+                hqPrimaryKey: spawn, terrain: "grass", rss: null, owner: "ai" };
+            });
+            newAiHqKeys[aiFk] = spawn;
+          });
+
+          // Fix 4: seed pKeys/aiKeys from spawn coordinates — no O(1.4M) scan
+          const newPKeys  = new Set();
+          const newAiKeys = new Set();
+          if (playerSpawnKey) {
+            const [hc, hr] = playerSpawnKey.split(",").map(Number);
+            [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
+              newPKeys.add(`${hc+dc},${hr+dr}`);
+            });
+          }
+          Object.values(aiHqMap || {}).forEach(spawn => {
+            if (!spawn) return;
+            const [ahc, ahr] = spawn.split(",").map(Number);
+            [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
+              newAiKeys.add(`${ahc+dc},${ahr+dr}`);
+            });
+          });
+          pKeysRef.current      = newPKeys;
+          aiTileKeysRef.current = newAiKeys;
+
+          rawMap.__ready = true;
+          setImpassableTiles(impassKeys || []);
+          initPathfinding(impassKeys || []);
+          clearKeepCache();
+          clearHQCache();
+
+          // Fix 2: all state updates in a single batched transaction → one render pass
+          // Fix 3: setMapReady(true) called here directly
+          unstable_batchedUpdates(() => {
+            setLoadPct(100);
+            setLoadLabel("Ready");
+            setCrossingsState(crossings || []);
+            setAiHqKeys(newAiHqKeys);
+            const _allFactions  = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
+            const _aiFactions   = _allFactions.filter(f => f !== facKey);
+            const _oppAlign     = playerAlignment === "humans" ? "creatures" : "humans";
+            const _humanFacs    = ["pirates","bountyhunters","holyknights"];
+            const _creatureFacs = ["orcs","dragons","nightcreatures"];
+            const _computed     = _aiFactions.find(f =>
+              (_oppAlign === "humans" ? _humanFacs : _creatureFacs).includes(f)
+            ) || _aiFactions[0];
+            setAiFaction(_computed);
+            setPlayerHqKey(playerSpawnKey);
+            setZoomState(1.25);
+            setPlayerCmds(prev => prev.map(cmd => {
+              if (cmd.owner === "player") return playerSpawnKey ? { ...cmd, tk: playerSpawnKey } : cmd;
+              if (cmd.owner === "ai" && cmd.faction) {
+                const spawn = (aiHqMap || {})[cmd.faction];
+                return spawn ? { ...cmd, tk: spawn } : cmd;
+              }
+              return cmd;
+            }));
+            setPKeys(new Set(newPKeys));
+            setTiles(rawMap);
+            setMapReady(true);
+          });
+
+          perfLog(`impass: ${(impassKeys||[]).length} border tiles sent`);
+          setTimeout(() => {
+            mapRendererRef.current?.teleport(panRef.current.x, panRef.current.y);
+          }, 100);
+        }; // end processChunk
+
+        // Kick off first chunk
+        setTimeout(processChunk, 0);
       }
     };
 
