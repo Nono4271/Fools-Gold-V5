@@ -1,692 +1,911 @@
 /* ─────────────────────────────────────────────────────────────────────────────
    dragons_skills.js — Dragons Faction Skills
-   72 total: 60 reskins + 12 unique skills
+   72 total: 12 unique skills per commander, no reskins
    6 commanders × 12 skills each
 
    Commanders:
-     Emberclaw       (h11, balanced,   Adult)    — 10 reskins + 2 unique
-     Scaleveil Dusk  (h12, support,    Adult)    — 10 reskins + 2 unique
-     Ashen Kraul     (h23, leader,     Hatchling) — 10 reskins + 2 unique
-     Cinderfang      (h24, balanced,   Hatchling) — 10 reskins + 2 unique
-     Pyrewing Skar   (h35, attacker,   Elder)    — 10 reskins + 2 unique
-     Voidscale Nyxara(h36, strategist, Elder)    — 10 reskins + 2 unique
+     Emberclaw       (h11, balanced,   Adult)    — 12 unique
+     Scaleveil Dusk  (h12, support,    Adult)    — 12 unique
+     Ashen Kraul     (h23, leader,     Hatchling) — 12 unique
+     Cinderfang      (h24, balanced,   Hatchling) — 12 unique
+     Pyrewing Skar   (h35, attacker,   Elder)    — 12 unique
+     Voidscale Nyxara(h36, strategist, Elder)    — 12 unique
 ───────────────────────────────────────────────────────────────────────────── */
 
 // ── EMBERCLAW (balanced, Adult) ───────────────────────────────────────────────
-// Balanced: combat + defense + tactics mix. Powerful, proud Adult dragon —
-//           elemental breath, natural armor, sustained battlefield presence.
-// Stats: ATK 155, FOC 0, SPD 75 — high ATK; physical fire strikes, troop armor,
-//        moderate healing, versatile pressure.
-
-// ★ 2 Unique Skills
+// ATK:145, FOC:0, SPD:72 — adult dragon balanced. Burn uptime, anti-ranged,
+// dragon sustain, siege utility. The seasoned predator who knows when to strike.
 
 export const EMBERCLAW_UNIQUE_SKILLS = {
-  emberclaw_magma_charge: {
-    name: "Magma Charge", icon: "🌋", tree: "combat", cls: "balanced",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  emb_flame_dive: {
+    name: "Flame Dive", icon: "🔥", tree: "combat", cls: "balanced",
     faction: "dragons", commander: "h11",
-    type: "active", cooldown: 4, offset: 2, duration: 1,
-    desc: "Emberclaw hurls itself forward in a blazing charge — striking all enemies with searing force and leaving them scorched and exposed to further punishment.",
-    cmdAoe: true, cmdMult: 2.0, enemyDmgTakenUp: 0.14, base: 2.0, perLevel: 0.16,
-    nextDesc: (lvl) => `All enemies ${Math.round((2.0 + lvl * 0.16) * 100)}% AoE + 14% enemy vulnerability — rounds 2,6,10`,
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Enemy Units, prioritises Ranged] 15% Physical Damage (ATK mod) | 45% chance to apply Burn. (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_bleed", targets: 2, prioritise: "ranged", bleedChance: 0, burnChance: 0.45, burnDmgPenalty: 0.20, modifiedBy: "atk" },
+    base: 0.15, perLevel: 0.15,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => `[2 Units, Ranged first] ${Math.round((0.15+lvl*0.15)*100)}% Physical DMG (ATK mod) + 45% Burn${lvl >= 14 ? " | Max: ATK +15" : ""} — rounds 3,6,9`,
   },
-  emberclaw_dragon_hide: {
-    name: "Dragon Hide", icon: "🐉", tree: "defense", cls: "balanced",
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  emb_dragon_toughness: {
+    name: "Dragon Toughness", icon: "🛡️", tree: "combat", cls: "balanced",
     faction: "dragons", commander: "h11",
     type: "passive",
-    desc: "Emberclaw's scales are battle-hardened and searing hot. Permanently reduces all incoming damage and fortifies the entire army's defenses.",
-    passiveDmgReduce: 0.05, passiveTroopDef: 0.06, base: 0.05, perLevel: 0.02,
-    nextDesc: (lvl) => `-${Math.round((0.05 + lvl * 0.02) * 100)}% incoming dmg & +${Math.round(0.06 * 100)}% troop DEF (permanent)`,
+    desc: "[Allied Dragon Units] Damage Received -2%. (Passive)",
+    effect: { type: "branch_dmg_reduce", branch: "dragons", value: 0.02 },
+    base: 0.02, perLevel: 0.02,
+    nextDesc: (lvl) => `[Dragon Units] DMG Received -${Math.round((0.02+lvl*0.02)*100)}% (permanent)`,
+  },
+
+  emb_throwing_sand: {
+    name: "Throwing Sand", icon: "🌶️", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h11",
+    type: "passive",
+    desc: "[Each Round] Enemy units: 9% independent chance to gain Blind (guaranteed miss next attack). (Passive)",
+    effect: { type: "per_round_blind_chance", chance: 0.09 },
+    base: 0.09, perLevel: 0.09,
+    nextDesc: (lvl) => `Each round: ${Math.round((0.09+lvl*0.09)*100)}% chance per enemy unit to gain Blind (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  emb_dragon_slash: {
+    name: "Dragon Slash", icon: "⚔️", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h11",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[1 Enemy Unit, prioritises Ranged] 30% Physical Damage (ATK mod). (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_single", target: "prioritiseRanged", modifiedBy: "atk" },
+    base: 0.30, perLevel: 0.30,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => `[Ranged priority] ${Math.round((0.30+lvl*0.30)*100)}% Physical DMG (ATK mod)${lvl >= 14 ? " | Max: ATK +15" : ""} — rounds 3,6,9`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  emb_dragon_spirit: {
+    name: "Dragon Spirit", icon: "🐉", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h11",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[Allied Dragon Units] 8% chance to gain a follow-up attack this round. (Rounds 3, 6, 9)",
+    effect: { type: "faction_followup_per_round", faction: "dragons", chance: 0.08 },
+    base: 0.08, perLevel: 0.08,
+    nextDesc: (lvl) => `[Dragon Units] ${Math.round((0.08+lvl*0.08)*100)}% chance for follow-up — rounds 3,6,9`,
+  },
+
+  emb_flame_dancer: {
+    name: "Flame Dancer", icon: "💃", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h11",
+    type: "passive",
+    desc: "[Commander] While any enemy is burning: ATK +2.0. (Passive)",
+    effect: { type: "conditional_cmd_atk_while_burn", value: 2.0 },
+    base: 2.0, perLevel: 2.0,
+    nextDesc: (lvl) => `While any enemy burns: CMD ATK +${2.0+lvl*2.0} (permanent)`,
+  },
+
+  // ── R3 — Main ─────────────────────────────────────────────────────────────
+  // 3CD → rounds 4, 8
+  emb_fire_volley: {
+    name: "Fire Volley", icon: "💣", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h11",
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[5 Random Enemy Units] 8% damage each | 20% chance to apply Burn per hit. (Rounds 4, 8)",
+    effect: { type: "multi_hit_random_burn_chance", hits: 5, dmgPct: 0.08, burnChance: 0.20 },
+    base: 0.08, perLevel: 0.008,
+    maxLevelEffect: { bonusHitVsWizard: true },
+    nextDesc: (lvl) => `5 random hits x ${Math.round((0.08+lvl*0.008)*100)}% + 20% Burn per hit${lvl >= 14 ? " | Max: +1 hit vs Wizard unit" : ""} — rounds 4,8`,
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  // 1CD → rounds 2, 4, 6, 8, 10
+  emb_cauterize: {
+    name: "Cauterize", icon: "🩹", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h11",
+    type: "active", cooldown: 1, offset: 2, duration: 1,
+    desc: "[Commander] 6% chance to cleanse 1 random debuff at round start. (Rounds 2, 4, 6, 8, 10)",
+    effect: { type: "reactive_cleanse_chance", chance: 0.06 },
+    base: 0.06, perLevel: 0.065,
+    nextDesc: (lvl) => `Round start: ${Math.min(100,Math.round((0.06+lvl*0.065)*100))}% chance to cleanse 1 debuff — rounds 2,4,6,8,10`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  emb_dragons_evasion: {
+    name: "Dragon's Evasion", icon: "💨", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h11",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[Dragon Units] 10% chance to evade the next instance of damage this round. (Rounds 3, 6, 9)",
+    effect: { type: "branch_evasion_first_hit", branch: "dragons", chance: 0.10 },
+    base: 0.10, perLevel: 0.10,
+    nextDesc: (lvl) => `[Dragon Units] ${Math.round((0.10+lvl*0.10)*100)}% chance to evade next hit — rounds 3,6,9`,
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  emb_embers_entertainment: {
+    name: "Ember's Entertainment", icon: "🎭", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h11",
+    type: "passive",
+    desc: "[Commander] Normal Attacks deal 6% Burn Damage (ATK mod) to ALL enemies. (Passive)",
+    effect: { type: "cmd_normal_atk_aoe_burn", value: 0.06 },
+    base: 0.06, perLevel: 0.06,
+    maxLevelEffect: { normalAtkBurnChance: 0.15 },
+    nextDesc: (lvl) => `Normal attacks: all enemies ${Math.round((0.06+lvl*0.06)*100)}% Burn DMG (ATK mod)${lvl >= 14 ? " | Max: 15% chance to apply Burn per hit" : ""} (permanent)`,
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  // Round 8 only — single trigger
+  emb_dragons_hope: {
+    name: "Dragon's Hope", icon: "🌅", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h11",
+    type: "active", cooldown: 99, offset: 8, duration: 1,
+    desc: "[Dragon Units] Heal 50% HP. (Round 8 only)",
+    effect: { type: "heal_branch", branch: "dragons", healPct: 0.50 },
+    base: 0.50, perLevel: 0.50,
+    nextDesc: (lvl) => `[Dragon Units] Heal ${Math.round((0.50+lvl*0.50)*100)}% HP — Round 8 only`,
+  },
+
+  emb_bring_down_walls: {
+    name: "Bring Down the Walls", icon: "🏰", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h11",
+    type: "passive",
+    desc: "[Army] Siege +3. (Passive)",
+    effect: { type: "army_siege_bonus", value: 3 },
+    base: 3, perLevel: 3,
+    nextDesc: (lvl) => `Army Siege +${3+lvl*3} (permanent)`,
   },
 };
 
-// 10 Reskins — balanced: 4 combat, 3 defense, 3 tactics
-
-export const EMBERCLAW_RESKIN_SKILLS = {
-  emberclaw_killing_instinct: {
-    name: "Dragon's Fury", icon: "⚔", tree: "combat", cls: "balanced",
-    faction: "dragons", commander: "h11",
-    type: "passive",
-    desc: "An Adult dragon never dulls its edge. Emberclaw's attacks permanently deal increased damage.",
-    passiveCmdAtk: 0.08, base: 0.08, perLevel: 0.06,
-    nextDesc: (lvl) => `+${Math.round((0.08 + lvl * 0.06) * 100)}% cmd ATK (permanent)`,
-  },
-  emberclaw_savage_blow: {
-    name: "Ember Slam", icon: "🔥", tree: "combat", cls: "balanced",
-    faction: "dragons", commander: "h11",
-    type: "active", cooldown: 3, offset: 3, duration: 1,
-    desc: "Emberclaw slams its burning claws into the enemy — heavy fire damage that leaves them scorched and vulnerable.",
-    cmdMult: 2.2, enemyDmgTakenUp: 0.15, base: 2.2, perLevel: 0.20,
-    nextDesc: (lvl) => `${Math.round((2.2 + lvl * 0.20) * 100)}% damage + 15% vulnerability — rounds 3,6,9`,
-  },
-  emberclaw_battle_hunger: {
-    name: "Predator's Feed", icon: "🩸", tree: "combat", cls: "balanced",
-    faction: "dragons", commander: "h11",
-    type: "active", cooldown: 3, offset: 1, duration: 1,
-    desc: "Emberclaw feeds on battle — its strikes restore the army as it tears through the enemy.",
-    cmdMult: 1.3, lifesteal: 0.25, base: 0.25, perLevel: 0.05,
-    nextDesc: (lvl) => `130% damage, restore troops = ${Math.round((0.25 + lvl * 0.05) * 100)}% of damage dealt — rounds 1,4,7,10`,
-  },
-  emberclaw_double_strike: {
-    name: "Claw and Fang", icon: "🐲", tree: "combat", cls: "balanced",
-    faction: "dragons", commander: "h11",
-    type: "active", cooldown: 4, offset: 2, duration: 1,
-    desc: "Emberclaw rakes with claw and snaps with fang — two devastating blows in one fluid motion.",
-    cmdHits: 2, cmdMult: 1.2, base: 1.2, perLevel: 0.10,
-    nextDesc: (lvl) => `2 hits ×${(1.2 + lvl * 0.10).toFixed(2)} — rounds 2,6,10`,
-  },
-  emberclaw_iron_bastion: {
-    name: "Scale Fortress", icon: "⛩", tree: "defense", cls: "balanced",
-    faction: "dragons", commander: "h11",
-    type: "active", cooldown: 4, offset: 2, duration: 3,
-    desc: "Emberclaw spreads its wings as a shield — the army shelters beneath layers of fire-hardened scale.",
-    troopDmgReduce: 0.18, base: 0.18, perLevel: 0.05,
-    nextDesc: (lvl) => `-${Math.round((0.18 + lvl * 0.05) * 100)}% troop damage (3 rnd) — rounds 2,6,10`,
-  },
-  emberclaw_shield_wall: {
-    name: "Wingshield", icon: "🏰", tree: "defense", cls: "balanced",
-    faction: "dragons", commander: "h11",
-    type: "active", cooldown: 2, offset: 1, duration: 2,
-    desc: "Emberclaw raises its wing across the line — all incoming fire reduced every other round.",
-    dmgReduce: 0.12, base: 0.12, perLevel: 0.04,
-    nextDesc: (lvl) => `-${Math.round((0.12 + lvl * 0.04) * 100)}% all dmg (2 rnd) — rounds 1,3,5,7,9`,
-  },
-  emberclaw_fortified_ranks: {
-    name: "Dragonscale Ranks", icon: "🪖", tree: "defense", cls: "balanced",
-    faction: "dragons", commander: "h11",
-    type: "passive",
-    desc: "The army that marches under a dragon stands tougher. Permanently increased troop defense.",
-    passiveTroopDef: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.06 + lvl * 0.04) * 100)}% troop DEF (permanent)`,
-  },
-  emberclaw_battle_hymn: {
-    name: "Draconic War Cry", icon: "🎵", tree: "tactics", cls: "balanced",
-    faction: "dragons", commander: "h11",
-    type: "active", cooldown: 3, offset: 3, duration: 2,
-    desc: "Emberclaw's roar shakes the battlefield — the army charges with terrifying force.",
-    troopAtkMult: 1.18, base: 1.18, perLevel: 0.06,
-    nextDesc: (lvl) => `+${Math.round((0.18 + lvl * 0.06) * 100 - 100)}% troop ATK (2 rnd) — rounds 3,6,9`,
-  },
-  emberclaw_inspiring_presence: {
-    name: "Elder's Pride", icon: "⭐", tree: "tactics", cls: "balanced",
-    faction: "dragons", commander: "h11",
-    type: "passive",
-    desc: "Fighting beside a proud Adult dragon inspires every soldier to fight beyond their limits.",
-    passiveTroopAtk: 0.05, base: 0.05, perLevel: 0.03,
-    nextDesc: (lvl) => `+${Math.round((0.05 + lvl * 0.03) * 100)}% troop ATK (permanent)`,
-  },
-  emberclaw_expose_weakness: {
-    name: "Singe and Expose", icon: "🎯", tree: "tactics", cls: "balanced",
-    faction: "dragons", commander: "h11",
-    type: "active", cooldown: 3, offset: 2, duration: 2,
-    desc: "Emberclaw scorches the enemy's armor away — they take greater damage from all sources for 2 rounds.",
-    enemyDmgTakenUp: 0.12, base: 0.12, perLevel: 0.03,
-    nextDesc: (lvl) => `Enemy takes +${Math.round((0.12 + lvl * 0.03) * 100)}% more dmg (2 rnd) — rounds 2,5,8`,
-  },
-};
+export const EMBERCLAW_RESKIN_SKILLS = {};
 
 // ── SCALEVEIL DUSK (support, Adult) ──────────────────────────────────────────
-// Support: tactics tree. Powerful, proud Adult — elemental scale-magic, healing
-//          fog, debilitating breath, protective auras rooted in dusk and shadow.
-// Stats: ATK 50, FOC 140, SPD 80 — high FOC; hex, healing mist, debuff breath.
-
-// ★ 2 Unique Skills
+// ATK:50, FOC:140, SPD:80 — shadow-scale healer/debuffer. High FOC; AOE focus
+// blasts, selective healing, world-map specialist (siege, gathering, march).
+// 12 unique skills, no reskins.
 
 export const SCALEVEIL_UNIQUE_SKILLS = {
-  scaleveil_dusk_veil: {
-    name: "Dusk Veil", icon: "🌑", tree: "tactics", cls: "support",
+
+  // ── R0 TOP — Main (2CD → rounds 3, 6, 9) ─────────────────────────────────
+  scaleveil_back_line_healer: {
+    name: "Back Line Healer", icon: "💚", tree: "tactics", cls: "support",
     faction: "dragons", commander: "h12",
-    type: "active", cooldown: 3, offset: 2, duration: 2,
-    desc: "Scaleveil breathes a cloud of shadowed scale-dust across the battlefield — enemy attacks lose their edge and all healing is choked out for 2 rounds.",
-    enemyAtkReduce: 0.16, blockHeal: 2, base: 0.16, perLevel: 0.03,
-    nextDesc: (lvl) => `-${Math.round((0.16 + lvl * 0.03) * 100)}% enemy ATK & block heal 2 rnd (2 rnd) — rounds 2,5,8`,
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Allied Units] Recover 5% HP. [Dragon Units] Recover an additional 25% HP. (Rounds 3, 6, 9)",
+    effect: { type: "heal_two_units_dragon_bonus", healPct: 0.05, dragonBonusPct: 0.25, targets: 2 },
+    base: 0.05, perLevel: 0.05,
+    maxLevelEffect: { dragonHpBonus: 10 },
+    nextDesc: (lvl) => `[2 Allied Units] Recover ${Math.round((0.05+lvl*0.05)*100)}% HP | Dragon Units +25% extra${lvl >= 14 ? " | Max: Dragon Units HP +10" : ""} — rounds 3,6,9`,
   },
-  scaleveil_shadow_mend: {
-    name: "Shadow Mend", icon: "🌿", tree: "tactics", cls: "support",
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  scaleveil_sniper: {
+    name: "Sniper", icon: "🎯", tree: "tactics", cls: "support",
+    faction: "dragons", commander: "h12",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[1 Enemy Unit, prioritises Ranged] 20% Focus Damage (FOC mod). (Rounds 3, 6, 9)",
+    effect: { type: "focus_damage_single", target: "prioritiseRanged", modifiedBy: "foc" },
+    base: 0.20, perLevel: 0.20,
+    nextDesc: (lvl) => `[Ranged priority] ${Math.round((0.20+lvl*0.20)*100)}% Focus DMG (FOC mod) — rounds 3,6,9`,
+  },
+
+  scaleveil_fire_in_the_hole: {
+    name: "Fire in the Hole", icon: "💣", tree: "tactics", cls: "support",
     faction: "dragons", commander: "h12",
     type: "passive",
-    desc: "Scaleveil's shadow-scale aura seeps into every wound — troops are continuously restored each round and grow more resilient.",
-    passiveHealPerRound: 0.02, passiveTroopDef: 0.05, base: 0.02, perLevel: 0.005,
-    nextDesc: (lvl) => `Restore ${Math.round((0.02 + lvl * 0.005) * 100)}% lost troops/round & +${Math.round(0.05 * 100)}% troop DEF (permanent)`,
+    desc: "[Army] Siege +1. (Passive)",
+    effect: { type: "army_siege_bonus", value: 1 },
+    base: 1, perLevel: 1,
+    nextDesc: (lvl) => `Army Siege +${1+lvl*1} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  scaleveil_hunter: {
+    name: "Hunter", icon: "🏹", tree: "tactics", cls: "support",
+    faction: "dragons", commander: "h12",
+    type: "passive",
+    desc: "[CMD & Army] When attacking an unowned tile: DMG +1.0%. (Passive) Max Level: DMG Received -10% on unowned tiles.",
+    effect: { type: "neutral_tile_dmg_bonus", value: 0.01 },
+    base: 0.01, perLevel: 0.01,
+    maxLevelEffect: { neutralDmgReceivedDown: 0.10 },
+    nextDesc: (lvl) => `Unowned tile: DMG +${Math.round((0.01+lvl*0.01)*100)}%${lvl >= 14 ? " | Max: DMG Received -10% on unowned tiles" : ""} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  scaleveil_gatherer: {
+    name: "Gatherer", icon: "🌾", tree: "tactics", cls: "support",
+    faction: "dragons", commander: "h12",
+    type: "passive",
+    desc: "[Army] Resources gained from gathering +5%. (Non-Combat Passive)",
+    effect: { type: "gathering_bonus", value: 0.05 },
+    base: 0.05, perLevel: 0.05,
+    nextDesc: (lvl) => `Gathering yield +${Math.round((0.05+lvl*0.05)*100)}% (permanent)`,
+  },
+
+  scaleveil_pather: {
+    name: "Pather", icon: "🐾", tree: "tactics", cls: "support",
+    faction: "dragons", commander: "h12",
+    type: "passive",
+    desc: "[Army] March Speed +3%. (Non-Combat Passive)",
+    effect: { type: "march_speed_bonus", value: 0.03 },
+    base: 0.03, perLevel: 0.03,
+    nextDesc: (lvl) => `March Speed +${Math.round((0.03+lvl*0.03)*100)}% (permanent)`,
+  },
+
+  // ── R3 — Main (2CD → rounds 1, 4, 7, 10) ─────────────────────────────────
+  scaleveil_smoke_and_fire: {
+    name: "Smoke and Fire", icon: "🌑", tree: "tactics", cls: "support",
+    faction: "dragons", commander: "h12",
+    type: "active", cooldown: 2, offset: 1, duration: 1,
+    desc: "[All Enemy Units] 3% chance each to inflict Blind or Burn for 1 round. (Rounds 1, 4, 7, 10)",
+    effect: { type: "aoe_blind_or_burn_chance", chance: 0.03, duration: 1 },
+    base: 0.03, perLevel: 0.0329,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => `All enemies: ${Math.round((0.03+lvl*0.0329)*100)}% chance Blind or Burn (1 rnd)${lvl >= 14 ? " | Max: ATK +15" : ""} — rounds 1,4,7,10`,
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  scaleveil_dragon_garrison: {
+    name: "Dragon Garrison", icon: "🛡️", tree: "tactics", cls: "support",
+    faction: "dragons", commander: "h12",
+    type: "passive",
+    desc: "[Allied Dragon Units] DEF +3. (Passive)",
+    effect: { type: "branch_flat_def_bonus", branch: "dragons", value: 3 },
+    base: 3, perLevel: 3,
+    nextDesc: (lvl) => `[Dragon Units] DEF +${3+lvl*3} (permanent)`,
+  },
+
+  scaleveil_the_superior_race: {
+    name: "The Superior Race", icon: "👑", tree: "tactics", cls: "support",
+    faction: "dragons", commander: "h12",
+    type: "passive",
+    desc: "[Allied Dragon Units] DMG +1.0% vs Human alignment units. (Passive)",
+    effect: { type: "branch_dmg_bonus_vs_alignment", branch: "dragons", alignment: "humans", value: 0.01 },
+    base: 0.01, perLevel: 0.01,
+    nextDesc: (lvl) => `[Dragon Units] DMG +${Math.round((0.01+lvl*0.01)*100)}% vs Human units (permanent)`,
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  scaleveil_to_become_an_elder: {
+    name: "To Become an Elder", icon: "🌙", tree: "tactics", cls: "support",
+    faction: "dragons", commander: "h12",
+    type: "passive",
+    desc: "[Commander] FOC +1.0, ATK -1.0 (Pre-Battle). Max Level: Dragon Units gain Confusion Immunity.",
+    effect: { type: "cmd_foc_up_atk_down_passive", focPerLevel: 1.0, atkDownPerLevel: 1.0 },
+    base: 1.0, perLevel: 1.0,
+    maxLevelEffect: { dragonConfusionImmunity: true },
+    nextDesc: (lvl) => `CMD FOC +${1.0+lvl*1.0} | CMD ATK -${1.0+lvl*1.0}${lvl >= 14 ? " | Max: Dragon Units Confusion Immune" : ""} (permanent)`,
+  },
+
+  // ── R5 — Sides (3CD → rounds 4, 8) ───────────────────────────────────────
+  scaleveil_locked_in: {
+    name: "Locked In", icon: "🔒", tree: "tactics", cls: "support",
+    faction: "dragons", commander: "h12",
+    type: "active", cooldown: 3, offset: 4, duration: 2,
+    desc: "[Dragon Units] DMG +3% for 2 rounds. (Rounds 4, 8)",
+    effect: { type: "branch_dmg_up_duration", branch: "dragons", value: 0.03 },
+    base: 0.03, perLevel: 0.03,
+    nextDesc: (lvl) => `[Dragon Units] DMG +${Math.round((0.03+lvl*0.03)*100)}% (2 rnd) — rounds 4,8`,
+  },
+
+  scaleveil_dusks_blast: {
+    name: "Dusk's Blast", icon: "💥", tree: "tactics", cls: "support",
+    faction: "dragons", commander: "h12",
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[All Enemies] 80% Focus Damage (FOC mod). (Rounds 4, 8)",
+    effect: { type: "aoe_focus_damage_foc_mod", modifiedBy: "foc" },
+    base: 0.80, perLevel: 0.80,
+    nextDesc: (lvl) => `All enemies ${Math.round((0.80+lvl*0.80)*100)}% Focus DMG (FOC mod) — rounds 4,8`,
   },
 };
 
-// 10 Reskins — support pool, dusk-dragon/Adult theme
-
-export const SCALEVEIL_RESKIN_SKILLS = {
-  scaleveil_field_medic: {
-    name: "Scale Mist Salve", icon: "💚", tree: "tactics", cls: "support",
-    faction: "dragons", commander: "h12",
-    type: "passive",
-    desc: "A faint shimmer of healing mist drifts from Scaleveil's scales — troops are continuously restored.",
-    passiveHealPerRound: 0.02, base: 0.02, perLevel: 0.01,
-    nextDesc: (lvl) => `Restore ${Math.round((0.02 + lvl * 0.01) * 100)}% lost troops/round`,
-  },
-  scaleveil_mending_wave: {
-    name: "Dusk Tide", icon: "✨", tree: "tactics", cls: "support",
-    faction: "dragons", commander: "h12",
-    type: "active", cooldown: 2, offset: 2, duration: 1,
-    desc: "A wave of shadow-healing washes over the ranks — restoring fallen troops every other round.",
-    healPct: 0.06, base: 0.06, perLevel: 0.02,
-    nextDesc: (lvl) => `Restore ${Math.round((0.06 + lvl * 0.02) * 100)}% lost troops — rounds 2,4,6,8,10`,
-  },
-  scaleveil_rally_cry: {
-    name: "Dragon's Resurgence", icon: "🚩", tree: "tactics", cls: "support",
-    faction: "dragons", commander: "h12",
-    type: "active", cooldown: 5, offset: 1, duration: 1,
-    desc: "Scaleveil unleashes a surge of restorative scale-energy — a massive wave that pulls soldiers back from the brink.",
-    healPct: 0.18, base: 0.18, perLevel: 0.04,
-    nextDesc: (lvl) => `Restore ${Math.round((0.18 + lvl * 0.04) * 100)}% lost troops — rounds 1,6`,
-  },
-  scaleveil_hex_curse: {
-    name: "Veil Curse", icon: "🔮", tree: "tactics", cls: "support",
-    faction: "dragons", commander: "h12",
-    type: "active", cooldown: 4, offset: 2, duration: 2,
-    desc: "Scaleveil drapes the enemy in shadow-hexes — their strikes falter and lose accuracy.",
-    enemyMissChance: 0.18, base: 0.18, perLevel: 0.04,
-    nextDesc: (lvl) => `${Math.round((0.18 + lvl * 0.04) * 100)}% enemy miss (2 rnd) — rounds 2,6,10`,
-  },
-  scaleveil_blind_strike: {
-    name: "Shadowbreath", icon: "👁", tree: "tactics", cls: "support",
-    faction: "dragons", commander: "h12",
-    type: "active", cooldown: 3, offset: 1, duration: 2,
-    desc: "Scaleveil breathes shadow-vapor across the enemy's ranks — clouding their vision and dulling their attacks.",
-    enemyAtkReduce: 0.12, base: 0.12, perLevel: 0.03,
-    nextDesc: (lvl) => `-${Math.round((0.12 + lvl * 0.03) * 100)}% enemy ATK (2 rnd) — rounds 1,4,7,10`,
-  },
-  scaleveil_inspiring_presence: {
-    name: "Ancient Calm", icon: "⭐", tree: "tactics", cls: "support",
-    faction: "dragons", commander: "h12",
-    type: "passive",
-    desc: "Scaleveil's serene dusk-aura steadies every soldier. Permanently increased troop attack.",
-    passiveTroopAtk: 0.05, base: 0.05, perLevel: 0.03,
-    nextDesc: (lvl) => `+${Math.round((0.05 + lvl * 0.03) * 100)}% troop ATK (permanent)`,
-  },
-  scaleveil_supply_cut: {
-    name: "Choking Scales", icon: "✂", tree: "tactics", cls: "support",
-    faction: "dragons", commander: "h12",
-    type: "active", cooldown: 5, offset: 3, duration: 1,
-    desc: "Scaleveil's tail sweeps enemy supply lines — no healing reaches them for 3 rounds.",
-    blockHeal: 3, base: 3, perLevel: 1,
-    nextDesc: (lvl) => `Block enemy heal ${3 + lvl} rounds — rounds 3,8`,
-  },
-  scaleveil_guardian_aura: {
-    name: "Scaleveil's Ward", icon: "🌿", tree: "tactics", cls: "support",
-    faction: "dragons", commander: "h12",
-    type: "passive",
-    desc: "The protective shimmer of Scaleveil's scales permanently hardens the army's resilience.",
-    passiveTroopDef: 0.05, base: 0.05, perLevel: 0.03,
-    nextDesc: (lvl) => `+${Math.round((0.05 + lvl * 0.03) * 100)}% troop DEF (permanent)`,
-  },
-  scaleveil_second_wind: {
-    name: "Second Dusk", icon: "💨", tree: "tactics", cls: "support",
-    faction: "dragons", commander: "h12",
-    type: "active", cooldown: 5, offset: 5, duration: 2,
-    desc: "As the second twilight falls, Scaleveil surges — restoring troops and driving them to renewed fury.",
-    healPct: 0.12, troopAtkMult: 1.12, base: 0.12, perLevel: 0.03,
-    nextDesc: (lvl) => `Heal ${Math.round((0.12 + lvl * 0.03) * 100)}% + +${Math.round((0.12 + lvl * 0.03) * 100 - 100)}% troop ATK (2 rnd) — rounds 5,10`,
-  },
-  scaleveil_foresight: {
-    name: "Dusk Foretelling", icon: "🔭", tree: "tactics", cls: "support",
-    faction: "dragons", commander: "h12",
-    type: "active", cooldown: 4, offset: 4, duration: 1,
-    desc: "Scaleveil reads the shift of shadows and anticipates the enemy's next move — nullifying it before it fires.",
-    nullifySkill: true, base: 1, perLevel: 0,
-    nextDesc: () => `Nullify enemy skill — rounds 4,8`,
-  },
-};
+export const SCALEVEIL_RESKIN_SKILLS = {};
 
 // ── ASHEN KRAUL (leader, Hatchling) ──────────────────────────────────────────
-// Leader: command tree. Scrappy, fierce, unpredictable Hatchling dragon —
-//         young but unnervingly aggressive, drives the army with raw draconic ego.
-// Stats: ATK 78, FOC 0, SPD 68 — modest stats; compensates with bold command
-//        skills, garrison-breaking, army surge tactics.
-
-// ★ 2 Unique Skills
+// ATK:78, FOC:0, SPD:68 — scrappy Hatchling leader. Mixed-troop specialist,
+// early-round damage surge, wizard-hunter, all-Dragon army payoff.
+// 12 unique skills, no reskins.
 
 export const KRAUL_UNIQUE_SKILLS = {
-  kraul_hatchling_fury: {
-    name: "Hatchling's Fury", icon: "🐲", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "active", cooldown: 3, offset: 1, duration: 2,
-    desc: "Kraul's unbridled rage is infectious — the whole army charges with reckless abandon, striking harder while the enemy's resistance crumbles.",
-    troopAtkMult: 1.24, enemyDmgTakenUp: 0.10, base: 1.24, perLevel: 0.05,
-    nextDesc: (lvl) => `+${Math.round((0.24 + lvl * 0.05) * 100)}% troop ATK & +10% enemy vulnerability (2 rnd) — rounds 1,4,7,10`,
-  },
-  kraul_ash_dominance: {
-    name: "Ash Dominance", icon: "💨", tree: "command", cls: "leader",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  kraul_ill_work_with_it: {
+    name: "I'll Work With It", icon: "🤝", tree: "command", cls: "leader",
     faction: "dragons", commander: "h23",
     type: "passive",
-    desc: "Even young, Kraul commands with absolute authority. Troops permanently strike harder and hold firmer under its ash-smoke presence.",
-    passiveTroopAtk: 0.08, passiveTroopDef: 0.05, base: 0.08, perLevel: 0.03,
-    nextDesc: (lvl) => `+${Math.round((0.08 + lvl * 0.03) * 100)}% troop ATK & +${Math.round(0.05 * 100)}% troop DEF (permanent)`,
+    desc: "[Dragonkin Units] DEF +2.0. [Drake Rider Units] DMG +1.0%. (Passive)",
+    effect: { type: "dual_branch_stat_bonus", branch1: "dragonkin", branch1Stat: "def", branch1Value: 2.0, branch2: "drake_riders", branch2Stat: "dmg", branch2Value: 0.01 },
+    base: 2.0, perLevel: 2.0,
+    nextDesc: (lvl) => `[Dragonkin] DEF +${2.0+lvl*2.0} | [Drake Riders] DMG +${Math.round((0.01+lvl*0.01)*100)}% (permanent)`,
+  },
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  kraul_fire_fight: {
+    name: "Fire Fight", icon: "🔥", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "passive",
+    desc: "[Allied Units] On attack: 5% chance to inflict +40% extra damage. (Passive)",
+    effect: { type: "on_attack_bonus_dmg_chance", chance: 0.05, bonusDmg: 0.40 },
+    base: 0.05, perLevel: 0.05,
+    nextDesc: (lvl) => `On attack: ${Math.round((0.05+lvl*0.05)*100)}% chance +40% extra DMG (permanent)`,
+  },
+
+  kraul_tough_scales: {
+    name: "Tough Scales", icon: "🛡️", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "passive",
+    desc: "[Allied Dragon Units] Physical Damage Received -1.0%. (Passive)",
+    effect: { type: "branch_phys_dmg_reduce", branch: "dragons", value: 0.01 },
+    base: 0.01, perLevel: 0.01,
+    nextDesc: (lvl) => `[Dragon Units] Physical DMG Received -${Math.round((0.01+lvl*0.01)*100)}% (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  kraul_im_in_command: {
+    name: "I'm in Command", icon: "📜", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "passive",
+    desc: "[First 2 Rounds] [Allied Units] Damage Dealt +3.0%. (Passive)",
+    effect: { type: "early_round_dmg_up", value: 0.03, maxRound: 2 },
+    base: 0.03, perLevel: 0.03,
+    maxLevelEffect: { stunImmunityWhileActive: true },
+    nextDesc: (lvl) => `[Rounds 1-2] All allies DMG +${Math.round((0.03+lvl*0.03)*100)}%${lvl >= 14 ? " | Max: Stun Immune while active" : ""} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  kraul_hit_and_recover: {
+    name: "Hit and Recover", icon: "🙏", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[1 Enemy Unit] 12% Physical Damage (ATK mod) | [1 Allied Unit] Recovers 13% HP. (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_and_heal", enemyDmg: 0.12, allyHeal: 0.13, modifiedBy: "atk" },
+    base: 0.12, perLevel: 0.1214,
+    nextDesc: (lvl) => {
+      const dmg = Math.round((0.12+lvl*0.1214)*100);
+      const heal = Math.round((0.13+lvl*0.1114)*100);
+      return `1 enemy ${dmg}% Physical DMG | 1 ally heals ${heal}% HP — rounds 3,6,9`;
+    },
+  },
+
+  kraul_men_with_hats: {
+    name: "Men with Hats", icon: "🪖", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "passive",
+    desc: "[Allied Units] Damage Received from Wizard Units -1.0%. (Passive)",
+    effect: { type: "dmg_resist_vs_faction", faction: "bountyhunters", value: 0.01 },
+    base: 0.01, perLevel: 0.01,
+    nextDesc: (lvl) => `All allies DMG Received from Wizards -${Math.round((0.01+lvl*0.01)*100)}% (permanent)`,
+  },
+
+  // ── R3 — Main (1CD → rounds 2, 4, 6, 8, 10) ──────────────────────────────
+  kraul_energetic_youngking: {
+    name: "Energetic Youngking", icon: "⚔️", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "active", cooldown: 1, offset: 2, duration: 1,
+    desc: "[2 Enemy Units] 12% Physical Damage (modified by ATK). (Rounds 2, 4, 6, 8, 10)",
+    effect: { type: "physical_damage_multi", targets: 2, modifiedBy: "atk" },
+    base: 0.12, perLevel: 0.12,
+    maxLevelEffect: { bonusDmg: 0.15, prioritise: "melee" },
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.12+lvl*0.12)*100)}% Physical DMG (ATK mod)${lvl >= 14 ? " | Max: +15% bonus, prioritise Melee" : ""} — rounds 2,4,6,8,10`,
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  kraul_despite_my_age: {
+    name: "Despite my Age", icon: "🐉", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "passive",
+    desc: "[Allied Dragon Units] Damage Dealt +3%. (Passive)",
+    effect: { type: "branch_dmg_bonus", branch: "dragons", value: 0.03 },
+    base: 0.03, perLevel: 0.03,
+    nextDesc: (lvl) => `[Dragon Units] DMG +${Math.round((0.03+lvl*0.03)*100)}% (permanent)`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  kraul_bad_pointy_hats: {
+    name: "Bad Pointy Hats", icon: "🧙", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[1 Enemy Unit, prioritises Wizard units] 60% Physical Damage (modified by ATK). (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_single", target: "prioritiseWizard", modifiedBy: "atk" },
+    base: 0.60, perLevel: 0.60,
+    nextDesc: (lvl) => `[Wizard priority] ${Math.round((0.60+lvl*0.60)*100)}% Physical DMG (ATK mod) — rounds 3,6,9`,
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  kraul_future_king: {
+    name: "Future King", icon: "👑", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "passive",
+    desc: "[If All Allied Units are Dragons] CMD ATK +2.0. (Passive)",
+    effect: { type: "all_dragon_army_cmd_atk", value: 2.0 },
+    base: 2.0, perLevel: 2.0,
+    maxLevelEffect: { dragonDmgRangeMin: 2, dragonDmgRangeMax: 3 },
+    nextDesc: (lvl) => `[All-Dragon army] CMD ATK +${2.0+lvl*2.0}${lvl >= 14 ? " | Max: Dragon Units DMG +2-3" : ""} (permanent)`,
+  },
+
+  // ── R5 — Sides (2CD → rounds 3, 6, 9) ────────────────────────────────────
+  kraul_on_the_prowl: {
+    name: "Kraul on the Prowl", icon: "💥", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[All Enemy Units] 40% Physical Damage | 40% chance to Stun for 1 round. (Rounds 3, 6, 9)",
+    effect: { type: "aoe_physical_stun_chance", stunChance: 0.40, stunDuration: 1 },
+    base: 0.40, perLevel: 0.40,
+    nextDesc: (lvl) => `All enemies ${Math.round((0.40+lvl*0.40)*100)}% Physical DMG + 40% Stun (1 rnd) — rounds 3,6,9`,
+  },
+
+  // Round 2 then 2CD → rounds 3, 6, 9 (offset:3 after first shot on round 2... handled as offset:2, cd:2 → rounds 2,4,6,8,10... actually: round 2 start then cd2 = rounds 2,5,8; clarified as offset:3, cd:2 → rounds 3,6,9 with first fire round 2)
+  // Per design: [Round 2] then cooldown 2, offset 3 → fires round 2 then rounds 3,6,9
+  kraul_nose_dive: {
+    name: "Nose Dive", icon: "🦅", tree: "command", cls: "leader",
+    faction: "dragons", commander: "h23",
+    type: "active", cooldown: 2, offset: 2, duration: 1,
+    desc: "[1 Enemy Unit with lowest DEF] 70% Physical Damage (ATK mod). (Rounds 2, 4, 6, 8, 10)",
+    effect: { type: "physical_damage_single", target: "lowestDef", modifiedBy: "atk" },
+    base: 0.70, perLevel: 0.70,
+    nextDesc: (lvl) => `[Lowest DEF unit] ${Math.round((0.70+lvl*0.70)*100)}% Physical DMG (ATK mod) — rounds 2,4,6,8,10`,
   },
 };
 
-// 10 Reskins — leader pool, scrappy Hatchling dragon theme
-
-export const KRAUL_RESKIN_SKILLS = {
-  kraul_warchief_aura: {
-    name: "Hatchling War-Aura", icon: "📡", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "passive",
-    desc: "Even as a Hatchling, Kraul radiates dragon authority. Troops permanently fight with greater ferocity.",
-    passiveTroopAtk: 0.07, base: 0.07, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.07 + lvl * 0.04) * 100)}% troop ATK (permanent)`,
-  },
-  kraul_warchief_roar: {
-    name: "Ashen Roar", icon: "📣", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "active", cooldown: 2, offset: 2, duration: 2,
-    desc: "Kraul unleashes a thunderous roar through the ranks — the army surges in attack every other round.",
-    troopAtkMult: 1.15, base: 1.15, perLevel: 0.05,
-    nextDesc: (lvl) => `+${Math.round((0.15 + lvl * 0.05) * 100 - 100)}% troop ATK (2 rnd) — rounds 2,4,6,8,10`,
-  },
-  kraul_grand_strategy: {
-    name: "Feral Grand Charge", icon: "🗺", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "active", cooldown: 4, offset: 1, duration: 3,
-    desc: "Kraul coordinates a savage charge — the whole army pushes forward with attack and defense surging.",
-    troopAtkMult: 1.20, troopDefMult: 1.10, base: 1.20, perLevel: 0.06,
-    nextDesc: (lvl) => `+${Math.round((0.20 + lvl * 0.06) * 100 - 100)}% ATK & +10% DEF (3 rnd) — rounds 1,5,9`,
-  },
-  kraul_forced_march: {
-    name: "Ash Sprint", icon: "💨", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "active", cooldown: 5, offset: 5, duration: 1,
-    desc: "Kraul ignites the army with its own frantic energy — everyone charges at full throttle.",
-    troopAtkMult: 1.50, base: 1.50, perLevel: 0.10,
-    nextDesc: (lvl) => `+${Math.round((0.50 + lvl * 0.10) * 100)}% troop ATK — rounds 5,10`,
-  },
-  kraul_supply_cut: {
-    name: "Claw the Supply Line", icon: "✂", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "active", cooldown: 3, offset: 1, duration: 1,
-    desc: "Kraul tears through enemy supply lines with wild abandon — blocking all healing.",
-    blockHeal: 2, base: 2, perLevel: 1,
-    nextDesc: (lvl) => `Block enemy heal ${2 + lvl} rounds — rounds 1,4,7,10`,
-  },
-  kraul_tactical_advance: {
-    name: "Dragon Surge", icon: "♟", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "active", cooldown: 4, offset: 3, duration: 2,
-    desc: "Kraul pushes the army into a coordinated surge — attack climbs and enemy fire weakens.",
-    troopAtkMult: 1.12, enemyDmgReduce: 0.10, base: 1.12, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.12 + lvl * 0.04) * 100 - 100)}% troop ATK + -10% enemy dmg (2 rnd) — rounds 3,7`,
-  },
-  kraul_war_council: {
-    name: "Hatchling War Council", icon: "📜", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "active", cooldown: 5, offset: 2, duration: 1,
-    desc: "Kraul sniffs out the enemy's plan and disrupts it — then rallies the army in the same breath.",
-    nullifySkill: true, troopAtkMult: 1.18, base: 1.18, perLevel: 0.05,
-    nextDesc: (lvl) => `Nullify enemy skill + +${Math.round((0.18 + lvl * 0.05) * 100 - 100)}% troop ATK — rounds 2,7`,
-  },
-  kraul_legion_discipline: {
-    name: "Ash-Steel Ranks", icon: "🪖", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "passive",
-    desc: "Kraul's troops may be small but they fight like dragons. Permanently hardened troop defenses.",
-    passiveTroopDef: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.06 + lvl * 0.04) * 100)}% troop DEF (permanent)`,
-  },
-  kraul_siege_mastery: {
-    name: "Young Siege Instinct", icon: "🪨", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "passive",
-    desc: "Even young dragons know how to tear down walls. Permanently ignores a portion of garrison bonuses.",
-    passiveGarrisonIgnore: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `Ignore ${Math.round((0.06 + lvl * 0.04) * 100)}% garrison bonus (permanent)`,
-  },
-  kraul_shield_order: {
-    name: "Scale-Shield Order", icon: "🛡", tree: "command", cls: "leader",
-    faction: "dragons", commander: "h23",
-    type: "active", cooldown: 2, offset: 1, duration: 1,
-    desc: "Kraul snaps orders — troops raise shields and hunker down every other round.",
-    troopDefMult: 1.12, base: 1.12, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.12 + lvl * 0.04) * 100 - 100)}% troop DEF — rounds 1,3,5,7,9`,
-  },
-};
+export const KRAUL_RESKIN_SKILLS = {};
 
 // ── CINDERFANG (balanced, Hatchling) ──────────────────────────────────────────
-// Balanced: combat + defense + tactics mix. Scrappy, fierce, unpredictable
-//           Hatchling — raw fire-breath, hit-and-run, instinct-driven combat.
-// Stats: ATK 100, FOC 0, SPD 58 — solid physical attacker; brawler-type balanced
-//        with fire-theme throughout.
-
-// ★ 2 Unique Skills
+// ATK:100, FOC:0, SPD:58 — Drake Rider specialist balanced. Mounted synergy,
+// reactive dragon stacks, fire status application, buff-stripping.
+// 12 unique skills, no reskins.
 
 export const CINDERFANG_UNIQUE_SKILLS = {
-  cinderfang_fire_frenzy: {
-    name: "Fire Frenzy", icon: "🔥", tree: "combat", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "active", cooldown: 3, offset: 1, duration: 1,
-    desc: "Cinderfang enters a wild fire-frenzy — a rapid three-hit barrage that sets whatever it touches ablaze and makes the enemy more vulnerable.",
-    cmdHits: 3, cmdMult: 0.95, enemyDmgTakenUp: 0.12, base: 0.95, perLevel: 0.08,
-    nextDesc: (lvl) => `3 hits ×${(0.95 + lvl * 0.08).toFixed(2)} + 12% enemy vulnerability — rounds 1,4,7,10`,
-  },
-  cinderfang_cinder_hide: {
-    name: "Cinder Hide", icon: "🐲", tree: "defense", cls: "balanced",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  cinderfang_dragon_rider: {
+    name: "Dragon Rider", icon: "🐉", tree: "combat", cls: "balanced",
     faction: "dragons", commander: "h24",
     type: "passive",
-    desc: "Cinderfang's ember-scales glow with smoldering heat — permanently reducing incoming damage and toughening the army's resolve.",
-    passiveDmgReduce: 0.04, passiveTroopDef: 0.05, base: 0.04, perLevel: 0.02,
-    nextDesc: (lvl) => `-${Math.round((0.04 + lvl * 0.02) * 100)}% incoming dmg & +${Math.round(0.05 * 100)}% troop DEF (permanent)`,
+    desc: "[Drake Rider Units] Each time damage is received: DMG +2-3 (max 4 stacks). (Passive)",
+    effect: { type: "reactive_branch_dmg_range_stack", branch: "drake_riders", dmgMin: 2, dmgMax: 3, maxStacks: 4 },
+    base: 2, perLevel: 0,
+    nextDesc: () => `[Drake Riders] On damage received: DMG +2-3 (max 4 stacks/+8-12 total) (permanent)`,
+  },
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  cinderfang_drake_master: {
+    name: "Drake Master", icon: "🐾", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "passive",
+    desc: "[Drake Rider Units] Damage Dealt +2%. (Passive)",
+    effect: { type: "branch_dmg_bonus", branch: "drake_riders", value: 0.02 },
+    base: 0.02, perLevel: 0.02,
+    nextDesc: (lvl) => `[Drake Riders] DMG +${Math.round((0.02+lvl*0.02)*100)}% (permanent)`,
+  },
+
+  cinderfang_me_and_my_dragons: {
+    name: "Me and My Dragons", icon: "🐲", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "passive",
+    desc: "[If all units are Drake Riders] [Drake Rider Units] All stats +1.0%. (Passive)",
+    effect: { type: "all_branch_army_bonus", branch: "drake_riders", value: 0.01 },
+    base: 0.01, perLevel: 0.01,
+    nextDesc: (lvl) => `[All-Drake Rider army] Drake Riders: all stats +${Math.round((0.01+lvl*0.01)*100)}% (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  cinderfang_mounted_specialist: {
+    name: "Mounted Specialist", icon: "🐺", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "passive",
+    desc: "[Mounted Units] Damage +0.6% upon inflicting damage (modified by SPD), up to 3 stacks. (Passive)",
+    effect: { type: "mounted_atk_stack_spd", valuePerStack: 0.006, maxStacks: 3, modifiedBy: "spd" },
+    base: 0.006, perLevel: 0.006,
+    maxLevelEffect: { mountedHpBonus: 15 },
+    nextDesc: (lvl) => `[Mounted] DMG +${((0.006+lvl*0.006)*100).toFixed(1)}% per stack (SPD mod, 3 stacks max)${lvl >= 14 ? " | Max: Mounted Units HP +15" : ""} (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // Round 3 only — single trigger
+  cinderfang_frontline_medic: {
+    name: "Frontline Medic", icon: "🩹", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "active", cooldown: 99, offset: 3, duration: 1,
+    desc: "[Mounted Units] Heals 50% HP. Triggers Round 3 only.",
+    effect: { type: "heal_branch", branch: "mounted", healPct: 0.50 },
+    base: 0.50, perLevel: 0.50,
+    nextDesc: (lvl) => `[Mounted Units] Heal ${Math.round((0.50+lvl*0.50)*100)}% HP — Round 3 only`,
+  },
+
+  cinderfang_mounted_armor: {
+    name: "Mounted Armor", icon: "🛡️", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "passive",
+    desc: "[Mounted Units] Damage Received -2.5%. (Passive)",
+    effect: { type: "branch_dmg_reduce", branch: "mounted", value: 0.025 },
+    base: 0.025, perLevel: 0.025,
+    nextDesc: (lvl) => `[Mounted Units] DMG Received -${((0.025+lvl*0.025)*100).toFixed(1)}% (permanent)`,
+  },
+
+  // ── R3 — Main (2CD → rounds 3, 6, 9) ─────────────────────────────────────
+  cinderfang_i_can_help: {
+    name: "I Can Help", icon: "🔥", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Enemy Units] 10% Physical Damage | 35% chance to apply Burn. (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_multi_burn_chance", targets: 2, burnChance: 0.35, burnDmgPenalty: 0.20 },
+    base: 0.10, perLevel: 0.10,
+    maxLevelEffect: { burnChance: 0.50 },
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.10+lvl*0.10)*100)}% Physical DMG + 35% Burn${lvl >= 14 ? " | Max: Burn → 50%" : ""} — rounds 3,6,9`,
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  cinderfang_me_little_army_big: {
+    name: "Me Little, Army Big", icon: "💪", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "passive",
+    desc: "[Allied Dragon Units] HP +1 | DEF +1. (Passive)",
+    effect: { type: "branch_flat_hp_def_bonus", branch: "dragons", hpValue: 1, defValue: 1 },
+    base: 1, perLevel: 1,
+    nextDesc: (lvl) => `[Dragon Units] HP +${1+lvl*1} | DEF +${1+lvl*1} (permanent)`,
+  },
+
+  // 3CD → rounds 4, 8
+  cinderfang_dont_underestimate_me: {
+    name: "Don't Underestimate Me", icon: "😤", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[1 Enemy Unit] 40% Physical Damage | 45% chance to inflict Confusion. (Rounds 4, 8)",
+    effect: { type: "physical_damage_confusion_chance", confusionChance: 0.45, confusionDuration: 1 },
+    base: 0.40, perLevel: 0.40,
+    nextDesc: (lvl) => `${Math.round((0.40+lvl*0.40)*100)}% Physical DMG + 45% Confusion (1 rnd) — rounds 4,8`,
+  },
+
+  // ── R5 — Main (3CD → rounds 4, 8) ────────────────────────────────────────
+  cinderfang_clear_the_air: {
+    name: "Clear the Air", icon: "🌬️", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[Round Start] 4% chance to remove all positive stat buffs from the Enemy Army. (Rounds 4, 8)",
+    effect: { type: "aoe_enemy_buff_strip_chance", chance: 0.04 },
+    base: 0.04, perLevel: 0.04,
+    maxLevelEffect: { dragonHpBonus: 15 },
+    nextDesc: (lvl) => `Round start: ${Math.round((0.04+lvl*0.04)*100)}% chance to strip all enemy buffs${lvl >= 14 ? " | Max: Dragon Units HP +15" : ""} — rounds 4,8`,
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  cinderfang_focused: {
+    name: "Focused", icon: "🧘", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "passive",
+    desc: "[Commander] Round Start: 7% chance to gain Confusion Immunity. (Passive)",
+    effect: { type: "per_round_confusion_immune_chance", chance: 0.07 },
+    base: 0.07, perLevel: 0.07,
+    nextDesc: (lvl) => `Round start: ${Math.min(100,Math.round((0.07+lvl*0.07)*100))}% chance Confusion Immunity (permanent)`,
+  },
+
+  cinderfang_you_get_a_heal: {
+    name: "You Get a Heal!", icon: "💚", tree: "combat", cls: "balanced",
+    faction: "dragons", commander: "h24",
+    type: "passive",
+    desc: "[Allied Dragon Units] Heal 6% HP whenever inflicted with a debuff (max once per round). (Passive)",
+    effect: { type: "branch_heal_on_debuff", branch: "dragons", healPct: 0.06, maxPerRound: 1 },
+    base: 0.06, perLevel: 0.06,
+    nextDesc: (lvl) => `[Dragon Units] Heal ${Math.round((0.06+lvl*0.06)*100)}% HP on debuff received (max 1/round) (permanent)`,
   },
 };
 
-// 10 Reskins — balanced: 4 combat, 3 defense, 3 tactics
-
-export const CINDERFANG_RESKIN_SKILLS = {
-  cinderfang_killing_instinct: {
-    name: "Cinder Instinct", icon: "⚔", tree: "combat", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "passive",
-    desc: "Born to burn and bite. Cinderfang permanently strikes with greater force.",
-    passiveCmdAtk: 0.08, base: 0.08, perLevel: 0.06,
-    nextDesc: (lvl) => `+${Math.round((0.08 + lvl * 0.06) * 100)}% cmd ATK (permanent)`,
-  },
-  cinderfang_quick_strike: {
-    name: "Snap Bite", icon: "⚡", tree: "combat", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "active", cooldown: 2, offset: 1, duration: 1,
-    desc: "Cinderfang snaps with reckless speed — a quick, hot bite every other round.",
-    cmdMult: 1.4, base: 1.4, perLevel: 0.15,
-    nextDesc: (lvl) => `${Math.round((1.4 + lvl * 0.15) * 100)}% damage — rounds 1,3,5,7,9`,
-  },
-  cinderfang_battle_hunger: {
-    name: "Ember Feed", icon: "🩸", tree: "combat", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "active", cooldown: 3, offset: 1, duration: 1,
-    desc: "Cinderfang feeds on the fire of battle — striking hard and restoring troops from the carnage.",
-    cmdMult: 1.3, lifesteal: 0.25, base: 0.25, perLevel: 0.05,
-    nextDesc: (lvl) => `130% damage, restore troops = ${Math.round((0.25 + lvl * 0.05) * 100)}% of damage dealt — rounds 1,4,7,10`,
-  },
-  cinderfang_savage_blow: {
-    name: "Char Strike", icon: "🔥", tree: "combat", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "active", cooldown: 3, offset: 3, duration: 1,
-    desc: "A searing strike that chars through armor and leaves the enemy wide open.",
-    cmdMult: 2.2, enemyDmgTakenUp: 0.15, base: 2.2, perLevel: 0.20,
-    nextDesc: (lvl) => `${Math.round((2.2 + lvl * 0.20) * 100)}% damage + 15% vulnerability — rounds 3,6,9`,
-  },
-  cinderfang_hold_the_line: {
-    name: "Scales Locked", icon: "🚩", tree: "defense", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "active", cooldown: 2, offset: 2, duration: 1,
-    desc: "Cinderfang signals the line to dig in — troop damage reduced every other round.",
-    troopDmgReduce: 0.14, base: 0.14, perLevel: 0.04,
-    nextDesc: (lvl) => `-${Math.round((0.14 + lvl * 0.04) * 100)}% troop dmg — rounds 2,4,6,8,10`,
-  },
-  cinderfang_iron_bastion: {
-    name: "Ember Bastion", icon: "⛩", tree: "defense", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "active", cooldown: 4, offset: 2, duration: 3,
-    desc: "Cinderfang crouches low and tucks its wings — a dragon fortress that shelters the whole army.",
-    troopDmgReduce: 0.18, base: 0.18, perLevel: 0.05,
-    nextDesc: (lvl) => `-${Math.round((0.18 + lvl * 0.05) * 100)}% troop dmg (3 rnd) — rounds 2,6,10`,
-  },
-  cinderfang_fortified_ranks: {
-    name: "Fire-Tempered Scales", icon: "🪖", tree: "defense", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "passive",
-    desc: "Cinderfang's fire hardens its allies just as it does its own scales. Permanently increased troop defense.",
-    passiveTroopDef: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.06 + lvl * 0.04) * 100)}% troop DEF (permanent)`,
-  },
-  cinderfang_mending_wave: {
-    name: "Ash Triage", icon: "✨", tree: "tactics", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "active", cooldown: 2, offset: 2, duration: 1,
-    desc: "Cinderfang's breath carries a surprising warmth between bouts — restoring fallen troops every other round.",
-    healPct: 0.06, base: 0.06, perLevel: 0.02,
-    nextDesc: (lvl) => `Restore ${Math.round((0.06 + lvl * 0.02) * 100)}% lost troops — rounds 2,4,6,8,10`,
-  },
-  cinderfang_inspiring_presence: {
-    name: "Scrapper's Fire", icon: "⭐", tree: "tactics", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "passive",
-    desc: "There's something about a young dragon's ferocity that makes everyone fight harder. Permanently increased troop attack.",
-    passiveTroopAtk: 0.05, base: 0.05, perLevel: 0.03,
-    nextDesc: (lvl) => `+${Math.round((0.05 + lvl * 0.03) * 100)}% troop ATK (permanent)`,
-  },
-  cinderfang_blind_strike: {
-    name: "Cinder Spray", icon: "👁", tree: "tactics", cls: "balanced",
-    faction: "dragons", commander: "h24",
-    type: "active", cooldown: 3, offset: 1, duration: 2,
-    desc: "Cinderfang sprays a burst of hot cinders at enemy eyes — their attack falters for 2 rounds.",
-    enemyAtkReduce: 0.12, base: 0.12, perLevel: 0.03,
-    nextDesc: (lvl) => `-${Math.round((0.12 + lvl * 0.03) * 100)}% enemy ATK (2 rnd) — rounds 1,4,7,10`,
-  },
-};
+export const CINDERFANG_RESKIN_SKILLS = {};
 
 // ── PYREWING SKAR (attacker, Elder) ───────────────────────────────────────────
-// Attacker: combat tree. Ancient, devastating, apocalyptic Elder dragon —
-//           the sky itself burns where Skar flies. Pure destructive force.
-// Stats: ATK 180, FOC 0, SPD 78 — near-max ATK; hp-shredding, AoE firestorm,
-//        lifesteal, relentless crushing physical damage.
-
-// ★ 2 Unique Skills
+// ATK:190, FOC:0, SPD:55 — apex dragon destroyer. Burn, bleed, anti-wizard,
+// thorns reflect, dragon buff. The apocalypse on wings.
 
 export const SKAR_UNIQUE_SKILLS = {
-  skar_apocalypse_breath: {
-    name: "Apocalypse Breath", icon: "🌋", tree: "combat", cls: "attacker",
+
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  skar_earthquake: {
+    name: "Earthquake", icon: "🌋", tree: "combat", cls: "attacker",
     faction: "dragons", commander: "h35",
-    type: "active", cooldown: 5, offset: 3, duration: 1,
-    desc: "Skar fills its lungs with millennia of fire and releases everything — scorching every enemy on the field for massive AoE damage that cannot be reduced.",
-    cmdAoe: true, cmdMult: 2.2, cmdPctDmg: 0.06, base: 2.2, perLevel: 0.18,
-    nextDesc: (lvl) => `All enemies ${Math.round((2.2 + lvl * 0.18) * 100)}% AoE + 6% max HP direct — rounds 3,8`,
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[All Enemies] 12% Physical Damage | 50% chance to apply Slow (-20 SPD, 1 rnd). (Rounds 3, 6, 9)",
+    effect: { type: "aoe_physical_slow", slowChance: 0.50, slowValue: 20, slowDuration: 1 },
+    base: 0.12, perLevel: 0.12,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => `All enemies ${Math.round((0.12+lvl*0.12)*100)}% Physical DMG + 50% Slow (-20 SPD, 1 rnd)${lvl >= 14 ? " | Max: ATK +15" : ""} — rounds 3,6,9`,
   },
-  skar_ancient_predator: {
-    name: "Ancient Predator", icon: "🐉", tree: "combat", cls: "attacker",
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  skar_dragon_fire: {
+    name: "Dragon Fire", icon: "🔥", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Enemy Units] 10% chance to inflict Burn. (Rounds 3, 6, 9)",
+    effect: { type: "burn_apply_only", targets: 2, burnChance: 0.10, burnDmgPenalty: 0.20 },
+    base: 0.10, perLevel: 0.10,
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.10+lvl*0.10)*100)}% chance to apply Burn — rounds 3,6,9`,
+  },
+
+  skar_charred: {
+    name: "Charred", icon: "🪵", tree: "combat", cls: "attacker",
     faction: "dragons", commander: "h35",
     type: "passive",
-    desc: "Skar has hunted for centuries. Its commander damage is permanently amplified beyond mortal reckoning — and its critical instinct is legendary.",
-    passiveCmdAtk: 0.14, passiveCritChance: 0.08, base: 0.14, perLevel: 0.05,
-    nextDesc: (lvl) => `+${Math.round((0.14 + lvl * 0.05) * 100)}% cmd ATK & +8% crit (permanent)`,
+    desc: "[Commander] +3% damage to enemies suffering from Burn. (Passive)",
+    effect: { type: "cmd_dmg_bonus_vs_burn", value: 0.03 },
+    base: 0.03, perLevel: 0.03,
+    nextDesc: (lvl) => `CMD DMG +${Math.round((0.03+lvl*0.03)*100)}% vs burning targets (permanent)`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  skar_dragon_claw: {
+    name: "Dragon Claw", icon: "🐉", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[1 Enemy Unit] 20% Physical Damage (ATK mod) | 40% chance to inflict Bleed. (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_bleed", target: "single", bleedChance: 0.40, bleedDmg: 0.30, bleedDuration: 2, modifiedBy: "atk" },
+    base: 0.20, perLevel: 0.20,
+    maxLevelEffect: { armyDmgVsBleedOrBurn: 0.10 },
+    nextDesc: (lvl) => `${Math.round((0.20+lvl*0.20)*100)}% Physical DMG (ATK mod) + 40% Bleed${lvl >= 14 ? " | Max: Army +10% DMG vs Bleed/Burn targets" : ""} — rounds 3,6,9`,
+  },
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  skar_wizards_worst_nightmare: {
+    name: "Wizard's Worst Nightmare", icon: "🧙", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[1 Enemy Unit] 30% Physical Damage | [1 Random Wizard Enemy Unit] Additional 20% Physical Damage. (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_faction_bonus", primaryDmg: 0.30, bonusDmg: 0.20, bonusFaction: "bountyhunters" },
+    base: 0.30, perLevel: 0.30,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => {
+      const p = Math.round((0.30+lvl*0.30)*100);
+      const b = Math.round((0.20+lvl*0.20)*100);
+      return `${p}% Physical DMG + ${b}% bonus vs Wizard unit${lvl >= 14 ? " | Max: ATK +15" : ""} — rounds 3,6,9`;
+    },
+  },
+
+  // 3CD → rounds 4, 8
+  skar_dragons_rage: {
+    name: "Dragon's Rage", icon: "💥", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[1 Enemy Unit, prioritises Melee] 27% Physical Damage | 50% chance for additional 27% Physical Damage. (Rounds 4, 8)",
+    effect: { type: "physical_damage_followup", target: "prioritiseMelee", initialDmg: 0.27, followupDmg: 0.27, followupChance: 0.50 },
+    base: 0.27, perLevel: 0.2471,
+    nextDesc: (lvl) => {
+      const dmg = Math.round((0.27+lvl*0.2471)*100);
+      return `[Melee priority] ${dmg}% + 50% chance ${dmg}% follow-up Physical DMG — rounds 4,8`;
+    },
+  },
+
+  // ── R3 — Main ─────────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  skar_dragon_snack: {
+    name: "Dragon Snack", icon: "🍖", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Enemy Units] 20% Physical Damage (ATK mod) | Melee units take +50% additional damage. (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_multi_melee_bonus", targets: 2, meleeBonusDmg: 0.50, modifiedBy: "atk" },
+    base: 0.20, perLevel: 0.20,
+    maxLevelEffect: { atkBonus: 15 },
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.20+lvl*0.20)*100)}% Physical DMG (ATK mod) | Melee +50% extra${lvl >= 14 ? " | Max: ATK +15" : ""} — rounds 3,6,9`,
+  },
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  skar_dragon_scales: {
+    name: "Dragon Scales", icon: "🦎", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "passive",
+    desc: "[Dragon Units] At battle start: 7% chance to gain Poison/Venom Immunity. (Passive)",
+    effect: { type: "branch_battle_start_immunity", branch: "dragons", immunity: ["poison","venom"], chance: 0.07 },
+    base: 0.07, perLevel: 0.1386,
+    nextDesc: (lvl) => `[Dragon Units] Battle start: ${Math.min(100,Math.round((0.07+lvl*0.1386)*100))}% chance for Poison/Venom Immunity (permanent)`,
+  },
+
+  // 2CD → rounds 3, 6, 9
+  skar_fire_blast: {
+    name: "Fire Blast", icon: "💨", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Enemy Units] 30% Burn-type Physical Damage (ATK mod). (Rounds 3, 6, 9)",
+    effect: { type: "physical_damage_multi", targets: 2, modifiedBy: "atk", damageType: "burn" },
+    base: 0.30, perLevel: 0.30,
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.30+lvl*0.30)*100)}% Burn-type Physical DMG (ATK mod) — rounds 3,6,9`,
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  skar_dragon_inferno: {
+    name: "Dragon Inferno", icon: "🌋", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[1 Enemy Unit] 40% Burn Damage (ATK mod) | 50% chance to apply Burn. (Rounds 3, 6, 9)",
+    effect: { type: "burn_damage_atk_mod", target: "single", burnChance: 0.50, burnDmgPenalty: 0.20, modifiedBy: "atk" },
+    base: 0.40, perLevel: 0.40,
+    maxLevelEffect: { enemyBurnDmgReceivedUp: 0.05 },
+    nextDesc: (lvl) => `${Math.round((0.40+lvl*0.40)*100)}% Burn DMG (ATK mod) + 50% Burn${lvl >= 14 ? " | Max: Enemies receive +5% Burn DMG" : ""} — rounds 3,6,9`,
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  // 3CD → rounds 4, 8
+  skar_dragons_roar: {
+    name: "Dragon's Roar", icon: "📣", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[2 Enemy Units] 10% chance to Stun for 1 round. (Rounds 4, 8)",
+    effect: { type: "stun_chance", targets: 2, chance: 0.10 },
+    base: 0.10, perLevel: 0.10,
+    nextDesc: (lvl) => `[2 Enemy Units] ${Math.round((0.10+lvl*0.10)*100)}% chance to Stun (1 rnd) — rounds 4,8`,
+  },
+
+  skar_tough_skin: {
+    name: "Tough Skin", icon: "🦏", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "passive",
+    desc: "[Enemy Units] When attacking Dragon units with Physical Damage: Take 1% damage. (Passive)",
+    effect: { type: "thorns_physical", branch: "dragons", value: 0.01 },
+    base: 0.01, perLevel: 0.01,
+    nextDesc: (lvl) => `Enemies attacking Dragon units: take ${Math.round((0.01+lvl*0.01)*100)}% damage back (permanent)`,
   },
 };
 
-// 10 Reskins — attacker pool, apocalyptic Elder dragon theme
-
-export const SKAR_RESKIN_SKILLS = {
-  skar_killing_instinct: {
-    name: "Elder's Bloodlust", icon: "⚔", tree: "combat", cls: "attacker",
-    faction: "dragons", commander: "h35",
-    type: "passive",
-    desc: "Skar has never lost the hunger of its youth — only amplified it over centuries. Permanently increased commander damage.",
-    passiveCmdAtk: 0.08, base: 0.08, perLevel: 0.06,
-    nextDesc: (lvl) => `+${Math.round((0.08 + lvl * 0.06) * 100)}% cmd ATK (permanent)`,
-  },
-  skar_execute: {
-    name: "Dragon's Decree", icon: "💀", tree: "combat", cls: "attacker",
-    faction: "dragons", commander: "h35",
-    type: "active", cooldown: 5, offset: 1, duration: 1,
-    desc: "Skar decides the battle ends — one apocalyptic strike on the opening and midpoint of combat.",
-    cmdMult: 3.0, base: 3.0, perLevel: 0.25,
-    nextDesc: (lvl) => `${Math.round((3.0 + lvl * 0.25) * 100)}% damage — rounds 1,6`,
-  },
-  skar_battle_frenzy: {
-    name: "Elder Frenzy", icon: "🔥", tree: "combat", cls: "attacker",
-    faction: "dragons", commander: "h35",
-    type: "active", cooldown: 2, offset: 2, duration: 1,
-    desc: "The Elder's wrath builds to a frenzy — savage strikes with heightened crit every other round.",
-    cmdMult: 1.15, critBonus: 0.30, base: 1.15, perLevel: 0.05,
-    nextDesc: (lvl) => `${Math.round((1.15 + lvl * 0.05) * 100)}% damage + 30% crit — rounds 2,4,6,8,10`,
-  },
-  skar_killing_edge: {
-    name: "Scale-Sunder", icon: "🔪", tree: "combat", cls: "attacker",
-    faction: "dragons", commander: "h35",
-    type: "active", cooldown: 5, offset: 5, duration: 1,
-    desc: "Skar targets the enemy's core — direct damage equal to a portion of their full troop strength.",
-    cmdPctDmg: 0.06, base: 0.06, perLevel: 0.02,
-    nextDesc: (lvl) => `${Math.round((0.06 + lvl * 0.02) * 100)}% enemy max HP direct dmg — rounds 5,10`,
-  },
-  skar_deathblow: {
-    name: "Cataclysm Strike", icon: "💥", tree: "combat", cls: "attacker",
-    faction: "dragons", commander: "h35",
-    type: "active", cooldown: 5, offset: 3, duration: 1,
-    desc: "A strike delivered with the weight of geological age — direct damage with a devastating crit chance.",
-    cmdPctDmg: 0.10, critBonus: 0.50, base: 0.10, perLevel: 0.02,
-    nextDesc: (lvl) => `${Math.round((0.10 + lvl * 0.02) * 100)}% max HP direct + 50% crit — rounds 3,8`,
-  },
-  skar_battle_hunger: {
-    name: "Fire and Feed", icon: "🩸", tree: "combat", cls: "attacker",
-    faction: "dragons", commander: "h35",
-    type: "active", cooldown: 3, offset: 1, duration: 1,
-    desc: "Skar burns and devours — every strike restores the army from the destruction it causes.",
-    cmdMult: 1.3, lifesteal: 0.25, base: 0.25, perLevel: 0.05,
-    nextDesc: (lvl) => `130% damage, restore troops = ${Math.round((0.25 + lvl * 0.05) * 100)}% of damage dealt — rounds 1,4,7,10`,
-  },
-  skar_sweeping_strike: {
-    name: "Firestorm Sweep", icon: "🌪", tree: "combat", cls: "attacker",
-    faction: "dragons", commander: "h35",
-    type: "active", cooldown: 4, offset: 2, duration: 1,
-    desc: "Skar sweeps its wing and unleashes a firestorm — all enemies hit, then a follow-up on the wounded.",
-    cmdAoe: true, cmdMult: 0.8, followUpChance: 0.50, followUpPct: 1.2, base: 0.8, perLevel: 0.06,
-    nextDesc: (lvl) => `All enemies ${Math.round((0.8 + lvl * 0.06) * 100)}% AoE + 50% chance single follow-up 120% — rounds 2,6,10`,
-  },
-  skar_predator_eyes: {
-    name: "Ancient Gaze", icon: "🦅", tree: "combat", cls: "attacker",
-    faction: "dragons", commander: "h35",
-    type: "passive",
-    desc: "Skar has hunted from mountain heights for centuries. Permanently sharpened crit chance.",
-    passiveCritChance: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.06 + lvl * 0.04) * 100)}% crit chance (permanent)`,
-  },
-  skar_double_strike: {
-    name: "Fang and Talon", icon: "⚔", tree: "combat", cls: "attacker",
-    faction: "dragons", commander: "h35",
-    type: "active", cooldown: 4, offset: 2, duration: 1,
-    desc: "Skar strikes twice without hesitation — fang and talon in a single terrifying motion.",
-    cmdHits: 2, cmdMult: 1.2, base: 1.2, perLevel: 0.10,
-    nextDesc: (lvl) => `2 hits ×${(1.2 + lvl * 0.10).toFixed(2)} — rounds 2,6,10`,
-  },
-  skar_relentless: {
-    name: "Eternal Wrath", icon: "🗡", tree: "combat", cls: "attacker",
-    faction: "dragons", commander: "h35",
-    type: "active", cooldown: 1, offset: 1, duration: 1,
-    desc: "Skar does not pause. It does not tire. It strikes every single round without mercy.",
-    cmdMult: 1.08, base: 1.08, perLevel: 0.04,
-    nextDesc: (lvl) => `${Math.round((1.08 + lvl * 0.04) * 100)}% damage — every round`,
-  },
-};
+export const SKAR_RESKIN_SKILLS = {};
 
 // ── VOIDSCALE NYXARA (strategist, Elder) ──────────────────────────────────────
-// Strategist: tactics-heavy + combat secondary. Ancient, devastating Elder
-//             wrapped in void-dark scales — elemental void magic, entropy debuffs,
-//             reality-warping hexes, and precise focus strikes.
-// Stats: ATK 60, FOC 175, SPD 82 — very high FOC; focus-elemental damage,
-//        reality-tear debuffs, exposure, deep scaling void strikes.
-
-// ★ 2 Unique Skills
+// ATK:30, FOC:170, SPD:60 — dragon strategist. FOC-based control, dragon sustain,
+// commander debuffing, anti-wizard. Shares Elder Dragon + Dragon Supremacy with Skar.
 
 export const NYXARA_UNIQUE_SKILLS = {
-  nyxara_void_rupture: {
-    name: "Void Rupture", icon: "🌑", tree: "tactics", cls: "strategist",
-    faction: "dragons", commander: "h36",
-    type: "active", cooldown: 4, offset: 2, duration: 2,
-    desc: "Nyxara tears a rift in the fabric of the battlefield — enemy damage collapses and they become catastrophically vulnerable to every attack.",
-    enemyDmgReduce: 0.20, enemyDmgTakenUp: 0.16, base: 0.20, perLevel: 0.04,
-    nextDesc: (lvl) => `-${Math.round((0.20 + lvl * 0.04) * 100)}% enemy dmg & +${Math.round(0.16 * 100)}% enemy vulnerability (2 rnd) — rounds 2,6,10`,
-  },
-  nyxara_entropy_strike: {
-    name: "Entropy Strike", icon: "⚫", tree: "combat", cls: "strategist",
-    faction: "dragons", commander: "h36",
-    type: "active", cooldown: 3, offset: 1, duration: 1,
-    desc: "Nyxara channels void-energy into a single precise strike — the enemy's very existence unravels under the impact, leaving them broken and exposed.",
-    cmdMult: 2.4, enemyDmgTakenUp: 0.14, critBonus: 0.30, base: 2.4, perLevel: 0.20,
-    nextDesc: (lvl) => `${Math.round((2.4 + lvl * 0.20) * 100)}% damage + 14% vulnerability + 30% crit — rounds 1,4,7,10`,
-  },
-};
 
-// 10 Reskins — 5 tactics + 5 combat for strategist, void-scale Elder theme
-
-export const NYXARA_RESKIN_SKILLS = {
-  // Tactics (5)
-  nyxara_expose_weakness: {
-    name: "Void Fracture", icon: "🎯", tree: "tactics", cls: "strategist",
-    faction: "dragons", commander: "h36",
-    type: "active", cooldown: 3, offset: 2, duration: 2,
-    desc: "Nyxara senses the fracture lines in reality around the enemy — they take catastrophically more damage.",
-    enemyDmgTakenUp: 0.12, base: 0.12, perLevel: 0.03,
-    nextDesc: (lvl) => `Enemy takes +${Math.round((0.12 + lvl * 0.03) * 100)}% more dmg (2 rnd) — rounds 2,5,8`,
-  },
-  nyxara_hex_curse: {
-    name: "Void Sight Hex", icon: "🔮", tree: "tactics", cls: "strategist",
-    faction: "dragons", commander: "h36",
-    type: "active", cooldown: 4, offset: 2, duration: 2,
-    desc: "Nyxara bends light and void around the enemy — their attacks pass through empty space and miss.",
-    enemyMissChance: 0.18, base: 0.18, perLevel: 0.04,
-    nextDesc: (lvl) => `${Math.round((0.18 + lvl * 0.04) * 100)}% enemy miss (2 rnd) — rounds 2,6,10`,
-  },
-  nyxara_blind_strike: {
-    name: "Entropy Shroud", icon: "👁", tree: "tactics", cls: "strategist",
-    faction: "dragons", commander: "h36",
-    type: "active", cooldown: 3, offset: 1, duration: 2,
-    desc: "Nyxara smothers the enemy in void-entropy — their attack crumbles as energy drains from them.",
-    enemyAtkReduce: 0.12, base: 0.12, perLevel: 0.03,
-    nextDesc: (lvl) => `-${Math.round((0.12 + lvl * 0.03) * 100)}% enemy ATK (2 rnd) — rounds 1,4,7,10`,
-  },
-  nyxara_foresight: {
-    name: "Void Prescience", icon: "🔭", tree: "tactics", cls: "strategist",
-    faction: "dragons", commander: "h36",
-    type: "active", cooldown: 4, offset: 4, duration: 1,
-    desc: "Nyxara exists in all moments simultaneously — it knows the enemy's next move before they make it.",
-    nullifySkill: true, base: 1, perLevel: 0,
-    nextDesc: () => `Nullify enemy skill — rounds 4,8`,
-  },
-  nyxara_supply_cut: {
-    name: "Void Drain", icon: "✂", tree: "tactics", cls: "strategist",
-    faction: "dragons", commander: "h36",
-    type: "active", cooldown: 5, offset: 3, duration: 1,
-    desc: "Nyxara opens a void-drain beneath the enemy — all healing energy vanishes into nothingness.",
-    blockHeal: 3, base: 3, perLevel: 1,
-    nextDesc: (lvl) => `Block enemy heal ${3 + lvl} rounds — rounds 3,8`,
-  },
-  // Combat (5)
-  nyxara_killing_instinct: {
-    name: "Ancient Void Hunger", icon: "⚔", tree: "combat", cls: "strategist",
+  // ── R0 TOP — Main ─────────────────────────────────────────────────────────
+  nyx_dragon_dance: {
+    name: "Dragon Dance", icon: "🐉", tree: "tactics", cls: "strategist",
     faction: "dragons", commander: "h36",
     type: "passive",
-    desc: "Nyxara's hunger for entropy never dulled. Permanently increased commander damage.",
-    passiveCmdAtk: 0.08, base: 0.08, perLevel: 0.06,
-    nextDesc: (lvl) => `+${Math.round((0.08 + lvl * 0.06) * 100)}% cmd ATK (permanent)`,
+    desc: "[Allied Dragon Units] On Hit: 4% chance to deal +50% additional damage. (Passive)",
+    effect: { type: "branch_on_hit_followup", branch: "dragons", chance: 0.04, bonusDmg: 0.50 },
+    base: 0.04, perLevel: 0.04,
+    maxLevelEffect: { dragonDmgRangeMin: 1, dragonDmgRangeMax: 2 },
+    nextDesc: (lvl) => `[Dragon Units] On hit: ${Math.round((0.04+lvl*0.04)*100)}% chance +50% DMG${lvl >= 14 ? " | Max: Dragon DMG range +1-2" : ""} (permanent)`,
   },
-  nyxara_predator_eyes: {
-    name: "Void Vision", icon: "🦅", tree: "combat", cls: "strategist",
+
+  // ── R0 TOP — Sides ────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  nyx_open_fire: {
+    name: "Open Fire", icon: "🔥", tree: "tactics", cls: "strategist",
+    faction: "dragons", commander: "h36",
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Enemy Units] 30% Burn Damage (FOC mod) | 20% chance to apply Burn. (Rounds 3, 6, 9)",
+    effect: { type: "burn_damage_apply", targets: 2, burnChance: 0.20, burnDmgPenalty: 0.20, modifiedBy: "foc" },
+    base: 0.30, perLevel: 0.30,
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.30+lvl*0.30)*100)}% Burn DMG (FOC mod) + 20% Burn — rounds 3,6,9`,
+  },
+
+  // 3CD → rounds 4, 8
+  nyx_meet_your_maker: {
+    name: "Meet Your Maker", icon: "💀", tree: "tactics", cls: "strategist",
+    faction: "dragons", commander: "h36",
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[1 Enemy Unit, prioritises Ranged] 60% Focus Damage (FOC mod). (Rounds 4, 8)",
+    effect: { type: "focus_damage_single", target: "prioritiseRanged", modifiedBy: "foc" },
+    base: 0.60, perLevel: 0.60,
+    nextDesc: (lvl) => `[Ranged priority] ${Math.round((0.60+lvl*0.60)*100)}% Focus DMG (FOC mod) — rounds 4,8`,
+  },
+
+  // ── R0 BOTTOM — Main ──────────────────────────────────────────────────────
+  nyx_my_will_vs_yours: {
+    name: "My Will vs Yours", icon: "🧠", tree: "tactics", cls: "strategist",
     faction: "dragons", commander: "h36",
     type: "passive",
-    desc: "Nyxara sees through void-dark eyes that perceive every weakness. Permanently increased crit chance.",
-    passiveCritChance: 0.06, base: 0.06, perLevel: 0.04,
-    nextDesc: (lvl) => `+${Math.round((0.06 + lvl * 0.04) * 100)}% crit chance (permanent)`,
+    desc: "[Commander] FOC +1.0 | [Enemy Commander] FOC -1.0. (Passive)",
+    effect: { type: "dual_cmd_foc_shift", selfFocUp: 1.0, enemyFocDown: 1.0 },
+    base: 1.0, perLevel: 1.0,
+    maxLevelEffect: { bonusFocUp: 15 },
+    nextDesc: (lvl) => `CMD FOC +${1.0+lvl*1.0} | Enemy CMD FOC -${1.0+lvl*1.0}${lvl >= 14 ? " | Max: FOC +15 bonus" : ""} (permanent)`,
   },
-  nyxara_killing_edge: {
-    name: "Null-Point Strike", icon: "🔪", tree: "combat", cls: "strategist",
+
+  // ── R0 BOTTOM — Sides ─────────────────────────────────────────────────────
+  // Round 3 only — single trigger
+  nyx_dragon_resilience: {
+    name: "Dragon Resilience", icon: "🩹", tree: "tactics", cls: "strategist",
     faction: "dragons", commander: "h36",
-    type: "active", cooldown: 5, offset: 5, duration: 1,
-    desc: "Nyxara strikes at the point where existence becomes nothing — direct damage proportional to the enemy's total strength.",
-    cmdPctDmg: 0.06, base: 0.06, perLevel: 0.02,
-    nextDesc: (lvl) => `${Math.round((0.06 + lvl * 0.02) * 100)}% enemy max HP direct dmg — rounds 5,10`,
+    type: "active", cooldown: 99, offset: 3, duration: 1,
+    desc: "[Dragon Units] Heals 50% HP. Triggers Round 3 only.",
+    effect: { type: "heal_branch", branch: "dragons", healPct: 0.50 },
+    base: 0.50, perLevel: 0.50,
+    nextDesc: (lvl) => `[Dragon Units] Heal ${Math.round((0.50+lvl*0.50)*100)}% HP — Round 3 only`,
   },
-  nyxara_savage_blow: {
-    name: "Void Claw", icon: "🗡", tree: "combat", cls: "strategist",
+
+  // 3CD → rounds 4, 8
+  nyx_dragons_song: {
+    name: "Dragon's Song", icon: "🎵", tree: "tactics", cls: "strategist",
     faction: "dragons", commander: "h36",
-    type: "active", cooldown: 3, offset: 3, duration: 1,
-    desc: "A claw made of pure void-matter tears through armor — heavy damage leaving the enemy wide open.",
-    cmdMult: 2.2, enemyDmgTakenUp: 0.15, base: 2.2, perLevel: 0.20,
-    nextDesc: (lvl) => `${Math.round((2.2 + lvl * 0.20) * 100)}% damage + 15% vulnerability — rounds 3,6,9`,
+    type: "active", cooldown: 3, offset: 4, duration: 1,
+    desc: "[2 Creature Alignment Units] Heal 30% HP | [Dragon Units] Heal additional 75% HP. (Rounds 4, 8)",
+    effect: { type: "heal_alignment_dragon_bonus", healPct: 0.30, dragonBonus: 0.75, targets: 2 },
+    base: 0.30, perLevel: 0.30,
+    nextDesc: (lvl) => {
+      const base = Math.round((0.30+lvl*0.30)*100);
+      return `[2 Creature units] ${base}% HP | [Dragon] +75% additional (${base+75}% total) — rounds 4,8`;
+    },
   },
-  nyxara_deathblow: {
-    name: "Annihilation Point", icon: "💥", tree: "combat", cls: "strategist",
+
+  // ── R3 — Main: skar_elder_dragon shared ───────────────────────────────────
+
+  // ── R3 — Sides ────────────────────────────────────────────────────────────
+  // 2CD → rounds 3, 6, 9
+  nyx_lightning_storm: {
+    name: "Lightning Storm", icon: "⚡", tree: "tactics", cls: "strategist",
     faction: "dragons", commander: "h36",
-    type: "active", cooldown: 5, offset: 3, duration: 1,
-    desc: "Nyxara compresses void-energy to a single point and releases it — direct damage with obliterating crit force.",
-    cmdPctDmg: 0.10, critBonus: 0.50, base: 0.10, perLevel: 0.02,
-    nextDesc: (lvl) => `${Math.round((0.10 + lvl * 0.02) * 100)}% max HP direct + 50% crit — rounds 3,8`,
+    type: "active", cooldown: 2, offset: 3, duration: 1,
+    desc: "[2 Enemy Units] 15% Focus Damage (FOC mod) | 50% chance to Stun for 1 round. (Rounds 3, 6, 9)",
+    effect: { type: "focus_damage_stun_chance", targets: 2, stunChance: 0.50, modifiedBy: "foc" },
+    base: 0.15, perLevel: 0.15,
+    nextDesc: (lvl) => `[2 Units] ${Math.round((0.15+lvl*0.15)*100)}% Focus DMG (FOC mod) + 50% Stun — rounds 3,6,9`,
   },
+
+  // 3CD → rounds 4, 8
+  nyx_mind_over_matter: {
+    name: "Mind over Matter", icon: "🌀", tree: "tactics", cls: "strategist",
+    faction: "dragons", commander: "h36",
+    type: "active", cooldown: 3, offset: 4, duration: 2,
+    desc: "[Enemy Commander] Guaranteed Stun for 1 round | ATK -1.0 for 2 rounds. (Rounds 4, 8)",
+    effect: { type: "cmd_stun_atk_drain", stunDuration: 1, atkDrain: 1.0, drainDuration: 2 },
+    base: 1.0, perLevel: 1.0,
+    nextDesc: (lvl) => `Enemy CMD Stunned (1 rnd) + ATK -${1.0+lvl*1.0} (2 rnd) — rounds 4,8`,
+  },
+
+  // ── R5 — Main ─────────────────────────────────────────────────────────────
+  nyx_dragon_supremacy: {
+    name: "Dragon Supremacy", icon: "👑", tree: "tactics", cls: "strategist",
+    faction: "dragons", commander: "h36",
+    type: "passive",
+    desc: "[Commander] FOC +1 | SPD +1 | [Dragon Units] DEF +1 | SPD +1. (Passive)",
+    effect: { type: "dragon_supremacy_bonus", cmdFocPerLevel: 1.0, cmdSpdPerLevel: 1.0, dragonDefPerLevel: 1.0, dragonSpdPerLevel: 1.0 },
+    base: 1.0, perLevel: 1.0,
+    maxLevelEffect: { dragonDmgRangeMin: 2, dragonDmgRangeMax: 2 },
+    nextDesc: (lvl) => `CMD FOC/SPD +${1.0+lvl*1.0} | Dragon Units DEF/SPD +${1.0+lvl*1.0}${lvl >= 14 ? " | Max: Dragon DMG range +2-2" : ""} (permanent)`,
+  },
+
+  // ── R5 — Sides ────────────────────────────────────────────────────────────
+  nyx_wizard_hunter: {
+    name: "Wizard Hunter", icon: "🧙", tree: "tactics", cls: "strategist",
+    faction: "dragons", commander: "h36",
+    type: "passive",
+    desc: "[Commander and Army] +1% damage to Wizard units. (Passive)",
+    effect: { type: "dmg_bonus_vs_faction_all", faction: "bountyhunters", value: 0.01 },
+    base: 0.01, perLevel: 0.01,
+    nextDesc: (lvl) => `CMD and Army DMG +${Math.round((0.01+lvl*0.01)*100)}% vs Wizards (permanent)`,
+  },
+
+  // mal_double_tap referenced in branch map
 };
 
-// ── Merged export ─────────────────────────────────────────────────────────────
+export const NYXARA_RESKIN_SKILLS = {};
+
+// ── Shared skills from other factions used by Dragons ─────────────────────────
+export const SHARED_DRAGON_SKILLS = {
+  mal_double_tap: {
+    name: "Double Tap", icon: "👁", tree: "command", cls: "strategist",
+    faction: "dragons", commander: "h36",
+    type: "passive",
+    desc: "[Commander] Normal Attacks deal additional 3% Focus Damage. (Passive)",
+    effect: { type: "cmd_normal_atk_bonus_focus", value: 0.03 },
+    base: 0.03, perLevel: 0.03,
+    nextDesc: (lvl) => `Normal Attacks +${Math.round((0.03+lvl*0.03)*100)}% extra Focus DMG (permanent)`,
+  },
+  skar_elder_dragon: {
+    name: "Elder Dragon", icon: "🛡️", tree: "combat", cls: "attacker",
+    faction: "dragons", commander: "h35",
+    type: "passive",
+    desc: "[Allied Dragon Units] Damage Received -1.5% for first 4 instances of damage. (Passive)",
+    effect: { type: "branch_first_hits_dmg_reduce", branch: "dragons", reduction: 0.015, instances: 4 },
+    base: 0.015, perLevel: 0.015,
+    maxLevelEffect: { instances: 5 },
+    nextDesc: (lvl) => `[Dragon Units] First 4 hits: DMG Received -${((0.015+lvl*0.015)*100).toFixed(1)}%${lvl >= 14 ? " | Max: Extends to 5 hits" : ""} (permanent)`,
+  },
+};
 
 export const DRAGONS_SKILLS = {
   ...EMBERCLAW_UNIQUE_SKILLS,
@@ -701,6 +920,7 @@ export const DRAGONS_SKILLS = {
   ...SKAR_RESKIN_SKILLS,
   ...NYXARA_UNIQUE_SKILLS,
   ...NYXARA_RESKIN_SKILLS,
+  ...SHARED_DRAGON_SKILLS,
 };
 
 // ── Branch layout — 4 branches × (1 main + 2 sides) per commander ─────────────
@@ -709,49 +929,49 @@ export const DRAGONS_BRANCH_SKILL_MAP = {
   // Emberclaw (balanced, Adult)
   // Powerful, proud versatile brawler — AoE unique in branch 2, armor passive anchor
   h11: [
-    { main: "emberclaw_dragon_hide",    sides: ["emberclaw_killing_instinct", "emberclaw_fortified_ranks"]   },
-    { main: "emberclaw_savage_blow",    sides: ["emberclaw_shield_wall",      "emberclaw_expose_weakness"]   },
-    { main: "emberclaw_magma_charge",   sides: ["emberclaw_iron_bastion",     "emberclaw_battle_hunger"]     },
-    { main: "emberclaw_double_strike",  sides: ["emberclaw_battle_hymn",      "emberclaw_inspiring_presence"] },
+    { main: "emb_flame_dive",           sides: ["emb_dragon_toughness",    "emb_throwing_sand"]        }, // R0 top
+    { main: "emb_dragon_slash",         sides: ["emb_dragon_spirit",       "emb_flame_dancer"]         }, // R0 bottom
+    { main: "emb_fire_volley",          sides: ["emb_cauterize",           "emb_dragons_evasion"]      }, // R3
+    { main: "emb_embers_entertainment", sides: ["emb_dragons_hope",        "emb_bring_down_walls"]     }, // R5
   ],
   // Scaleveil Dusk (support, Adult)
-  // Dusk-shadow healer-debuffer — combo debuff unique branch 2, healing passive anchor
+  // FOC healer/AOE blaster — heal+dragon bonus R0 top, world-map passives R0 bot, buff-strip AOE R5
   h12: [
-    { main: "scaleveil_shadow_mend",    sides: ["scaleveil_field_medic",      "scaleveil_guardian_aura"]    },
-    { main: "scaleveil_mending_wave",   sides: ["scaleveil_blind_strike",     "scaleveil_hex_curse"]        },
-    { main: "scaleveil_dusk_veil",      sides: ["scaleveil_supply_cut",       "scaleveil_rally_cry"]        },
-    { main: "scaleveil_second_wind",    sides: ["scaleveil_inspiring_presence","scaleveil_foresight"]       },
+    { main: "scaleveil_back_line_healer",    sides: ["scaleveil_sniper",            "scaleveil_fire_in_the_hole"]     }, // R0 top
+    { main: "scaleveil_hunter",              sides: ["scaleveil_gatherer",           "scaleveil_pather"]               }, // R0 bot
+    { main: "scaleveil_smoke_and_fire",      sides: ["scaleveil_dragon_garrison",    "scaleveil_the_superior_race"]    }, // R3
+    { main: "scaleveil_to_become_an_elder",  sides: ["scaleveil_locked_in",          "scaleveil_dusks_blast"]          }, // R5
   ],
   // Ashen Kraul (leader, Hatchling)
-  // Scrappy commander — dual-buff unique branch 2, passive ATK+DEF anchor
+  // Mixed-troop leader — dual-branch buff R0 top, wizard-hunter R3, all-dragon payoff R5
   h23: [
-    { main: "kraul_ash_dominance",      sides: ["kraul_warchief_aura",        "kraul_legion_discipline"]    },
-    { main: "kraul_warchief_roar",      sides: ["kraul_tactical_advance",     "kraul_shield_order"]         },
-    { main: "kraul_hatchling_fury",     sides: ["kraul_supply_cut",           "kraul_war_council"]          },
-    { main: "kraul_forced_march",       sides: ["kraul_siege_mastery",        "kraul_grand_strategy"]       },
+    { main: "kraul_ill_work_with_it",    sides: ["kraul_fire_fight",          "kraul_tough_scales"]         }, // R0 top
+    { main: "kraul_im_in_command",       sides: ["kraul_hit_and_recover",     "kraul_men_with_hats"]        }, // R0 bot
+    { main: "kraul_energetic_youngking", sides: ["kraul_despite_my_age",      "kraul_bad_pointy_hats"]      }, // R3
+    { main: "kraul_future_king",         sides: ["kraul_on_the_prowl",        "kraul_nose_dive"]            }, // R5
   ],
   // Cinderfang (balanced, Hatchling)
-  // Scrappy fire-brawler — multi-hit unique branch 2, damage reduction passive anchor
+  // Drake Rider specialist — mounted stacks R0, burn+confusion R3, buff-strip R5
   h24: [
-    { main: "cinderfang_cinder_hide",   sides: ["cinderfang_killing_instinct","cinderfang_fortified_ranks"] },
-    { main: "cinderfang_quick_strike",  sides: ["cinderfang_hold_the_line",   "cinderfang_blind_strike"]    },
-    { main: "cinderfang_fire_frenzy",   sides: ["cinderfang_iron_bastion",    "cinderfang_battle_hunger"]   },
-    { main: "cinderfang_savage_blow",   sides: ["cinderfang_mending_wave",    "cinderfang_inspiring_presence"] },
+    { main: "cinderfang_dragon_rider",          sides: ["cinderfang_drake_master",        "cinderfang_me_and_my_dragons"]  }, // R0 top
+    { main: "cinderfang_mounted_specialist",    sides: ["cinderfang_frontline_medic",     "cinderfang_mounted_armor"]      }, // R0 bot
+    { main: "cinderfang_i_can_help",            sides: ["cinderfang_me_little_army_big",  "cinderfang_dont_underestimate_me"] }, // R3
+    { main: "cinderfang_clear_the_air",         sides: ["cinderfang_focused",             "cinderfang_you_get_a_heal"]     }, // R5
   ],
   // Pyrewing Skar (attacker, Elder)
   // Apocalyptic destroyer — AoE+pct unique branch 2, passive ATK+crit anchor
   h35: [
-    { main: "skar_ancient_predator",    sides: ["skar_killing_instinct",      "skar_predator_eyes"]         },
-    { main: "skar_battle_frenzy",       sides: ["skar_relentless",            "skar_battle_hunger"]         },
-    { main: "skar_apocalypse_breath",   sides: ["skar_killing_edge",          "skar_deathblow"]             },
-    { main: "skar_execute",             sides: ["skar_double_strike",         "skar_sweeping_strike"]       },
+    { main: "skar_earthquake",         sides: ["skar_dragon_fire",           "skar_charred"]              }, // R0 top
+    { main: "skar_dragon_claw",        sides: ["skar_wizards_worst_nightmare","skar_dragons_rage"]         }, // R0 bottom
+    { main: "skar_dragon_snack",       sides: ["skar_dragon_scales",         "skar_fire_blast"]           }, // R3
+    { main: "skar_dragon_inferno",     sides: ["skar_dragons_roar",          "skar_tough_skin"]           }, // R5
   ],
   // Voidscale Nyxara (strategist, Elder)
   // Void-entropy debuffer — dual-debuff unique branch 2, precision void-strike branch 3
   h36: [
-    { main: "nyxara_killing_instinct",  sides: ["nyxara_predator_eyes",       "nyxara_foresight"]           },
-    { main: "nyxara_expose_weakness",   sides: ["nyxara_hex_curse",           "nyxara_blind_strike"]        },
-    { main: "nyxara_void_rupture",      sides: ["nyxara_supply_cut",          "nyxara_killing_edge"]        },
-    { main: "nyxara_entropy_strike",    sides: ["nyxara_savage_blow",         "nyxara_deathblow"]           },
+    { main: "nyx_dragon_dance",        sides: ["nyx_open_fire",           "nyx_meet_your_maker"]      }, // R0 top
+    { main: "nyx_my_will_vs_yours",    sides: ["nyx_dragon_resilience",   "nyx_dragons_song"]         }, // R0 bottom
+    { main: "skar_elder_dragon",       sides: ["nyx_lightning_storm",     "nyx_mind_over_matter"]     }, // R3 shared
+    { main: "nyx_dragon_supremacy",    sides: ["nyx_wizard_hunter",       "mal_double_tap"]           }, // R5
   ],
 };
