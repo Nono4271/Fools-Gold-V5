@@ -46,11 +46,26 @@ export const COMMAND_COST = { small: 0.01, medium: 0.02, large: 0.25 };
 // ── Legacy troopModifier (kept for battle.js compatibility) ──────────────────
 export function troopModifier(atkType, defType) { return 1.0; }
 
-// ── XP helpers (unchanged) ────────────────────────────────────────────────────
+// ── XP helpers ───────────────────────────────────────────────────────────────
 export const CMD_LVL_MIN = 5;
 export const CMD_LVL_MAX = 50;
+
+// XP required to advance from level N to N+1.
+// Index 0 = L5→L6, index 44 = L49→L50.
+const _CMD_XP_COSTS = [
+    1700,    2000,    2500,    4300,    7400,   10500,   13500,   16800,
+   18800,   19800,   21600,   22300,   23100,   24500,   26700,   28400,
+   30100,   32300,   34600,   36800,   55900,   66100,   76700,   87500,
+  101000,  122000,  135000,  157000,  171000,  194000,  239000,  265000,
+  291000,  321000,  351000,  421000,  517000,  627000,  751000,  880000,
+ 1000000, 1150000, 1300000, 1550000, 1800000,
+];
+
 export function xpToNext(lvl) {
-  return Math.floor(100 * Math.pow(1.18, lvl - CMD_LVL_MIN));
+  const idx = lvl - CMD_LVL_MIN;
+  if (idx < 0) return _CMD_XP_COSTS[0];
+  if (idx >= _CMD_XP_COSTS.length) return _CMD_XP_COSTS[_CMD_XP_COSTS.length - 1];
+  return _CMD_XP_COSTS[idx];
 }
 
 // ── Skill proc interpolation helper ──────────────────────────────────────────
