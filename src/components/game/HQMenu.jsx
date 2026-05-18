@@ -1112,230 +1112,538 @@ borderBottom:"1px solid rgba(255,255,255,.02)", paddingBottom:2 }}>{l}</div>
 }
 
 // -----------------------------------------------------------------------------
-//  TROOPS (Training)
+//  TROOPS (Training) — two-screen flow
 // -----------------------------------------------------------------------------
-function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, setTrainingQueues, canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches }) {
-const [activePanel, setActivePanel] = useState(null); // { key, mode:"train"|"discard" }
-const [panelSlider, setPanelSlider] = useState(0);
 
-const cap      = barracksCapacity(bldgs.barracks||0);
-const pct      = Math.min(100, Math.round((barracksPool/cap)*100));
-const room     = cap - barracksPool;
-const maxBatch = maxTrainBatch(bldgs.training||0);
-const rate     = trainRate(bldgs.training||0);
-
-const ub = unlockedBranches || {};
-
-const troopCards = useMemo(() => {
-const cards = [];
-Object.entries(FACTION_TROOPS).forEach(([fKey, fDef]) => {
-fDef.branches.forEach(branch => {
-const ubKey = `${fKey}:${branch.key}`;
-if (!(ubKey in ub)) return;
-const maxTier = ub[ubKey]; // highest unlocked tier index (0-based)
-// Emit one card per unlocked tier so each troop type has its own pool
-for (let tierIdx = 0; tierIdx <= maxTier; tierIdx++) {
-  const tier = branch.tiers[tierIdx];
-  if (!tier) continue;
-  const bKey = `${fKey}:${branch.key}:${tierIdx}`; // pool key
-  const key  = bKey; // card identity key
-  const fColor = FACTION_META[fKey]?.c || "#888";
-  const poolCount = (troopCounts || {})[bKey] || 0;
-  // Assigned = troops in any commander slot matching this exact faction:branch:tier
-  const assigned = (cmds||[])
-    .filter(x=>x.owner==="player")
-    .reduce((s,x)=>{
-      if (x.troopSlots?.length>0) {
-        return s + x.troopSlots
-          .filter(sl=>sl.branch?.faction===fKey && sl.branch?.branch===branch.key && (sl.branch?.tier??0)===tierIdx)
-          .reduce((a,sl)=>a+(sl.troops||0),0);
-      }
-      if (x.troopBranch?.faction===fKey && x.troopBranch?.branch===branch.key && (x.troopBranch?.tier??0)===tierIdx)
-        return s+(x.troops||0);
-      return s;
-    },0);
-  cards.push({ key, bKey, tier, tierIdx, branch, fColor, poolCount, assigned, fKey });
+// ── Size tag badge ─────────────────────────────────────────────────────────────
+function TroopSizeTag({ size }) {
+  const colors = { small:"#4488cc", medium:"#c8903a", large:"#cc4444" };
+  const c = colors[size] || "#888";
+  return (
+    <span style={{ fontSize:6.5, padding:"1px 5px", borderRadius:3,
+      background:`${c}22`, border:`1px solid ${c}55`, color:c,
+      fontFamily:P.ff, letterSpacing:".05em", textTransform:"uppercase" }}>
+      {size}
+    </span>
+  );
 }
-});
-});
-return cards;
-}, [ub, cmds, troopCounts]);
 
-return (
-<div>
-{/* Barracks capacity bar */}
-<div style={{ marginBottom:10, padding:"10px 12px", background:"rgba(255,255,255,.03)",
-border:`1px solid ${P.border}`, borderRadius:6 }}>
-<div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-<div style={{ fontFamily:P.ff, fontSize:10, color:"#c8a060", fontWeight:700 }}>
-🏕 Barracks Lv{bldgs.barracks||0}
-</div>
-<div style={{ fontFamily:P.ff, fontSize:12,
-color:pct>50?"#3daa60":pct>10?"#d0a030":"#cc3030", fontWeight:700 }}>
-{barracksPool.toLocaleString()} / {cap.toLocaleString()}
-</div>
-</div>
-<div style={{ height:5, background:"#181820", borderRadius:3, overflow:"hidden" }}>
-<div style={{ height:"100%", width:`${pct}%`,
-background:pct>50?"#3daa60":pct>10?"#d0a030":"#cc3030",
-borderRadius:3, transition:"width .3s" }}/>
-</div>
-<div style={{ fontSize:7, color:P.dim, marginTop:4, fontFamily:P.ff }}>
-{room.toLocaleString()} space available · {rate.toLocaleString()}/s · {trainingQueues?.length||0}/{trainingQueueCount(bldgs.training||0)} queues active
-</div>
-</div>
-
-  {/* Active training queues */}
-  {trainingQueues && trainingQueues.length > 0 && (
-    <div style={{ marginBottom:10, display:"flex", flexDirection:"column", gap:5 }}>
-      {trainingQueues.map((q, idx) => {
-        const qPct     = Math.round(((q.total - q.remaining) / q.total) * 100);
-        const secsLeft = Math.ceil(q.remaining / rate);
-        const label    = q.branchKey?.split(":")[1] ?? q.branchKey;
-        return (
-          <div key={q.id} style={{ padding:"7px 10px",
-            background:"rgba(40,80,160,.1)", border:"1px solid rgba(60,120,220,.3)", borderRadius:6 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-              <div style={{ fontFamily:P.ff, fontSize:8, color:"#88aaff", fontWeight:700 }}>
-                ⚔️ Queue {idx + 1} · {label}
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <div style={{ fontSize:7, color:"#6a8aaa", fontFamily:P.ff }}>
-                  {q.remaining.toLocaleString()} · ~{secsLeft}s
-                </div>
-                <button className="btn"
-                  onClick={() => setTrainingQueues(prev => prev.filter(x => x.id !== q.id))}
-                  style={{ fontSize:7, padding:"1px 6px", color:"#cc5050",
-                    background:"rgba(200,50,50,.1)", border:"1px solid rgba(200,50,50,.3)", borderRadius:3 }}>
-                  ✕
-                </button>
-              </div>
-            </div>
-            <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
-              <div style={{ height:"100%", width:`${qPct}%`,
-                background:"linear-gradient(90deg,#3366cc,#88aaff)", borderRadius:2, transition:"width 1s" }}/>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  )}
-
-  {/* Troop type cards */}
-  {troopCards.length === 0 && (
-    <div style={{ textAlign:"center", padding:"30px 20px", fontSize:9, color:P.dim,
-      fontFamily:P.ffb, fontStyle:"italic" }}>
-      No troop types unlocked yet. Assign troop branches to commanders in the Army tab.
-    </div>
-  )}
-
-  {troopCards.map(card => {
-    const isActive = activePanel?.key === card.key;
-    return (
-      <div key={card.key} style={{ marginBottom:8, borderRadius:8, overflow:"hidden",
-        border:`1px solid ${isActive?card.fColor+"55":P.border}`,
-        background:isActive?`${card.fColor}08`:"rgba(255,255,255,.025)" }}>
-
-        {/* Card row */}
-        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px" }}>
-          <div style={{ padding:"8px 10px", borderRadius:6, textAlign:"center", minWidth:52,
-            background:`${card.fColor}18`, border:`1px solid ${card.fColor}30` }}>
-            <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700, color:card.fColor }}>
-              {card.branch?.label}
-            </div>
-            <div style={{ fontSize:7, color:P.sub, marginTop:1 }}>{card.tier.label}</div>
-          </div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontFamily:P.ff, fontSize:10, fontWeight:700, color:P.text }}>
-              {card.tier.label}
-            </div>
-            <div style={{ fontSize:7, color:card.fColor }}>{card.branch?.size} . {card.branch?.dmgType}</div>
-            <div style={{ fontSize:7, color:P.dim, marginTop:1 }}>
-              Assigned: <span style={{ color:P.text }}>{card.assigned.toLocaleString()}</span>
-              &nbsp;. Pool: <span style={{ color:P.text }}>{card.poolCount.toLocaleString()}</span>
-            </div>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-            <button className="btn"
-              onClick={() => { setActivePanel(isActive&&activePanel.mode==="train"?null:{key:card.key,mode:"train"}); setPanelSlider(0); }}
-              style={{ padding:"5px 12px", fontSize:9, fontWeight:700,
-                background:"linear-gradient(135deg,rgba(40,120,60,.5),rgba(40,120,60,.2))",
-                border:"1px solid rgba(50,160,80,.5)", color:"#5dcc80", borderRadius:4 }}>
-              Train
-            </button>
-            <button className="btn"
-              onClick={() => { setActivePanel(isActive&&activePanel.mode==="discard"?null:{key:card.key,mode:"discard"}); setPanelSlider(0); }}
-              style={{ padding:"5px 12px", fontSize:9, fontWeight:700,
-                background:"linear-gradient(135deg,rgba(160,50,50,.35),rgba(160,50,50,.15))",
-                border:"1px solid rgba(200,60,60,.4)", color:"#dd6666", borderRadius:4 }}>
-              Discard
-            </button>
-          </div>
+// ── Barracks bar ───────────────────────────────────────────────────────────────
+function BarracksBar({ bldgs, pool }) {
+  const cap  = barracksCapacity(bldgs.barracks||0);
+  const pct  = Math.min(100, Math.round((pool/cap)*100));
+  const col  = pct>80?"#cc4444":pct>50?"#d0a030":"#3daa60";
+  const rate = trainRate(bldgs.training||0);
+  const room = cap - pool;
+  return (
+    <div style={{ marginBottom:10, padding:"10px 12px", background:"rgba(255,255,255,.03)",
+      border:`1px solid ${P.border}`, borderRadius:6 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+        <div style={{ fontFamily:P.ff, fontSize:10, color:"#c8a060", fontWeight:700 }}>
+          🏕 Barracks Lv{bldgs.barracks||0}
         </div>
+        <div style={{ fontFamily:P.ff, fontSize:12, color:col, fontWeight:700 }}>
+          {pool.toLocaleString()} / {cap.toLocaleString()}
+        </div>
+      </div>
+      <div style={{ height:5, background:"#181820", borderRadius:3, overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${pct}%`, background:col,
+          borderRadius:3, transition:"width .3s" }}/>
+      </div>
+      <div style={{ fontSize:7, color:P.dim, marginTop:4, fontFamily:P.ff }}>
+        {room.toLocaleString()} space available · {rate.toLocaleString()}/s train rate
+      </div>
+    </div>
+  );
+}
 
-        {/* Expanded slider panel */}
-        {isActive && (() => {
-          const isTrain   = activePanel.mode === "train";
-          const cardPool  = card.poolCount; // troops of this exact type in barracks
-          const sliderMax = isTrain
-            ? Math.max(1, Math.min(maxBatch, room))
-            : Math.max(1, cardPool);
-          const sv        = Math.min(panelSlider, sliderMax);
-          const trainCost = isTrain ? { stone:sv*2, wood:sv*2, ore:sv, gas:Math.floor(sv*0.5) } : null;
-          const maxQueues  = trainingQueueCount(bldgs.training || 0);
-          const queuesFull = (trainingQueues?.length || 0) >= maxQueues;
-          const canAct    = isTrain
-            ? (!queuesFull && sv>0 && canAfford(trainCost) && room>0)
-            : (sv>0 && cardPool>0);
-          return (
-            <div style={{ padding:"8px 12px 12px", borderTop:`1px solid ${P.border}` }}>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:8,
-                color:isTrain?"#5dcc80":"#dd6666", fontFamily:P.ff, marginBottom:4 }}>
-                <span>{isTrain?"TRAIN AMOUNT":"DISCARD AMOUNT"}</span>
-                <span style={{ fontWeight:700 }}>{sv.toLocaleString()}</span>
+// ── Build troop card list (shared by both screens) ─────────────────────────────
+function useTroopCards({ unlockedBranches, troopCounts, cmds }) {
+  const ub = unlockedBranches || {};
+  return useMemo(() => {
+    const cards = [];
+    Object.entries(FACTION_TROOPS).forEach(([fKey, fDef]) => {
+      fDef.branches.forEach(branch => {
+        const ubKey = `${fKey}:${branch.key}`;
+        if (!(ubKey in ub)) return;
+        const maxTier = ub[ubKey];
+        for (let tierIdx = 0; tierIdx <= maxTier; tierIdx++) {
+          const tier = branch.tiers[tierIdx];
+          if (!tier) continue;
+          const bKey = `${fKey}:${branch.key}:${tierIdx}`;
+          const fColor = FACTION_META[fKey]?.c || "#888";
+          const fIcon  = FACTION_META[fKey]?.s || "⚑";
+          const poolCount = (troopCounts || {})[bKey] || 0;
+          const assigned = (cmds||[])
+            .filter(x=>x.owner==="player")
+            .reduce((s,x)=>{
+              if (x.troopSlots?.length>0) {
+                return s + x.troopSlots
+                  .filter(sl=>sl.branch?.faction===fKey && sl.branch?.branch===branch.key && (sl.branch?.tier??0)===tierIdx)
+                  .reduce((a,sl)=>a+(sl.troops||0),0);
+              }
+              if (x.troopBranch?.faction===fKey && x.troopBranch?.branch===branch.key && (x.troopBranch?.tier??0)===tierIdx)
+                return s+(x.troops||0);
+              return s;
+            },0);
+          cards.push({ key:bKey, bKey, tier:{ ...tier, tierIdx }, branch, fColor, fIcon, poolCount, assigned, fKey });
+        }
+      });
+    });
+    return cards;
+  }, [ub, cmds, troopCounts]);
+}
+
+// ── Screen 1: Troop list overview ──────────────────────────────────────────────
+function TrainingListScreen({ bldgs, barracksPool, troopCards, trainingQueues, rss, onTrain, onScrap }) {
+  const rate    = trainRate(bldgs.training||0);
+  const maxQ    = trainingQueueCount(bldgs.training||0);
+  const activeQ = trainingQueues?.length || 0;
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", height:"100%" }}>
+      {/* Header */}
+      <div style={{ padding:"12px 14px 8px", borderBottom:`1px solid ${P.border}`,
+        display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <div style={{ fontFamily:P.ff, fontSize:14, fontWeight:700, color:P.gold, letterSpacing:".07em" }}>
+          ⚔ TRAINING
+        </div>
+        <div style={{ fontFamily:P.ff, fontSize:8, color:P.dim }}>
+          {activeQ}/{maxQ} queues active · {rate}/s
+        </div>
+      </div>
+
+      <div style={{ padding:"10px 10px 0" }}>
+        <BarracksBar bldgs={bldgs} pool={barracksPool}/>
+      </div>
+
+      {/* Active queues strip */}
+      {trainingQueues && trainingQueues.length > 0 && (
+        <div style={{ padding:"0 10px 8px", display:"flex", flexDirection:"column", gap:4 }}>
+          {trainingQueues.map((q, idx) => {
+            const qPct     = Math.round(((q.total - q.remaining) / q.total) * 100);
+            const secsLeft = Math.ceil(q.remaining / rate);
+            const parts    = q.branchKey?.split(":") || [];
+            const label    = parts[1] ? `${parts[1]} T${parseInt(parts[2]||0)+1}` : q.branchKey;
+            return (
+              <div key={q.id} style={{ padding:"6px 10px",
+                background:"rgba(40,80,160,.08)", border:"1px solid rgba(60,120,220,.25)", borderRadius:5 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
+                  <div style={{ fontFamily:P.ff, fontSize:8, color:"#88aaff", fontWeight:700 }}>
+                    ⚔️ Queue {idx+1} · {label}
+                  </div>
+                  <div style={{ fontSize:7, color:"#6a8aaa", fontFamily:P.ff }}>
+                    {q.remaining.toLocaleString()} remaining · ~{secsLeft}s
+                  </div>
+                </div>
+                <div style={{ height:3, background:"#181820", borderRadius:2, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width:`${qPct}%`,
+                    background:"linear-gradient(90deg,#3366cc,#88aaff)", transition:"width 1s" }}/>
+                </div>
               </div>
-              <input type="range" min={0} max={Math.max(1,sliderMax)} value={sv}
-                onChange={e => setPanelSlider(+e.target.value)} onInput={e => setPanelSlider(+e.target.value)}
-                style={{ width:"100%", accentColor:isTrain?"#3daa60":"#cc3030", marginBottom:6 }}/>
-              {isTrain && trainCost && (
-                <div style={{ fontSize:7, marginBottom:6, display:"flex", gap:5, flexWrap:"wrap" }}>
-                  {Object.entries(trainCost).map(([k,v]) => <RssPill key={k} rssKey={k} amount={v} rss={rss} small/>)}
+            );
+          })}
+        </div>
+      )}
+
+      {/* Column headers */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 56px 68px 68px",
+        padding:"4px 14px", borderBottom:`1px solid ${P.border}22`,
+        fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".09em" }}>
+        <span>UNIT</span>
+        <span style={{ textAlign:"center" }}>CMD</span>
+        <span style={{ textAlign:"center" }}>POOL</span>
+        <span style={{ textAlign:"center" }}>ASSIGNED</span>
+      </div>
+
+      {/* Scrollable troop list */}
+      <div style={{ flex:1, overflowY:"auto", padding:"5px 8px 6px" }}>
+        {troopCards.length === 0 && (
+          <div style={{ textAlign:"center", padding:"30px 20px", fontSize:9, color:P.dim,
+            fontFamily:P.ffb, fontStyle:"italic" }}>
+            No troop types unlocked yet. Assign troop branches to commanders in the Army tab.
+          </div>
+        )}
+        {troopCards.map((t, i) => {
+          const cc = COMMAND_COST[t.branch.size] ?? 0.01;
+          return (
+            <div key={t.key} style={{ display:"grid",
+              gridTemplateColumns:"1fr 56px 68px 68px",
+              alignItems:"center", padding:"7px 6px",
+              borderRadius:5, marginBottom:3,
+              background:i%2===0?"rgba(255,255,255,.018)":"transparent" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                <div style={{ width:26, height:26, borderRadius:4, display:"flex",
+                  alignItems:"center", justifyContent:"center",
+                  background:`${t.fColor}18`, border:`1px solid ${t.fColor}35`, fontSize:13 }}>
+                  {t.fIcon}
                 </div>
-              )}
-              {!isTrain && (
-                <div style={{ fontSize:7, color:P.dim, fontFamily:P.ffb, marginBottom:6 }}>
-                  Permanently remove {sv.toLocaleString()} {card.tier.label}s from your barracks.
+                <div>
+                  <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700, color:P.text, lineHeight:1 }}>
+                    {t.tier.label}
+                  </div>
+                  <div style={{ fontSize:7, color:t.fColor, marginTop:1 }}>{t.branch.label}</div>
+                  <div style={{ marginTop:2, display:"flex", gap:4, alignItems:"center" }}>
+                    <TroopSizeTag size={t.branch.size}/>
+                    <span style={{ fontSize:6.5, color:P.dim }}>T{(t.tier.tierIdx??0)+1}</span>
+                  </div>
                 </div>
-              )}
-              <button className="btn" disabled={!canAct}
-                onClick={() => {
-                  if (isTrain) queueTraining(card.bKey, sv);
-                  else if (discardTroops) discardTroops(card.bKey, sv);
-                  setActivePanel(null); setPanelSlider(0);
-                }}
-                style={{ width:"100%", padding:"8px",
-                  background:canAct
-                    ?(isTrain?"linear-gradient(135deg,rgba(40,100,60,.5),rgba(40,100,60,.2))"
-                             :"linear-gradient(135deg,rgba(150,40,40,.4),rgba(150,40,40,.15))")
-                    :"rgba(255,255,255,.02)",
-                  border:`1px solid ${canAct?(isTrain?"#3daa60":"#cc4444"):"#181818"}`,
-                  color:canAct?(isTrain?"#5dcc80":"#dd6666"):"#2a2a2a",
-                  fontSize:10, fontWeight:700 }}>
-                {canAct
-                  ? (isTrain ? `Train ${sv.toLocaleString()} troops` : `Discard ${sv.toLocaleString()} troops`)
-                  : (isTrain && queuesFull ? `All ${trainingQueueCount(bldgs.training||0)} queues full` : "Select amount")}
-              </button>
+              </div>
+              <div style={{ textAlign:"center", fontFamily:P.ff, fontSize:9, color:"#88aacc", fontWeight:700 }}>
+                {cc < 1 ? cc.toFixed(2) : cc}
+              </div>
+              <div style={{ textAlign:"center", fontFamily:P.ff, fontSize:9.5, fontWeight:700, color:P.text }}>
+                {t.poolCount.toLocaleString()}
+              </div>
+              <div style={{ textAlign:"center", fontFamily:P.ff, fontSize:9,
+                color:t.assigned>0?"#6aaa50":P.dim }}>
+                {t.assigned.toLocaleString()}
+              </div>
             </div>
           );
-        })()}
+        })}
       </div>
-    );
-  })}
-</div>
 
-);
+      {/* Bottom action buttons */}
+      <div style={{ padding:"10px 14px", borderTop:`1px solid ${P.border}`,
+        display:"flex", justifyContent:"flex-end", gap:10 }}>
+        <button className="btn" onClick={onScrap}
+          style={{ padding:"9px 22px", fontFamily:P.ff, fontSize:10, fontWeight:700,
+            letterSpacing:".06em", cursor:"pointer", borderRadius:5,
+            background:"linear-gradient(135deg,#8a2020,#5a1010)",
+            border:"1px solid #cc303088", color:"#ff8888",
+            boxShadow:"0 2px 8px rgba(200,50,50,.25)" }}>
+          SCRAP
+        </button>
+        <button className="btn" onClick={onTrain}
+          style={{ padding:"9px 28px", fontFamily:P.ff, fontSize:10, fontWeight:700,
+            letterSpacing:".06em", cursor:"pointer", borderRadius:5,
+            background:"linear-gradient(135deg,#c8903a,#8a5a18)",
+            border:"1px solid #f0c04077", color:"#fff8e8",
+            boxShadow:"0 2px 12px rgba(200,140,40,.3)" }}>
+          TRAIN
+        </button>
+      </div>
+    </div>
+  );
 }
 
+// ── Screen 2: Train / Scrap queue builder ──────────────────────────────────────
+function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQueues, setTrainingQueues,
+  canAfford, queueTraining, rss, discardTroops, onBack }) {
+
+  const isScrap   = mode === "scrap";
+  const rate      = trainRate(bldgs.training||0);
+  const maxQueues = trainingQueueCount(bldgs.training||0);
+  const maxBatch  = maxTrainBatch(bldgs.training||0);
+  const cap       = barracksCapacity(bldgs.barracks||0);
+  const room      = cap - barracksPool;
+
+  const [selected,  setSelected]  = useState(troopCards[0]?.key || null);
+  const [sliderVal, setSliderVal] = useState(0);
+
+  const card = troopCards.find(t => t.key === selected) || troopCards[0];
+
+  const maxAmount = isScrap
+    ? Math.max(1, card?.poolCount || 0)
+    : Math.max(1, Math.min(maxBatch, room));
+  const sv = Math.min(sliderVal, maxAmount);
+
+  const trainCost = isScrap ? null : { stone:sv*2, wood:sv*2, ore:sv, gas:Math.floor(sv*0.5) };
+  const timeSecs  = isScrap ? 0 : Math.ceil(sv / rate);
+
+  function fmtTime(s) {
+    if (s < 60)   return `${s}s`;
+    if (s < 3600) return `${Math.floor(s/60)}m ${s%60}s`;
+    return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+  }
+
+  const freeSlots  = maxQueues - (trainingQueues?.length || 0);
+  const affordable = isScrap ? true : (trainCost ? canAfford(trainCost) : false);
+  const canAct     = sv > 0 && affordable &&
+    (isScrap ? (card?.poolCount||0) > 0 : (freeSlots > 0 && room > 0));
+
+  function handleAction() {
+    if (!canAct || !card) return;
+    if (isScrap) {
+      if (discardTroops) discardTroops(card.bKey, sv);
+    } else {
+      queueTraining(card.bKey, sv);
+    }
+    setSliderVal(0);
+  }
+
+  // 4-slot display: first maxQueues are active/empty-unlocked, rest locked
+  const activeQueues  = trainingQueues || [];
+  const displaySlots  = Array.from({ length:4 }, (_, i) => {
+    if (i < maxQueues) return activeQueues[i] || null;
+    return "locked";
+  });
+  const lockLevels = [null, null, 10, 20];
+
+  const fColor = card ? (FACTION_META[card.fKey]?.c || "#888") : "#888";
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", height:"100%" }}>
+      {/* Header */}
+      <div style={{ padding:"11px 14px 9px", borderBottom:`1px solid ${P.border}`,
+        display:"flex", alignItems:"center", gap:10 }}>
+        <button className="btn" onClick={onBack}
+          style={{ background:"none", border:"none", cursor:"pointer",
+            color:P.dim, fontSize:20, padding:"0 2px", lineHeight:1 }}>‹</button>
+        <div style={{ fontFamily:P.ff, fontSize:13, fontWeight:700,
+          color:isScrap?"#ff7755":P.gold, letterSpacing:".07em" }}>
+          {isScrap ? "⚠ SCRAP TROOPS" : "⚔ TRAINING QUEUE"}
+        </div>
+        {!isScrap && (
+          <div style={{ marginLeft:"auto", fontFamily:P.ff, fontSize:8, color:P.dim }}>
+            {activeQueues.length}/{maxQueues} queues active
+          </div>
+        )}
+      </div>
+
+      <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
+
+        {/* LEFT: troop selector + slider */}
+        <div style={{ flex:1, display:"flex", flexDirection:"column",
+          borderRight:`1px solid ${P.border}`, overflow:"hidden" }}>
+
+          {/* Scrollable list */}
+          <div style={{ flex:1, overflowY:"auto", padding:"7px" }}>
+            {troopCards.length === 0 && (
+              <div style={{ textAlign:"center", padding:"30px 10px", fontSize:9, color:P.dim,
+                fontFamily:P.ffb, fontStyle:"italic" }}>
+                No troop types unlocked yet.
+              </div>
+            )}
+            {troopCards.map(t => {
+              const isSel = t.key === selected;
+              const fc    = FACTION_META[t.fKey]?.c || "#888";
+              return (
+                <div key={t.key}
+                  onClick={() => { setSelected(t.key); setSliderVal(0); }}
+                  style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 9px",
+                    borderRadius:6, marginBottom:3, cursor:"pointer",
+                    background:isSel ? `${fc}18` : "rgba(255,255,255,.018)",
+                    border:`1px solid ${isSel ? fc+"55" : P.border+"66"}`,
+                    transition:"all .15s" }}>
+                  <div style={{ width:25, height:25, borderRadius:4, display:"flex",
+                    alignItems:"center", justifyContent:"center",
+                    background:`${fc}20`, fontSize:13 }}>{t.fIcon}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
+                      color:isSel?P.text:P.sub, whiteSpace:"nowrap",
+                      overflow:"hidden", textOverflow:"ellipsis" }}>
+                      {t.tier.label}
+                    </div>
+                    <div style={{ fontSize:7, color:fc }}>
+                      {t.branch.label} · T{(t.tier.tierIdx??0)+1}
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:1 }}>
+                    <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
+                      color:isSel?P.gold:P.sub }}>
+                      {t.poolCount.toLocaleString()}
+                    </div>
+                    <div style={{ fontSize:6.5, color:P.dim }}>pool</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Slider + info for selected card */}
+          {card && (
+            <div style={{ padding:"11px 12px 13px", borderTop:`1px solid ${P.border}`,
+              background:"rgba(0,0,0,.2)" }}>
+              {/* Card summary */}
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                <div style={{ fontSize:18 }}>{FACTION_META[card.fKey]?.s || "⚑"}</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:P.ff, fontSize:10, fontWeight:700, color:P.text }}>
+                    {card.tier.label}
+                  </div>
+                  <div style={{ fontSize:7.5, color:fColor, marginTop:1,
+                    display:"flex", alignItems:"center", gap:5 }}>
+                    {card.branch.label}
+                    <TroopSizeTag size={card.branch.size}/>
+                    <span style={{ color:P.dim }}>CMD: {(COMMAND_COST[card.branch.size]??0.01).toFixed(2)}</span>
+                  </div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontFamily:P.ff, fontSize:12, fontWeight:700,
+                    color:isScrap?"#ff8866":P.gold }}>{sv.toLocaleString()}</div>
+                  <div style={{ fontSize:7, color:P.dim }}>selected</div>
+                </div>
+              </div>
+
+              {/* Slider */}
+              <input type="range" min={0} max={Math.max(1,maxAmount)} value={sv}
+                onChange={e => setSliderVal(+e.target.value)}
+                onInput={e => setSliderVal(+e.target.value)}
+                style={{ width:"100%", accentColor:isScrap?"#cc3030":"#c8903a",
+                  marginBottom:7, cursor:"pointer" }}/>
+
+              {/* Cost / time */}
+              {!isScrap && sv > 0 && trainCost && (
+                <div style={{ fontSize:7.5, marginBottom:5, display:"flex", flexWrap:"wrap", gap:4,
+                  alignItems:"center" }}>
+                  {Object.entries(trainCost).map(([k,v]) => (
+                    <RssPill key={k} rssKey={k} amount={v} rss={rss} small/>
+                  ))}
+                  <span style={{ fontSize:7, color:"#88aacc", fontFamily:P.ff }}>⏱ {fmtTime(timeSecs)}</span>
+                </div>
+              )}
+              {isScrap && sv > 0 && (
+                <div style={{ fontSize:7.5, color:"#dd7755", fontFamily:P.ffb,
+                  fontStyle:"italic", marginBottom:6 }}>
+                  ⚠ Permanently remove {sv.toLocaleString()} {card.tier.label}s. No resources returned.
+                </div>
+              )}
+
+              {/* Action button */}
+              <button className="btn" disabled={!canAct} onClick={handleAction}
+                style={{ width:"100%", padding:"8px", fontFamily:P.ff, fontSize:9.5,
+                  fontWeight:700, letterSpacing:".05em",
+                  cursor:canAct?"pointer":"not-allowed", borderRadius:5,
+                  border:`1px solid ${canAct?(isScrap?"#cc3030":"#c8903a"):"#222"}`,
+                  color:canAct?(isScrap?"#ff8866":"#fff8e0"):"#333",
+                  background:canAct
+                    ?(isScrap
+                      ?"linear-gradient(135deg,rgba(160,40,40,.5),rgba(100,20,20,.3))"
+                      :"linear-gradient(135deg,rgba(200,140,40,.4),rgba(120,70,10,.3))")
+                    :"rgba(255,255,255,.02)",
+                  transition:"all .2s" }}>
+                {!canAct
+                  ? (freeSlots<=0&&!isScrap ? `All ${maxQueues} queues full`
+                     : sv===0 ? "Select amount"
+                     : !affordable ? "Not enough resources"
+                     : room<=0 ? "Barracks full"
+                     : "—")
+                  : isScrap
+                    ? `Scrap ${sv.toLocaleString()} troops`
+                    : `Queue ${sv.toLocaleString()} troops (${fmtTime(timeSecs)})`}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: queue slots */}
+        <div style={{ width:210, display:"flex", flexDirection:"column",
+          padding:"10px 10px 12px", overflowY:"auto" }}>
+
+          <div style={{ fontFamily:P.ff, fontSize:8, color:P.dim,
+            letterSpacing:".1em", marginBottom:8, fontWeight:700 }}>
+            {isScrap ? "SCRAP ACTIONS" : "FABRICATION QUEUE"}
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            {displaySlots.map((slot, i) => {
+              const isLocked = slot === "locked";
+              const q        = !isLocked ? slot : null;
+              const qFKey    = q?.branchKey?.split(":")?.[0];
+              const qFColor  = qFKey ? (FACTION_META[qFKey]?.c || "#888") : P.gold;
+              const qFIcon   = qFKey ? (FACTION_META[qFKey]?.s || "⚑") : null;
+              const qLabel   = q ? (() => {
+                const parts = q.branchKey?.split(":") || [];
+                const fDef  = parts[0] ? FACTION_TROOPS[parts[0]] : null;
+                const brDef = fDef?.branches?.find(b=>b.key===parts[1]);
+                const tier  = brDef?.tiers?.[parseInt(parts[2]||0)];
+                return tier?.label || parts[1] || q.branchKey;
+              })() : null;
+              const qSecs = q ? Math.ceil(q.remaining / rate) : 0;
+              const qPct  = q ? Math.round(((q.total-q.remaining)/q.total)*100) : 0;
+
+              return (
+                <div key={i} style={{ borderRadius:7, minHeight:108,
+                  border:`1px solid ${q?qFColor+"55":isLocked?P.border+"44":P.border}`,
+                  background:q?"rgba(255,255,255,.04)":isLocked?"rgba(0,0,0,.15)":"rgba(255,255,255,.015)",
+                  display:"flex", flexDirection:"column", alignItems:"center",
+                  justifyContent:q?"flex-start":"center",
+                  padding:8, position:"relative",
+                  opacity:isLocked?0.45:1, transition:"all .2s" }}>
+
+                  <div style={{ fontFamily:P.ff, fontSize:11,
+                    color:q?P.gold:P.dim, fontWeight:700, marginBottom:q?5:0 }}>
+                    0{i+1}
+                  </div>
+
+                  {q && (
+                    <>
+                      <button className="btn"
+                        onClick={() => setTrainingQueues(prev => prev.filter(x => x.id !== q.id))}
+                        style={{ position:"absolute", top:4, right:4, width:16, height:16,
+                          background:"#cc3030", border:"none", borderRadius:3, cursor:"pointer",
+                          color:"#fff", fontSize:9, display:"flex",
+                          alignItems:"center", justifyContent:"center", padding:0 }}>
+                        ✕
+                      </button>
+                      <div style={{ fontSize:18 }}>{qFIcon}</div>
+                      <div style={{ fontFamily:P.ff, fontSize:7.5, fontWeight:700,
+                        color:P.text, marginTop:4, textAlign:"center", lineHeight:1.2 }}>
+                        {qLabel}
+                      </div>
+                      <div style={{ fontSize:7, color:"#6aaa50", fontFamily:P.ff, marginTop:3 }}>
+                        +{q.remaining.toLocaleString()}
+                      </div>
+                      <div style={{ fontSize:7, color:"#88aacc", fontFamily:P.ff }}>
+                        ⏱ ~{fmtTime(qSecs)}
+                      </div>
+                      <div style={{ width:"100%", marginTop:5, height:3,
+                        background:"#181820", borderRadius:2, overflow:"hidden" }}>
+                        <div style={{ height:"100%", width:`${qPct}%`,
+                          background:"linear-gradient(90deg,#3366cc,#88aaff)",
+                          transition:"width 1s" }}/>
+                      </div>
+                    </>
+                  )}
+                  {!q && !isLocked && (
+                    <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff }}>Empty</div>
+                  )}
+                  {isLocked && (
+                    <>
+                      <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff }}>Unlock</div>
+                      <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff }}>at Lv. {lockLevels[i]}</div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Root two-screen wrapper ────────────────────────────────────────────────────
+function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, setTrainingQueues,
+  canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches }) {
+
+  const [subScreen, setSubScreen] = useState("list"); // "list" | "train" | "scrap"
+  const troopCards = useTroopCards({ unlockedBranches, troopCounts, cmds });
+
+  if (subScreen === "list") {
+    return (
+      <TrainingListScreen
+        bldgs={bldgs} barracksPool={barracksPool}
+        troopCards={troopCards} trainingQueues={trainingQueues} rss={rss}
+        onTrain={() => setSubScreen("train")}
+        onScrap={() => setSubScreen("scrap")}/>
+    );
+  }
+
+  return (
+    <TrainingQueueScreen
+      mode={subScreen}
+      bldgs={bldgs} barracksPool={barracksPool}
+      troopCards={troopCards} trainingQueues={trainingQueues}
+      setTrainingQueues={setTrainingQueues}
+      canAfford={canAfford} queueTraining={queueTraining}
+      rss={rss} discardTroops={discardTroops}
+      onBack={() => setSubScreen("list")}/>
+  );
+}
 // -----------------------------------------------------------------------------
 //  ARMY
 // -----------------------------------------------------------------------------
@@ -2845,7 +3153,7 @@ cmds, setCmds, tiles, rss, setRss, gems, pKeys,
 bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
 trainingQueues, setTrainingQueues, trainSlider, setTrainSlider,
 upgQueue, sliderVals, setSliderVals, bLog,
-upgrade, canAfford, assignTroops, returnTroops, queueTraining, troopCounts, setTroopSlot,
+upgrade, canAfford, assignTroops, returnTroops, queueTraining, troopCounts, setTroopCounts, setTroopSlot,
 recallMarch, setScreen, gearInventory, playerHqKey,
 facKey, unlockedBranches, setUnlockedBranches,
 quarterLevels, setQuarterLevels,
@@ -2969,7 +3277,10 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             trainingQueues={trainingQueues} setTrainingQueues={setTrainingQueues} canAfford={canAfford}
             queueTraining={queueTraining} rss={rss} cmds={cmds}
             unlockedBranches={unlockedBranches}
-            discardTroops={n => setBarracks(p => Math.max(0, p - n))}/>
+            discardTroops={(bKey, n) => {
+              setBarracks(p => Math.max(0, p - n));
+              if (bKey) setTroopCounts(prev => ({ ...prev, [bKey]: Math.max(0, (prev[bKey]||0) - n) }));
+            }}/>
         )}
         {hqTab === "army" && (
           <BattleGroupsScreen cmds={cmds} setCmds={setCmds} bldgs={bldgs}
