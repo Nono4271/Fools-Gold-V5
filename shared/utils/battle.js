@@ -1147,6 +1147,13 @@ const cmdAtkStat      = cmd.atk || 150;
 const cmdFocStat      = cmd.foc || 0;
 const combinedCmdStat = cmdAtkStat + cmdFocStat * 0.5; // foc is secondary unless troop does focus dmg
 const CMD_ATK_SCALE   = Math.max(8, troopDmgEstimate * (65 / 35) / Math.max(combinedCmdStat, 1));
+// Class bonuses — unlock at Lv20 (must be declared before attackerPhysMult uses them)
+const cmdRespectLevel = cmd.respectLevel ?? cmd.lvl ?? 5;
+const bastionActive   = (cmd.cls === "balanced")   && (cmdRespectLevel >= 20); // balanced gets bastion
+const attackerBonus   = (cmd.cls === "attacker")   && (cmdRespectLevel >= 20); // +10% physical cmd dmg
+const strategistBonus = (cmd.cls === "strategist") && (cmdRespectLevel >= 20); // +10% focus/elemental cmd dmg
+const bastionHpMult = bastionActive ? 2 : 1;
+
 const atkCmdAtkBase   = cmdAtkStat * CMD_ATK_SCALE * passives.cmdAtkMult;
 const atkCmdFocBase   = cmdFocStat * CMD_ATK_SCALE * passives.cmdAtkMult;
 const attackerPhysMult  = attackerBonus   ? 1.10 : 1.0;
@@ -1157,13 +1164,6 @@ const atkCmdSpd     = cmd.spd || 60;
 const defCmdAtkStat   = dc ? (dc.atk || 80) : 80;
 const defCmdFocStat   = dc ? (dc.foc || 0) : 0;
 const defCmdAtk     = (defCmdAtkStat + defCmdFocStat * 0.5) * CMD_ATK_SCALE;
-
-// Class bonuses — unlock at Lv20
-const cmdRespectLevel = cmd.respectLevel ?? cmd.lvl ?? 5;
-const bastionActive   = (cmd.cls === "balanced")   && (cmdRespectLevel >= 20); // balanced gets bastion
-const attackerBonus   = (cmd.cls === "attacker")   && (cmdRespectLevel >= 20); // +10% physical cmd dmg
-const strategistBonus = (cmd.cls === "strategist") && (cmdRespectLevel >= 20); // +10% focus/elemental cmd dmg
-const bastionHpMult = bastionActive ? 2 : 1;
 
 let atkTroopHp     = totalAtkTroops * atkTroopHpPer * bastionHpMult;
 let defTroopHp     = defTroops      * defTroopHpPer;
