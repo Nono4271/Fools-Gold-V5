@@ -13,6 +13,9 @@ export const PROMO = {
   champion: { to: null,       respectRequired: null },
 };
 
+// Respect points required to unlock a commander in the recruit / shop screen
+export const COMMANDER_UNLOCK_COST = { soldier: 80, veteran: 3000, champion: 9000 };
+
 // ── V4 Classes ───────────────────────────────────────────────────────────────
 export const CLASS = {
   attacker: {
@@ -84,33 +87,48 @@ export function getCommanderTrees(cmd) {
 // ── V4 Respect ───────────────────────────────────────────────────────────────
 export const RESPECT_MAX = 15;
 
-export function respectCost(fromLevel) {
-  return Math.round(300 * Math.pow(1.65, fromLevel));
+// Per-rarity level cost tables  (index = fromLevel, value = pts to reach next level)
+export const RESPECT_LEVEL_COSTS = {
+  soldier:  [200, 280, 400, 520, 640, 900, 1160, 1480, 1900, 2440, 3420, 4380, 5600, 7160, 9160],
+  veteran:  [300, 500, 800, 1100, 1400, 2000, 2600, 3400, 4400, 5700, 8100, 10550, 13700, 17800, 23150],
+  champion: [900, 1200, 1800, 2400, 3000, 3900, 4800, 6600, 8400, 10800, 14900, 19100, 24400, 31200, 39900],
+};
+
+// Schematic point values per rarity
+export const RESPECT_SCHEMATIC_POINTS         = { soldier: 40,  veteran: 100, champion: 300 };
+export const RESPECT_SCHEMATIC_GENERIC_POINTS = { soldier: 20,  veteran: 50,  champion: 150 };
+export const RESPECT_DUPE_POINTS              = { soldier: 120, veteran: 300, champion: 800 };
+export const RESPECT_OVERFLOW_POINTS          = 150;
+
+// Cost to advance from respectLevel → respectLevel+1 for a given rarity
+export function respectCost(fromLevel, rarity = "soldier") {
+  const table = RESPECT_LEVEL_COSTS[rarity] ?? RESPECT_LEVEL_COSTS.soldier;
+  const idx = Math.max(0, Math.min(fromLevel, table.length - 1));
+  return table[idx];
 }
 
-export function respectTotalFor(level) {
+// Total points required to reach a given level from zero
+export function respectTotalFor(level, rarity = "soldier") {
+  const table = RESPECT_LEVEL_COSTS[rarity] ?? RESPECT_LEVEL_COSTS.soldier;
   let total = 0;
-  for (let i = 0; i < level; i++) total += respectCost(i);
+  for (let i = 0; i < Math.min(level, table.length); i++) total += table[i];
   return total;
 }
 
-export const RESPECT_DUPE_POINTS = { soldier: 120, veteran: 300, champion: 800 };
-export const RESPECT_SCHEMATIC_POINTS = { soldier: 100, veteran: 100, champion: 100 };
-export const RESPECT_SCHEMATIC_GENERIC_POINTS = { soldier: 30, veteran: 30, champion: 30 };
-export const RESPECT_OVERFLOW_POINTS = 150;
-
-export function respectLevelFromPoints(totalPoints) {
-  let lvl = 0;
-  let spent = 0;
-  while (lvl < RESPECT_MAX) {
-    const needed = respectCost(lvl);
-    if (spent + needed > totalPoints) break;
-    spent += needed;
+// Derive level + progress from raw accumulated points
+export function respectLevelFromPoints(totalPoints, rarity = "soldier") {
+  const table = RESPECT_LEVEL_COSTS[rarity] ?? RESPECT_LEVEL_COSTS.soldier;
+  let lvl = 0, spent = 0;
+  while (lvl < RESPECT_MAX && lvl < table.length) {
+    if (spent + table[lvl] > totalPoints) break;
+    spent += table[lvl];
     lvl++;
   }
-  return { level: lvl, pointsIntoLevel: totalPoints - spent, pointsNeeded: respectCost(Math.min(lvl, RESPECT_MAX - 1)) };
+  const pointsNeeded = lvl < table.length ? table[lvl] : table[table.length - 1];
+  return { level: lvl, pointsIntoLevel: totalPoints - spent, pointsNeeded };
 }
 
+// Respect level gates: unlock skill trees and promo eligibility
 export const RESPECT_GATES = {
   3:  "command",
   5:  "tactics",
@@ -422,7 +440,7 @@ export function promotedStats(cmd, toRarity) {
 export function addRespect(cmd, points) {
   const prevLevel = cmd.respectLevel ?? 0;
   const newTotal  = (cmd.respectPoints ?? 0) + points;
-  const info      = respectLevelFromPoints(newTotal);
+  const info      = respectLevelFromPoints(newTotal, cmd.rarity);
   const levelsGained = Math.max(0, info.level - prevLevel);
 
   let rarity   = cmd.rarity;

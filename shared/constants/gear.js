@@ -210,9 +210,11 @@ export function refine(piece, secStatIndex) {
 // ── Respect schematic item ────────────────────────────────────────────────────
 export function createRespectSchematic(rarity = "soldier", commander = null) {
   const isSpecific = commander !== null;
+  // Specific schematic (for a named commander): soldier +40, veteran +100, champion +300
+  // Generic schematic (any commander of that rarity): soldier +20, veteran +50, champion +150
   const PTS = isSpecific
-    ? { soldier: 100, veteran: 100, champion: 100 }
-    : { soldier: 30,  veteran: 30,  champion: 30  };
+    ? { soldier: 40, veteran: 100, champion: 300 }
+    : { soldier: 20, veteran: 50,  champion: 150 };
 
   const rarityColor = rarity === "champion" ? "#f0c040" : rarity === "veteran" ? "#a855f7" : "#4488cc";
 
