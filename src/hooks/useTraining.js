@@ -1,17 +1,14 @@
 import { useEffect, useRef } from "react";
-import { barracksCapacity, trainRate } from "../../shared/constants/buildings.js";
+import { barracksCapacity, trainRate, trainingQueueCount } from "../../shared/constants/buildings.js";
 
-export function useTraining({ screen, bldgs, setTrainingQueue, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue }) {
+export function useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue }) {
 
   const bldgsRef        = useRef(bldgs);
   const woundedQueueRef = useRef(woundedQueue);
-  useEffect(() => { bldgsRef.current = bldgs; },        [bldgs]);
+  useEffect(() => { bldgsRef.current = bldgs; },               [bldgs]);
   useEffect(() => { woundedQueueRef.current = woundedQueue; }, [woundedQueue]);
 
-  // ── Healing tent + queue drain tick ──────────────────────────────────────────
-  // Healed troops go back into the shared pool via the legacy setBarracks shim,
-  // which proportionally scales all per-type counts. Healed troops don't track
-  // their type through the wounded queue, so this is the best we can do.
+  // ── Healing tent + wounded queue drain ────────────────────────────────────
   useEffect(() => {
     if (screen !== "game") return;
     const id = setInterval(() => {
@@ -24,7 +21,6 @@ export function useTraining({ screen, bldgs, setTrainingQueue, setTroopCounts, s
         setWounded(w => {
           if (w <= 0) return 0;
           const healed = Math.min(w, healRate);
-          // Use legacy setBarracks shim to add healed troops back proportionally
           setBarracks(pool => {
             const space  = Math.max(0, cap - pool);
             const direct = Math.min(healed, space);
@@ -50,34 +46,54 @@ export function useTraining({ screen, bldgs, setTrainingQueue, setTroopCounts, s
     return () => clearInterval(id);
   }, [screen, setBarracks, setWounded, setWoundedQueue]);
 
-  // ── Training queue tick ───────────────────────────────────────────────────────
-  // trainingQueue now carries { branchKey, remaining, total }
-  // Delivered troops go into troopCounts[branchKey].
+  // ── Training queues tick ──────────────────────────────────────────────────
+  // trainingQueues: array of { id, branchKey, remaining, total }
+  // Each tick delivers trainRate troops split evenly across active queues.
+  // Same branchKey can appear in multiple slots.
   useEffect(() => {
     if (screen !== "game") return;
     const id = setInterval(() => {
       const b = bldgsRef.current;
-      setTrainingQueue(q => {
-        if (!q) return null;
-        const rate       = trainRate(b.training || 0);
-        const delivered  = Math.min(q.remaining, rate);
-        const newRemaining = q.remaining - delivered;
 
-        if (delivered > 0 && q.branchKey) {
+      setTrainingQueues(queues => {
+        if (!queues || queues.length === 0) return queues;
+
+        const rate       = trainRate(b.training || 0);
+        const perQueue   = Math.max(1, Math.floor(rate / queues.length));
+        const cap        = barracksCapacity(b.barracks || 0);
+
+        // Accumulate deliveries per branchKey across all queues this tick
+        const deliveries = {}; // branchKey -> amount delivered
+
+        const updated = queues.map(q => {
+          const delivered    = Math.min(q.remaining, perQueue);
+          const newRemaining = q.remaining - delivered;
+          if (delivered > 0 && q.branchKey) {
+            deliveries[q.branchKey] = (deliveries[q.branchKey] || 0) + delivered;
+          }
+          return newRemaining <= 0 ? null : { ...q, remaining: newRemaining };
+        }).filter(Boolean);
+
+        // Apply all deliveries to troopCounts in one pass
+        if (Object.keys(deliveries).length > 0) {
           setTroopCounts(counts => {
-            const cap   = barracksCapacity(b.barracks || 0);
             const total = Object.values(counts).reduce((s, n) => s + (n || 0), 0);
-            const space = Math.max(0, cap - total);
-            const add   = Math.min(delivered, space);
-            if (add <= 0) return counts;
-            return { ...counts, [q.branchKey]: (counts[q.branchKey] || 0) + add };
+            let space   = Math.max(0, cap - total);
+            const next  = { ...counts };
+            for (const [bKey, amount] of Object.entries(deliveries)) {
+              const add = Math.min(amount, space);
+              if (add > 0) {
+                next[bKey] = (next[bKey] || 0) + add;
+                space -= add;
+              }
+            }
+            return next;
           });
         }
 
-        if (newRemaining <= 0) return null;
-        return { ...q, remaining: newRemaining };
+        return updated;
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [screen, setTrainingQueue, setTroopCounts]);
+  }, [screen, setTrainingQueues, setTroopCounts]);
 }
