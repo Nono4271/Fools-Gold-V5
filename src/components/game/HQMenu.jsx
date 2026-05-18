@@ -1,7 +1,7 @@
 import { useState, useEffect, memo, useMemo } from "react";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
-import { BLDG, barracksCapacity, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown } from "../../../shared/constants/buildings.js";
+import { BLDG, barracksCapacity, barracksCommandPool, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, trainingQueueCount, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, marketplaceRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
 const SC = RC;
 
@@ -302,7 +302,9 @@ return (
 </div>
 </div>
 <div style={{ fontSize:11, color:P.sub, fontFamily:P.ffb, marginBottom:16, lineHeight:1.6 }}>{def.desc}</div>
-{bKey==="barracks" && <div style={{ fontSize:10, color:"#6a8aaa", marginBottom:12 }}>Capacity: {barracksCapacity(lvl).toLocaleString()}</div>}
+{bKey==="barracks" && <div style={{ fontSize:10, color:"#6a8aaa", marginBottom:12 }}>Troops: {barracksCapacity(lvl).toLocaleString()} · Command pool: {barracksCommandPool(lvl)} → <span style={{color:"#aac4d8"}}>{barracksCommandPool(Math.min(lvl+1,10))}</span></div>}
+{bKey==="marketplace" && <div style={{ fontSize:10, color:"#aa7a40", marginBottom:12 }}>Trade rate: {Math.round(marketplaceRate(lvl)*100)}% → <span style={{color:"#c8a060"}}>{Math.round(marketplaceRate(Math.min(lvl+1,10))*100)}%</span> at Lv{Math.min(lvl+1,10)}</div>}
+{bKey==="training" && <div style={{ fontSize:10, color:"#8aaa6a", marginBottom:12 }}>Queues: {trainingQueueCount(lvl)} → <span style={{color:"#aad48a"}}>{trainingQueueCount(Math.min(lvl+1,10))}</span> at Lv{Math.min(lvl+1,10)}</div>}
 {bKey==="storage" && <div style={{ fontSize:10, color:"#6aaa8a", marginBottom:12 }}>Max Resources: {storageMax(lvl).toLocaleString()} → <span style={{color:"#aad4b8"}}>{storageMax(Math.min(lvl+1,20)).toLocaleString()}</span> at Lv{Math.min(lvl+1,20)}</div>}
 {isGated && <div style={{ fontSize:9, color:"#8a6020", fontFamily:P.ffb, fontStyle:"italic", marginBottom:12 }}>🔒 Upgrade HQ to Lv{avail+1} to unlock next level</div>}
 {cost && (
@@ -1112,7 +1114,7 @@ borderBottom:"1px solid rgba(255,255,255,.02)", paddingBottom:2 }}>{l}</div>
 // -----------------------------------------------------------------------------
 //  TROOPS (Training)
 // -----------------------------------------------------------------------------
-function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueue, canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches }) {
+function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, setTrainingQueues, canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches }) {
 const [activePanel, setActivePanel] = useState(null); // { key, mode:"train"|"discard" }
 const [panelSlider, setPanelSlider] = useState(0);
 
@@ -1179,28 +1181,45 @@ background:pct>50?"#3daa60":pct>10?"#d0a030":"#cc3030",
 borderRadius:3, transition:"width .3s" }}/>
 </div>
 <div style={{ fontSize:7, color:P.dim, marginTop:4, fontFamily:P.ff }}>
-{room.toLocaleString()} space available . training {rate.toLocaleString()}/s
+{room.toLocaleString()} space available · {rate.toLocaleString()}/s · {trainingQueues?.length||0}/{trainingQueueCount(bldgs.training||0)} queues active
 </div>
 </div>
 
-  {/* Active training progress */}
-  {trainingQueue && (() => {
-    const qPct     = Math.round(((trainingQueue.total-trainingQueue.remaining)/trainingQueue.total)*100);
-    const secsLeft = Math.ceil(trainingQueue.remaining/rate);
-    return (
-      <div style={{ marginBottom:10, padding:"8px 12px",
-        background:"rgba(40,80,160,.1)", border:"1px solid rgba(60,120,220,.3)", borderRadius:6 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-          <div style={{ fontFamily:P.ff, fontSize:9, color:"#88aaff", fontWeight:700 }}>⚔️ TRAINING IN PROGRESS</div>
-          <div style={{ fontSize:8, color:"#6a8aaa", fontFamily:P.ff }}>{trainingQueue.remaining.toLocaleString()} . ~{secsLeft}s</div>
-        </div>
-        <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
-          <div style={{ height:"100%", width:`${qPct}%`,
-            background:"linear-gradient(90deg,#3366cc,#88aaff)", borderRadius:2, transition:"width 1s" }}/>
-        </div>
-      </div>
-    );
-  })()}
+  {/* Active training queues */}
+  {trainingQueues && trainingQueues.length > 0 && (
+    <div style={{ marginBottom:10, display:"flex", flexDirection:"column", gap:5 }}>
+      {trainingQueues.map((q, idx) => {
+        const qPct     = Math.round(((q.total - q.remaining) / q.total) * 100);
+        const secsLeft = Math.ceil(q.remaining / rate);
+        const label    = q.branchKey?.split(":")[1] ?? q.branchKey;
+        return (
+          <div key={q.id} style={{ padding:"7px 10px",
+            background:"rgba(40,80,160,.1)", border:"1px solid rgba(60,120,220,.3)", borderRadius:6 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+              <div style={{ fontFamily:P.ff, fontSize:8, color:"#88aaff", fontWeight:700 }}>
+                ⚔️ Queue {idx + 1} · {label}
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ fontSize:7, color:"#6a8aaa", fontFamily:P.ff }}>
+                  {q.remaining.toLocaleString()} · ~{secsLeft}s
+                </div>
+                <button className="btn"
+                  onClick={() => setTrainingQueues(prev => prev.filter(x => x.id !== q.id))}
+                  style={{ fontSize:7, padding:"1px 6px", color:"#cc5050",
+                    background:"rgba(200,50,50,.1)", border:"1px solid rgba(200,50,50,.3)", borderRadius:3 }}>
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
+              <div style={{ height:"100%", width:`${qPct}%`,
+                background:"linear-gradient(90deg,#3366cc,#88aaff)", borderRadius:2, transition:"width 1s" }}/>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
 
   {/* Troop type cards */}
   {troopCards.length === 0 && (
@@ -1263,8 +1282,10 @@ borderRadius:3, transition:"width .3s" }}/>
             : Math.max(1, cardPool);
           const sv        = Math.min(panelSlider, sliderMax);
           const trainCost = isTrain ? { stone:sv*2, wood:sv*2, ore:sv, gas:Math.floor(sv*0.5) } : null;
+          const maxQueues  = trainingQueueCount(bldgs.training || 0);
+          const queuesFull = (trainingQueues?.length || 0) >= maxQueues;
           const canAct    = isTrain
-            ? (!trainingQueue && sv>0 && canAfford(trainCost) && room>0)
+            ? (!queuesFull && sv>0 && canAfford(trainCost) && room>0)
             : (sv>0 && cardPool>0);
           return (
             <div style={{ padding:"8px 12px 12px", borderTop:`1px solid ${P.border}` }}>
@@ -1302,7 +1323,7 @@ borderRadius:3, transition:"width .3s" }}/>
                   fontSize:10, fontWeight:700 }}>
                 {canAct
                   ? (isTrain ? `Train ${sv.toLocaleString()} troops` : `Discard ${sv.toLocaleString()} troops`)
-                  : (isTrain && trainingQueue ? "Training in progress" : "Select amount")}
+                  : (isTrain && queuesFull ? `All ${trainingQueueCount(bldgs.training||0)} queues full` : "Select amount")}
               </button>
             </div>
           );
@@ -2597,9 +2618,8 @@ HEAL RATE
 // -----------------------------------------------------------------------------
 //  MARKETPLACE
 // -----------------------------------------------------------------------------
-const TRADE_RATE = 0.70; // 70% return on trade
-
-function MarketplaceScreen({ rss, setRss, mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady, lastVoidTap, voidTapCooldown, doVoidTap, quarterLevels }) {
+function MarketplaceScreen({ rss, setRss, mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady, lastVoidTap, voidTapCooldown, doVoidTap, quarterLevels, marketplaceLvl }) {
+const TRADE_RATE = marketplaceRate(marketplaceLvl || 0);
 const [fromKey, setFromKey] = useState("stone");
 const [toKey,   setToKey]   = useState("wood");
 const [amount,  setAmount]  = useState(0);
@@ -2713,7 +2733,7 @@ return (
               {" -> "}
               <span style={{ color:RSS[toKey] ? RSS[toKey].col : "" }}>{RSS[toKey] ? RSS[toKey].icon : ""} {receive.toLocaleString()}</span>
             </div>
-            <div style={{ fontSize:6, color:"#5a5a3a" }}>{TRADE_RATE*100}{"% rate"}</div>
+            <div style={{ fontSize:6, color:"#5a5a3a" }}>{Math.round(TRADE_RATE*100)}% rate</div>
           </div>
         )}
 
@@ -2823,7 +2843,7 @@ export default memo(function HQMenu({
 hqOpen, setHqOpen, hqTab, setHqTab,
 cmds, setCmds, tiles, rss, setRss, gems, pKeys,
 bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
-trainingQueue, trainSlider, setTrainSlider,
+trainingQueues, setTrainingQueues, trainSlider, setTrainSlider,
 upgQueue, sliderVals, setSliderVals, bLog,
 upgrade, canAfford, assignTroops, returnTroops, queueTraining, troopCounts, setTroopSlot,
 recallMarch, setScreen, gearInventory, playerHqKey,
@@ -2946,7 +2966,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
         )}
         {hqTab === "troops" && (
           <StrikeCraftScreen bldgs={bldgs} barracksPool={barracksPool}
-            trainingQueue={trainingQueue} canAfford={canAfford}
+            trainingQueues={trainingQueues} setTrainingQueues={setTrainingQueues} canAfford={canAfford}
             queueTraining={queueTraining} rss={rss} cmds={cmds}
             unlockedBranches={unlockedBranches}
             discardTroops={n => setBarracks(p => Math.max(0, p - n))}/>
@@ -2969,6 +2989,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             voidTapLvl={voidTapLvl} voidTapReady={voidTapReady}
             lastVoidTap={lastVoidTap} voidTapCooldown={voidTapCooldown}
             doVoidTap={doVoidTap} quarterLevels={quarterLevels}
+            marketplaceLvl={bldgs.marketplace||0}
           />
         )}
       </div>
