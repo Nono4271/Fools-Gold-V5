@@ -4,7 +4,7 @@ import { CSS } from "../../constants/css.js";
 import {
   RARITY, CLASS, SKILL_TREES,
   getCommanderTrees, getTreeDisplayNames,
-  respectCost, RESPECT_MAX, PROMO,
+  respectCost, respectTotalFor, RESPECT_MAX, RESPECT_LEVEL_COSTS, RESPECT_SCHEMATIC_POINTS, RESPECT_SCHEMATIC_GENERIC_POINTS, PROMO, COMMANDER_UNLOCK_COST,
   PLAYABLE_FACTIONS, ALIGNMENT, addRespect,
   SUBSPECIES, getSubspecies, getFactionAlignment,
   HDEFS,
@@ -28,13 +28,14 @@ import { cmdCommand } from "../../../shared/constants/buildings.js";
 const RARITY_ORDER = { champion: 0, veteran: 1, soldier: 2 };
 
 function getRespectInfo(cmd) {
-  const rLvl = cmd.respectLevel ?? 0;
-  const rPts = cmd.respectPoints ?? 0;
+  const rLvl    = cmd.respectLevel ?? 0;
+  const rPts    = cmd.respectPoints ?? 0;
+  const rarity  = cmd.rarity ?? "soldier";
   let spent = 0;
-  for (let i = 0; i < rLvl; i++) spent += respectCost(i);
+  for (let i = 0; i < rLvl; i++) spent += respectCost(i, rarity);
   const intoLvl = rPts - spent;
-  const cost = respectCost(Math.min(rLvl, RESPECT_MAX - 1));
-  const pct = rLvl >= RESPECT_MAX ? 100 : Math.min(100, Math.round((intoLvl / cost) * 100));
+  const cost    = respectCost(Math.min(rLvl, RESPECT_MAX - 1), rarity);
+  const pct     = rLvl >= RESPECT_MAX ? 100 : Math.min(100, Math.round((intoLvl / cost) * 100));
   return { rLvl, intoLvl, cost, pct };
 }
 
@@ -1077,7 +1078,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                     color: r.color }}>R{rLvl}</span>
                   {promoInfo?.to && rLvl < promoInfo.respectRequired && (
                     <span style={{ fontSize: 7, color: "#3a3228", fontFamily: "'Cinzel',serif" }}>
-                      → {RARITY[promoInfo.to]?.n} at R{promoInfo.respectRequired}
+                      → {RARITY[promoInfo.to]?.n} at R{promoInfo.respectRequired} ({respectTotalFor(promoInfo.respectRequired, cmd.rarity).toLocaleString()} pts)
                     </span>
                   )}
                   {/* + button to apply schematics */}
