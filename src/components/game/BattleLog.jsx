@@ -877,24 +877,48 @@ function BattleListItem({ b, selected, onClick }) {
 const TIER_COLORS = ["#8a8aaa", "#4488cc", "#a855f7"];
 const TIER_ROMAN  = ["I", "II", "III"];
 
+function fmt(n) {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
+}
+
 function TroopSlotBoxes({ b, isEnemy, onSlotClick }) {
   let slots = [];
   if (!isEnemy) {
-    const raw = b.atkTroopSlots ?? (b.atkTroopBranch ? [{ branch: b.atkTroopBranch, troops: b.atkTroopsStart }] : []);
-    slots = raw.map(sl => ({ res: resolveTroopBranch(sl.branch), troops: sl.troops ?? 0, branch: sl.branch }));
+    // Attacker: per-slot start count from atkTroopSlots, end count from atkSlotTroopsEnd
+    const raw     = b.atkTroopSlots ?? (b.atkTroopBranch ? [{ branch: b.atkTroopBranch, troops: b.atkTroopsStart }] : []);
+    const endCounts = b.atkSlotTroopsEnd ?? [];
+    slots = raw.map((sl, i) => ({
+      res:      resolveTroopBranch(sl.branch),
+      start:    sl.troops ?? 0,
+      end:      endCounts[i] ?? sl.troops ?? 0,
+      branch:   sl.branch,
+    }));
   } else {
-    const raw = b.defTroopSlots ?? (b.defTroopBranch ? [{ branch: b.defTroopBranch, troops: b.defTroopsStart ?? 0 }] : []);
-    slots = raw.map(sl => ({ res: resolveTroopBranch(sl.branch), troops: sl.troops ?? 0, branch: sl.branch }));
+    // Defender: single pool — distribute end proportionally across slots by start count
+    const raw        = b.defTroopSlots ?? (b.defTroopBranch ? [{ branch: b.defTroopBranch, troops: b.defTroopsStart ?? 0 }] : []);
+    const totalStart = raw.reduce((s, sl) => s + (sl.troops ?? 0), 0);
+    const totalEnd   = b.defTroopsEnd ?? 0;
+    slots = raw.map(sl => {
+      const start = sl.troops ?? 0;
+      const frac  = totalStart > 0 ? start / totalStart : 0;
+      return {
+        res:    resolveTroopBranch(sl.branch),
+        start,
+        end:    Math.round(totalEnd * frac),
+        branch: sl.branch,
+      };
+    });
   }
   if (slots.length === 0) return null;
 
-  // Pad to 3 so size is always identical
+  // Pad to 3 so width is always consistent
   const padded = [0, 1, 2].map(i => slots[i] ?? null);
 
   return (
     <div style={{ display:"flex", gap:3 }}>
       {padded.map((sl, i) => {
-        if (!sl) return <div key={i} style={{ width:40, height:46, flexShrink:0 }} />;
+        if (!sl) return <div key={i} style={{ width:44, height:52, flexShrink:0 }} />;
         const br        = sl.res?.branchDef ?? null;
         const td        = sl.res?.tierData  ?? null;
         const tierIdx   = br ? Math.max(0, br.tiers.indexOf(td)) : 0;
@@ -902,15 +926,17 @@ function TroopSlotBoxes({ b, isEnemy, onSlotClick }) {
         const icon      = br
           ? (br.dmgType === "magical" ? "✦" : br.size === "small" ? "🗡" : br.size === "large" ? "🪃" : "⚔")
           : "⚔";
-        const count = sl.troops > 999
-          ? `${(sl.troops / 1000).toFixed(1)}k`
-          : sl.troops.toLocaleString();
+        // end / start — e.g. "498/499"
+        const endStr   = fmt(sl.end);
+        const startStr = fmt(sl.start);
+        const allDead  = sl.end === 0;
+        const endColor = allDead ? "#cc3030" : sl.end < sl.start ? "#d0a030" : "#3daa60";
         const clickable = !!onSlotClick && !!sl.branch;
         return (
           <div key={i}
             onClick={clickable ? (e) => { e.stopPropagation(); onSlotClick(sl.branch); } : undefined}
             style={{
-              width:40, height:46, flexShrink:0,
+              width:44, height:52, flexShrink:0,
               display:"flex", flexDirection:"column",
               alignItems:"center", justifyContent:"center",
               gap:1,
@@ -921,15 +947,20 @@ function TroopSlotBoxes({ b, isEnemy, onSlotClick }) {
               cursor: clickable ? "pointer" : "default",
               transition:"border-color .15s, box-shadow .15s",
             }}>
-            <div style={{ fontSize:15, lineHeight:1 }}>{icon}</div>
+            <div style={{ fontSize:13, lineHeight:1 }}>{icon}</div>
             <div style={{
-              fontSize:7, fontWeight:700, color:tierColor,
+              fontSize:6.5, fontWeight:700, color:tierColor,
               fontFamily:"'Cinzel',serif", lineHeight:1,
             }}>{TIER_ROMAN[Math.min(tierIdx, 2)]}</div>
+            {/* end / start */}
             <div style={{
-              fontSize:6.5, fontWeight:700, color:"#c8a060",
+              fontSize:6, fontWeight:700, color:endColor,
               fontFamily:"'Cinzel',serif", lineHeight:1, marginTop:1,
-            }}>{count}</div>
+            }}>{endStr}</div>
+            <div style={{
+              fontSize:5.5, color:"#4a3a28",
+              fontFamily:"'Cinzel',serif", lineHeight:1,
+            }}>/{startStr}</div>
           </div>
         );
       })}
