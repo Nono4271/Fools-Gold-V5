@@ -402,23 +402,6 @@ export const FACTION_TROOPS = {
   // ── DRAGONS ─────────────────────────────────────────────────────────────────
   dragons: {
     quarters: "The Eyrie",
-    // Faction-wide passives applied to ALL dragon troops
-    factionPassives: [
-      {
-        key: "slow_to_rise",
-        name: "Slow to Rise",
-        icon: "🌅",
-        desc: "Deal 10% reduced damage for the first 2 rounds of combat.",
-        effect: { type: "dmg_reduce_early", value: 0.10, rounds: [1, 2] },
-      },
-      {
-        key: "exposed_wings",
-        name: "Exposed Wings",
-        icon: "🏹",
-        desc: "Take 15% bonus damage from ranged units.",
-        effect: { type: "ranged_vulnerability", value: 0.15 },
-      },
-    ],
     branches: [
       {
         key: "dragonkin",
@@ -522,22 +505,6 @@ export const FACTION_TROOPS = {
   // ── HOLY KNIGHTS ─────────────────────────────────────────────────────────────
   holyknights: {
     quarters: "The Sanctum",
-    factionPassives: [
-      {
-        key: "divine_shield",
-        name: "Divine Shield",
-        icon: "🛡",
-        desc: "Take 10% reduced damage from all sources.",
-        effect: { type: "dmg_reduce", value: 0.10 },
-      },
-      {
-        key: "holy_bane",
-        name: "Holy Bane",
-        icon: "☀️",
-        desc: "Deal 10% bonus damage to Night Creature troops.",
-        effect: { type: "dmg_bonus_vs_faction", faction: "nightcreatures", value: 0.10 },
-      },
-    ],
     branches: [
       {
         key: "templars",
@@ -641,22 +608,6 @@ export const FACTION_TROOPS = {
   // ── NIGHT CREATURES ───────────────────────────────────────────────────────────
   nightcreatures: {
     quarters: "The Shadowfen",
-    factionPassives: [
-      {
-        key: "creatures_of_darkness",
-        name: "Creatures of Darkness",
-        icon: "🌑",
-        desc: "Deal 15% bonus damage during the first 3 rounds of combat.",
-        effect: { type: "dmg_bonus_early", value: 0.15, rounds: [1, 2, 3] },
-      },
-      {
-        key: "holy_weakness",
-        name: "Holy Weakness",
-        icon: "☀️",
-        desc: "Always take 10% bonus damage from Holy Knight troops.",
-        effect: { type: "dmg_vulnerability_vs_faction", faction: "holyknights", value: 0.10 },
-      },
-    ],
     branches: [
       {
         key: "vampires",

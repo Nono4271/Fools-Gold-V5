@@ -637,6 +637,7 @@ export function skillProcAtLevel(skillDef, level) {
 
 export function skillFiresOnRound(def, round) {
   if (!def || def.type !== "active") return false;
+  if (def.firesOnRounds) return def.firesOnRounds.includes(round);
   const cd  = def.cooldown ?? 1;
   const off = def.offset   ?? (cd + 1); // default: starts on cooldown, fires round cd+1
   if (round < off) return false;
