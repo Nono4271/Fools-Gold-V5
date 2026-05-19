@@ -786,9 +786,86 @@ export const FACTION_TROOPS = {
       },
     ],
   },
-};
 
-// ── Convenience lookups ───────────────────────────────────────────────────────
+  // ── ASHEN DEAD ───────────────────────────────────────────────────────────────
+  ashen_dead: {
+    quarters: "The Necropolis",
+    branches: [
+      {
+        key: "skeleton_legion", label: "Skeleton Legion", size: "small", dmgType: "physical", role: "melee",
+        tiers: [
+          { label: "Skele-Grunt",  dmgLo: 10, dmgHi: 13, def: 13, hp: 18, siege: 12, spd: 65 },
+          { label: "Skele-Knight", dmgLo: 13, dmgHi: 17, def: 17, hp: 23, siege: 15, spd: 65 },
+          { label: "Skele-Lord",   dmgLo: 16, dmgHi: 20, def: 21, hp: 28, siege: 19, spd: 65 },
+        ],
+        skills: {
+          a: {
+            key: "giant_swarm", name: "Giant Swarm", icon: "💀",
+            trigger: "passive",
+            desc: "Damage dealt to Large units +2%. Max: +20%.",
+            procBase: 0.02, procMax: 0.20,
+            effect: { type: "dmg_bonus_vs_size", size: "large", value: 0.02 },
+          },
+          b: {
+            key: "ethereal_sword", name: "Ethereal Sword", icon: "⚔️",
+            trigger: "on_hit",
+            desc: "Attacks ignore 7% of the target's DEF. Max: 70%.",
+            procBase: 0.07, procMax: 0.70,
+            effect: { type: "ignore_def_pct", value: 0.07 },
+          },
+        },
+      },
+      {
+        key: "mummies", label: "Mummies", size: "small", dmgType: "physical", role: "ranged",
+        tiers: [
+          { label: "Mummy",        dmgLo: 14, dmgHi: 17, def: 22, hp: 29, siege: 6,  spd: 40 },
+          { label: "Burial Guard", dmgLo: 18, dmgHi: 22, def: 28, hp: 37, siege: 8,  spd: 40 },
+          { label: "Pharaoh",      dmgLo: 22, dmgHi: 26, def: 35, hp: 45, siege: 10, spd: 40 },
+        ],
+        skills: {
+          a: {
+            key: "armored_body", name: "Armored Body", icon: "🛡️",
+            trigger: "passive",
+            desc: "Physical Damage Received -1.5%. Max: -15%.",
+            procBase: 0.015, procMax: 0.15,
+            effect: { type: "phys_dmg_reduce", value: 0.015 },
+          },
+          b: {
+            key: "mummys_magic", name: "Mummy's Magic", icon: "🧟",
+            trigger: "on_hit",
+            desc: "Normal attack has a 4% chance to inflict Mummify (3 rounds: SPD -25% / SPD -50% / skip turn). Max: 40%.",
+            procBase: 0.04, procMax: 0.40,
+            effect: { type: "on_hit_mummify_chance", chance: 0.04 },
+          },
+        },
+      },
+      {
+        key: "death_cavalry", label: "Death Cavalry", size: "medium", dmgType: "physical", role: "mounted",
+        tiers: [
+          { label: "Grave Rider",   dmgLo: 23, dmgHi: 27, def: 18, hp: 54, siege: 9,  spd: 142 },
+          { label: "Dark Cavalier", dmgLo: 30, dmgHi: 35, def: 23, hp: 70, siege: 12, spd: 142 },
+          { label: "Harbinger",     dmgLo: 37, dmgHi: 42, def: 28, hp: 85, siege: 15, spd: 142 },
+        ],
+        skills: {
+          a: {
+            key: "cover_your_weakness", name: "Cover Your Weakness", icon: "🛡️",
+            trigger: "passive",
+            desc: "Damage Received from Large units -1%. Max: -10%.",
+            procBase: 0.01, procMax: 0.10,
+            effect: { type: "dmg_reduce_vs_size", size: "large", value: 0.01 },
+          },
+          b: {
+            key: "calm_before_the_storm", name: "Calm Before the Storm", icon: "⚡",
+            trigger: "on_hit_received",
+            desc: "On hit received: DMG dealt +1.0% (max 5 stacks → +10%).",
+            procBase: 0.01, procMax: 0.10,
+            effect: { type: "atk_stack_on_hit_received", valuePerStack: 0.01, maxStacks: 5 },
+          },
+        },
+      },
+    ],
+  },
+};
 
 export const FACTION_KEYS = Object.keys(FACTION_TROOPS);
 

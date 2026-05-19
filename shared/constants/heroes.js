@@ -243,6 +243,12 @@ export const HDEFS = [
   { id:"h52", n:"Eira Coldmantle",    faction:"coldborns", rarity:"veteran",  cls:"support",    atk:30,  foc:185, spd:62, icon:"❄️", subspecies:"Völva",     portrait:"/commanders/h52_eira_coldmantle_portrait.webp",    bust:"/commanders/h52_eira_coldmantle_bust.webp" },
   { id:"h53", n:"Halvard Grimtide",   faction:"coldborns", rarity:"champion", cls:"strategist", atk:130, foc:120, spd:70, icon:"⚔️", subspecies:"High Jarl", portrait:"/commanders/h53_halvard_grimtide_portrait.webp",   bust:"/commanders/h53_halvard_grimtide_bust.webp" },
   { id:"h54", n:"Knut Ironmarch",     faction:"coldborns", rarity:"veteran",  cls:"leader",     atk:80,  foc:0,   spd:62, icon:"🏔️", subspecies:"Thane",     portrait:"/commanders/h54_knut_ironmarch_portrait.webp",     bust:"/commanders/h54_knut_ironmarch_bust.webp" },
+  { id:"h55", n:"Malgrath the Eternal",  faction:"ashen_dead", rarity:"champion", cls:"strategist", atk:40,  foc:210, spd:65, icon:"💀", subspecies:"Lich",        portrait:"/commanders/h55_malgrath_the_eternal_portrait.webp", bust:"/commanders/h55_malgrath_the_eternal_bust.webp" },
+  { id:"h56", n:"Lord Varak",            faction:"ashen_dead", rarity:"champion", cls:"strategist", atk:50,  foc:190, spd:62, icon:"⚔️", subspecies:"Death Knight", portrait:"/commanders/h56_lord_varak_portrait.webp",           bust:"/commanders/h56_lord_varak_bust.webp" },
+  { id:"h57", n:"Ser Dreadmourne",       faction:"ashen_dead", rarity:"veteran",  cls:"balanced",   atk:110, foc:0,   spd:68, icon:"🗡️", subspecies:"Death Knight", portrait:"/commanders/h57_ser_dreadmourne_portrait.webp",      bust:"/commanders/h57_ser_dreadmourne_bust.webp" },
+  { id:"h58", n:"Veyra the Hollow",      faction:"ashen_dead", rarity:"veteran",  cls:"attacker",   atk:130, foc:0,   spd:72, icon:"👻", subspecies:"Revenant",     portrait:"/commanders/h58_veyra_the_hollow_portrait.webp",     bust:"/commanders/h58_veyra_the_hollow_bust.webp" },
+  { id:"h59", n:"Fallen Lord Mordwyn",   faction:"ashen_dead", rarity:"soldier",  cls:"support",    atk:20,  foc:165, spd:60, icon:"🕯️", subspecies:"Lich",         portrait:"/commanders/h59_fallen_lord_mordwyn_portrait.webp",  bust:"/commanders/h59_fallen_lord_mordwyn_bust.webp" },
+  { id:"h60", n:"Cael the Risen",        faction:"ashen_dead", rarity:"soldier",  cls:"attacker",   atk:120, foc:0,   spd:68, icon:"💪", subspecies:"Revenant",     portrait:"/commanders/h60_cael_the_risen_portrait.webp",       bust:"/commanders/h60_cael_the_risen_bust.webp" },
 ];
 
 
