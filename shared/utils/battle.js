@@ -1649,7 +1649,239 @@ switch (eff.type) {
     // Bear Rider Charge: normal attack hits all enemies at reduced %
     rs.cmdAoe   = true;
     rs.cmdMult *= (eff.value || 0.50);
-    break;  case "cmd_stat_bonus":
+    break;
+
+  // ── Life Drain mechanics ──────────────────────────────────────────────────
+  // Life Drain: healing received → 50% of that amount as damage (2 rnd, no stack)
+  case "focus_damage_life_drain_def_down":
+    rs.focusDmgBonus += eff.value || 0.40;
+    rs.lifeDrainApplied    = true;
+    rs.lifeDrainRoundsLeft = 2;
+    rs.enemyDefDown = Math.min((rs.enemyDefDown||0) + (eff.defDown||5.0), 50);
+    roundLog.actions.push({ actor: actorLabel, action: `💀 Malgrath's Curse — FOC DMG + Life Drain (2 rnd) + DEF -${eff.defDown||5} permanently!`, dmg: 0, isTroopSkill: true });
+    break;
+  case "aoe_life_drain_chance":
+    if (Math.random() < (eff.chance || 0.08)) {
+      rs.lifeDrainApplied    = true;
+      rs.lifeDrainRoundsLeft = 2;
+      if (eff.maxLevelEffect?.lifeDrainEnemyDmgTakenUp) rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp||0) + eff.maxLevelEffect.lifeDrainEnemyDmgTakenUp;
+      roundLog.actions.push({ actor: actorLabel, action: `☠️ Plague of the Eternal — Life Drain applied!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "focus_damage_life_drain_chance":
+    rs.focusDmgBonus += eff.value || 0.18;
+    if (Math.random() < (eff.lifeDrainChance || 0.35)) {
+      rs.lifeDrainApplied    = true;
+      rs.lifeDrainRoundsLeft = 2;
+      roundLog.actions.push({ actor: actorLabel, action: `🖤 Necrotic Touch — Life Drain applied!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "life_drain_enemy_foc_dmg_taken_up":
+    if (rs.lifeDrainApplied) {
+      rs.focusDmgBonus   += eff.value || 0.04;
+      rs.enemyDmgTakenUp  = (rs.enemyDmgTakenUp||0) + (eff.value||0.04);
+    }
+    break;
+  case "lich_dominion_passive":
+    rs.cmdFocPassiveBonus = (rs.cmdFocPassiveBonus||0) + (eff.focUp||2.0);
+    rs.focusDmgBonus      += eff.allyFocDmgUp || 0.015;
+    rs.troopAtkMult       *= (1 + (eff.allyFocDmgUp||0.015));
+    if (rs.lifeDrainApplied) rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp||0) + (eff.lifeDrainEnemyVuln||0.05);
+    break;
+  case "aoe_focus_damage_vuln":
+    rs.cmdAoe        = true;
+    rs.focusDmgBonus += eff.value || 0.12;
+    rs.focusVulnOnTarget = (rs.focusVulnOnTarget||0) + (eff.focVuln||0.15);
+    break;
+  case "silence_and_foc_vuln":
+    rs.enemyConfused   = Math.max(rs.enemyConfused||0, eff.silenceDuration||1);
+    rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp||0) + (eff.focVuln||0.02);
+    if (eff.maxLevelEffect?.cmdFocBonus) rs.cmdFocPassiveBonus = (rs.cmdFocPassiveBonus||0) + eff.maxLevelEffect.cmdFocBonus;
+    roundLog.actions.push({ actor: actorLabel, action: `⚖️ Varak's Verdict — Enemy CMD Silenced + FOC vuln!`, dmg: 0, isTroopSkill: true });
+    break;
+  case "vs_all_foc_dmg_taken_up":
+    rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp||0) + (eff.value||0.02);
+    break;
+  case "aoe_focus_multi_hit":
+    rs.cmdAoe        = true;
+    rs.focusDmgBonus += (eff.value||0.10) * (eff.hits||3);
+    if (eff.maxLevelEffect?.enemyFocDmgTakenUp) rs.enemyFocDmgTakenUp = (rs.enemyFocDmgTakenUp||0) + eff.maxLevelEffect.enemyFocDmgTakenUp;
+    break;
+  case "aoe_focus_confusion_life_drain":
+    rs.cmdAoe = true;
+    rs.focusDmgBonus += eff.value || 0.10;
+    if (Math.random() < (eff.confusionChance||0.35)) { rs.enemyConfused = Math.max(rs.enemyConfused||0, 1); roundLog.actions.push({ actor: actorLabel, action: `🔔 Death Knell — Confused!`, dmg:0, isTroopSkill:true }); }
+    if (Math.random() < (eff.lifeDrainChance||0.25)) { rs.lifeDrainApplied=true; rs.lifeDrainRoundsLeft=2; roundLog.actions.push({ actor: actorLabel, action: `🔔 Death Knell — Life Drain!`, dmg:0, isTroopSkill:true }); }
+    if (eff.maxLevelEffect?.cmdNormalAtkFocBonus) rs.cmdNormalAtkFocBonus = (rs.cmdNormalAtkFocBonus||0) + eff.maxLevelEffect.cmdNormalAtkFocBonus;
+    break;
+  case "life_drain_applied_def_down":
+    if (rs.lifeDrainApplied) {
+      const ldStacks = rs.deathTouchedStacks || 0;
+      if (ldStacks < (eff.maxStacks||3)) { rs.deathTouchedStacks = ldStacks+1; rs.enemyDefDown = Math.min((rs.enemyDefDown||0)+(eff.defDown||1.5),50); }
+    }
+    break;
+  case "life_drain_applied_next_skill_bonus":
+    if (rs.lifeDrainApplied && Math.random() < (eff.chance||0.07)) {
+      rs.lifeDrainNextSkillBonus    = true;
+      rs.lifeDrainNextSkillBonusPct = eff.bonusDmg || 0.30;
+      roundLog.actions.push({ actor: actorLabel, action: `⚡ The Eternal Knight — Next skill +${Math.round((eff.bonusDmg||0.30)*100)}%!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "death_cavalry_buff_foc_dmg":
+    rs.troopDefMult *= (1 + (eff.defBonus||3)/100);
+    rs.troopAtkMult *= (1 + (eff.dmgBonus||0.02));
+    rs.focusDmgBonus += eff.focDmg || 0.12;
+    if (rs.lifeDrainApplied && eff.maxLevelEffect?.lifeDrainArmyConfusionImmune) { rs.invisStunImmune=true; roundLog.actions.push({ actor: actorLabel, action: `🐴 Varak's Vanguard — Confusion Immune!`, dmg:0, isTroopSkill:true }); }
+    break;
+  // ── Mummify mechanics ─────────────────────────────────────────────────────
+  case "on_hit_mummify_chance":
+    if (Math.random() < (eff.chance||0.04)) {
+      rs.mummifyApplied = true;
+      rs.mummifyRound   = rs.mummifyApplied ? 1 : (rs.mummifyRound||0); // reapply resets
+      roundLog.actions.push({ actor: actorLabel, action: `🧟 Mummify applied! (Rnd ${rs.mummifyRound}: SPD -${rs.mummifyRound===1?25:50}%)`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  // ── Ashen Dead troop skill handlers ───────────────────────────────────────
+  case "dmg_bonus_vs_size":
+    rs.troopAtkMult *= (1 + (eff.value||0.02));
+    rs.cmdMult      *= (1 + (eff.value||0.02));
+    break;
+  case "ignore_def_pct":
+    rs.ignoreDefPct = (rs.ignoreDefPct||0) + (eff.value||0.07);
+    break;
+  case "dmg_reduce_vs_size":
+    rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value||0.01));
+    break;
+  case "atk_stack_on_hit_received":
+    { const cbs = rs.calmBeforeStormStacks||0; if (cbs < (eff.maxStacks||5)) { rs.calmBeforeStormStacks=cbs+1; rs.troopAtkMult*=(1+(eff.valuePerStack||0.01)); } }
+    break;
+  // ── Shared Ashen Dead commander handlers ─────────────────────────────────
+  case "undead_buff_enemy_def_down":
+    rs.troopAtkMult *= (1+(eff.dmgBonus||0.015));
+    rs.troopDefMult *= (1+(eff.defBonus||3)/100);
+    rs.enemyDefDown  = Math.min((rs.enemyDefDown||0)+(eff.enemyDefDown||2.0),50);
+    if (eff.maxLevelEffect?.atkBonus) rs.cmdMult *= (1+eff.maxLevelEffect.atkBonus/100);
+    break;
+  case "faction_phys_dmg_reduce":
+    rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value||0.015));
+    break;
+  case "physical_damage_multi_ally_heal":
+    rs.cmdMult  *= (1+(eff.value||0.20));
+    rs.healPct  += eff.allyHealPct || 0.05;
+    break;
+  case "aoe_spd_down_confusion_chance":
+    rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp||0) + 0.05;
+    if (Math.random() < (eff.confusionChance||0.30)) { rs.enemyConfused=Math.max(rs.enemyConfused||0,eff.confusionDuration||1); roundLog.actions.push({ actor: actorLabel, action:`⚓ Dead Man's Weight — Confused!`, dmg:0, isTroopSkill:true }); }
+    if (eff.maxLevelEffect?.armySpdBonus) rs.cmdSpdBonus = (rs.cmdSpdBonus||0)+eff.maxLevelEffect.armySpdBonus;
+    break;
+  case "per_round_confusion_chance_enemy":
+    if (Math.random() < (eff.chance||0.05)) { rs.enemyConfused=Math.max(rs.enemyConfused||0,1); roundLog.actions.push({ actor: actorLabel, action:`🐌 Slow Agony — Confused!`, dmg:0, isTroopSkill:true }); }
+    break;
+  case "cmd_atk_passive":
+    rs.cmdMult *= (1+(eff.value||2.0)/100);
+    break;
+  case "physical_damage_buff_block":
+    rs.cmdMult          *= (1+(eff.value||0.50));
+    rs.enemyBuffStripped = true;
+    if (eff.maxLevelEffect?.cmdStunImmune) rs.invisStunImmune=true;
+    roundLog.actions.push({ actor: actorLabel, action:`🦴 Bone Crusher — No positive buffs (${eff.blockDuration||2} rnd)!`, dmg:0, isTroopSkill:true });
+    break;
+  case "cmd_atk_on_attack_permanent_stack":
+    { const hs=rs.hauntingStacks||0; if (hs<(eff.maxStacks||8)) { rs.hauntingStacks=hs+1; rs.cmdMult*=(1+(eff.valuePerStack||2.0)/100); } }
+    break;
+  case "aoe_physical_faction_bonus":
+    rs.cmdAoe = true; rs.cmdMult *= (1+(eff.value||0.10));
+    if (defFaction===(eff.bonusFaction||"coldborns")) rs.cmdMult *= (1+(eff.bonusDmg||0.20));
+    break;
+  case "slowed_enemy_def_down":
+    if (rs.slowApplied) rs.enemyDefDown = Math.min((rs.enemyDefDown||0)+(eff.value||2.0),50);
+    break;
+  case "cmd_atk_per_round_slowed_active":
+    if (rs.slowApplied) { const rds=rs.relentlessDeadStacks||0; if (rds<(eff.maxStacks||5)) { rs.relentlessDeadStacks=rds+1; rs.cmdMult*=(1+(eff.valuePerStack||1.0)/100); } }
+    break;
+  case "multi_hit_aoe_faction_bonus":
+    rs.cmdAoe = true;
+    { let tot=0; for (let i=0;i<(eff.hits||4);i++) { let h=eff.value||0.06; if (eff.maxLevelEffect?.escalatingHitBonus) h*=Math.pow(1+eff.maxLevelEffect.escalatingHitBonus,i); if (defFaction===(eff.bonusFaction||"coldborns")) h+=(eff.bonusDmgPerHit||0.10); tot+=h; } rs.cmdMult*=(1+tot); }
+    break;
+  case "multi_hit_aoe_size_bonus":
+    rs.cmdAoe = true; rs.cmdMult *= (1+(eff.value||0.06)*(eff.hits||3));
+    break;
+  case "aoe_physical_burn_faction_bonus":
+    rs.cmdAoe = true; rs.cmdMult *= (1+(eff.value||0.10));
+    if (defFaction===(eff.bonusFaction||"coldborns")) rs.cmdMult *= (1+(eff.bonusDmg||0.20));
+    if (Math.random() < (eff.burnChance||0.40)) { rs.burnApplied=true; rs.burnDmgPenalty=0.20; rs.enemyAtkReduce+=0.20; roundLog.actions.push({ actor: actorLabel, action:`🔥 Burning Charge — Burn!`, dmg:0, isTroopSkill:true }); }
+    break;
+  case "aoe_physical_burn_chance":
+    rs.cmdAoe = true; rs.cmdMult *= (1+(eff.value||0.08));
+    if (Math.random() < (eff.burnChance||0.25)) { rs.burnApplied=true; rs.burnDmgPenalty=0.20; rs.enemyAtkReduce+=0.20; roundLog.actions.push({ actor: actorLabel, action:`💢 Risen Fury — Burn!`, dmg:0, isTroopSkill:true }); }
+    break;
+  case "physical_damage_poison_dot":
+    rs.cmdMult        *= (1+(eff.value||0.20));
+    rs.pendingVenomDmg = Math.max(rs.pendingVenomDmg, 0.10);
+    roundLog.actions.push({ actor: actorLabel, action:`☠️ Poison applied!`, dmg:0, isTroopSkill:true });
+    break;
+  case "aoe_physical_poison_chance":
+    rs.cmdAoe = true; rs.cmdMult *= (1+(eff.value||0.08));
+    if (Math.random() < (eff.poisonChance||0.20)) { rs.pendingVenomDmg=Math.max(rs.pendingVenomDmg,0.10); roundLog.actions.push({ actor: actorLabel, action:`☠️ Poison Sweep — Poison!`, dmg:0, isTroopSkill:true }); }
+    break;
+  case "physical_damage_burn_slow_single":
+    rs.cmdMult *= (1+(eff.value||0.40));
+    rs.burnApplied=true; rs.burnDmgPenalty=0.20; rs.enemyAtkReduce+=0.20;
+    rs.slowApplied=true; rs.slowValue=eff.slowValue||25;
+    if (eff.maxLevelEffect?.burnedEnemyDmgTakenUp) rs.enemyDmgTakenUp=(rs.enemyDmgTakenUp||0)+eff.maxLevelEffect.burnedEnemyDmgTakenUp;
+    roundLog.actions.push({ actor: actorLabel, action:`👁️ Death from Below — Burn + Slow!`, dmg:0, isTroopSkill:true });
+    break;
+  case "cmd_normal_atk_aoe_chance":
+    if (Math.random() < (eff.chance||0.10)) { rs.cmdAoe=true; roundLog.actions.push({ actor: actorLabel, action:`⚔️ Cael's Rampage — Hits all!`, dmg:0, isTroopSkill:true }); }
+    break;
+  case "per_round_poison_chance_enemy":
+    if (Math.random() < (eff.chance||0.05)) { rs.pendingVenomDmg=Math.max(rs.pendingVenomDmg,0.10); roundLog.actions.push({ actor: actorLabel, action:`💀 Creeping Death — Poison!`, dmg:0, isTroopSkill:true }); }
+    break;
+  case "heal_all_branch_def_up":
+    rs.healPct += eff.healPct||0.10; rs.troopDefMult *= (1+(eff.defBonus||3)/100);
+    break;
+  case "heal_all_branch_dmg_up":
+    rs.healPct += eff.healPct||0.08; rs.troopAtkMult *= (1+(eff.dmgBonus||0.03));
+    break;
+  case "multi_branch_phys_reduce_hp_def":
+    rs.dmgReduce = Math.min(0.85, rs.dmgReduce+(eff.physReduce||0.02));
+    rs.troopDefMult *= (1+(eff.defBonus||2)/100);
+    break;
+  case "multi_branch_dmg_bonus":
+    rs.troopAtkMult *= (1+(eff.value||0.015));
+    break;
+  case "mordwyn_command_passive":
+    rs.troopAtkMult *= (1+(eff.skeletonDmgUp||0.02));
+    rs.dmgReduce     = Math.min(0.85, rs.dmgReduce+(eff.mummyDmgRecDown||0.02));
+    rs.healPct      += eff.healPerRound||0.05;
+    break;
+  case "early_round_dmg_received_down":
+    if (round <= (eff.maxRound||2)) rs.dmgReduce = Math.min(0.85, rs.dmgReduce+(eff.value||0.04));
+    break;
+  case "cmd_triple_stat_passive":
+    rs.cmdMult          *= (1+(eff.atkValue||1.0)/100);
+    rs.cmdFocPassiveBonus = (rs.cmdFocPassiveBonus||0)+(eff.focValue||1.0);
+    rs.cmdSpdBonus        = (rs.cmdSpdBonus||0)+(eff.spdValue||1.0);
+    break;
+  case "faction_dmg_bonus":
+    rs.troopAtkMult *= (1+(eff.value||0.015));
+    rs.cmdMult      *= (1+(eff.value||0.015));
+    break;
+  case "physical_damage_slow_chance":
+    // Bone Splitter / Hollow Strike / Hollow Assault: physical + slow chance
+    rs.cmdMult *= (1 + (eff.value || 0.30));
+    if (Math.random() < (eff.slowChance || 0.40)) {
+      rs.slowApplied = true;
+      rs.slowValue   = eff.slowValue || 25;
+      roundLog.actions.push({ actor: actorLabel, action: `💢 Slow applied (-${eff.slowValue||25}% SPD, ${eff.slowDuration||2} rnd)!`, dmg: 0, isTroopSkill: true });
+    }
+    break;
+  case "poison_applied_def_down":
+    // Rotting Armor / Veyra: DEF down when Poison is applied
+    if (rs.pendingVenomDmg > 0) rs.enemyDefDown = Math.min((rs.enemyDefDown||0) + (eff.defDown||2.0), 50);
+    break;
+
+  case "cmd_stat_bonus":
     // CMD SPD bonus passive (Fastest in the Pack, Fastest in the Tribe, Power of Alpha)
     rs.cmdSpdBonus += eff.spdPerLevel || 1.0;
     break;
@@ -2967,7 +3199,16 @@ const rs = {
   branchFlatHpDefBonus:null,     // Me Little, Army Big: { branch, hpValue, defValue }
   enemyBuffStripped:false,       // Clear the Air: all enemy positive buffs stripped
   branchHealOnDebuff:null,       // You Get a Heal!: { branch, healPct, maxPerRound, usedThisRound }
-  // Coldborns / Frostbite mechanics
+  // Ashen Dead / Life Drain / Mummify mechanics
+  lifeDrainApplied:false,        // Life Drain: healing received → 50% of that as damage (2 rnd)
+  lifeDrainRoundsLeft:0,         // Rounds remaining on Life Drain
+  mummifyApplied:false,          // Mummify active on enemy
+  mummifyRound:0,                // Current Mummify escalation round (1=SPD-25%, 2=SPD-50%, 3=skip)
+  lifeDrainNextSkillBonus:false, // The Eternal Knight: next skill +30% if Life Drain proc'd
+  lifeDrainNextSkillBonusPct:0,  // The Eternal Knight: bonus %
+  enemyFocDmgTakenUp:0,         // Dread Surge max: enemy FOC DMG taken up
+  cmdNormalAtkFocBonus:0,        // Death Knell max: CMD normal attacks deal FOC DMG
+  undead_army_buff_applied:false,// Iron Dominion: Skeleton/Death Cavalry buff tracking
   frostbiteApplied:false,        // Frostbite active on enemy — DMG dealt -40% for 2 rounds
   frostbiteRoundsLeft:0,         // Rounds remaining on Frostbite
   coldFuryAtkBonus:0,            // Cold Fury: CMD ATK per-round Frostbite bonus
@@ -3365,6 +3606,27 @@ for (const sl of atkSlotResolved) {
 for (const dsl of defSlotResolved) {
   procTroopSkills(dsl.skills, "round_end", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null);
 }
+
+// ── Life Drain tick ───────────────────────────────────────────────────────────
+if (rs.lifeDrainApplied) {
+  rs.lifeDrainRoundsLeft--;
+  if (rs.lifeDrainRoundsLeft <= 0) {
+    rs.lifeDrainApplied = false; rs.lifeDrainRoundsLeft = 0;
+    roundLog.actions.push({ actor:"Battlefield", action:`🩸 Life Drain wore off.`, dmg:0, isTroopSkill:true });
+  }
+}
+// ── Mummify escalation ────────────────────────────────────────────────────────
+if (rs.mummifyApplied) {
+  rs.mummifyRound++;
+  if (rs.mummifyRound > 3) {
+    rs.mummifyApplied=false; rs.mummifyRound=0;
+    roundLog.actions.push({ actor:"Battlefield", action:`🧟 Mummify wore off.`, dmg:0, isTroopSkill:true });
+  } else {
+    const spdPen = rs.mummifyRound===1?25:50;
+    roundLog.actions.push({ actor:"Battlefield", action:`🧟 Mummify Rnd ${rs.mummifyRound}: Enemy SPD -${spdPen}%${rs.mummifyRound===3?" (skip next round)":""}`, dmg:0, isTroopSkill:true });
+  }
+}
+
 report.rounds.push(roundLog);
 
 }
