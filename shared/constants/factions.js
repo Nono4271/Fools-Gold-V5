@@ -6,15 +6,16 @@ export const FAC = {
   dragons:       { n:"Dragons",                s:"🐉",  key:"dragons"        },
   holyknights:   { n:"Holy Knights",           s:"✝️",  key:"holyknights"    },
   nightcreatures:{ n:"Creatures of the Night", s:"🌑",  key:"nightcreatures" },
+  coldborns:     { n:"Coldborns",              s:"❄️",  key:"coldborns"      },
 };
 
 export const AI_FACTIONS = [
-  "pirates","bountyhunters","orcs","dragons","holyknights","nightcreatures"
+  "pirates","bountyhunters","orcs","dragons","holyknights","nightcreatures","coldborns"
 ];
 
 export const ALIGNMENT = {
-  humans:   { n:"Humans",   icon:"🛡", factions:["pirates","bountyhunters","holyknights"],  color:"#c8a060" },
-  creatures:{ n:"Creatures",icon:"🦎", factions:["orcs","dragons","nightcreatures"],         color:"#7aaa40" },
+  humans:   { n:"Humans",   icon:"🛡", factions:["pirates","bountyhunters","holyknights","coldborns"], color:"#c8a060" },
+  creatures:{ n:"Creatures",icon:"🦎", factions:["orcs","dragons","nightcreatures"],                    color:"#7aaa40" },
 };
 
 export function getFactionAlignment(fk) {
@@ -28,4 +29,5 @@ export const PLAYABLE_FACTIONS = [
   { key:"dragons",        n:"Dragons",               s:"🐉",  desc:"Feared overlords of fire and sky.",          c:"#cc3030" },
   { key:"holyknights",    n:"Holy Knights",          s:"✝️",  desc:"Sacred paladins sworn to divine order.",     c:"#d4af37" },
   { key:"nightcreatures", n:"Creatures of the Night",s:"🌑",  desc:"Shadow beings of the ancient dark.",         c:"#a030c0" },
+  { key:"coldborns",      n:"Coldborns",             s:"❄️",  desc:"Frost warriors of the frozen north.",        c:"#60b8d4" },
 ];

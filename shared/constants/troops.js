@@ -707,6 +707,85 @@ export const FACTION_TROOPS = {
       },
     ],
   },
+
+  // ── COLDBORNS ─────────────────────────────────────────────────────────────────
+  coldborns: {
+    quarters: "The Frosthold",
+    branches: [
+      {
+        key: "raiders", label: "Raiders", size: "small", dmgType: "physical", role: "melee",
+        tiers: [
+          { label: "Raider",    dmgLo: 8,  dmgHi: 11, def: 11, hp: 14, siege: 6,  spd: 71 },
+          { label: "Pillager",  dmgLo: 13, dmgHi: 17, def: 18, hp: 22, siege: 10, spd: 71 },
+          { label: "Berserker", dmgLo: 21, dmgHi: 27, def: 30, hp: 35, siege: 17, spd: 71 },
+        ],
+        skills: {
+          a: {
+            key: "frostbite_strike", name: "Frostbite Strike", icon: "🧊",
+            trigger: "on_hit",
+            desc: "On hit: 3.5% chance to inflict Frostbite (DMG dealt -40% for 2 rounds). Max: 35%.",
+            procBase: 0.035, procMax: 0.35,
+            effect: { type: "on_hit_frostbite_chance", chance: 0.035 },
+          },
+          b: {
+            key: "thick_armor", name: "Thick Armor", icon: "🛡️",
+            trigger: "passive",
+            desc: "Physical Damage Received -1.5%. Max: -15%.",
+            procBase: 0.015, procMax: 0.15,
+            effect: { type: "immunity", immune: [], dmgReduce: 0.015 },
+          },
+        },
+      },
+      {
+        key: "bear_riders", label: "Bear Riders", size: "medium", dmgType: "physical", role: "mounted",
+        tiers: [
+          { label: "Iceclaw Rider",    dmgLo: 14, dmgHi: 17, def: 18, hp: 36, siege: 6,  spd: 70 },
+          { label: "Frostpaw Rider",   dmgLo: 23, dmgHi: 27, def: 28, hp: 58, siege: 9,  spd: 70 },
+          { label: "Frost Bear Rider", dmgLo: 36, dmgHi: 42, def: 45, hp: 88, siege: 15, spd: 70 },
+        ],
+        skills: {
+          a: {
+            key: "charge", name: "Charge", icon: "🐻",
+            trigger: "on_hit",
+            desc: "Normal attack hits ALL enemies for 50% damage instead of one target.",
+            procBase: 0.05, procMax: 0.50,
+            effect: { type: "aoe_normal_atk", value: 0.50 },
+          },
+          b: {
+            key: "flame_resistant", name: "Flame Resistant", icon: "🔥",
+            trigger: "passive",
+            desc: "Burn Damage Received -3%. Max: -30%.",
+            procBase: 0.03, procMax: 0.30,
+            effect: { type: "immunity", immune: [], burnDmgReduce: 0.03 },
+          },
+        },
+      },
+      {
+        key: "frost_giants", label: "Frost Giants", size: "large", dmgType: "physical", role: "melee",
+        tiers: [
+          { label: "Frost Giant", dmgLo: 175, dmgHi: 185, def: 30, hp: 610,  siege: 205, spd: 45 },
+          { label: "Frost Hulk",  dmgLo: 308, dmgHi: 322, def: 53, hp: 1055, siege: 363, spd: 45 },
+          { label: "Frost Titan", dmgLo: 440, dmgHi: 460, def: 75, hp: 1500, siege: 520, spd: 45 },
+        ],
+        skills: {
+          a: {
+            key: "mounted_enemy", name: "Mounted Enemy", icon: "🐎",
+            trigger: "passive",
+            desc: "Damage Received from Mounted units -2.5%. Max: -25%.",
+            procBase: 0.025, procMax: 0.25,
+            effect: { type: "immunity", immune: [], mountedDmgReduce: 0.025 },
+          },
+          b: {
+            key: "frost_destruction", name: "Frost Destruction", icon: "❄️",
+            trigger: "round_end",
+            desc: "Each round: 1.5% chance to apply Frostbite to ALL enemies. Max: 15%.",
+            procBase: 0.015, procMax: 0.15,
+            effect: { type: "per_round_frostbite_aoe_chance", chance: 0.015 },
+          },
+        },
+      },
+    ],
+  },
 };
 
 // ── Convenience lookups ───────────────────────────────────────────────────────

@@ -236,6 +236,13 @@ export const HDEFS = [
   { id:"h46", n:"Alpha Korrax",         faction:"nightcreatures",  rarity:"champion", cls:"leader",   atk:185, foc:0,   spd:85, icon:"🌕", subspecies:"Werewolf",     portrait:"/commanders/h46_alpha_korrax_portrait.webp",           bust:"/commanders/h46_alpha_korrax_bust.webp" },
   { id:"h47", n:"Skitter Vex",          faction:"nightcreatures",  rarity:"soldier",  cls:"support", atk:70,  foc:20,  spd:60, icon:"🕷", subspecies:"Spider",       portrait:"/commanders/h47_skitter_vex_portrait.webp",          bust:"/commanders/h47_skitter_vex_bust.webp" },
   { id:"h48", n:"Thaelor the Silkbound", faction:"nightcreatures",  rarity:"veteran",  cls:"attacker",  atk:40,  foc:145, spd:65, icon:"🕸", subspecies:"Spider",       portrait:"/commanders/h48_thaelor_the_silkbound_portrait.webp", bust:"/commanders/h48_thaelor_the_silkbound_bust.webp" },
+  // ── COLDBORNS ───────────────────────────────────────────────────────────────
+  { id:"h49", n:"Bjorn Icevein",      faction:"coldborns", rarity:"champion", cls:"attacker",   atk:170, foc:0,   spd:58, icon:"🪓", subspecies:"Bloodaxe", portrait:"/commanders/h49_bjorn_icevein_portrait.webp",      bust:"/commanders/h49_bjorn_icevein_bust.webp" },
+  { id:"h50", n:"Valdris the Unmoved",faction:"coldborns", rarity:"soldier",  cls:"attacker",   atk:140, foc:0,   spd:65, icon:"🛡️", subspecies:"Jarl",      portrait:"/commanders/h50_valdris_the_unmoved_portrait.webp", bust:"/commanders/h50_valdris_the_unmoved_bust.webp" },
+  { id:"h51", n:"Leif Frostweave",    faction:"coldborns", rarity:"soldier",  cls:"support",    atk:25,  foc:160, spd:60, icon:"🎵", subspecies:"Skald",     portrait:"/commanders/h51_leif_frostweave_portrait.webp",    bust:"/commanders/h51_leif_frostweave_bust.webp" },
+  { id:"h52", n:"Eira Coldmantle",    faction:"coldborns", rarity:"veteran",  cls:"support",    atk:30,  foc:185, spd:62, icon:"❄️", subspecies:"Völva",     portrait:"/commanders/h52_eira_coldmantle_portrait.webp",    bust:"/commanders/h52_eira_coldmantle_bust.webp" },
+  { id:"h53", n:"Halvard Grimtide",   faction:"coldborns", rarity:"champion", cls:"strategist", atk:130, foc:120, spd:70, icon:"⚔️", subspecies:"High Jarl", portrait:"/commanders/h53_halvard_grimtide_portrait.webp",   bust:"/commanders/h53_halvard_grimtide_bust.webp" },
+  { id:"h54", n:"Knut Ironmarch",     faction:"coldborns", rarity:"veteran",  cls:"leader",     atk:80,  foc:0,   spd:62, icon:"🏔️", subspecies:"Thane",     portrait:"/commanders/h54_knut_ironmarch_portrait.webp",     bust:"/commanders/h54_knut_ironmarch_bust.webp" },
 ];
 
 
