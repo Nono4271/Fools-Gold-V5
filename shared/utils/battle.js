@@ -66,6 +66,9 @@ const proc = skillProcAtLevel(skill, lvl);
 if (Math.random() >= proc) continue;
 const eff = skill.effect;
 
+// Round restriction: only fire on specific rounds if roundsOnly is set
+if (eff.roundsOnly && !eff.roundsOnly.includes(round)) continue;
+
 switch (eff.type) {
   case "taunt":
     rs.enemyTargetsTaunted = true;
@@ -95,6 +98,39 @@ switch (eff.type) {
   case "atk_stack":     rs.troopAtkMult       *= (1 + (eff.valuePerStack || 0.04)); break;
   case "counter_attack":rs.troopCounterAtk    = true; break;
   case "immunity":      break;
+  // Troop passive damage reductions (applied as dmgReduce)
+  case "focus_dmg_reduce":
+    rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.02));
+    break;
+  case "ranged_dmg_reduce":
+    rs.rangedDmgReduce = (rs.rangedDmgReduce || 0) + (eff.value || 0.03);
+    break;
+  // hp_stack: round_start HP stacking buff (Troll Tank)
+  case "hp_stack":
+    { const stacks = rs.hpStackStacks || 0;
+      if (stacks < (eff.maxStacks || 5)) {
+        rs.hpStackStacks = stacks + 1;
+        rs.troopHpStackBonus = (rs.troopHpStackBonus || 0) + (eff.valuePerStack || 0.02);
+      }
+    }
+    break;
+  // heal_allies: round_end HP restore to allied troops (BattlePriests Mend)
+  case "heal_allies":
+    rs.healPct += (eff.value || 0.08);
+    break;
+  // self_siege_up: round_start siege stat increase (Acolyte Ley Line)
+  case "self_siege_up": {
+    const lvl2 = skillLevels?.["ley_line"] ?? 1;
+    rs.armySiegeBonus = (rs.armySiegeBonus || 0) + Math.min(eff.maxValue || 10, (eff.valuePerLevel || 1) * lvl2);
+    break;
+  }
+  // burn_apply: pure burn application, no damage (Drake Rider Flame Breath)
+  case "burn_apply":
+    rs.burnApplied    = true;
+    rs.burnDmgPenalty = 0.20;
+    rs.enemyAtkReduce += 0.20;
+    roundLog.actions.push({ actor: actorLabel, action: `🔥 Flame Breath — Burn applied! Enemy DMG -20% (1 rnd)`, dmg: 0, isTroopSkill: true });
+    break;
   // New mechanics
   case "invisibility":
     rs.invisibleUnits = Math.max(rs.invisibleUnits, eff.units || 2);
@@ -3303,6 +3339,10 @@ const rs = {
   physFrostbiteGuaranteed:false, // Glacial Strike: guaranteed Frostbite on physical hit
   onHitFrostbiteChance:0,        // Icevein's Strike: per-hit Frostbite chance
   perRoundFrostbiteAoeChance:0,  // Frostbite Carol / Frost Destruction: AoE Frostbite per round
+  // New troop skill state
+  rangedDmgReduce:0,             // Are Those Toothpicks: damage reduce vs ranged units
+  hpStackStacks:0,               // Tank: current HP stack count
+  troopHpStackBonus:0,           // Tank: cumulative HP bonus (applied to troopDefMult as proxy)
 };
 
 applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
@@ -3567,7 +3607,8 @@ for (const ent of order) {
     // on_hit troop skills — this def slot targeting attacker
     procTroopSkills(dsl.skills, "on_hit", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null);
 
-    const eMod2     = (1 - rs.enemyDmgReduce) * (1 - rs.troopDmgReduce) * (1 - rs.dmgReduce);
+    const rangedReduce = (dsl.branchDef?.role === "ranged" && rs.rangedDmgReduce > 0) ? (1 - rs.rangedDmgReduce) : 1;
+    const eMod2     = (1 - rs.enemyDmgReduce) * (1 - rs.troopDmgReduce) * (1 - rs.dmgReduce) * rangedReduce;
     const dCount    = Math.ceil(defSlotHp[dSlotIdx] / dsl.hpPer);
     const dSlotMod  = troopSizeModifier(dsl.branchDef?.size ?? null, atkSize);
     const dmgD      = Math.max(1, Math.round(
