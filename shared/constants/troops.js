@@ -907,3 +907,12 @@ export function getAllTroopLabels() {
 
 // Legacy TROOP_KEYS shim so any existing code that imports TROOP_KEYS doesn't break
 export const TROOP_KEYS = FACTION_KEYS;
+
+// ── Troop portrait path helper ────────────────────────────────────────────────
+// Returns the expected public path for a troop portrait image.
+// Convention: /troops/{factionKey}_{branchKey}_t{1|2|3}_portrait.webp
+// Usage: troopPortraitPath("pirates", "swashbucklers", 0) → "/troops/pirates_swashbucklers_t1_portrait.webp"
+export function troopPortraitPath(factionKey, branchKey, tierIdx) {
+  if (!factionKey || !branchKey) return null;
+  return `/troops/${factionKey}_${branchKey}_t${(tierIdx ?? 0) + 1}_portrait.webp`;
+}
