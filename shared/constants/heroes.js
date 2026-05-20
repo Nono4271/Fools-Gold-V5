@@ -1,3 +1,5 @@
+import { xpToNext, CMD_LVL_MIN, CMD_LVL_MAX } from "./troops.js";
+
 // ── V4 Rarity ────────────────────────────────────────────────────────────────
 export const RARITY = {
   soldier:  { n: "Soldier",  color: "#4488cc", border: "#2a66aa" },
@@ -223,12 +225,12 @@ export const HDEFS = [
   { id:"h35", n:"Pyrewing Skar",        faction:"dragons",         rarity:"champion", cls:"attacker", atk:180, foc:0,   spd:78, icon:"🌋", subspecies:"Elder",    portrait:"/commanders/h35_pyrewing_skar_portrait.webp",    bust:"/commanders/h35_pyrewing_skar_bust.webp" },
   { id:"h36", n:"Voidscale Nyxara",     faction:"dragons",         rarity:"champion", cls:"strategist",  atk:60,  foc:175, spd:82, icon:"🌑", subspecies:"Elder",    portrait:"/commanders/h36_voidscale_nyxara_portrait.webp", bust:"/commanders/h36_voidscale_nyxara_bust.webp" },
 
-  { id:"h37", n:"Brother Aldric",          faction:"holyknights",     rarity:"soldier",  cls:"balanced", atk:78,  foc:20,  spd:48, icon:"🛡", subspecies:"Templar", portrait:"/commanders/h37_brother_aldric_portrait.webp", bust:"/commanders/h37_brother_aldric_bust.webp" },
-  { id:"h38", n:"Commander Vayne",         faction:"holyknights",     rarity:"veteran",  cls:"leader",   atk:130, foc:30,  spd:55, icon:"⚔️", subspecies:"Templar", portrait:"/commanders/h38_commander_vayne_portrait.webp", bust:"/commanders/h38_commander_vayne_bust.webp" },
-  { id:"h39", n:"Friar Brennan",           faction:"holyknights",     rarity:"soldier",  cls:"support",  atk:40,  foc:120, spd:52, icon:"✝️", subspecies:"BattlePriest", portrait:"/commanders/h39_friar_brennan_portrait.webp",         bust:"/commanders/h39_friar_brennan_bust.webp" },
-  { id:"h40", n:"High Warden Seraph",      faction:"holyknights",     rarity:"champion", cls:"attacker", atk:178, foc:40,  spd:60, icon:"☀️", subspecies:"BattlePriest", portrait:"/commanders/h40_high_warden_seraph_portrait.webp",    bust:"/commanders/h40_high_warden_seraph_bust.webp" },
-  { id:"h41", n:"Maniacal Priest Dante",    faction:"holyknights",     rarity:"veteran",  cls:"leader",  atk:45,  foc:145, spd:62, icon:"🌟", subspecies:"Inquisitor",   portrait:"/commanders/h41_maniacal_priest_dante_portrait.webp", bust:"/commanders/h41_maniacal_priest_dante_bust.webp" },
-  { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"strategist", atk:182, foc:20,  spd:58, icon:"🌑", subspecies:"Inquisitor",   portrait:"/commanders/h42_grand_inquistor_mourne_portrait.webp", bust:"/commanders/h42_grand_inquistor_mourne_bust.webp" },
+  { id:"h37", n:"Brother Aldric",          faction:"holyknights",     rarity:"soldier",  cls:"balanced", atk:91,  foc:35,  spd:75,  atkPerLevel:1.78, focPerLevel:0.53, spdPerLevel:1.27, icon:"🛡", subspecies:"Templar", portrait:"/commanders/h37_brother_aldric_portrait.webp", bust:"/commanders/h37_brother_aldric_bust.webp" },
+  { id:"h38", n:"Commander Vayne",         faction:"holyknights",     rarity:"veteran",  cls:"leader",   atk:100, foc:40,  spd:90,  atkPerLevel:2.35, focPerLevel:0.55, spdPerLevel:1.73, icon:"⚔️", subspecies:"Templar", portrait:"/commanders/h38_commander_vayne_portrait.webp", bust:"/commanders/h38_commander_vayne_bust.webp" },
+  { id:"h39", n:"Friar Brennan",           faction:"holyknights",     rarity:"soldier",  cls:"support",  atk:40,  foc:100, spd:86,  atkPerLevel:0.53, focPerLevel:1.92, spdPerLevel:1.67, icon:"✝️", subspecies:"BattlePriest", portrait:"/commanders/h39_friar_brennan_portrait.webp",         bust:"/commanders/h39_friar_brennan_bust.webp" },
+  { id:"h40", n:"High Warden Seraph",      faction:"holyknights",     rarity:"champion", cls:"attacker", atk:120, foc:70,  spd:65,  atkPerLevel:2.85, focPerLevel:1.15, spdPerLevel:1.25, icon:"☀️", subspecies:"BattlePriest", portrait:"/commanders/h40_high_warden_seraph_portrait.webp",    bust:"/commanders/h40_high_warden_seraph_bust.webp" },
+  { id:"h41", n:"Maniacal Priest Dante",    faction:"holyknights",     rarity:"veteran",  cls:"leader",  atk:30,  foc:100, spd:80,  atkPerLevel:0.47, focPerLevel:1.88, spdPerLevel:1.67, icon:"🌟", subspecies:"Inquisitor",   portrait:"/commanders/h41_maniacal_priest_dante_portrait.webp", bust:"/commanders/h41_maniacal_priest_dante_bust.webp" },
+  { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"strategist", atk:45,  foc:115, spd:90,  atkPerLevel:0.51, focPerLevel:2.72, spdPerLevel:1.77, icon:"🌑", subspecies:"Inquisitor",   portrait:"/commanders/h42_grand_inquistor_mourne_portrait.webp", bust:"/commanders/h42_grand_inquistor_mourne_bust.webp" },
 
   { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"strategist", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire",      portrait:"/commanders/h43_countess_serava_portrait.webp",  bust:"/commanders/h43_countess_serava_bust.webp" },
   { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"strategist",  atk:65,  foc:170, spd:72, icon:"🩸", subspecies:"Vampire",      portrait:"/commanders/h44_lord_malachar_portrait.webp",          bust:"/commanders/h44_lord_malachar_bust.webp" },
@@ -497,6 +499,47 @@ export function addRespect(cmd, points) {
     unspentSkillPoints: newSkillPoints + supportBonus,
     _justPromoted:      promoted ? rarity : null,
     _classBonus:        crossedLv20 ? cmd.cls : null,
+  };
+}
+
+// ── XP level stat growth ──────────────────────────────────────────────────────
+// Apply XP to a commander, levelling up and growing stats as needed.
+// Returns updated commander object. Safe to call with any xp amount.
+export function applyXp(cmd, xpAmount) {
+  if (!xpAmount || xpAmount <= 0) return cmd;
+
+  let lvl    = cmd.lvl ?? CMD_LVL_MIN;
+  let xp     = (cmd.xp ?? 0) + xpAmount;
+  let atk    = cmd.atk ?? 0;
+  let foc    = cmd.foc ?? 0;
+  let spd    = cmd.spd ?? 0;
+
+  const atkPerLevel = cmd.atkPerLevel ?? 0;
+  const focPerLevel = cmd.focPerLevel ?? 0;
+  const spdPerLevel = cmd.spdPerLevel ?? 0;
+
+  let levelsGained = 0;
+
+  while (lvl < CMD_LVL_MAX) {
+    const needed = xpToNext(lvl);
+    if (xp < needed) break;
+    xp  -= needed;
+    lvl += 1;
+    levelsGained += 1;
+    atk += atkPerLevel;
+    foc += focPerLevel;
+    spd += spdPerLevel;
+  }
+
+  if (lvl >= CMD_LVL_MAX) xp = 0;
+
+  return {
+    ...cmd,
+    lvl: Math.min(lvl, CMD_LVL_MAX),
+    xp,
+    atk: Math.round(atk * 10) / 10,
+    foc: Math.round(foc * 10) / 10,
+    spd: Math.round(spd * 10) / 10,
   };
 }
 
