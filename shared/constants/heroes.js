@@ -185,12 +185,12 @@ export function getSubspecies(faction, rarity) {
 // The extra 2 slots are static-random (seeded at design time).
 export const HDEFS = [
   // ── Pirates ── (leader, attacker, support, defender covered; extras: attacker+leader)
-  { id:"h1",  n:"Redwake Fynn",         faction:"pirates",        rarity:"veteran",  cls:"attacker", atk:130, foc:0,   spd:88, icon:"🏴‍☠️", subspecies:"Shipwright", portrait:"/commanders/h1_redwake_fynn_portrait.webp", bust:"/commanders/h1_redwake_fynn_bust.webp" },
-  { id:"h2",  n:"Pirate Cook Samuel",   faction:"pirates",        rarity:"veteran",  cls:"balanced", atk:105, foc:0,   spd:78, icon:"🍳",          subspecies:"Shipwright", portrait:"/commanders/h2_pirate_cook_samuel_portrait.webp", bust:"/commanders/h2_pirate_cook_samuel_bust.webp" },
-  { id:"h13", n:"Admiral Brine",        faction:"pirates",        rarity:"soldier",  cls:"leader",   atk:95,  foc:0,   spd:65, icon:"⚓",          subspecies:"First Mate",  portrait:"/commanders/h13_admiral_brine_portrait.webp",    bust:"/commanders/h13_admiral_brine_bust.webp" },
-  { id:"h14", n:"Saltwhisper",          faction:"pirates",        rarity:"soldier",  cls:"support",  atk:55,  foc:110, spd:72, icon:"🪝",          subspecies:"First Mate",  portrait:"/commanders/h14_saltwhisper_portrait.webp",         bust:"/commanders/h14_saltwhisper_bust.webp" },
-  { id:"h25", n:"Ironjaw Reck",         faction:"pirates",        rarity:"champion", cls:"attacker", atk:175, foc:0,   spd:90, icon:"💀",          subspecies:"Captain",    portrait:"/commanders/h25_ironjaw_reck_portrait.webp",     bust:"/commanders/h25_ironjaw_reck_bust.webp" },
-  { id:"h26", n:"Navigator Seyne",      faction:"pirates",        rarity:"champion", cls:"strategist",   atk:110, foc:60,  spd:80, icon:"🧭",          subspecies:"Captain",    portrait:"/commanders/h26_navigator_seyne_portrait.webp",  bust:"/commanders/h26_navigator_seyne_bust.webp" },
+  { id:"h1",  n:"Redwake Fynn",         faction:"pirates",        rarity:"veteran",  cls:"attacker", atk:85,  foc:10,  spd:90,  atkPerLevel:2.61, focPerLevel:0.22, spdPerLevel:1.87, icon:"🏴‍☠️", subspecies:"Shipwright", portrait:"/commanders/h1_redwake_fynn_portrait.webp", bust:"/commanders/h1_redwake_fynn_bust.webp" },
+  { id:"h2",  n:"Pirate Cook Samuel",   faction:"pirates",        rarity:"veteran",  cls:"balanced", atk:35,  foc:110, spd:95,  atkPerLevel:0.75, focPerLevel:2.45, spdPerLevel:1.95, icon:"🍳",          subspecies:"Shipwright", portrait:"/commanders/h2_pirate_cook_samuel_portrait.webp", bust:"/commanders/h2_pirate_cook_samuel_bust.webp" },
+  { id:"h13", n:"Admiral Brine",        faction:"pirates",        rarity:"soldier",  cls:"leader",   atk:70,  foc:70,  spd:70,  atkPerLevel:1.40, focPerLevel:1.40, spdPerLevel:1.00, icon:"⚓",          subspecies:"First Mate",  portrait:"/commanders/h13_admiral_brine_portrait.webp",    bust:"/commanders/h13_admiral_brine_bust.webp" },
+  { id:"h14", n:"Saltwhisper",          faction:"pirates",        rarity:"soldier",  cls:"support",  atk:10,  foc:90,  spd:90,  atkPerLevel:0.21, focPerLevel:1.90, spdPerLevel:1.60, icon:"🪝",          subspecies:"First Mate",  portrait:"/commanders/h14_saltwhisper_portrait.webp",         bust:"/commanders/h14_saltwhisper_bust.webp" },
+  { id:"h25", n:"Ironjaw Reck",         faction:"pirates",        rarity:"champion", cls:"attacker", atk:125, foc:30,  spd:75,  atkPerLevel:2.85, focPerLevel:0.53, spdPerLevel:1.77, icon:"💀",          subspecies:"Captain",    portrait:"/commanders/h25_ironjaw_reck_portrait.webp",     bust:"/commanders/h25_ironjaw_reck_bust.webp" },
+  { id:"h26", n:"Navigator Seyne",      faction:"pirates",        rarity:"champion", cls:"strategist",   atk:20,  foc:112, spd:98,  atkPerLevel:0.65, focPerLevel:2.45, spdPerLevel:1.87, icon:"🧭",          subspecies:"Captain",    portrait:"/commanders/h26_navigator_seyne_portrait.webp",  bust:"/commanders/h26_navigator_seyne_bust.webp" },
   // ── Marines ── (leader, attacker, support, defender covered; extras: defender+support)
 
 
@@ -198,12 +198,12 @@ export const HDEFS = [
 
 
   // ── Bounty Hunters / Wizards ── (leader, attacker, support, defender covered; extras: support+attacker)
-  { id:"h5",  n:"Solarius Vex",         faction:"bountyhunters",  rarity:"veteran",  cls:"support",  atk:20,  foc:180, spd:62, icon:"🔮",          subspecies:"Sage", portrait:"/commanders/h5_solarius_vex_portrait.webp", bust:"/commanders/h5_solarius_vex_bust.webp" },
-  { id:"h6",  n:"Mira Ashveil",         faction:"bountyhunters",  rarity:"veteran",  cls:"attacker", atk:120, foc:100, spd:70, icon:"✨",          subspecies:"Sage",       portrait:"/commanders/h6_mira_ashveil_portrait.webp",         bust:"/commanders/h6_mira_ashveil_bust.webp" },
-  { id:"h17", n:"Runekeeper Dov",       faction:"bountyhunters",  rarity:"soldier",  cls:"leader",   atk:75,  foc:80,  spd:58, icon:"📜",          subspecies:"Apprentice", portrait:"/commanders/h17_runekeeper_dov_portrait.webp", bust:"/commanders/h17_runekeeper_dov_bust.webp" },
-  { id:"h18", n:"Hexblade Oren",        faction:"bountyhunters",  rarity:"soldier",  cls:"balanced", atk:90,  foc:60,  spd:55, icon:"🔯",          subspecies:"Apprentice", portrait:"/commanders/h18_hexblade_oren_portrait.webp",       bust:"/commanders/h18_hexblade_oren_bust.webp" },
-  { id:"h29", n:"Archmage Theon",       faction:"bountyhunters",  rarity:"champion", cls:"support",  atk:40,  foc:210, spd:65, icon:"🌟",          subspecies:"Warlock",    portrait:"/commanders/h29_archmage_theon_portrait.webp",   bust:"/commanders/h29_archmage_theon_bust.webp" },
-  { id:"h30", n:"Spellblade Ryn",       faction:"bountyhunters",  rarity:"champion", cls:"strategist", atk:155, foc:130, spd:72, icon:"⚡",          subspecies:"Warlock",    portrait:"/commanders/h30_spellblade_ryn_portrait.webp",   bust:"/commanders/h30_spellblade_ryn_bust.webp" },
+  { id:"h5",  n:"Solarius Vex",         faction:"bountyhunters",  rarity:"veteran",  cls:"support",  atk:10,  foc:100, spd:70,  atkPerLevel:0.32, focPerLevel:2.39, spdPerLevel:1.75, icon:"🔮",          subspecies:"Sage", portrait:"/commanders/h5_solarius_vex_portrait.webp", bust:"/commanders/h5_solarius_vex_bust.webp" },
+  { id:"h6",  n:"Mira Ashveil",         faction:"bountyhunters",  rarity:"veteran",  cls:"attacker", atk:115, foc:27,  spd:90,  atkPerLevel:2.60, focPerLevel:0.43, spdPerLevel:1.90, icon:"✨",          subspecies:"Sage",       portrait:"/commanders/h6_mira_ashveil_portrait.webp",         bust:"/commanders/h6_mira_ashveil_bust.webp" },
+  { id:"h17", n:"Runekeeper Dov",       faction:"bountyhunters",  rarity:"soldier",  cls:"leader",   atk:5,   foc:100, spd:100, atkPerLevel:0.10, focPerLevel:2.12, spdPerLevel:2.20, icon:"📜",          subspecies:"Apprentice", portrait:"/commanders/h17_runekeeper_dov_portrait.webp", bust:"/commanders/h17_runekeeper_dov_bust.webp" },
+  { id:"h18", n:"Hexblade Oren",        faction:"bountyhunters",  rarity:"soldier",  cls:"balanced", atk:99,  foc:20,  spd:95,  atkPerLevel:2.12, focPerLevel:0.30, spdPerLevel:1.88, icon:"🔯",          subspecies:"Apprentice", portrait:"/commanders/h18_hexblade_oren_portrait.webp",       bust:"/commanders/h18_hexblade_oren_bust.webp" },
+  { id:"h29", n:"Archmage Theon",       faction:"bountyhunters",  rarity:"champion", cls:"support",  atk:22,  foc:130, spd:80,  atkPerLevel:0.57, focPerLevel:2.76, spdPerLevel:2.00, icon:"🌟",          subspecies:"Warlock",    portrait:"/commanders/h29_archmage_theon_portrait.webp",   bust:"/commanders/h29_archmage_theon_bust.webp" },
+  { id:"h30", n:"Spellblade Ryn",       faction:"bountyhunters",  rarity:"champion", cls:"strategist", atk:5,   foc:110, spd:110, atkPerLevel:0.15, focPerLevel:2.40, spdPerLevel:2.40, icon:"⚡",          subspecies:"Warlock",    portrait:"/commanders/h30_spellblade_ryn_portrait.webp",   bust:"/commanders/h30_spellblade_ryn_bust.webp" },
   // ── MerFolk ── (leader, attacker, support, defender covered; extras: attacker+defender)
 
 
@@ -211,46 +211,46 @@ export const HDEFS = [
 
 
   // ── Orcs ── (leader, attacker, support, defender covered; extras: attacker+defender)
-  { id:"h9",  n:"Grimtusk",             faction:"orcs",           rarity:"veteran",  cls:"attacker", atk:155, foc:0,   spd:60, icon:"⚔️",         subspecies:"Marauder", portrait:"/commanders/h9_grimtusk_portrait.webp", bust:"/commanders/h9_grimtusk_bust.webp" },
-  { id:"h10", n:"Ashgrip",              faction:"orcs",           rarity:"veteran",  cls:"balanced", atk:115, foc:0,   spd:65, icon:"🪓",          subspecies:"Marauder",   portrait:"/commanders/h10_ashgrip_portrait.webp",             bust:"/commanders/h10_ashgrip_bust.webp" },
-  { id:"h21", n:"Warcroak",             faction:"orcs",           rarity:"soldier",  cls:"leader",   atk:80,  foc:0,   spd:58, icon:"🥁",          subspecies:"Raider", portrait:"/commanders/h21_warcroak_portrait.webp", bust:"/commanders/h21_warcroak_bust.webp" },
-  { id:"h22", n:"Shaman Grix",          faction:"orcs",           rarity:"soldier",  cls:"strategist",  atk:30,  foc:100, spd:60, icon:"💀",          subspecies:"Raider",     portrait:"/commanders/h22_shaman_grix_portrait.webp",         bust:"/commanders/h22_shaman_grix_bust.webp" },
-  { id:"h33", n:"Warlord Korgath",      faction:"orcs",           rarity:"champion", cls:"attacker", atk:185, foc:0,   spd:62, icon:"🗡",          subspecies:"Warlord",    portrait:"/commanders/h33_warlord_korgath_portrait.webp",  bust:"/commanders/h33_warlord_korgath_bust.webp" },
-  { id:"h34", n:"Ironhide Bruk",        faction:"orcs",           rarity:"champion", cls:"support", atk:140, foc:0,   spd:55, icon:"🦴",          subspecies:"Warlord",    portrait:"/commanders/h34_ironhide_bruk_portrait.webp",    bust:"/commanders/h34_ironhide_bruk_bust.webp" },
+  { id:"h9",  n:"Grimtusk",             faction:"orcs",           rarity:"veteran",  cls:"attacker", atk:100, foc:15,  spd:45,  atkPerLevel:2.55, focPerLevel:0.32, spdPerLevel:1.23, icon:"⚔️",         subspecies:"Marauder", portrait:"/commanders/h9_grimtusk_portrait.webp", bust:"/commanders/h9_grimtusk_bust.webp" },
+  { id:"h10", n:"Ashgrip",              faction:"orcs",           rarity:"veteran",  cls:"balanced", atk:90,  foc:25,  spd:95,  atkPerLevel:1.75, focPerLevel:0.25, spdPerLevel:1.85, icon:"🪓",          subspecies:"Marauder",   portrait:"/commanders/h10_ashgrip_portrait.webp",             bust:"/commanders/h10_ashgrip_bust.webp" },
+  { id:"h21", n:"Warcroak",             faction:"orcs",           rarity:"soldier",  cls:"leader",   atk:95,  foc:55,  spd:73,  atkPerLevel:1.85, focPerLevel:0.61, spdPerLevel:1.45, icon:"🥁",          subspecies:"Raider", portrait:"/commanders/h21_warcroak_portrait.webp", bust:"/commanders/h21_warcroak_bust.webp" },
+  { id:"h22", n:"Shaman Grix",          faction:"orcs",           rarity:"soldier",  cls:"strategist",  atk:50,  foc:95,  spd:72,  atkPerLevel:0.65, focPerLevel:1.83, spdPerLevel:1.17, icon:"💀",          subspecies:"Raider",     portrait:"/commanders/h22_shaman_grix_portrait.webp",         bust:"/commanders/h22_shaman_grix_bust.webp" },
+  { id:"h33", n:"Warlord Korgath",      faction:"orcs",           rarity:"champion", cls:"attacker", atk:130, foc:25,  spd:60,  atkPerLevel:2.95, focPerLevel:0.27, spdPerLevel:1.45, icon:"🗡",          subspecies:"Warlord",    portrait:"/commanders/h33_warlord_korgath_portrait.webp",  bust:"/commanders/h33_warlord_korgath_bust.webp" },
+  { id:"h34", n:"Ironhide Bruk",        faction:"orcs",           rarity:"champion", cls:"support", atk:100, foc:105, spd:40,  atkPerLevel:1.95, focPerLevel:2.05, spdPerLevel:1.00, icon:"🦴",          subspecies:"Warlord",    portrait:"/commanders/h34_ironhide_bruk_portrait.webp",    bust:"/commanders/h34_ironhide_bruk_bust.webp" },
   // ── Dragons ── (leader, attacker, support, defender covered; extras: attacker+support)
-  { id:"h11", n:"Emberclaw",            faction:"dragons",        rarity:"veteran",  cls:"balanced", atk:155, foc:0,   spd:75, icon:"🐉",          subspecies:"Adult", portrait:"/commanders/h11_emberclaw_portrait.webp", bust:"/commanders/h11_emberclaw_bust.webp" },
-  { id:"h12", n:"Scaleveil Dusk",       faction:"dragons",        rarity:"veteran",  cls:"support",  atk:50,  foc:140, spd:80, icon:"🔥",          subspecies:"Adult",      portrait:"/commanders/h12_scaleveil_dusk_portrait.webp",       bust:"/commanders/h12_scaleveil_dusk_bust.webp" },
-  { id:"h23", n:"Ashen Kraul",          faction:"dragons",        rarity:"soldier",  cls:"leader",   atk:78,  foc:0,   spd:68, icon:"🦎",          subspecies:"Hatchling", portrait:"/commanders/h23_ashen_kraul_portrait.webp", bust:"/commanders/h23_ashen_kraul_bust.webp" },
-  { id:"h24", n:"Cinderfang",           faction:"dragons",        rarity:"soldier",  cls:"balanced", atk:100, foc:0,   spd:58, icon:"🪨",          subspecies:"Hatchling",  portrait:"/commanders/h24_cinderfang_portrait.webp",           bust:"/commanders/h24_cinderfang_bust.webp" },
-  { id:"h35", n:"Pyrewing Skar",        faction:"dragons",         rarity:"champion", cls:"attacker", atk:180, foc:0,   spd:78, icon:"🌋", subspecies:"Elder",    portrait:"/commanders/h35_pyrewing_skar_portrait.webp",    bust:"/commanders/h35_pyrewing_skar_bust.webp" },
-  { id:"h36", n:"Voidscale Nyxara",     faction:"dragons",         rarity:"champion", cls:"strategist",  atk:60,  foc:175, spd:82, icon:"🌑", subspecies:"Elder",    portrait:"/commanders/h36_voidscale_nyxara_portrait.webp", bust:"/commanders/h36_voidscale_nyxara_bust.webp" },
+  { id:"h11", n:"Emberclaw",            faction:"dragons",        rarity:"veteran",  cls:"balanced", atk:90,  foc:70,  spd:70,  atkPerLevel:1.89, focPerLevel:1.60, spdPerLevel:1.23, icon:"🐉",          subspecies:"Adult", portrait:"/commanders/h11_emberclaw_portrait.webp", bust:"/commanders/h11_emberclaw_bust.webp" },
+  { id:"h12", n:"Scaleveil Dusk",       faction:"dragons",        rarity:"veteran",  cls:"support",  atk:20,  foc:102, spd:87,  atkPerLevel:0.65, focPerLevel:2.37, spdPerLevel:1.76, icon:"🔥",          subspecies:"Adult",      portrait:"/commanders/h12_scaleveil_dusk_portrait.webp",       bust:"/commanders/h12_scaleveil_dusk_bust.webp" },
+  { id:"h23", n:"Ashen Kraul",          faction:"dragons",        rarity:"soldier",  cls:"leader",   atk:88,  foc:27,  spd:73,  atkPerLevel:1.92, focPerLevel:0.45, spdPerLevel:1.54, icon:"🦎",          subspecies:"Hatchling", portrait:"/commanders/h23_ashen_kraul_portrait.webp", bust:"/commanders/h23_ashen_kraul_bust.webp" },
+  { id:"h24", n:"Cinderfang",           faction:"dragons",        rarity:"soldier",  cls:"balanced", atk:90,  foc:50,  spd:80,  atkPerLevel:1.85, focPerLevel:1.05, spdPerLevel:1.67, icon:"🪨",          subspecies:"Hatchling",  portrait:"/commanders/h24_cinderfang_portrait.webp",           bust:"/commanders/h24_cinderfang_bust.webp" },
+  { id:"h35", n:"Pyrewing Skar",        faction:"dragons",         rarity:"champion", cls:"attacker", atk:127, foc:25,  spd:80,  atkPerLevel:2.79, focPerLevel:0.75, spdPerLevel:1.67, icon:"🌋", subspecies:"Elder",    portrait:"/commanders/h35_pyrewing_skar_portrait.webp",    bust:"/commanders/h35_pyrewing_skar_bust.webp" },
+  { id:"h36", n:"Voidscale Nyxara",     faction:"dragons",         rarity:"champion", cls:"strategist",  atk:28,  foc:118, spd:75,  atkPerLevel:0.65, focPerLevel:2.67, spdPerLevel:1.88, icon:"🌑", subspecies:"Elder",    portrait:"/commanders/h36_voidscale_nyxara_portrait.webp", bust:"/commanders/h36_voidscale_nyxara_bust.webp" },
 
   { id:"h37", n:"Brother Aldric",          faction:"holyknights",     rarity:"soldier",  cls:"balanced", atk:91,  foc:35,  spd:75,  atkPerLevel:1.78, focPerLevel:0.53, spdPerLevel:1.27, icon:"🛡", subspecies:"Templar", portrait:"/commanders/h37_brother_aldric_portrait.webp", bust:"/commanders/h37_brother_aldric_bust.webp" },
   { id:"h38", n:"Commander Vayne",         faction:"holyknights",     rarity:"veteran",  cls:"leader",   atk:100, foc:40,  spd:90,  atkPerLevel:2.35, focPerLevel:0.55, spdPerLevel:1.73, icon:"⚔️", subspecies:"Templar", portrait:"/commanders/h38_commander_vayne_portrait.webp", bust:"/commanders/h38_commander_vayne_bust.webp" },
   { id:"h39", n:"Friar Brennan",           faction:"holyknights",     rarity:"soldier",  cls:"support",  atk:40,  foc:100, spd:86,  atkPerLevel:0.53, focPerLevel:1.92, spdPerLevel:1.67, icon:"✝️", subspecies:"BattlePriest", portrait:"/commanders/h39_friar_brennan_portrait.webp",         bust:"/commanders/h39_friar_brennan_bust.webp" },
-  { id:"h40", n:"High Warden Seraph",      faction:"holyknights",     rarity:"champion", cls:"attacker", atk:120, foc:70,  spd:65,  atkPerLevel:2.85, focPerLevel:1.15, spdPerLevel:1.25, icon:"☀️", subspecies:"BattlePriest", portrait:"/commanders/h40_high_warden_seraph_portrait.webp",    bust:"/commanders/h40_high_warden_seraph_bust.webp" },
+  { id:"h40", n:"High Warden Seraph",      faction:"holyknights",     rarity:"champion", cls:"attacker", atk:120, foc:70,  spd:65,  atkPerLevel:2.90, focPerLevel:1.22, spdPerLevel:1.33, icon:"☀️", subspecies:"BattlePriest", portrait:"/commanders/h40_high_warden_seraph_portrait.webp",    bust:"/commanders/h40_high_warden_seraph_bust.webp" },
   { id:"h41", n:"Maniacal Priest Dante",    faction:"holyknights",     rarity:"veteran",  cls:"leader",  atk:30,  foc:100, spd:80,  atkPerLevel:0.47, focPerLevel:1.88, spdPerLevel:1.67, icon:"🌟", subspecies:"Inquisitor",   portrait:"/commanders/h41_maniacal_priest_dante_portrait.webp", bust:"/commanders/h41_maniacal_priest_dante_bust.webp" },
-  { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"strategist", atk:45,  foc:115, spd:90,  atkPerLevel:0.51, focPerLevel:2.72, spdPerLevel:1.77, icon:"🌑", subspecies:"Inquisitor",   portrait:"/commanders/h42_grand_inquistor_mourne_portrait.webp", bust:"/commanders/h42_grand_inquistor_mourne_bust.webp" },
+  { id:"h42", n:"Grand Inquisitor Mourne", faction:"holyknights",     rarity:"champion", cls:"strategist", atk:45,  foc:115, spd:90,  atkPerLevel:0.70, focPerLevel:2.81, spdPerLevel:1.87, icon:"🌑", subspecies:"Inquisitor",   portrait:"/commanders/h42_grand_inquistor_mourne_portrait.webp", bust:"/commanders/h42_grand_inquistor_mourne_bust.webp" },
 
-  { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"strategist", atk:150, foc:0,   spd:75, icon:"🦇", subspecies:"Vampire",      portrait:"/commanders/h43_countess_serava_portrait.webp",  bust:"/commanders/h43_countess_serava_bust.webp" },
-  { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"strategist",  atk:65,  foc:170, spd:72, icon:"🩸", subspecies:"Vampire",      portrait:"/commanders/h44_lord_malachar_portrait.webp",          bust:"/commanders/h44_lord_malachar_bust.webp" },
-  { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"balanced", atk:92,  foc:0,   spd:80, icon:"🐺", subspecies:"Werewolf",     portrait:"/commanders/h45_fang_groth_portrait.webp",       bust:"/commanders/h45_fang_groth_bust.webp" },
-  { id:"h46", n:"Alpha Korrax",         faction:"nightcreatures",  rarity:"champion", cls:"leader",   atk:185, foc:0,   spd:85, icon:"🌕", subspecies:"Werewolf",     portrait:"/commanders/h46_alpha_korrax_portrait.webp",           bust:"/commanders/h46_alpha_korrax_bust.webp" },
-  { id:"h47", n:"Skitter Vex",          faction:"nightcreatures",  rarity:"soldier",  cls:"support", atk:70,  foc:20,  spd:60, icon:"🕷", subspecies:"Spider",       portrait:"/commanders/h47_skitter_vex_portrait.webp",          bust:"/commanders/h47_skitter_vex_bust.webp" },
-  { id:"h48", n:"Thaelor the Silkbound", faction:"nightcreatures",  rarity:"veteran",  cls:"attacker",  atk:40,  foc:145, spd:65, icon:"🕸", subspecies:"Spider",       portrait:"/commanders/h48_thaelor_the_silkbound_portrait.webp", bust:"/commanders/h48_thaelor_the_silkbound_bust.webp" },
+  { id:"h43", n:"Countess Serava",      faction:"nightcreatures",  rarity:"veteran",  cls:"strategist", atk:50,  foc:103, spd:97,  atkPerLevel:0.93, focPerLevel:2.27, spdPerLevel:1.89, icon:"🦇", subspecies:"Vampire",      portrait:"/commanders/h43_countess_serava_portrait.webp",  bust:"/commanders/h43_countess_serava_bust.webp" },
+  { id:"h44", n:"Lord Malachar",        faction:"nightcreatures",  rarity:"champion", cls:"strategist",  atk:40,  foc:105, spd:78,  atkPerLevel:0.73, focPerLevel:2.62, spdPerLevel:1.83, icon:"🩸", subspecies:"Vampire",      portrait:"/commanders/h44_lord_malachar_portrait.webp",          bust:"/commanders/h44_lord_malachar_bust.webp" },
+  { id:"h45", n:"Fang Groth",           faction:"nightcreatures",  rarity:"soldier",  cls:"balanced", atk:80,  foc:65,  spd:105, atkPerLevel:1.25, focPerLevel:0.97, spdPerLevel:1.61, icon:"🐺", subspecies:"Werewolf",     portrait:"/commanders/h45_fang_groth_portrait.webp",       bust:"/commanders/h45_fang_groth_bust.webp" },
+  { id:"h46", n:"Alpha Korrax",         faction:"nightcreatures",  rarity:"champion", cls:"leader",   atk:90,  foc:43,  spd:90,  atkPerLevel:2.12, focPerLevel:0.63, spdPerLevel:1.93, icon:"🌕", subspecies:"Werewolf",     portrait:"/commanders/h46_alpha_korrax_portrait.webp",           bust:"/commanders/h46_alpha_korrax_bust.webp" },
+  { id:"h47", n:"Skitter Vex",          faction:"nightcreatures",  rarity:"soldier",  cls:"support", atk:55,  foc:90,  spd:75,  atkPerLevel:0.70, focPerLevel:1.75, spdPerLevel:1.45, icon:"🕷", subspecies:"Spider",       portrait:"/commanders/h47_skitter_vex_portrait.webp",          bust:"/commanders/h47_skitter_vex_bust.webp" },
+  { id:"h48", n:"Thaelor the Silkbound", faction:"nightcreatures",  rarity:"veteran",  cls:"attacker",  atk:125, foc:50,  spd:55,  atkPerLevel:2.75, focPerLevel:0.63, spdPerLevel:1.00, icon:"🕸", subspecies:"Spider",       portrait:"/commanders/h48_thaelor_the_silkbound_portrait.webp", bust:"/commanders/h48_thaelor_the_silkbound_bust.webp" },
   // ── COLDBORNS ───────────────────────────────────────────────────────────────
-  { id:"h49", n:"Bjorn Icevein",      faction:"coldborns", rarity:"champion", cls:"attacker",   atk:170, foc:0,   spd:58, icon:"🪓", subspecies:"Bloodaxe", portrait:"/commanders/h49_bjorn_icevein_portrait.webp",      bust:"/commanders/h49_bjorn_icevein_bust.webp" },
-  { id:"h50", n:"Valdris the Unmoved",faction:"coldborns", rarity:"soldier",  cls:"attacker",   atk:140, foc:0,   spd:65, icon:"🛡️", subspecies:"Jarl",      portrait:"/commanders/h50_valdris_the_unmoved_portrait.webp", bust:"/commanders/h50_valdris_the_unmoved_bust.webp" },
-  { id:"h51", n:"Leif Frostweave",    faction:"coldborns", rarity:"soldier",  cls:"support",    atk:25,  foc:160, spd:60, icon:"🎵", subspecies:"Skald",     portrait:"/commanders/h51_leif_frostweave_portrait.webp",    bust:"/commanders/h51_leif_frostweave_bust.webp" },
-  { id:"h52", n:"Eira Coldmantle",    faction:"coldborns", rarity:"veteran",  cls:"support",    atk:30,  foc:185, spd:62, icon:"❄️", subspecies:"Völva",     portrait:"/commanders/h52_eira_coldmantle_portrait.webp",    bust:"/commanders/h52_eira_coldmantle_bust.webp" },
-  { id:"h53", n:"Halvard Grimtide",   faction:"coldborns", rarity:"champion", cls:"strategist", atk:130, foc:120, spd:70, icon:"⚔️", subspecies:"High Jarl", portrait:"/commanders/h53_halvard_grimtide_portrait.webp",   bust:"/commanders/h53_halvard_grimtide_bust.webp" },
-  { id:"h54", n:"Knut Ironmarch",     faction:"coldborns", rarity:"veteran",  cls:"leader",     atk:80,  foc:0,   spd:62, icon:"🏔️", subspecies:"Thane",     portrait:"/commanders/h54_knut_ironmarch_portrait.webp",     bust:"/commanders/h54_knut_ironmarch_bust.webp" },
-  { id:"h55", n:"Malgrath the Eternal",  faction:"ashen_dead", rarity:"champion", cls:"strategist", atk:40,  foc:210, spd:65, icon:"💀", subspecies:"Lich",        portrait:"/commanders/h55_malgrath_the_eternal_portrait.webp", bust:"/commanders/h55_malgrath_the_eternal_bust.webp" },
-  { id:"h56", n:"Lord Varak",            faction:"ashen_dead", rarity:"champion", cls:"strategist", atk:50,  foc:190, spd:62, icon:"⚔️", subspecies:"Death Knight", portrait:"/commanders/h56_lord_varak_portrait.webp",           bust:"/commanders/h56_lord_varak_bust.webp" },
-  { id:"h57", n:"Ser Dreadmourne",       faction:"ashen_dead", rarity:"veteran",  cls:"balanced",   atk:110, foc:0,   spd:68, icon:"🗡️", subspecies:"Death Knight", portrait:"/commanders/h57_ser_dreadmourne_portrait.webp",      bust:"/commanders/h57_ser_dreadmourne_bust.webp" },
-  { id:"h58", n:"Veyra the Hollow",      faction:"ashen_dead", rarity:"veteran",  cls:"attacker",   atk:130, foc:0,   spd:72, icon:"👻", subspecies:"Revenant",     portrait:"/commanders/h58_veyra_the_hollow_portrait.webp",     bust:"/commanders/h58_veyra_the_hollow_bust.webp" },
-  { id:"h59", n:"Fallen Lord Mordwyn",   faction:"ashen_dead", rarity:"soldier",  cls:"support",    atk:20,  foc:165, spd:60, icon:"🕯️", subspecies:"Lich",         portrait:"/commanders/h59_fallen_lord_mordwyn_portrait.webp",  bust:"/commanders/h59_fallen_lord_mordwyn_bust.webp" },
-  { id:"h60", n:"Cael the Risen",        faction:"ashen_dead", rarity:"soldier",  cls:"attacker",   atk:120, foc:0,   spd:68, icon:"💪", subspecies:"Revenant",     portrait:"/commanders/h60_cael_the_risen_portrait.webp",       bust:"/commanders/h60_cael_the_risen_bust.webp" },
+  { id:"h49", n:"Bjorn Icevein",      faction:"coldborns", rarity:"champion", cls:"attacker",   atk:127, foc:30,  spd:85,  atkPerLevel:2.66, focPerLevel:0.45, spdPerLevel:2.12, icon:"🪓", subspecies:"Bloodaxe", portrait:"/commanders/h49_bjorn_icevein_portrait.webp",      bust:"/commanders/h49_bjorn_icevein_bust.webp" },
+  { id:"h50", n:"Valdris the Unmoved",faction:"coldborns", rarity:"soldier",  cls:"attacker",   atk:101, foc:45,  spd:70,  atkPerLevel:2.25, focPerLevel:1.00, spdPerLevel:1.25, icon:"🛡️", subspecies:"Jarl",      portrait:"/commanders/h50_valdris_the_unmoved_portrait.webp", bust:"/commanders/h50_valdris_the_unmoved_bust.webp" },
+  { id:"h51", n:"Leif Frostweave",    faction:"coldborns", rarity:"soldier",  cls:"support",    atk:22,  foc:107, spd:95,  atkPerLevel:0.22, focPerLevel:2.34, spdPerLevel:2.05, icon:"🎵", subspecies:"Skald",     portrait:"/commanders/h51_leif_frostweave_portrait.webp",    bust:"/commanders/h51_leif_frostweave_bust.webp" },
+  { id:"h52", n:"Eira Coldmantle",    faction:"coldborns", rarity:"veteran",  cls:"support",    atk:10,  foc:103, spd:92,  atkPerLevel:0.15, focPerLevel:2.29, spdPerLevel:1.91, icon:"❄️", subspecies:"Völva",     portrait:"/commanders/h52_eira_coldmantle_portrait.webp",    bust:"/commanders/h52_eira_coldmantle_bust.webp" },
+  { id:"h53", n:"Halvard Grimtide",   faction:"coldborns", rarity:"champion", cls:"strategist", atk:5,   foc:135, spd:77,  atkPerLevel:0.10, focPerLevel:2.82, spdPerLevel:2.10, icon:"⚔️", subspecies:"High Jarl", portrait:"/commanders/h53_halvard_grimtide_portrait.webp",   bust:"/commanders/h53_halvard_grimtide_bust.webp" },
+  { id:"h54", n:"Knut Ironmarch",     faction:"coldborns", rarity:"veteran",  cls:"leader",     atk:60,  foc:35,  spd:107, atkPerLevel:1.35, focPerLevel:0.65, spdPerLevel:2.45, icon:"🏔️", subspecies:"Thane",     portrait:"/commanders/h54_knut_ironmarch_portrait.webp",     bust:"/commanders/h54_knut_ironmarch_bust.webp" },
+  { id:"h55", n:"Malgrath the Eternal",  faction:"ashen_dead", rarity:"champion", cls:"strategist", atk:12,  foc:130, spd:90,  atkPerLevel:0.29, focPerLevel:2.85, spdPerLevel:2.30, icon:"💀", subspecies:"Lich",        portrait:"/commanders/h55_malgrath_the_eternal_portrait.webp", bust:"/commanders/h55_malgrath_the_eternal_bust.webp" },
+  { id:"h56", n:"Lord Varak",            faction:"ashen_dead", rarity:"champion", cls:"strategist", atk:35,  foc:127, spd:115, atkPerLevel:0.70, focPerLevel:2.77, spdPerLevel:2.43, icon:"⚔️", subspecies:"Death Knight", portrait:"/commanders/h56_lord_varak_portrait.webp",           bust:"/commanders/h56_lord_varak_bust.webp" },
+  { id:"h57", n:"Ser Dreadmourne",       faction:"ashen_dead", rarity:"veteran",  cls:"balanced",   atk:110, foc:45,  spd:100, atkPerLevel:2.22, focPerLevel:0.68, spdPerLevel:2.07, icon:"🗡️", subspecies:"Death Knight", portrait:"/commanders/h57_ser_dreadmourne_portrait.webp",      bust:"/commanders/h57_ser_dreadmourne_bust.webp" },
+  { id:"h58", n:"Veyra the Hollow",      faction:"ashen_dead", rarity:"veteran",  cls:"attacker",   atk:95,  foc:45,  spd:95,  atkPerLevel:2.05, focPerLevel:0.57, spdPerLevel:2.05, icon:"👻", subspecies:"Revenant",     portrait:"/commanders/h58_veyra_the_hollow_portrait.webp",     bust:"/commanders/h58_veyra_the_hollow_bust.webp" },
+  { id:"h59", n:"Fallen Lord Mordwyn",   faction:"ashen_dead", rarity:"soldier",  cls:"support",    atk:25,  foc:100, spd:60,  atkPerLevel:0.50, focPerLevel:2.37, spdPerLevel:1.50, icon:"🕯️", subspecies:"Lich",         portrait:"/commanders/h59_fallen_lord_mordwyn_portrait.webp",  bust:"/commanders/h59_fallen_lord_mordwyn_bust.webp" },
+  { id:"h60", n:"Cael the Risen",        faction:"ashen_dead", rarity:"soldier",  cls:"attacker",   atk:95,  foc:50,  spd:85,  atkPerLevel:1.85, focPerLevel:0.31, spdPerLevel:1.65, icon:"💪", subspecies:"Revenant",     portrait:"/commanders/h60_cael_the_risen_portrait.webp",       bust:"/commanders/h60_cael_the_risen_bust.webp" },
 ];
 
 
@@ -508,11 +508,12 @@ export function addRespect(cmd, points) {
 export function applyXp(cmd, xpAmount) {
   if (!xpAmount || xpAmount <= 0) return cmd;
 
-  let lvl    = cmd.lvl ?? CMD_LVL_MIN;
-  let xp     = (cmd.xp ?? 0) + xpAmount;
-  let atk    = cmd.atk ?? 0;
-  let foc    = cmd.foc ?? 0;
-  let spd    = cmd.spd ?? 0;
+  const prevLvl = cmd.lvl ?? CMD_LVL_MIN;
+  let lvl       = prevLvl;
+  let xp        = (cmd.xp ?? 0) + xpAmount;
+  let atk       = cmd.atk ?? 0;
+  let foc       = cmd.foc ?? 0;
+  let spd       = cmd.spd ?? 0;
 
   const atkPerLevel = cmd.atkPerLevel ?? 0;
   const focPerLevel = cmd.focPerLevel ?? 0;
@@ -533,13 +534,31 @@ export function applyXp(cmd, xpAmount) {
 
   if (lvl >= CMD_LVL_MAX) xp = 0;
 
+  // 1 skill point per level gained
+  const newSkillPoints = (cmd.unspentSkillPoints ?? 0) + levelsGained;
+
+  // Class Lv20 bonus — granted once when crossing level 20
+  const crossedLv20 = prevLvl < 20 && lvl >= 20;
+  let classBonusAtk = 0, classBonusFoc = 0, classBonusSpd = 0,
+      classBonusCmd = 0, classBonusSkillPts = 0;
+  if (crossedLv20) {
+    if (cmd.cls === "attacker")   { classBonusAtk = 25; classBonusSkillPts = 2; }
+    if (cmd.cls === "support")    { classBonusFoc = 25; classBonusSkillPts = 5; }
+    if (cmd.cls === "balanced")   { classBonusAtk = 25; classBonusFoc = 25; classBonusSpd = 25; classBonusSkillPts = 2; }
+    if (cmd.cls === "strategist") { classBonusFoc = 25; classBonusSkillPts = 2; }
+    if (cmd.cls === "leader")     { classBonusCmd = 5; }
+  }
+
   return {
     ...cmd,
-    lvl: Math.min(lvl, CMD_LVL_MAX),
+    lvl:                Math.min(lvl, CMD_LVL_MAX),
     xp,
-    atk: Math.round(atk * 10) / 10,
-    foc: Math.round(foc * 10) / 10,
-    spd: Math.round(spd * 10) / 10,
+    atk:                Math.round((atk + classBonusAtk) * 10) / 10,
+    foc:                Math.round((foc + classBonusFoc) * 10) / 10,
+    spd:                Math.round((spd + classBonusSpd) * 10) / 10,
+    commandBonus:       (cmd.commandBonus ?? 0) + classBonusCmd,
+    unspentSkillPoints: newSkillPoints + classBonusSkillPts,
+    _classBonus:        crossedLv20 ? cmd.cls : null,
   };
 }
 
