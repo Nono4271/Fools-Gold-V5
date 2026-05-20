@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, useMemo } from "react";
-import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel } from "../../../shared/constants/troops.js";
+import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel, troopPortraitPath } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
 import { BLDG, barracksCapacity, barracksCommandPool, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, trainingQueueCount, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, marketplaceRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
@@ -344,7 +344,7 @@ const BRANCH_LVL_BONUS = [
 
 
   // -- Troop stat modal ----------------------------------------------------------
-  function TroopStatModal({ troop, fColor, fDef, onClose, troopSkillLevels, setTroopSkillLevels, mysticOrbs, setMysticOrbs }) {
+  function TroopStatModal({ troop, fColor, fDef, fKey, onClose, troopSkillLevels, setTroopSkillLevels, mysticOrbs, setMysticOrbs }) {
   const { branch, tierIdx, tier, isLocked, branchOpen } = troop;
   const cmdCost = COMMAND_COST[branch.size] ?? 1;
   const dmgColor = branch.dmgType === "magical" ? "#a855f7" : "#e08050";
@@ -357,6 +357,8 @@ const BRANCH_LVL_BONUS = [
   on_hit_received: "On Hit Taken", on_kill: "On Kill", passive: "Passive",
   };
   const RSS_COL = { stone:["🪨","#aaaaaa"], wood:["🪵","#c8903a"], ore:["⚙️","#88aaff"], gas:["⛽","#5dcc80"] };
+  const portraitSrc = troopPortraitPath(fKey, branch.key, tierIdx);
+  const [portraitErr, setPortraitErr] = useState(false);
   return (
   <div style={{ position:"absolute", inset:0, zIndex:10,
   background:"linear-gradient(135deg,#08060e 0%,#0c0a12 50%,#06080e 100%)",
@@ -389,36 +391,74 @@ const BRANCH_LVL_BONUS = [
   )}
   </div>
 
-  {/* Body: left icon panel + right info */}
+  {/* Body: left portrait panel + right info */}
   <div onClick={e => e.stopPropagation()}
   style={{ flex:1, display:"flex", minHeight:0, overflow:"hidden" }}>
 
-  {/* ── LEFT: faction icon + tier badge ── */}
-  <div style={{ width:"38%", flexShrink:0, display:"flex", flexDirection:"column",
-  alignItems:"center", justifyContent:"center", gap:12,
+  {/* ── LEFT: troop portrait ── */}
+  <div style={{ width:"38%", flexShrink:0, position:"relative", overflow:"hidden",
   background:`radial-gradient(ellipse at 50% 40%, ${fColor}18 0%, transparent 70%)`,
-  borderRight:`1px solid ${fColor}22`, padding:"16px 8px" }}>
-  {/* Big faction emblem */}
-  <div style={{ width:110, height:110, borderRadius:16,
-  background:`radial-gradient(135deg, ${fColor}22, ${fColor}08)`,
-  border:`2px solid ${fColor}55`,
-  display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column",
-  boxShadow:`0 0 40px ${fColor}22`,
-  filter: isLocked ? "grayscale(0.7) brightness(0.6)" : "none" }}>
-  <div style={{ fontSize:52, lineHeight:1 }}>{fDef.s}</div>
-  <div style={{ fontFamily:P.ff, fontSize:13, fontWeight:700, color:fColor, marginTop:4 }}>{roman[tierIdx]}</div>
+  borderRight:`1px solid ${fColor}22`,
+  filter: isLocked ? "grayscale(0.7) brightness(0.5)" : "none" }}>
+
+  {/* Portrait image — full height, top-anchored */}
+  {portraitSrc && !portraitErr ? (
+    <img
+      src={portraitSrc}
+      alt={tier.label}
+      onError={() => setPortraitErr(true)}
+      style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+        objectFit:"cover", objectPosition:"top center", opacity:.92 }}
+    />
+  ) : (
+    /* Fallback: faction emoji box */
+    <div style={{ position:"absolute", inset:0,
+      display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ width:110, height:110, borderRadius:16,
+        background:`radial-gradient(135deg, ${fColor}22, ${fColor}08)`,
+        border:`2px solid ${fColor}55`,
+        display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column",
+        boxShadow:`0 0 40px ${fColor}22` }}>
+        <div style={{ fontSize:52, lineHeight:1 }}>{fDef.s}</div>
+        <div style={{ fontFamily:P.ff, fontSize:13, fontWeight:700, color:fColor, marginTop:4 }}>{roman[tierIdx]}</div>
+      </div>
+    </div>
+  )}
+
+  {/* Dark gradient overlay at bottom for info badges */}
+  <div style={{ position:"absolute", bottom:0, left:0, right:0,
+    background:"linear-gradient(to top, rgba(4,2,8,.97) 0%, rgba(4,2,8,.6) 40%, transparent 100%)",
+    padding:"32px 8px 10px", display:"flex", flexDirection:"column",
+    alignItems:"center", gap:5 }}>
+
+    {/* Tier roman numeral + branch name */}
+    <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+      <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:fColor,
+        background:`${fColor}22`, border:`1px solid ${fColor}55`,
+        borderRadius:4, padding:"1px 7px" }}>{roman[tierIdx]}</div>
+      <div style={{ fontFamily:P.ff, fontSize:8, fontWeight:700, color:fColor,
+        letterSpacing:".06em" }}>{fDef.quarters ?? fDef.n}</div>
+    </div>
+
+    {/* Size / damage type */}
+    <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, textAlign:"center", lineHeight:1.5 }}>
+      {branch.size} unit · {branch.dmgType} dmg
+    </div>
+
+    {/* Unlock note */}
+    <div style={{ fontSize:7, color:`${fColor}88`, fontFamily:P.ff, textAlign:"center",
+      background:`${fColor}0a`, border:`1px solid ${fColor}22`, borderRadius:5,
+      padding:"3px 8px", lineHeight:1.5 }}>
+      Unlocked at branch Lv{tierIdx*2+1}
+    </div>
   </div>
-  <div style={{ fontFamily:P.ff, fontSize:10, fontWeight:700, color:fColor,
-  letterSpacing:".08em", textAlign:"center" }}>{fDef.quarters ?? fDef.n}</div>
-  <div style={{ fontSize:8, color:P.dim, fontFamily:P.ff, textAlign:"center", lineHeight:1.5 }}>
-  Tier {roman[tierIdx]} · {branch.size} unit<br/>
-  {branch.dmgType} damage
-  </div>
-  {/* Unlock note */}
-  <div style={{ fontSize:7, color:`${fColor}88`, fontFamily:P.ff, textAlign:"center",
-  background:`${fColor}0a`, border:`1px solid ${fColor}22`, borderRadius:5,
-  padding:"4px 8px", lineHeight:1.5 }}>
-  Unlocked at<br/>branch Lv{tierIdx*2+1}
+
+  {/* Faction icon badge top-left */}
+  <div style={{ position:"absolute", top:8, left:8,
+    fontSize:14, lineHeight:1,
+    background:"rgba(0,0,0,.55)", borderRadius:6,
+    padding:"3px 5px", backdropFilter:"blur(2px)" }}>
+    {fDef.s}
   </div>
   </div>
 
@@ -789,22 +829,45 @@ const BRANCH_LVL_BONUS = [
   return (
   <button key={idx}
   onClick={() => setSelTroop({ branch: br, tierIdx: idx, tier, fColor: fDef.c, fDef, isLocked: !canView, branchOpen })}
-  style={{ flex:1, minHeight:90, padding:"8px 6px", position:"relative", zIndex:1,
+  style={{ flex:1, minHeight:90, padding:0, position:"relative", zIndex:1,
   borderRadius:8, cursor: "pointer",
   background: tierUnlocked ? `${fDef.c}15` : "rgba(255,255,255,.02)",
   border:`1px solid ${tierUnlocked ? fDef.c+"55" : P.border}`,
-  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3,
+  overflow:"hidden",
   opacity: !branchOpen ? 0.35 : !tierUnlocked ? 0.5 : 1,
   transition:"all .15s",
   boxShadow: canView ? `0 2px 8px ${fDef.c}22` : "none" }}>
-  {/* tier roman numeral badge */}
-  <div style={{ fontSize:7, fontFamily:P.ff, fontWeight:700,
-  color: tierUnlocked ? fDef.c : "#3a3028",
-  background: tierUnlocked ? `${fDef.c}22` : "rgba(255,255,255,.03)",
-  padding:"1px 5px", borderRadius:3 }}>{roman[idx]}</div>
-  {/* faction icon */}
-  <div style={{ fontSize:20, filter: tierUnlocked ? "none" : "grayscale(1) brightness(.35)" }}>
-  {fDef.s}
+  {/* Portrait image background */}
+  {(() => {
+    const psrc = troopPortraitPath(fKey, br.key, idx);
+    return psrc ? (
+      <img src={psrc} alt={tier.label}
+        style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+          objectFit:"cover", objectPosition:"top center",
+          opacity: tierUnlocked ? 0.85 : 0.3,
+          filter: tierUnlocked ? "none" : "grayscale(1) brightness(.4)" }} />
+    ) : (
+      /* Fallback emoji */
+      <div style={{ position:"absolute", inset:0,
+        display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div style={{ fontSize:20, filter: tierUnlocked ? "none" : "grayscale(1) brightness(.35)" }}>
+          {fDef.s}
+        </div>
+      </div>
+    );
+  })()}
+  {/* Dark gradient overlay — bottom info */}
+  <div style={{ position:"absolute", inset:0,
+    background:"linear-gradient(to top, rgba(4,2,8,.97) 0%, rgba(4,2,8,.6) 45%, transparent 100%)",
+    display:"flex", flexDirection:"column", alignItems:"center",
+    justifyContent:"flex-end", padding:"6px 4px", gap:2 }}>
+  {/* tier roman numeral badge — top absolute */}
+  <div style={{ position:"absolute", top:5, left:0, right:0,
+    display:"flex", justifyContent:"center" }}>
+    <div style={{ fontSize:7, fontFamily:P.ff, fontWeight:700,
+      color: tierUnlocked ? fDef.c : "#3a3028",
+      background: tierUnlocked ? `${fDef.c}44` : "rgba(0,0,0,.5)",
+      padding:"1px 5px", borderRadius:3, backdropFilter:"blur(2px)" }}>{roman[idx]}</div>
   </div>
   {/* label */}
   <div style={{ fontSize:7, fontFamily:P.ff, fontWeight:700,
@@ -823,6 +886,7 @@ const BRANCH_LVL_BONUS = [
   {/* tap hint */}
   <div style={{ fontSize:5, color: tierUnlocked ? `${fDef.c}88` : "#4a3a28", fontFamily:P.ff,
   letterSpacing:".06em", marginTop:1 }}>TAP FOR INFO</div>
+  </div>
   </button>
   );
   })}
@@ -839,6 +903,7 @@ const BRANCH_LVL_BONUS = [
   troop={selTroop}
   fColor={selTroop.fColor}
   fDef={selTroop.fDef}
+  fKey={fKey}
   onClose={() => setSelTroop(null)}
   troopSkillLevels={troopSkillLevels}
   setTroopSkillLevels={setTroopSkillLevels}
@@ -1273,10 +1338,21 @@ function TrainingListScreen({ bldgs, barracksPool, troopCards, trainingQueues, r
               borderRadius:5, marginBottom:3,
               background:i%2===0?"rgba(255,255,255,.018)":"transparent" }}>
               <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-                <div style={{ width:26, height:26, borderRadius:4, display:"flex",
-                  alignItems:"center", justifyContent:"center",
-                  background:`${t.fColor}18`, border:`1px solid ${t.fColor}35`, fontSize:13 }}>
-                  {t.fIcon}
+                <div style={{ width:26, height:26, borderRadius:4, overflow:"hidden", flexShrink:0,
+                  background:`${t.fColor}18`, border:`1px solid ${t.fColor}35`, position:"relative" }}>
+                  {(() => {
+                    const psrc = troopPortraitPath(t.fKey, t.branch.key, t.tier.tierIdx ?? 0);
+                    return psrc ? (
+                      <img src={psrc} alt={t.tier.label}
+                        style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top center" }}
+                        onError={e => { e.currentTarget.style.display="none"; e.currentTarget.nextSibling.style.display="flex"; }}
+                      />
+                    ) : null;
+                  })()}
+                  <div style={{ position:"absolute", inset:0, display:"none",
+                    alignItems:"center", justifyContent:"center", fontSize:13 }}>
+                    {t.fIcon}
+                  </div>
                 </div>
                 <div>
                   <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700, color:P.text, lineHeight:1 }}>
@@ -1427,9 +1503,22 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
                     background:isSel ? `${fc}18` : "rgba(255,255,255,.018)",
                     border:`1px solid ${isSel ? fc+"55" : P.border+"66"}`,
                     transition:"all .15s" }}>
-                  <div style={{ width:25, height:25, borderRadius:4, display:"flex",
-                    alignItems:"center", justifyContent:"center",
-                    background:`${fc}20`, fontSize:13 }}>{t.fIcon}</div>
+                  <div style={{ width:25, height:25, borderRadius:4, overflow:"hidden", flexShrink:0,
+                    background:`${fc}20`, border:`1px solid ${fc}30`, position:"relative" }}>
+                    {(() => {
+                      const psrc = troopPortraitPath(t.fKey, t.branch.key, t.tier.tierIdx ?? 0);
+                      return psrc ? (
+                        <img src={psrc} alt={t.tier.label}
+                          style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top center" }}
+                          onError={e => { e.currentTarget.style.display="none"; e.currentTarget.nextSibling.style.display="flex"; }}
+                        />
+                      ) : null;
+                    })()}
+                    <div style={{ position:"absolute", inset:0, display:"none",
+                      alignItems:"center", justifyContent:"center", fontSize:13 }}>
+                      {t.fIcon}
+                    </div>
+                  </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
                       color:isSel?P.text:P.sub, whiteSpace:"nowrap",

@@ -1,6 +1,6 @@
 import { useState, memo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
+import { FACTION_TROOPS, troopPortraitPath } from "../../../shared/constants/troops.js";
 
 // Resolve a troopBranch descriptor to { branchDef, tierData }
 function resolveTroopBranch(tb) {
@@ -932,11 +932,16 @@ function TroopSlotBoxes({ b, isEnemy, onSlotClick }) {
         const allDead  = sl.end === 0;
         const endColor = allDead ? "#cc3030" : sl.end < sl.start ? "#d0a030" : "#3daa60";
         const clickable = !!onSlotClick && !!sl.branch;
+        // Portrait — use faction key + branch key from the troopBranch descriptor
+        const fKey      = sl.branch?.faction ?? null;
+        const bKey      = sl.branch?.branch  ?? null;
+        const portraitSrc = troopPortraitPath(fKey, bKey, tierIdx);
         return (
           <div key={i}
             onClick={clickable ? (e) => { e.stopPropagation(); onSlotClick(sl.branch); } : undefined}
             style={{
               width:44, height:52, flexShrink:0,
+              position:"relative", overflow:"hidden",
               display:"flex", flexDirection:"column",
               alignItems:"center", justifyContent:"center",
               gap:1,
@@ -947,6 +952,22 @@ function TroopSlotBoxes({ b, isEnemy, onSlotClick }) {
               cursor: clickable ? "pointer" : "default",
               transition:"border-color .15s, box-shadow .15s",
             }}>
+            {/* Portrait image — faded background, top-anchored */}
+            {portraitSrc && (
+              <img src={portraitSrc} alt=""
+                style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+                  objectFit:"cover", objectPosition:"top center",
+                  opacity: allDead ? 0.12 : 0.28, pointerEvents:"none" }}
+                onError={e => { e.currentTarget.style.display = "none"; }}
+              />
+            )}
+            {/* Dark vignette to keep text readable */}
+            <div style={{ position:"absolute", inset:0,
+              background:"linear-gradient(to top, rgba(4,2,1,.75) 0%, rgba(4,2,1,.3) 60%, rgba(4,2,1,.55) 100%)",
+              pointerEvents:"none" }} />
+            {/* Content layer */}
+            <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column",
+              alignItems:"center", justifyContent:"center", gap:1, width:"100%" }}>
             <div style={{ fontSize:13, lineHeight:1 }}>{icon}</div>
             <div style={{
               fontSize:6.5, fontWeight:700, color:tierColor,
@@ -961,6 +982,7 @@ function TroopSlotBoxes({ b, isEnemy, onSlotClick }) {
               fontSize:5.5, color:"#4a3a28",
               fontFamily:"'Cinzel',serif", lineHeight:1,
             }}>/{startStr}</div>
+            </div>
           </div>
         );
       })}
