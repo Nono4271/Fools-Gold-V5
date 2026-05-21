@@ -46,7 +46,6 @@ import WinScreen from "./components/game/WinScreen.jsx";
 import Minimap from "./components/game/Minimap.jsx";
 import WizardsTomes, { ScrollStackIcon } from "./components/game/WizardsTomes.jsx";
 import GameBar from "./components/game/GameBar.jsx";
-import CrewPanel from "./components/game/CrewPanel.jsx";
 import CommanderScreen from "./components/screens/CommanderScreen.jsx";
 import GearScreen from "./components/screens/GearScreen.jsx";
 
@@ -57,9 +56,8 @@ const SS = (rarity) => RARITY[rarity]?.n ?? String(rarity);
 export default function RiseToWar() {
   // ── Screens ──
   const [screen,  setScreen]  = useState("title");
-  const [facKey,      setFacKey]      = useState("pirates");
-  const [facName,     setFacName]     = useState("Pirates");
-  const [playerName,  setPlayerName]  = useState("");
+  const [facKey,  setFacKey]  = useState("pirates");
+  const [facName, setFacName] = useState("Pirates");
   const playerAlignment = getFactionAlignment(facKey);
 
   // ── Tiles — stored in a mutable ref to avoid 490k React reconciliation ──
@@ -120,11 +118,23 @@ export default function RiseToWar() {
       else newSet.delete(key);
       pKeysRef.current = newSet;
       setPKeys(newSet);
-      // Keep AI tile index in sync
+      // Keep global AI tile index in sync (legacy — used by aiTileKeysRef)
       const newAiSet = new Set(aiTileKeysRef.current);
       if (patch.owner === "ai") newAiSet.add(key);
       else newAiSet.delete(key);
       aiTileKeysRef.current = newAiSet;
+      // Keep per-faction tile index in sync
+      const tileFaction = merged.faction || null;
+      if (patch.owner === "ai" && tileFaction) {
+        const fkSet = new Set(aiTileKeysMapRef.current.get(tileFaction) || []);
+        fkSet.add(key);
+        aiTileKeysMapRef.current.set(tileFaction, fkSet);
+      } else if (patch.owner !== "ai") {
+        // Remove from whichever faction owned it
+        for (const [fk, fkSet] of aiTileKeysMapRef.current) {
+          if (fkSet.has(key)) { const ns = new Set(fkSet); ns.delete(key); aiTileKeysMapRef.current.set(fk, ns); break; }
+        }
+      }
       // Ownership changed — redraw PIXI canvas immediately rather than waiting
       // for the React effect chain (setTileVersion → render → useEffect → redraw).
       // This eliminates the 1-2 frame delay where the tile shows its old colour.
@@ -169,7 +179,8 @@ export default function RiseToWar() {
     });
   }, []);
 
-  const cmds = playerCmds;
+  // Include AI commanders so MapRenderer draws them on the map.
+  const cmds = useMemo(() => [...playerCmds, ...aiCmdsRef.current], [playerCmds]); // eslint-disable-line react-hooks/exhaustive-deps
   const [coll,   setColl]    = useState([]);
   const [pityCounters,   setPityCounters]   = useState({ soldier:0, veteran:0, champion:0 });
   const [gearInventory,       setGearInventory]       = useState(() => {
@@ -225,6 +236,32 @@ export default function RiseToWar() {
 
   useEffect(() => { aiBldgsRef.current = aiBldgs;        }, [aiBldgs]);
   useEffect(() => { aiPoolRef.current  = aiBarracksPool; }, [aiBarracksPool]);
+
+  // ── Per-faction AI Maps (multi-faction simulation) ───────────────────────
+  // Each map is keyed by faction string. All writes go directly to refs so
+  // there are zero re-renders from AI economy ticks.
+  const INIT_BLDGS = { hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 };
+  const aiRssMapRef      = useRef(new Map()); // Map<fk, {stone,wood,ore,gas}>
+  const aiBldgsMapRef    = useRef(new Map()); // Map<fk, bldgsObj>
+  const aiPoolMapRef     = useRef(new Map()); // Map<fk, number>
+  const aiTileKeysMapRef = useRef(new Map()); // Map<fk, Set<tileKey>>
+  const aiLastMarchMapRef= useRef(new Map()); // Map<fk, Map<cmdUid, timestamp>>
+  const aiHqKeysRef      = useRef({});        // { [fk]: hqTileKey }
+  const [aiFactionKeys,  setAiFactionKeys]   = useState([]);
+
+  // Updater helpers — write to map ref, no setState
+  const setAiRssMap = useCallback((fk, updater) => {
+    const cur = aiRssMapRef.current.get(fk) || { stone:300, wood:300, ore:300, gas:300 };
+    aiRssMapRef.current.set(fk, typeof updater === "function" ? updater(cur) : updater);
+  }, []);
+  const setAiBldgsMap = useCallback((fk, updater) => {
+    const cur = aiBldgsMapRef.current.get(fk) || { ...INIT_BLDGS };
+    aiBldgsMapRef.current.set(fk, typeof updater === "function" ? updater(cur) : updater);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const setAiPoolMap = useCallback((fk, updater) => {
+    const cur = aiPoolMapRef.current.get(fk) ?? barracksCapacity(0);
+    aiPoolMapRef.current.set(fk, typeof updater === "function" ? updater(cur) : updater);
+  }, []);
   useEffect(() => { playerHqRef.current = playerHqKey;   }, [playerHqKey]);
 
   // ── Bug 3 fix: reset dailyHalfUsed at 00:00 UTC ──
@@ -453,145 +490,6 @@ export default function RiseToWar() {
   const [gearScreenOpen, setGearScreenOpen] = useState(false);
   const [showPerf,       setShowPerf]       = useState(false);
 
-  // ── Crew (Guild) system ──────────────────────────────────────────────────
-  // crews: [{ id, name, abbr, level, cap, faction, founder, members: [playerName,...] }]
-  const [crews,        setCrews]        = useState([]);
-  const [playerCrewId, setPlayerCrewId] = useState(null);
-  const [pendingCrewId,setPendingCrewId]= useState(null);
-  const [crewOpen,     setCrewOpen]     = useState(false);
-
-  // ── Faction Players (50 per faction: 1 human + 49 AI) ───────────────────
-  // factionPlayers: { [facKey]: [{ id, name, crewId: null|crewId, isHuman }] }
-  const [factionPlayers, setFactionPlayers] = useState({});
-  const factionPlayersRef = useRef({});
-  useEffect(() => { factionPlayersRef.current = factionPlayers; }, [factionPlayers]);
-
-  // Build crewmatePlayerIds for blue tile tinting (crewmates) and purple (same faction via tile.faction)
-  const crewmatePlayerIds = useMemo(() => {
-    if (!playerCrewId) return new Set();
-    const crew = crews.find(c => c.id === playerCrewId);
-    if (!crew) return new Set();
-    const myPlayers = factionPlayers[facKey] || [];
-    const s = new Set();
-    for (const fp of myPlayers) {
-      if (!fp.isHuman && crew.members.includes(fp.name)) s.add(fp.id);
-    }
-    return s;
-  }, [playerCrewId, crews, factionPlayers, facKey]);
-
-  const sameFactionPlayerIds = null; // reserved for future per-player tile tracking
-
-  // Crew actions
-  const CREW_CREATION_COST = 500;
-
-  const handleCreateCrew = useCallback((name, abbr) => {
-    if (gems < CREW_CREATION_COST) return; // shouldn't happen — UI blocks it
-    const newCrew = {
-      id: `crew_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
-      name, abbr, level: 1, cap: 40,
-      faction: facKey,
-      founder: playerName,
-      members: [playerName],
-    };
-    setGems(g => g - CREW_CREATION_COST);
-    setCrews(prev => [...prev, newCrew]);
-    setPlayerCrewId(newCrew.id);
-    setPendingCrewId(null);
-  }, [facKey, playerName, gems]);
-
-  const handleJoinRequest = useCallback((crewId) => {
-    // Simulate server accept after 2s. Guard against double-tap or
-    // a second request firing while the first is still pending.
-    setPendingCrewId(prev => {
-      if (prev !== null) return prev; // already pending — ignore
-      return crewId;
-    });
-    setTimeout(() => {
-      // Only commit if this crewId is still the pending one (wasn't cancelled/replaced)
-      setPendingCrewId(prev => {
-        if (prev !== crewId) return prev; // a different request won — bail
-        setCrews(c => c.map(crew => {
-          if (crew.id !== crewId) return crew;
-          if (crew.members.includes(playerName) || crew.members.length >= crew.cap) return crew;
-          return { ...crew, members: [...crew.members, playerName] };
-        }));
-        setPlayerCrewId(crewId);
-        return null; // clear pending
-      });
-    }, 2000);
-  }, [playerName]);
-
-  const handleLeaveCrew = useCallback(() => {
-    setCrews(prev => prev.map(c => {
-      if (c.id !== playerCrewId) return c;
-      return { ...c, members: c.members.filter(m => m !== playerName) };
-    }));
-    setPlayerCrewId(null);
-  }, [playerCrewId, playerName]);
-
-  // ── AI Crew ticker (every 30s) ───────────────────────────────────────────
-  const crewsRef = useRef([]);
-  useEffect(() => { crewsRef.current = crews; }, [crews]);
-  const crewTickerRef = useRef(null);
-  useEffect(() => {
-    if (screen !== "game") return;
-    crewTickerRef.current = setInterval(() => {
-      const allFacs = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
-      const adjectives = ["Iron","Storm","Black","Silver","Crimson","Gold","Shadow","Wild","Frost","Ashen","Bone","Rust"];
-      const nouns = ["Tide","Claw","Wave","Fang","Blade","Skull","Drake","Reef","Bolt","Guard","Maw","Prow"];
-
-      const prevCrews = crewsRef.current;
-      const prevFP    = factionPlayersRef.current;
-      const nextCrews = [...prevCrews];
-      const nextFP    = { ...prevFP };
-
-      for (const fk of allFacs) {
-        const players  = nextFP[fk] || [];
-        const facCrews = nextCrews.filter(c => c.faction === fk);
-        const CREW_CREATION_COST = 500;
-
-        // Process each AI player not yet in a crew
-        const nextPlayers = [...players];
-        for (let i = 0; i < nextPlayers.length; i++) {
-          const fp = nextPlayers[i];
-          if (fp.isHuman || fp.crewId) continue;
-          const rand = Math.random();
-
-          // Can only create a crew if they have enough gems — naturally caps at 3
-          // since only the first 3 AI players per faction start with 2000 gems
-          if (rand < 0.20 && (fp.gems ?? 0) >= CREW_CREATION_COST) {
-            const newName = adjectives[Math.floor(Math.random()*adjectives.length)] + " " + nouns[Math.floor(Math.random()*nouns.length)];
-            const abbr = (newName.split(" ").map(w => w[0]).join("") + "XXXX").slice(0,4);
-            const newCrew = {
-              id: `crew_ai_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
-              name: newName, abbr, level: 1, cap: 40,
-              faction: fk, founder: fp.name, members: [fp.name],
-            };
-            nextCrews.push(newCrew);
-            facCrews.push(newCrew);
-            nextPlayers[i] = { ...fp, crewId: newCrew.id, gems: (fp.gems ?? 0) - CREW_CREATION_COST };
-          } else if (rand < 0.50 && facCrews.length > 0) {
-            // Try to join an existing crew with space
-            const joinable = facCrews.filter(c => c.members.length < c.cap);
-            if (joinable.length > 0) {
-              const target = joinable[Math.floor(Math.random() * joinable.length)];
-              const idx = nextCrews.findIndex(c => c.id === target.id);
-              if (idx >= 0 && !nextCrews[idx].members.includes(fp.name)) {
-                nextCrews[idx] = { ...nextCrews[idx], members: [...nextCrews[idx].members, fp.name] };
-                nextPlayers[i] = { ...fp, crewId: target.id };
-              }
-            }
-          }
-        }
-        nextFP[fk] = nextPlayers;
-      }
-
-      setCrews(nextCrews);
-      setFactionPlayers(nextFP);
-    }, 30000);
-    return () => clearInterval(crewTickerRef.current);
-  }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Hooks ──
   useResources({ screen, tilesRef, setRss, bldgs });
 
@@ -648,7 +546,7 @@ export default function RiseToWar() {
 
   // ── Init map on game start via Web Worker ──
   useEffect(() => {
-    if (screen !== "game" || tiles.__ready || !facKey) return;
+    if (screen !== "game" || tiles.__ready) return;
 
     setLoadPct(0);
     setLoadLabel("Generating world...");
@@ -819,17 +717,25 @@ export default function RiseToWar() {
           }
         });
         setAiHqKeys(newAiHqKeys);
+        aiHqKeysRef.current = newAiHqKeys;
+        setAiFactionKeys(aiFactions);
 
-        const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
-        const primaryAiFk = aiFactions.find(f =>
-          (oppAlign === "humans"
-            ? ["pirates","bountyhunters","holyknights"]
-            : ["orcs","dragons","nightcreatures"]).includes(f)
-        ) || aiFactions[0];
-        setAiFaction(primaryAiFk);
+        // ── Initialize per-faction AI Maps ────────────────────────────────
+        const INIT_BLDGS_VAL = { hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 };
+        aiFactions.forEach(aiFk => {
+          aiRssMapRef.current.set(aiFk, { stone:5000, wood:5000, ore:5000, gas:5000 });
+          aiBldgsMapRef.current.set(aiFk, { ...INIT_BLDGS_VAL });
+          aiPoolMapRef.current.set(aiFk, barracksCapacity(0));
+          aiTileKeysMapRef.current.set(aiFk, new Set(
+            Object.keys(rawMap).filter(k => rawMap[k]?.owner === "ai" && rawMap[k]?.faction === aiFk)
+          ));
+          aiLastMarchMapRef.current.set(aiFk, new Map());
+        });
 
-        // ── Initialize 50 faction players per faction (1 human + 49 AI) ──
-        const AI_NAMES = [
+        // ── Seed 50 AI commanders per faction ─────────────────────────────
+        // Commanders spawn spread across the faction's home region tiles.
+        // Each AI player (from factionPlayers) gets exactly one commander.
+        const AI_CMD_NAMES = [
           "Ravenport","Stormfist","Greymantle","Ironveil","Ashcroft","Duskblade",
           "Thornwall","Coppergrin","Sablewind","Flintmoor","Emberpeak","Coldforge",
           "Dreadmaw","Nighthollow","Scaleback","Cindervane","Mudthorn","Brakespear",
@@ -840,28 +746,75 @@ export default function RiseToWar() {
           "Moltenspire","Blightmere","Grimstock","Veinhollow","Ironscale","Cragmaw",
           "Stormcrow","Saltveil",
         ];
-        const newFactionPlayers = {};
-        const allFacs2 = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
-        for (const fk of allFacs2) {
-          const isPlayerFac = fk === facKey;
-          const fps = [];
-          if (isPlayerFac) {
-            fps.push({ id: "human_player", name: playerName || "You", isHuman: true, crewId: null, gems: 0 });
+        // Faction home region centre coordinates for spawn spread
+        const FACTION_HOME_CXY = {
+          pirates:        { cx:229, cy:141 },
+          nightcreatures: { cx:1173,cy:274 },
+          dragons:        { cx:229, cy:407 },
+          orcs:           { cx:1173,cy:540 },
+          bountyhunters:  { cx:613, cy:794 },
+          holyknights:    { cx:788, cy:794 },
+        };
+        const ICONS_BY_FACTION = {
+          pirates:"🏴‍☠️", orcs:"⚔️", dragons:"🐉", nightcreatures:"🦇",
+          bountyhunters:"🔮", holyknights:"⚔",
+        };
+        const SPREAD = 80; // tiles radius commanders spawn within
+        const initialAiCmds = [];
+        aiFactions.forEach(aiFk => {
+          const hxy   = FACTION_HOME_CXY[aiFk] || { cx:700, cy:500 };
+          const branches = FACTION_TROOPS[aiFk]?.branches || [];
+          for (let i = 0; i < 50; i++) {
+            // Spread commanders in a circle around faction home
+            const angle = (i / 50) * Math.PI * 2;
+            const r     = 5 + Math.floor(Math.random() * SPREAD);
+            const tc    = Math.round(hxy.cx + Math.cos(angle) * r);
+            const tr    = Math.round(hxy.cy + Math.sin(angle) * r);
+            // Find nearest valid (non-impassable, non-HQ-footprint) tile
+            let spawnKey = null;
+            for (let dr = -3; dr <= 3 && !spawnKey; dr++) {
+              for (let dc = -3; dc <= 3 && !spawnKey; dc++) {
+                const k = `${tc+dc},${tr+dr}`;
+                if (rawMap[k] && !rawMap[k].isHQ && !rawMap[k].isHQPart && !rawMap[k].isKeep && !rawMap[k].isKeepPart) {
+                  spawnKey = k;
+                }
+              }
+            }
+            if (!spawnKey) spawnKey = newAiHqKeys[aiFk] || `${hxy.cx},${hxy.cy}`;
+            const branch  = branches[i % branches.length];
+            const tBranch = { faction: aiFk, branch: branch?.key || "swashbucklers", tier: 0 };
+            const name    = AI_CMD_NAMES[i % AI_CMD_NAMES.length];
+            initialAiCmds.push({
+              uid:    `ai_${aiFk}_${i}_${Date.now()}`,
+              id:     `ai_${aiFk}_${i}`,
+              owner:  "ai",
+              faction: aiFk,
+              n:      name,
+              icon:   ICONS_BY_FACTION[aiFk] || "⚔",
+              tk:     spawnKey,
+              troops: 200,
+              troopBranch: tBranch,
+              troopSlots: [],
+              march:  null,
+              lvl: 5, xp: 0,
+              atk: 80 + Math.floor(Math.random() * 40),
+              foc: 20, spd: 60 + Math.floor(Math.random() * 30),
+              cls: ["attacker","leader","support","balanced"][i % 4],
+              rarity: "soldier",
+              skillPoints: {}, unspentSkillPoints: 0,
+              gear: { helmet:null, armor:null, bracers:null, accessory:null },
+            });
           }
-          for (let i = 0; i < 49; i++) {
-            const nm = AI_NAMES[i % AI_NAMES.length] + (i >= AI_NAMES.length ? `_${Math.floor(i/AI_NAMES.length)}` : "");
-            // First 3 AI players per faction start with 2000 gems — enough to found a crew (500 cost).
-            // The other 46 start with 0, so only those 3 can ever create one.
-            const aiGems = i < 3 ? 2000 : 0;
-            fps.push({ id: `ai_${fk}_${i}`, name: nm, isHuman: false, crewId: null, gems: aiGems });
-          }
-          newFactionPlayers[fk] = fps;
-        }
-        setFactionPlayers(newFactionPlayers);
-        // Also reset crews on new game
-        setCrews([]);
-        setPlayerCrewId(null);
-        setPendingCrewId(null);
+        });
+        aiCmdsRef.current = initialAiCmds;
+
+        const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
+        const primaryAiFk = aiFactions.find(f =>
+          (oppAlign === "humans"
+            ? ["pirates","bountyhunters","holyknights"]
+            : ["orcs","dragons","nightcreatures"]).includes(f)
+        ) || aiFactions[0];
+        setAiFaction(primaryAiFk);
 
         setPlayerCmds(prev => prev.map(cmd => {
           if (cmd.owner === "player") {
@@ -898,7 +851,7 @@ export default function RiseToWar() {
     worker.postMessage({ facKey });
 
     return () => worker.terminate();
-  }, [screen, facKey]);
+  }, [screen]);
 
   // ── Reset mapReady when leaving game ──
   // Only wipe tiles when navigating to a new-game flow (title/faction).
@@ -945,11 +898,13 @@ export default function RiseToWar() {
     sessionId,
   });
   const { tickAiRss, tickAiMarch, tickAiEcon } = useAI({
-    screen, aiFaction,
-    cmdsRef, tilesRef, aiRssRef, aiBldgsRef, aiPoolRef, aiLastActionRef,
-    aiTileKeysRef,
+    screen,
+    aiFactionKeys,
+    cmdsRef, tilesRef,
+    aiRssMapRef, aiBldgsMapRef, aiPoolMapRef, aiTileKeysMapRef, aiLastMarchMapRef,
+    aiHqKeysRef,
     setCmds: setAiCmds,
-    setAiRss, setAiBldgs, setAiBarracksPool,
+    setAiRssMap, setAiBldgsMap, setAiPoolMap,
   });
 
   useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue });
@@ -1218,6 +1173,11 @@ export default function RiseToWar() {
     // Build AI index at map-ready time too
     const aiSet = new Set(Object.keys(tilesMapRef.current).filter(k => tilesMapRef.current[k]?.owner === "ai"));
     aiTileKeysRef.current = aiSet;
+    // Rebuild per-faction tile key maps
+    const allTiles = tilesMapRef.current;
+    for (const [fk] of aiTileKeysMapRef.current) {
+      aiTileKeysMapRef.current.set(fk, new Set(Object.keys(allTiles).filter(k => allTiles[k]?.owner === "ai" && allTiles[k]?.faction === fk)));
+    }
   }, [mapReady]);
 
   // Fix #4: Removed 200ms redrawOverlays polling interval.
@@ -1691,7 +1651,6 @@ export default function RiseToWar() {
   if (screen==="faction") return (
     <FactionScreen
       setScreen={setScreen} setFacKey={setFacKey} setFacName={setFacName}
-      setPlayerName={setPlayerName}
       setAiFaction={setAiFaction} setAiRss={setAiRss} setAiBldgs={setAiBldgs}
       setAiBarracksPool={setAiBarracksPool} aiLastActionRef={aiLastActionRef}
       setCmds={setCmds} setColl={setColl} setTiles={setTiles}
@@ -1829,10 +1788,6 @@ export default function RiseToWar() {
         onTileClick={onTileClick}
         onPanChange={onPanChange}
         onZoomChange={handleZoomChange}
-        playerName={playerName}
-        playerHqKey={playerHqKey}
-        playerFacKey={facKey}
-        crewmatePlayerIds={crewmatePlayerIds}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
@@ -1866,7 +1821,6 @@ export default function RiseToWar() {
       {showBattleLog && (
         <BattleLog
           battles={battles} bLog={bLog} unseenBattles={unseenBattles}
-          playerName={playerName}
           onClose={() => setShowBattleLog(false)}
         />
       )}
@@ -1936,7 +1890,7 @@ export default function RiseToWar() {
         />
       )}
 
-      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} />
+      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} />
 
       {/* Wizard's Tomes trigger — bottom-left below minimap */}
       {!tomesOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
@@ -2073,26 +2027,7 @@ export default function RiseToWar() {
         zoomRef={zoomRef}
         mapRendererRef={mapRendererRef}
         voidTapReady={voidTapReady}
-        crewOpen={crewOpen}
-        setCrewOpen={setCrewOpen}
-        playerCrewId={playerCrewId}
       />
-
-      {crewOpen && !worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
-        <CrewPanel
-          onClose={() => setCrewOpen(false)}
-          crews={crews}
-          playerCrewId={playerCrewId}
-          pendingCrewId={pendingCrewId}
-          playerName={playerName}
-          facKey={facKey}
-          playerGems={gems}
-          crewCreationCost={CREW_CREATION_COST}
-          onCreateCrew={handleCreateCrew}
-          onJoinRequest={handleJoinRequest}
-          onLeaveCrew={handleLeaveCrew}
-        />
-      )}
 
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
 
