@@ -514,7 +514,8 @@ export default function RiseToWar() {
     setLoadLabel("Generating world...");
 
     const worker = new Worker(
-      new URL("./workers/mapGen.worker.js", import.meta.url)
+      new URL("./workers/mapGen.worker.js", import.meta.url),
+      { type: "module" }
     );
 
     worker.onmessage = (e) => {
