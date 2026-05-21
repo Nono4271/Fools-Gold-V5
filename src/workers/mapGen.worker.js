@@ -1178,12 +1178,41 @@ self.onmessage = function(e) {
 
   postMessage({ type:"progress", pct:96, label:"Finding spawn points..." });
 
-  const spawnKeys={}, usedKeys=new Set();
+  // Build per-faction region lists so we can spread 50 HQs across all home regions
+  const FACTION_ALL_REGIONS = {};
   for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
-    const startRegion=FACTION_REGIONS[fk]?.start;
-    if (!startRegion) continue;
-    const key=randomSpawn(startRegion,usedKeys,flagArr,terrainArr);
-    if (key){spawnKeys[fk]=key;usedKeys.add(key);}
+    FACTION_ALL_REGIONS[fk] = REGION_LIST.filter(r => r.factions && r.factions.includes(fk));
+  }
+
+  // Stamp a placed HQ's 3x3 footprint into flagArr so subsequent spawns avoid it
+  function stampHQFootprint(key) {
+    const [hc, hr] = key.split(",").map(Number);
+    for (let dr = 0; dr < 3; dr++) {
+      for (let dc = 0; dc < 3; dc++) {
+        const idx = (hr+dr)*COLS + (hc+dc);
+        if (idx >= 0 && idx < flagArr.length) {
+          flagArr[idx] = (flagArr[idx] & ~(F_KEEP|F_KEEPPART|F_WIN)) | (dc===0&&dr===0 ? F_HQ : F_HQPART);
+        }
+      }
+    }
+  }
+
+  const spawnKeys={}, usedKeys=new Set();
+  // Place 50 HQs per faction, round-robin across that faction's home regions
+  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
+    const regions = FACTION_ALL_REGIONS[fk];
+    if (!regions || !regions.length) continue;
+    const keys = [];
+    for (let i = 0; i < 50; i++) {
+      const reg = regions[i % regions.length];
+      const key = randomSpawn(reg.key, usedKeys, flagArr, terrainArr);
+      if (key) {
+        keys.push(key);
+        usedKeys.add(key);
+        stampHQFootprint(key); // mark in flagArr so next spawn avoids this footprint
+      }
+    }
+    spawnKeys[fk] = keys; // array of up to 50 keys
   }
 
   postMessage({ type:"progress", pct:98, label:"Finishing up..." });
@@ -1200,7 +1229,7 @@ self.onmessage = function(e) {
   const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
   const aiFactions  = allFactions.filter(f => f !== facKey);
   const aiHqMap     = {};
-  aiFactions.forEach(aiFk => { aiHqMap[aiFk] = spawnKeys[aiFk] || null; });
+  aiFactions.forEach(aiFk => { aiHqMap[aiFk] = spawnKeys[aiFk] || []; });
 
   postMessage({
     type: "done",
@@ -1228,6 +1257,6 @@ self.onmessage = function(e) {
     },
     spawnKeys,
     aiHqMap,
-    playerSpawn: spawnKeys[facKey] || null,
+    playerSpawn: (spawnKeys[facKey] || [])[0] || null, // player uses first key of their faction
   }, transferables);
 };
