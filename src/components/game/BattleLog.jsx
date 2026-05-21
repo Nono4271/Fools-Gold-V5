@@ -271,235 +271,265 @@ function GearPiecePopup({ piece, onClose }) {
 }
 
 function CommanderPopup({ b, side, onClose }) {
+  const [showGear, setShowGear] = useState(null);
   const [showTroop, setShowTroop] = useState(false);
-  const [showGear, setShowGear] = useState(null); // index of gear slot or null
-  const isAtk      = side === "atk";
-  const name        = isAtk ? b.atkName       : b.defCmdName;
-  const icon        = isAtk ? b.atkIcon       : b.defCmdIcon;
-  const lvl         = isAtk ? b.atkLvl        : b.defLvl;
-  const troopBranch = isAtk ? b.atkTroopBranch : b.defTroopBranch;
-  const troops      = isAtk ? b.atkTroopsStart : b.defTroopsStart;
-  const stats       = isAtk ? b.atkCmdStats : b.defCmdStats ?? null;
-  const resolved    = resolveTroopBranch(troopBranch);
-  const br          = resolved?.branchDef ?? null;
-  const td          = resolved?.tierData  ?? null;
-  // Multi-slot support: atkTroopSlots array from report
-  const atkSlots    = isAtk ? (b.atkTroopSlots ?? (troopBranch ? [{ branch: troopBranch, troops }] : [])) : null;
-  // Show all 3 commander stats always (even if 0)
-  const cmdStats  = stats ? [
-    { label:"ATK",   val:stats.atk ?? 0, color:"#e08050" },
-    { label:"FOCUS", val:stats.foc ?? 0, color:"#50d090" },
-    { label:"SPD",   val:stats.spd ?? 0, color:"#d0a030" },
-  ] : [];
-  const gearStats = stats ? [
-    stats.gearArmyAtk   > 0 && { label:"Army ATK",    val:`+${stats.gearArmyAtk}%`   },
-    stats.gearArmyFoc   > 0 && { label:"Army FOCUS",  val:`+${stats.gearArmyFoc}%`   },
-    stats.gearArmySpd   > 0 && { label:"Army SPD",    val:`+${stats.gearArmySpd}`     },
-    stats.gearArmySiege > 0 && { label:"Siege Power", val:`+${stats.gearArmySiege}`   },
-  ].filter(Boolean) : [];
 
-  // Gear snapshot (attacker only — defender has no gear in current data)
-  const gearSlots = (isAtk && b.atkGearSnapshot) ? b.atkGearSnapshot : null;
+  const isAtk     = side === "atk";
+  const name      = isAtk ? b.atkName     : b.defCmdName;
+  const icon      = isAtk ? b.atkIcon     : b.defCmdIcon;
+  const lvl       = isAtk ? b.atkLvl      : b.defLvl;
+  const bust      = isAtk ? b.atkBust     : b.defBust;
+  const portrait  = isAtk ? b.atkPortrait : b.defPortrait;
+  const cmdCls    = isAtk ? b.cmdCls      : b.defCmdCls;
+  const clsColor  = CLS_COLOR[cmdCls] ?? "#888";
+
+  // Stats
+  const rawStats  = isAtk ? b.atkCmdStats   : b.defCmdStats ?? null;
+  const baseStats = isAtk ? b.atkBaseStats   : null; // only captured for attacker
+  const gearSlots = isAtk ? b.atkGearSnapshot : null;
+  const skills    = isAtk ? (b.atkSkillsSnapshot ?? []) : (b.defSkillsSnapshot ?? []);
+
+  // Troop
+  const troopBranch = isAtk ? b.atkTroopBranch : b.defTroopBranch;
+  const atkSlots    = isAtk ? (b.atkTroopSlots ?? (troopBranch ? [{ branch: troopBranch, troops: b.atkTroopsStart }] : [])) : null;
+
   const SLOT_KEYS = ["helmet", "armor", "bracers", "accessory"];
+
+  // Stat row: shows base+level, gear bonus, total
+  function StatRow({ label, icon: ico, baseVal, gearVal, totalVal, color }) {
+    return (
+      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px",
+        background:"rgba(255,255,255,.02)", borderRadius:6, marginBottom:4 }}>
+        <span style={{ fontSize:14, width:20, textAlign:"center" }}>{ico}</span>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:8, color:"#4a4030", fontFamily:"'Cinzel',serif",
+            letterSpacing:".08em", marginBottom:2 }}>{label}</div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+            <span style={{ fontSize:18, fontWeight:700, color, fontFamily:"'Cinzel',serif" }}>
+              {totalVal ?? baseVal}
+            </span>
+            {baseVal != null && (
+              <span style={{ fontSize:9, color:"#3a3028", fontFamily:"'Cinzel',serif" }}>
+                base {baseVal}
+                {gearVal > 0 && (
+                  <span style={{ color:"#3daa60" }}> +{gearVal} gear</span>
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
       <div onClick={e => e.stopPropagation()} style={{
         position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-        zIndex:5011, width:440,
-        background:"#100c06", border:"1px solid #3a2e18", borderRadius:10,
-        padding:"24px 28px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
-        maxHeight:"90vh", overflowY:"auto",
+        zIndex:5011, width:480,
+        background:"#0c0906", border:"1px solid #3a2e18", borderRadius:10,
+        boxShadow:"0 8px 40px rgba(0,0,0,.95)",
+        maxHeight:"92vh", display:"flex", flexDirection:"column", overflow:"hidden",
       }}>
-        {/* Header */}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-            <div style={{ width:72, height:72, borderRadius:"50%",
-              background:"rgba(255,255,255,.05)", border:"1px solid #2a1e08",
-              display:"flex", alignItems:"center", justifyContent:"center", fontSize:40 }}>
-              {icon}
-            </div>
-            <div>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:20, fontWeight:700, color:"#c8a060" }}>{name}</div>
-              <div style={{ fontSize:14, color:"#5a4a38" }}>Level {lvl}</div>
-              {(isAtk ? b.cmdCls : b.defCmdCls) && (
-                <span style={{ fontSize:14, color: CLS_COLOR[b.cmdCls] ?? "#888",
-                  background:"rgba(255,255,255,.04)", padding:"2px 10px",
-                  borderRadius:3, display:"inline-block", marginTop:4 }}>
-                  {isAtk ? b.cmdCls : b.defCmdCls}
+
+        {/* ── SECTION 1: Commander portrait banner ── */}
+        <div style={{ position:"relative", height:220, flexShrink:0, overflow:"hidden",
+          background:"linear-gradient(135deg,#120e06,#08060a)" }}>
+          {(bust || portrait) ? (
+            <img src={bust ?? portrait} alt={name}
+              style={{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)",
+                height:"100%", width:"auto", objectFit:"contain",
+                objectPosition:"bottom center", opacity:.95 }} />
+          ) : (
+            <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center",
+              justifyContent:"center", fontSize:72, opacity:.4 }}>{icon}</div>
+          )}
+          <div style={{ position:"absolute", inset:0,
+            background:"linear-gradient(to top, rgba(8,5,0,.98) 0%, rgba(8,5,0,.35) 45%, transparent 100%)",
+            pointerEvents:"none" }} />
+          {/* Name / level / class */}
+          <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"8px 18px 14px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:17, fontWeight:700, color:"#c8a060" }}>{name}</div>
+              {cmdCls && (
+                <span style={{ fontSize:8, color:clsColor,
+                  background:`${clsColor}18`, border:`1px solid ${clsColor}44`,
+                  padding:"2px 8px", borderRadius:3, fontFamily:"'Cinzel',serif" }}>
+                  {cmdCls}
                 </span>
               )}
             </div>
+            <div style={{ fontSize:9, color:"#5a4a38", fontFamily:"'Cinzel',serif" }}>Level {lvl}</div>
           </div>
-          <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:24, cursor:"pointer" }}>&#x2715;</button>
+          <button onClick={onClose} style={{
+            position:"absolute", top:10, right:12,
+            background:"rgba(0,0,0,.6)", border:"1px solid #2a1e08", borderRadius:"50%",
+            color:"#6a5a4a", fontSize:14, cursor:"pointer", width:28, height:28,
+            display:"flex", alignItems:"center", justifyContent:"center",
+          }}>✕</button>
         </div>
 
-        {/* Commander stats — always shown, even if 0 */}
-        {cmdStats.length > 0 && <>
-          <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif",
-            letterSpacing:".08em", marginBottom:10, paddingBottom:6, borderBottom:"1px solid #1e1808" }}>
-            COMMANDER STATS
-          </div>
-          <div style={{ display:"flex", gap:32, marginBottom:20 }}>
-            {cmdStats.map(({ label, val, color }) => (
-              <div key={label} style={{ textAlign:"center" }}>
-                <div style={{ fontSize:12, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".06em" }}>{label}</div>
-                <div style={{ fontSize:26, fontWeight:700, color }}>{val}</div>
-              </div>
-            ))}
-          </div>
-        </>}
+        {/* ── Scrollable body ── */}
+        <div style={{ flex:1, overflowY:"auto", padding:"14px 18px 20px" }} className="scr">
 
-        {/* Gear bonuses */}
-        {gearStats.length > 0 && <>
-          <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif",
-            letterSpacing:".08em", marginBottom:10, paddingBottom:6, borderBottom:"1px solid #1e1808" }}>
-            GEAR BONUSES
-          </div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:"8px 24px", marginBottom:20 }}>
-            {gearStats.map(({ label, val }) => (
-              <div key={label}>
-                <span style={{ fontSize:12, color:"#5a4a38" }}>{label}: </span>
-                <span style={{ fontSize:14, color:"#3daa60", fontWeight:700 }}>{val}</span>
+          {/* ── SECTION 2: Commander stats ── */}
+          {rawStats && (
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:8, color:"#3a3028", fontFamily:"'Cinzel',serif",
+                letterSpacing:".1em", marginBottom:8, paddingBottom:5,
+                borderBottom:"1px solid #1e1808" }}>
+                COMMANDER STATS
               </div>
-            ))}
-          </div>
-        </>}
-
-        {/* Equipped gear slots — matches CommanderScreen slot card style */}
-        {gearSlots && <>
-          <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif",
-            letterSpacing:".08em", marginBottom:12, paddingBottom:6, borderBottom:"1px solid #1e1808" }}>
-            EQUIPPED GEAR
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:20 }}>
-            {SLOT_KEYS.map((slot, i) => {
-              const piece = gearSlots[i];
-              const rc = piece ? (GEAR_RC[piece.rarity] ?? "#888") : null;
-              const pBase = { ATK:7, FOC:7, SPD:7 };
-              const rarityMult = piece ? ({ common:1, rare:1.4, epic:2.0, legendary:3.0 }[piece.rarity] ?? 1) : 1;
-              const pVal = piece ? Math.round((pBase[piece.primaryStat] ?? 7) * rarityMult * (1 + (piece.stars ?? 0) * 0.12)) : null;
-              return (
-                <div key={slot}
-                  onClick={e => { e.stopPropagation(); setShowGear(piece ? i : null); }}
-                  style={{
-                    padding:"28px 8px 20px", textAlign:"center",
-                    background: piece ? `${rc}12` : "rgba(255,255,255,.015)",
-                    border:`1px solid ${piece ? rc+"40" : "#1e1810"}`,
-                    borderRadius:8, cursor: piece ? "pointer" : "default",
-                    boxShadow: piece ? `0 0 8px ${rc}20` : "none",
-                    transition:"all .15s",
-                  }}>
-                  <div style={{ fontSize: piece ? 40 : 32, marginBottom:8, opacity: piece ? 1 : 0.2 }}>
-                    {piece ? piece.icon : GEAR_SLOT_ICONS[slot]}
-                  </div>
-                  <div style={{ fontSize:12, fontFamily:"'Cinzel',serif",
-                    color: piece ? rc : "#2a2010",
-                    overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
-                    marginBottom: piece ? 4 : 0 }}>
-                    {piece ? piece.n.split(" ")[0] : GEAR_SLOT_NAMES[slot]}
-                  </div>
-                  {piece && <>
-                    <div style={{ fontSize:12, color:"#6a5a40", fontFamily:"'Cinzel',serif", marginBottom:4 }}>
-                      {STAT_ICN[piece.primaryStat]} +{pVal}
-                    </div>
-                    <div style={{ display:"flex", justifyContent:"center", gap:2 }}>
-                      {Array.from({length:5}).map((_,si) => (
-                        <span key={si} style={{ fontSize:8, color:si<(piece.stars??0)?"#aaa":"#222" }}>★</span>
-                      ))}
-                    </div>
-                  </>}
-                  {!piece && (
-                    <div style={{ fontSize:10, color:"#2a2010", fontFamily:"'Cinzel',serif", marginTop:4 }}>empty</div>
-                  )}
+              <StatRow label="ATTACK"  ico="⚔"  color="#e08050"
+                baseVal={baseStats?.atk} gearVal={baseStats?.gearAtk}
+                totalVal={rawStats.atk} />
+              <StatRow label="FOCUS"   ico="✦"  color="#50d090"
+                baseVal={baseStats?.foc} gearVal={baseStats?.gearFoc}
+                totalVal={rawStats.foc} />
+              <StatRow label="SPEED"   ico="💨" color="#d0a030"
+                baseVal={baseStats?.spd} gearVal={baseStats?.gearSpd}
+                totalVal={rawStats.spd} />
+              {/* Army bonuses from gear */}
+              {(rawStats.gearArmyAtk > 0 || rawStats.gearArmyFoc > 0 || rawStats.gearArmySpd > 0 || rawStats.gearArmySiege > 0) && (
+                <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 12px", marginTop:6,
+                  padding:"6px 10px", background:"rgba(61,170,96,.06)",
+                  border:"1px solid rgba(61,170,96,.15)", borderRadius:5 }}>
+                  <span style={{ fontSize:7, color:"#3a3028", fontFamily:"'Cinzel',serif",
+                    width:"100%", letterSpacing:".06em", marginBottom:2 }}>GEAR ARMY BONUSES</span>
+                  {rawStats.gearArmyAtk  > 0 && <span style={{ fontSize:8, color:"#3daa60" }}>+{rawStats.gearArmyAtk}% Army ATK</span>}
+                  {rawStats.gearArmyFoc  > 0 && <span style={{ fontSize:8, color:"#3daa60" }}>+{rawStats.gearArmyFoc}% Army FOC</span>}
+                  {rawStats.gearArmySpd  > 0 && <span style={{ fontSize:8, color:"#3daa60" }}>+{rawStats.gearArmySpd} Army SPD</span>}
+                  {rawStats.gearArmySiege> 0 && <span style={{ fontSize:8, color:"#3daa60" }}>+{rawStats.gearArmySiege} Siege</span>}
                 </div>
-              );
-            })}
-          </div>
-        </>}
-
-        {/* Troop row */}
-        <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif",
-          letterSpacing:".08em", marginBottom:10, paddingBottom:6, borderBottom:"1px solid #1e1808" }}>
-          TROOPS
-        </div>
-        <div onClick={() => br && setShowTroop(true)} style={{
-          display:"flex", alignItems:"center", justifyContent:"space-between",
-          padding:"12px 16px", borderRadius:6,
-          background:"rgba(255,255,255,.03)", border:"1px solid #1e1808",
-          cursor: (br || (isAtk && atkSlots?.length)) ? "pointer" : "default",
-        }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12, flex:1 }}>
-            <div style={{ flex:1 }}>
-              {isAtk && atkSlots && atkSlots.length > 0 ? (
-                atkSlots.map((sl, i) => {
-                  const slRes = resolveTroopBranch(sl.branch);
-                  const slBr  = slRes?.branchDef;
-                  const slTd  = slRes?.tierData;
-                  return (
-                    <div key={i} style={{ marginBottom: i < atkSlots.length-1 ? 4 : 0 }}>
-                      <div style={{ fontSize:14, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>
-                        {slBr ? `${slBr.label} — ${slTd?.label ?? ""}` : "Unknown"}
-                      </div>
-                      <div style={{ fontSize:12, color:"#5a4a38" }}>{(sl.troops ?? 0).toLocaleString()} troops{slBr ? ` · ${slBr.size} · ${slBr.dmgType}` : ""}</div>
-                    </div>
-                  );
-                })
-              ) : (
-                <>
-                  <div style={{ fontSize:16, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>
-                    {br ? `${br.label} — ${td?.label ?? ""}` : "Unknown"}
-                  </div>
-                  <div style={{ fontSize:14, color:"#5a4a38" }}>{(troops ?? 0).toLocaleString()} troops{br ? ` · ${br.size} · ${br.dmgType}` : ""}</div>
-                </>
               )}
             </div>
-          </div>
-          {br && !isAtk && <span style={{ fontSize:14, color:"#3a3028" }}>tap for stats &#x2192;</span>}
-        </div>
+          )}
 
-        {/* Commander Skills — attacker from snapshot, defender from defSkillsSnapshot */}
-        {(() => {
-          const skillSnap = isAtk ? (b.atkSkillsSnapshot ?? []) : (b.defSkillsSnapshot ?? []);
-          if (!skillSnap.length) return null;
-          return <>
-            <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif",
-              letterSpacing:".08em", marginTop:20, marginBottom:10, paddingBottom:6, borderBottom:"1px solid #1e1808" }}>
-              SKILLS
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {skillSnap.map((sk) => (
-                <div key={sk.key} style={{
-                  display:"flex", alignItems:"flex-start", gap:14,
-                  padding:"10px 14px", borderRadius:6,
-                  background: sk.type === "passive" ? "rgba(80,208,144,.05)" : "rgba(240,192,64,.05)",
-                  border:`1px solid ${sk.type === "passive" ? "rgba(80,208,144,.18)" : "rgba(240,192,64,.18)"}`,
-                }}>
-                  <span style={{ fontSize:28, flexShrink:0 }}>{sk.icon}</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:4 }}>
-                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:16, fontWeight:700,
-                        color: sk.type === "passive" ? "#50d090" : "#f0c040" }}>{sk.name}</span>
-                      <span style={{ fontSize:12, color:"#3a3028", background:"rgba(255,255,255,.04)",
-                        border:"1px solid #2a2010", borderRadius:3, padding:"0 8px" }}>
-                        Lv{sk.level}
-                      </span>
-                      <span style={{ fontSize:12, color: sk.type === "passive" ? "#50d090" : "#f0c040",
-                        opacity:.6 }}>{sk.type}</span>
-                    </div>
-                    <div style={{ fontSize:14, color:"#5a4a38", lineHeight:1.4 }}>{sk.desc}</div>
-                    {sk.type === "active" && sk.cooldown && (
-                      <div style={{ fontSize:12, color:"#3a3028", marginTop:4 }}>
-                        Every {sk.cooldown} rounds
+          {/* ── SECTION 3: Equipped gear ── */}
+          {gearSlots && (
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:8, color:"#3a3028", fontFamily:"'Cinzel',serif",
+                letterSpacing:".1em", marginBottom:8, paddingBottom:5,
+                borderBottom:"1px solid #1e1808" }}>
+                EQUIPPED GEAR
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6 }}>
+                {SLOT_KEYS.map((slot, i) => {
+                  const piece = gearSlots[i];
+                  const rc = piece ? (GEAR_RC[piece.rarity] ?? "#888") : null;
+                  const pVal = piece
+                    ? Math.round(
+                        ({ common:1, rare:1.4, epic:2.0, legendary:3.0 }[piece.rarity] ?? 1)
+                        * ({ ATK:7, FOC:7, SPD:7 }[piece.primaryStat] ?? 7)
+                        * (1 + (piece.stars ?? 0) * 0.12)
+                      )
+                    : null;
+                  return (
+                    <div key={slot}
+                      onClick={() => piece && setShowGear(i)}
+                      style={{
+                        padding:"10px 6px 8px", textAlign:"center", borderRadius:6,
+                        background: piece ? `${rc}12` : "rgba(255,255,255,.015)",
+                        border:`1px solid ${piece ? rc+"40" : "#1e1810"}`,
+                        cursor: piece ? "pointer" : "default",
+                        transition:"all .15s",
+                      }}>
+                      <div style={{ fontSize: piece ? 28 : 22, marginBottom:5, opacity: piece ? 1 : 0.2 }}>
+                        {piece ? piece.icon : GEAR_SLOT_ICONS[slot]}
                       </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                      <div style={{ fontSize:7.5, fontFamily:"'Cinzel',serif",
+                        color: piece ? rc : "#2a2010",
+                        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+                        marginBottom: piece ? 3 : 0 }}>
+                        {piece ? piece.n.split(" ")[0] : GEAR_SLOT_NAMES[slot]}
+                      </div>
+                      {piece && (
+                        <>
+                          <div style={{ fontSize:8, color:"#6a5a40", fontFamily:"'Cinzel',serif", marginBottom:3 }}>
+                            {STAT_ICN[piece.primaryStat]} +{pVal}
+                          </div>
+                          <div style={{ display:"flex", justifyContent:"center", gap:1 }}>
+                            {Array.from({length:5}).map((_,si) => (
+                              <span key={si} style={{ fontSize:7, color:si<(piece.stars??0)?"#aaa":"#222" }}>★</span>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      {!piece && (
+                        <div style={{ fontSize:7, color:"#2a2010", fontFamily:"'Cinzel',serif", marginTop:3 }}>empty</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </>;
-        })()}
-      </div>
+          )}
+
+          {/* ── SECTION 4: Skills with mini progress bars ── */}
+          {skills.length > 0 && (
+            <div>
+              <div style={{ fontSize:8, color:"#3a3028", fontFamily:"'Cinzel',serif",
+                letterSpacing:".1em", marginBottom:8, paddingBottom:5,
+                borderBottom:"1px solid #1e1808" }}>
+                INVESTED SKILLS
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {skills.map(sk => {
+                  const maxLvl  = sk.maxLevel ?? (sk.type === "passive" ? 15 : 7);
+                  const pct     = Math.min(100, Math.round((sk.level / maxLvl) * 100));
+                  const barColor = sk.type === "passive" ? "#50d090" : "#f0c040";
+                  return (
+                    <div key={sk.key} style={{
+                      display:"flex", alignItems:"flex-start", gap:10,
+                      padding:"8px 10px", borderRadius:6,
+                      background: sk.type === "passive"
+                        ? "rgba(80,208,144,.05)" : "rgba(240,192,64,.05)",
+                      border:`1px solid ${sk.type === "passive"
+                        ? "rgba(80,208,144,.15)" : "rgba(240,192,64,.15)"}`,
+                    }}>
+                      <span style={{ fontSize:22, flexShrink:0, lineHeight:1, marginTop:2 }}>{sk.icon}</span>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        {/* Name row with level badge */}
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                          <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700,
+                            color: sk.type === "passive" ? "#50d090" : "#f0c040",
+                            overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                            {sk.name}
+                          </span>
+                          <span style={{ fontSize:8, color:"#3a3028", fontFamily:"'Cinzel',serif",
+                            background:"rgba(255,255,255,.04)", border:"1px solid #2a2010",
+                            borderRadius:3, padding:"0 6px", whiteSpace:"nowrap", flexShrink:0 }}>
+                            {sk.type}
+                          </span>
+                        </div>
+                        {/* Progress bar */}
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
+                          <div style={{ flex:1, height:4, background:"#181808", borderRadius:2, overflow:"hidden" }}>
+                            <div style={{ width:`${pct}%`, height:"100%", background:barColor,
+                              borderRadius:2, transition:"width .3s" }} />
+                          </div>
+                          <span style={{ fontSize:8, color:barColor, fontFamily:"'Cinzel',serif",
+                            fontWeight:700, whiteSpace:"nowrap" }}>
+                            {sk.level}/{maxLvl}
+                          </span>
+                        </div>
+                        {/* Desc */}
+                        <div style={{ fontSize:8.5, color:"#5a4a38", lineHeight:1.4 }}>{sk.desc}</div>
+                        {sk.type === "active" && sk.cooldown && (
+                          <div style={{ fontSize:7, color:"#3a3028", marginTop:2 }}>
+                            Every {sk.cooldown} rounds
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>{/* end scrollable body */}
+      </div>{/* end modal */}
 
       {/* Gear piece popup */}
       {showGear !== null && gearSlots?.[showGear] && createPortal(
@@ -508,17 +538,11 @@ function CommanderPopup({ b, side, onClose }) {
         </div>,
         document.getElementById("portal-root")
       )}
-
-      {/* Secondary troop popup */}
-      {showTroop && createPortal(
-        <div style={{ pointerEvents:"auto" }}>
-          <TroopPopup troopBranch={troopBranch} onClose={() => setShowTroop(false)} />
-        </div>,
-        document.getElementById("portal-root")
-      )}
     </>
   );
 }
+
+
 // ── Pre-battle passive phase ──────────────────────────────────────────────────
 function PreBattle({ passiveSummary, cmdName }) {
   if (!passiveSummary) return null;
@@ -1014,6 +1038,7 @@ function TroopSlotBoxes({ b, isEnemy, onSlotClick }) {
 // ── Simple summary right-column detail panel ──────────────────────────────────
 function SimpleSummaryPanel({ b, onOpen, playerName }) {
   const [troopModal, setTroopModal] = useState(null); // troopBranch object
+  const [cmdModal,   setCmdModal]   = useState(null); // "atk" | "def" | null
   const oc = outcomeOf(b);
 
   if (!b) return (
@@ -1038,7 +1063,7 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
         <div style={{ display:"flex", flexDirection:"column", overflow:"hidden",
           background:"linear-gradient(135deg,#120e06,#0a0702)" }}>
           {/* Portrait */}
-          <div style={{ position:"relative", flex:1, overflow:"hidden", minHeight:0 }}>
+          <div onClick={() => setCmdModal("atk")} style={{ position:"relative", flex:1, overflow:"hidden", minHeight:0, cursor:"pointer" }}>
             <div style={{ position:"absolute", inset:0, pointerEvents:"none",
               background:"radial-gradient(ellipse 90% 80% at 30% 85%, rgba(200,160,96,.15) 0%, transparent 70%)" }} />
             {b.atkBust || b.atkPortrait ? (
@@ -1108,7 +1133,7 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
         <div style={{ display:"flex", flexDirection:"column", overflow:"hidden",
           background:"linear-gradient(225deg,#0e0808,#0a0702)" }}>
           {/* Portrait */}
-          <div style={{ position:"relative", flex:1, overflow:"hidden", minHeight:0 }}>
+          <div onClick={() => setCmdModal("def")} style={{ position:"relative", flex:1, overflow:"hidden", minHeight:0, cursor:"pointer" }}>
             <div style={{ position:"absolute", inset:0, pointerEvents:"none",
               background:"radial-gradient(ellipse 90% 80% at 70% 85%, rgba(180,60,60,.15) 0%, transparent 70%)" }} />
             {b.defBust || b.defPortrait ? (
@@ -1192,6 +1217,16 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
           <div style={{ pointerEvents:"auto" }}>
             <TroopPopup troopBranch={troopModal} onClose={() => setTroopModal(null)} />
           </div>
+        </>,
+        document.getElementById("portal-root")
+      )}
+
+      {cmdModal && createPortal(
+        <>
+          <div onClick={() => setCmdModal(null)} style={{
+            position:"fixed", inset:0, zIndex:5010, background:"rgba(0,0,0,.6)",
+          }} />
+          <CommanderPopup b={b} side={cmdModal} onClose={() => setCmdModal(null)} />
         </>,
         document.getElementById("portal-root")
       )}
