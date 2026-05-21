@@ -108,11 +108,11 @@ function TroopPopup({ troopBranch, onClose }) {
             letterSpacing:".06em", WebkitTapHighlightColor:"transparent",
             touchAction:"manipulation",
           }}>
-          ← Back
+          {"←"} Back
         </button>
         <div>
           <span style={{ fontFamily:"'Cinzel',serif", fontSize:13, fontWeight:700, color:"#c8a060" }}>
-            {br.label} — {td.label}
+            {br.label}{" — "}{td.label}
           </span>
           <span style={{ fontSize:9, color:"#5a4a38", fontStyle:"italic", marginLeft:10 }}>
             {f.quarters} · {br.size} · <span style={{ color:dmgTypeColor }}>{br.dmgType}</span>
@@ -142,7 +142,7 @@ function TroopPopup({ troopBranch, onClose }) {
           {br.size === "small" ? "✗ Weak vs Medium" : br.size === "large" ? "✗ Weak vs Small" : "✗ Weak vs Large"}
         </div>
         {br.dmgType === "magical" && (
-          <div style={{ fontSize:14, color:"#a855f7", marginTop:4 }}>✦ Magical — bypasses physical DEF</div>
+          <div style={{ fontSize:14, color:"#a855f7", marginTop:4 }}>✦ Magical {"—"} bypasses physical DEF</div>
         )}
       </div>
       {/* Dragon passives */}
@@ -190,7 +190,7 @@ function TroopPopup({ troopBranch, onClose }) {
                     <div style={{ fontSize:14, color:"#5a4a38", lineHeight:1.4 }}>{sk.desc}</div>
                     {sk.procBase != null && (
                       <div style={{ fontSize:12, color:"#3a3028", marginTop:4 }}>
-                        Proc: {Math.round(sk.procBase*100)}% → {Math.round(sk.procMax*100)}% (scales with level)
+                        Proc: {Math.round(sk.procBase*100)}{" → "}{Math.round(sk.procMax*100)}% (scales with level)
                       </div>
                     )}
                   </div>
@@ -369,7 +369,7 @@ function CommanderPopup({ b, side, onClose }) {
               letterSpacing:".06em", WebkitTapHighlightColor:"transparent",
               touchAction:"manipulation",
             }}>
-            ← Back
+            {"←"} Back
           </button>
           <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:"#c8a060", fontWeight:700 }}>
             {name}
@@ -698,7 +698,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
             padding:"4px 10px", display:"flex", alignItems:"center", gap:6,
             fontFamily:"'Cinzel',serif", letterSpacing:".06em",
           }}>
-            <span style={{ fontSize:18, lineHeight:1 }}>←</span>
+            <span style={{ fontSize:18, lineHeight:1 }}>{"←"}</span>
           </button>
           <span style={{ fontFamily:"'Cinzel',serif", fontSize:14, color:"#8a6030", letterSpacing:".12em",
             position:"absolute", left:"50%", transform:"translateX(-50%)" }}>
@@ -1238,7 +1238,7 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
             color:"#c8a050", fontFamily:"'Cinzel',serif", fontSize:7,
             letterSpacing:".06em",
           }}>
-          FULL REPORT →
+          FULL REPORT {"→"}
         </button>
       </div>
 
