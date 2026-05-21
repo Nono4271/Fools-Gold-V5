@@ -9,7 +9,7 @@ export default defineConfig({
    tailwindcss(),
  ],
  worker: {
-   format: "es",
+   format: "iife",
  },
  resolve: {
    alias: {
@@ -21,12 +21,10 @@ export default defineConfig({
  build: {
    outDir: "dist",
    emptyOutDir: true,
-   rollupOptions: {},
  },
  server: {
    host: "0.0.0.0",
    proxy: {
-     // Proxy /ws → ws://localhost:3001 in dev so the hardcoded URL isn't needed
      '/ws': { target: 'ws://localhost:3001', ws: true, rewrite: (p) => p.replace(/^\/ws/, '') },
    },
  },
