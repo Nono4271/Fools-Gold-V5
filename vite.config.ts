@@ -18,6 +18,17 @@ export default defineConfig({
  build: {
    outDir: "dist",
    emptyOutDir: true,
+   rollupOptions: {
+     output: {
+       manualChunks: {
+         // PixiJS is ~1.2 MB minified and never changes between game deploys.
+         // Isolating it means the browser serves it from cache on every update
+         // to game logic, maps, or UI — users never re-download 1.2 MB of
+         // renderer code just because a balance patch shipped.
+         pixi: ["pixi.js"],
+       },
+     },
+   },
  },
  server: {
    host: "0.0.0.0",
