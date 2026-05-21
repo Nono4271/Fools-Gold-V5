@@ -1,23 +1,19 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { flushSync, unstable_batchedUpdates } from "react-dom";
+import { unstable_batchedUpdates } from "react-dom";
 import { MapRenderer, clearKeepCache, clearHQCache } from "./MapRenderer";
 
 // Constants
 import { CSS } from "./constants/css.js";
-import { ALIGNMENT, getFactionAlignment, PLAYABLE_FACTIONS } from "../shared/constants/factions.js";
-import { HDEFS, RC, RARITY, CLASS, rollGacha, addRespect, RESPECT_DUPE_POINTS, RESPECT_OVERFLOW_POINTS, RESPECT_MAX, npcForPowerLevel, factionDefCmdForTile } from "../shared/constants/heroes.js";
-import { rollFullPull, rollGearSchematic, createRespectSchematic, createGearInstance, GEAR_RARITY, GEAR_SLOTS, GEAR_PIECES, rollFullPullCmdRarity } from "../shared/constants/gear.js";
-import { HQP, AI_HQ_KEY, WIN_KEY, RKEYS, RSS, POWER_DEFS, SIEGE_BASE, SIEGE_KEEP_BASE, calcSiegePower, hqSiegeValue, TOMES_LEVEL_COST, TOMES_MAX_LEVEL } from "../shared/constants/map.js";
-import { FACTION_TROOPS, COMMAND_COST, CMD_LVL_MAX, xpToNext } from "../shared/constants/troops.js";
-import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainRate, maxTrainBatch, trainingQueueCount, tierFromBranchLevel, storageMax, voidTapCapacity, voidTapCooldownMs, voidTapYield } from "../shared/constants/buildings.js";
-import { isoXY, TW, TH, ISO_W, ISO_H } from "../shared/constants/geometry.js";
-import { FACTION_REGIONS, REGION_LIST } from "../shared/constants/regions.js";
+import { getFactionAlignment } from "../shared/constants/factions.js";
+import { npcForPowerLevel, factionDefCmdForTile } from "../shared/constants/heroes.js";
+import { HQP, POWER_DEFS, SIEGE_BASE, hqSiegeValue } from "../shared/constants/map.js";
+import { FACTION_TROOPS, COMMAND_COST } from "../shared/constants/troops.js";
+import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainingQueueCount, tierFromBranchLevel } from "../shared/constants/buildings.js";
+import { isoXY } from "../shared/constants/geometry.js";
 
 // Utils
-import { bfsPath, adj, effectiveMarchSpd, marchStepMs, setImpassableTiles } from "../shared/utils/pathfinding.js";
+import { adj, effectiveMarchSpd, marchStepMs, setImpassableTiles, normaliseTroopSlots } from "../shared/utils/pathfinding.js";
 import { applyGearToCmd } from "../shared/utils/gearStats.js";
-import { garrisonDefCmd } from "../shared/utils/battle.js";
-import { normaliseTroopSlots } from "../shared/utils/pathfinding.js";
 
 // Hooks
 import { useResources } from "./hooks/useResources.js";
@@ -28,6 +24,10 @@ import { useUpgrades } from "./hooks/useUpgrades.js";
 import { useGameLoop } from "./hooks/useGameLoop.js";
 import { usePathfinding } from "./hooks/usePathfinding.js";
 import { useServerSync } from "./hooks/useServerSync.js";
+import { useBattle } from "./hooks/useBattle.js";
+import { useGacha } from "./hooks/useGacha.js";
+import { useTomes } from "./hooks/useTomes.js";
+import { useVoidTap } from "./hooks/useVoidTap.js";
 
 // Screens
 import TitleScreen from "./components/screens/TitleScreen.jsx";
@@ -48,10 +48,6 @@ import WizardsTomes, { ScrollStackIcon } from "./components/game/WizardsTomes.js
 import GameBar from "./components/game/GameBar.jsx";
 import CommanderScreen from "./components/screens/CommanderScreen.jsx";
 import GearScreen from "./components/screens/GearScreen.jsx";
-
-// Backwards-compat shims
-const SC = RC;
-const SS = (rarity) => RARITY[rarity]?.n ?? String(rarity);
 
 export default function RiseToWar() {
   // ── Screens ──
@@ -89,6 +85,10 @@ export default function RiseToWar() {
   const pKeysRef = useRef(new Set());
   const [pKeys, setPKeys] = useState(() => new Set());
   const aiTileKeysRef = useRef(new Set());
+  // Running total of ringPower for player-owned tiles — maintained in patchTile
+  // so powerPerHr never requires an O(1.4M) scan. Updated O(1) per ownership change.
+  const powerPerHrRef = useRef(0);
+  const [powerPerHr, setPowerPerHr] = useState(0);
 
   const patchTile = useCallback((key, patch) => {
     const t = tilesMapRef.current[key];
@@ -118,6 +118,14 @@ export default function RiseToWar() {
       else newSet.delete(key);
       pKeysRef.current = newSet;
       setPKeys(newSet);
+      // Update powerPerHrRef — O(1) delta instead of O(1.4M) scan
+      const pl = merged.powerLevel;
+      if (pl && !merged.isHQ && !merged.isHQPart) {
+        const rp = POWER_DEFS[pl]?.ringPower ?? 0;
+        if (t.owner === "player") powerPerHrRef.current -= rp;
+        if (patch.owner === "player") powerPerHrRef.current += rp;
+        setPowerPerHr(powerPerHrRef.current);
+      }
       // Keep global AI tile index in sync (legacy — used by aiTileKeysRef)
       const newAiSet = new Set(aiTileKeysRef.current);
       if (patch.owner === "ai") newAiSet.add(key);
@@ -192,34 +200,24 @@ export default function RiseToWar() {
   const [aiCmdsVersion, setAiCmdsVersion] = useState(0);
   const cmds = useMemo(() => [...playerCmds, ...aiCmdsRef.current], [playerCmds, aiCmdsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
   const [coll,   setColl]    = useState([]);
-  const [pityCounters,   setPityCounters]   = useState({ soldier:0, veteran:0, champion:0 });
-  const [gearInventory,       setGearInventory]       = useState(() => {
-    // Starter gear — enough to make all 4 slots scrollable
-    const slots = ["helmet","armor","bracers","accessory"];
-    const rarities = ["common","rare","epic","legendary"];
-    const pieces = [];
-    let t = Date.now();
-    slots.forEach(slot => {
-      rarities.forEach(rarity => {
-        const pool = GEAR_PIECES.filter(p => p.slot === slot && p.rarity === rarity);
-        const count = rarity === "legendary" ? 3 : rarity === "epic" ? 4 : rarity === "rare" ? 4 : 5;
-        for (let i = 0; i < count; i++) {
-          const def = pool[i % pool.length];
-          if (!def) continue;
-          const inst = createGearInstance(def.id);
-          inst.instanceId = `starter_${slot}_${rarity}_${i}_${t++}`;
-          inst.stars = Math.min(i, 5);
-          pieces.push(inst);
-        }
-      });
-    });
-    return pieces;
-  });
-  const [respectSchematics,   setRespectSchematics]   = useState([]);
-  const [pullResults,         setPullResults]         = useState([]);
-  const [pullKey,             setPullKey]             = useState(0);
-  const [lastFreePull,   setLastFreePull]   = useState(null);
-  const [dailyHalfUsed, setDailyHalfUsed]  = useState(false);
+
+  // floatyRef lets useGacha call floaty without requiring it to be defined yet.
+  // floatyRef.current is set after floaty is defined below (~line 860).
+  const floatyRef = useRef(null);
+
+  // ── Gacha / gear / pull — owned by useGacha ───────────────────────────────
+  const {
+    pityCounters, setPityCounters,
+    gearInventory, setGearInventory,
+    respectSchematics, setRespectSchematics,
+    pullResults, setPullResults,
+    pullKey, setPullKey,
+    lastFreePull, setLastFreePull,
+    dailyHalfUsed, setDailyHalfUsed,
+    isFreeAvailable, isHalfAvailable,
+    pullCost, pull,
+  } = useGacha({ playerAlignment, gems, setGems, playerHqRef, setCmds, setColl, floatyRef });
+
   const [bldgs,  setBldgs]   = useState({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, storage:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 });
   const [upgQueue, setUpgQueue] = useState({});
 
@@ -274,24 +272,6 @@ export default function RiseToWar() {
   }, []);
   useEffect(() => { playerHqRef.current = playerHqKey;   }, [playerHqKey]);
 
-  // ── Bug 3 fix: reset dailyHalfUsed at 00:00 UTC ──
-  useEffect(() => {
-    const scheduleReset = () => {
-      const now = new Date();
-      const msUntilMidnightUTC = (
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
-        - Date.now()
-      );
-      const t = setTimeout(() => {
-        setDailyHalfUsed(false);
-        scheduleReset();
-      }, msUntilMidnightUTC);
-      return t;
-    };
-    const t = scheduleReset();
-    return () => clearTimeout(t);
-  }, []);
-
   // ── Bug 4 fix: sync player and AI HQ siegeMax when walls level changes ──
   useEffect(() => {
     if (!mapReady) return;
@@ -306,9 +286,12 @@ export default function RiseToWar() {
   useEffect(() => {
     if (!mapReady) return;
     const newAiSiegeMax = hqSiegeValue(aiBldgs.walls || 0);
-    Object.values(tilesMapRef.current).filter(t => t.isHQ && t.owner === "ai").forEach(tile => {
+    // aiHqKeysRef already indexes all AI HQ primary keys — no tile scan needed.
+    Object.values(aiHqKeysRef.current).flat().forEach(hqKey => {
+      const tile = tilesMapRef.current[hqKey];
+      if (!tile) return;
       const newSiege = Math.min(tile.siege ?? newAiSiegeMax, newAiSiegeMax);
-      patchTile(tile.k, { siegeMax: newAiSiegeMax, siege: newSiege });
+      patchTile(hqKey, { siegeMax: newAiSiegeMax, siege: newSiege });
     });
   }, [aiBldgs.walls, mapReady]);
 
@@ -371,32 +354,23 @@ export default function RiseToWar() {
   }, [bldgs]); // eslint-disable-line react-hooks/exhaustive-deps
   // quarterLevels: { [factionKey]: currentLevel }  — player-purchased quarter upgrades
   const [quarterLevels, setQuarterLevels] = useState({});
-
-  // Void Tap state
-  const [mysticOrbs,    setMysticOrbs]    = useState(0);
   const [troopSkillLevels, setTroopSkillLevels] = useState({});
-  const [lastVoidTap,   setLastVoidTap]   = useState(null); // timestamp ms or null
 
-  // Wizard's Tomes
-  const [tomesOpen,  setTomesOpen]  = useState(false);
-  const [tomesLevel, setTomesLevel] = useState(0);
-  const [powerPool,  setPowerPool]  = useState(0);   // accumulated power (persists, can exceed next cost)
-  const [tomesUnspentPoints, setTomesUnspentPoints] = useState(0); // upgrade points ready to spend
+  // ── Void Tap — owned by useVoidTap ───────────────────────────────────────
+  const {
+    mysticOrbs, setMysticOrbs,
+    lastVoidTap, setLastVoidTap,
+    mysticOrbsCap, voidTapReady,
+    doVoidTap,
+  } = useVoidTap({ bldgs, quarterLevels });
 
-  // Derived void tap values from bldgs
-  const voidTapLvl  = bldgs.voidtap || 0;
-  const mysticOrbsCap = voidTapLvl > 0 ? voidTapCapacity(voidTapLvl) : 10000;
-  const voidTapCooldown = voidTapLvl > 0 ? voidTapCooldownMs(voidTapLvl) : voidTapCooldownMs(1);
-  const voidTapReady = voidTapLvl > 0
-    && mysticOrbs < mysticOrbsCap
-    && (lastVoidTap === null || Date.now() - lastVoidTap >= voidTapCooldown);
-
-  const doVoidTap = () => {
-    if (!voidTapReady) return;
-    const gain = voidTapYield(quarterLevels);
-    setMysticOrbs(prev => Math.min(mysticOrbsCap, prev + gain));
-    setLastVoidTap(Date.now());
-  };
+  // ── Wizard's Tomes — owned by useTomes ───────────────────────────────────
+  const {
+    tomesOpen,          setTomesOpen,
+    tomesLevel,         setTomesLevel,
+    powerPool,          setPowerPool,
+    tomesUnspentPoints, setTomesUnspentPoints,
+  } = useTomes({ screen, powerPerHrRef });
   const [woundedTroops,  setWounded]       = useState(0);
   const [woundedQueue,   setWoundedQueue]  = useState(0);
   const [trainingQueues, setTrainingQueues] = useState([]);  // array of { id, branchKey, remaining, total }
@@ -520,30 +494,8 @@ export default function RiseToWar() {
     return () => clearInterval(id);
   }, [screen]);
 
-  // ── Power accumulation tick (1 min intervals, adds powerPerHr/60 each tick) ─
-  // powerPerHr = sum of ringPower for all player-owned tiles
-  const powerPerHr = useMemo(() => {
-    return Object.values(tilesMapRef.current)
-      .filter(t => t.owner === "player" && t.powerLevel && !t.isHQ && !t.isHQPart)
-      .reduce((sum, t) => sum + (POWER_DEFS[t.powerLevel]?.ringPower ?? 0), 0);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tiles]); // recalculate when tiles change
-
-  useEffect(() => {
-    if (screen !== "game") return;
-    const TICK_MS = 10 * 1000; // every 10 seconds for smooth visual accumulation
-    const id = setInterval(() => {
-      const pph = Object.values(tilesMapRef.current)
-        .filter(t => t.owner === "player" && t.powerLevel && !t.isHQ && !t.isHQPart)
-        .reduce((sum, t) => sum + (POWER_DEFS[t.powerLevel]?.ringPower ?? 0), 0);
-      if (pph <= 0) return;
-      const gain = pph / 360; // 1/360th of hourly rate per 10-second tick
-      setPowerPool(prev => prev + gain);
-    }, TICK_MS);
-    return () => clearInterval(id);
-  }, [screen]);
-
   const { initPathfinding, findPath, findPathBatch } = usePathfinding();
+  const { runBattle } = useBattle();
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => { mvCmdRef.current = mvCmd; }, [mvCmd]);
@@ -567,7 +519,7 @@ export default function RiseToWar() {
     );
 
     worker.onmessage = (e) => {
-      const { type, pct, label, buffers, meta, spawnKeys } = e.data;
+      const { type, pct, label, buffers, meta, spawnKeys, factionTileKeys } = e.data;
 
       if (type === "progress") {
         setLoadPct(pct);
@@ -765,13 +717,13 @@ export default function RiseToWar() {
 
         // ── Initialize per-faction AI Maps ────────────────────────────────
         const INIT_BLDGS_VAL = { hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 };
+        // factionTileKeys was pre-built by the worker scanning ownerArr in one pass —
+        // no O(1.4M) rawMap scan needed here. Convert arrays to Sets for O(1) lookup.
         aiFactions.forEach(aiFk => {
           aiRssMapRef.current.set(aiFk, { stone:5000, wood:5000, ore:5000, gas:5000 });
           aiBldgsMapRef.current.set(aiFk, { ...INIT_BLDGS_VAL });
           aiPoolMapRef.current.set(aiFk, barracksCapacity(0));
-          aiTileKeysMapRef.current.set(aiFk, new Set(
-            Object.keys(rawMap).filter(k => rawMap[k]?.owner === "ai" && rawMap[k]?.faction === aiFk)
-          ));
+          aiTileKeysMapRef.current.set(aiFk, new Set(factionTileKeys?.[aiFk] || []));
           aiLastMarchMapRef.current.set(aiFk, new Map());
         });
 
@@ -827,6 +779,11 @@ export default function RiseToWar() {
             ? ["pirates","bountyhunters","holyknights"]
             : ["orcs","dragons","nightcreatures"]).includes(f)
         ) || aiFactions[0];
+
+        // pKeysRef: player owns no tiles at this point — their HQ is placed in the
+        // block above (setPlayerHqKey). patchTile maintains pKeysRef incrementally
+        // from here on. powerPerHrRef starts at 0 (player has no ring tiles yet).
+        pKeysRef.current = new Set();
 
         rawMap.__ready = true;
         setImpassableTiles(impassKeys || []);
@@ -915,6 +872,8 @@ export default function RiseToWar() {
     setFloats(f => [...f, { id, txt, col, x:screenX, y:screenY }]);
     setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), 1800);
   }, []);
+  // Give useGacha access to floaty now that it's defined.
+  floatyRef.current = floaty;
 
 
   // ── Server sync — authoritative tile state ──
@@ -973,6 +932,7 @@ export default function RiseToWar() {
     gatePartners,
     facKey,
     troopSkillLevels,
+    runBattle,
   });
 
   useGameLoop({
@@ -1190,19 +1150,13 @@ export default function RiseToWar() {
 
   // ── Computed ──
 
+  // ── Sync React state from pre-built refs when map becomes ready ──────────
+  // pKeysRef, powerPerHrRef, and aiTileKeysMapRef are all populated in the
+  // done handler before mapReady fires — no tile scan needed here.
   useEffect(() => {
     if (!tilesMapRef.current.__ready) return;
-    const newSet = new Set(Object.keys(tilesMapRef.current).filter(k => tilesMapRef.current[k]?.owner === "player"));
-    pKeysRef.current = newSet;
-    setPKeys(newSet);
-    // Build AI index at map-ready time too
-    const aiSet = new Set(Object.keys(tilesMapRef.current).filter(k => tilesMapRef.current[k]?.owner === "ai"));
-    aiTileKeysRef.current = aiSet;
-    // Rebuild per-faction tile key maps
-    const allTiles = tilesMapRef.current;
-    for (const [fk] of aiTileKeysMapRef.current) {
-      aiTileKeysMapRef.current.set(fk, new Set(Object.keys(allTiles).filter(k => allTiles[k]?.owner === "ai" && allTiles[k]?.faction === fk)));
-    }
+    setPKeys(pKeysRef.current);
+    setPowerPerHr(powerPerHrRef.current);
   }, [mapReady]);
 
   // Fix #4: Removed 200ms redrawOverlays polling interval.
@@ -1471,127 +1425,6 @@ export default function RiseToWar() {
     setRss(p => Object.fromEntries(Object.entries(p).map(([k,v]) => [k, v-(c[k]||0)])));
     setUpgQueue(q => ({ ...q, [type]:{ endsAt:Date.now()+dur, startedAt:Date.now(), newLvl:lvl+1, dur } }));
   }, [bldgs, canAfford, upgQueue]);
-
-  const todayUTC = () => new Date().toISOString().slice(0, 10);
-  const isFreeAvailable  = lastFreePull !== todayUTC();
-  const isHalfAvailable  = !isFreeAvailable && !dailyHalfUsed;
-
-  const pullCost = (n) => {
-    if (n === 10) return 4000;
-    if (isFreeAvailable)  return 0;
-    if (isHalfAvailable)  return 200;
-    return 400;
-  };
-
-  const pull = useCallback((n) => {
-    const cost = pullCost(n);
-    if (cost > 0 && gems < cost) return;
-
-    if (cost > 0) setGems(g => g - cost);
-    if (isFreeAvailable && n === 1)      setLastFreePull(todayUTC());
-    else if (isHalfAvailable && n === 1) setDailyHalfUsed(true);
-
-    const alignFactions    = ALIGNMENT[playerAlignment]?.factions;
-    const playerAlignKey   = playerAlignment;
-    const hqk              = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
-    const newPity          = { ...pityCounters };
-    const newGear          = [];
-    const newSchematics    = [];
-    const allPullResults   = [];
-
-    const commanderPool = HDEFS.filter(h => alignFactions && alignFactions.includes(h.faction));
-
-    for (let p = 0; p < n; p++) {
-      const { slot1, slot2, slot3 } = rollFullPull(alignFactions, playerAlignKey, newPity, commanderPool);
-      const slots = [slot1, slot2, slot3];
-
-      const pullRow = { id: `pr_${Date.now()}_${p}`, slots: [] };
-
-      slots.forEach(slot => {
-        if (slot.type === "commander") {
-          const forcedRarity = rollFullPullCmdRarity();
-          const biasedCounters = { ...newPity };
-          if (forcedRarity === "champion") biasedCounters.champion = 300;
-          else if (forcedRarity === "veteran") biasedCounters.veteran = 100;
-          else biasedCounters.soldier = 20;
-          const [cmdResult] = rollGacha(1, alignFactions, biasedCounters);
-          newPity[forcedRarity] = 0;
-          pullRow.slots.push({ type: "commander", data: cmdResult });
-        } else if (slot.type === "respectSchematic") {
-          newSchematics.push(slot);
-          pullRow.slots.push({ type: "respectSchematic", data: slot });
-        } else {
-          newGear.push(slot);
-          pullRow.slots.push({ type: "gear", data: slot });
-        }
-      });
-
-      allPullResults.push(pullRow);
-    }
-
-    setPityCounters(newPity);
-    setPullResults(allPullResults);
-    setPullKey(k => k + 1);
-
-    if (newGear.length) setGearInventory(prev => [...prev, ...newGear]);
-
-    const cmdResults = allPullResults
-      .flatMap(pr => pr.slots)
-      .filter(s => s.type === "commander")
-      .map(s => s.data);
-
-    const processedSchematics = newSchematics.map(s => {
-      if (s.isGeneric) return s;
-      return s;
-    });
-    if (processedSchematics.length) setRespectSchematics(prev => [...prev, ...processedSchematics]);
-
-    if (cmdResults.length) {
-      setCmds(prev => {
-        const nx = [...prev];
-        const overflowSchematics = [];
-        cmdResults.forEach(h => {
-          const existing = nx.find(x => x.id === h.id && x.owner === "player");
-          if (!existing) {
-            nx.push({ ...h, uid:h.uid, troops:0, troopSlots:[], troopBranch:null, tk:hqk, owner:"player", lvl:5, xp:0,
-              respectPoints:0, respectLevel:0, skillPoints:{}, unspentSkillPoints:5, stamina:200,
-              gear:{ helmet:null, armor:null, bracers:null, accessory:null } });
-          } else {
-            const points = existing.respectLevel >= RESPECT_MAX
-              ? RESPECT_OVERFLOW_POINTS
-              : RESPECT_DUPE_POINTS[h.rarity] ?? 120;
-            const idx = nx.indexOf(existing);
-            const updated = addRespect(existing, points);
-            if (updated._justPromoted) floaty(`⬆ ${existing.n} → ${updated.rarity}!`, "#f0c040", hqk);
-            nx[idx] = { ...updated, _justPromoted: null };
-          }
-        });
-        if (processedSchematics.length) {
-          const converted = processedSchematics.map(s => {
-            if (s.isGeneric || !s.commanderId) return null;
-            const ownerCmd = nx.find(x => x.id === s.commanderId && x.owner === "player");
-            if (ownerCmd && ownerCmd.respectLevel >= RESPECT_MAX) {
-              return { ...s, isGeneric: true, commanderId: null, commanderName: null,
-                points: 30, n: `Generic ${s.rarity.charAt(0).toUpperCase() + s.rarity.slice(1)} Schematic` };
-            }
-            return null;
-          }).filter(Boolean);
-          if (converted.length) {
-            setRespectSchematics(prev => {
-              const ids = new Set(converted.map(c => c.instanceId));
-              return [...prev.filter(x => !ids.has(x.instanceId)), ...converted];
-            });
-          }
-        }
-        return nx;
-      });
-      setColl(prev => {
-        const nx = [...prev];
-        cmdResults.forEach(h => { if (!nx.find(x => x.id === h.id)) nx.push(h); });
-        return nx;
-      });
-    }
-  }, [gems, playerAlignment, pityCounters, isFreeAvailable, isHalfAvailable]);
 
   // ── Tile click ──
   const onTileClick = useCallback((k, e) => {
