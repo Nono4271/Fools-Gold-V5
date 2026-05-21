@@ -1217,6 +1217,46 @@ self.onmessage = function(e) {
 
   postMessage({ type:"progress", pct:98, label:"Finishing up..." });
 
+  // ── Pre-build per-faction tile key lists ──────────────────────────────────
+  // Scanning ownerArr here (worker thread, no jank) saves the main thread from
+  // two separate O(1.4M) passes over rawMap after reconstruction:
+  //   - one to build aiTileKeysMapRef per faction
+  //   - one to build pKeysRef + powerPerHrRef for the player
+  // ownerArr already holds OWNER_ENC codes (pirates=3, orcs=4, ...) set during
+  // keep placement. We scan once and emit the results in the done message.
+  const POWER_DEFS_RING = {
+    1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0,
+    10:10, 11:15, 12:20, 13:30,
+  };
+  const factionTileKeys = {};
+  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
+    factionTileKeys[fk] = [];
+  }
+  const playerTileKeys = [];
+  let   playerPowerPerHr = 0;
+
+  const F_HQ_OR_PART = F_HQ | F_HQPART;
+  for (let idx = 0; idx < SIZE; idx++) {
+    const ownerCode = ownerArr[idx];
+    if (ownerCode === 0) continue; // unowned — most tiles
+    const c = idx % COLS, r = Math.floor(idx / COLS);
+    const key = `${c},${r}`;
+    if (ownerCode === 1) {
+      // player — HQ tiles placed after this loop, so none here yet. Kept for safety.
+      playerTileKeys.push(key);
+    } else {
+      // faction-owned (code 3–8)
+      const fk = OWNER_DEC[ownerCode];
+      if (fk && factionTileKeys[fk]) {
+        factionTileKeys[fk].push(key);
+        // player power from faction tiles is 0 at start — only player tiles matter
+      }
+    }
+  }
+  // Note: playerPowerPerHr stays 0 here — player owns no tiles at game start
+  // (their HQ is placed by the main thread after reconstruction). The main thread
+  // seeds powerPerHrRef from pKeysRef after the first ownership change.
+
   // Send typed arrays as zero-copy transferables (32 MB total, no structured clone cost).
   // Main thread reconstructs tile objects — but does so in async chunks to stay responsive.
   const transferables = [
@@ -1257,6 +1297,8 @@ self.onmessage = function(e) {
     },
     spawnKeys,
     aiHqMap,
+    factionTileKeys,   // pre-built per-faction tile key arrays — eliminates O(1.4M) scans on main thread
+    playerTileKeys,    // player-owned keys at worker time (empty at gen, populated after HQ placement)
     playerSpawn: (spawnKeys[facKey] || [])[0] || null, // player uses first key of their faction
   }, transferables);
 };
