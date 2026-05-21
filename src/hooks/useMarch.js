@@ -4,7 +4,8 @@ import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS
 import { CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
 import { barracksCapacity } from "../../shared/constants/buildings.js";
 import { adj, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
-import { simBattle, garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/battle.js";
+import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/battle.js";
+import { useBattle } from "./useBattle.js";
 import { calcSiegePower } from "../../shared/constants/map.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
@@ -122,6 +123,9 @@ gatePartners,
 facKey,
 troopSkillLevels,
 }) {
+// Battle worker — runs simBattle off the main thread
+const { runBattle } = useBattle();
+
 // Server-sync helpers — no-op if server not connected yet
 const _emitCapture = (key, patch) => emitTileCapture?.(key, patch);
 const _emitSiege   = (key, patch) => emitTileSiege?.(key, patch);
@@ -163,7 +167,7 @@ if (screen !== "game") return;
 const arrivedAttackers = cmds.filter(c => c.owner === "player" && c.march?.arrived && c.march?.type === "attack");
 if (!arrivedAttackers.length) return;
 
-arrivedAttackers.forEach(staleCmd => {
+arrivedAttackers.forEach(async staleCmd => {
   // staleCmd comes from cmds.filter() — cmds is the current state in this effect closure.
   // If reinforcement happened before this render, staleCmd already has updated troops.
   // Use it directly; also check cmdsRef for any same-tick updates not yet in cmds.
@@ -239,7 +243,7 @@ arrivedAttackers.forEach(staleCmd => {
   const hasAiCmd = cmds.some(c => c.owner === "ai" && c.tk === destKey && !c.march);
   if (hasAiCmd) {
     // Stage 1: fight AI commander
-    const res = simBattle(boostedCmd, cmdTroops(cmd), defTile, wallLvl);
+    const res = await runBattle(boostedCmd, cmdTroops(cmd), defTile, wallLvl);
     if (res.report) {
       const enriched = { ...res.report, timestamp: Date.now(), cmdCls: cmd.cls,
         passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot, atkBaseStats, atkBaseStats };
@@ -307,7 +311,7 @@ arrivedAttackers.forEach(staleCmd => {
 
     const waveCmd = garrisonWaveDefCmd(defTile, wi, facKey);
     const waveTile = { ...defTile, defCmd: waveCmd };
-    const wres = simBattle({ ...boostedCmd, troops: remainingTroops, troopSlots: cmd.troopSlots
+    const wres = await runBattle({ ...boostedCmd, troops: remainingTroops, troopSlots: cmd.troopSlots
       ? applySlotLosses(cmd, cmdTroops(cmd) - remainingTroops).troopSlots
       : undefined }, remainingTroops, waveTile, wallLvl);
 
@@ -427,7 +431,7 @@ useEffect(() => {
     );
     if (!drawCmds.length) return;
 
-    drawCmds.forEach(cmd => {
+    drawCmds.forEach(async cmd => {
       const destKey   = cmd.drawTile;
       const originKey = cmd.drawOrigin || hqKey;
       const defTile   = tilesRef.current?.[destKey];
@@ -481,7 +485,7 @@ useEffect(() => {
       for (const aiCmd of aiCmdsOnTile) {
         if (remainingTroops <= 0) { playerDefeated = true; break; }
         const fightTile = { ...defTile, defCmd: { ...aiCmd } };
-        const res = simBattle({ ...boostedCmd, troops: remainingTroops }, remainingTroops, fightTile, wallLvl);
+        const res = await runBattle({ ...boostedCmd, troops: remainingTroops }, remainingTroops, fightTile, wallLvl);
         if (res.report) {
           const enriched = { ...res.report, timestamp: Date.now(), cmdCls: cmd.cls,
             passiveSummary: getPassiveBonuses(boostedCmd), isRematch: true };
@@ -519,7 +523,7 @@ useEffect(() => {
           if (remainingTroops <= 0) { playerDefeated = true; break; }
           const waveCmd  = garrisonWaveDefCmd(defTile, wi, facKey);
           const waveTile = { ...defTile, defCmd: waveCmd };
-          const resG = simBattle({ ...boostedCmd, troops: remainingTroops }, remainingTroops, waveTile, wallLvl);
+          const resG = await runBattle({ ...boostedCmd, troops: remainingTroops }, remainingTroops, waveTile, wallLvl);
           if (resG.report) {
             const enriched = { ...resG.report, timestamp: Date.now(), cmdCls: cmd.cls,
               passiveSummary: getPassiveBonuses(boostedCmd), isRematch: true, isGarrison: true,
@@ -637,7 +641,7 @@ if (screen !== "game") return;
 const arrivedAI = cmds.filter(c => c.owner === "ai" && c.march?.arrived && c.march?.type === "attack");
 if (!arrivedAI.length) return;
 
-arrivedAI.forEach(cmd => {
+arrivedAI.forEach(async cmd => {
   const destKey = cmd.tk;
   const defTile = tiles[destKey];
   if (!defTile || defTile.owner === "ai") {
@@ -670,7 +674,7 @@ arrivedAI.forEach(cmd => {
   }
 
   const wallLvl = defTile.owner === "player" && defTile.isHQ ? (bldgs.walls||0) : 0;
-  const res = simBattle(boostedCmd2, cmdTroops(cmd), defTile, wallLvl);
+  const res = await runBattle(boostedCmd2, cmdTroops(cmd), defTile, wallLvl);
   const newTroops = res.won ? Math.max(0, cmdTroops(cmd) - res.lost) : 0;
   let tileCaptured = false;
 
