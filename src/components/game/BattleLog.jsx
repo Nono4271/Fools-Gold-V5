@@ -115,7 +115,7 @@ function TroopPopup({ troopBranch, onClose }) {
             {br.label}{" — "}{td.label}
           </span>
           <span style={{ fontSize:9, color:"#5a4a38", fontStyle:"italic", marginLeft:10 }}>
-            {f.quarters} · {br.size} · <span style={{ color:dmgTypeColor }}>{br.dmgType}</span>
+            {f.quarters}{" · "}{br.size}{" · "}<span style={{ color:dmgTypeColor }}>{br.dmgType}</span>
           </span>
         </div>
       </div>
@@ -142,7 +142,7 @@ function TroopPopup({ troopBranch, onClose }) {
           {br.size === "small" ? "✗ Weak vs Medium" : br.size === "large" ? "✗ Weak vs Small" : "✗ Weak vs Large"}
         </div>
         {br.dmgType === "magical" && (
-          <div style={{ fontSize:14, color:"#a855f7", marginTop:4 }}>✦ Magical {"—"} bypasses physical DEF</div>
+          <div style={{ fontSize:14, color:"#a855f7", marginTop:4 }}>{"✦"} Magical {"—"} bypasses physical DEF</div>
         )}
       </div>
       {/* Dragon passives */}
@@ -240,21 +240,21 @@ function GearPiecePopup({ piece, onClose }) {
             </span>
           </div>
         </div>
-        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:13, cursor:"pointer", flexShrink:0 }}>✕</button>
+        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:13, cursor:"pointer", flexShrink:0 }>{"✕"}</button>
       </div>
 
       {/* Stars */}
       <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
         <div style={{ display:"flex", gap:2 }}>
           {Array.from({length:5}).map((_,i) => (
-            <span key={i} style={{ fontSize:9, color:i<(piece.stars??0)?"#aaaaaa":"#2a2a2a" }}>★</span>
+            <span key={i} style={{ fontSize:9, color:i<(piece.stars??0)?"#aaaaaa":"#2a2a2a" }}>{"★"}</span>
           ))}
         </div>
         {(piece.goldStars??0) > 0 && <>
-          <span style={{ color:"#3a3020", fontSize:9 }}>·</span>
+          <span style={{ color:"#3a3020", fontSize:9 }}>{"·"}</span>
           <div style={{ display:"flex", gap:2 }}>
             {Array.from({length:piece.goldStars}).map((_,i) => (
-              <span key={i} style={{ fontSize:9, color:"#f0c040" }}>★</span>
+              <span key={i} style={{ fontSize:9, color:"#f0c040" }}>{"★"}</span>
             ))}
           </div>
         </>}
@@ -484,7 +484,7 @@ function CommanderPopup({ b, side, onClose }) {
                           </div>
                           <div style={{ display:"flex", justifyContent:"center", gap:1 }}>
                             {Array.from({length:5}).map((_,si) => (
-                              <span key={si} style={{ fontSize:7, color:si<(piece.stars??0)?"#aaa":"#222" }}>★</span>
+                              <span key={si} style={{ fontSize:7, color:si<(piece.stars??0)?"#aaa":"#222" }}>{"★"}</span>
                             ))}
                           </div>
                         </>
@@ -602,7 +602,7 @@ function PreBattle({ passiveSummary, cmdName }) {
         display:"flex", alignItems:"center", gap:6,
       }}>
         <div style={{ flex:1, height:1, background:"#2a1a08" }} />
-        PRE-BATTLE — {cmdName} Passives Activated
+        PRE-BATTLE {"—"} {cmdName} Passives Activated
         <div style={{ flex:1, height:1, background:"#2a1a08" }} />
       </div>
       {lines.map((l,i) => (
@@ -610,7 +610,7 @@ function PreBattle({ passiveSummary, cmdName }) {
           fontSize:8, color:l.color, lineHeight:1.7, paddingLeft:10,
           fontFamily:"'Crimson Pro',serif",
         }}>
-          ✦ {l.text}
+          {"✦"} {l.text}
         </div>
       ))}
     </div>
@@ -749,7 +749,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
                 color:"#c8a060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {b.atkName}
               </div>
-              <div style={{ fontSize:7, color:"#5a4a30" }}>Lv{b.atkLvl} · tap for stats</div>
+              <div style={{ fontSize:7, color:"#5a4a30" }}>Lv{b.atkLvl}{" · "}tap for stats</div>
             </div>
             <div style={{ position:"absolute", top:6, left:7,
               fontSize:6, color:"#4488ffbb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
@@ -822,7 +822,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
                 color:"#aa7070", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {b.defCmdName}
               </div>
-              <div style={{ fontSize:7, color:"#5a4a30" }}>Lv{b.defLvl} · tap for stats</div>
+              <div style={{ fontSize:7, color:"#5a4a30" }}>Lv{b.defLvl}{" · "}tap for stats</div>
             </div>
             <div style={{ position:"absolute", top:6, right:7,
               fontSize:6, color:"#cc4444bb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
@@ -873,7 +873,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
           {/* Footer */}
           <div style={{ marginTop:"auto", paddingTop:4, fontSize:9, color:"#2a2010", textAlign:"center",
             fontFamily:"'Cinzel',serif", letterSpacing:".06em", flexShrink:0 }}>
-            {b.tileName ?? "—"} · {b.modLabel} · {b.rounds?.length ?? 0} rounds
+            {b.tileName ?? "—"}{" · "}{b.modLabel}{" · "}{b.rounds?.length ?? 0} rounds
           </div>
         </div>
 
@@ -1223,7 +1223,7 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
             </span>
           )}
           {b.bastionActive && (
-            <span style={{ fontSize:8, color:"#a080ff" }}>⚖ Balanced</span>
+            <span style={{ fontSize:8, color:"#a080ff" }}>{"⚖"} Balanced</span>
           )}
           {b.isStage2 && (
             <span style={{ fontSize:8, color:"#5a4a38" }}>Stage 2</span>
@@ -1323,7 +1323,7 @@ function DetailedLog({ b }) {
 
         {b.bastionActive && (
           <div style={{ marginTop:6, fontSize:7, color:"#5080e0" }}>
-            ⚖ Balanced passive — double HP &amp; DEF active rounds 1-2
+            {"⚖"} Balanced passive {"—"} double HP &amp; DEF active rounds 1-2
           </div>
         )}
       </div>
@@ -1424,7 +1424,7 @@ function DetailedLog({ b }) {
                     const back = a.troopsBack ?? Math.abs(a.dmg);
                     return (
                       <span>
-                        {icon} {cmdName} activates <strong>{skillName}</strong> —{" "}
+                        {icon} {cmdName} activates <strong>{skillName}</strong>{" —"}{" "}
                         <span style={{ color:"#50d090" }}>{back.toLocaleString()} {back === 1 ? "troop" : "troops"} restored</span>
                         {a.atkRemaining !== undefined &&
                           <span style={{ color:"#4080cc" }}> ({a.atkRemaining.toLocaleString()} remain)</span>
@@ -1446,7 +1446,7 @@ function DetailedLog({ b }) {
                     const durText = se.dur > 1 ? ` for ${se.dur} rounds` : "";
                     return (
                       <span>
-                        {icon} {cmdName} activates <strong>{skillName}</strong> —{" "}
+                        {icon} {cmdName} activates <strong>{skillName}</strong>{" —"}{" "}
                         <span style={{ color:"#60aaff" }}>{se.stat} {se.value}{se.pct ? ` (+${se.pct}%)` : ""}{durText}</span>
                       </span>
                     );
@@ -1456,7 +1456,7 @@ function DetailedLog({ b }) {
                     if (se.stat === "enemy healing") {
                       return (
                         <span>
-                          {icon} {cmdName} activates <strong>{skillName}</strong> —{" "}
+                          {icon} {cmdName} activates <strong>{skillName}</strong>{" —"}{" "}
                           <span style={{ color:"#d0a030" }}>enemy healing blocked for {se.rounds} {se.rounds === 1 ? "round" : "rounds"}</span>
                         </span>
                       );
@@ -1464,7 +1464,7 @@ function DetailedLog({ b }) {
                     const durText = se.dur > 1 ? ` for ${se.dur} rounds` : "";
                     return (
                       <span>
-                        {icon} {cmdName} activates <strong>{skillName}</strong> —{" "}
+                        {icon} {cmdName} activates <strong>{skillName}</strong>{" —"}{" "}
                         <span style={{ color:"#d0a030" }}>{se.stat} reduced {se.value}{durText}</span>
                       </span>
                     );
@@ -1473,7 +1473,7 @@ function DetailedLog({ b }) {
                   if (se.type === "nullify") {
                     return (
                       <span>
-                        {icon} {cmdName} activates <strong>{skillName}</strong> —{" "}
+                        {icon} {cmdName} activates <strong>{skillName}</strong>{" —"}{" "}
                         <span style={{ color:"#d0a030" }}>enemy skill nullified this round</span>
                       </span>
                     );
@@ -1483,7 +1483,7 @@ function DetailedLog({ b }) {
                     const durText = se.dur > 1 ? ` over ${se.dur} rounds` : "";
                     return (
                       <span>
-                        {icon} {cmdName} activates <strong>{skillName}</strong> —{" "}
+                        {icon} {cmdName} activates <strong>{skillName}</strong>{" —"}{" "}
                         <span style={{ color:"#50d090" }}>restoring {se.pct}% of fallen troops{durText}</span>
                       </span>
                     );
@@ -1496,7 +1496,7 @@ function DetailedLog({ b }) {
                     if (se.critBonus) parts.push(`+${se.critBonus}% crit chance`);
                     return (
                       <span>
-                        {icon} {cmdName} activates <strong>{skillName}</strong> —{" "}
+                        {icon} {cmdName} activates <strong>{skillName}</strong>{" —"}{" "}
                         <span style={{ color:"#f0c040" }}>{parts.join(", ")}</span>
                       </span>
                     );
@@ -1559,7 +1559,7 @@ export default memo(function BattleLog({ battles, bLog, onClose, playerName }) {
           }} />
 
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            <span style={{ fontSize:16 }}>⚔</span>
+            <span style={{ fontSize:16 }}>{"⚔"}</span>
             <span style={{
               fontFamily:"'Cinzel Decorative',serif", fontSize:12,
               background:"linear-gradient(135deg,#f0c040,#c89028)",
@@ -1598,7 +1598,7 @@ export default memo(function BattleLog({ battles, bLog, onClose, playerName }) {
               background:"rgba(255,255,255,.04)", border:"1px solid #2a1e08",
               color:"#6a5a4a", fontSize:14, cursor:"pointer",
               display:"flex", alignItems:"center", justifyContent:"center",
-            }}>✕</button>
+            }>{"✕"}</button>
           </div>
         </div>
 
