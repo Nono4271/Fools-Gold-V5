@@ -12,7 +12,7 @@ function tbInfo(tb) {
 }
 import { TERR } from "../../../shared/constants/terrain.js";
 import { RSS, POWER_DEFS, SIEGE_BASE, HQP, TC } from "../../../shared/constants/map.js";
-import { garrisonDefCmd } from "../../../shared/utils/battle.js";
+import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
 
 export default memo(function TilePopup({
   selKey, selTile, popupPos, popupMode, setPopupMode,
