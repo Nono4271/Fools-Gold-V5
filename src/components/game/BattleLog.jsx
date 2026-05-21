@@ -77,7 +77,7 @@ function TroopPopup({ troopBranch, onClose }) {
   const { branchDef: br, tierData: td, faction: f } = resolved;
   const stats = [
     { label:"HP",    val:td.hp,    color:"#cc4444" },
-    { label:"DMG",   val:`${td.dmgLo}–${td.dmgHi}`, color:"#e08050" },
+    { label:"DMG",   val:`${td.dmgLo}-${td.dmgHi}`, color:"#e08050" },
     { label:"DEF",   val:td.def,   color:"#5080e0" },
     { label:"SPD",   val:td.spd,   color:"#d0a030" },
     { label:"SIEGE", val:td.siege, color:"#888888" },
