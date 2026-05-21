@@ -8,7 +8,7 @@ import { simBattle, garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from
 import { calcSiegePower } from "../../shared/constants/map.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
-import { getPassiveBonuses, getActiveSkills } from "../../shared/constants/skills.js";
+import { getPassiveBonuses, getActiveSkills, MAIN_SKILLS } from "../../shared/constants/skills.js";
 
 // Per-class stat growth per level
 const CLASS_GROWTH = {
@@ -202,7 +202,17 @@ arrivedAttackers.forEach(staleCmd => {
     if (!piece) return null;
     return { ...piece, primaryStatValue: gearStatValue(piece.primaryStat, piece.rarity, piece.stars ?? 0) };
   });
-  const atkSkillsSnapshot = getActiveSkills(boostedCmd).map(({ key, def, level }) => ({ key, level, name: def.name, icon: def.icon, type: def.type, desc: def.desc, cooldown: def.cooldown, tree: def.tree }));
+  const atkSkillsSnapshot = getActiveSkills(boostedCmd).map(({ key, def, level }) => ({ key, level, maxLevel: MAIN_SKILLS[key] ? 15 : 7, name: def.name, icon: def.icon, type: def.type, desc: def.desc, cooldown: def.cooldown, tree: def.tree }));
+  // Base stats breakdown for CommanderPopup (base+level component, gear component separately)
+  const _gb = boostedCmd.gearBonuses ?? {};
+  const atkBaseStats = {
+    atk:        (boostedCmd.atk ?? 0) - (_gb.atk ?? 0),  // base + from-level, no gear
+    foc:        (boostedCmd.foc ?? 0) - (_gb.foc ?? 0),
+    spd:        (boostedCmd.spd ?? 0) - (_gb.spd ?? 0),
+    gearAtk:    _gb.atk ?? 0,
+    gearFoc:    _gb.foc ?? 0,
+    gearSpd:    _gb.spd ?? 0,
+  };
 
   // ── All-garrison-defeated: siege only ────────────────────────────────────
   const allWavesDefeated = (defTile.defeatedWaves?.length ?? 0) >= garrisonWaveCount(defTile);
@@ -232,7 +242,7 @@ arrivedAttackers.forEach(staleCmd => {
     const res = simBattle(boostedCmd, cmdTroops(cmd), defTile, wallLvl);
     if (res.report) {
       const enriched = { ...res.report, timestamp: Date.now(), cmdCls: cmd.cls,
-        passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot };
+        passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot, atkBaseStats, atkBaseStats };
       setBattles(p => [enriched, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
     }
     if (!res.won && !res.isDraw) {
@@ -303,7 +313,7 @@ arrivedAttackers.forEach(staleCmd => {
 
     if (wres.report) {
       const enriched = { ...wres.report, timestamp: Date.now(), cmdCls: cmd.cls,
-        passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot,
+        passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot, atkBaseStats,
         waveIndex: wi, totalWaves, isWaveBattle: true };
       setBattles(p => [enriched, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
     }
