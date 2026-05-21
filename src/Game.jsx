@@ -162,6 +162,8 @@ export default function RiseToWar() {
     // Re-derive from cmdsRef (player portion) rather than stale playerCmds closure.
     const curPlayer = cmdsRef.current.filter(c => c.owner === "player");
     cmdsRef.current = [...curPlayer, ...aiCmdsRef.current];
+    // Bump version so cmds useMemo recomputes → MapRenderer redraws AI commanders
+    setAiCmdsVersion(v => v + 1);
   }, []);
 
   const setCmds = useCallback((updater) => {
@@ -180,7 +182,8 @@ export default function RiseToWar() {
   }, []);
 
   // Include AI commanders so MapRenderer draws them on the map.
-  const cmds = useMemo(() => [...playerCmds, ...aiCmdsRef.current], [playerCmds]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [aiCmdsVersion, setAiCmdsVersion] = useState(0);
+  const cmds = useMemo(() => [...playerCmds, ...aiCmdsRef.current], [playerCmds, aiCmdsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
   const [coll,   setColl]    = useState([]);
   const [pityCounters,   setPityCounters]   = useState({ soldier:0, veteran:0, champion:0 });
   const [gearInventory,       setGearInventory]       = useState(() => {
@@ -806,7 +809,9 @@ export default function RiseToWar() {
             });
           }
         });
-        aiCmdsRef.current = initialAiCmds;
+        // Seed via setAiCmds so cmdsRef stays in sync and the useMemo recomputes.
+        setAiCmds(initialAiCmds);
+        setAiCmdsVersion(v => v + 1);
 
         const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
         const primaryAiFk = aiFactions.find(f =>
