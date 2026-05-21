@@ -940,46 +940,46 @@ function TroopSlotBoxes({ b, isEnemy, onSlotClick }) {
           <div key={i}
             onClick={clickable ? (e) => { e.stopPropagation(); onSlotClick(sl.branch); } : undefined}
             style={{
-              width:44, height:52, flexShrink:0,
+              width:64, height:80, flexShrink:0,
               position:"relative", overflow:"hidden",
               display:"flex", flexDirection:"column",
-              alignItems:"center", justifyContent:"center",
-              gap:1,
+              alignItems:"center", justifyContent:"flex-end",
               background:"rgba(6,4,2,.9)",
               border:`1px solid ${tierColor}${clickable ? "cc" : "88"}`,
-              borderRadius:4,
+              borderRadius:5,
               boxShadow:`0 2px 10px rgba(0,0,0,.8)${clickable ? `, 0 0 6px ${tierColor}33` : ""}`,
               cursor: clickable ? "pointer" : "default",
               transition:"border-color .15s, box-shadow .15s",
             }}>
-            {/* Portrait image — faded background, top-anchored */}
+            {/* Portrait image — strong fill, top-anchored */}
             {portraitSrc && (
               <img src={portraitSrc} alt=""
                 style={{ position:"absolute", inset:0, width:"100%", height:"100%",
                   objectFit:"cover", objectPosition:"top center",
-                  opacity: allDead ? 0.12 : 0.28, pointerEvents:"none" }}
+                  opacity: allDead ? 0.2 : 0.85, pointerEvents:"none" }}
                 onError={e => { e.currentTarget.style.display = "none"; }}
               />
             )}
-            {/* Dark vignette to keep text readable */}
+            {/* Dark gradient at bottom for text */}
             <div style={{ position:"absolute", inset:0,
-              background:"linear-gradient(to top, rgba(4,2,1,.75) 0%, rgba(4,2,1,.3) 60%, rgba(4,2,1,.55) 100%)",
+              background:"linear-gradient(to top, rgba(4,2,1,.92) 0%, rgba(4,2,1,.4) 50%, transparent 100%)",
               pointerEvents:"none" }} />
-            {/* Content layer */}
+            {/* Content layer — anchored to bottom over portrait */}
             <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column",
-              alignItems:"center", justifyContent:"center", gap:1, width:"100%" }}>
-            <div style={{ fontSize:13, lineHeight:1 }}>{icon}</div>
+              alignItems:"center", justifyContent:"flex-end", gap:1, width:"100%",
+              padding:"0 3px 4px" }}>
             <div style={{
-              fontSize:6.5, fontWeight:700, color:tierColor,
+              fontSize:7, fontWeight:700, color:tierColor,
               fontFamily:"'Cinzel',serif", lineHeight:1,
+              background:"rgba(0,0,0,.55)", padding:"1px 4px", borderRadius:2,
             }}>{TIER_ROMAN[Math.min(tierIdx, 2)]}</div>
             {/* end / start */}
             <div style={{
-              fontSize:6, fontWeight:700, color:endColor,
-              fontFamily:"'Cinzel',serif", lineHeight:1, marginTop:1,
+              fontSize:7, fontWeight:700, color:endColor,
+              fontFamily:"'Cinzel',serif", lineHeight:1,
             }}>{endStr}</div>
             <div style={{
-              fontSize:5.5, color:"#4a3a28",
+              fontSize:6, color:"#6a5a38",
               fontFamily:"'Cinzel',serif", lineHeight:1,
             }}>/{startStr}</div>
             </div>

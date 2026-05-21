@@ -734,7 +734,7 @@ const BRANCH_LVL_BONUS = [
   const dmgColor   = br.dmgType === "magical" ? "#a855f7" : "#e08050";
 
   return (
-  <div key={br.key} style={{ display:"flex", gap:8, marginBottom:12, alignItems:"stretch" }}>
+  <div key={br.key} style={{ display:"flex", gap:8, marginBottom:12, alignItems:"flex-start" }}>
 
   {/* LEFT: branch upgrade card */}
   <div style={{ width:110, flexShrink:0, borderRadius:8, overflow:"hidden",
@@ -815,7 +815,7 @@ const BRANCH_LVL_BONUS = [
   </div>
 
   {/* RIGHT: 3 troop tier cards */}
-  <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", gap:6 }}>
+  <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"flex-start", gap:6 }}>
   {/* connector line */}
   <div style={{ position:"relative", display:"flex", alignItems:"center", gap:5 }}>
   {/* background connector */}
@@ -829,7 +829,7 @@ const BRANCH_LVL_BONUS = [
   return (
   <button key={idx}
   onClick={() => setSelTroop({ branch: br, tierIdx: idx, tier, fColor: fDef.c, fDef, isLocked: !canView, branchOpen })}
-  style={{ flex:1, minHeight:90, padding:0, position:"relative", zIndex:1,
+  style={{ flex:1, minHeight:160, padding:0, position:"relative", zIndex:1,
   borderRadius:8, cursor: "pointer",
   background: tierUnlocked ? `${fDef.c}15` : "rgba(255,255,255,.02)",
   border:`1px solid ${tierUnlocked ? fDef.c+"55" : P.border}`,
@@ -1334,11 +1334,11 @@ function TrainingListScreen({ bldgs, barracksPool, troopCards, trainingQueues, r
           return (
             <div key={t.key} style={{ display:"grid",
               gridTemplateColumns:"1fr 56px 68px 68px",
-              alignItems:"center", padding:"7px 6px",
+              alignItems:"center", padding:"6px 6px",
               borderRadius:5, marginBottom:3,
               background:i%2===0?"rgba(255,255,255,.018)":"transparent" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-                <div style={{ width:26, height:26, borderRadius:4, overflow:"hidden", flexShrink:0,
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:64, height:64, borderRadius:6, overflow:"hidden", flexShrink:0,
                   background:`${t.fColor}18`, border:`1px solid ${t.fColor}35`, position:"relative" }}>
                   {(() => {
                     const psrc = troopPortraitPath(t.fKey, t.branch.key, t.tier.tierIdx ?? 0);
@@ -1503,7 +1503,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
                     background:isSel ? `${fc}18` : "rgba(255,255,255,.018)",
                     border:`1px solid ${isSel ? fc+"55" : P.border+"66"}`,
                     transition:"all .15s" }}>
-                  <div style={{ width:25, height:25, borderRadius:4, overflow:"hidden", flexShrink:0,
+                  <div style={{ width:52, height:52, borderRadius:6, overflow:"hidden", flexShrink:0,
                     background:`${fc}20`, border:`1px solid ${fc}30`, position:"relative" }}>
                     {(() => {
                       const psrc = troopPortraitPath(t.fKey, t.branch.key, t.tier.tierIdx ?? 0);
@@ -2088,33 +2088,52 @@ function ManageShipScreen({
                         padding: 0, cursor: "pointer",
                       }}>✕</button>
 
-                    {/* Tier badge */}
-                    <div style={{
-                      fontSize: 5.5, fontWeight: 700, color: tierColor,
-                      fontFamily: P.ff, letterSpacing: ".1em",
-                      border: `1px solid ${tierColor}66`, borderRadius: 2,
-                      padding: "1px 4px", lineHeight: 1.4,
-                    }}>
-                      TIER {TIER_ROMAN_MS[Math.min(res?.tierIdx ?? 0, 2)]}
-                    </div>
-                    <div style={{ fontSize: 20, lineHeight: 1 }}>{icon}</div>
-                    <div style={{
-                      fontSize: 7, fontWeight: 700, color: fColor,
-                      fontFamily: P.ff, textAlign: "center", lineHeight: 1.2,
-                    }}>
-                      {res?.tierData?.label ?? "?"}
-                    </div>
-                    <div style={{
-                      fontSize: 10, fontWeight: 700, color: "#f0e8d8",
-                      fontFamily: P.ff,
-                    }}>
-                      {count}
-                    </div>
-                    {isActive && (
-                      <div style={{ fontSize: 5.5, color: tierColor, fontFamily: P.ff, letterSpacing: ".08em" }}>
-                        ▲ ACTIVE
+                    {/* Portrait background */}
+                    {(() => {
+                      const psrc = troopPortraitPath(sl.branch?.faction, sl.branch?.branch, sl.branch?.tier ?? 0);
+                      return psrc ? (
+                        <img src={psrc} alt={res?.tierData?.label ?? ""}
+                          style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+                            objectFit:"cover", objectPosition:"top center", opacity:.85,
+                            borderRadius:4 }}
+                          onError={e => { e.currentTarget.style.display="none"; }}
+                        />
+                      ) : null;
+                    })()}
+                    {/* Dark vignette */}
+                    <div style={{ position:"absolute", inset:0, borderRadius:4,
+                      background:"linear-gradient(to top, rgba(4,2,1,.92) 0%, rgba(4,2,1,.4) 55%, transparent 100%)",
+                      pointerEvents:"none" }} />
+                    {/* Content overlay */}
+                    <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column",
+                      alignItems:"center", justifyContent:"flex-end", height:"100%",
+                      padding:"4px 4px 6px", gap:1 }}>
+                      <div style={{
+                        fontSize: 5.5, fontWeight: 700, color: tierColor,
+                        fontFamily: P.ff, letterSpacing: ".08em",
+                        border: `1px solid ${tierColor}66`, borderRadius: 2,
+                        padding: "1px 4px", lineHeight: 1.4, background:"rgba(0,0,0,.5)",
+                      }}>
+                        {TIER_ROMAN_MS[Math.min(res?.tierIdx ?? 0, 2)]}
                       </div>
-                    )}
+                      <div style={{
+                        fontSize: 6.5, fontWeight: 700, color: fColor,
+                        fontFamily: P.ff, textAlign: "center", lineHeight: 1.2,
+                      }}>
+                        {res?.tierData?.label ?? "?"}
+                      </div>
+                      <div style={{
+                        fontSize: 11, fontWeight: 700, color: "#f0e8d8",
+                        fontFamily: P.ff,
+                      }}>
+                        {count}
+                      </div>
+                      {isActive && (
+                        <div style={{ fontSize: 5, color: tierColor, fontFamily: P.ff, letterSpacing: ".08em" }}>
+                          ▲ ACTIVE
+                        </div>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <div style={{
@@ -2263,8 +2282,23 @@ function ManageShipScreen({
                   padding: "1px 4px", lineHeight: 1.4,
                 }}>T{TIER_ROMAN_MS[Math.min(tierIdx, 2)]}</div>
 
-                {/* Icon */}
-                <div style={{ fontSize: 18, lineHeight: 1 }}>{icon}</div>
+                {/* Portrait */}
+                {(() => {
+                  const psrc = troopPortraitPath(fKey, br.key, tierIdx);
+                  return psrc ? (
+                    <div style={{ width:64, height:64, borderRadius:5, overflow:"hidden",
+                      border:`1px solid ${tierColor}44`, flexShrink:0, position:"relative" }}>
+                      <img src={psrc} alt={tierData?.label ?? br.label}
+                        style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top center" }}
+                        onError={e => { e.currentTarget.style.display="none"; e.currentTarget.nextSibling.style.display="flex"; }}
+                      />
+                      <div style={{ position:"absolute", inset:0, display:"none",
+                        alignItems:"center", justifyContent:"center", fontSize:18 }}>{icon}</div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize:18, lineHeight:1 }}>{icon}</div>
+                  );
+                })()}
 
                 {/* Troop name */}
                 <div style={{
