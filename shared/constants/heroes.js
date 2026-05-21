@@ -146,37 +146,11 @@ export const SKILL_TREES = {
   tactics: { n: "Tactics", icon: "✦",  unlocksAt: 5, desc: "Special effects, debuffs, healing, siege bonuses"   },
 };
 
-// Skill naming and mechanic tables live in skills.js — re-exported here for backward compat.
-// NOTE: We use a single import (not a mix of `export { } from` + `import { } from` for the
-// same module) to avoid a Rollup TDZ bug where the re-export binding can be accessed before
-// it is initialized in the production bundle.
-import {
-  MAIN_BRANCH_NAMES, FACTION_MAIN_NAMES, getMainBranchNames,
-  SKILL_NAMES, getSkillNames,
-  TREE_DISPLAY_NAMES, getTreeDisplayNames,
-  SKILL_MECHANICS, SKILLS,
-  getBranchMechanicKey, getBranchMechanic,
-  getDefCmdBranches,
-} from "./skills.js";
-
-export {
-  MAIN_BRANCH_NAMES, FACTION_MAIN_NAMES, getMainBranchNames,
-  SKILL_NAMES, getSkillNames,
-  TREE_DISPLAY_NAMES, getTreeDisplayNames,
-  SKILL_MECHANICS, SKILLS,
-  getBranchMechanicKey, getBranchMechanic,
-};
-
-// DEAD_CODE_START — kept so this marker is findable, replaced by skills.js re-export above
-const _MAIN_BRANCH_NAMES_UNUSED = {
-  combat:  ["Grit","Weapon Mastery","Battle Fury","Iron Resolve","Blood Rush","War Cry","Killing Blow","Unstoppable","Wrath","Supreme Might"],
-  defense: ["Fortify","Shield Training","Stalwart","Iron Skin","Hold the Line","Bulwark","Impenetrable","Stone Will","Last Stand","Citadel"],
-  command: ["Rally","March Discipline","Vanguard","Supply Lines","Force March","Tactical Advance","Strategic Mind","Grand March","Legion's Pride","War Council"],
-  tactics: ["Cunning","Feint","Ambush","Debilitating Strike","Hex","Battle Scheme","Masterstroke","Siege Craft","Shadow Gambit","Grand Tactics"],
-};
-// DEAD_CODE_END
-
-// Old SKILL_NAMES and getSkillNames removed — now in skills.js
+// NOTE: The import of skills.js was removed here to break a circular dependency.
+// heroes.js → skills.js → (faction_skills) AND battle.js → heroes.js + skills.js
+// created a module init cycle that caused TDZ on pixi's const exports at runtime.
+// Nothing in the codebase imported these re-exports from heroes.js — they were
+// backward-compat stubs. Import directly from skills.js if ever needed.
 
 // ── V4 Subspecies ─────────────────────────────────────────────────────────────
 // Cosmetic faction-flavored rank tag. Filterable but has no gameplay effect.
