@@ -33,7 +33,7 @@ function panToVC(panSt, zoom) {
 // Minimap receives panRef/zoomRef (stable refs) instead of panSt/zoom state values.
 // redrawRef is a ref passed from Game — Minimap stores its draw function into it
 // so Game.onPanChange can call it directly without any setState or re-render.
-export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef }) {
+export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef, playerFacKey, crewmatePlayerIds }) {
   const canvasRef = useRef(null);
   const tilesRef  = useRef(tiles);
   const pKeysRef  = useRef(pKeys);
@@ -83,7 +83,11 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef 
       if (dc * dc + dr * dr > r2) continue;
       const t = curTiles[`${reg.cx},${reg.cy}`];
       const owner = t?.owner || null;
-      const color = !owner ? "#ffffff" : owner === "player" ? "#44aaff" : "#ff4444";
+      const color = !owner ? "#ffffff"
+        : owner === "player" ? "#22cc55"
+        : (owner === "ai" && t?.ownerPlayerId && crewmatePlayerIds?.has(t.ownerPlayerId)) ? "#2299ff"
+        : (playerFacKey && t?.faction === playerFacKey) ? "#aa44ff"
+        : "#ff4444";
       const { x, y } = tileToMM(reg.cx, reg.cy, vc, vr);
       const sz = reg.layer === "ring" ? 6 : 4.5;
       const pts = keepTri(x, y, sz);

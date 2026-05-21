@@ -364,6 +364,8 @@ export default memo(function GameBar({
   showPerf, setShowPerf,
   panRef, zoomRef, mapRendererRef,
   voidTapReady,
+  // Crew props
+  crewOpen, setCrewOpen, playerCrewId,
 }) {
   if (hidden) return null;
   // All player commanders (for left rail) — only those NOT at HQ
@@ -482,6 +484,7 @@ export default memo(function GameBar({
             accent="#1a3a5c"
             onClick={() => setSearchOpen(v => !v)}
           />
+          <ActionButton icon="⚓" label="Crew" color={playerCrewId ? "#40cc80" : "#80aacc"} accent={playerCrewId ? "#1a4a30" : "#1a3a5c"} onClick={() => setCrewOpen(v => !v)} />
           <ActionButton
             icon="⏱"
             label="Perf"
