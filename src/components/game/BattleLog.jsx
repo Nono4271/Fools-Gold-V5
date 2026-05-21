@@ -91,7 +91,6 @@ function TroopPopup({ troopBranch, onClose }) {
       display:"flex", flexDirection:"column",
       overflow:"hidden",
     }}>
-      {/* Header */}
       <div style={{
         display:"flex", alignItems:"center", gap:12,
         padding:"12px 16px", flexShrink:0,
@@ -119,7 +118,6 @@ function TroopPopup({ troopBranch, onClose }) {
           </span>
         </div>
       </div>
-      {/* Scrollable body */}
       <div style={{ flex:1, overflowY:"auto", padding:"20px 24px", WebkitOverflowScrolling:"touch" }} className="scr">
       <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".08em",
         marginBottom:12, paddingBottom:8, borderBottom:"1px solid #1e1808" }}>
@@ -131,7 +129,6 @@ function TroopPopup({ troopBranch, onClose }) {
           <span style={{ fontSize:18, fontWeight:700, color }}>{val}</span>
         </div>
       ))}
-      {/* Size triangle */}
       <div style={{ marginTop:16, padding:"10px 16px", background:"rgba(255,255,255,.02)",
         border:"1px solid #1e1808", borderRadius:6 }}>
         <div style={{ fontSize:12, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:6 }}>SIZE TRIANGLE</div>
@@ -145,7 +142,6 @@ function TroopPopup({ troopBranch, onClose }) {
           <div style={{ fontSize:14, color:"#a855f7", marginTop:4 }}>{"✦"} Magical {"—"} bypasses physical DEF</div>
         )}
       </div>
-      {/* Dragon passives */}
       {f.factionPassives?.length > 0 && (
         <div style={{ marginTop:12, padding:"10px 16px", background:"rgba(200,50,50,.06)",
           border:"1px solid rgba(200,50,50,.2)", borderRadius:6 }}>
@@ -157,7 +153,6 @@ function TroopPopup({ troopBranch, onClose }) {
           ))}
         </div>
       )}
-      {/* Troop skills for this tier */}
       {(() => {
         const tier = troopBranch?.tier ?? 0;
         const skillsForTier = tier === 0 ? [br.skills?.a] : tier === 1 ? [br.skills?.b] : [br.skills?.a, br.skills?.b];
@@ -200,8 +195,8 @@ function TroopPopup({ troopBranch, onClose }) {
           </div>
         );
       })()}
-      </div>{/* end scrollable body */}
-    </div>{/* end fullscreen */}
+      </div>
+    </div>
   );
 }
 
