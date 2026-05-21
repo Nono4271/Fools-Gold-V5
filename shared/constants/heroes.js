@@ -146,11 +146,12 @@ export const SKILL_TREES = {
   tactics: { n: "Tactics", icon: "✦",  unlocksAt: 5, desc: "Special effects, debuffs, healing, siege bonuses"   },
 };
 
-// NOTE: The import of skills.js was removed here to break a circular dependency.
+// NOTE: The bulk import of skills.js was removed here to break a circular dependency.
 // heroes.js → skills.js → (faction_skills) AND battle.js → heroes.js + skills.js
-// created a module init cycle that caused TDZ on pixi's const exports at runtime.
-// Nothing in the codebase imported these re-exports from heroes.js — they were
-// backward-compat stubs. Import directly from skills.js if ever needed.
+// created a module init cycle causing TDZ on pixi's const exports at runtime.
+// Only getTreeDisplayNames is re-exported here because CommanderScreen.jsx imports
+// it from heroes.js. All other skills exports should be imported from skills.js directly.
+export { getTreeDisplayNames } from "./skills.js";
 
 // ── V4 Subspecies ─────────────────────────────────────────────────────────────
 // Cosmetic faction-flavored rank tag. Filterable but has no gameplay effect.
