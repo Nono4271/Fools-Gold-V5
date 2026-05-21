@@ -240,7 +240,7 @@ function GearPiecePopup({ piece, onClose }) {
             </span>
           </div>
         </div>
-        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:13, cursor:"pointer", flexShrink:0 }>{"✕"}</button>
+        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:13, cursor:"pointer", flexShrink:0 }}>{"✕"}</button>
       </div>
 
       {/* Stars */}
