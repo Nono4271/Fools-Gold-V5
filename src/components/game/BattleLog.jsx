@@ -1598,7 +1598,7 @@ export default memo(function BattleLog({ battles, bLog, onClose, playerName }) {
               background:"rgba(255,255,255,.04)", border:"1px solid #2a1e08",
               color:"#6a5a4a", fontSize:14, cursor:"pointer",
               display:"flex", alignItems:"center", justifyContent:"center",
-            }>{"✕"}</button>
+            }}>{"✕"}</button>
           </div>
         </div>
 
