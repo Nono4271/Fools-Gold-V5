@@ -1,11 +1,11 @@
 // src/hooks/useBattle.js
 // ─────────────────────────────────────────────────────────────────────────────
 // Wraps battle.worker.js in a Promise API so simBattle never blocks the main
-// thread. Uses Vite's ?worker import so the worker is bundled as a fully
-// isolated module — no shared chunks with the main bundle, no TDZ risk.
+// thread. Uses new Worker() with type:'module' so the worker's ES module
+// imports are resolved in its own isolated scope — no shared chunks with the
+// main bundle, no chunk ordering / TDZ risk.
 
 import { useEffect, useRef, useCallback } from "react";
-import BattleWorker from "../workers/battle.worker.js?worker";
 
 let _nextId = 1;
 function nextRequestId() { return String(_nextId++); }
@@ -15,7 +15,10 @@ export function useBattle() {
   const pendingRef = useRef({}); // requestId → { resolve, reject }
 
   useEffect(() => {
-    const worker = new BattleWorker();
+    const worker = new Worker(
+      new URL("../workers/battle.worker.js", import.meta.url),
+      { type: "module" }
+    );
 
     worker.onmessage = (e) => {
       const { type, requestId, result, error } = e.data;
