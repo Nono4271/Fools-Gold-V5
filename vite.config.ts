@@ -18,8 +18,18 @@ export default defineConfig({
  build: {
    outDir: "dist",
    emptyOutDir: true,
-   worker: {
-     format: "es",
+   rollupOptions: {
+     output: {
+       manualChunks(id) {
+         // Force all shared constants into their own chunk so they
+         // initialize before the main bundle — prevents TDZ errors
+         // caused by skills.js / heroes.js being accessed before
+         // their module bodies run (Rollup chunk ordering issue).
+         if (id.includes("shared/constants") || id.includes("shared/utils")) {
+           return "shared";
+         }
+       },
+     },
    },
  },
  server: {
