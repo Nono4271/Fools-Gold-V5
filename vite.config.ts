@@ -8,6 +8,9 @@ export default defineConfig({
    react(),
    tailwindcss(),
  ],
+ worker: {
+   format: "es",
+ },
  resolve: {
    alias: {
      "@": path.resolve(import.meta.dirname, "src"),
