@@ -46,6 +46,7 @@ import WinScreen from "./components/game/WinScreen.jsx";
 import Minimap from "./components/game/Minimap.jsx";
 import WizardsTomes, { ScrollStackIcon } from "./components/game/WizardsTomes.jsx";
 import GameBar from "./components/game/GameBar.jsx";
+import CrewPanel from "./components/game/CrewPanel.jsx";
 import CommanderScreen from "./components/screens/CommanderScreen.jsx";
 import GearScreen from "./components/screens/GearScreen.jsx";
 
@@ -452,6 +453,144 @@ export default function RiseToWar() {
   const [gearScreenOpen, setGearScreenOpen] = useState(false);
   const [showPerf,       setShowPerf]       = useState(false);
 
+  // ── Crew (Guild) system ──────────────────────────────────────────────────
+  // crews: [{ id, name, abbr, level, cap, faction, founder, members: [playerName,...] }]
+  const [crews,        setCrews]        = useState([]);
+  const [playerCrewId, setPlayerCrewId] = useState(null);
+  const [pendingCrewId,setPendingCrewId]= useState(null);
+  const [crewOpen,     setCrewOpen]     = useState(false);
+
+  // ── Faction Players (50 per faction: 1 human + 49 AI) ───────────────────
+  // factionPlayers: { [facKey]: [{ id, name, crewId: null|crewId, isHuman }] }
+  const [factionPlayers, setFactionPlayers] = useState({});
+  const factionPlayersRef = useRef({});
+  useEffect(() => { factionPlayersRef.current = factionPlayers; }, [factionPlayers]);
+
+  // Build crewmatePlayerIds and sameFactionPlayerIds for tile coloring
+  const crewmatePlayerIds = useMemo(() => {
+    if (!playerCrewId) return new Set();
+    const crew = crews.find(c => c.id === playerCrewId);
+    if (!crew) return new Set();
+    const myPlayers = factionPlayers[facKey] || [];
+    const s = new Set();
+    for (const fp of myPlayers) {
+      if (!fp.isHuman && crew.members.includes(fp.name)) s.add(fp.id);
+    }
+    return s;
+  }, [playerCrewId, crews, factionPlayers, facKey]);
+
+  const sameFactionPlayerIds = useMemo(() => {
+    const myPlayers = factionPlayers[facKey] || [];
+    const s = new Set();
+    for (const fp of myPlayers) {
+      if (!fp.isHuman) s.add(fp.id);
+    }
+    return s;
+  }, [factionPlayers, facKey]);
+
+  // Crew actions
+  const CREW_CREATION_COST = 500;
+
+  const handleCreateCrew = useCallback((name, abbr) => {
+    if (gems < CREW_CREATION_COST) return; // shouldn't happen — UI blocks it
+    const newCrew = {
+      id: `crew_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+      name, abbr, level: 1, cap: 40,
+      faction: facKey,
+      founder: playerName,
+      members: [playerName],
+    };
+    setGems(g => g - CREW_CREATION_COST);
+    setCrews(prev => [...prev, newCrew]);
+    setPlayerCrewId(newCrew.id);
+    setPendingCrewId(null);
+  }, [facKey, playerName, gems]);
+
+  const handleJoinRequest = useCallback((crewId) => {
+    // Simulate auto-accept after 2s for demo
+    setPendingCrewId(crewId);
+    setTimeout(() => {
+      setCrews(prev => prev.map(c => {
+        if (c.id !== crewId) return c;
+        if (c.members.includes(playerName) || c.members.length >= c.cap) return c;
+        return { ...c, members: [...c.members, playerName] };
+      }));
+      setPlayerCrewId(crewId);
+      setPendingCrewId(null);
+    }, 2000);
+  }, [playerName]);
+
+  const handleLeaveCrew = useCallback(() => {
+    setCrews(prev => prev.map(c => {
+      if (c.id !== playerCrewId) return c;
+      return { ...c, members: c.members.filter(m => m !== playerName) };
+    }));
+    setPlayerCrewId(null);
+  }, [playerCrewId, playerName]);
+
+  // ── AI Crew ticker (every 30s) ───────────────────────────────────────────
+  const crewsRef = useRef([]);
+  useEffect(() => { crewsRef.current = crews; }, [crews]);
+  const crewTickerRef = useRef(null);
+  useEffect(() => {
+    if (screen !== "game") return;
+    crewTickerRef.current = setInterval(() => {
+      const allFacs = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
+      const adjectives = ["Iron","Storm","Black","Silver","Crimson","Gold","Shadow","Wild","Frost","Ashen","Bone","Rust"];
+      const nouns = ["Tide","Claw","Wave","Fang","Blade","Skull","Drake","Reef","Bolt","Guard","Maw","Prow"];
+
+      const prevCrews = crewsRef.current;
+      const prevFP    = factionPlayersRef.current;
+      const nextCrews = [...prevCrews];
+      const nextFP    = { ...prevFP };
+
+      for (const fk of allFacs) {
+        const players  = nextFP[fk] || [];
+        const facCrews = nextCrews.filter(c => c.faction === fk);
+        const CREW_CREATION_COST = 500;
+
+        // Process each AI player not yet in a crew
+        const nextPlayers = [...players];
+        for (let i = 0; i < nextPlayers.length; i++) {
+          const fp = nextPlayers[i];
+          if (fp.isHuman || fp.crewId) continue;
+          const rand = Math.random();
+
+          // Can only create a crew if they have enough gems — naturally caps at 3
+          // since only the first 3 AI players per faction start with 2000 gems
+          if (rand < 0.20 && (fp.gems ?? 0) >= CREW_CREATION_COST) {
+            const newName = adjectives[Math.floor(Math.random()*adjectives.length)] + " " + nouns[Math.floor(Math.random()*nouns.length)];
+            const abbr = (newName.split(" ").map(w => w[0]).join("") + "XXXX").slice(0,4);
+            const newCrew = {
+              id: `crew_ai_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+              name: newName, abbr, level: 1, cap: 40,
+              faction: fk, founder: fp.name, members: [fp.name],
+            };
+            nextCrews.push(newCrew);
+            facCrews.push(newCrew);
+            nextPlayers[i] = { ...fp, crewId: newCrew.id, gems: (fp.gems ?? 0) - CREW_CREATION_COST };
+          } else if (rand < 0.50 && facCrews.length > 0) {
+            // Try to join an existing crew with space
+            const joinable = facCrews.filter(c => c.members.length < c.cap);
+            if (joinable.length > 0) {
+              const target = joinable[Math.floor(Math.random() * joinable.length)];
+              const idx = nextCrews.findIndex(c => c.id === target.id);
+              if (idx >= 0 && !nextCrews[idx].members.includes(fp.name)) {
+                nextCrews[idx] = { ...nextCrews[idx], members: [...nextCrews[idx].members, fp.name] };
+                nextPlayers[i] = { ...fp, crewId: target.id };
+              }
+            }
+          }
+        }
+        nextFP[fk] = nextPlayers;
+      }
+
+      setCrews(nextCrews);
+      setFactionPlayers(nextFP);
+    }, 30000);
+    return () => clearInterval(crewTickerRef.current);
+  }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Hooks ──
   useResources({ screen, tilesRef, setRss, bldgs });
 
@@ -687,6 +826,41 @@ export default function RiseToWar() {
             : ["orcs","dragons","nightcreatures"]).includes(f)
         ) || aiFactions[0];
         setAiFaction(primaryAiFk);
+
+        // ── Initialize 50 faction players per faction (1 human + 49 AI) ──
+        const AI_NAMES = [
+          "Ravenport","Stormfist","Greymantle","Ironveil","Ashcroft","Duskblade",
+          "Thornwall","Coppergrin","Sablewind","Flintmoor","Emberpeak","Coldforge",
+          "Dreadmaw","Nighthollow","Scaleback","Cindervane","Mudthorn","Brakespear",
+          "Rimeclaw","Brinewatch","Hellgrip","Saltmere","Vexhorn","Ashgallow",
+          "Gryphonspire","Stonemarrow","Bonecrest","Ironridge","Darkfen","Runehelm",
+          "Voidmere","Scorchvale","Grimtide","Ashroot","Ravenprow","Dustmantle",
+          "Wolfmark","Slagmire","Blackthorn","Stonecrow","Flamewick","Dreadhollow",
+          "Moltenspire","Blightmere","Grimstock","Veinhollow","Ironscale","Cragmaw",
+          "Stormcrow","Saltveil",
+        ];
+        const newFactionPlayers = {};
+        const allFacs2 = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
+        for (const fk of allFacs2) {
+          const isPlayerFac = fk === facKey;
+          const fps = [];
+          if (isPlayerFac) {
+            fps.push({ id: "human_player", name: playerName || "You", isHuman: true, crewId: null, gems: 0 });
+          }
+          for (let i = 0; i < 49; i++) {
+            const nm = AI_NAMES[i % AI_NAMES.length] + (i >= AI_NAMES.length ? `_${Math.floor(i/AI_NAMES.length)}` : "");
+            // First 3 AI players per faction start with 2000 gems — enough to found a crew (500 cost).
+            // The other 46 start with 0, so only those 3 can ever create one.
+            const aiGems = i < 3 ? 2000 : 0;
+            fps.push({ id: `ai_${fk}_${i}`, name: nm, isHuman: false, crewId: null, gems: aiGems });
+          }
+          newFactionPlayers[fk] = fps;
+        }
+        setFactionPlayers(newFactionPlayers);
+        // Also reset crews on new game
+        setCrews([]);
+        setPlayerCrewId(null);
+        setPendingCrewId(null);
 
         setPlayerCmds(prev => prev.map(cmd => {
           if (cmd.owner === "player") {
@@ -1654,6 +1828,9 @@ export default function RiseToWar() {
         onTileClick={onTileClick}
         onPanChange={onPanChange}
         onZoomChange={handleZoomChange}
+        playerFacKey={facKey}
+        crewmatePlayerIds={crewmatePlayerIds}
+        sameFactionPlayerIds={sameFactionPlayerIds}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
@@ -1757,7 +1934,7 @@ export default function RiseToWar() {
         />
       )}
 
-      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} />
+      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} />
 
       {/* Wizard's Tomes trigger — bottom-left below minimap */}
       {!tomesOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
@@ -1894,7 +2071,26 @@ export default function RiseToWar() {
         zoomRef={zoomRef}
         mapRendererRef={mapRendererRef}
         voidTapReady={voidTapReady}
+        crewOpen={crewOpen}
+        setCrewOpen={setCrewOpen}
+        playerCrewId={playerCrewId}
       />
+
+      {crewOpen && !worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
+        <CrewPanel
+          onClose={() => setCrewOpen(false)}
+          crews={crews}
+          playerCrewId={playerCrewId}
+          pendingCrewId={pendingCrewId}
+          playerName={playerName}
+          facKey={facKey}
+          playerGems={gems}
+          crewCreationCost={CREW_CREATION_COST}
+          onCreateCrew={handleCreateCrew}
+          onJoinRequest={handleJoinRequest}
+          onLeaveCrew={handleLeaveCrew}
+        />
+      )}
 
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
 

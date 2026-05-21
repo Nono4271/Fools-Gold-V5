@@ -111,6 +111,22 @@ function buildCByTile(cmds) {
   return m;
 }
 
+/* ─── Tile ownership tint colors ─────────────────────────────────────────────
+   player    → green  0x22cc55  (your tiles)
+   crewmate  → blue   0x2299ff  (AI in your crew — tile.ownerPlayerId in crewmatePlayerIds)
+   faction   → purple 0xaa44ff  (same faction, not your crew)
+   enemy     → red    0xdc3c28
+   ────────────────────────────────────────────────────────────────────────── */
+function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
+  if (owner === "player") return 0x22cc55;
+  if (!owner) return null;
+  // Blue: AI tile owned by a crewmate (requires tile.ownerPlayerId)
+  if (owner === "ai" && ownerPlayerId && crewPids?.has(ownerPlayerId)) return 0x2299ff;
+  // Purple: same faction, not crew
+  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xaa44ff;
+  return 0xdc3c28;
+}
+
 /* ─── Pre-compute per-tile base color (fixed-size flat array) ────────────────
    Fix #7: The old unbounded Map grew forever — one entry per unique (c,r,terrain)
    triple, never evicted. We replace it with a Uint32Array sized exactly to the
@@ -140,7 +156,7 @@ function getTileBaseColor(c, r, terrain) {
    No per-tile scene graph nodes. Camera moves = zero draw calls.
 ══════════════════════════════════════════════════════════════════════════ */
 
-function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1) {
+function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null) {
   gfx.clear();
   const dMin = cMin + rMin, dMax = cMax + rMax;
   for (let d = dMin; d <= dMax; d++) {
@@ -213,7 +229,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         if (!isKeep) {
           gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
           if (owner) {
-            const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+            const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
             gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
             if (!isSel) { gfx.lineStyle(2, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
           }
@@ -414,7 +430,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
         // Owner tint (same as regular tiles)
         if (owner) {
-          const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+          const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
           gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
           if (!isSel) { gfx.lineStyle(2, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
         }
@@ -460,7 +476,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       }
 
       if (owner) {
-        const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+        const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
         gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
         // For HQ tiles: only stroke the outer edges of the 3×3 footprint,
         // not interior tile borders which show through under the sprite.
@@ -555,7 +571,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // Owner tint over the full footprint
       const owner2 = tile.owner || null;
       if (owner2) {
-        const ot = owner2 === "player" ? 0x1ea0b4 : 0xdc3c28;
+        const ot = ownerTint(owner2, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
         gfx.lineStyle(OD * 2, ot, 0.18);
         gfx.beginFill(ot, 0.18); gfx.drawPolygon(MERGED); gfx.endFill();
         gfx.lineStyle(0);
@@ -1500,7 +1516,7 @@ export function clearHQCache() { _hqStateCache.clear(); }
 // The visual centre of a 3×3 in isometric space is the centre tile (c+1,r+1).
 // isoXY gives us the diamond centre of any tile; the 3×3 centre is at (c+1,r+1).
 // We size the sprite to cover the full 3×3 diamond footprint.
-function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey) {
+function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey) {
   const [pc, pr] = tileKey.split(",").map(Number);
   // Visual centre = middle tile of 3×3
   const { cx: bx, cy: worldCY } = isoXY(pc + 1, pr + 1);
@@ -1546,7 +1562,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // ── Selection outline ──
   if (isSelected) {
     const outlineGfx = new PIXI.Graphics();
-    const ot = owner === "player" ? 0x1ea0b4 : 0xdc3c28;
+    const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
     outlineGfx.lineStyle(3, 0xffffff, 0.95);
     outlineGfx.drawPolygon(FOOTPRINT);
     outlineGfx.lineStyle(0);
@@ -1600,7 +1616,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   } else {
     // Load async — replace placeholder gfx once loaded
     const placeholderGfx = new PIXI.Graphics();
-    const fc = owner === "player" ? 0x1ea0b4 : owner === "ai" ? 0xdc3c28 : 0x888888;
+    const fc = ownerTint(owner, tile?.faction, playerFacKey, null, tile?.ownerPlayerId) ?? 0x888888;
     placeholderGfx.beginFill(fc, 0.3);
     placeholderGfx.drawPolygon(FOOTPRINT);
     placeholderGfx.endFill();
@@ -1674,7 +1690,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
-function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey) {
+function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey) {
   // Find all primary HQ tiles (isHQ === true, not isHQPart)
   for (const [tileKey, tile] of Object.entries(tiles)) {
     if (!tile?.isHQ) continue;
@@ -1697,7 +1713,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
       }
     }
 
-    hqCont.addChild(_buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey));
+    hqCont.addChild(_buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey));
     _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null });
   }
 }
@@ -1869,7 +1885,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles) {
 /* ══════════════════════════════════════════════════════════════════════════
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, sameFactionPlayerIds }, ref) {
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
   const worldRef       = useRef(null);
@@ -1912,6 +1928,14 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   useEffect(() => { onPanChangeRef.current  = onPanChange; },  [onPanChange]);
   useEffect(() => { onZoomChangeRef.current = onZoomChange; }, [onZoomChange]);
   useEffect(() => { ZOOM_REF.current = ZOOM_LEVELS; }, [ZOOM_LEVELS]);
+
+  // Keep playerFacKey in a ref so drawAllTiles can read it without a re-render
+  const playerFacKeyRef = useRef(playerFacKey);
+  useEffect(() => { playerFacKeyRef.current = playerFacKey; }, [playerFacKey]);
+
+  // Keep crewmatePlayerIds in a ref for tile coloring
+  const crewPidsRef = useRef(crewmatePlayerIds ?? new Set());
+  useEffect(() => { crewPidsRef.current = crewmatePlayerIds ?? new Set(); }, [crewmatePlayerIds]);
 
   useImperativeHandle(ref, () => ({
     teleport(px, py) {
@@ -2240,7 +2264,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const tg = tileFrontRef.current;
       tg.clear();
       drawAllTiles(tg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax,
-        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z);
+        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z, playerFacKeyRef.current, crewPidsRef.current);
 
       // ── Props layer: only redraw when state changed OR viewport moved outside
       // the previously rendered props buffer. Never block synchronously — always
@@ -2302,7 +2326,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKey);
+      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current);
     }
 
     redrawRef.current = {
