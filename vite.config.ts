@@ -18,19 +18,7 @@ export default defineConfig({
  build: {
    outDir: "dist",
    emptyOutDir: true,
-   rollupOptions: {
-     output: {
-       manualChunks(id) {
-         // Co-locate pixi with MapRenderer so their dependency edge across
-         // chunks never triggers a TDZ on pixi's const exports.
-         // This preserves the caching benefit (renderer is its own
-         // cache-stable file) while keeping the correct module init sequence.
-         if (id.includes("pixi.js") || id.includes("MapRenderer")) {
-           return "renderer";
-         }
-       },
-     },
-   },
+   rollupOptions: {},
  },
  server: {
    host: "0.0.0.0",
