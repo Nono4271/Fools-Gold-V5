@@ -1712,7 +1712,8 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     // OOM crashes on iOS Safari (~256 MB limit) when many HQs enter the viewport.
     if (vb) {
       const [tc, tr] = tileKey.split(",").map(Number);
-      if (tc < vb.cMin || tc > vb.cMax || tr < vb.rMin || tr > vb.rMax) {
+      const isPlayerHQ = tile.owner === "player";
+      if (!isPlayerHQ && (tc < vb.cMin || tc > vb.cMax || tr < vb.rMin || tr > vb.rMax)) {
         // Out of view — remove any existing container for this HQ so it doesn't
         // pile up in the display list, then skip building a new one.
         for (let i = hqCont.children.length - 1; i >= 0; i--) {
@@ -2267,7 +2268,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         // Defer even the first draw — running synchronously here blocks the main
         // thread for 2+ seconds on iOS when called right after map gen dumps tiles.
         if (typeof window.requestIdleCallback === "function") {
-          propsIdleHandle = window.requestIdleCallback(doProps);
+          propsIdleHandle = window.requestIdleCallback(doProps, { timeout: 500 });
         } else {
           propsIdleHandle = setTimeout(doProps, 100);
         }
@@ -2343,6 +2344,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           drawPhase(12, true);
         }, { timeout: 600 });
       }
+
+      // Rebuild HQ and keep layers so they appear as soon as the viewport moves,
+      // without waiting for a tile click to trigger them.
+      redrawHQs();
+      redrawKeeps();
     }
 
     function redrawOverlays() {
