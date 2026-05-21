@@ -3,7 +3,7 @@ import { applyGearToCmd } from "../../../shared/utils/gearStats.js";
 import { CSS } from "../../constants/css.js";
 import {
   RARITY, CLASS, SKILL_TREES,
-  getCommanderTrees, getTreeDisplayNames,
+  getCommanderTrees,
   respectCost, respectTotalFor, RESPECT_MAX, RESPECT_LEVEL_COSTS, RESPECT_SCHEMATIC_POINTS, RESPECT_SCHEMATIC_GENERIC_POINTS, PROMO, COMMANDER_UNLOCK_COST,
   PLAYABLE_FACTIONS, ALIGNMENT, addRespect,
   SUBSPECIES, getSubspecies, getFactionAlignment,
@@ -12,6 +12,7 @@ import {
 import {
   MAIN_SKILLS, SIDE_SKILLS,
   getBranchMainSkill, getBranchSideSkills,
+  getTreeDisplayNames,
 } from "../../../shared/constants/skills.js";
 
 const GEAR_RARITY_COLORS = { common: "#8a8a8a", rare: "#4488cc", epic: "#a855f7", legendary: "#f0c040" };
