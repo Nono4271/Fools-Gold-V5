@@ -18,6 +18,9 @@ export default defineConfig({
  build: {
    outDir: "dist",
    emptyOutDir: true,
+   worker: {
+     format: "es",
+   },
  },
  server: {
    host: "0.0.0.0",
