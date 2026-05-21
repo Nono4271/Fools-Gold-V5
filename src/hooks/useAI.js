@@ -171,8 +171,8 @@ const tickAiEcon = useCallback(() => {
       }
     }
 
-    // Assign troops to idle commanders at HQ with no troops
-    const idleNoTroops = fkCmds.filter(c => !c.march && !(c.troops || 0) && c.tk === hqKey);
+    // Assign troops to idle commanders at their own HQ with no troops
+    const idleNoTroops = fkCmds.filter(c => !c.march && !(c.troops || 0) && c.tk === (c.hqKey || hqKey));
     if (idleNoTroops.length && curPool > 0) {
       const cmd     = idleNoTroops[0];
       const cmdCap  = cmdCommand(cmd.lvl || 5, curBldgs.commandcenter || 0, cmd.commandBonus ?? 0);
