@@ -1693,7 +1693,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
-function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids) {
+function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids, vb) {
   // Build the fast index on first call (or after clearHQCache). This is O(n) once,
   // then all subsequent calls are O(HQs) instead of O(all 490k tiles).
   if (_hqKeyIndex.size === 0) {
@@ -1706,6 +1706,28 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
   for (const tileKey of _hqKeyIndex) {
     const tile = tiles[tileKey];
     if (!tile?.isHQ) { _hqKeyIndex.delete(tileKey); continue; } // HQ was destroyed
+
+    // ── Viewport culling ─────────────────────────────────────────────────────
+    // Skip HQs outside the visible area + a generous buffer to prevent WebGL
+    // OOM crashes on iOS Safari (~256 MB limit) when many HQs enter the viewport.
+    if (vb) {
+      const [tc, tr] = tileKey.split(",").map(Number);
+      if (tc < vb.cMin || tc > vb.cMax || tr < vb.rMin || tr > vb.rMax) {
+        // Out of view — remove any existing container for this HQ so it doesn't
+        // pile up in the display list, then skip building a new one.
+        for (let i = hqCont.children.length - 1; i >= 0; i--) {
+          const child = hqCont.children[i];
+          if (child.__hqKey === tileKey) {
+            hqCont.removeChild(child);
+            child.destroy({ children: true });
+            _hqStateCache.delete(tileKey); // force rebuild when it comes back on-screen
+            break;
+          }
+        }
+        continue;
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     const isSelected = selKey === tileKey;
     const owner      = tile.owner || null;
@@ -2033,32 +2055,37 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const TEX_SY     = TEX_BASE_Y - TH / 2;      // sy arg = top-of-tile-face in texture
     const TEX_CX     = TEX_W / 2;                // 80 px
 
-    const rssTextures       = {};   // rss string → PIXI.RenderTexture
+    const rssTextures       = {};   // rss string → { pl → PIXI.RenderTexture }, built lazily on first use
     const propsSpritePool   = [];   // recycled PIXI.Sprite instances
     const propsSpriteContainer = new PIXI.Container();
+
+    // ── iOS lazy texture baking ───────────────────────────────────────────────
+    // Instead of baking all 52 textures synchronously at startup (blocking the
+    // main thread for ~20 s on a 3x iPhone), each (rss, pl) pair is baked on
+    // first use.  The canvas appears immediately; GPU work spreads across the
+    // first few seconds of gameplay as each resource type scrolls into view.
+    let _iosTmpGfx = null; // created on first bake, destroyed with the scene
+    function getOrBakeTex(rss, pl) {
+      if (!rssTextures[rss]) rssTextures[rss] = {};
+      if (rssTextures[rss][pl]) return rssTextures[rss][pl];
+      // First access — bake now (one GPU flush instead of 52 upfront).
+      if (!_iosTmpGfx) _iosTmpGfx = new PIXI.Graphics();
+      const bakePl = pl >= 10 ? 13 + (pl - 9) * 3 : pl; // P10→16, P11→19, P12→22, P13→25
+      const rt = PIXI.RenderTexture.create({
+        width: TEX_W, height: TEX_H,
+        resolution: app.renderer.resolution,
+      });
+      _iosTmpGfx.clear();
+      drawRssProp(_iosTmpGfx, rss, TEX_CX, TEX_SY, 5, 3, bakePl);
+      app.renderer.render(_iosTmpGfx, { renderTexture: rt });
+      rssTextures[rss][pl] = rt;
+      return rt;
+    }
 
     if (isIOS) {
       propsGfx.visible = false; // Graphics layer unused on iOS
       world.addChild(propsSpriteContainer); // sits between tiles and keeps
-      const tmpGfx = new PIXI.Graphics();
-      // Bake one texture per (rss, powerLevel) pair so size scaling works on iOS.
-      // P1 tiles have no props so skip pl=1. 52 textures total (4 rss × 13 pl).
-      // P10–P13 are baked with syntheticPl (16/19/22/25) to hit the new prop art branches.
-      for (const rss of ["wood", "stone", "ore", "gas"]) {
-        rssTextures[rss] = {}; // keyed by pl
-        for (let pl = 2; pl <= 13; pl++) {
-          const bakePl = pl >= 10 ? 13 + (pl - 9) * 3 : pl; // P10→16, P11→19, P12→22, P13→25
-          const rt = PIXI.RenderTexture.create({
-            width: TEX_W, height: TEX_H,
-            resolution: app.renderer.resolution,
-          });
-          tmpGfx.clear();
-          drawRssProp(tmpGfx, rss, TEX_CX, TEX_SY, 5, 3, bakePl);
-          app.renderer.render(tmpGfx, { renderTexture: rt });
-          rssTextures[rss][pl] = rt;
-        }
-      }
-      tmpGfx.destroy();
+      // No upfront baking — getOrBakeTex() handles everything lazily on first use.
     }
 
     const keepCont = new PIXI.Container(); 
@@ -2197,8 +2224,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
               // P10–P13 keepPart: skip — primary draws the single unified sprite
               if (tile.isKeepPart && pl >= 10) continue;
               const texPl = pl; // textures stored under raw pl, baked with syntheticPl for P10-P13
-              const texMap = rssTextures[tile.rss];
-              const tex = texMap?.[texPl] ?? texMap?.[pl] ?? texMap?.[2];
+              // Use lazy baking on iOS; fall back to direct lookup on other platforms.
+              const tex = isIOS
+                ? getOrBakeTex(tile.rss, texPl)
+                : (rssTextures[tile.rss]?.[texPl] ?? rssTextures[tile.rss]?.[pl] ?? rssTextures[tile.rss]?.[2]);
               if (!tex) continue;
               const { cx, cy } = isoXY(c, r);
               const sp = propsSpritePool.pop() ?? new PIXI.Sprite();
@@ -2334,13 +2363,16 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     function redrawHQs() {
       if (!hqContRef.current) return;
+      // Pass viewport bounds so buildHQLayer can cull off-screen HQs.
+      // A buffer of 6 tiles ensures HQs pop in before they reach the screen edge.
+      const vb = getViewBounds(6);
       buildHQLayer(hqContRef.current, tilesRef.current, selRef.current, (key, e) => {
         selRef.current = key;
         selGfx.clear();
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current);
+      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, vb);
     }
 
     redrawRef.current = {
@@ -2721,6 +2753,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       if (hellfireFn) app.ticker.remove(hellfireFn);
       cancelIdle();
       cancelPropsIdle();
+      _iosTmpGfx?.destroy(); _iosTmpGfx = null;
       Object.values(rssTextures).forEach(texMap => {
         if (texMap && typeof texMap === 'object') {
           Object.values(texMap).forEach(rt => rt?.destroy?.(true));
