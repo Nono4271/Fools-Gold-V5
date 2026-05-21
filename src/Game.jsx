@@ -56,8 +56,9 @@ const SS = (rarity) => RARITY[rarity]?.n ?? String(rarity);
 export default function RiseToWar() {
   // ── Screens ──
   const [screen,  setScreen]  = useState("title");
-  const [facKey,  setFacKey]  = useState("pirates");
-  const [facName, setFacName] = useState("Pirates");
+  const [facKey,      setFacKey]      = useState("pirates");
+  const [facName,     setFacName]     = useState("Pirates");
+  const [playerName,  setPlayerName]  = useState("");
   const playerAlignment = getFactionAlignment(facKey);
 
   // ── Tiles — stored in a mutable ref to avoid 490k React reconciliation ──
@@ -1515,6 +1516,7 @@ export default function RiseToWar() {
   if (screen==="faction") return (
     <FactionScreen
       setScreen={setScreen} setFacKey={setFacKey} setFacName={setFacName}
+      setPlayerName={setPlayerName}
       setAiFaction={setAiFaction} setAiRss={setAiRss} setAiBldgs={setAiBldgs}
       setAiBarracksPool={setAiBarracksPool} aiLastActionRef={aiLastActionRef}
       setCmds={setCmds} setColl={setColl} setTiles={setTiles}
@@ -1685,6 +1687,7 @@ export default function RiseToWar() {
       {showBattleLog && (
         <BattleLog
           battles={battles} bLog={bLog} unseenBattles={unseenBattles}
+          playerName={playerName}
           onClose={() => setShowBattleLog(false)}
         />
       )}
