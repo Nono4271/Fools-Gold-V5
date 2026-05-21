@@ -8,9 +8,6 @@ export default defineConfig({
    react(),
    tailwindcss(),
  ],
- worker: {
-   format: "iife",
- },
  resolve: {
    alias: {
      "@": path.resolve(import.meta.dirname, "src"),
