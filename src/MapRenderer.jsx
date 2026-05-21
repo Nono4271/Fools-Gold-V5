@@ -2196,7 +2196,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     const doProps = (forceSync = false) => {
       propsIdleHandle = null;
-      if (!forceSync && isPanning.current) return; // skip if user started panning again
+      if (!forceSync && isPanning.current) {
+        // ── FIX 2: Reschedule instead of bailing permanently ──────────────
+        // Previously this early return cleared propsIdleHandle without
+        // rescheduling, so props never drew if panning was active when the
+        // first idle fired (e.g. right after the teleport() on map load).
+        // propsDirty stays true, and we re-queue for the next idle slot.
+        schedulePropsRedraw();
+        return;
+      }
       const pb = getViewBounds(PROPS_BUF);
 
       if (isIOS) {
@@ -2267,15 +2275,19 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         firstPropsDraw = false;
         // Defer even the first draw — running synchronously here blocks the main
         // thread for 2+ seconds on iOS when called right after map gen dumps tiles.
+        // ── FIX 2: Raise the timeout to 2000ms (was 500ms) so the idle callback
+        // always fires on a busy post-load main thread. 500ms was too tight —
+        // React reconciling 490k tiles + AI commander setup kept the thread busy
+        // past the deadline, causing requestIdleCallback to skip silently.
         if (typeof window.requestIdleCallback === "function") {
-          propsIdleHandle = window.requestIdleCallback(doProps, { timeout: 500 });
+          propsIdleHandle = window.requestIdleCallback(doProps, { timeout: 2000 });
         } else {
           propsIdleHandle = setTimeout(doProps, 100);
         }
         return;
       }
       if (typeof window.requestIdleCallback === "function") {
-        propsIdleHandle = window.requestIdleCallback(doProps);
+        propsIdleHandle = window.requestIdleCallback(doProps, { timeout: 1000 });
       } else {
         // Fallback: use a short delay so it doesn't block an active gesture
         propsIdleHandle = setTimeout(doProps, 150);

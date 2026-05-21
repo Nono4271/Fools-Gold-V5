@@ -95,12 +95,9 @@ export default function RiseToWar() {
     if (!t) return;
     // Create a new root object so useMemo returns a new reference,
     // which triggers MapRenderer's useEffect([tiles]) and redraws immediately.
-    const merged = { ...t, ...patch };
-    // Recompute the garrisonDefeated getter after every merge so it stays consistent
-    Object.defineProperty(merged, 'garrisonDefeated', {
-      get() { return (this.defeatedWaves?.length ?? 0) >= (this.garrisonWaves ?? 1) && (this.garrisonWaves ?? 1) > 0; },
-      configurable: true, enumerable: true,
-    });
+    // Object.assign into a same-prototype object keeps garrisonDefeated on the
+    // prototype chain — no per-patch Object.defineProperty needed.
+    const merged = Object.assign(Object.create(Object.getPrototypeOf(t)), t, patch);
     tilesMapRef.current = { ...tilesMapRef.current, [key]: merged };
     const updated = tilesMapRef.current[key];
     // Keep defeatedTilesRef in sync — track any tile with a pending reset
@@ -604,6 +601,17 @@ export default function RiseToWar() {
           F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER, F_PGGATE,
         } = meta;
 
+        // ── FIX 1a: Shared prototype for garrisonDefeated getter ─────────
+        // Previously each of the 490k tile objects got its own inline getter,
+        // creating 490k unique hidden classes and a proportional GC/OOM risk.
+        // One prototype shared across all tiles eliminates that allocation spike.
+        const TileProto = {
+          get garrisonDefeated() {
+            return (this.defeatedWaves?.length ?? 0) >= (this.garrisonWaves ?? 1)
+              && (this.garrisonWaves ?? 1) > 0;
+          },
+        };
+
         // Build region lookup by index
         const regionByIdx = {};
         regionList.forEach((reg, i) => { regionByIdx[i+1] = reg; });
@@ -611,7 +619,14 @@ export default function RiseToWar() {
         // Build keepPrimaryKey lookup: flat index → "cx,cy" string
         const keepPrimKeyCache = {};
 
-        const rawMap = {};
+        // ── FIX 1b: try/catch around the entire reconstruction loop ──────
+        // An uncaught error here leaves the loading screen frozen forever
+        // because worker.onerror does NOT fire for main-thread exceptions
+        // thrown inside onmessage. Now we catch and surface it to the user.
+        let rawMap;
+        try {
+
+        rawMap = {};
         for (let r=0; r<R; r++) {
           for (let c=0; c<C; c++) {
             const idx   = r*C+c;
@@ -642,34 +657,47 @@ export default function RiseToWar() {
 
             const km = (isKeep && keepMeta[k]) ? keepMeta[k] : null;
 
-            rawMap[k] = {
-              c, r, k,
-              terrain:    TERRAIN_DEC[terrainArr[idx]] || "grass",
-              rss:        RSS_DEC[rssArr[idx]] || null,
-              troopBranch: null, // assigned per-commander, not per-tile
-              powerLevel: powerArr[idx],
-              regionKey:  reg?.key   || null,
-              regionName: reg?.name  || null,
-              keepName:   km?.keepName || (isKeepPart && reg ? reg.keepName : null),
-              owner,
-              garrison:   garrisonArr[idx] / 100,
-              garrisonTroops: garrisonArr[idx] / 100,
-              hasAiCommander: false,
-              siege:      siegeArr[idx],
-              siegeMax:   siegeMaxArr[idx],
-              garrisonWaves:   km?.garrisonWaves ?? 1,
-              defeatedWaves:   [],
-              get garrisonDefeated() { return this.defeatedWaves?.length >= this.garrisonWaves && this.garrisonWaves > 0; },
-              resetAt:    null,
-              isKeep, isKeepPart, isHQ, isHQPart, isWin,
-              isGate, isBorder,
-              isPeninsulaGate: isPGGate,
-              homeFaction:     km?.homeFaction || null,
-              crossingType: km?.type || null,
-              keepPrimaryKey,
-              defCmd:     km?.defCmd || null,
-            };
+            // Object.create(TileProto) gives every tile the garrisonDefeated
+            // getter via prototype chain — zero per-instance getter allocation.
+            const tile = Object.create(TileProto);
+            tile.c = c; tile.r = r; tile.k = k;
+            tile.terrain    = TERRAIN_DEC[terrainArr[idx]] || "grass";
+            tile.rss        = RSS_DEC[rssArr[idx]] || null;
+            tile.troopBranch = null;
+            tile.powerLevel = powerArr[idx];
+            tile.regionKey  = reg?.key   || null;
+            tile.regionName = reg?.name  || null;
+            tile.keepName   = km?.keepName || (isKeepPart && reg ? reg.keepName : null);
+            tile.owner      = owner;
+            tile.garrison   = garrisonArr[idx] / 100;
+            tile.garrisonTroops = garrisonArr[idx] / 100;
+            tile.hasAiCommander = false;
+            tile.siege      = siegeArr[idx];
+            tile.siegeMax   = siegeMaxArr[idx];
+            tile.garrisonWaves  = km?.garrisonWaves ?? 1;
+            tile.defeatedWaves  = [];
+            tile.resetAt    = null;
+            tile.isKeep     = isKeep;
+            tile.isKeepPart = isKeepPart;
+            tile.isHQ       = isHQ;
+            tile.isHQPart   = isHQPart;
+            tile.isWin      = isWin;
+            tile.isGate     = isGate;
+            tile.isBorder   = isBorder;
+            tile.isPeninsulaGate = isPGGate;
+            tile.homeFaction     = km?.homeFaction || null;
+            tile.crossingType    = km?.type || null;
+            tile.keepPrimaryKey  = keepPrimaryKey;
+            tile.defCmd          = km?.defCmd || null;
+            rawMap[k] = tile;
           }
+        }
+
+        } catch (reconstructErr) {
+          console.error("Map reconstruction failed:", reconstructErr);
+          setLoadPct(0);
+          setLoadLabel("Error building map — please refresh");
+          return;
         }
 
         setLoadLabel("Almost there...");
@@ -733,9 +761,7 @@ export default function RiseToWar() {
           });
         });
 
-        setAiHqKeys(newAiHqKeys);
         aiHqKeysRef.current = newAiHqKeys;
-        setAiFactionKeys(aiFactions);
 
         // ── Initialize per-faction AI Maps ────────────────────────────────
         const INIT_BLDGS_VAL = { hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 };
@@ -795,36 +821,45 @@ export default function RiseToWar() {
             });
           });
         });
-        setAiCmds(initialAiCmds);
-        setAiCmdsVersion(v => v + 1);
         const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
         const primaryAiFk = aiFactions.find(f =>
           (oppAlign === "humans"
             ? ["pirates","bountyhunters","holyknights"]
             : ["orcs","dragons","nightcreatures"]).includes(f)
         ) || aiFactions[0];
-        setAiFaction(primaryAiFk);
-
-        setPlayerCmds(prev => prev.map(cmd => {
-          if (cmd.owner === "player") {
-            const spawn = (spawnKeys[facKey] || [])[0];
-            return spawn ? { ...cmd, tk: spawn } : cmd;
-          }
-          if (cmd.owner === "ai" && cmd.faction) {
-            const spawn = (spawnKeys[cmd.faction] || [])[0];
-            return spawn ? { ...cmd, tk: spawn } : cmd;
-          }
-          return cmd;
-        }));
 
         rawMap.__ready = true;
         setImpassableTiles(impassKeys || []);
         initPathfinding(impassKeys || []);
-        setCrossingsState(crossings || []);
         perfLog(`impass: ${(impassKeys||[]).length} border tiles sent`);
         clearKeepCache();
         clearHQCache();
-        setTiles(rawMap);
+
+        // ── FIX 3: Batch all final setState calls so they flush in one React
+        // render pass. Without this, each call triggers its own render; the
+        // tileVersion bump from setTiles may arrive before __ready is true on
+        // tilesMapRef in the mapReady effect, leaving the loading screen up.
+        unstable_batchedUpdates(() => {
+          setCrossingsState(crossings || []);
+          setAiHqKeys(newAiHqKeys);
+          setAiFactionKeys(aiFactions);
+          setAiCmds(initialAiCmds);
+          setAiCmdsVersion(v => v + 1);
+          setAiFaction(primaryAiFk);
+          setPlayerCmds(prev => prev.map(cmd => {
+            if (cmd.owner === "player") {
+              const spawn = (spawnKeys[facKey] || [])[0];
+              return spawn ? { ...cmd, tk: spawn } : cmd;
+            }
+            if (cmd.owner === "ai" && cmd.faction) {
+              const spawn = (spawnKeys[cmd.faction] || [])[0];
+              return spawn ? { ...cmd, tk: spawn } : cmd;
+            }
+            return cmd;
+          }));
+          setTiles(rawMap); // tileVersion bumps here, inside the batch
+        });
+
         setTimeout(() => {
           mapRendererRef.current?.teleport(panRef.current.x, panRef.current.y);
         }, 100);
@@ -834,6 +869,10 @@ export default function RiseToWar() {
     worker.onerror = (err) => {
       console.error("mapGen worker error:", err);
       worker.terminate();
+      // ── FIX: Reset state so user can retry by refreshing or re-navigating.
+      // Previously only setLoadLabel was called, leaving loadPct at whatever
+      // value it reached — the loading screen stayed up with no way to recover.
+      setLoadPct(0);
       setLoadLabel("Error generating map — please refresh");
     };
 
@@ -948,11 +987,8 @@ export default function RiseToWar() {
       changedKeys.forEach(k => {
         const tile = tilesMapRef.current[k];
         if (tile) {
-          const reset = { ...tile, siege: tile.siegeMax, defeatedWaves: [], resetAt: null };
-          Object.defineProperty(reset, 'garrisonDefeated', {
-            get() { return (this.defeatedWaves?.length ?? 0) >= (this.garrisonWaves ?? 1) && (this.garrisonWaves ?? 1) > 0; },
-            configurable: true, enumerable: true,
-          });
+          const reset = Object.assign(Object.create(Object.getPrototypeOf(tile)), tile,
+            { siege: tile.siegeMax, defeatedWaves: [], resetAt: null });
           tilesMapRef.current[k] = reset;
           delete defeatedTilesRef.current[k];
           changed = true;
