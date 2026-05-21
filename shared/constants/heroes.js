@@ -146,9 +146,26 @@ export const SKILL_TREES = {
   tactics: { n: "Tactics", icon: "✦",  unlocksAt: 5, desc: "Special effects, debuffs, healing, siege bonuses"   },
 };
 
-// Skill naming and mechanic tables live in skills.js — re-exported here for backward compat
-export { MAIN_BRANCH_NAMES, FACTION_MAIN_NAMES, getMainBranchNames, SKILL_NAMES, getSkillNames, TREE_DISPLAY_NAMES, getTreeDisplayNames, SKILL_MECHANICS, SKILLS, getBranchMechanicKey, getBranchMechanic } from "./skills.js";
-import { getDefCmdBranches } from "./skills.js";
+// Skill naming and mechanic tables live in skills.js — re-exported here for backward compat.
+// NOTE: We use a single import (not a mix of `export { } from` + `import { } from` for the
+// same module) to avoid a Rollup TDZ bug where the re-export binding can be accessed before
+// it is initialized in the production bundle.
+import {
+  MAIN_BRANCH_NAMES, FACTION_MAIN_NAMES, getMainBranchNames,
+  SKILL_NAMES, getSkillNames,
+  TREE_DISPLAY_NAMES, getTreeDisplayNames,
+  SKILL_MECHANICS, SKILLS,
+  getBranchMechanicKey, getBranchMechanic,
+  getDefCmdBranches,
+} from "./skills.js";
+
+export {
+  MAIN_BRANCH_NAMES, FACTION_MAIN_NAMES, getMainBranchNames,
+  SKILL_NAMES, getSkillNames,
+  TREE_DISPLAY_NAMES, getTreeDisplayNames,
+  SKILL_MECHANICS, SKILLS,
+  getBranchMechanicKey, getBranchMechanic,
+};
 
 // DEAD_CODE_START — kept so this marker is findable, replaced by skills.js re-export above
 const _MAIN_BRANCH_NAMES_UNUSED = {
