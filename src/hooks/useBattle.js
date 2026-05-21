@@ -1,16 +1,11 @@
 // src/hooks/useBattle.js
 // ─────────────────────────────────────────────────────────────────────────────
 // Wraps battle.worker.js in a Promise API so simBattle never blocks the main
-// thread. Mirrors the pattern used by usePathfinding.js.
-//
-// Usage:
-//   const { runBattle } = useBattle();
-//   const result = await runBattle(cmd, attackerTroops, defTile, wallLvl);
-//
-// Returns the same object as simBattle: { won, isDraw, lost, atk, def, pct,
-// mod, modLabel, xpGain, report }
+// thread. Uses Vite's ?worker import so the worker is bundled as a fully
+// isolated module — no shared chunks with the main bundle, no TDZ risk.
 
 import { useEffect, useRef, useCallback } from "react";
+import BattleWorker from "../workers/battle.worker.js?worker";
 
 let _nextId = 1;
 function nextRequestId() { return String(_nextId++); }
@@ -20,9 +15,7 @@ export function useBattle() {
   const pendingRef = useRef({}); // requestId → { resolve, reject }
 
   useEffect(() => {
-    const worker = new Worker(
-      new URL("../workers/battle.worker.js", import.meta.url)
-    );
+    const worker = new BattleWorker();
 
     worker.onmessage = (e) => {
       const { type, requestId, result, error } = e.data;
@@ -44,7 +37,6 @@ export function useBattle() {
     return () => {
       worker.terminate();
       workerRef.current = null;
-      // Reject any in-flight requests so callers don't hang
       Object.values(pendingRef.current).forEach(p =>
         p.reject(new Error("battle worker terminated"))
       );
