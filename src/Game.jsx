@@ -664,8 +664,9 @@ export default function RiseToWar() {
 
         setLoadLabel("Almost there...");
 
-        // Place player HQ
-        const playerSpawn = spawnKeys[facKey];
+        // Place player HQ — use first key of player's faction spawn array
+        const playerSpawnArr = spawnKeys[facKey] || [];
+        const playerSpawn = playerSpawnArr[0] || null;
         if (playerSpawn && rawMap[playerSpawn]) {
           rawMap[playerSpawn] = {
             ...rawMap[playerSpawn],
@@ -675,13 +676,9 @@ export default function RiseToWar() {
             defeatedWaves: [], resetAt: null,
           };
           const [hc, hr] = playerSpawn.split(",").map(Number);
-          // 3x3 HQ footprint — all 8 cells surrounding the top-left primary
           [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
             const fk = `${hc+dc},${hr+dr}`;
-            if (rawMap[fk]) {
-              rawMap[fk] = { ...rawMap[fk], isHQPart: true, hqPrimaryKey: playerSpawn,
-                terrain: "grass", rss: null, owner: "player" };
-            }
+            if (rawMap[fk]) rawMap[fk] = { ...rawMap[fk], isHQPart: true, hqPrimaryKey: playerSpawn, terrain: "grass", rss: null, owner: "player" };
           });
           setPlayerHqKey(playerSpawn);
           const { cx, cy } = isoXY(hc, hr);
@@ -693,32 +690,39 @@ export default function RiseToWar() {
           setZoomState(initZoom);
         }
 
-        // Place AI HQs
+        // Place AI HQs — each of the 50 AI players gets their own 3x3 HQ
         const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
         const aiFactions  = allFactions.filter(f => f !== facKey);
+        // newAiHqKeys: { [fk]: string[] } — array of all HQ primary keys per faction
         const newAiHqKeys = {};
+
+        const placeHQFootprint = (spawn, owner, faction) => {
+          if (!spawn || !rawMap[spawn]) return false;
+          rawMap[spawn] = {
+            ...rawMap[spawn],
+            owner, isHQ: true, garrison: 0, faction,
+            terrain: "grass", rss: null, defCmd: null,
+            siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
+            defeatedWaves: [], resetAt: null,
+          };
+          const [ahc, ahr] = spawn.split(",").map(Number);
+          [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
+            const fk = `${ahc+dc},${ahr+dr}`;
+            if (rawMap[fk]) rawMap[fk] = { ...rawMap[fk], isHQPart: true, hqPrimaryKey: spawn, terrain: "grass", rss: null, owner };
+          });
+          return true;
+        };
+
         aiFactions.forEach(aiFk => {
-          const spawn = spawnKeys[aiFk];
-          if (spawn && rawMap[spawn]) {
-            rawMap[spawn] = {
-              ...rawMap[spawn],
-              owner: "ai", isHQ: true, garrison: 0, faction: aiFk,
-              terrain: "grass", rss: null, defCmd: null,
-              siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
-              defeatedWaves: [], resetAt: null,
-            };
-            const [ahc, ahr] = spawn.split(",").map(Number);
-            // 3x3 HQ footprint — all 8 cells surrounding the top-left primary
-            [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
-              const fk = `${ahc+dc},${ahr+dr}`;
-              if (rawMap[fk]) {
-                rawMap[fk] = { ...rawMap[fk], isHQPart: true, hqPrimaryKey: spawn,
-                  terrain: "grass", rss: null, owner: "ai" };
-              }
-            });
-            newAiHqKeys[aiFk] = spawn;
-          }
+          const spawns = spawnKeys[aiFk] || [];
+          newAiHqKeys[aiFk] = [];
+          spawns.forEach(spawn => {
+            if (placeHQFootprint(spawn, "ai", aiFk)) {
+              newAiHqKeys[aiFk].push(spawn);
+            }
+          });
         });
+
         setAiHqKeys(newAiHqKeys);
         aiHqKeysRef.current = newAiHqKeys;
         setAiFactionKeys(aiFactions);
@@ -735,9 +739,7 @@ export default function RiseToWar() {
           aiLastMarchMapRef.current.set(aiFk, new Map());
         });
 
-        // ── Seed 50 AI commanders per faction ─────────────────────────────
-        // Commanders spawn spread across the faction's home region tiles.
-        // Each AI player (from factionPlayers) gets exactly one commander.
+        // ── Seed one commander per AI player, each at their own HQ ────────
         const AI_CMD_NAMES = [
           "Ravenport","Stormfist","Greymantle","Ironveil","Ashcroft","Duskblade",
           "Thornwall","Coppergrin","Sablewind","Flintmoor","Emberpeak","Coldforge",
@@ -749,52 +751,26 @@ export default function RiseToWar() {
           "Moltenspire","Blightmere","Grimstock","Veinhollow","Ironscale","Cragmaw",
           "Stormcrow","Saltveil",
         ];
-        // Faction home region centre coordinates for spawn spread
-        const FACTION_HOME_CXY = {
-          pirates:        { cx:229, cy:141 },
-          nightcreatures: { cx:1173,cy:274 },
-          dragons:        { cx:229, cy:407 },
-          orcs:           { cx:1173,cy:540 },
-          bountyhunters:  { cx:613, cy:794 },
-          holyknights:    { cx:788, cy:794 },
-        };
         const ICONS_BY_FACTION = {
           pirates:"🏴‍☠️", orcs:"⚔️", dragons:"🐉", nightcreatures:"🦇",
           bountyhunters:"🔮", holyknights:"⚔",
         };
-        const SPREAD = 80; // tiles radius commanders spawn within
         const initialAiCmds = [];
         aiFactions.forEach(aiFk => {
-          const hxy   = FACTION_HOME_CXY[aiFk] || { cx:700, cy:500 };
+          const hqArr   = newAiHqKeys[aiFk] || [];
           const branches = FACTION_TROOPS[aiFk]?.branches || [];
-          for (let i = 0; i < 50; i++) {
-            // Spread commanders in a circle around faction home
-            const angle = (i / 50) * Math.PI * 2;
-            const r     = 5 + Math.floor(Math.random() * SPREAD);
-            const tc    = Math.round(hxy.cx + Math.cos(angle) * r);
-            const tr    = Math.round(hxy.cy + Math.sin(angle) * r);
-            // Find nearest valid (non-impassable, non-HQ-footprint) tile
-            let spawnKey = null;
-            for (let dr = -3; dr <= 3 && !spawnKey; dr++) {
-              for (let dc = -3; dc <= 3 && !spawnKey; dc++) {
-                const k = `${tc+dc},${tr+dr}`;
-                if (rawMap[k] && !rawMap[k].isHQ && !rawMap[k].isHQPart && !rawMap[k].isKeep && !rawMap[k].isKeepPart) {
-                  spawnKey = k;
-                }
-              }
-            }
-            if (!spawnKey) spawnKey = newAiHqKeys[aiFk] || `${hxy.cx},${hxy.cy}`;
+          hqArr.forEach((hqKey, i) => {
             const branch  = branches[i % branches.length];
             const tBranch = { faction: aiFk, branch: branch?.key || "swashbucklers", tier: 0 };
-            const name    = AI_CMD_NAMES[i % AI_CMD_NAMES.length];
             initialAiCmds.push({
               uid:    `ai_${aiFk}_${i}_${Date.now()}`,
               id:     `ai_${aiFk}_${i}`,
               owner:  "ai",
               faction: aiFk,
-              n:      name,
+              n:      AI_CMD_NAMES[i % AI_CMD_NAMES.length],
               icon:   ICONS_BY_FACTION[aiFk] || "⚔",
-              tk:     spawnKey,
+              tk:     hqKey,
+              hqKey:  hqKey,
               troops: 200,
               troopBranch: tBranch,
               troopSlots: [],
@@ -807,12 +783,10 @@ export default function RiseToWar() {
               skillPoints: {}, unspentSkillPoints: 0,
               gear: { helmet:null, armor:null, bracers:null, accessory:null },
             });
-          }
+          });
         });
-        // Seed via setAiCmds so cmdsRef stays in sync and the useMemo recomputes.
         setAiCmds(initialAiCmds);
         setAiCmdsVersion(v => v + 1);
-
         const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
         const primaryAiFk = aiFactions.find(f =>
           (oppAlign === "humans"
@@ -823,11 +797,11 @@ export default function RiseToWar() {
 
         setPlayerCmds(prev => prev.map(cmd => {
           if (cmd.owner === "player") {
-            const spawn = spawnKeys[facKey];
+            const spawn = (spawnKeys[facKey] || [])[0];
             return spawn ? { ...cmd, tk: spawn } : cmd;
           }
           if (cmd.owner === "ai" && cmd.faction) {
-            const spawn = spawnKeys[cmd.faction];
+            const spawn = (spawnKeys[cmd.faction] || [])[0];
             return spawn ? { ...cmd, tk: spawn } : cmd;
           }
           return cmd;
