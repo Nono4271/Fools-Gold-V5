@@ -5,7 +5,8 @@ import { useState, memo } from "react";
    • Player can create a crew (4-20 char name, 4-char abbreviation)
    • Or request to join an existing crew
    • Starting cap: 40 members per crew
-   • Max 3 crews per faction can exist
+   • Creating a crew costs 500 gems — only the 3 AI players per faction seeded
+     with 2000 gems can ever afford to found one, naturally capping AI crews at 3
    • AI players auto-create/join crews on a 30s ticker (managed in Game.jsx)
 ───────────────────────────────────────────────────────────────────────────── */
 
@@ -18,7 +19,6 @@ const BTN_RESET = {
 const PANEL_BG   = "rgba(5,7,11,.97)";
 const BORDER_COL = "#1a2030";
 const GOLD       = "#c8a060";
-const GOLD_DIM   = "#6a5030";
 const TEXT_SM    = { fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: ".04em" };
 const TEXT_XS    = { fontFamily: "'Cinzel',serif", fontSize: 7, letterSpacing: ".04em" };
 
