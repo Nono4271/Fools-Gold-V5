@@ -85,23 +85,42 @@ function TroopPopup({ troopBranch, onClose }) {
   const dmgTypeColor = br.dmgType === "magical" ? "#a855f7" : "#e08050";
   return (
     <div onClick={e => e.stopPropagation()} style={{
-      position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-      zIndex:5011, width:440,
-      background:"#100c06", border:"1px solid #3a2e18", borderRadius:10,
-      padding:"24px 28px", boxShadow:"0 8px 40px rgba(0,0,0,.95)",
-      maxHeight:"90vh", overflowY:"auto",
+      position:"fixed", inset:0,
+      zIndex:5011,
+      background:"#100c06",
+      display:"flex", flexDirection:"column",
+      overflow:"hidden",
     }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+      {/* Header */}
+      <div style={{
+        display:"flex", alignItems:"center", gap:12,
+        padding:"12px 16px", flexShrink:0,
+        background:"linear-gradient(180deg,#151008,#100c06)",
+        borderBottom:"1px solid #2a1e08",
+      }}>
+        <button
+          onClick={onClose}
+          onTouchEnd={e => { e.preventDefault(); onClose(); }}
+          style={{
+            padding:"8px 16px", borderRadius:5, cursor:"pointer",
+            background:"rgba(255,255,255,.06)", border:"1px solid #3a2e18",
+            color:"#8a7050", fontSize:11, fontFamily:"'Cinzel',serif",
+            letterSpacing:".06em", WebkitTapHighlightColor:"transparent",
+            touchAction:"manipulation",
+          }}>
+          ← Back
+        </button>
         <div>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:20, fontWeight:700, color:"#c8a060" }}>
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:13, fontWeight:700, color:"#c8a060" }}>
             {br.label} — {td.label}
-          </div>
-          <div style={{ fontSize:14, color:"#5a4a38", fontStyle:"italic", marginTop:2 }}>
+          </span>
+          <span style={{ fontSize:9, color:"#5a4a38", fontStyle:"italic", marginLeft:10 }}>
             {f.quarters} · {br.size} · <span style={{ color:dmgTypeColor }}>{br.dmgType}</span>
-          </div>
+          </span>
         </div>
-        <button onClick={onClose} style={{ background:"transparent", border:"none", color:"#6a5a4a", fontSize:24, cursor:"pointer" }}>✕</button>
       </div>
+      {/* Scrollable body */}
+      <div style={{ flex:1, overflowY:"auto", padding:"20px 24px", WebkitOverflowScrolling:"touch" }} className="scr">
       <div style={{ fontSize:14, color:"#3a3028", fontFamily:"'Cinzel',serif", letterSpacing:".08em",
         marginBottom:12, paddingBottom:8, borderBottom:"1px solid #1e1808" }}>
         TROOP STATS
@@ -181,7 +200,8 @@ function TroopPopup({ troopBranch, onClose }) {
           </div>
         );
       })()}
-    </div>
+      </div>{/* end scrollable body */}
+    </div>{/* end fullscreen */}
   );
 }
 
@@ -325,15 +345,49 @@ function CommanderPopup({ b, side, onClose }) {
   return (
     <>
       <div onClick={e => e.stopPropagation()} style={{
-        position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)",
-        zIndex:5011, width:480,
-        background:"#0c0906", border:"1px solid #3a2e18", borderRadius:10,
-        boxShadow:"0 8px 40px rgba(0,0,0,.95)",
-        maxHeight:"92vh", display:"flex", flexDirection:"column", overflow:"hidden",
+        position:"fixed", inset:0,
+        zIndex:5011,
+        background:"#0c0906",
+        display:"flex", flexDirection:"column",
+        overflow:"hidden",
       }}>
 
+        {/* ── Header bar with back button ── */}
+        <div style={{
+          display:"flex", alignItems:"center", gap:12,
+          padding:"12px 16px", flexShrink:0,
+          background:"linear-gradient(180deg,#151008,#0c0906)",
+          borderBottom:"1px solid #2a1e08",
+        }}>
+          <button
+            onClick={onClose}
+            onTouchEnd={e => { e.preventDefault(); onClose(); }}
+            style={{
+              padding:"8px 16px", borderRadius:5, cursor:"pointer",
+              background:"rgba(255,255,255,.06)", border:"1px solid #3a2e18",
+              color:"#8a7050", fontSize:11, fontFamily:"'Cinzel',serif",
+              letterSpacing:".06em", WebkitTapHighlightColor:"transparent",
+              touchAction:"manipulation",
+            }}>
+            ← Back
+          </button>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:"#c8a060", fontWeight:700 }}>
+            {name}
+          </div>
+          {cmdCls && (
+            <span style={{ fontSize:8, color:clsColor,
+              background:`${clsColor}18`, border:`1px solid ${clsColor}44`,
+              padding:"2px 8px", borderRadius:3, fontFamily:"'Cinzel',serif" }}>
+              {cmdCls}
+            </span>
+          )}
+          <div style={{ marginLeft:"auto", fontSize:9, color:"#5a4a38", fontFamily:"'Cinzel',serif" }}>
+            Level {lvl}
+          </div>
+        </div>
+
         {/* ── SECTION 1: Commander portrait banner ── */}
-        <div style={{ position:"relative", height:220, flexShrink:0, overflow:"hidden",
+        <div style={{ position:"relative", height:240, flexShrink:0, overflow:"hidden",
           background:"linear-gradient(135deg,#120e06,#08060a)" }}>
           {(bust || portrait) ? (
             <img src={bust ?? portrait} alt={name}
@@ -342,35 +396,15 @@ function CommanderPopup({ b, side, onClose }) {
                 objectPosition:"bottom center", opacity:.95 }} />
           ) : (
             <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center",
-              justifyContent:"center", fontSize:72, opacity:.4 }}>{icon}</div>
+              justifyContent:"center", fontSize:80, opacity:.4 }}>{icon}</div>
           )}
           <div style={{ position:"absolute", inset:0,
-            background:"linear-gradient(to top, rgba(8,5,0,.98) 0%, rgba(8,5,0,.35) 45%, transparent 100%)",
+            background:"linear-gradient(to top, rgba(8,5,0,.98) 0%, rgba(8,5,0,.2) 50%, transparent 100%)",
             pointerEvents:"none" }} />
-          {/* Name / level / class */}
-          <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"8px 18px 14px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:17, fontWeight:700, color:"#c8a060" }}>{name}</div>
-              {cmdCls && (
-                <span style={{ fontSize:8, color:clsColor,
-                  background:`${clsColor}18`, border:`1px solid ${clsColor}44`,
-                  padding:"2px 8px", borderRadius:3, fontFamily:"'Cinzel',serif" }}>
-                  {cmdCls}
-                </span>
-              )}
-            </div>
-            <div style={{ fontSize:9, color:"#5a4a38", fontFamily:"'Cinzel',serif" }}>Level {lvl}</div>
-          </div>
-          <button onClick={onClose} style={{
-            position:"absolute", top:10, right:12,
-            background:"rgba(0,0,0,.6)", border:"1px solid #2a1e08", borderRadius:"50%",
-            color:"#6a5a4a", fontSize:14, cursor:"pointer", width:28, height:28,
-            display:"flex", alignItems:"center", justifyContent:"center",
-          }}>✕</button>
         </div>
 
         {/* ── Scrollable body ── */}
-        <div style={{ flex:1, overflowY:"auto", padding:"14px 18px 20px" }} className="scr">
+        <div style={{ flex:1, overflowY:"auto", padding:"14px 18px 20px", WebkitOverflowScrolling:"touch" }} className="scr">
 
           {/* ── SECTION 2: Commander stats ── */}
           {rawStats && (
