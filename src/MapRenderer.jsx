@@ -1516,7 +1516,7 @@ export function clearHQCache() { _hqStateCache.clear(); }
 // The visual centre of a 3×3 in isometric space is the centre tile (c+1,r+1).
 // isoXY gives us the diamond centre of any tile; the 3×3 centre is at (c+1,r+1).
 // We size the sprite to cover the full 3×3 diamond footprint.
-function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey) {
+function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids) {
   const [pc, pr] = tileKey.split(",").map(Number);
   // Visual centre = middle tile of 3×3
   const { cx: bx, cy: worldCY } = isoXY(pc + 1, pr + 1);
@@ -1690,7 +1690,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
-function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey) {
+function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids) {
   // Find all primary HQ tiles (isHQ === true, not isHQPart)
   for (const [tileKey, tile] of Object.entries(tiles)) {
     if (!tile?.isHQ) continue;
@@ -1713,7 +1713,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
       }
     }
 
-    hqCont.addChild(_buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey));
+    hqCont.addChild(_buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids));
     _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null });
   }
 }
@@ -1885,7 +1885,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles) {
 /* ══════════════════════════════════════════════════════════════════════════
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, sameFactionPlayerIds }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds }, ref) {
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
   const worldRef       = useRef(null);
@@ -2326,7 +2326,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current);
+      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current);
     }
 
     redrawRef.current = {

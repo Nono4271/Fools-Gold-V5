@@ -466,7 +466,7 @@ export default function RiseToWar() {
   const factionPlayersRef = useRef({});
   useEffect(() => { factionPlayersRef.current = factionPlayers; }, [factionPlayers]);
 
-  // Build crewmatePlayerIds and sameFactionPlayerIds for tile coloring
+  // Build crewmatePlayerIds for blue tile tinting (crewmates) and purple (same faction via tile.faction)
   const crewmatePlayerIds = useMemo(() => {
     if (!playerCrewId) return new Set();
     const crew = crews.find(c => c.id === playerCrewId);
@@ -479,14 +479,7 @@ export default function RiseToWar() {
     return s;
   }, [playerCrewId, crews, factionPlayers, facKey]);
 
-  const sameFactionPlayerIds = useMemo(() => {
-    const myPlayers = factionPlayers[facKey] || [];
-    const s = new Set();
-    for (const fp of myPlayers) {
-      if (!fp.isHuman) s.add(fp.id);
-    }
-    return s;
-  }, [factionPlayers, facKey]);
+  const sameFactionPlayerIds = null; // reserved for future per-player tile tracking
 
   // Crew actions
   const CREW_CREATION_COST = 500;
@@ -507,16 +500,24 @@ export default function RiseToWar() {
   }, [facKey, playerName, gems]);
 
   const handleJoinRequest = useCallback((crewId) => {
-    // Simulate auto-accept after 2s for demo
-    setPendingCrewId(crewId);
+    // Simulate server accept after 2s. Guard against double-tap or
+    // a second request firing while the first is still pending.
+    setPendingCrewId(prev => {
+      if (prev !== null) return prev; // already pending — ignore
+      return crewId;
+    });
     setTimeout(() => {
-      setCrews(prev => prev.map(c => {
-        if (c.id !== crewId) return c;
-        if (c.members.includes(playerName) || c.members.length >= c.cap) return c;
-        return { ...c, members: [...c.members, playerName] };
-      }));
-      setPlayerCrewId(crewId);
-      setPendingCrewId(null);
+      // Only commit if this crewId is still the pending one (wasn't cancelled/replaced)
+      setPendingCrewId(prev => {
+        if (prev !== crewId) return prev; // a different request won — bail
+        setCrews(c => c.map(crew => {
+          if (crew.id !== crewId) return crew;
+          if (crew.members.includes(playerName) || crew.members.length >= crew.cap) return crew;
+          return { ...crew, members: [...crew.members, playerName] };
+        }));
+        setPlayerCrewId(crewId);
+        return null; // clear pending
+      });
     }, 2000);
   }, [playerName]);
 
@@ -1828,9 +1829,10 @@ export default function RiseToWar() {
         onTileClick={onTileClick}
         onPanChange={onPanChange}
         onZoomChange={handleZoomChange}
+        playerName={playerName}
+        playerHqKey={playerHqKey}
         playerFacKey={facKey}
         crewmatePlayerIds={crewmatePlayerIds}
-        sameFactionPlayerIds={sameFactionPlayerIds}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
