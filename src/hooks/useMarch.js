@@ -4,7 +4,7 @@ import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS
 import { CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
 import { barracksCapacity } from "../../shared/constants/buildings.js";
 import { adj, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
-import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/battle.js";
+import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/garrisonUtils.js";
 import { useBattle } from "./useBattle.js";
 import { calcSiegePower } from "../../shared/constants/map.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
