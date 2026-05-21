@@ -2060,7 +2060,7 @@ function ManageShipScreen({
               <div key={i}
                 onClick={() => sl ? setActiveSlot(isActive ? null : i) : null}
                 style={{
-                  flex: 1, minHeight: 90, borderRadius: 5,
+                  flex: 1, minHeight: 120, borderRadius: 5,
                   border: `2px solid ${isActive ? (tierColor) : sl ? tierColor + "88" : P.border}`,
                   background: isActive
                     ? `${tierColor}12`
@@ -2071,6 +2071,7 @@ function ManageShipScreen({
                   gap: 3, padding: "8px 4px",
                   cursor: sl ? "pointer" : "default",
                   transition: "all .15s", position: "relative",
+                  overflow: "hidden",
                 }}
               >
                 {sl ? (
@@ -2480,54 +2481,64 @@ function BattleGroupsScreen({
 
     const tierColor = TIER_COLORS[Math.min(res.tierIdx, 2)];
     const tierLabel = TIER_ROMAN[Math.min(res.tierIdx, 2)];
-    const icon = res.brDef.dmgType === "magical" ? "✦"
-      : res.brDef.size === "small" ? "🗡"
-      : res.brDef.size === "large" ? "🪃" : "⚔";
     const fColor = FACTION_META[sl.branch.faction]?.c || P.gold;
     const count = sl.troops > 9999
       ? `${(sl.troops / 1000).toFixed(1)}k`
       : (sl.troops || 0).toLocaleString();
+    const psrc = troopPortraitPath(sl.branch?.faction, sl.branch?.branch, res.tierIdx);
 
     return (
       <div
         onClick={onClick}
         style={{
-          flex: 1, minHeight: 88, borderRadius: 5,
+          flex: 1, minHeight: 120, borderRadius: 5,
           border: `1px solid ${tierColor}cc`,
           background: "rgba(6,4,2,.92)",
           boxShadow: `0 2px 12px rgba(0,0,0,.8), 0 0 8px ${tierColor}22`,
           display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center", gap: 4,
+          alignItems: "center", justifyContent: "flex-end",
           cursor: onClick ? "pointer" : "default",
-          padding: "8px 4px",
+          padding: 0,
           transition: "border-color .15s, box-shadow .15s",
+          position: "relative", overflow: "hidden",
         }}
       >
-        {/* Tier badge */}
-        <div style={{
-          fontSize: 6, fontWeight: 700, color: tierColor,
-          fontFamily: P.ff, letterSpacing: ".12em",
-          border: `1px solid ${tierColor}66`, borderRadius: 2,
-          padding: "1px 5px", lineHeight: 1.4,
-        }}>
-          TIER {tierLabel}
-        </div>
-        {/* Icon */}
-        <div style={{ fontSize: 22, lineHeight: 1 }}>{icon}</div>
-        {/* Troop name */}
-        <div style={{
-          fontSize: 7.5, fontWeight: 700, color: fColor,
-          fontFamily: P.ff, textAlign: "center", lineHeight: 1.2,
-          letterSpacing: ".04em",
-        }}>
-          {res.tierData?.label ?? res.brDef.label}
-        </div>
-        {/* Count */}
-        <div style={{
-          fontSize: 10, fontWeight: 700, color: "#f0e8d8",
-          fontFamily: P.ff, lineHeight: 1,
-        }}>
-          {count}
+        {/* Portrait */}
+        {psrc && (
+          <img src={psrc} alt={res.tierData?.label ?? ""}
+            style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+              objectFit:"cover", objectPosition:"top center", opacity:.85, borderRadius:4 }}
+            onError={e => { e.currentTarget.style.display="none"; }}
+          />
+        )}
+        {/* Vignette */}
+        <div style={{ position:"absolute", inset:0, borderRadius:4,
+          background:"linear-gradient(to top, rgba(4,2,1,.95) 0%, rgba(4,2,1,.4) 55%, transparent 100%)",
+          pointerEvents:"none" }} />
+        {/* Content */}
+        <div style={{ position:"relative", zIndex:1, width:"100%",
+          display:"flex", flexDirection:"column", alignItems:"center",
+          padding:"4px 4px 8px", gap:2 }}>
+          <div style={{
+            fontSize: 6, fontWeight: 700, color: tierColor,
+            fontFamily: P.ff, letterSpacing: ".12em",
+            border: `1px solid ${tierColor}66`, borderRadius: 2,
+            padding: "1px 5px", lineHeight: 1.4, background:"rgba(0,0,0,.5)",
+          }}>
+            {tierLabel}
+          </div>
+          <div style={{
+            fontSize: 7.5, fontWeight: 700, color: fColor,
+            fontFamily: P.ff, textAlign: "center", lineHeight: 1.2,
+          }}>
+            {res.tierData?.label ?? res.brDef.label}
+          </div>
+          <div style={{
+            fontSize: 11, fontWeight: 700, color: "#f0e8d8",
+            fontFamily: P.ff, lineHeight: 1,
+          }}>
+            {count}
+          </div>
         </div>
       </div>
     );

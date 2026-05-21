@@ -662,7 +662,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
         <div style={{
           display:"grid", gridTemplateColumns:"1fr auto 1fr",
           borderBottom:"1px solid #1a1508",
-          flex:"0 0 160px",
+          flex:"0 0 200px",
           overflow:"hidden",
         }}>
           {/* Attacker */}
@@ -674,7 +674,8 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
             {b.atkBust ? (
               <img src={b.atkBust} alt={b.atkName}
                 style={{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)",
-                  height:"100%", objectFit:"cover", objectPosition:"top center", opacity:.9 }} />
+                  height:"100%", width:"auto", objectFit:"contain",
+                  objectPosition:"bottom center", opacity:.93 }} />
             ) : (
               <div style={{ position:"absolute", inset:0,
                 display:"flex", alignItems:"center", justifyContent:"center",
@@ -682,21 +683,15 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
                 {b.atkIcon || "⚔"}
               </div>
             )}
-            {/* Name + bars */}
+            {/* Name overlay */}
             <div style={{ position:"absolute", bottom:0, left:0, right:0,
-              background:"linear-gradient(to top, rgba(8,5,0,.97) 0%, transparent 100%)",
-              padding:"40px 8px 6px" }}>
+              background:"linear-gradient(to top, rgba(8,5,0,.92) 0%, transparent 100%)",
+              padding:"24px 8px 8px" }}>
               <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700,
                 color:"#c8a060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {b.atkName}
               </div>
-              <div style={{ fontSize:7, color:"#5a4a30", marginBottom:3 }}>Lv{b.atkLvl} · tap for stats</div>
-              <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
-              <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
-              {/* Troop boxes in flow below bar */}
-              <div style={{ marginTop:5 }}>
-                <TroopSlotBoxes b={b} isEnemy={false} onSlotClick={branch => setSubPopup({ type:"troop", branch })} />
-              </div>
+              <div style={{ fontSize:7, color:"#5a4a30" }}>Lv{b.atkLvl} · tap for stats</div>
             </div>
             <div style={{ position:"absolute", top:6, left:7,
               fontSize:6, color:"#4488ffbb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
@@ -705,12 +700,42 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
             </div>
           </div>
 
-          {/* VS divider */}
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", width:28,
-            background:"rgba(0,0,0,.3)",
-            borderLeft:"1px solid #1a1508", borderRight:"1px solid #1a1508" }}>
-            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#3a2e18",
-              letterSpacing:".1em", writingMode:"vertical-rl", transform:"rotate(180deg)" }}>VS</div>
+          {/* Centre: VS + health bars + troop boxes */}
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"stretch",
+            justifyContent:"center", width:220,
+            background:"rgba(0,0,0,.5)",
+            borderLeft:"1px solid #1a1508", borderRight:"1px solid #1a1508",
+            padding:"8px 10px", gap:6 }}>
+            {/* VS label */}
+            <div style={{ textAlign:"center", fontFamily:"'Cinzel',serif",
+              fontSize:8, color:"#3a2e18", letterSpacing:".1em" }}>VS</div>
+            {/* Attacker bar */}
+            <div>
+              <div style={{ fontSize:6.5, color:"#5a4a30", fontFamily:"'Cinzel',serif",
+                marginBottom:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                {b.atkName}
+              </div>
+              <TroopBar start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+              <BarLegend start={b.atkTroopsStart} end={b.atkTroopsEnd} wounded={b.atkTroopsWounded ?? 0} isEnemy={false} />
+            </div>
+            {/* Defender bar */}
+            <div>
+              <div style={{ fontSize:6.5, color:"#5a4a30", fontFamily:"'Cinzel',serif",
+                marginBottom:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+                textAlign:"right" }}>
+                {b.defCmdName}
+              </div>
+              <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+              <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
+            </div>
+            {/* Troop boxes — attacker */}
+            <div style={{ display:"flex", justifyContent:"center" }}>
+              <TroopSlotBoxes b={b} isEnemy={false} onSlotClick={branch => setSubPopup({ type:"troop", branch })} />
+            </div>
+            {/* Troop boxes — defender */}
+            <div style={{ display:"flex", justifyContent:"center" }}>
+              <TroopSlotBoxes b={b} isEnemy={true} onSlotClick={branch => setSubPopup({ type:"troop", branch })} />
+            </div>
           </div>
 
           {/* Defender */}
@@ -722,7 +747,8 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
             {b.defBust ? (
               <img src={b.defBust} alt={b.defCmdName}
                 style={{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%) scaleX(-1)",
-                  height:"100%", objectFit:"cover", objectPosition:"top center", opacity:.9 }} />
+                  height:"100%", width:"auto", objectFit:"contain",
+                  objectPosition:"bottom center", opacity:.93 }} />
             ) : (
               <div style={{ position:"absolute", inset:0,
                 display:"flex", alignItems:"center", justifyContent:"center",
@@ -730,20 +756,15 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
                 {b.defCmdIcon || "🛡"}
               </div>
             )}
+            {/* Name overlay */}
             <div style={{ position:"absolute", bottom:0, left:0, right:0,
-              background:"linear-gradient(to top, rgba(8,3,3,.97) 0%, transparent 100%)",
-              padding:"40px 8px 6px", textAlign:"right" }}>
+              background:"linear-gradient(to top, rgba(8,3,3,.92) 0%, transparent 100%)",
+              padding:"24px 8px 8px", textAlign:"right" }}>
               <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700,
                 color:"#aa7070", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {b.defCmdName}
               </div>
-              <div style={{ fontSize:7, color:"#5a4a30", marginBottom:3 }}>Lv{b.defLvl} · tap for stats</div>
-              <TroopBar start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
-              <BarLegend start={b.defTroopsStart ?? 0} end={b.defTroopsEnd ?? 0} wounded={0} isEnemy={true} />
-              {/* Troop boxes in flow below bar, right-aligned */}
-              <div style={{ marginTop:5, display:"flex", justifyContent:"flex-end" }}>
-                <TroopSlotBoxes b={b} isEnemy={true} onSlotClick={branch => setSubPopup({ type:"troop", branch })} />
-              </div>
+              <div style={{ fontSize:7, color:"#5a4a30" }}>Lv{b.defLvl} · tap for stats</div>
             </div>
             <div style={{ position:"absolute", top:6, right:7,
               fontSize:6, color:"#cc4444bb", fontFamily:"'Cinzel',serif", letterSpacing:".1em",
@@ -1010,7 +1031,7 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
       {/* Commander portraits with troop boxes overlapping bottom */}
       <div style={{
         display:"grid", gridTemplateColumns:"1fr auto 1fr",
-        height:200, flexShrink:0, overflow:"hidden",
+        height:260, flexShrink:0, overflow:"hidden",
         borderBottom:"1px solid #1a1508",
       }}>
         {/* Attacker portrait + troop boxes below */}
@@ -1020,11 +1041,12 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
           <div style={{ position:"relative", flex:1, overflow:"hidden", minHeight:0 }}>
             <div style={{ position:"absolute", inset:0, pointerEvents:"none",
               background:"radial-gradient(ellipse 90% 80% at 30% 85%, rgba(200,160,96,.15) 0%, transparent 70%)" }} />
-            {b.atkPortrait || b.atkBust ? (
-              <img src={b.atkPortrait ?? b.atkBust} alt={b.atkName}
+            {b.atkBust || b.atkPortrait ? (
+              <img src={b.atkBust ?? b.atkPortrait} alt={b.atkName}
                 style={{
-                  position:"absolute", top:0, left:0, width:"100%", height:"100%",
-                  objectFit:"cover", objectPosition:"top center", opacity:.92,
+                  position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)",
+                  height:"100%", width:"auto", objectFit:"contain",
+                  objectPosition:"bottom center", opacity:.93,
                 }} />
             ) : (
               <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center",
@@ -1089,11 +1111,12 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
           <div style={{ position:"relative", flex:1, overflow:"hidden", minHeight:0 }}>
             <div style={{ position:"absolute", inset:0, pointerEvents:"none",
               background:"radial-gradient(ellipse 90% 80% at 70% 85%, rgba(180,60,60,.15) 0%, transparent 70%)" }} />
-            {b.defPortrait || b.defBust ? (
-              <img src={b.defPortrait ?? b.defBust} alt={b.defCmdName}
+            {b.defBust || b.defPortrait ? (
+              <img src={b.defBust ?? b.defPortrait} alt={b.defCmdName}
                 style={{
-                  position:"absolute", top:0, left:0, width:"100%", height:"100%",
-                  objectFit:"cover", objectPosition:"top center", transform:"scaleX(-1)", opacity:.92,
+                  position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%) scaleX(-1)",
+                  height:"100%", width:"auto", objectFit:"contain",
+                  objectPosition:"bottom center", opacity:.93,
                 }} />
             ) : (
               <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center",
@@ -1133,7 +1156,7 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
       </div>
 
       {/* XP + meta row */}
-      <div style={{ padding:"5px 14px", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+      <div style={{ padding:"3px 14px 3px", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
         <div style={{ display:"flex", gap:10 }}>
           {b.xpGain > 0 && (
             <span style={{ fontSize:8, color:"#8a6030", fontFamily:"'Cinzel',serif" }}>
