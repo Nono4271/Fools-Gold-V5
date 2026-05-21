@@ -67,8 +67,7 @@ export function useGameLoop({
   // Spawn worker once
   useEffect(() => {
     const worker = new Worker(
-      new URL('../workers/gameLoop.worker.js', import.meta.url),
-      { type: 'module' }
+      new URL('../workers/gameLoop.worker.js', import.meta.url)
     );
 
     worker.onmessage = (e) => {

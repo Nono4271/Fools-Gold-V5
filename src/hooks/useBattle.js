@@ -21,8 +21,7 @@ export function useBattle() {
 
   useEffect(() => {
     const worker = new Worker(
-      new URL("../workers/battle.worker.js", import.meta.url),
-      { type: "module" }
+      new URL("../workers/battle.worker.js", import.meta.url)
     );
 
     worker.onmessage = (e) => {

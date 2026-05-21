@@ -28,8 +28,7 @@ export function usePathfinding() {
 
   useEffect(() => {
     const worker = new Worker(
-      new URL('../workers/pathfinding.worker.js', import.meta.url),
-      { type: 'module' }
+      new URL('../workers/pathfinding.worker.js', import.meta.url)
     );
 
     worker.onmessage = (e) => {
