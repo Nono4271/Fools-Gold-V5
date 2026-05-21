@@ -20,12 +20,14 @@ export default defineConfig({
    emptyOutDir: true,
    rollupOptions: {
      output: {
-       manualChunks: {
-         // PixiJS is ~1.2 MB minified and never changes between game deploys.
-         // Isolating it means the browser serves it from cache on every update
-         // to game logic, maps, or UI — users never re-download 1.2 MB of
-         // renderer code just because a balance patch shipped.
-         pixi: ["pixi.js"],
+       manualChunks(id) {
+         // Co-locate pixi with MapRenderer so their dependency edge across
+         // chunks never triggers a TDZ on pixi's const exports.
+         // This preserves the caching benefit (renderer is its own
+         // cache-stable file) while keeping the correct module init sequence.
+         if (id.includes("pixi.js") || id.includes("MapRenderer")) {
+           return "renderer";
+         }
        },
      },
    },
