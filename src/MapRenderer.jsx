@@ -1510,7 +1510,10 @@ const HQ_SPRITES = {
 };
 
 const _hqStateCache = new Map(); // tileKey → { faction, owner, isSelected }
-export function clearHQCache() { _hqStateCache.clear(); }
+// Fast index: Set of primary HQ tile keys (isHQ===true). Built once in buildHQLayer,
+// avoids scanning all 490k tiles on every redrawHQs() call.
+const _hqKeyIndex = new Set();
+export function clearHQCache() { _hqStateCache.clear(); _hqKeyIndex.clear(); }
 
 // 3×3 footprint: primary tile is top-left (c,r); parts go to (c+2,r+2)
 // The visual centre of a 3×3 in isometric space is the centre tile (c+1,r+1).
@@ -1691,9 +1694,18 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
 function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids) {
+  // Build the fast index on first call (or after clearHQCache). This is O(n) once,
+  // then all subsequent calls are O(HQs) instead of O(all 490k tiles).
+  if (_hqKeyIndex.size === 0) {
+    for (const [tileKey, tile] of Object.entries(tiles)) {
+      if (tile?.isHQ) _hqKeyIndex.add(tileKey);
+    }
+  }
+
   // Find all primary HQ tiles (isHQ === true, not isHQPart)
-  for (const [tileKey, tile] of Object.entries(tiles)) {
-    if (!tile?.isHQ) continue;
+  for (const tileKey of _hqKeyIndex) {
+    const tile = tiles[tileKey];
+    if (!tile?.isHQ) { _hqKeyIndex.delete(tileKey); continue; } // HQ was destroyed
 
     const isSelected = selKey === tileKey;
     const owner      = tile.owner || null;
@@ -1947,6 +1959,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       }
       lastBoundsRef.current = null;
       redrawRef.current?.redraw(true);
+      redrawRef.current?.redrawKeeps();
+      redrawRef.current?.redrawHQs();
     },
     redrawOverlays() {
       redrawRef.current?.redrawOverlays();
@@ -2233,8 +2247,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       if (typeof window.requestIdleCallback === "function") {
         propsIdleHandle = window.requestIdleCallback(doProps);
       } else {
-        // Fallback: use a long delay so it can't block an active gesture
-        propsIdleHandle = setTimeout(doProps, 800);
+        // Fallback: use a short delay so it doesn't block an active gesture
+        propsIdleHandle = setTimeout(doProps, 150);
       }
     };
 

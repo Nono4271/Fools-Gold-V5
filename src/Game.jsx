@@ -81,6 +81,9 @@ export default function RiseToWar() {
   // Maintained inside patchTile so the gameLoop snapshot never scans all 490k tiles.
   const defeatedTilesRef = useRef({});
 
+  // Debounce ref: batch rapid forceRedrawTiles calls (e.g. AI init patching many tiles at once)
+  const forceRedrawTimerRef = useRef(null);
+
   // Player and AI tile key indexes — maintained in patchTile on ownership changes
   // so useAI and Minimap never scan all 490k tiles.
   const pKeysRef = useRef(new Set());
@@ -138,7 +141,14 @@ export default function RiseToWar() {
       // Ownership changed — redraw PIXI canvas immediately rather than waiting
       // for the React effect chain (setTileVersion → render → useEffect → redraw).
       // This eliminates the 1-2 frame delay where the tile shows its old colour.
-      mapRendererRef.current?.forceRedrawTiles(tilesMapRef.current);
+      // Debounced: if multiple tiles change ownership in the same tick (e.g. AI init),
+      // we collapse them into a single redraw ~16ms later instead of N redraws.
+      if (!forceRedrawTimerRef.current) {
+        forceRedrawTimerRef.current = setTimeout(() => {
+          forceRedrawTimerRef.current = null;
+          mapRendererRef.current?.forceRedrawTiles(tilesMapRef.current);
+        }, 16);
+      }
     }
     setTileVersion(v => v + 1);
   }, []);
