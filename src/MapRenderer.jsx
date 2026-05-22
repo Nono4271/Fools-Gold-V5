@@ -217,7 +217,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         const { cx, cy } = isoXY(c, r);
         const sy  = cy - 4;
         const mid = sy + TH / 2;
-        const TOP = [cx, sy, cx+TW/2, mid, cx, sy+TH+0.5, cx-TW/2, mid];
+        const TOP = [cx, sy, cx+TW/2, mid, cx, sy+TH, cx-TW/2, mid];
         const ct  = crossingType;
         const key = `${c},${r}`;
         const isSel   = selKey === key;
@@ -457,8 +457,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
       // +0.5px on the bottom vertex closes the sub-pixel gap between adjacent
       // tile rows that causes horizontal white lines on some PC WebGL drivers.
-      const OVERLAP = 0.5;
-      const TOP      = [cx, sy, cx+TW/2, mid, cx, sy+TH+OVERLAP, cx-TW/2, mid];
+      const TOP      = [cx, sy, cx+TW/2, mid, cx, sy+TH, cx-TW/2, mid];
 
       const drawAsKeep = isKeep || isKeepPart;
       const drawAsHQ   = isHQ   || isHQPart;
@@ -2021,7 +2020,13 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     let app;
     try {
       app = new PIXI.Application({ width:w, height:h, backgroundColor:0x080c10,
-        antialias:false, resolution:Math.min(window.devicePixelRatio||1,2), autoDensity:true });
+        antialias:false, resolution:Math.min(window.devicePixelRatio||1,2), autoDensity:true,
+        // Prevent screen tearing on PC Chrome — forces the WebGL context to sync
+        // with the display's vsync cycle. Without this, some GPU/driver combos
+        // present frames mid-refresh causing horizontal tearing bands.
+        powerPreference: "high-performance",
+        preserveDrawingBuffer: false,
+      });
     } catch(_) {
       try { app = new PIXI.Application({ width:w, height:h, backgroundColor:0x080c10, forceCanvas:true }); }
       catch(e2) { console.warn("PixiJS init failed:", e2); return; }
@@ -2140,7 +2145,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
       const mid = sy2 + TH / 2;
-      const TOP = [cx, sy2, cx+TW/2, mid, cx, sy2+TH+0.5, cx-TW/2, mid];
+      const TOP = [cx, sy2, cx+TW/2, mid, cx, sy2+TH, cx-TW/2, mid];
       selGfx.lineStyle(2.5, 0xffffff, 0.9);
       selGfx.drawPolygon(TOP);
       selGfx.lineStyle(0);
