@@ -154,7 +154,11 @@ const cmdsRef = useRef(cmds);
 useEffect(() => { cmdsRef.current = cmds; }, [cmds]);
 // Resolve AI HQ key: for retreating AI commanders, find their faction's HQ
 const getAiHqKey = (cmd) => {
-  if (aiHqKeys && cmd?.faction && aiHqKeys[cmd.faction]) return aiHqKeys[cmd.faction];
+  if (aiHqKeys && cmd?.faction && aiHqKeys[cmd.faction]) {
+    const val = aiHqKeys[cmd.faction];
+    // aiHqKeys values are arrays of spawn keys — return the first one
+    return Array.isArray(val) ? val[0] : val;
+  }
   return AI_HQ_KEY;
 };
 

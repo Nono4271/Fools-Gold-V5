@@ -137,7 +137,8 @@ const tickAiEcon = useCallback(() => {
     const curBldgs = aiBldgsMapRef.current.get(fk)  || { hq:1, barracks:0, commandcenter:0 };
     const curPool  = aiPoolMapRef.current.get(fk)   ?? barracksCapacity(0);
     const fkCmds   = curCmds.filter(c => c.owner === "ai" && c.faction === fk);
-    const hqKey    = hqKeys[fk];
+    const hqKeyVal = hqKeys[fk];
+    const hqKey    = Array.isArray(hqKeyVal) ? hqKeyVal[0] : hqKeyVal;
 
     // Spend skill points for AI commanders
     const cmdsWithPoints = fkCmds.filter(c => (c.unspentSkillPoints ?? 0) > 0);
