@@ -217,7 +217,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         const { cx, cy } = isoXY(c, r);
         const sy  = cy - 4;
         const mid = sy + TH / 2;
-        const TOP = [cx, sy, cx+TW/2, mid, cx, sy+TH, cx-TW/2, mid];
+        const TOP = [cx, sy, cx+TW/2, mid, cx, sy+TH+0.5, cx-TW/2, mid];
         const ct  = crossingType;
         const key = `${c},${r}`;
         const isSel   = selKey === key;
@@ -455,7 +455,10 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const sy  = cy - elev;
       const mid = sy + TH / 2;
 
-      const TOP      = [cx, sy, cx+TW/2, mid, cx, sy+TH, cx-TW/2, mid];
+      // +0.5px on the bottom vertex closes the sub-pixel gap between adjacent
+      // tile rows that causes horizontal white lines on some PC WebGL drivers.
+      const OVERLAP = 0.5;
+      const TOP      = [cx, sy, cx+TW/2, mid, cx, sy+TH+OVERLAP, cx-TW/2, mid];
 
       const drawAsKeep = isKeep || isKeepPart;
       const drawAsHQ   = isHQ   || isHQPart;
@@ -2137,7 +2140,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
       const mid = sy2 + TH / 2;
-      const TOP = [cx, sy2, cx+TW/2, mid, cx, sy2+TH, cx-TW/2, mid];
+      const TOP = [cx, sy2, cx+TW/2, mid, cx, sy2+TH+0.5, cx-TW/2, mid];
       selGfx.lineStyle(2.5, 0xffffff, 0.9);
       selGfx.drawPolygon(TOP);
       selGfx.lineStyle(0);
