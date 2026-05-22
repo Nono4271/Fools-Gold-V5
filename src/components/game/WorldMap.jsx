@@ -14,7 +14,7 @@ function keepColor(owner) {
 }
 
 // ── Design space: 700×700 ────────────────────────────────────────────────────
-const DW = 1400, DH = 1000;
+const DW = 1850, DH = 1300;
 
 const POLYS = {
   // Holy Grail
