@@ -1143,7 +1143,7 @@ borderRadius:5, padding:"10px 12px" }}>
 {RKEYS.map(k => {
 const bldgKey = rssToBuilding[k];
 const bldgRate = rssRate(bldgs[bldgKey]||0);
-const tileProd = Object.values(tiles).filter(t=>t.owner==="player"&&t.rss===k).length * 60;
+const tileProd = [...(pKeys||[])].filter(pk => { const t = tiles[pk]; return t?.rss===k; }).length * 60;
 const totalPerHr = 200 + bldgRate + tileProd;
 const cap = storageMax(bldgs.storage||0);
 return (

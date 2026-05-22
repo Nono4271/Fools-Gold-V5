@@ -2,7 +2,7 @@ import { useState, memo, useCallback } from "react";
 import { RARITY, CLASS } from "../../../shared/constants/heroes.js";
 import { CSS } from "../../constants/css.js";
 import { HQP, POWER_DEFS } from "../../../shared/constants/map.js";
-import { isoXY } from "../../../shared/constants/geometry.js";
+import { isoXY, COLS, ROWS } from "../../../shared/constants/geometry.js";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    GameBar — persistent bottom action bar + left commander portraits + right reports
@@ -206,12 +206,17 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
     const hqKey = playerHqKey;
     const [hc, hr] = (hqKey || "0,0").split(",").map(Number);
     const matches = [];
-    for (const [key, tile] of Object.entries(tiles)) {
-      if (!selected.has(tile.powerLevel)) continue;
-      if (tile.isHQ || tile.isGate || tile.isBorder || tile.isKeepPart) continue;
-      if (tile.isKeep && tile.powerLevel < 10) continue;
-      const dc = tile.c - hc, dr = tile.r - hr;
-      matches.push({ key, c: tile.c, r: tile.r, pl: tile.powerLevel, dist: Math.sqrt(dc*dc + dr*dr) });
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const key = `${c},${r}`;
+        const tile = tiles[key];
+        if (!tile) continue;
+        if (!selected.has(tile.powerLevel)) continue;
+        if (tile.isHQ || tile.isGate || tile.isBorder || tile.isKeepPart) continue;
+        if (tile.isKeep && tile.powerLevel < 10) continue;
+        const dc = c - hc, dr = r - hr;
+        matches.push({ key, c, r, pl: tile.powerLevel, dist: Math.sqrt(dc*dc + dr*dr) });
+      }
     }
     matches.sort((a, b) => a.dist - b.dist);
     setResults(matches.slice(0, 20));
