@@ -655,21 +655,20 @@ export default function RiseToWar() {
 
         setLoadLabel("Almost there...");
 
-        // Place player HQ — use first key of player's faction spawn array
-        const playerSpawnArr = spawnKeys[facKey] || [];
-        const playerSpawn = playerSpawnArr[0] || null;
+        // Player HQ — worker already stamped this tile as F_HQ in flagArr and set
+        // terrain/garrison/siege in the typed arrays. We just need to override the
+        // owner from the faction code to "player" for the first spawn tile.
+        // The 8 surrounding part tiles also need owner="player".
+        const playerSpawn = spawnKeys[facKey]?.[0] || null;
         if (playerSpawn && rawMap[playerSpawn]) {
-          rawMap[playerSpawn] = {
-            ...rawMap[playerSpawn],
-            owner: "player", isHQ: true, garrison: 0, faction: facKey,
-            terrain: "grass", rss: null, defCmd: null,
-            siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
-            defeatedWaves: [], resetAt: null,
-          };
+          // Override ownership only — all other data already correct from worker
+          rawMap[playerSpawn] = Object.assign(Object.create(Object.getPrototypeOf(rawMap[playerSpawn])),
+            rawMap[playerSpawn], { owner: "player", faction: facKey, defCmd: null, defeatedWaves: [], resetAt: null });
           const [hc, hr] = playerSpawn.split(",").map(Number);
           [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
             const fk = `${hc+dc},${hr+dr}`;
-            if (rawMap[fk]) rawMap[fk] = { ...rawMap[fk], isHQPart: true, hqPrimaryKey: playerSpawn, terrain: "grass", rss: null, owner: "player" };
+            if (rawMap[fk]) rawMap[fk] = Object.assign(Object.create(Object.getPrototypeOf(rawMap[fk])),
+              rawMap[fk], { owner: "player" });
           });
           setPlayerHqKey(playerSpawn);
           const { cx, cy } = isoXY(hc, hr);
@@ -684,34 +683,12 @@ export default function RiseToWar() {
         // Place AI HQs — each of the 50 AI players gets their own 3x3 HQ
         const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
         const aiFactions  = allFactions.filter(f => f !== facKey);
-        // newAiHqKeys: { [fk]: string[] } — array of all HQ primary keys per faction
+        // newAiHqKeys: { [fk]: string[] } — all HQ primary keys per faction.
+        // HQ footprints are already fully stamped into the typed arrays by the worker
+        // (flags, ownership, terrain, garrison, siege) — no rawMap mutation needed here.
         const newAiHqKeys = {};
-
-        const placeHQFootprint = (spawn, owner, faction) => {
-          if (!spawn || !rawMap[spawn]) return false;
-          rawMap[spawn] = {
-            ...rawMap[spawn],
-            owner, isHQ: true, garrison: 0, faction,
-            terrain: "grass", rss: null, defCmd: null,
-            siege: hqSiegeValue(0), siegeMax: hqSiegeValue(0),
-            defeatedWaves: [], resetAt: null,
-          };
-          const [ahc, ahr] = spawn.split(",").map(Number);
-          [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
-            const fk = `${ahc+dc},${ahr+dr}`;
-            if (rawMap[fk]) rawMap[fk] = { ...rawMap[fk], isHQPart: true, hqPrimaryKey: spawn, terrain: "grass", rss: null, owner };
-          });
-          return true;
-        };
-
         aiFactions.forEach(aiFk => {
-          const spawns = spawnKeys[aiFk] || [];
-          newAiHqKeys[aiFk] = [];
-          spawns.forEach(spawn => {
-            if (placeHQFootprint(spawn, "ai", aiFk)) {
-              newAiHqKeys[aiFk].push(spawn);
-            }
-          });
+          newAiHqKeys[aiFk] = spawnKeys[aiFk] || [];
         });
 
         aiHqKeysRef.current = newAiHqKeys;
@@ -746,32 +723,37 @@ export default function RiseToWar() {
         };
         const initialAiCmds = [];
         aiFactions.forEach(aiFk => {
-          const hqArr   = newAiHqKeys[aiFk] || [];
+          const hqArr    = newAiHqKeys[aiFk] || [];
+          if (!hqArr.length) return;
           const branches = FACTION_TROOPS[aiFk]?.branches || [];
-          hqArr.forEach((hqKey, i) => {
-            const branch  = branches[i % branches.length];
-            const tBranch = { faction: aiFk, branch: branch?.key || "swashbucklers", tier: 0 };
-            initialAiCmds.push({
-              uid:    `ai_${aiFk}_${i}_${Date.now()}`,
-              id:     `ai_${aiFk}_${i}`,
-              owner:  "ai",
-              faction: aiFk,
-              n:      AI_CMD_NAMES[i % AI_CMD_NAMES.length],
-              icon:   ICONS_BY_FACTION[aiFk] || "⚔",
-              tk:     hqKey,
-              hqKey:  hqKey,
-              troops: 200,
-              troopBranch: tBranch,
-              troopSlots: [],
-              march:  null,
-              lvl: 5, xp: 0,
-              atk: 80 + Math.floor(Math.random() * 40),
-              foc: 20, spd: 60 + Math.floor(Math.random() * 30),
-              cls: ["attacker","leader","support","balanced"][i % 4],
-              rarity: "soldier",
-              skillPoints: {}, unspentSkillPoints: 0,
-              gear: { helmet:null, armor:null, bracers:null, accessory:null },
-            });
+          // One starting commander per faction placed at their first HQ.
+          // Additional commanders are earned via gameplay, not pre-spawned.
+          // Previously this created one commander per HQ spawn (up to 50 × 5 factions
+          // = 250 commanders) which saturated the main thread on map load and
+          // starved the props idle callback for 10-15 seconds.
+          const hqKey  = hqArr[0];
+          const branch = branches[0];
+          const tBranch = { faction: aiFk, branch: branch?.key || "swashbucklers", tier: 0 };
+          initialAiCmds.push({
+            uid:    `ai_${aiFk}_0_${Date.now()}`,
+            id:     `ai_${aiFk}_0`,
+            owner:  "ai",
+            faction: aiFk,
+            n:      AI_CMD_NAMES[aiFactions.indexOf(aiFk) % AI_CMD_NAMES.length],
+            icon:   ICONS_BY_FACTION[aiFk] || "⚔",
+            tk:     hqKey,
+            hqKey:  hqKey,
+            troops: 200,
+            troopBranch: tBranch,
+            troopSlots: [],
+            march:  null,
+            lvl: 5, xp: 0,
+            atk: 80 + Math.floor(Math.random() * 40),
+            foc: 20, spd: 60 + Math.floor(Math.random() * 30),
+            cls: ["attacker","leader","support","balanced"][aiFactions.indexOf(aiFk) % 4],
+            rarity: "soldier",
+            skillPoints: {}, unspentSkillPoints: 0,
+            gear: { helmet:null, armor:null, bracers:null, accessory:null },
           });
         });
         const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
