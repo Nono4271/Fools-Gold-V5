@@ -1,5 +1,5 @@
-export const COLS = 1400;
-export const ROWS = 1000;
+export const COLS = 1850;
+export const ROWS = 1300;
 export const TW = 80;
 export const TH = 53;
 export const SW = 0;

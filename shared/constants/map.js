@@ -16,15 +16,17 @@ orcs:         { base:"#0e1e08", bdr:"#304a10", dot:"#6aa830", hq:"#081004" },
 dragons:      { base:"#1e0808", bdr:"#701010", dot:"#cc3030", hq:"#140404" },
 holyknights:  { base:"#1a1408", bdr:"#6a5010", dot:"#d4af37", hq:"#100c04" },
 nightcreatures:{ base:"#0d0010", bdr:"#3a0848", dot:"#a030c0", hq:"#080008" },
+coldborns:    { base:"#081420", bdr:"#206088", dot:"#60b8d4", hq:"#040c14" },
+ashendead:    { base:"#1a1a22", bdr:"#4a4a6a", dot:"#6a6a8a", hq:"#0e0e14" },
 };
 
 // HQP fallback — actual spawn is random inside faction start region
 export const HQP = { player:{ c:363, r:200 }, ai:{ c:1037, r:200 } };
 export const AI_HQ_KEY = `${HQP.ai.c},${HQP.ai.r}`;
 
-// Win tile — Holy Grail keep (cx:788, cy:407 from regions.js)
-export const WIN_C = 788;
-export const WIN_R = 407;
+// Win tile — Holy Grail keep (cx:916.5, cy:640.3 from regions.js)
+export const WIN_C = 917;
+export const WIN_R = 640;
 export const WIN_KEY = `${WIN_C},${WIN_R}`;
 
 export const POWER_DEFS = {
@@ -55,18 +57,6 @@ export const GATE_GARRISON_RESET_MS = 3600000;  // 1 hr  — crossings/tunnels/t
 
 export function hqSiegeValue(wallLvl) {
 return SIEGE_HQ_BASE + (wallLvl || 0) * 10000;
-}
-
-export function tilePowerLevel(c, r) {
-const cx = 788, cy = 407;
-const dist = Math.max(Math.abs(c - cx), Math.abs(r - cy));
-if (dist <= 25)  return 7;
-if (dist <= 45)  return 6;
-if (dist <= 60)  return 5;
-if (dist <= 80)  return 4;
-if (dist <= 180) return 3;
-if (dist <= 320) return 2;
-return 1;
 }
 
 // calcSiegePower — multi-slot or legacy single-branch.
