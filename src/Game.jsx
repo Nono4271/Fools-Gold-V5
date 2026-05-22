@@ -519,7 +519,7 @@ export default function RiseToWar() {
       { type: "module" }
     );
 
-    worker.onmessage = (e) => {
+    worker.onmessage = async (e) => {
       const { type, pct, label, buffers, meta, spawnKeys, factionTileKeys } = e.data;
 
       if (type === "progress") {
@@ -530,7 +530,7 @@ export default function RiseToWar() {
 
       if (type === "done") {
         worker.terminate();
-        setLoadPct(100);
+        setLoadPct(10);
         setLoadLabel("Building world...");
 
         // ── Reconstruct tile map from zero-copy typed arrays ──────────────
@@ -576,82 +576,97 @@ export default function RiseToWar() {
         // An uncaught error here leaves the loading screen frozen forever
         // because worker.onerror does NOT fire for main-thread exceptions
         // thrown inside onmessage. Now we catch and surface it to the user.
-        let rawMap;
-        try {
+        // ── Chunked async reconstruction ─────────────────────────────────────
+        // 1.4M Object.create calls is ~5-10s synchronous work on the main thread.
+        // Breaking into 10k-tile chunks and yielding via setTimeout(0) lets the
+        // teleport timer fire at 100ms (so the map appears immediately) and keeps
+        // the loading bar responsive. Each chunk takes ~30-60ms.
+        const CHUNK = 10_000;
+        const rawMap = {};
 
-        rawMap = {};
-        for (let r=0; r<R; r++) {
-          for (let c=0; c<C; c++) {
-            const idx   = r*C+c;
-            const flags = flagArr[idx];
-            const k     = `${c},${r}`;
-            const reg   = regionByIdx[regionArr[idx]] || null;
+        const reconstructChunk = (startIdx) => new Promise(resolve => {
+          setTimeout(() => {
+            const endIdx = Math.min(startIdx + CHUNK, SIZE);
+            for (let idx = startIdx; idx < endIdx; idx++) {
+              const r = Math.floor(idx / C);
+              const c = idx % C;
+              const flags = flagArr[idx];
+              const k     = `${c},${r}`;
+              const reg   = regionByIdx[regionArr[idx]] || null;
 
-            const isKeep    = !!(flags & F_KEEP);
-            const isKeepPart= !!(flags & F_KEEPPART);
-            const isHQ      = !!(flags & F_HQ);
-            const isHQPart  = !!(flags & F_HQPART);
-            const isWin     = !!(flags & F_WIN);
-            const isGate    = !!(flags & F_GATE);
-            const isBorder  = !!(flags & F_BORDER);
-            const isPGGate  = !!(flags & F_PGGATE);
+              const isKeep    = !!(flags & F_KEEP);
+              const isKeepPart= !!(flags & F_KEEPPART);
+              const isHQ      = !!(flags & F_HQ);
+              const isHQPart  = !!(flags & F_HQPART);
+              const isWin     = !!(flags & F_WIN);
+              const isGate    = !!(flags & F_GATE);
+              const isBorder  = !!(flags & F_BORDER);
+              const isPGGate  = !!(flags & F_PGGATE);
 
-            const owner = OWNER_DEC[ownerArr[idx]] || null;
+              const owner = OWNER_DEC[ownerArr[idx]] || null;
 
-            let keepPrimaryKey = null;
-            if (isKeepPart) {
-              const pi = keepPrimArr[idx];
-              if (!keepPrimKeyCache[pi]) {
-                const pc = pi % C, pr = Math.floor(pi / C);
-                keepPrimKeyCache[pi] = `${pc},${pr}`;
+              let keepPrimaryKey = null;
+              if (isKeepPart) {
+                const pi = keepPrimArr[idx];
+                if (!keepPrimKeyCache[pi]) {
+                  const pc = pi % C, pr = Math.floor(pi / C);
+                  keepPrimKeyCache[pi] = `${pc},${pr}`;
+                }
+                keepPrimaryKey = keepPrimKeyCache[pi];
               }
-              keepPrimaryKey = keepPrimKeyCache[pi];
+
+              const km = (isKeep && keepMeta[k]) ? keepMeta[k] : null;
+
+              const tile = Object.create(TileProto);
+              tile.c = c; tile.r = r; tile.k = k;
+              tile.terrain    = TERRAIN_DEC[terrainArr[idx]] || "grass";
+              tile.rss        = RSS_DEC[rssArr[idx]] || null;
+              tile.troopBranch = null;
+              tile.powerLevel = powerArr[idx];
+              tile.regionKey  = reg?.key   || null;
+              tile.regionName = reg?.name  || null;
+              tile.keepName   = km?.keepName || (isKeepPart && reg ? reg.keepName : null);
+              tile.owner      = owner;
+              tile.garrison   = garrisonArr[idx] / 100;
+              tile.garrisonTroops = garrisonArr[idx] / 100;
+              tile.hasAiCommander = false;
+              tile.siege      = siegeArr[idx];
+              tile.siegeMax   = siegeMaxArr[idx];
+              tile.garrisonWaves  = km?.garrisonWaves ?? 1;
+              tile.defeatedWaves  = [];
+              tile.resetAt    = null;
+              tile.isKeep     = isKeep;
+              tile.isKeepPart = isKeepPart;
+              tile.isHQ       = isHQ;
+              tile.isHQPart   = isHQPart;
+              tile.isWin      = isWin;
+              tile.isGate     = isGate;
+              tile.isBorder   = isBorder;
+              tile.isPeninsulaGate = isPGGate;
+              tile.homeFaction     = km?.homeFaction || null;
+              tile.crossingType    = km?.type || null;
+              tile.keepPrimaryKey  = keepPrimaryKey;
+              tile.defCmd          = km?.defCmd || null;
+              rawMap[k] = tile;
             }
+            setLoadPct(10 + Math.round((endIdx / SIZE) * 80));
+            resolve(endIdx);
+          }, 0);
+        });
 
-            const km = (isKeep && keepMeta[k]) ? keepMeta[k] : null;
-
-            // Object.create(TileProto) gives every tile the garrisonDefeated
-            // getter via prototype chain — zero per-instance getter allocation.
-            const tile = Object.create(TileProto);
-            tile.c = c; tile.r = r; tile.k = k;
-            tile.terrain    = TERRAIN_DEC[terrainArr[idx]] || "grass";
-            tile.rss        = RSS_DEC[rssArr[idx]] || null;
-            tile.troopBranch = null;
-            tile.powerLevel = powerArr[idx];
-            tile.regionKey  = reg?.key   || null;
-            tile.regionName = reg?.name  || null;
-            tile.keepName   = km?.keepName || (isKeepPart && reg ? reg.keepName : null);
-            tile.owner      = owner;
-            tile.garrison   = garrisonArr[idx] / 100;
-            tile.garrisonTroops = garrisonArr[idx] / 100;
-            tile.hasAiCommander = false;
-            tile.siege      = siegeArr[idx];
-            tile.siegeMax   = siegeMaxArr[idx];
-            tile.garrisonWaves  = km?.garrisonWaves ?? 1;
-            tile.defeatedWaves  = [];
-            tile.resetAt    = null;
-            tile.isKeep     = isKeep;
-            tile.isKeepPart = isKeepPart;
-            tile.isHQ       = isHQ;
-            tile.isHQPart   = isHQPart;
-            tile.isWin      = isWin;
-            tile.isGate     = isGate;
-            tile.isBorder   = isBorder;
-            tile.isPeninsulaGate = isPGGate;
-            tile.homeFaction     = km?.homeFaction || null;
-            tile.crossingType    = km?.type || null;
-            tile.keepPrimaryKey  = keepPrimaryKey;
-            tile.defCmd          = km?.defCmd || null;
-            rawMap[k] = tile;
+        try {
+          let idx = 0;
+          while (idx < SIZE) {
+            idx = await reconstructChunk(idx);
           }
-        }
-
         } catch (reconstructErr) {
           console.error("Map reconstruction failed:", reconstructErr);
           setLoadPct(0);
           setLoadLabel("Error building map — please refresh");
           return;
         }
+
+        setLoadPct(95);
 
         setLoadLabel("Almost there...");
 
