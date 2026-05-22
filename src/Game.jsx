@@ -204,6 +204,8 @@ export default function RiseToWar() {
   // floatyRef lets useGacha call floaty without requiring it to be defined yet.
   // floatyRef.current is set after floaty is defined below (~line 860).
   const floatyRef = useRef(null);
+  // playerHqRef must be declared before useGacha since it's passed into it.
+  const playerHqRef = useRef(null);
 
   // ── Gacha / gear / pull — owned by useGacha ───────────────────────────────
   const {
@@ -240,7 +242,6 @@ export default function RiseToWar() {
   }, []);
   const aiBldgsRef = useRef({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 });
   const aiPoolRef  = useRef(barracksCapacity(0));
-  const playerHqRef = useRef(null);
 
   useEffect(() => { aiBldgsRef.current = aiBldgs;        }, [aiBldgs]);
   useEffect(() => { aiPoolRef.current  = aiBarracksPool; }, [aiBarracksPool]);
