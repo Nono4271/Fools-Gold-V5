@@ -98,7 +98,11 @@ export default function RiseToWar() {
     // Object.assign into a same-prototype object keeps garrisonDefeated on the
     // prototype chain — no per-patch Object.defineProperty needed.
     const merged = Object.assign(Object.create(Object.getPrototypeOf(t)), t, patch);
-    tilesMapRef.current = { ...tilesMapRef.current, [key]: merged };
+    // Write the patched tile directly into tilesMapRef (which may be a Proxy).
+    // DO NOT spread the entire map — if tilesMapRef is a Proxy over typed arrays,
+    // { ...tilesMapRef.current } would enumerate all 1.4M tiles via ownKeys.
+    // tileVersion bump is sufficient to notify useMemo of the change.
+    tilesMapRef.current[key] = merged;
     const updated = tilesMapRef.current[key];
     // Keep defeatedTilesRef in sync — track any tile with a pending reset
     if ('defeatedWaves' in patch || 'resetAt' in patch) {
@@ -573,102 +577,113 @@ export default function RiseToWar() {
         // Build keepPrimaryKey lookup: flat index → "cx,cy" string
         const keepPrimKeyCache = {};
 
-        // ── FIX 1b: try/catch around the entire reconstruction loop ──────
-        // An uncaught error here leaves the loading screen frozen forever
-        // because worker.onerror does NOT fire for main-thread exceptions
-        // thrown inside onmessage. Now we catch and surface it to the user.
-        // ── Chunked async reconstruction ─────────────────────────────────────
-        // 1.4M Object.create calls is ~5-10s synchronous work on the main thread.
-        // Breaking into 10k-tile chunks and yielding via setTimeout(0) lets the
-        // teleport timer fire at 100ms (so the map appears immediately) and keeps
-        // the loading bar responsive. Each chunk takes ~30-60ms.
-        const CHUNK = 50_000; // 28 chunks instead of 140 — fewer setTimeout yields
-        const rawMap = {};
+        // ── Proxy-based tile map — zero reconstruction time ───────────────────
+        // Previously: 1.4M Object.create calls = 11-15s on the main thread.
+        // Now: a Proxy intercepts tiles[key] and computes the tile on-demand
+        // from the typed arrays. Zero upfront work. Tiles that get mutated
+        // (via patchTile, HQ placement, etc.) are stored in the backing store
+        // and returned directly, bypassing the Proxy computation.
+        //
+        // keepPrimKeyCache is still used for keepPart → primaryKey lookups.
 
-        const reconstructChunk = (startIdx) => new Promise(resolve => {
-          setTimeout(() => {
-            const endIdx = Math.min(startIdx + CHUNK, SIZE);
-            for (let idx = startIdx; idx < endIdx; idx++) {
-              const r = Math.floor(idx / C);
-              const c = idx % C;
-              const flags = flagArr[idx];
-              const k     = `${c},${r}`;
-              const reg   = regionByIdx[regionArr[idx]] || null;
+        const _tileStore = {}; // backing store for patched/special tiles
 
-              const isKeep    = !!(flags & F_KEEP);
-              const isKeepPart= !!(flags & F_KEEPPART);
-              const isHQ      = !!(flags & F_HQ);
-              const isHQPart  = !!(flags & F_HQPART);
-              const isWin     = !!(flags & F_WIN);
-              const isGate    = !!(flags & F_GATE);
-              const isBorder  = !!(flags & F_BORDER);
-              const isPGGate  = !!(flags & F_PGGATE);
+        const makeTile = (c, r) => {
+          const idx   = r * C + c;
+          const flags = flagArr[idx];
+          const k     = `${c},${r}`;
+          const reg   = regionByIdx[regionArr[idx]] || null;
 
-              const owner = OWNER_DEC[ownerArr[idx]] || null;
+          const isKeep    = !!(flags & F_KEEP);
+          const isKeepPart= !!(flags & F_KEEPPART);
+          const isHQ      = !!(flags & F_HQ);
+          const isHQPart  = !!(flags & F_HQPART);
+          const isWin     = !!(flags & F_WIN);
+          const isGate    = !!(flags & F_GATE);
+          const isBorder  = !!(flags & F_BORDER);
+          const isPGGate  = !!(flags & F_PGGATE);
 
-              let keepPrimaryKey = null;
-              if (isKeepPart) {
-                const pi = keepPrimArr[idx];
-                if (!keepPrimKeyCache[pi]) {
-                  const pc = pi % C, pr = Math.floor(pi / C);
-                  keepPrimKeyCache[pi] = `${pc},${pr}`;
-                }
-                keepPrimaryKey = keepPrimKeyCache[pi];
-              }
-
-              const km = (isKeep && keepMeta[k]) ? keepMeta[k] : null;
-
-              const tile = Object.create(TileProto);
-              tile.c = c; tile.r = r; tile.k = k;
-              tile.terrain    = TERRAIN_DEC[terrainArr[idx]] || "grass";
-              tile.rss        = RSS_DEC[rssArr[idx]] || null;
-              tile.troopBranch = null;
-              tile.powerLevel = powerArr[idx];
-              tile.regionKey  = reg?.key   || null;
-              tile.regionName = reg?.name  || null;
-              tile.keepName   = km?.keepName || (isKeepPart && reg ? reg.keepName : null);
-              tile.owner      = owner;
-              tile.garrison   = garrisonArr[idx] / 100;
-              tile.garrisonTroops = garrisonArr[idx] / 100;
-              tile.hasAiCommander = false;
-              tile.siege      = siegeArr[idx];
-              tile.siegeMax   = siegeMaxArr[idx];
-              tile.garrisonWaves  = km?.garrisonWaves ?? 1;
-              tile.defeatedWaves  = [];
-              tile.resetAt    = null;
-              tile.isKeep     = isKeep;
-              tile.isKeepPart = isKeepPart;
-              tile.isHQ       = isHQ;
-              tile.isHQPart   = isHQPart;
-              tile.isWin      = isWin;
-              tile.isGate     = isGate;
-              tile.isBorder   = isBorder;
-              tile.isPeninsulaGate = isPGGate;
-              tile.homeFaction     = km?.homeFaction || null;
-              tile.crossingType    = km?.type || null;
-              tile.keepPrimaryKey  = keepPrimaryKey;
-              tile.defCmd          = km?.defCmd || null;
-              rawMap[k] = tile;
+          let keepPrimaryKey = null;
+          if (isKeepPart) {
+            const pi = keepPrimArr[idx];
+            if (!keepPrimKeyCache[pi]) {
+              const pc = pi % C, pr = Math.floor(pi / C);
+              keepPrimKeyCache[pi] = `${pc},${pr}`;
             }
-            setLoadPct(10 + Math.round((endIdx / SIZE) * 80));
-            resolve(endIdx);
-          }, 0);
+            keepPrimaryKey = keepPrimKeyCache[pi];
+          }
+
+          const km = (isKeep && keepMeta[k]) ? keepMeta[k] : null;
+          const owner = OWNER_DEC[ownerArr[idx]] || null;
+
+          const tile = Object.create(TileProto);
+          tile.c = c; tile.r = r; tile.k = k;
+          tile.terrain    = TERRAIN_DEC[terrainArr[idx]] || "grass";
+          tile.rss        = RSS_DEC[rssArr[idx]] || null;
+          tile.troopBranch = null;
+          tile.powerLevel = powerArr[idx];
+          tile.regionKey  = reg?.key   || null;
+          tile.regionName = reg?.name  || null;
+          tile.keepName   = km?.keepName || (isKeepPart && reg ? reg.keepName : null);
+          tile.owner      = owner;
+          tile.garrison   = garrisonArr[idx] / 100;
+          tile.garrisonTroops = garrisonArr[idx] / 100;
+          tile.hasAiCommander = false;
+          tile.siege      = siegeArr[idx];
+          tile.siegeMax   = siegeMaxArr[idx];
+          tile.garrisonWaves  = km?.garrisonWaves ?? 1;
+          tile.defeatedWaves  = [];
+          tile.resetAt    = null;
+          tile.isKeep     = isKeep;
+          tile.isKeepPart = isKeepPart;
+          tile.isHQ       = isHQ;
+          tile.isHQPart   = isHQPart;
+          tile.isWin      = isWin;
+          tile.isGate     = isGate;
+          tile.isBorder   = isBorder;
+          tile.isPeninsulaGate = isPGGate;
+          tile.homeFaction     = km?.homeFaction || null;
+          tile.crossingType    = km?.type || null;
+          tile.keepPrimaryKey  = keepPrimaryKey;
+          tile.defCmd          = km?.defCmd || null;
+          return tile;
+        };
+
+        const rawMap = new Proxy(_tileStore, {
+          get(store, key) {
+            // Fast path: special/patched tiles stored directly
+            if (key in store) return store[key];
+            // Symbol, __ready, and non-coord keys go to store directly
+            if (typeof key !== "string" || key === "__ready") return store[key];
+            // Parse "c,r" coordinate keys
+            const comma = key.indexOf(",");
+            if (comma < 1) return undefined;
+            const c = +key.slice(0, comma);
+            const r = +key.slice(comma + 1);
+            if (isNaN(c) || isNaN(r) || c < 0 || r < 0 || c >= C || r >= R) return undefined;
+            return makeTile(c, r);
+          },
+          set(store, key, value) {
+            store[key] = value;
+            return true;
+          },
+          has(store, key) {
+            if (typeof key === "string" && key.indexOf(",") > 0) return true;
+            return key in store;
+          },
+          // ownKeys only returns patched/special tiles — prevents Object.entries/keys
+          // from enumerating all 1.4M tiles. Code that needs full iteration must use
+          // the typed arrays directly or the factionTileKeys index.
+          ownKeys(store) {
+            return Reflect.ownKeys(store);
+          },
+          getOwnPropertyDescriptor(store, key) {
+            if (key in store) return Object.getOwnPropertyDescriptor(store, key);
+            return undefined;
+          },
         });
 
-        try {
-          let idx = 0;
-          while (idx < SIZE) {
-            idx = await reconstructChunk(idx);
-          }
-        } catch (reconstructErr) {
-          console.error("Map reconstruction failed:", reconstructErr);
-          setLoadPct(0);
-          setLoadLabel("Error building map — please refresh");
-          return;
-        }
-
-        setLoadPct(95);
-
+        setLoadPct(90);
         setLoadLabel("Almost there...");
 
         // Player HQ — worker already stamped this tile as F_HQ in flagArr and set
@@ -708,6 +723,20 @@ export default function RiseToWar() {
         });
 
         aiHqKeysRef.current = newAiHqKeys;
+
+        // ── Pre-populate _tileStore with all HQ primary tiles ─────────────────
+        // The Proxy computes tiles on-demand but Object.entries(tiles) in buildHQLayer
+        // only sees _tileStore entries. HQ tiles must be in _tileStore so the
+        // _hqKeyIndex gets populated on first redrawHQs() call.
+        // We only store the primary (isHQ===true) tile, not the 8 part tiles —
+        // buildHQLayer only iterates primary HQ tiles.
+        const allSpawnKeys = [];
+        allFactions.forEach(fk => { if (spawnKeys[fk]) allSpawnKeys.push(...spawnKeys[fk]); });
+        allSpawnKeys.forEach(hqKey => {
+          if (!(hqKey in _tileStore)) {
+            _tileStore[hqKey] = rawMap[hqKey]; // triggers makeTile, stores result
+          }
+        });
 
         // ── Initialize per-faction AI Maps ────────────────────────────────
         const INIT_BLDGS_VAL = { hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 };
