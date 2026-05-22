@@ -2811,7 +2811,14 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   useEffect(() => {
     tilesRef.current = tiles;
     lastBoundsRef.current = null;
-    redrawRef.current?.markPropsDirty(); // Fix #9: tiles changed → props need repaint
+    redrawRef.current?.markPropsDirty();
+    // Sync world position from panRef whenever tiles change — critical on first
+    // load since the 100ms teleport setTimeout fired before tiles were ready.
+    if (worldRef.current) {
+      worldRef.current.x = panRef.current.x;
+      worldRef.current.y = panRef.current.y;
+      worldRef.current.scale.set(zoomRef.current);
+    }
     redrawRef.current?.redraw(true);
     redrawRef.current?.redrawKeeps();
     redrawRef.current?.redrawHQs();

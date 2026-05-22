@@ -816,9 +816,12 @@ export default function RiseToWar() {
           setTiles(rawMap); // tileVersion bumps here, inside the batch
         });
 
+        // Trigger a teleport so MapRenderer's world position syncs with panRef.
+        // The tiles useEffect in MapRenderer also syncs world position now,
+        // but this ensures it happens even if tiles was already set.
         setTimeout(() => {
           mapRendererRef.current?.teleport(panRef.current.x, panRef.current.y);
-        }, 100);
+        }, 0);
       }
     };
 
