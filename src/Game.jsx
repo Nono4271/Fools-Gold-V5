@@ -220,7 +220,7 @@ export default function RiseToWar() {
     pullCost, pull,
   } = useGacha({ playerAlignment, gems, setGems, playerHqRef, setCmds, setColl, floatyRef });
 
-  const [bldgs,  setBldgs]   = useState({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, storage:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 });
+  const [bldgs,  setBldgs]   = useState({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, storage:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0, voidtap:0 });
   const [upgQueue, setUpgQueue] = useState({});
 
   const [aiFaction,      setAiFaction]      = useState(null);
@@ -361,7 +361,7 @@ export default function RiseToWar() {
   const {
     mysticOrbs, setMysticOrbs,
     lastVoidTap, setLastVoidTap,
-    mysticOrbsCap, voidTapReady,
+    mysticOrbsCap, voidTapLvl, voidTapCooldown, voidTapReady,
     doVoidTap,
   } = useVoidTap({ bldgs, quarterLevels });
 
