@@ -582,7 +582,7 @@ export default function RiseToWar() {
         // Breaking into 10k-tile chunks and yielding via setTimeout(0) lets the
         // teleport timer fire at 100ms (so the map appears immediately) and keeps
         // the loading bar responsive. Each chunk takes ~30-60ms.
-        const CHUNK = 10_000;
+        const CHUNK = 50_000; // 28 chunks instead of 140 — fewer setTimeout yields
         const rawMap = {};
 
         const reconstructChunk = (startIdx) => new Promise(resolve => {
@@ -1648,6 +1648,9 @@ export default function RiseToWar() {
         onTileClick={onTileClick}
         onPanChange={onPanChange}
         onZoomChange={handleZoomChange}
+        playerHqKey={playerHqKey}
+        playerFacKey={facKey}
+        playerName={facName}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
