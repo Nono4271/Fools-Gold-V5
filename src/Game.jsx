@@ -553,6 +553,7 @@ export default function RiseToWar() {
           TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
           F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER, F_PGGATE,
         } = meta;
+        const SIZE = C * R;
 
         // ── FIX 1a: Shared prototype for garrisonDefeated getter ─────────
         // Previously each of the 490k tile objects got its own inline getter,
