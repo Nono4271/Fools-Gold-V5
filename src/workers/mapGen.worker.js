@@ -1184,14 +1184,36 @@ self.onmessage = function(e) {
     FACTION_ALL_REGIONS[fk] = REGION_LIST.filter(r => r.factions && r.factions.includes(fk));
   }
 
-  // Stamp a placed HQ's 3x3 footprint into flagArr so subsequent spawns avoid it
-  function stampHQFootprint(key) {
+  // Stamp a placed HQ's 3x3 footprint into ALL typed arrays so the main thread
+  // receives complete HQ tiles — no post-reconstruction rawMap mutations needed.
+  // Previously the worker only wrote flagArr, leaving ownership/terrain/garrison/siege
+  // for the main thread's placeHQFootprint() to patch after 1.4M tile reconstruction.
+  // With 50 HQs × 5 factions × 9 tiles = 2,250 Object.create+spread calls on the
+  // main thread, this blocked the props idle callback for 10-15 seconds.
+  const HQ_SIEGE = Math.round(50 * 100); // hqSiegeValue(0) × 100, stored ×100
+  function stampHQFootprint(key, ownerCode) {
     const [hc, hr] = key.split(",").map(Number);
     for (let dr = 0; dr < 3; dr++) {
       for (let dc = 0; dc < 3; dc++) {
         const idx = (hr+dr)*COLS + (hc+dc);
-        if (idx >= 0 && idx < flagArr.length) {
-          flagArr[idx] = (flagArr[idx] & ~(F_KEEP|F_KEEPPART|F_WIN)) | (dc===0&&dr===0 ? F_HQ : F_HQPART);
+        if (idx < 0 || idx >= SIZE) continue;
+        const isCenter = dc === 0 && dr === 0;
+        // Flags
+        flagArr[idx] = (flagArr[idx] & ~(F_KEEP|F_KEEPPART|F_WIN)) | (isCenter ? F_HQ : F_HQPART);
+        // Ownership
+        ownerArr[idx] = ownerCode;
+        // Terrain — HQ footprint is always grass, no resources
+        terrainArr[idx] = TERRAIN_ENC.grass;
+        rssArr[idx]     = 0;
+        // Garrison/siege — center tile gets full siege value, parts get 0
+        if (isCenter) {
+          garrisonArr[idx] = 0; // HQs start with no garrison troops
+          siegeArr[idx]    = HQ_SIEGE;
+          siegeMaxArr[idx] = HQ_SIEGE;
+        } else {
+          garrisonArr[idx] = 0;
+          siegeArr[idx]    = 0;
+          siegeMaxArr[idx] = 0;
         }
       }
     }
@@ -1202,6 +1224,7 @@ self.onmessage = function(e) {
   for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
     const regions = FACTION_ALL_REGIONS[fk];
     if (!regions || !regions.length) continue;
+    const ownerCode = OWNER_ENC[fk];
     const keys = [];
     for (let i = 0; i < 50; i++) {
       const reg = regions[i % regions.length];
@@ -1209,7 +1232,7 @@ self.onmessage = function(e) {
       if (key) {
         keys.push(key);
         usedKeys.add(key);
-        stampHQFootprint(key); // mark in flagArr so next spawn avoids this footprint
+        stampHQFootprint(key, ownerCode); // writes flags + owner + terrain + garrison + siege
       }
     }
     spawnKeys[fk] = keys; // array of up to 50 keys
@@ -1222,8 +1245,8 @@ self.onmessage = function(e) {
   // two separate O(1.4M) passes over rawMap after reconstruction:
   //   - one to build aiTileKeysMapRef per faction
   //   - one to build pKeysRef + powerPerHrRef for the player
-  // ownerArr already holds OWNER_ENC codes (pirates=3, orcs=4, ...) set during
-  // keep placement. We scan once and emit the results in the done message.
+  // ownerArr now includes HQ footprint tiles (stamped above in stampHQFootprint),
+  // so factionTileKeys will correctly include all faction-owned tiles including HQs.
   const POWER_DEFS_RING = {
     1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0,
     10:10, 11:15, 12:20, 13:30,
