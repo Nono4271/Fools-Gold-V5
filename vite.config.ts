@@ -21,10 +21,14 @@ export default defineConfig({
    rollupOptions: {
      output: {
        manualChunks(id) {
-         // Force all shared constants into their own chunk so they
-         // initialize before the main bundle — prevents TDZ errors
-         // caused by skills.js / heroes.js being accessed before
-         // their module bodies run (Rollup chunk ordering issue).
+         // PixiJS never changes between deploys — isolate for long-term cache hits.
+         if (id.includes("pixi.js") || id.includes("node_modules/pixi")) {
+           return "pixi";
+         }
+         // Force all shared constants and utils into their own chunk so they
+         // initialize before the main bundle — prevents TDZ errors caused by
+         // skills.js / heroes.js being accessed before their module bodies run
+         // (Rollup chunk ordering issue with battle.worker.js imports).
          if (id.includes("shared/constants") || id.includes("shared/utils")) {
            return "shared";
          }
