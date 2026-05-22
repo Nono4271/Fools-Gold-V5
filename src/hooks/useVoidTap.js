@@ -30,6 +30,8 @@ export function useVoidTap({ bldgs, quarterLevels }) {
     mysticOrbs,    setMysticOrbs,
     lastVoidTap,   setLastVoidTap,
     mysticOrbsCap,
+    voidTapLvl,
+    voidTapCooldown,
     voidTapReady,
     doVoidTap,
   };
