@@ -24,7 +24,7 @@ export const REGIONS = {
   oathkeep: { key:'oathkeep', name:'Oathkeep', layer:'start', keepName:'Oathkeep', cx:1725.7, cy:901.0, factions:['holyknights'] },
 
   // Pirates Capital
-  deadmansHarbor: { key:'deadmansHarbor', name:'Deadman's Harbor', layer:'start', keepName:'Deadman's Harbor', cx:511.1, cy:1222.2, factions:['pirates'] },
+  deadmansHarbor: { key:'deadmansHarbor', name:"Deadman's Harbor", layer:'start', keepName:"Deadman's Harbor", cx:511.1, cy:1222.2, factions:['pirates'] },
 
   // Ashendead Capital
   bonehallow: { key:'bonehallow', name:'Bonehallow', layer:'start', keepName:'Bonehallow', cx:1370.3, cy:1224.2, factions:['ashendead'] },
