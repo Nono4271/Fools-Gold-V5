@@ -146,10 +146,22 @@ export const SKILL_TREES = {
   tactics: { n: "Tactics", icon: "✦",  unlocksAt: 5, desc: "Special effects, debuffs, healing, siege bonuses"   },
 };
 
-// NOTE: The bulk import of skills.js was removed here to break a circular dependency.
-// heroes.js → skills.js → (faction_skills) AND battle.js → heroes.js + skills.js
-// created a module init cycle causing TDZ on skills const exports at runtime.
-// Import getTreeDisplayNames directly from skills.js in any file that needs it.
+// Import branch data from a zero-dependency file — this breaks the
+// heroes.js → skills.js link that caused TDZ errors in the Rollup shared chunk.
+import { BRANCH_SKILL_MAP } from "./branchSkillMap.js";
+
+// Inline getDefCmdBranches so heroes.js has no runtime dependency on skills.js.
+// skills.js is only safe to import from files that don't form a cycle with battle.js.
+function getDefCmdBranches(cmd) {
+  const cls = cmd.cls ?? "attacker";
+  // Faction-specific branch maps are defined in skills.js but heroes.js only needs
+  // the generic BRANCH_SKILL_MAP fallback for garrison defender skill assignment.
+  // Faction-specific overrides only apply to playable commanders, not NPCs.
+  return [
+    BRANCH_SKILL_MAP[cls]?.[0] ?? BRANCH_SKILL_MAP.attacker[0],
+    BRANCH_SKILL_MAP[cls]?.[1] ?? BRANCH_SKILL_MAP.attacker[1],
+  ].filter(Boolean);
+}
 
 // ── V4 Subspecies ─────────────────────────────────────────────────────────────
 // Cosmetic faction-flavored rank tag. Filterable but has no gameplay effect.
