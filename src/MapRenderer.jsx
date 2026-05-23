@@ -495,33 +495,28 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         } else if (!isSel && drawAsHQ) {
           // Draw borders only on outer edges of 3×3 HQ footprint
           const hqPrimKey = isHQ ? key : tile.keepPrimaryKey;
-          console.log('Drawing HQ border for', key, 'isHQ:', isHQ, 'hqPrimKey:', hqPrimKey);
           if (hqPrimKey) {
             const [hpc, hpr] = hqPrimKey.split(",").map(Number);
-            const dc = c - hpc; // offset from center
-            const dr = r - hpr; // offset from center
-            
-            console.log('  dc:', dc, 'dr:', dr, 'inRange:', Math.abs(dc) <= 1 && Math.abs(dr) <= 1);
+            const dc = c - hpc;
+            const dr = r - hpr;
             
             // Only process if tile is within the 3×3 footprint (-1 to +1 range)
             if (Math.abs(dc) <= 1 && Math.abs(dr) <= 1) {
               const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
               
-              // Hardcode which edges are outer for each position
               let outerNE = false, outerSE = false, outerSW = false, outerNW = false;
               
-              if (dc === -1 && dr === -1) { outerNW = true; outerNE = true; } // top-left corner
-              else if (dc === 0 && dr === -1) { outerNE = true; } // top edge
-              else if (dc === 1 && dr === -1) { outerNE = true; outerSE = true; } // top-right corner
-              else if (dc === 1 && dr === 0) { outerSE = true; } // right edge
-              else if (dc === 1 && dr === 1) { outerSE = true; outerSW = true; } // bottom-right corner
-              else if (dc === 0 && dr === 1) { outerSW = true; } // bottom edge
-              else if (dc === -1 && dr === 1) { outerSW = true; outerNW = true; } // bottom-left corner
-              else if (dc === -1 && dr === 0) { outerNW = true; } // left edge
-              
-              console.log('  edges:', {outerNE, outerSE, outerSW, outerNW});
+              if (dc === -1 && dr === -1) { outerNW = true; outerNE = true; }
+              else if (dc === 0 && dr === -1) { outerNE = true; }
+              else if (dc === 1 && dr === -1) { outerNE = true; outerSE = true; }
+              else if (dc === 1 && dr === 0) { outerSE = true; }
+              else if (dc === 1 && dr === 1) { outerSE = true; outerSW = true; }
+              else if (dc === 0 && dr === 1) { outerSW = true; }
+              else if (dc === -1 && dr === 1) { outerSW = true; outerNW = true; }
+              else if (dc === -1 && dr === 0) { outerNW = true; }
               
               if (outerNE || outerSE || outerSW || outerNW) {
+                console.log('DRAWING border for', key, 'dc:', dc, 'dr:', dr);
                 // Black backing
                 gfx.lineStyle(9, 0x000000, 0.8);
                 if (outerNE) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
