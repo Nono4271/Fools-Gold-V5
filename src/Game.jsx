@@ -754,6 +754,18 @@ export default function RiseToWar() {
           if (!(hqKey in _tileStore)) {
             _tileStore[hqKey] = rawMap[hqKey]; // triggers makeTile, stores result
           }
+          // Add faction to AI HQ tiles for border coloring
+          const tile = _tileStore[hqKey];
+          if (tile && tile.owner === "ai" && (tile.isHQ || tile.isHQPart)) {
+            const [c, r] = hqKey.split(",").map(Number);
+            const idx = r * C + c;
+            const ownerIdx = ownerArr[idx];
+            if (ownerIdx > 0 && ownerIdx <= 8) {
+              const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
+              tile.faction = factionKeys[ownerIdx - 1];
+              console.log('Patched AI HQ tile', hqKey, 'with faction:', tile.faction);
+            }
+          }
         });
 
         // ── Initialize per-faction AI Maps ────────────────────────────────
