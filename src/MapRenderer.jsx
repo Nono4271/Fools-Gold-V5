@@ -1669,11 +1669,11 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   });
   group.addChild(hit);
   
-  // Draw borders around all 9 tiles in the 3×3 HQ footprint
+  // Draw borders only on outer edges of the 3×3 HQ footprint
   const borderGfx = new PIXI.Graphics();
   const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
   
-  // For each tile in the 3×3, draw a diamond border
+  // For each tile in the 3×3, draw only edges that face outward
   for (let dc = 0; dc <= 2; dc++) {
     for (let dr = 0; dr <= 2; dr++) {
       const tc = pc + dc;
@@ -1682,22 +1682,42 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       const tcx = tilePos.cx;
       const tcy = tilePos.cy - elev;
       
-      const tileDiamond = [
-        tcx, tcy,                    // top
-        tcx + TW/2, tcy + TH/2,      // right
-        tcx, tcy + TH,               // bottom
-        tcx - TW/2, tcy + TH/2,      // left
+      const pts = [
+        [tcx, tcy],                    // top
+        [tcx + TW/2, tcy + TH/2],      // right
+        [tcx, tcy + TH],               // bottom
+        [tcx - TW/2, tcy + TH/2],      // left
       ];
       
-      // Black backing
-      borderGfx.lineStyle(8, 0x000000, 0.8);
-      borderGfx.drawPolygon(tileDiamond);
-      borderGfx.lineStyle(0);
+      // Check if there's a neighbor in each direction (within the 3×3)
+      const hasNE = (dc + 1 <= 2) && (dr - 1 >= 0); // tile to NE exists?
+      const hasSE = (dc + 1 <= 2) && (dr + 1 <= 2);
+      const hasSW = (dc - 1 >= 0) && (dr + 1 <= 2);
+      const hasNW = (dc - 1 >= 0) && (dr - 1 >= 0);
       
-      // Colored border
-      borderGfx.lineStyle(5, ot, 1.0);
-      borderGfx.drawPolygon(tileDiamond);
-      borderGfx.lineStyle(0);
+      // Draw edge only if no neighbor
+      const drawNE = !hasNE;
+      const drawSE = !hasSE;
+      const drawSW = !hasSW;
+      const drawNW = !hasNW;
+      
+      if (drawNE || drawSE || drawSW || drawNW) {
+        // Black backing
+        borderGfx.lineStyle(8, 0x000000, 0.8);
+        if (drawNE) { borderGfx.moveTo(pts[0][0], pts[0][1]); borderGfx.lineTo(pts[1][0], pts[1][1]); }
+        if (drawSE) { borderGfx.moveTo(pts[1][0], pts[1][1]); borderGfx.lineTo(pts[2][0], pts[2][1]); }
+        if (drawSW) { borderGfx.moveTo(pts[2][0], pts[2][1]); borderGfx.lineTo(pts[3][0], pts[3][1]); }
+        if (drawNW) { borderGfx.moveTo(pts[3][0], pts[3][1]); borderGfx.lineTo(pts[0][0], pts[0][1]); }
+        borderGfx.lineStyle(0);
+        
+        // Colored border
+        borderGfx.lineStyle(5, ot, 1.0);
+        if (drawNE) { borderGfx.moveTo(pts[0][0], pts[0][1]); borderGfx.lineTo(pts[1][0], pts[1][1]); }
+        if (drawSE) { borderGfx.moveTo(pts[1][0], pts[1][1]); borderGfx.lineTo(pts[2][0], pts[2][1]); }
+        if (drawSW) { borderGfx.moveTo(pts[2][0], pts[2][1]); borderGfx.lineTo(pts[3][0], pts[3][1]); }
+        if (drawNW) { borderGfx.moveTo(pts[3][0], pts[3][1]); borderGfx.lineTo(pts[0][0], pts[0][1]); }
+        borderGfx.lineStyle(0);
+      }
     }
   }
   
