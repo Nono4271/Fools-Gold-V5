@@ -1669,29 +1669,38 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   });
   group.addChild(hit);
   
-  // Draw border around HQ footprint (after sprite so it appears on top)
-  // The 3×3 outer diamond is formed by the vertices of edge tiles
-  // North vertex: top of north tile (pc+1, pr)
-  // East vertex: right of east tile (pc+2, pr+1)  
-  // South vertex: bottom of south tile (pc+1, pr+2)
-  // West vertex: left of west tile (pc, pr+1)
-  const actualDiamond = [
-    nPt.cx, nPt.cy - elev,                    // North: top vertex of north tile
-    ePt.cx + TW/2, ePt.cy - elev + TH/2,      // East: right vertex of east tile
-    sPt.cx, sPt.cy - elev + TH,               // South: bottom vertex of south tile
-    wPt.cx - TW/2, wPt.cy - elev + TH/2,      // West: left vertex of west tile
-  ];
-  
+  // Draw borders around all 9 tiles in the 3×3 HQ footprint
   const borderGfx = new PIXI.Graphics();
   const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-  // Black backing for contrast
-  borderGfx.lineStyle(8, 0x000000, 0.8);
-  borderGfx.drawPolygon(actualDiamond);
-  borderGfx.lineStyle(0);
-  // Colored border on top
-  borderGfx.lineStyle(5, ot, 1.0);
-  borderGfx.drawPolygon(actualDiamond);
-  borderGfx.lineStyle(0);
+  
+  // For each tile in the 3×3, draw a diamond border
+  for (let dc = 0; dc <= 2; dc++) {
+    for (let dr = 0; dr <= 2; dr++) {
+      const tc = pc + dc;
+      const tr = pr + dr;
+      const tilePos = isoXY(tc, tr);
+      const tcx = tilePos.cx;
+      const tcy = tilePos.cy - elev;
+      
+      const tileDiamond = [
+        tcx, tcy,                    // top
+        tcx + TW/2, tcy + TH/2,      // right
+        tcx, tcy + TH,               // bottom
+        tcx - TW/2, tcy + TH/2,      // left
+      ];
+      
+      // Black backing
+      borderGfx.lineStyle(8, 0x000000, 0.8);
+      borderGfx.drawPolygon(tileDiamond);
+      borderGfx.lineStyle(0);
+      
+      // Colored border
+      borderGfx.lineStyle(5, ot, 1.0);
+      borderGfx.drawPolygon(tileDiamond);
+      borderGfx.lineStyle(0);
+    }
+  }
+  
   group.addChild(borderGfx);
   
   return group;
