@@ -1705,6 +1705,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const borderGfx = new PIXI.Graphics();
   const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
   
+  let edgeCount = 0;
   // For each tile in the 3×3, draw only edges that face outward
   for (let dc = 0; dc <= 2; dc++) {
     for (let dr = 0; dr <= 2; dr++) {
@@ -1732,6 +1733,11 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       const drawSE = !hasSE;
       const drawSW = !hasSW;
       const drawNW = !hasNW;
+      
+      if (drawNE || drawSE || drawSW || drawNW) {
+        edgeCount++;
+        console.log(`Tile (${dc},${dr}): NE:${drawNE} SE:${drawSE} SW:${drawSW} NW:${drawNW}`);
+      }
       
       if (drawNE || drawSE || drawSW || drawNW) {
         // Black backing for contrast
