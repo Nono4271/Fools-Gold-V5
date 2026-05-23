@@ -466,6 +466,10 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
       const drawAsKeep = isKeep || isKeepPart;
       const drawAsHQ   = isHQ   || isHQPart;
+      
+      if (drawAsHQ) {
+        console.log('Rendering HQ tile', key, 'isHQ:', isHQ, 'isHQPart:', isHQPart, 'keepPrimaryKey:', tile.keepPrimaryKey);
+      }
 
       if (isWin && !owner) {
         gfx.beginFill(0x2a2000);       gfx.drawPolygon(TOP); gfx.endFill();
