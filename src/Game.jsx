@@ -1543,6 +1543,7 @@ export default function RiseToWar() {
   if (screen==="faction") return (
     <FactionScreen
       setScreen={setScreen} setFacKey={setFacKey} setFacName={setFacName}
+      setPlayerName={setFacName}
       setAiFaction={setAiFaction} setAiRss={setAiRss} setAiBldgs={setAiBldgs}
       setAiBarracksPool={setAiBarracksPool} aiLastActionRef={aiLastActionRef}
       setCmds={setCmds} setColl={setColl} setTiles={setTiles}
