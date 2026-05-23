@@ -516,7 +516,6 @@ const CROSSINGS = [
   {axis:'V',bCoord:1672,gCoord:1043, type:'crossing', id:'v1043_1672'},
   {axis:'V',bCoord:1677,gCoord:290, type:'crossing', id:'v290_1677'},
   {axis:'V',bCoord:1695,gCoord:385, type:'crossing', id:'v385_1695'},
-];
   {axis:'H',bCoord:1149,gCoord:83, type:'crossing', id:'h83_1149'},
   {axis:'H',bCoord:1162,gCoord:1775, type:'crossing', id:'h1775_1162'},
   {axis:'H',bCoord:1163,gCoord:335, type:'crossing', id:'h335_1163'},
@@ -598,7 +597,6 @@ const CROSSINGS = [
   {axis:'V',bCoord:1667,gCoord:1054, type:'crossing', id:'v1054_1667'},
   {axis:'V',bCoord:1671,gCoord:469, type:'crossing', id:'v469_1671'},
   {axis:'V',bCoord:1679,gCoord:293, type:'crossing', id:'v293_1679'},
-];
   {axis:'H',bCoord:1147,gCoord:1136, type:'crossing', id:'h1136_1147'},
   {axis:'H',bCoord:1149,gCoord:82, type:'crossing', id:'h82_1149'},
   {axis:'H',bCoord:1162,gCoord:1776, type:'crossing', id:'h1776_1162'},
