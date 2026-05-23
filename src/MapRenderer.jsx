@@ -1689,11 +1689,11 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
         [tcx - TW/2, tcy + TH/2],      // left
       ];
       
-      // Check if there's a neighbor in each direction (within the 3×3)
-      const hasNE = (dc + 1 <= 2) && (dr - 1 >= 0); // tile to NE exists?
-      const hasSE = (dc + 1 <= 2) && (dr + 1 <= 2);
-      const hasSW = (dc - 1 >= 0) && (dr + 1 <= 2);
-      const hasNW = (dc - 1 >= 0) && (dr - 1 >= 0);
+      // Check if there's a neighbor in each diagonal direction (within the 3×3)
+      const hasNE = (dc + 1 >= 0 && dc + 1 <= 2) && (dr - 1 >= 0 && dr - 1 <= 2);
+      const hasSE = (dc + 1 >= 0 && dc + 1 <= 2) && (dr + 1 >= 0 && dr + 1 <= 2);
+      const hasSW = (dc - 1 >= 0 && dc - 1 <= 2) && (dr + 1 >= 0 && dr + 1 <= 2);
+      const hasNW = (dc - 1 >= 0 && dc - 1 <= 2) && (dr - 1 >= 0 && dr - 1 <= 2);
       
       // Draw edge only if no neighbor
       const drawNE = !hasNE;
