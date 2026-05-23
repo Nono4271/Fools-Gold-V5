@@ -634,6 +634,7 @@ export default function RiseToWar() {
           tile.regionName = reg?.name  || null;
           tile.keepName   = km?.keepName || (isKeepPart && reg ? reg.keepName : null);
           tile.owner      = owner;
+          tile.faction    = faction; // Set faction for border coloring
           tile.garrison   = garrisonArr[idx] / 100;
           tile.garrisonTroops = garrisonArr[idx] / 100;
           tile.hasAiCommander = false;
