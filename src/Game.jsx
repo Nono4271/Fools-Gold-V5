@@ -621,9 +621,11 @@ export default function RiseToWar() {
           if ((isHQ || isHQPart) && owner === "ai") {
             // AI HQ tiles: derive faction from owner index
             const ownerIdx = ownerArr[idx];
+            console.log('AI HQ tile at', k, 'ownerIdx:', ownerIdx, 'owner:', owner);
             if (ownerIdx > 0 && ownerIdx <= 8) {
               const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
               faction = factionKeys[ownerIdx - 1];
+              console.log('  -> Set faction to:', faction);
             }
           }
 
