@@ -389,7 +389,6 @@ const CROSSINGS = [
   {axis:'V',bCoord:1668,gCoord:1051, type:'crossing', id:'v1051_1668'},
   {axis:'V',bCoord:1673,gCoord:285, type:'crossing', id:'v285_1673'},
   {axis:'V',bCoord:1696,gCoord:372, type:'crossing', id:'v372_1696'},
-];
   {axis:'H',bCoord:878,gCoord:1027, type:'tollbridge', id:'h1027_878'},
   {axis:'H',bCoord:878,gCoord:1569, type:'crossing', id:'h1569_878'},
   {axis:'H',bCoord:879,gCoord:939, type:'tollbridge', id:'h939_879'},
