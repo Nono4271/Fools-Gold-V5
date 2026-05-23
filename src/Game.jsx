@@ -654,6 +654,7 @@ export default function RiseToWar() {
             if (ownerIdx > 0 && ownerIdx <= 8) {
               const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
               tile.faction = factionKeys[ownerIdx - 1];
+              console.log('AI HQ tile', k, 'ownerIdx:', ownerIdx, 'faction:', tile.faction);
             }
           } else {
             tile.faction = null;

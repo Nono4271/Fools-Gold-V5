@@ -123,7 +123,11 @@ function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
   // Blue: AI tile owned by a crewmate (requires tile.ownerPlayerId)
   if (owner === "ai" && ownerPlayerId && crewPids?.has(ownerPlayerId)) return 0x2299ff;
   // Purple: same faction, not crew
-  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xaa44ff; // Purple
+  if (tileFaction && playerFacKey && tileFaction === playerFacKey) {
+    console.log('Same faction tile - tileFaction:', tileFaction, 'playerFacKey:', playerFacKey);
+    return 0xaa44ff; // Purple
+  }
+  console.log('Enemy tile - owner:', owner, 'tileFaction:', tileFaction, 'playerFacKey:', playerFacKey);
   return 0xdc3c28;
 }
 
@@ -493,21 +497,35 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           // Colored border on top
           gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         } else if (!isSel && drawAsHQ && isHQ) {
-          // Draw single continuous border around entire 3×3 HQ footprint (only from center tile)
-          // The 3×3 footprint in isometric space forms a larger diamond
-          // Center tile is at (c, r), so footprint spans (c-1, r-1) to (c+1, r+1)
+          // Draw single continuous border around entire 3×3 HQ footprint
+          // The border should trace the outer edges of the corner tiles
+          // Top-left corner tile: (c-1, r-1), top-right: (c+1, r-1), etc.
           
-          // Calculate vertices of the 3×3 diamond outline
-          const topTile = isoXY(c, r - 1);
-          const rightTile = isoXY(c + 1, r);
-          const bottomTile = isoXY(c, r + 1);
-          const leftTile = isoXY(c - 1, r);
+          // Top tile (c, r-1) - use its top vertex
+          const topC = c, topR = r - 1;
+          const topPos = isoXY(topC, topR);
+          const topVertex = { x: topPos.cx, y: topPos.cy - elev };
+          
+          // Right tile (c+1, r) - use its right vertex
+          const rightC = c + 1, rightR = r;
+          const rightPos = isoXY(rightC, rightR);
+          const rightVertex = { x: rightPos.cx + TW/2, y: rightPos.cy - elev + TH/2 };
+          
+          // Bottom tile (c, r+1) - use its bottom vertex
+          const botC = c, botR = r + 1;
+          const botPos = isoXY(botC, botR);
+          const botVertex = { x: botPos.cx, y: botPos.cy - elev + TH };
+          
+          // Left tile (c-1, r) - use its left vertex
+          const leftC = c - 1, leftR = r;
+          const leftPos = isoXY(leftC, leftR);
+          const leftVertex = { x: leftPos.cx - TW/2, y: leftPos.cy - elev + TH/2 };
           
           const hqOutline = [
-            topTile.cx, topTile.cy - elev,                    // Top vertex
-            rightTile.cx + TW/2, rightTile.cy - elev + TH/2,  // Right vertex  
-            bottomTile.cx, bottomTile.cy - elev + TH,         // Bottom vertex
-            leftTile.cx - TW/2, leftTile.cy - elev + TH/2,    // Left vertex
+            topVertex.x, topVertex.y,
+            rightVertex.x, rightVertex.y,
+            botVertex.x, botVertex.y,
+            leftVertex.x, leftVertex.y,
           ];
           
           // Black backing
