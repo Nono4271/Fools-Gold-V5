@@ -1792,6 +1792,39 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningR
   drawKeepGfx(gfx, bx, by, owner, reg.isWin, false);
   group.addChild(gfx);
 
+  // ── Keep name label above keep ──
+  if (reg.keepName) {
+    const labelText = new PIXI.Text(reg.keepName, {
+      fontFamily: "'Cinzel', serif",
+      fontSize:   11,
+      fontWeight: "700",
+      fill:       0xf0c040,
+      letterSpacing: 1.5,
+      dropShadow: true,
+      dropShadowColor: 0x000000,
+      dropShadowBlur:  4,
+      dropShadowDistance: 1,
+    });
+    // Position above the north tip of the keep
+    labelText.anchor.set(0.5, 1);
+    labelText.x = bx;
+    labelText.y = gy - 106 - 18;
+
+    // Dark pill background
+    const pill = new PIXI.Graphics();
+    const pw = labelText.width + 14;
+    const ph = labelText.height + 6;
+    pill.beginFill(0x080604, 0.78);
+    pill.lineStyle(1, 0xc8a04060, 0.9);
+    pill.drawRoundedRect(-pw / 2, -ph, pw, ph, 4);
+    pill.endFill();
+    pill.x = bx;
+    pill.y = gy - 106 - 18;
+
+    group.addChild(pill);
+    group.addChild(labelText);
+  }
+
   const hit = new PIXI.Graphics();
   hit.beginFill(0xffffff, 0.001);
   hit.drawRect(bx - 220, gy - 100, 440, 220);
