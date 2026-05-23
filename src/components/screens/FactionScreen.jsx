@@ -26,6 +26,8 @@ const LEGENDARY_BY_FACTION = {
   dragons:        { n: "Pyrewing Skar",             portrait: "/commanders/h35_pyrewing_skar_portrait.webp" },
   holyknights:    { n: "Grand Inquisitor Mourne",   portrait: "/commanders/h42_grand_inquistor_mourne_portrait.webp" },
   nightcreatures: { n: "Alpha Korrax",              portrait: "/commanders/h46_alpha_korrax_portrait.webp" },
+  coldborns:      { n: "Bjorn Icevein",             portrait: "/commanders/h49_bjorn_icevein_portrait.webp" },
+  "ashen dead":   { n: "Malgrath the Eternal",      portrait: "/commanders/h55_malgrath_the_eternal_portrait.webp" },
 };
 
 const QUARTER_BY_FACTION = {
@@ -35,6 +37,8 @@ const QUARTER_BY_FACTION = {
   dragons:        "The Eyrie",
   holyknights:    "The Sanctum",
   nightcreatures: "The Shadowfen",
+  coldborns:      "Frozen Hall",
+  "ashen dead":   "Necrotic Spire",
 };
 
 const FACTION_ICONS = {
@@ -44,6 +48,8 @@ const FACTION_ICONS = {
   dragons:        "🐉",
   holyknights:    "✝️",
   nightcreatures: "🌑",
+  coldborns:      "❄️",
+  "ashen dead":   "💀",
 };
 
 function hexToRgb(hex) {
@@ -109,7 +115,7 @@ export default function FactionScreen({
       gear: { helmet: null, armor: null, bracers: null, accessory: null },
     }));
 
-    const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
+    const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen dead"];
     const aiFactions = allFactions.filter(fk => fk !== f.key);
     const allAiCmds = [];
     aiFactions.forEach((aiFk) => {
