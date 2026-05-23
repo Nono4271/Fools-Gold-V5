@@ -497,41 +497,32 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           // Colored border on top
           gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         } else if (!isSel && drawAsHQ && isHQ) {
-          // Draw border around entire 3×3 HQ footprint by tracing all outer edges
-          // The 3×3 footprint has 9 tiles arranged in a diamond:
-          //     (c,r-1)
-          //   (c-1,r) (c,r) (c+1,r)
-          //     (c,r+1)
-          // Plus corners: (c-1,r-1), (c+1,r-1), (c+1,r+1), (c-1,r+1)
+          // Draw border around 3×3 HQ footprint
+          // The outer silhouette forms a diamond with 4 corners
+          // Use the outermost vertex from each edge tile
           
-          // Start from top and go clockwise, hitting each outer vertex
-          const vertices = [];
+          // Top corner: from top tile (c, r-1), use its top vertex
+          const topPos = isoXY(c, r - 1);
+          const topV = { x: topPos.cx, y: topPos.cy - elev };
           
-          // Top edge: (c-1,r-1) top → (c,r-1) top → (c+1,r-1) top → (c+1,r-1) right
-          for (let dc = -1; dc <= 1; dc++) {
-            const pos = isoXY(c + dc, r - 1);
-            vertices.push({ x: pos.cx, y: pos.cy - elev }); // top vertex of each tile
-          }
+          // Right corner: from right tile (c+1, r), use its right vertex  
+          const rightPos = isoXY(c + 1, r);
+          const rightV = { x: rightPos.cx + TW/2, y: rightPos.cy - elev + TH/2 };
           
-          // Right edge: (c+1,r-1) right → (c+1,r) right → (c+1,r+1) right → (c+1,r+1) bottom
-          for (let dr = -1; dr <= 1; dr++) {
-            const pos = isoXY(c + 1, r + dr);
-            vertices.push({ x: pos.cx + TW/2, y: pos.cy - elev + TH/2 }); // right vertex
-          }
+          // Bottom corner: from bottom tile (c, r+1), use its bottom vertex
+          const botPos = isoXY(c, r + 1);
+          const botV = { x: botPos.cx, y: botPos.cy - elev + TH };
           
-          // Bottom edge: (c+1,r+1) bottom → (c,r+1) bottom → (c-1,r+1) bottom → (c-1,r+1) left
-          for (let dc = 1; dc >= -1; dc--) {
-            const pos = isoXY(c + dc, r + 1);
-            vertices.push({ x: pos.cx, y: pos.cy - elev + TH }); // bottom vertex
-          }
+          // Left corner: from left tile (c-1, r), use its left vertex
+          const leftPos = isoXY(c - 1, r);
+          const leftV = { x: leftPos.cx - TW/2, y: leftPos.cy - elev + TH/2 };
           
-          // Left edge: (c-1,r+1) left → (c-1,r) left → (c-1,r-1) left (back to start)
-          for (let dr = 1; dr >= -1; dr--) {
-            const pos = isoXY(c - 1, r + dr);
-            vertices.push({ x: pos.cx - TW/2, y: pos.cy - elev + TH/2 }); // left vertex
-          }
-          
-          const hqOutline = vertices.flatMap(v => [v.x, v.y]);
+          const hqOutline = [
+            topV.x, topV.y,
+            rightV.x, rightV.y,
+            botV.x, botV.y,
+            leftV.x, leftV.y,
+          ];
           
           // Black backing
           gfx.lineStyle(9, 0x000000, 0.8);

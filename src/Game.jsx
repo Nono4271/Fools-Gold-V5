@@ -750,6 +750,7 @@ export default function RiseToWar() {
         // buildHQLayer only iterates primary HQ tiles.
         const allSpawnKeys = [];
         allFactions.forEach(fk => { if (spawnKeys[fk]) allSpawnKeys.push(...spawnKeys[fk]); });
+        console.log('Patching', allSpawnKeys.length, 'AI HQ tiles with faction');
         allSpawnKeys.forEach(hqKey => {
           if (!(hqKey in _tileStore)) {
             _tileStore[hqKey] = rawMap[hqKey]; // triggers makeTile, stores result
@@ -760,10 +761,11 @@ export default function RiseToWar() {
             const [c, r] = hqKey.split(",").map(Number);
             const idx = r * C + c;
             const ownerIdx = ownerArr[idx];
+            console.log('Checking tile', hqKey, 'owner:', tile.owner, 'ownerIdx:', ownerIdx);
             if (ownerIdx > 0 && ownerIdx <= 8) {
               const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
               tile.faction = factionKeys[ownerIdx - 1];
-              console.log('Patched AI HQ tile', hqKey, 'with faction:', tile.faction);
+              console.log('  -> Patched with faction:', tile.faction);
             }
           }
         });
