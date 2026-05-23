@@ -506,19 +506,21 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
             const dc = c - hpc; // -1, 0, or 1
             const dr = r - hpr; // -1, 0, or 1
             
-            // Check if there's a neighbor in each diagonal direction (within the 3×3)
-            const hasNE = (dc + 1 >= -1 && dc + 1 <= 1 && dr - 1 >= -1 && dr - 1 <= 1); // tile at (dc+1, dr-1)?
-            const hasSE = (dc + 1 >= -1 && dc + 1 <= 1 && dr + 1 >= -1 && dr + 1 <= 1); // tile at (dc+1, dr+1)?
-            const hasSW = (dc - 1 >= -1 && dc - 1 <= 1 && dr + 1 >= -1 && dr + 1 <= 1); // tile at (dc-1, dr+1)?
-            const hasNW = (dc - 1 >= -1 && dc - 1 <= 1 && dr - 1 >= -1 && dr - 1 <= 1); // tile at (dc-1, dr-1)?
-            
             const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
             
-            // Edge is outer if no neighbor in that direction
-            const outerNE = !hasNE;
-            const outerSE = !hasSE;
-            const outerSW = !hasSW;
-            const outerNW = !hasNW;
+            // Hardcode which edges are outer for each position
+            // Position: (dc, dr) → which edges face outward
+            let outerNE = false, outerSE = false, outerSW = false, outerNW = false;
+            
+            if (dc === -1 && dr === -1) { outerNW = true; outerNE = true; } // top-left corner
+            else if (dc === 0 && dr === -1) { outerNE = true; } // top edge
+            else if (dc === 1 && dr === -1) { outerNE = true; outerSE = true; } // top-right corner
+            else if (dc === 1 && dr === 0) { outerSE = true; } // right edge
+            else if (dc === 1 && dr === 1) { outerSE = true; outerSW = true; } // bottom-right corner
+            else if (dc === 0 && dr === 1) { outerSW = true; } // bottom edge
+            else if (dc === -1 && dr === 1) { outerSW = true; outerNW = true; } // bottom-left corner
+            else if (dc === -1 && dr === 0) { outerNW = true; } // left edge
+            // center tile (dc=0, dr=0) has no outer edges
             
             if (outerNE || outerSE || outerSW || outerNW) {
               // Black backing
