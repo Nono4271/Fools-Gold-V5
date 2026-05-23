@@ -1642,7 +1642,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   }
 
   // ── Player name label above HQ ──
-  if (owner === "player" && playerName && tileKey === playerHqKey) {
+  if (owner === "player" && playerName) {
     // Background pill behind the name
     const labelText = new PIXI.Text(playerName, {
       fontFamily: "'Cinzel', serif",

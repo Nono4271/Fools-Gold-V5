@@ -699,7 +699,7 @@ export default function RiseToWar() {
           [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
             const fk = `${hc+dc},${hr+dr}`;
             if (rawMap[fk]) rawMap[fk] = Object.assign(Object.create(Object.getPrototypeOf(rawMap[fk])),
-              rawMap[fk], { owner: "player" });
+              rawMap[fk], { owner: "player", keepPrimaryKey: playerSpawn });
           });
           setPlayerHqKey(playerSpawn);
           const { cx, cy } = isoXY(hc, hr);
