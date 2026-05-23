@@ -1545,6 +1545,39 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
 
+  // Draw solid fill over entire 3×3 footprint to hide terrain tile seams
+  // The outer perimeter vertices in clockwise order form the filled shape
+  const outerPolygon = [];
+  
+  // Trace the outline clockwise starting from top
+  // Row 0 (top row): tiles (0,0), (1,0), (2,0) - collect top and right edges
+  for (let dc = 0; dc <= 2; dc++) {
+    const tilePos = isoXY(pc + dc, pr + 0);
+    outerPolygon.push(tilePos.cx, tilePos.cy - elev); // top vertex
+  }
+  // Right edge going down: tiles (2,0), (2,1), (2,2)
+  for (let dr = 0; dr <= 2; dr++) {
+    const tilePos = isoXY(pc + 2, pr + dr);
+    outerPolygon.push(tilePos.cx + TW/2, tilePos.cy - elev + TH/2); // right vertex
+  }
+  // Bottom edge going left: tiles (2,2), (1,2), (0,2)
+  for (let dc = 2; dc >= 0; dc--) {
+    const tilePos = isoXY(pc + dc, pr + 2);
+    outerPolygon.push(tilePos.cx, tilePos.cy - elev + TH); // bottom vertex
+  }
+  // Left edge going up: tiles (0,2), (0,1), (0,0)
+  for (let dr = 2; dr >= 0; dr--) {
+    const tilePos = isoXY(pc + 0, pr + dr);
+    outerPolygon.push(tilePos.cx - TW/2, tilePos.cy - elev + TH/2); // left vertex
+  }
+  
+  const fillGfx = new PIXI.Graphics();
+  const terrainColor = 0xd4a574; // Desert/tan color matching HQ terrain
+  fillGfx.beginFill(terrainColor, 1.0);
+  fillGfx.drawPolygon(outerPolygon);
+  fillGfx.endFill();
+  group.addChild(fillGfx);
+
   // ── Selection outline ──
   if (isSelected) {
     const outlineGfx = new PIXI.Graphics();
