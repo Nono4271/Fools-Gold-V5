@@ -604,7 +604,7 @@ export default function RiseToWar() {
           const isPGGate  = !!(flags & F_PGGATE);
 
           let keepPrimaryKey = null;
-          if (isKeepPart) {
+          if (isKeepPart || isHQPart) {
             const pi = keepPrimArr[idx];
             if (!keepPrimKeyCache[pi]) {
               const pc = pi % C, pr = Math.floor(pi / C);
