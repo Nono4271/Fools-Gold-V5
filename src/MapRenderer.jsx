@@ -1665,7 +1665,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     const pw = labelText.width + 14;
     const ph = labelText.height + 6;
     pill.beginFill(0x080604, 0.78);
-    pill.lineStyle(1, 0xc8a04060, 0.9);
+    pill.lineStyle(1, 0xc8a040, 0.9);
     pill.drawRoundedRect(-pw / 2, -ph, pw, ph, 4);
     pill.endFill();
     pill.x = bx;
@@ -1815,7 +1815,7 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningR
     const pw = labelText.width + 14;
     const ph = labelText.height + 6;
     pill.beginFill(0x080604, 0.78);
-    pill.lineStyle(1, 0xc8a04060, 0.9);
+    pill.lineStyle(1, 0xc8a040, 0.9);
     pill.drawRoundedRect(-pw / 2, -ph, pw, ph, 4);
     pill.endFill();
     pill.x = bx;
