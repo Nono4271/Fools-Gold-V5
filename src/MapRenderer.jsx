@@ -1670,12 +1670,16 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   group.addChild(hit);
   
   // Draw border around HQ footprint (after sprite so it appears on top)
-  // Use actual tile corners, not sprite-based FOOTPRINT
+  // The 3×3 outer diamond is formed by the vertices of edge tiles
+  // North vertex: top of north tile (pc+1, pr)
+  // East vertex: right of east tile (pc+2, pr+1)  
+  // South vertex: bottom of south tile (pc+1, pr+2)
+  // West vertex: left of west tile (pc, pr+1)
   const actualDiamond = [
-    nPt.cx, nPt.cy - elev,     // North point
-    ePt.cx, ePt.cy - elev,     // East point
-    sPt.cx, sPt.cy - elev,     // South point
-    wPt.cx, wPt.cy - elev,     // West point
+    nPt.cx, nPt.cy - elev,                    // North: top vertex of north tile
+    ePt.cx + TW/2, ePt.cy - elev + TH/2,      // East: right vertex of east tile
+    sPt.cx, sPt.cy - elev + TH,               // South: bottom vertex of south tile
+    wPt.cx - TW/2, wPt.cy - elev + TH/2,      // West: left vertex of west tile
   ];
   
   const borderGfx = new PIXI.Graphics();
