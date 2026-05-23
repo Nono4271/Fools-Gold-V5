@@ -466,10 +466,6 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
       const drawAsKeep = isKeep || isKeepPart;
       const drawAsHQ   = isHQ   || isHQPart;
-      
-      if (drawAsHQ) {
-        console.log('Rendering HQ tile', key, 'isHQ:', isHQ, 'isHQPart:', isHQPart, 'keepPrimaryKey:', tile.keepPrimaryKey);
-      }
 
       if (isWin && !owner) {
         gfx.beginFill(0x2a2000);       gfx.drawPolygon(TOP); gfx.endFill();
@@ -497,48 +493,18 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           // Colored border on top
           gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         } else if (!isSel && drawAsHQ) {
-          // Draw borders only on outer edges of 3×3 HQ footprint
-          const hqPrimKey = isHQ ? key : tile.keepPrimaryKey;
-          if (hqPrimKey) {
-            const [hpc, hpr] = hqPrimKey.split(",").map(Number);
-            const dc = c - hpc;
-            const dr = r - hpr;
-            
-            // Only process if tile is within the 3×3 footprint (-1 to +1 range)
-            if (Math.abs(dc) <= 1 && Math.abs(dr) <= 1) {
-              const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
-              
-              let outerNE = false, outerSE = false, outerSW = false, outerNW = false;
-              
-              if (dc === -1 && dr === -1) { outerNW = true; outerNE = true; }
-              else if (dc === 0 && dr === -1) { outerNE = true; }
-              else if (dc === 1 && dr === -1) { outerNE = true; outerSE = true; }
-              else if (dc === 1 && dr === 0) { outerSE = true; }
-              else if (dc === 1 && dr === 1) { outerSE = true; outerSW = true; }
-              else if (dc === 0 && dr === 1) { outerSW = true; }
-              else if (dc === -1 && dr === 1) { outerSW = true; outerNW = true; }
-              else if (dc === -1 && dr === 0) { outerNW = true; }
-              
-              if (outerNE || outerSE || outerSW || outerNW) {
-                console.log('DRAWING border for', key, 'dc:', dc, 'dr:', dr);
-                // Black backing
-                gfx.lineStyle(9, 0x000000, 0.8);
-                if (outerNE) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
-                if (outerSE) { gfx.moveTo(pts[1][0], pts[1][1]); gfx.lineTo(pts[2][0], pts[2][1]); }
-                if (outerSW) { gfx.moveTo(pts[2][0], pts[2][1]); gfx.lineTo(pts[3][0], pts[3][1]); }
-                if (outerNW) { gfx.moveTo(pts[3][0], pts[3][1]); gfx.lineTo(pts[0][0], pts[0][1]); }
-                gfx.lineStyle(0);
-                
-                // Colored border
-                gfx.lineStyle(6, ot, 1.0);
-                if (outerNE) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
-                if (outerSE) { gfx.moveTo(pts[1][0], pts[1][1]); gfx.lineTo(pts[2][0], pts[2][1]); }
-                if (outerSW) { gfx.moveTo(pts[2][0], pts[2][1]); gfx.lineTo(pts[3][0], pts[3][1]); }
-                if (outerNW) { gfx.moveTo(pts[3][0], pts[3][1]); gfx.lineTo(pts[0][0], pts[0][1]); }
-                gfx.lineStyle(0);
-              }
-            }
-          }
+          // Draw border around each HQ tile - edges will connect to form full HQ border
+          const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
+          
+          // Black backing
+          gfx.lineStyle(8, 0x000000, 0.8);
+          gfx.drawPolygon(pts);
+          gfx.lineStyle(0);
+          
+          // Colored border
+          gfx.lineStyle(5, ot, 1.0);
+          gfx.drawPolygon(pts);
+          gfx.lineStyle(0);
         }
       }
 
