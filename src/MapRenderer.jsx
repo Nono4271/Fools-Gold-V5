@@ -484,6 +484,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
       if (owner) {
         const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+        console.log('Owner tint for', key, 'owner:', owner, 'faction:', tile?.faction, 'playerFac:', playerFacKey, 'ot:', ot.toString(16));
         gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
         // For HQ tiles: only stroke the outer edges of the 3×3 footprint,
         // not interior tile borders which show through under the sprite.
