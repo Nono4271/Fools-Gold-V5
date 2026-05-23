@@ -619,9 +619,14 @@ export default function RiseToWar() {
           // Determine faction for border coloring
           let faction = null;
           const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
-          if ((isHQ || isHQPart) && factionKeys.includes(owner)) {
-            // AI HQ tile - owner is the faction name
-            faction = owner;
+          if (isHQ || isHQPart) {
+            if (factionKeys.includes(owner)) {
+              // AI HQ tile - owner is the faction name
+              faction = owner;
+            } else if (owner === "player") {
+              // Player HQ - use the player's faction (will be set later when we know playerFacKey)
+              faction = "player"; // Placeholder, will match playerFacKey comparison
+            }
           }
 
           const tile = Object.create(TileProto);
