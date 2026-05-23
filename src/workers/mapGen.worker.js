@@ -1600,6 +1600,7 @@ self.onmessage = function(e) {
   const HQ_SIEGE = Math.round(50 * 100); // hqSiegeValue(0) × 100, stored ×100
   function stampHQFootprint(key, ownerCode) {
     const [hc, hr] = key.split(",").map(Number);
+    const centerIdx = hr*COLS + hc;
     for (let dr = 0; dr < 3; dr++) {
       for (let dc = 0; dc < 3; dc++) {
         const idx = (hr+dr)*COLS + (hc+dc);
@@ -1609,6 +1610,8 @@ self.onmessage = function(e) {
         flagArr[idx] = (flagArr[idx] & ~(F_KEEP|F_KEEPPART|F_WIN)) | (isCenter ? F_HQ : F_HQPART);
         // Ownership
         ownerArr[idx] = ownerCode;
+        // Keep primary key for border rendering
+        if (!isCenter) keepPrimArr[idx] = centerIdx;
         // Terrain — HQ footprint is always grass, no resources
         terrainArr[idx] = TERRAIN_ENC.grass;
         rssArr[idx]     = 0;
