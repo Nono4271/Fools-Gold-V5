@@ -1488,6 +1488,8 @@ const HQ_SPRITES = {
   holyknights:   "hq_holyknights.webp",
   dragons:       "hq_dragons.webp",
   bountyhunters: "hq_arcane.webp",
+  coldborns:     "hq_holyknights.webp", // Placeholder: using COTN sprite
+  "ashen dead":  "hq_arcane.webp",      // Placeholder: using Wizards sprite
   player:        "hq_pirates.webp",
   ai:            "hq_orcs.webp",
 };
