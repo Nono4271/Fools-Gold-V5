@@ -112,18 +112,18 @@ function buildCByTile(cmds) {
 }
 
 /* ─── Tile ownership tint colors ─────────────────────────────────────────────
-   player    → green  0x22cc55  (your tiles)
+   player    → BLACK  0x000000  (your tiles) - TEST
    crewmate  → blue   0x2299ff  (AI in your crew — tile.ownerPlayerId in crewmatePlayerIds)
-   faction   → purple 0xaa44ff  (same faction, not your crew)
+   faction   → WHITE  0xffffff  (same faction, not your crew) - TEST
    enemy     → red    0xdc3c28
    ────────────────────────────────────────────────────────────────────────── */
 function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
-  if (owner === "player") return 0x22cc55;
+  if (owner === "player") return 0x000000; // BLACK for testing
   if (!owner) return null;
   // Blue: AI tile owned by a crewmate (requires tile.ownerPlayerId)
   if (owner === "ai" && ownerPlayerId && crewPids?.has(ownerPlayerId)) return 0x2299ff;
-  // Purple: same faction, not crew
-  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xaa44ff;
+  // White: same faction, not crew
+  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xffffff; // WHITE for testing
   return 0xdc3c28;
 }
 
@@ -2146,6 +2146,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     // render on top. We insert it just before keepCont in the display list.
     const hqCont = new PIXI.Container();
     hqCont.interactiveChildren = true;
+    hqCont.interactive = true;
+    hqCont.hitArea = new PIXI.Rectangle(-10000, -10000, 20000, 20000);
     world.addChildAt(hqCont, world.children.indexOf(keepCont));
     hqContRef.current = hqCont;
     const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
