@@ -122,9 +122,6 @@ function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
   if (!owner) return null;
   // Blue: AI tile owned by a crewmate (requires tile.ownerPlayerId)
   if (owner === "ai" && ownerPlayerId && crewPids?.has(ownerPlayerId)) return 0x2299ff;
-  // TEMP DEBUG: Make all AI HQs purple to test
-  const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
-  if (factionKeys.includes(owner)) return 0xaa44ff; // Purple for all AI HQs
   // Purple: same faction, not crew
   if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xaa44ff;
   return 0xdc3c28;

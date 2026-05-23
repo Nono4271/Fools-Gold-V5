@@ -618,7 +618,7 @@ export default function RiseToWar() {
           
           // Determine faction for border coloring
           let faction = null;
-          const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
+          const factionKeys = ["pirates", "orcs", "bountyhunters", "dragons", "holyknights", "nightcreatures"];
           if (isHQ || isHQPart) {
             if (factionKeys.includes(owner)) {
               // AI HQ tile - owner is the faction name
