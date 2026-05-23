@@ -496,13 +496,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           // Draw border around each HQ tile - edges will connect to form full HQ border
           const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
           
-          // Black backing
-          gfx.lineStyle(8, 0x000000, 0.8);
-          gfx.drawPolygon(pts);
-          gfx.lineStyle(0);
-          
-          // Colored border
-          gfx.lineStyle(5, ot, 1.0);
+          // TEST: Draw bright red border to verify this code runs
+          gfx.lineStyle(10, 0xff0000, 1.0);
           gfx.drawPolygon(pts);
           gfx.lineStyle(0);
         }
