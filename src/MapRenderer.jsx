@@ -503,7 +503,15 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               { p0:2, p1:3, outer: dc===0 }, // SW
               { p0:3, p1:0, outer: dr===0 }, // NW
             ];
-            gfx.lineStyle(3, ot, 0.95);
+            // Dark backing stroke for contrast
+            gfx.lineStyle(5, 0x000000, 0.4);
+            for (const e of edges) {
+              if (!e.outer) continue;
+              gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
+              gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
+            }
+            // Main colored border
+            gfx.lineStyle(4, ot, 1.0);
             for (const e of edges) {
               if (!e.outer) continue;
               gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
@@ -1545,10 +1553,10 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     x: _sx + (fx - 0.5) * _sW,
     y: _sy + (fy - _aY) * _sH,
   });
-  const _fpN = _fp(0.6667, 0.3146);
-  const _fpE = _fp(0.6667, 0.5907);
-  const _fpS = _fp(0.3333, 0.5907);
-  const _fpW = _fp(0.3333, 0.3146);
+  const _fpN = _fp(0.75, 0.25);
+  const _fpE = _fp(0.75, 0.65);
+  const _fpS = _fp(0.25, 0.65);
+  const _fpW = _fp(0.25, 0.25);
 
   const FOOTPRINT = [
     _fpN.x, _fpN.y,
