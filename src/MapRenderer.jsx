@@ -492,42 +492,32 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           gfx.lineStyle(8, 0x000000, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0);
           // Colored border on top
           gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
-        } else if (!isSel && drawAsHQ) {
-          // Determine which edges of this tile are on the outer boundary of the 3×3.
-          // Primary tile key stored on isHQPart tiles as keepPrimaryKey (reused for HQ).
-          const hqPrimKey = isHQ ? key : tile.keepPrimaryKey;
-          if (hqPrimKey) {
-            const [hpc, hpr] = hqPrimKey.split(",").map(Number);
-            const dc = c - hpc, dr = r - hpr; // 0..2, 0..2
-            // Draw only the outer-facing edges as line segments
-            const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
-            // NE edge (top-right): outer if dc===2
-            // SE edge (bottom-right): outer if dr===2
-            // SW edge (bottom-left): outer if dc===0
-            // NW edge (top-left): outer if dr===0
-            const edges = [
-              { p0:0, p1:1, outer: dc===2 }, // NE
-              { p0:1, p1:2, outer: dr===2 }, // SE
-              { p0:2, p1:3, outer: dc===0 }, // SW
-              { p0:3, p1:0, outer: dr===0 }, // NW
-            ];
-            // Thick black backing for maximum contrast
-            for (const e of edges) {
-              if (!e.outer) continue;
-              gfx.lineStyle(9, 0x000000, 0.8);
-              gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
-              gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
-              gfx.lineStyle(0);
-            }
-            // Bright colored border on top
-            for (const e of edges) {
-              if (!e.outer) continue;
-              gfx.lineStyle(6, ot, 1.0);
-              gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
-              gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
-              gfx.lineStyle(0);
-            }
-          }
+        } else if (!isSel && drawAsHQ && isHQ) {
+          // Draw single continuous border around entire 3×3 HQ footprint (only from center tile)
+          // 3×3 footprint spans 3 tiles horizontally and vertically in isometric space
+          const hqW = TW * 3;
+          const hqH = TH * 3;
+          const hqTop = sy - TH;
+          const hqBot = sy + TH * 2;
+          const hqLeft = cx - TW * 1.5;
+          const hqRight = cx + TW * 1.5;
+          
+          const hqOutline = [
+            cx, hqTop,                    // Top vertex
+            hqRight, sy + TH/2,          // Right vertex  
+            cx, hqBot,                    // Bottom vertex
+            hqLeft, sy + TH/2,           // Left vertex
+          ];
+          
+          // Black backing
+          gfx.lineStyle(9, 0x000000, 0.8);
+          gfx.drawPolygon(hqOutline);
+          gfx.lineStyle(0);
+          
+          // Colored border
+          gfx.lineStyle(6, ot, 1.0);
+          gfx.drawPolygon(hqOutline);
+          gfx.lineStyle(0);
         }
       }
 
