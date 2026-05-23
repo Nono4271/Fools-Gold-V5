@@ -231,7 +231,12 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           if (owner) {
             const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
             gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
-            if (!isSel) { gfx.lineStyle(2, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
+            if (!isSel) { 
+              // Black backing for contrast
+              gfx.lineStyle(6, 0x000000, 0.6); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+              // Colored border on top
+              gfx.lineStyle(4, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+            }
           }
           if (hasCmds && !isSel) { gfx.lineStyle(2, 0xf0dc3c, 0.9); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
           if (isSel) { gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
@@ -504,20 +509,21 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               { p0:3, p1:0, outer: dr===0 }, // NW
             ];
             // Thick black backing for maximum contrast
-            gfx.lineStyle(7, 0x000000, 0.6);
             for (const e of edges) {
               if (!e.outer) continue;
+              gfx.lineStyle(7, 0x000000, 0.6);
               gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
               gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
+              gfx.lineStyle(0);
             }
             // Bright colored border on top
-            gfx.lineStyle(5, ot, 1.0);
             for (const e of edges) {
               if (!e.outer) continue;
+              gfx.lineStyle(5, ot, 1.0);
               gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
               gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
+              gfx.lineStyle(0);
             }
-            gfx.lineStyle(0);
           }
         }
       }
@@ -2809,7 +2815,12 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         const wx = (e.clientX-rect.left-panRef.current.x)/zoomRef.current;
         const wy = (e.clientY-rect.top -panRef.current.y)/zoomRef.current;
         const key = worldToKey(wx, wy, tilesRef.current);
-        if (key) onTileClickRef.current(key, e);
+        if (key) {
+          const tile = tilesRef.current[key];
+          // Skip if clicking HQ/keep - PIXI handlers will deal with it
+          if (tile?.isHQ || tile?.isKeep) return;
+          onTileClickRef.current(key, e);
+        }
       }
       onPanChangeRef.current(panRef.current);
     };
