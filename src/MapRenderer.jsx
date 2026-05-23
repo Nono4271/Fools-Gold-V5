@@ -1545,37 +1545,34 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
 
-  // Draw solid fill over entire 3×3 footprint to hide terrain tile seams
-  // Trace only the outermost perimeter vertices (12 vertices total for 3×3 diamond)
-  const outerPolygon = [];
+  // Draw solid fill over entire 3×3 footprint - just the 4 outermost points
+  // North point: top vertex of tile (pc+1, pr) 
+  const northPt = isoXY(pc + 1, pr);
+  const nVertex = { x: northPt.cx, y: northPt.cy - elev };
   
-  // Starting from top, going clockwise around the perimeter
-  // Top edge: 3 vertices from (0,0) top -> (1,0) top -> (2,0) top
-  outerPolygon.push(isoXY(pc, pr).cx, isoXY(pc, pr).cy - elev);
-  outerPolygon.push(isoXY(pc + 1, pr).cx, isoXY(pc + 1, pr).cy - elev);
-  outerPolygon.push(isoXY(pc + 2, pr).cx, isoXY(pc + 2, pr).cy - elev);
+  // East point: right vertex of tile (pc+2, pr+1)
+  const eastPt = isoXY(pc + 2, pr + 1);
+  const eVertex = { x: eastPt.cx + TW/2, y: eastPt.cy - elev + TH/2 };
   
-  // Right edge: 3 vertices from (2,0) right -> (2,1) right -> (2,2) right
-  outerPolygon.push(isoXY(pc + 2, pr).cx + TW/2, isoXY(pc + 2, pr).cy - elev + TH/2);
-  outerPolygon.push(isoXY(pc + 2, pr + 1).cx + TW/2, isoXY(pc + 2, pr + 1).cy - elev + TH/2);
-  outerPolygon.push(isoXY(pc + 2, pr + 2).cx + TW/2, isoXY(pc + 2, pr + 2).cy - elev + TH/2);
+  // South point: bottom vertex of tile (pc+1, pr+2)
+  const southPt = isoXY(pc + 1, pr + 2);
+  const sVertex = { x: southPt.cx, y: southPt.cy - elev + TH };
   
-  // Bottom edge: 3 vertices from (2,2) bottom -> (1,2) bottom -> (0,2) bottom
-  outerPolygon.push(isoXY(pc + 2, pr + 2).cx, isoXY(pc + 2, pr + 2).cy - elev + TH);
-  outerPolygon.push(isoXY(pc + 1, pr + 2).cx, isoXY(pc + 1, pr + 2).cy - elev + TH);
-  outerPolygon.push(isoXY(pc, pr + 2).cx, isoXY(pc, pr + 2).cy - elev + TH);
-  
-  // Left edge: 3 vertices from (0,2) left -> (0,1) left -> (0,0) left (back to start)
-  outerPolygon.push(isoXY(pc, pr + 2).cx - TW/2, isoXY(pc, pr + 2).cy - elev + TH/2);
-  outerPolygon.push(isoXY(pc, pr + 1).cx - TW/2, isoXY(pc, pr + 1).cy - elev + TH/2);
-  outerPolygon.push(isoXY(pc, pr).cx - TW/2, isoXY(pc, pr).cy - elev + TH/2);
+  // West point: left vertex of tile (pc, pr+1)
+  const westPt = isoXY(pc, pr + 1);
+  const wVertex = { x: westPt.cx - TW/2, y: westPt.cy - elev + TH/2 };
   
   const fillGfx = new PIXI.Graphics();
-  const terrainColor = 0xd4a574; // Desert/tan color matching HQ terrain
+  const terrainColor = 0xd4a574; // Desert/tan color
   fillGfx.beginFill(terrainColor, 1.0);
-  fillGfx.drawPolygon(outerPolygon);
+  fillGfx.drawPolygon([
+    nVertex.x, nVertex.y,
+    eVertex.x, eVertex.y,
+    sVertex.x, sVertex.y,
+    wVertex.x, wVertex.y,
+  ]);
   fillGfx.endFill();
-  group.addChildAt(fillGfx, 0); // Add at index 0 so it's UNDER the sprite
+  group.addChild(fillGfx); // Try without addChildAt first
 
   // ── Selection outline ──
   if (isSelected) {
