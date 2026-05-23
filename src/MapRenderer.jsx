@@ -124,7 +124,11 @@ function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
   if (owner === "ai" && ownerPlayerId && crewPids?.has(ownerPlayerId)) return 0x2299ff;
   // Purple: same faction, not crew
   if (tileFaction && playerFacKey && tileFaction === playerFacKey) {
+    console.log('PURPLE: tileFaction:', tileFaction, 'playerFacKey:', playerFacKey);
     return 0xaa44ff; // Purple
+  }
+  if (tileFaction || playerFacKey) {
+    console.log('RED: tileFaction:', tileFaction, 'playerFacKey:', playerFacKey, 'match:', tileFaction === playerFacKey);
   }
   return 0xdc3c28;
 }
