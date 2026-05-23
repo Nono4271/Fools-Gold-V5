@@ -1740,6 +1740,8 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       }
       
       if (drawNE || drawSE || drawSW || drawNW) {
+        // BORDERS DISABLED FOR TESTING
+        /*
         // Black backing for contrast
         borderGfx.lineStyle(8, 0x000000, 0.8);
         if (drawNE) { borderGfx.moveTo(pts[0][0], pts[0][1]); borderGfx.lineTo(pts[1][0], pts[1][1]); }
@@ -1755,6 +1757,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
         if (drawSW) { borderGfx.moveTo(pts[2][0], pts[2][1]); borderGfx.lineTo(pts[3][0], pts[3][1]); }
         if (drawNW) { borderGfx.moveTo(pts[3][0], pts[3][1]); borderGfx.lineTo(pts[0][0], pts[0][1]); }
         borderGfx.lineStyle(0);
+        */
       }
     }
   }
