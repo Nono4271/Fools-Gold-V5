@@ -91,7 +91,7 @@ function worldToKey(wx, wy, tiles) {
         continue;
       }
 
-      const elev = tile.isHQ ? 0 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
+      const elev = tile.isWin ? 10 : 4;
       if (inTile(wx, wy, c, r, elev)) return key;
     }
   }
@@ -450,7 +450,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const isSel    = selKey === key;
       const isMvTgt  = mode === "selectMarchDest" && mvCmdUid && owner === "player";
       const hasCmds  = Boolean(cByTile[key]?.length);
-      const elev     = (isHQ||isHQPart) ? 0 : isWin ? 10 : (isKeep && !isGate) ? 8 : 4;
+      const elev     = isWin ? 10 : 4;
       const { cx, cy } = isoXY(c, r);
       const sy  = cy - elev;
       const mid = sy + TH / 2;
@@ -483,11 +483,11 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         // For HQ tiles: only stroke the outer edges of the 3×3 footprint,
         // not interior tile borders which show through under the sprite.
         if (!isSel && !drawAsHQ) {
-          gfx.lineStyle(2, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          gfx.lineStyle(3, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         } else if (!isSel && drawAsHQ) {
           // Determine which edges of this tile are on the outer boundary of the 3×3.
           // Primary tile key stored on isHQPart tiles as keepPrimaryKey (reused for HQ).
-          const hqPrimKey = isHQ ? key : tile.hqPrimaryKey;
+          const hqPrimKey = isHQ ? key : tile.keepPrimaryKey;
           if (hqPrimKey) {
             const [hpc, hpr] = hqPrimKey.split(",").map(Number);
             const dc = c - hpc, dr = r - hpr; // 0..2, 0..2
@@ -503,7 +503,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               { p0:2, p1:3, outer: dc===0 }, // SW
               { p0:3, p1:0, outer: dr===0 }, // NW
             ];
-            gfx.lineStyle(2, ot, 0.95);
+            gfx.lineStyle(3, ot, 0.95);
             for (const e of edges) {
               if (!e.outer) continue;
               gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
@@ -1846,7 +1846,7 @@ function drawMarchLines(gfx, cmds, reinMarches, tiles) {
     const pts = path.map(k => {
       const [tc, tr] = k.split(",").map(Number);
       const t = tiles[k];
-      const elev = t?.isHQ ? 0 : t?.isWin ? 10 : t?.isKeep ? 8 : 4;
+      const elev = t?.isWin ? 10 : 4;
       const { cx, cy } = isoXY(tc, tr);
       return { x: cx, y: cy - elev + TH / 2 };
     });
@@ -1879,7 +1879,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles) {
     const tile = tiles[key];
     if (!tile) continue;
     const { cx, cy } = isoXY(tile.c, tile.r);
-    const elev = tile.isHQ ? 0 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
+    const elev = tile.isWin ? 10 : 4;
     const sy = cy - elev;
     const playerG = tileCmds.filter(c => c.owner === "player");
     const aiG = tileCmds.filter(c => c.owner !== "player");
@@ -2141,7 +2141,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
       // Static keeps handled by keep layer; gates/regular tiles handled here
       if ((tile.isKeep && !tile.isGate) || tile.isKeepPart) return;
-      const elev = (tile.isHQ||tile.isHQPart) ? 0 : tile.isWin ? 10 : (tile.isKeep||tile.isKeepPart) ? 8 : 4;
+      const elev = tile.isWin ? 10 : 4;
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
       const mid = sy2 + TH / 2;
