@@ -757,16 +757,11 @@ export default function RiseToWar() {
           }
           // Add faction to AI HQ tiles for border coloring
           const tile = _tileStore[hqKey];
-          if (tile && tile.owner === "ai" && (tile.isHQ || tile.isHQPart)) {
-            const [c, r] = hqKey.split(",").map(Number);
-            const idx = r * C + c;
-            const ownerIdx = ownerArr[idx];
-            console.log('Checking tile', hqKey, 'owner:', tile.owner, 'ownerIdx:', ownerIdx);
-            if (ownerIdx > 0 && ownerIdx <= 8) {
-              const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
-              tile.faction = factionKeys[ownerIdx - 1];
-              console.log('  -> Patched with faction:', tile.faction, 'verified:', _tileStore[hqKey].faction);
-            }
+          const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
+          if (tile && (tile.isHQ || tile.isHQPart) && factionKeys.includes(tile.owner)) {
+            // AI HQ tile - owner is the faction name
+            tile.faction = tile.owner;
+            console.log('  -> Patched tile', hqKey, 'with faction:', tile.faction);
           } else {
             console.log('Skipping tile', hqKey, 'owner:', tile?.owner, 'isHQ:', tile?.isHQ, 'isHQPart:', tile?.isHQPart);
           }

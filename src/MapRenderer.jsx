@@ -498,40 +498,48 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         } else if (!isSel && drawAsHQ) {
           // Draw borders only on outer edges of 3×3 HQ footprint
-          // For HQ parts, check which edges face outward using keepPrimaryKey offset
           const hqPrimKey = isHQ ? key : tile.keepPrimaryKey;
           if (hqPrimKey) {
             const [hpc, hpr] = hqPrimKey.split(",").map(Number);
-            const dc = c - hpc; // -1, 0, or 1
-            const dr = r - hpr; // -1, 0, or 1
+            const dc = c - hpc; // -1, 0, or 1 (column offset from center)
+            const dr = r - hpr; // -1, 0, or 1 (row offset from center)
             
-            // A tile's edge is outer if it's on the boundary of the 3×3
-            // NE edge: outer if (dc + dr === 1 and dc >= 0)
-            // SE edge: outer if (dr - dc === 1 and dr >= 0)  
-            // SW edge: outer if (dc + dr === -1 and dc <= 0)
-            // NW edge: outer if (dc - dr === 1 and dc >= 0)
+            // Each tile is a diamond with 4 edges: NE, SE, SW, NW
+            // An edge is outer if there's no neighbor tile in that direction
+            // In a 3×3 grid, outer edges are on the perimeter
             
             const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
-            const outerNE = (dc >= 0 && dr >= -1 && dc + dr === 1);
-            const outerSE = (dr >= 0 && dc >= -1 && dr - dc === 1);
-            const outerSW = (dc <= 0 && dr <= 1 && dc + dr === -1);
-            const outerNW = (dc >= -1 && dr <= 0 && dc - dr === 1);
             
-            if (outerNE || outerSE || outerSW || outerNW) {
+            // NE edge connects top vertex to right vertex - outer if no tile at (c+1, r-1)
+            const hasNE = !(dc === 1 && dr === -1); // is there a tile to the NE?
+            const outerNE = !hasNE || (dc < 1 && dr < 1) || (dc === 1 && dr < -1) || (dc > 1 && dr === -1);
+            
+            // Actually, simpler: edge is outer if it's on the boundary of the -1 to 1 range
+            // NE edge: outer if at top-right boundary (dc=1 or dr=-1)
+            // SE edge: outer if at bottom-right boundary (dc=1 or dr=1)  
+            // SW edge: outer if at bottom-left boundary (dc=-1 or dr=1)
+            // NW edge: outer if at top-left boundary (dc=-1 or dr=-1)
+            
+            const outerNE2 = (dc === 1 || dr === -1);
+            const outerSE2 = (dc === 1 || dr === 1);
+            const outerSW2 = (dc === -1 || dr === 1);
+            const outerNW2 = (dc === -1 || dr === -1);
+            
+            if (outerNE2 || outerSE2 || outerSW2 || outerNW2) {
               // Draw black backing on outer edges
               gfx.lineStyle(9, 0x000000, 0.8);
-              if (outerNE) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
-              if (outerSE) { gfx.moveTo(pts[1][0], pts[1][1]); gfx.lineTo(pts[2][0], pts[2][1]); }
-              if (outerSW) { gfx.moveTo(pts[2][0], pts[2][1]); gfx.lineTo(pts[3][0], pts[3][1]); }
-              if (outerNW) { gfx.moveTo(pts[3][0], pts[3][1]); gfx.lineTo(pts[0][0], pts[0][1]); }
+              if (outerNE2) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
+              if (outerSE2) { gfx.moveTo(pts[1][0], pts[1][1]); gfx.lineTo(pts[2][0], pts[2][1]); }
+              if (outerSW2) { gfx.moveTo(pts[2][0], pts[2][1]); gfx.lineTo(pts[3][0], pts[3][1]); }
+              if (outerNW2) { gfx.moveTo(pts[3][0], pts[3][1]); gfx.lineTo(pts[0][0], pts[0][1]); }
               gfx.lineStyle(0);
               
               // Draw colored border on top
               gfx.lineStyle(6, ot, 1.0);
-              if (outerNE) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
-              if (outerSE) { gfx.moveTo(pts[1][0], pts[1][1]); gfx.lineTo(pts[2][0], pts[2][1]); }
-              if (outerSW) { gfx.moveTo(pts[2][0], pts[2][1]); gfx.lineTo(pts[3][0], pts[3][1]); }
-              if (outerNW) { gfx.moveTo(pts[3][0], pts[3][1]); gfx.lineTo(pts[0][0], pts[0][1]); }
+              if (outerNE2) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
+              if (outerSE2) { gfx.moveTo(pts[1][0], pts[1][1]); gfx.lineTo(pts[2][0], pts[2][1]); }
+              if (outerSW2) { gfx.moveTo(pts[2][0], pts[2][1]); gfx.lineTo(pts[3][0], pts[3][1]); }
+              if (outerNW2) { gfx.moveTo(pts[3][0], pts[3][1]); gfx.lineTo(pts[0][0], pts[0][1]); }
               gfx.lineStyle(0);
             }
           }
