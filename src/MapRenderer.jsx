@@ -1690,10 +1690,10 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       ];
       
       // Check if there's a neighbor in each diagonal direction (within the 3×3)
-      const hasNE = (dc + 1 >= 0 && dc + 1 <= 2) && (dr - 1 >= 0 && dr - 1 <= 2);
-      const hasSE = (dc + 1 >= 0 && dc + 1 <= 2) && (dr + 1 >= 0 && dr + 1 <= 2);
-      const hasSW = (dc - 1 >= 0 && dc - 1 <= 2) && (dr + 1 >= 0 && dr + 1 <= 2);
-      const hasNW = (dc - 1 >= 0 && dc - 1 <= 2) && (dr - 1 >= 0 && dr - 1 <= 2);
+      const hasNE = (dc + 1 <= 2) && (dr - 1 >= 0);
+      const hasSE = (dc + 1 <= 2) && (dr + 1 <= 2);
+      const hasSW = (dc - 1 >= 0) && (dr + 1 <= 2);
+      const hasNW = (dc - 1 >= 0) && (dr - 1 >= 0);
       
       // Draw edge only if no neighbor
       const drawNE = !hasNE;
@@ -1702,15 +1702,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       const drawNW = !hasNW;
       
       if (drawNE || drawSE || drawSW || drawNW) {
-        // Black backing
-        borderGfx.lineStyle(8, 0x000000, 0.8);
-        if (drawNE) { borderGfx.moveTo(pts[0][0], pts[0][1]); borderGfx.lineTo(pts[1][0], pts[1][1]); }
-        if (drawSE) { borderGfx.moveTo(pts[1][0], pts[1][1]); borderGfx.lineTo(pts[2][0], pts[2][1]); }
-        if (drawSW) { borderGfx.moveTo(pts[2][0], pts[2][1]); borderGfx.lineTo(pts[3][0], pts[3][1]); }
-        if (drawNW) { borderGfx.moveTo(pts[3][0], pts[3][1]); borderGfx.lineTo(pts[0][0], pts[0][1]); }
-        borderGfx.lineStyle(0);
-        
-        // Colored border
+        // Just colored border for now
         borderGfx.lineStyle(5, ot, 1.0);
         if (drawNE) { borderGfx.moveTo(pts[0][0], pts[0][1]); borderGfx.lineTo(pts[1][0], pts[1][1]); }
         if (drawSE) { borderGfx.moveTo(pts[1][0], pts[1][1]); borderGfx.lineTo(pts[2][0], pts[2][1]); }
