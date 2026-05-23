@@ -495,10 +495,13 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         } else if (!isSel && drawAsHQ) {
           // Draw borders only on outer edges of 3×3 HQ footprint
           const hqPrimKey = isHQ ? key : tile.keepPrimaryKey;
+          console.log('Drawing HQ border for', key, 'isHQ:', isHQ, 'hqPrimKey:', hqPrimKey);
           if (hqPrimKey) {
             const [hpc, hpr] = hqPrimKey.split(",").map(Number);
             const dc = c - hpc; // offset from center
             const dr = r - hpr; // offset from center
+            
+            console.log('  dc:', dc, 'dr:', dr, 'inRange:', Math.abs(dc) <= 1 && Math.abs(dr) <= 1);
             
             // Only process if tile is within the 3×3 footprint (-1 to +1 range)
             if (Math.abs(dc) <= 1 && Math.abs(dr) <= 1) {
@@ -515,6 +518,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               else if (dc === 0 && dr === 1) { outerSW = true; } // bottom edge
               else if (dc === -1 && dr === 1) { outerSW = true; outerNW = true; } // bottom-left corner
               else if (dc === -1 && dr === 0) { outerNW = true; } // left edge
+              
+              console.log('  edges:', {outerNE, outerSE, outerSW, outerNW});
               
               if (outerNE || outerSE || outerSW || outerNW) {
                 // Black backing
