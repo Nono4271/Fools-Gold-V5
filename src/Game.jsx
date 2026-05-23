@@ -765,8 +765,10 @@ export default function RiseToWar() {
             if (ownerIdx > 0 && ownerIdx <= 8) {
               const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
               tile.faction = factionKeys[ownerIdx - 1];
-              console.log('  -> Patched with faction:', tile.faction);
+              console.log('  -> Patched with faction:', tile.faction, 'verified:', _tileStore[hqKey].faction);
             }
+          } else {
+            console.log('Skipping tile', hqKey, 'owner:', tile?.owner, 'isHQ:', tile?.isHQ, 'isHQPart:', tile?.isHQPart);
           }
         });
 
