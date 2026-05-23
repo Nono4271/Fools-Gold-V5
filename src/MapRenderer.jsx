@@ -1627,7 +1627,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   if (texCache[spriteUrl]) {
     const sp = new PIXI.Sprite(texCache[spriteUrl]);
     applySprite(sp);
-    group.addChildAt(sp, 0);
+    group.addChild(sp); // Add normally so it's on top
   } else {
     // Load async — replace placeholder gfx once loaded
     const placeholderGfx = new PIXI.Graphics();
@@ -1644,7 +1644,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       if (!group.destroyed) {
         const sp = new PIXI.Sprite(tex);
         applySprite(sp);
-        group.addChildAt(sp, 0);
+        group.addChild(sp); // Add normally so it's on top
       }
     }).catch(() => {
       // Sprite not found — placeholder stays, that's fine
