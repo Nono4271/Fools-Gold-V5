@@ -1687,12 +1687,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   hit.on("pointerdown", (e) => {
     if (isPanningRef?.current) return;
     e.stopPropagation();
-    const domEvent = e.data?.originalEvent;
-    if (domEvent) {
-      domEvent.stopPropagation();
-      domEvent.stopImmediatePropagation();
-    }
-    onHQClick(tileKey, domEvent || e);
+    onHQClick(tileKey, e.data?.originalEvent || e);
   });
   group.addChild(hit);
   return group;
@@ -1843,12 +1838,7 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningR
     // keep's hit area during a pan gesture should not open a popup.
     if (isPanningRef?.current) return;
     e.stopPropagation();
-    const domEvent = e.data?.originalEvent;
-    if (domEvent) {
-      domEvent.stopPropagation();
-      domEvent.stopImmediatePropagation();
-    }
-    onKeepClick(tileKey, domEvent || e);
+    onKeepClick(tileKey, e.data?.originalEvent || e);
   });
   group.addChild(hit);
   return group;
