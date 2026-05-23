@@ -509,7 +509,6 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
             const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
             
             // Hardcode which edges are outer for each position
-            // Position: (dc, dr) → which edges face outward
             let outerNE = false, outerSE = false, outerSW = false, outerNW = false;
             
             if (dc === -1 && dr === -1) { outerNW = true; outerNE = true; } // top-left corner
@@ -520,7 +519,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
             else if (dc === 0 && dr === 1) { outerSW = true; } // bottom edge
             else if (dc === -1 && dr === 1) { outerSW = true; outerNW = true; } // bottom-left corner
             else if (dc === -1 && dr === 0) { outerNW = true; } // left edge
-            // center tile (dc=0, dr=0) has no outer edges
+            
+            console.log('HQ tile', key, 'dc:', dc, 'dr:', dr, 'edges:', {outerNE, outerSE, outerSW, outerNW});
             
             if (outerNE || outerSE || outerSW || outerNW) {
               // Black backing
