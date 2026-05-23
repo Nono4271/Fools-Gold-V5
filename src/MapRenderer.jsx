@@ -1545,22 +1545,22 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
 
-  // Draw solid fill over entire 3×3 footprint - just the 4 outermost points
-  // North point: top vertex of tile (pc+1, pr) 
-  const northPt = isoXY(pc + 1, pr);
-  const nVertex = { x: northPt.cx, y: northPt.cy - elev };
+  // Draw solid fill - use the outermost vertices from the 4 corner tiles
+  // Top-left corner tile (pc, pr) - use its top vertex
+  const tlPt = isoXY(pc, pr);
+  const nVertex = { x: tlPt.cx, y: tlPt.cy - elev };
   
-  // East point: right vertex of tile (pc+2, pr+1)
-  const eastPt = isoXY(pc + 2, pr + 1);
-  const eVertex = { x: eastPt.cx + TW/2, y: eastPt.cy - elev + TH/2 };
+  // Top-right corner tile (pc+2, pr) - use its right vertex  
+  const trPt = isoXY(pc + 2, pr);
+  const eVertex = { x: trPt.cx + TW/2, y: trPt.cy - elev + TH/2 };
   
-  // South point: bottom vertex of tile (pc+1, pr+2)
-  const southPt = isoXY(pc + 1, pr + 2);
-  const sVertex = { x: southPt.cx, y: southPt.cy - elev + TH };
+  // Bottom-right corner tile (pc+2, pr+2) - use its bottom vertex
+  const brPt = isoXY(pc + 2, pr + 2);
+  const sVertex = { x: brPt.cx, y: brPt.cy - elev + TH };
   
-  // West point: left vertex of tile (pc, pr+1)
-  const westPt = isoXY(pc, pr + 1);
-  const wVertex = { x: westPt.cx - TW/2, y: westPt.cy - elev + TH/2 };
+  // Bottom-left corner tile (pc, pr+2) - use its left vertex
+  const blPt = isoXY(pc, pr + 2);
+  const wVertex = { x: blPt.cx - TW/2, y: blPt.cy - elev + TH/2 };
   
   const fillGfx = new PIXI.Graphics();
   const terrainColor = 0xd4a574; // Desert/tan color
@@ -1572,7 +1572,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     wVertex.x, wVertex.y,
   ]);
   fillGfx.endFill();
-  group.addChild(fillGfx); // Try without addChildAt first
+  group.addChild(fillGfx);
 
   // ── Selection outline ──
   if (isSelected) {
