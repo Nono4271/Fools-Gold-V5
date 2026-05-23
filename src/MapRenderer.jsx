@@ -112,18 +112,18 @@ function buildCByTile(cmds) {
 }
 
 /* ─── Tile ownership tint colors ─────────────────────────────────────────────
-   player    → BLACK  0x000000  (your tiles) - TEST
+   player    → green  0x22cc55  (your tiles)
    crewmate  → blue   0x2299ff  (AI in your crew — tile.ownerPlayerId in crewmatePlayerIds)
-   faction   → WHITE  0xffffff  (same faction, not your crew) - TEST
+   faction   → purple 0xaa44ff  (same faction, not your crew)
    enemy     → red    0xdc3c28
    ────────────────────────────────────────────────────────────────────────── */
 function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
-  if (owner === "player") return 0x000000; // BLACK for testing
+  if (owner === "player") return 0x22cc55; // Bright green
   if (!owner) return null;
   // Blue: AI tile owned by a crewmate (requires tile.ownerPlayerId)
   if (owner === "ai" && ownerPlayerId && crewPids?.has(ownerPlayerId)) return 0x2299ff;
-  // White: same faction, not crew
-  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xffffff; // WHITE for testing
+  // Purple: same faction, not crew
+  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xaa44ff; // Purple
   return 0xdc3c28;
 }
 
@@ -233,9 +233,9 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
             gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
             if (!isSel) { 
               // Black backing for contrast
-              gfx.lineStyle(6, 0x000000, 0.6); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+              gfx.lineStyle(8, 0x000000, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0);
               // Colored border on top
-              gfx.lineStyle(4, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+              gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
             }
           }
           if (hasCmds && !isSel) { gfx.lineStyle(2, 0xf0dc3c, 0.9); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
@@ -484,24 +484,21 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
       if (owner) {
         const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-        console.log('Owner tint for', key, 'owner:', owner, 'faction:', tile?.faction, 'playerFac:', playerFacKey, 'ot:', ot.toString(16));
         gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
         // For HQ tiles: only stroke the outer edges of the 3×3 footprint,
         // not interior tile borders which show through under the sprite.
         if (!isSel && !drawAsHQ) {
           // Black backing for contrast
-          gfx.lineStyle(6, 0x000000, 0.6); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          gfx.lineStyle(8, 0x000000, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0);
           // Colored border on top
-          gfx.lineStyle(4, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         } else if (!isSel && drawAsHQ) {
           // Determine which edges of this tile are on the outer boundary of the 3×3.
           // Primary tile key stored on isHQPart tiles as keepPrimaryKey (reused for HQ).
           const hqPrimKey = isHQ ? key : tile.keepPrimaryKey;
-          console.log('HQ border render:', key, 'primKey:', hqPrimKey, 'isHQ:', isHQ, 'isHQPart:', isHQPart);
           if (hqPrimKey) {
             const [hpc, hpr] = hqPrimKey.split(",").map(Number);
             const dc = c - hpc, dr = r - hpr; // 0..2, 0..2
-            console.log('  dc:', dc, 'dr:', dr, 'c:', c, 'r:', r, 'hpc:', hpc, 'hpr:', hpr);
             // Draw only the outer-facing edges as line segments
             const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
             // NE edge (top-right): outer if dc===2
@@ -514,12 +511,10 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               { p0:2, p1:3, outer: dc===0 }, // SW
               { p0:3, p1:0, outer: dr===0 }, // NW
             ];
-            console.log('  edges:', edges.map(e => e.outer));
             // Thick black backing for maximum contrast
             for (const e of edges) {
               if (!e.outer) continue;
-              console.log('  drawing black edge');
-              gfx.lineStyle(7, 0x000000, 0.6);
+              gfx.lineStyle(9, 0x000000, 0.8);
               gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
               gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
               gfx.lineStyle(0);
@@ -527,8 +522,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
             // Bright colored border on top
             for (const e of edges) {
               if (!e.outer) continue;
-              console.log('  drawing colored edge, ot:', ot.toString(16));
-              gfx.lineStyle(5, ot, 1.0);
+              gfx.lineStyle(6, ot, 1.0);
               gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
               gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
               gfx.lineStyle(0);
