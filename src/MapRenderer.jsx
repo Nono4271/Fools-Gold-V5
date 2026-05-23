@@ -483,6 +483,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       }
 
       if (owner) {
+        if (drawAsHQ) console.log('HQ tile WITH owner', key, 'owner:', owner, 'drawAsHQ:', drawAsHQ, 'isSel:', isSel);
         const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
         gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
         // For HQ tiles: only stroke the outer edges of the 3×3 footprint,
@@ -493,6 +494,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           // Colored border on top
           gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         } else if (!isSel && drawAsHQ) {
+          console.log('DRAWING RED BORDER for', key);
           // Draw border around each HQ tile - edges will connect to form full HQ border
           const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
           
@@ -501,6 +503,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           gfx.drawPolygon(pts);
           gfx.lineStyle(0);
         }
+      } else if (drawAsHQ) {
+        console.log('HQ tile WITHOUT owner', key, 'drawAsHQ:', drawAsHQ);
       }
 
       if (mode === "selectMarchDest" && owner !== "player") {
