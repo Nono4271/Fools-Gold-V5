@@ -503,15 +503,15 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               { p0:2, p1:3, outer: dc===0 }, // SW
               { p0:3, p1:0, outer: dr===0 }, // NW
             ];
-            // Dark backing stroke for contrast
-            gfx.lineStyle(5, 0x000000, 0.4);
+            // Thick black backing for maximum contrast
+            gfx.lineStyle(7, 0x000000, 0.6);
             for (const e of edges) {
               if (!e.outer) continue;
               gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
               gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
             }
-            // Main colored border
-            gfx.lineStyle(4, ot, 1.0);
+            // Bright colored border on top
+            gfx.lineStyle(5, ot, 1.0);
             for (const e of edges) {
               if (!e.outer) continue;
               gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
