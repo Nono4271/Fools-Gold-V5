@@ -496,9 +496,11 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           // Determine which edges of this tile are on the outer boundary of the 3×3.
           // Primary tile key stored on isHQPart tiles as keepPrimaryKey (reused for HQ).
           const hqPrimKey = isHQ ? key : tile.keepPrimaryKey;
+          console.log('HQ border render:', key, 'primKey:', hqPrimKey, 'isHQ:', isHQ, 'isHQPart:', isHQPart);
           if (hqPrimKey) {
             const [hpc, hpr] = hqPrimKey.split(",").map(Number);
             const dc = c - hpc, dr = r - hpr; // 0..2, 0..2
+            console.log('  dc:', dc, 'dr:', dr, 'c:', c, 'r:', r, 'hpc:', hpc, 'hpr:', hpr);
             // Draw only the outer-facing edges as line segments
             const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
             // NE edge (top-right): outer if dc===2
@@ -511,9 +513,11 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               { p0:2, p1:3, outer: dc===0 }, // SW
               { p0:3, p1:0, outer: dr===0 }, // NW
             ];
+            console.log('  edges:', edges.map(e => e.outer));
             // Thick black backing for maximum contrast
             for (const e of edges) {
               if (!e.outer) continue;
+              console.log('  drawing black edge');
               gfx.lineStyle(7, 0x000000, 0.6);
               gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
               gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
@@ -522,6 +526,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
             // Bright colored border on top
             for (const e of edges) {
               if (!e.outer) continue;
+              console.log('  drawing colored edge, ot:', ot.toString(16));
               gfx.lineStyle(5, ot, 1.0);
               gfx.moveTo(pts[e.p0][0], pts[e.p0][1]);
               gfx.lineTo(pts[e.p1][0], pts[e.p1][1]);
