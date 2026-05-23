@@ -1617,7 +1617,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   if (texCache[spriteUrl]) {
     const sp = new PIXI.Sprite(texCache[spriteUrl]);
     applySprite(sp);
-    group.addChild(sp);
+    group.addChildAt(sp, 0);
   } else {
     // Load async — replace placeholder gfx once loaded
     const placeholderGfx = new PIXI.Graphics();
@@ -1687,7 +1687,12 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   hit.on("pointerdown", (e) => {
     if (isPanningRef?.current) return;
     e.stopPropagation();
-    onHQClick(tileKey, e.data?.originalEvent || e);
+    const domEvent = e.data?.originalEvent;
+    if (domEvent) {
+      domEvent.stopPropagation();
+      domEvent.stopImmediatePropagation();
+    }
+    onHQClick(tileKey, domEvent || e);
   });
   group.addChild(hit);
   return group;
@@ -1838,7 +1843,12 @@ function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningR
     // keep's hit area during a pan gesture should not open a popup.
     if (isPanningRef?.current) return;
     e.stopPropagation();
-    onKeepClick(tileKey, e.data?.originalEvent || e);
+    const domEvent = e.data?.originalEvent;
+    if (domEvent) {
+      domEvent.stopPropagation();
+      domEvent.stopImmediatePropagation();
+    }
+    onKeepClick(tileKey, domEvent || e);
   });
   group.addChild(hit);
   return group;
