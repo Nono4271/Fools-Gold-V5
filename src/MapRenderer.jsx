@@ -494,19 +494,20 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         } else if (!isSel && drawAsHQ && isHQ) {
           // Draw single continuous border around entire 3×3 HQ footprint (only from center tile)
-          // 3×3 footprint spans 3 tiles horizontally and vertically in isometric space
-          const hqW = TW * 3;
-          const hqH = TH * 3;
-          const hqTop = sy - TH;
-          const hqBot = sy + TH * 2;
-          const hqLeft = cx - TW * 1.5;
-          const hqRight = cx + TW * 1.5;
+          // The 3×3 footprint in isometric space forms a larger diamond
+          // Center tile is at (c, r), so footprint spans (c-1, r-1) to (c+1, r+1)
+          
+          // Calculate vertices of the 3×3 diamond outline
+          const topTile = isoXY(c, r - 1);
+          const rightTile = isoXY(c + 1, r);
+          const bottomTile = isoXY(c, r + 1);
+          const leftTile = isoXY(c - 1, r);
           
           const hqOutline = [
-            cx, hqTop,                    // Top vertex
-            hqRight, sy + TH/2,          // Right vertex  
-            cx, hqBot,                    // Bottom vertex
-            hqLeft, sy + TH/2,           // Left vertex
+            topTile.cx, topTile.cy - elev,                    // Top vertex
+            rightTile.cx + TW/2, rightTile.cy - elev + TH/2,  // Right vertex  
+            bottomTile.cx, bottomTile.cy - elev + TH,         // Bottom vertex
+            leftTile.cx - TW/2, leftTile.cy - elev + TH/2,    // Left vertex
           ];
           
           // Black backing

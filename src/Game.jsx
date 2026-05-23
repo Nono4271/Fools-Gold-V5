@@ -646,6 +646,19 @@ export default function RiseToWar() {
           tile.crossingType    = km?.type || null;
           tile.keepPrimaryKey  = keepPrimaryKey;
           tile.defCmd          = km?.defCmd || null;
+          
+          // AI HQ tiles need faction for border coloring
+          if ((isHQ || isHQPart) && owner === "ai") {
+            // Derive faction from HQ owner - assumes 8 AI factions at indices 1-8
+            const ownerIdx = ownerArr[idx];
+            if (ownerIdx > 0 && ownerIdx <= 8) {
+              const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
+              tile.faction = factionKeys[ownerIdx - 1];
+            }
+          } else {
+            tile.faction = null;
+          }
+          
           return tile;
         };
 
