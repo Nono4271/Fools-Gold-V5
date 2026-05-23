@@ -1670,15 +1670,23 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   group.addChild(hit);
   
   // Draw border around HQ footprint (after sprite so it appears on top)
+  // Use actual tile corners, not sprite-based FOOTPRINT
+  const actualDiamond = [
+    nPt.cx, nPt.cy - elev,     // North point
+    ePt.cx, ePt.cy - elev,     // East point
+    sPt.cx, sPt.cy - elev,     // South point
+    wPt.cx, wPt.cy - elev,     // West point
+  ];
+  
   const borderGfx = new PIXI.Graphics();
   const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
   // Black backing for contrast
   borderGfx.lineStyle(8, 0x000000, 0.8);
-  borderGfx.drawPolygon(FOOTPRINT);
+  borderGfx.drawPolygon(actualDiamond);
   borderGfx.lineStyle(0);
   // Colored border on top
   borderGfx.lineStyle(5, ot, 1.0);
-  borderGfx.drawPolygon(FOOTPRINT);
+  borderGfx.drawPolygon(actualDiamond);
   borderGfx.lineStyle(0);
   group.addChild(borderGfx);
   
