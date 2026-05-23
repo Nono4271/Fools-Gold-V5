@@ -488,7 +488,10 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         // For HQ tiles: only stroke the outer edges of the 3×3 footprint,
         // not interior tile borders which show through under the sprite.
         if (!isSel && !drawAsHQ) {
-          gfx.lineStyle(3, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          // Black backing for contrast
+          gfx.lineStyle(6, 0x000000, 0.6); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          // Colored border on top
+          gfx.lineStyle(4, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         } else if (!isSel && drawAsHQ) {
           // Determine which edges of this tile are on the outer boundary of the 3×3.
           // Primary tile key stored on isHQPart tiles as keepPrimaryKey (reused for HQ).
