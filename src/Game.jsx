@@ -615,6 +615,17 @@ export default function RiseToWar() {
 
           const km = (isKeep && keepMeta[k]) ? keepMeta[k] : null;
           const owner = OWNER_DEC[ownerArr[idx]] || null;
+          
+          // Determine faction for border coloring
+          let faction = null;
+          if ((isHQ || isHQPart) && owner === "ai") {
+            // AI HQ tiles: derive faction from owner index
+            const ownerIdx = ownerArr[idx];
+            if (ownerIdx > 0 && ownerIdx <= 8) {
+              const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
+              faction = factionKeys[ownerIdx - 1];
+            }
+          }
 
           const tile = Object.create(TileProto);
           tile.c = c; tile.r = r; tile.k = k;
@@ -646,19 +657,7 @@ export default function RiseToWar() {
           tile.crossingType    = km?.type || null;
           tile.keepPrimaryKey  = keepPrimaryKey;
           tile.defCmd          = km?.defCmd || null;
-          
-          // AI HQ tiles need faction for border coloring
-          if ((isHQ || isHQPart) && owner === "ai") {
-            // Derive faction from HQ owner - assumes 8 AI factions at indices 1-8
-            const ownerIdx = ownerArr[idx];
-            if (ownerIdx > 0 && ownerIdx <= 8) {
-              const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
-              tile.faction = factionKeys[ownerIdx - 1];
-              console.log('AI HQ tile', k, 'ownerIdx:', ownerIdx, 'faction:', tile.faction);
-            }
-          } else {
-            tile.faction = null;
-          }
+          tile.faction         = faction;
           
           return tile;
         };
