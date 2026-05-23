@@ -123,13 +123,7 @@ function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
   // Blue: AI tile owned by a crewmate (requires tile.ownerPlayerId)
   if (owner === "ai" && ownerPlayerId && crewPids?.has(ownerPlayerId)) return 0x2299ff;
   // Purple: same faction, not crew
-  if (tileFaction && playerFacKey && tileFaction === playerFacKey) {
-    console.log('PURPLE: tileFaction:', tileFaction, 'playerFacKey:', playerFacKey);
-    return 0xaa44ff; // Purple
-  }
-  if (tileFaction || playerFacKey) {
-    console.log('RED: tileFaction:', tileFaction, 'playerFacKey:', playerFacKey, 'match:', tileFaction === playerFacKey);
-  }
+  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xaa44ff;
   return 0xdc3c28;
 }
 
@@ -503,41 +497,42 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           const hqPrimKey = isHQ ? key : tile.keepPrimaryKey;
           if (hqPrimKey) {
             const [hpc, hpr] = hqPrimKey.split(",").map(Number);
-            const dc = c - hpc; // -1, 0, or 1
-            const dr = r - hpr; // -1, 0, or 1
+            const dc = c - hpc; // offset from center
+            const dr = r - hpr; // offset from center
             
-            const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
-            
-            // Hardcode which edges are outer for each position
-            let outerNE = false, outerSE = false, outerSW = false, outerNW = false;
-            
-            if (dc === -1 && dr === -1) { outerNW = true; outerNE = true; } // top-left corner
-            else if (dc === 0 && dr === -1) { outerNE = true; } // top edge
-            else if (dc === 1 && dr === -1) { outerNE = true; outerSE = true; } // top-right corner
-            else if (dc === 1 && dr === 0) { outerSE = true; } // right edge
-            else if (dc === 1 && dr === 1) { outerSE = true; outerSW = true; } // bottom-right corner
-            else if (dc === 0 && dr === 1) { outerSW = true; } // bottom edge
-            else if (dc === -1 && dr === 1) { outerSW = true; outerNW = true; } // bottom-left corner
-            else if (dc === -1 && dr === 0) { outerNW = true; } // left edge
-            
-            console.log('HQ tile', key, 'dc:', dc, 'dr:', dr, 'edges:', {outerNE, outerSE, outerSW, outerNW});
-            
-            if (outerNE || outerSE || outerSW || outerNW) {
-              // Black backing
-              gfx.lineStyle(9, 0x000000, 0.8);
-              if (outerNE) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
-              if (outerSE) { gfx.moveTo(pts[1][0], pts[1][1]); gfx.lineTo(pts[2][0], pts[2][1]); }
-              if (outerSW) { gfx.moveTo(pts[2][0], pts[2][1]); gfx.lineTo(pts[3][0], pts[3][1]); }
-              if (outerNW) { gfx.moveTo(pts[3][0], pts[3][1]); gfx.lineTo(pts[0][0], pts[0][1]); }
-              gfx.lineStyle(0);
+            // Only process if tile is within the 3×3 footprint (-1 to +1 range)
+            if (Math.abs(dc) <= 1 && Math.abs(dr) <= 1) {
+              const pts = [[cx,sy],[cx+TW/2,mid],[cx,sy+TH],[cx-TW/2,mid]];
               
-              // Colored border
-              gfx.lineStyle(6, ot, 1.0);
-              if (outerNE) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
-              if (outerSE) { gfx.moveTo(pts[1][0], pts[1][1]); gfx.lineTo(pts[2][0], pts[2][1]); }
-              if (outerSW) { gfx.moveTo(pts[2][0], pts[2][1]); gfx.lineTo(pts[3][0], pts[3][1]); }
-              if (outerNW) { gfx.moveTo(pts[3][0], pts[3][1]); gfx.lineTo(pts[0][0], pts[0][1]); }
-              gfx.lineStyle(0);
+              // Hardcode which edges are outer for each position
+              let outerNE = false, outerSE = false, outerSW = false, outerNW = false;
+              
+              if (dc === -1 && dr === -1) { outerNW = true; outerNE = true; } // top-left corner
+              else if (dc === 0 && dr === -1) { outerNE = true; } // top edge
+              else if (dc === 1 && dr === -1) { outerNE = true; outerSE = true; } // top-right corner
+              else if (dc === 1 && dr === 0) { outerSE = true; } // right edge
+              else if (dc === 1 && dr === 1) { outerSE = true; outerSW = true; } // bottom-right corner
+              else if (dc === 0 && dr === 1) { outerSW = true; } // bottom edge
+              else if (dc === -1 && dr === 1) { outerSW = true; outerNW = true; } // bottom-left corner
+              else if (dc === -1 && dr === 0) { outerNW = true; } // left edge
+              
+              if (outerNE || outerSE || outerSW || outerNW) {
+                // Black backing
+                gfx.lineStyle(9, 0x000000, 0.8);
+                if (outerNE) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
+                if (outerSE) { gfx.moveTo(pts[1][0], pts[1][1]); gfx.lineTo(pts[2][0], pts[2][1]); }
+                if (outerSW) { gfx.moveTo(pts[2][0], pts[2][1]); gfx.lineTo(pts[3][0], pts[3][1]); }
+                if (outerNW) { gfx.moveTo(pts[3][0], pts[3][1]); gfx.lineTo(pts[0][0], pts[0][1]); }
+                gfx.lineStyle(0);
+                
+                // Colored border
+                gfx.lineStyle(6, ot, 1.0);
+                if (outerNE) { gfx.moveTo(pts[0][0], pts[0][1]); gfx.lineTo(pts[1][0], pts[1][1]); }
+                if (outerSE) { gfx.moveTo(pts[1][0], pts[1][1]); gfx.lineTo(pts[2][0], pts[2][1]); }
+                if (outerSW) { gfx.moveTo(pts[2][0], pts[2][1]); gfx.lineTo(pts[3][0], pts[3][1]); }
+                if (outerNW) { gfx.moveTo(pts[3][0], pts[3][1]); gfx.lineTo(pts[0][0], pts[0][1]); }
+                gfx.lineStyle(0);
+              }
             }
           }
         }
