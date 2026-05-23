@@ -76,8 +76,8 @@ const RSS_ENC     = { stone:1, wood:2, ore:3, gas:4 };
 const RSS_DEC     = [null,"stone","wood","ore","gas"];
 const TROOP_ENC   = { infantry:1, mage:2, spearmen:3, horsemen:4 };
 const TROOP_DEC   = [null,"infantry","mage","spearmen","horsemen"];
-const OWNER_ENC   = { player:1, ai:2, pirates:3, orcs:4, bountyhunters:5, dragons:6, holyknights:7, nightcreatures:8 };
-const OWNER_DEC   = [null,"player","ai","pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
+const OWNER_ENC   = { player:1, ai:2, pirates:3, orcs:4, bountyhunters:5, dragons:6, holyknights:7, nightcreatures:8, coldborns:9, "ashen dead":10 };
+const OWNER_DEC   = [null,"player","ai","pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen dead"];
 
 const F_KEEP     = 1<<1;
 const F_KEEPPART = 1<<2;
@@ -1631,7 +1631,7 @@ self.onmessage = function(e) {
 
   const spawnKeys={}, usedKeys=new Set();
   // Place 50 HQs per faction, round-robin across that faction's home regions
-  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
+  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen dead"]) {
     const regions = FACTION_ALL_REGIONS[fk];
     if (!regions || !regions.length) continue;
     const ownerCode = OWNER_ENC[fk];
