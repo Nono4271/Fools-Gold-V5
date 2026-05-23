@@ -1612,8 +1612,8 @@ self.onmessage = function(e) {
         ownerArr[idx] = ownerCode;
         // Keep primary key for border rendering
         if (!isCenter) keepPrimArr[idx] = centerIdx;
-        // Terrain — HQ footprint is always grass, no resources
-        terrainArr[idx] = TERRAIN_ENC.grass;
+        // Terrain — HQ footprint uses desert for better border visibility
+        terrainArr[idx] = TERRAIN_ENC.desert;
         rssArr[idx]     = 0;
         // Garrison/siege — center tile gets full siege value, parts get 0
         if (isCenter) {
