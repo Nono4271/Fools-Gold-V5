@@ -1705,62 +1705,37 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const borderGfx = new PIXI.Graphics();
   const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
   
-  let edgeCount = 0;
-  // For each tile in the 3×3, draw only edges that face outward
-  for (let dc = 0; dc <= 2; dc++) {
-    for (let dr = 0; dr <= 2; dr++) {
-      const tc = pc + dc;
-      const tr = pr + dr;
-      const tilePos = isoXY(tc, tr);
-      const tcx = tilePos.cx;
-      const tcy = tilePos.cy - elev;
-      
-      const pts = [
-        [tcx, tcy],                    // top
-        [tcx + TW/2, tcy + TH/2],      // right
-        [tcx, tcy + TH],               // bottom
-        [tcx - TW/2, tcy + TH/2],      // left
-      ];
-      
-      // Check if there's a neighbor in each diagonal direction (within the 3×3)
-      const hasNE = (dc + 1 <= 2) && (dr - 1 >= 0);
-      const hasSE = (dc + 1 <= 2) && (dr + 1 <= 2);
-      const hasSW = (dc - 1 >= 0) && (dr + 1 <= 2);
-      const hasNW = (dc - 1 >= 0) && (dr - 1 >= 0);
-      
-      // Draw edge only if no neighbor
-      const drawNE = !hasNE;
-      const drawSE = !hasSE;
-      const drawSW = !hasSW;
-      const drawNW = !hasNW;
-      
-      if (drawNE || drawSE || drawSW || drawNW) {
-        edgeCount++;
-        console.log(`Tile (${dc},${dr}): NE:${drawNE} SE:${drawSE} SW:${drawSW} NW:${drawNW}`);
-      }
-      
-      if (drawNE || drawSE || drawSW || drawNW) {
-        // BORDERS DISABLED FOR TESTING
-        /*
-        // Black backing for contrast
-        borderGfx.lineStyle(8, 0x000000, 0.8);
-        if (drawNE) { borderGfx.moveTo(pts[0][0], pts[0][1]); borderGfx.lineTo(pts[1][0], pts[1][1]); }
-        if (drawSE) { borderGfx.moveTo(pts[1][0], pts[1][1]); borderGfx.lineTo(pts[2][0], pts[2][1]); }
-        if (drawSW) { borderGfx.moveTo(pts[2][0], pts[2][1]); borderGfx.lineTo(pts[3][0], pts[3][1]); }
-        if (drawNW) { borderGfx.moveTo(pts[3][0], pts[3][1]); borderGfx.lineTo(pts[0][0], pts[0][1]); }
-        borderGfx.lineStyle(0);
-        
-        // Colored border on top
-        borderGfx.lineStyle(5, ot, 1.0);
-        if (drawNE) { borderGfx.moveTo(pts[0][0], pts[0][1]); borderGfx.lineTo(pts[1][0], pts[1][1]); }
-        if (drawSE) { borderGfx.moveTo(pts[1][0], pts[1][1]); borderGfx.lineTo(pts[2][0], pts[2][1]); }
-        if (drawSW) { borderGfx.moveTo(pts[2][0], pts[2][1]); borderGfx.lineTo(pts[3][0], pts[3][1]); }
-        if (drawNW) { borderGfx.moveTo(pts[3][0], pts[3][1]); borderGfx.lineTo(pts[0][0], pts[0][1]); }
-        borderGfx.lineStyle(0);
-        */
-      }
-    }
-  }
+  // Collect all outer edge vertices in order to draw one continuous border
+  const borderPath = [];
+  
+  // Build the border path by tracing the perimeter clockwise
+  // Starting from top-left corner tile (0,0), go around the outside
+  const cornerTiles = [
+    { dc: 0, dr: 0 }, // top-left
+    { dc: 2, dr: 0 }, // top-right  
+    { dc: 2, dr: 2 }, // bottom-right
+    { dc: 0, dr: 2 }, // bottom-left
+  ];
+  
+  // Top edge: from (0,0) top vertex -> (2,0) right vertex
+  borderPath.push(isoXY(pc, pr).cx, isoXY(pc, pr).cy - elev); // TL top
+  borderPath.push(isoXY(pc + 2, pr).cx + TW/2, isoXY(pc + 2, pr).cy - elev + TH/2); // TR right
+  
+  // Right edge: from (2,0) right vertex -> (2,2) bottom vertex  
+  borderPath.push(isoXY(pc + 2, pr + 2).cx, isoXY(pc + 2, pr + 2).cy - elev + TH); // BR bottom
+  
+  // Bottom edge: from (2,2) bottom vertex -> (0,2) left vertex
+  borderPath.push(isoXY(pc, pr + 2).cx - TW/2, isoXY(pc, pr + 2).cy - elev + TH/2); // BL left
+  
+  // Path auto-closes back to start
+  
+  borderGfx.lineStyle(8, 0x000000, 0.8);
+  borderGfx.drawPolygon(borderPath);
+  borderGfx.lineStyle(0);
+  
+  borderGfx.lineStyle(5, ot, 1.0);
+  borderGfx.drawPolygon(borderPath);
+  borderGfx.lineStyle(0);
   
   group.addChild(borderGfx);
   
