@@ -494,7 +494,9 @@ function resolveBranchMap(cmdOrCls, treeOrCls) {
       holyknights:    HOLYKNIGHTS_BRANCH_SKILL_MAP,
       nightcreatures: NIGHTCREATURES_BRANCH_SKILL_MAP,
       dragons:        DRAGONS_BRANCH_SKILL_MAP,
-      wizards:  BOUNTYHUNTERS_BRANCH_SKILL_MAP,
+      wizards:        BOUNTYHUNTERS_BRANCH_SKILL_MAP,
+      coldborns:      COLDBORNS_BRANCH_SKILL_MAP,
+      ashen_dead:     ASHEN_DEAD_BRANCH_SKILL_MAP,
       orcs:           ORCS_BRANCH_SKILL_MAP,
       pirates:        PIRATES_BRANCH_SKILL_MAP,
     }[faction];
