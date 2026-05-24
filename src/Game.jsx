@@ -555,7 +555,7 @@ export default function RiseToWar() {
           COLS: C, ROWS: R,
           regionList, keepMeta, crossings, impassKeys,
           TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
-          F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER, F_PGGATE,
+          F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER,
         } = meta;
         const SIZE = C * R;
 
@@ -601,7 +601,6 @@ export default function RiseToWar() {
           const isWin     = !!(flags & F_WIN);
           const isGate    = !!(flags & F_GATE);
           const isBorder  = !!(flags & F_BORDER);
-          const isPGGate  = !!(flags & F_PGGATE);
 
           let keepPrimaryKey = null;
           if (isKeepPart || isHQPart) {
@@ -655,7 +654,6 @@ export default function RiseToWar() {
           tile.isWin      = isWin;
           tile.isGate     = isGate;
           tile.isBorder   = isBorder;
-          tile.isPeninsulaGate = isPGGate;
           tile.homeFaction     = km?.homeFaction || null;
           tile.crossingType    = km?.type || null;
           tile.keepPrimaryKey  = keepPrimaryKey;
@@ -1250,9 +1248,7 @@ export default function RiseToWar() {
     );
   }, [selAdjToPlayer, selTile, playerCmds]);
 
-  const canAtk = !!(selTile && selTile.owner!=="player" && selAdjToPlayer &&
-    // Peninsula gates can only be attacked by their home faction
-    (!selTile.isPeninsulaGate || !selTile.homeFaction || selTile.homeFaction === facKey));
+  const canAtk = !!(selTile && selTile.owner!=="player" && selAdjToPlayer);
 
   const marchingToSel = useMemo(() =>
     selKey ? playerCmds.filter(c => c.march?.dest===selKey) : [],
@@ -1282,11 +1278,6 @@ export default function RiseToWar() {
     const curStamina = freshCmd.stamina ?? 200;
     if (curStamina < staminaCost) {
       floaty(`⚡ Not enough stamina! (${curStamina}/200)`, "#cc8030", freshCmd.tk);
-      return;
-    }
-    // Peninsula gates can only be attacked by their home faction
-    if (type==="attack" && destTile?.isPeninsulaGate && destTile?.homeFaction && destTile.homeFaction !== facKey) {
-      floaty("⚠ Only " + destTile.homeFaction + " can attack this gate!", "#cc8030", freshCmd.tk);
       return;
     }
     const boostedSpd = applyGearToCmd(freshCmd, gearInventory).spd || 60;
