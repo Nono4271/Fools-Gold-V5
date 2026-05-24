@@ -88,7 +88,6 @@ const F_WIN      = 1<<5;
 const F_DEFEATED = 1<<6;
 const F_GATE     = 1<<7;  // crossing/tunnel/tollbridge gate tile (passable border)
 const F_BORDER   = 1<<8;  // border terrain tile (impassable, not a gate)
-const F_PGGATE   = 1<<9;  // peninsula gate — only attackable by homeFaction
 
 // ── Region list — 1850×1300 design space ──────────────────────────────────────
 const REGION_LIST = [
@@ -244,12 +243,115 @@ const TERRAIN_NAMES = ["grass","forest","mountain","desert","river","ravine","ro
 // H = horizontal border (strip of rows at bCoord y, gate centered at gCoord x)
 // V = vertical border   (strip of cols at bCoord x, gate centered at gCoord y)
 // Border terrain: H→river, V→rockymountain, tollbridge→ravine on either axis
-const GATE_GARRISON = 2100;
-const GATE_SIEGE    = 200000;
-const GATE_CMD_LVL  = 20;
 
-// Crossings removed - no longer used with new region layout
-const CROSSINGS = [];
+// Build CROSSINGS array by detecting shared polygon edges between regions
+const CROSSINGS = (() => {
+  const HOLY_GRAIL = { cx: 916, cy: 640 }; // from holyGrail region
+  const crossings = [];
+
+  // Helper: calculate Euclidean distance from Holy Grail
+  function distFromGrail(x, y) {
+    return Math.sqrt((x - HOLY_GRAIL.cx) ** 2 + (y - HOLY_GRAIL.cy) ** 2);
+  }
+
+  // Helper: determine gate type based on distance (divide map into thirds)
+  // Max distance ≈ 1000, so: 0-333 = tollbridge, 333-667 = tunnel, 667+ = crossing
+  function gateTypeForDistance(dist) {
+    if (dist < 333) return 'tollbridge';
+    if (dist < 667) return 'tunnel';
+    return 'crossing';
+  }
+
+  // Helper: find shared edges between two polygons
+  // Returns array of { axis:'H'|'V', coord, start, end } for each shared edge
+  function findSharedEdges(polyA, polyB) {
+    const edges = [];
+    
+    // Check each edge of polyA against each edge of polyB
+    for (let i = 0; i < polyA.length; i++) {
+      const [ax1, ay1] = polyA[i];
+      const [ax2, ay2] = polyA[(i + 1) % polyA.length];
+      
+      for (let j = 0; j < polyB.length; j++) {
+        const [bx1, by1] = polyB[j];
+        const [bx2, by2] = polyB[(j + 1) % polyB.length];
+        
+        // Check for horizontal edge overlap (same y, overlapping x ranges)
+        if (ay1 === ay2 && by1 === by2 && ay1 === by1) {
+          const aMinX = Math.min(ax1, ax2), aMaxX = Math.max(ax1, ax2);
+          const bMinX = Math.min(bx1, bx2), bMaxX = Math.max(bx1, bx2);
+          const overlapStart = Math.max(aMinX, bMinX);
+          const overlapEnd = Math.min(aMaxX, bMaxX);
+          
+          if (overlapStart < overlapEnd) {
+            edges.push({ axis: 'H', coord: ay1, start: overlapStart, end: overlapEnd });
+          }
+        }
+        
+        // Check for vertical edge overlap (same x, overlapping y ranges)
+        if (ax1 === ax2 && bx1 === bx2 && ax1 === bx1) {
+          const aMinY = Math.min(ay1, ay2), aMaxY = Math.max(ay1, ay2);
+          const bMinY = Math.min(by1, by2), bMaxY = Math.max(by1, by2);
+          const overlapStart = Math.max(aMinY, bMinY);
+          const overlapEnd = Math.min(aMaxY, bMaxY);
+          
+          if (overlapStart < overlapEnd) {
+            edges.push({ axis: 'V', coord: ax1, start: overlapStart, end: overlapEnd });
+          }
+        }
+      }
+    }
+    
+    return edges;
+  }
+
+  // Find all neighboring region pairs
+  const regionKeys = Object.keys(POLYS);
+  const processed = new Set();
+  
+  for (let i = 0; i < regionKeys.length; i++) {
+    for (let j = i + 1; j < regionKeys.length; j++) {
+      const keyA = regionKeys[i];
+      const keyB = regionKeys[j];
+      const pairKey = [keyA, keyB].sort().join('|');
+      
+      if (processed.has(pairKey)) continue;
+      processed.add(pairKey);
+      
+      const polyA = POLYS[keyA];
+      const polyB = POLYS[keyB];
+      const sharedEdges = findSharedEdges(polyA, polyB);
+      
+      // For each shared edge, create a crossing
+      for (const edge of sharedEdges) {
+        const edgeLength = edge.end - edge.start;
+        const middleThirdStart = edge.start + edgeLength / 3;
+        const middleThirdEnd = edge.end - edgeLength / 3;
+        
+        // Random gate position in middle third
+        const seed = ((edge.coord * 73856093) ^ (Math.floor((edge.start + edge.end) / 2) * 19349663)) >>> 0;
+        const rng = (seed >>> 16) / 0x7fff;
+        const gCoord = Math.floor(middleThirdStart + rng * (middleThirdEnd - middleThirdStart));
+        
+        // Gate type based on distance from Holy Grail
+        const centerX = edge.axis === 'H' ? gCoord : edge.coord;
+        const centerY = edge.axis === 'H' ? edge.coord : gCoord;
+        const dist = distFromGrail(centerX, centerY);
+        const type = gateTypeForDistance(dist);
+        
+        crossings.push({
+          axis: edge.axis,
+          bCoord: edge.coord,
+          gCoord: gCoord,
+          type: type,
+          id: `${edge.axis.toLowerCase()}${gCoord}_${edge.coord}`,
+        });
+      }
+    }
+  }
+  
+  return crossings;
+})();
 
 // Terrain type per crossing type
 function crossingTerrain(type) {
@@ -767,6 +869,7 @@ self.onmessage = function(e) {
   }
 
   const KEEP_CMD_LVL=20, KEEP_TROOPS=2000, KEEP_SIEGE=5000, KEEP_RADIUS=2;
+  const GATE_CMD_LVL=20, GATE_GARRISON=2000, GATE_SIEGE=10000; // 20 command @ 0.01 per small troop
 
   for (const reg of REGION_LIST) {
     const idx = reg.cy*COLS + reg.cx;
@@ -885,6 +988,8 @@ self.onmessage = function(e) {
       gateMeta[`${x},${y}`] = {
         keepName: `${typeName} Gate A`,
         garrisonWaves: 2,
+        garrison: GATE_GARRISON,
+        garrisonTroops: 20, // 20 command budget
         cx: x, cy: y, side: 'A', type,
         defCmd: {
           n: `${typeName} Gate A Defender`,
@@ -910,6 +1015,8 @@ self.onmessage = function(e) {
       gateMeta[`${x},${y}`] = {
         keepName: `${typeName} Gate B`,
         garrisonWaves: 2,
+        garrison: GATE_GARRISON,
+        garrisonTroops: 20, // 20 command budget
         cx: x, cy: y, side: 'B', type,
         defCmd: {
           n: `${typeName} Gate B Defender`,
@@ -925,18 +1032,7 @@ self.onmessage = function(e) {
   // Merge gateMeta into keepMeta
   Object.assign(keepMeta, gateMeta);
 
-  // ── Peninsula borders + faction-locked gates ──────────────────────────────────
-  // Each peninsula keep is physically separated from the rest of the map by a
-  // 2-tile-wide impassable border. A single gate tile sits in that border;
-  // it is flagged F_PGGATE and carries homeFaction — only that faction can attack it.
-  //
-  // Border format: { tiles: [[c,r],...], gateTile: [c,r], faction, keepName }
-  // Border tiles that aren't the gate become F_BORDER (ravine terrain).
-  // The gate tile becomes F_GATE|F_PGGATE|F_KEEP with the homeFaction baked in.
-  //
-  // Peninsulas and their gate positions (hand-placed to sit on the road path):
-
-
+  // ── Anti-lockout pass ──────────────────────────────────────────────────────────
   // For every faction start keep, guarantee at least 2 of the 4 orthogonal
   // neighbours are P1. This ensures players can always move out of spawn.
   postMessage({ type:"progress", pct:92, label:"Anti-lockout pass..." });
@@ -1283,7 +1379,7 @@ self.onmessage = function(e) {
       crossings: CROSSINGS,
       impassKeys,
       TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
-      F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER, F_PGGATE,
+      F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER,
     },
     spawnKeys,
     aiHqMap,
