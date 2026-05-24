@@ -478,24 +478,40 @@ CROSSINGS = (() => {
         const [bx1, by1] = polyB[j];
         const [bx2, by2] = polyB[(j + 1) % polyB.length];
         
-        // Edges must be identical but reversed (shared border)
-        // Edge A: (ax1,ay1) → (ax2,ay2)
-        // Edge B: (bx2,by2) → (bx1,by1) (reversed direction)
-        const isSharedHorizontal = (ax1 === bx2 && ay1 === by2 && ax2 === bx1 && ay2 === by1);
-        const isSharedVertical = (ax1 === bx1 && ay1 === by1 && ax2 === bx2 && ay2 === by2);
+        // Edges are shared if they're the same segment in opposite directions
+        // A: (ax1,ay1)→(ax2,ay2)  matches  B: (bx2,by2)→(bx1,by1)
+        const isReversedMatch = (ax1 === bx2 && ay1 === by2 && ax2 === bx1 && ay2 === by1);
         
-        if (isSharedHorizontal || isSharedVertical) {
-          // Determine axis and coordinates
-          if (ay1 === ay2 && by1 === by2) {
-            // Horizontal edge
-            const minX = Math.min(ax1, ax2);
-            const maxX = Math.max(ax1, ax2);
-            edges.push({ axis: 'H', coord: ay1, start: minX, end: maxX });
-          } else if (ax1 === ax2 && bx1 === bx2) {
-            // Vertical edge
-            const minY = Math.min(ay1, ay2);
-            const maxY = Math.max(ay1, ay2);
-            edges.push({ axis: 'V', coord: ax1, start: minY, end: maxY });
+        if (isReversedMatch) {
+          const edgeLength = Math.sqrt((ax2 - ax1) ** 2 + (ay2 - ay1) ** 2);
+          if (edgeLength < 10) continue; // Skip tiny edges
+          
+          // Midpoint of edge
+          const mx = Math.round((ax1 + ax2) / 2);
+          const my = Math.round((ay1 + ay2) / 2);
+          
+          // Determine primary axis (which direction is dominant)
+          const dx = Math.abs(ax2 - ax1);
+          const dy = Math.abs(ay2 - ay1);
+          
+          if (dx > dy) {
+            // More horizontal than vertical
+            edges.push({ 
+              axis: 'H', 
+              coord: my,  // y coordinate of the horizontal-ish border
+              start: Math.min(ax1, ax2), 
+              end: Math.max(ax1, ax2),
+              gCoord: mx  // pre-calculated gate position
+            });
+          } else {
+            // More vertical than horizontal  
+            edges.push({ 
+              axis: 'V', 
+              coord: mx,  // x coordinate of the vertical-ish border
+              start: Math.min(ay1, ay2), 
+              end: Math.max(ay1, ay2),
+              gCoord: my  // pre-calculated gate position
+            });
           }
         }
       }
@@ -520,26 +536,17 @@ CROSSINGS = (() => {
       const sharedEdges = findSharedEdges(polyA, polyB);
       
       for (const edge of sharedEdges) {
-        const edgeLength = edge.end - edge.start;
-        if (edgeLength < 10) continue; // Skip tiny edges
-        
-        const middleThirdStart = edge.start + edgeLength / 3;
-        const middleThirdEnd = edge.end - edgeLength / 3;
-        const seed = ((edge.coord * 73856093) ^ (Math.floor((edge.start + edge.end) / 2) * 19349663)) >>> 0;
-        const rng = (seed >>> 16) / 0x7fff;
-        const gCoord = Math.floor(middleThirdStart + rng * (middleThirdEnd - middleThirdStart));
-        
-        const centerX = edge.axis === 'H' ? gCoord : edge.coord;
-        const centerY = edge.axis === 'H' ? edge.coord : gCoord;
+        const centerX = edge.axis === 'H' ? edge.gCoord : edge.coord;
+        const centerY = edge.axis === 'H' ? edge.coord : edge.gCoord;
         const dist = distFromGrail(centerX, centerY);
         const type = gateTypeForDistance(dist);
         
         crossings.push({
           axis: edge.axis,
           bCoord: edge.coord,
-          gCoord: gCoord,
+          gCoord: edge.gCoord,
           type: type,
-          id: `${edge.axis.toLowerCase()}${gCoord}_${edge.coord}`,
+          id: `${edge.axis.toLowerCase()}${edge.gCoord}_${edge.coord}`,
         });
       }
     }
