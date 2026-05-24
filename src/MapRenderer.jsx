@@ -79,9 +79,9 @@ function worldToKey(wx, wy, tiles) {
       if (!tile) continue;
 
       const pl = tile.powerLevel ?? 0;
-      const isStaticKeep = tile.isKeep && !tile.isGate && pl < 10;
+      // Only skip keep parts (they redirect to primary in onTileClick)
       const isStaticPart = tile.isKeepPart && pl < 10;
-      if (isStaticKeep || isStaticPart) continue;
+      if (isStaticPart) continue;
 
       if (pl >= 10 && (tile.isKeep || tile.isKeepPart)) {
         // Use full 2×2 footprint hitbox; always return the primary key
@@ -91,7 +91,8 @@ function worldToKey(wx, wy, tiles) {
         continue;
       }
 
-      const elev = tile.isWin ? 10 : 4;
+      // Static keeps now clickable with same elevation as HQ (14)
+      const elev = (tile.isHQ || tile.isKeep) ? 14 : tile.isWin ? 10 : 4;
       if (inTile(wx, wy, c, r, elev)) return key;
     }
   }
@@ -437,7 +438,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         if (owner) {
           const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
           // NO FILL for owned crossings/tunnels
-          if (!isSel) { gfx.lineStyle(1, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
+          if (!isSel) { gfx.lineStyle(2, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
         }
         if (mode === "selectMarchDest" && owner !== "player") {
           gfx.beginFill(0x000000, 0.45); gfx.drawPolygon(TOP); gfx.endFill();
@@ -491,7 +492,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         }
         // Regular tiles and gates get borders here; HQ borders drawn in renderHQSpriteGroup
         if (!isSel && !drawAsHQ) {
-          gfx.lineStyle(1, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          gfx.lineStyle(2, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         }
       }
 
@@ -556,7 +557,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (owner2) {
         const ot = ownerTint(owner2, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
         // NO FILL for owned keeps - just 1px border
-        gfx.lineStyle(1, ot, 1.0);
+        gfx.lineStyle(2, ot, 1.0);
         gfx.drawPolygon(MERGED);
         gfx.lineStyle(0);
       }
@@ -2218,9 +2219,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // Static keeps handled by keep layer; gates/regular tiles handled here
-      if ((tile.isKeep && !tile.isGate) || tile.isKeepPart) return;
-      const elev = tile.isWin ? 10 : 4;
+      // Skip only keep parts, allow keep primary tiles
+      if (tile.isKeepPart) return;
+      
+      // Static keeps and HQs use elevation 14
+      const elev = (tile.isHQ || tile.isKeep) ? 14 : tile.isWin ? 10 : 4;
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
       const mid = sy2 + TH / 2;

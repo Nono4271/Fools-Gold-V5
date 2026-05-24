@@ -1542,7 +1542,7 @@ export default function RiseToWar() {
     }
 
     const zoom = zoomRef.current;
-    const elev = tile.isHQ ? 14 : tile.isWin ? 10 : tile.isKeep ? 8 : 4;
+    const elev = (tile.isHQ || tile.isKeep) ? 14 : tile.isWin ? 10 : 4;
     const { cx, cy } = isoXY(tile.c, tile.r);
     const screenX = cx * zoom + panRef.current.x;
     const screenY = (cy - elev) * zoom + panRef.current.y + 38;
