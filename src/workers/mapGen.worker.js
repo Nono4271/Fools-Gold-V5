@@ -132,6 +132,18 @@ const REGION_LIST = [
   { key:"pilgrimsRest",    name:"Pilgrim's Rest",      layer:"farm",     keepName:"Pilgrim's Rest Keep",       cx: 975, cy: 673, factions:["holyknights"] },
   { key:"sacredVale",      name:"Sacred Vale",         layer:"farm",     keepName:"Sacred Vale Keep",          cx: 975, cy: 794, factions:["holyknights"] },
   { key:"dawnmarch",       name:"Dawnmarch",           layer:"farm",     keepName:"Dawnmarch Keep",            cx:1173, cy: 794, factions:["holyknights"] },
+  // Coldborns
+  { key:"frosthold",       name:"Frosthold",           layer:"start",    keepName:"Frosthold Keep",            cx: 485, cy:  61, factions:["coldborns"] },
+  { key:"coldbornsFarm1",  name:"Icebreak Spire",      layer:"farm",     keepName:"Icebreak Spire Keep",       cx: 304, cy:  69, factions:["coldborns"] },
+  { key:"coldbornsFarm2",  name:"Frostbite Hall",      layer:"farm",     keepName:"Frostbite Hall Keep",       cx: 681, cy:  88, factions:["coldborns"] },
+  { key:"coldbornsFarm3",  name:"Ravencrag",           layer:"farm",     keepName:"Ravencrag Keep",            cx: 912, cy:  74, factions:["coldborns"] },
+  { key:"coldbornsFarm4",  name:"Winterveil",          layer:"farm",     keepName:"Winterveil Keep",           cx: 302, cy: 206, factions:["coldborns"] },
+  // Ashen Dead
+  { key:"bonehallow",      name:"Bonehallow",          layer:"start",    keepName:"Bonehallow Keep",           cx:1370, cy:1224, factions:["ashen_dead"] },
+  { key:"ashendeadFarm1",  name:"Ironwood",            layer:"farm",     keepName:"Ironwood Keep",             cx: 968, cy: 966, factions:["ashen_dead"] },
+  { key:"ashendeadFarm2",  name:"Greywatch",           layer:"farm",     keepName:"Greywatch Keep",            cx:1157, cy: 916, factions:["ashen_dead"] },
+  { key:"ashendeadFarm3",  name:"Coldmarsh",           layer:"farm",     keepName:"Coldmarsh Keep",            cx:1172, cy:1074, factions:["ashen_dead"] },
+  { key:"ashendeadFarm4",  name:"Gravemist",           layer:"farm",     keepName:"Gravemist Keep",            cx:1331, cy:1095, factions:["ashen_dead"] },
   // Neutral / Conflict
   { key:"gallowsReach",    name:"Gallows Reach",       layer:"conflict", keepName:"Gallows Reach Keep",        cx: 613, cy: 141 },
   { key:"greyExpanse",     name:"The Grey Expanse",    layer:"conflict", keepName:"The Grey Expanse Keep",     cx: 788, cy: 141 },
@@ -148,12 +160,14 @@ const REGION_LIST = [
 ];
 
 const FACTION_REGIONS = {
-  pirates:        { start:"saltmere",    farm:"brineHollow"   },
-  nightcreatures: { start:"shadowmere",  farm:"crimsonVeil"   },
-  dragons:        { start:"emberpeak",   farm:"scorchveil"    },
-  orcs:           { start:"grimhold",    farm:"bloodfield"    },
-  bountyhunters:  { start:"ashenveil",   farm:"ruinwatch"     },
-  holyknights:    { start:"sanctumhold", farm:"pilgrimsRest"  },
+  pirates:        { start:"saltmere",       farm:"brineHollow"      },
+  nightcreatures: { start:"shadowmere",     farm:"crimsonVeil"      },
+  dragons:        { start:"emberpeak",      farm:"scorchveil"       },
+  orcs:           { start:"grimhold",       farm:"bloodfield"       },
+  bountyhunters:  { start:"ashenveil",      farm:"ruinwatch"        },
+  holyknights:    { start:"sanctumhold",    farm:"pilgrimsRest"     },
+  coldborns:      { start:"frosthold",      farm:"coldbornsFarm1"   },
+  ashen_dead:     { start:"bonehallow",     farm:"ashendeadFarm1"   },
 };
 
 const KEEP_SET = new Set(REGION_LIST.map(r => `${r.cx},${r.cy}`));
@@ -1171,6 +1185,8 @@ self.onmessage = function(e) {
     dragons:        { n:"Emberpeak Drake",         icon:"🔥"  },
     holyknights:    { n:"Sanctumhold Inquisitor",  icon:"✝️"  },
     nightcreatures: { n:"Shadowmere Nightlord",    icon:"🌑"  },
+    coldborns:      { n:"Frosthold Warden",        icon:"❄️"  },
+    ashen_dead:     { n:"Bonehallow Lich",         icon:"💀"  },
   };
   for (const [fk, regions] of Object.entries(FACTION_REGIONS)) {
     const startReg = REGION_LIST.find(r=>r.key===regions.start);
