@@ -90,9 +90,13 @@ function worldToKey(wx, wy, tiles) {
 
       // Static keep parts: return primary key if clicked
       if (tile.isKeepPart && pl < 10) {
+        console.log(`[worldToKey] Keep part clicked: ${key}, primKey: ${tile.keepPrimaryKey}, pl: ${pl}`);
         const primKey = tile.keepPrimaryKey || key;
         const elev = 14; // Same as primary keep
-        if (inTile(wx, wy, c, r, elev)) return primKey;
+        if (inTile(wx, wy, c, r, elev)) {
+          console.log(`[worldToKey] Keep part hit! Returning: ${primKey}`);
+          return primKey;
+        }
         continue;
       }
 
