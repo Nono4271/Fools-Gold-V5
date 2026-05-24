@@ -1646,7 +1646,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       if (!group.destroyed) {
         const sp = new PIXI.Sprite(tex);
         applySprite(sp);
-        group.addChild(sp); // Add normally so it's on top
+        group.addChildAt(sp, 0); // Add at bottom so name badge stays on top
       }
     }).catch(() => {
       // Sprite not found — placeholder stays, that's fine
