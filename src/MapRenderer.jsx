@@ -227,14 +227,15 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         // These are the 2 passable tiles between Gate A and Gate B. They have no
         // crossingType, so without this check they'd fall through to the tunnel else.
         if (!isKeep) {
-          // Draw terrain fill only if NOT owned
-          if (!owner) {
-            gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
-          } else {
-            // Owned tile: just draw border, no terrain fill
+          gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
+          if (owner) {
             const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+            // No fill - just border
             if (!isSel) { 
-              gfx.lineStyle(1, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+              // Black backing for contrast
+              gfx.lineStyle(3, 0x000000, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+              // Colored border on top
+              gfx.lineStyle(2, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
             }
           }
           if (hasCmds && !isSel) { gfx.lineStyle(2, 0xf0dc3c, 0.9); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
@@ -435,8 +436,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         // Owner tint (same as regular tiles)
         if (owner) {
           const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-          gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
-          if (!isSel) { gfx.lineStyle(2, ot, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
+          // NO FILL for owned crossings/tunnels
+          if (!isSel) { gfx.lineStyle(1, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
         }
         if (mode === "selectMarchDest" && owner !== "player") {
           gfx.beginFill(0x000000, 0.45); gfx.drawPolygon(TOP); gfx.endFill();
@@ -484,13 +485,13 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (owner) {
         const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
         // Don't draw fill on HQ tiles - just the outer border (drawn in renderHQSpriteGroup)
+        // Regular tiles: no fill, just 1px border
         if (!drawAsHQ) {
-          gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
+          // NO FILL - removed: gfx.beginFill(ot, 0.18);
         }
         // Regular tiles and gates get borders here; HQ borders drawn in renderHQSpriteGroup
         if (!isSel && !drawAsHQ) {
-          gfx.lineStyle(8, 0x000000, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0);
-          gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          gfx.lineStyle(1, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         }
       }
 
@@ -554,8 +555,9 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const owner2 = tile.owner || null;
       if (owner2) {
         const ot = ownerTint(owner2, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-        gfx.lineStyle(OD * 2, ot, 0.18);
-        gfx.beginFill(ot, 0.18); gfx.drawPolygon(MERGED); gfx.endFill();
+        // NO FILL for owned keeps - just 1px border
+        gfx.lineStyle(1, ot, 1.0);
+        gfx.drawPolygon(MERGED);
         gfx.lineStyle(0);
       }
     }
