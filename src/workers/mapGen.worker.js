@@ -501,42 +501,46 @@ function isAdjacentToHQ(c, r, usedKeys) {
 
 // Check if HQ location has sufficient resource neighbors for spawn
 // Requires: at least 2 tiles with 1/hr (power level 1) and 1 tile with 10/hr+ (power level 10+)
+// Only checks 12 adjacent tiles (no corners, no HQ tiles)
 function hasValidResourceNeighbors(c, r, powerArr) {
   let count1hr = 0;
   let count10hrPlus = 0;
   
-  // Check all tiles adjacent to the 3x3 HQ footprint (perimeter)
-  // Top and bottom rows
-  for (let dc = -1; dc <= 3; dc++) {
-    // Top neighbor (row r-1)
-    const topIdx = (r-1)*COLS+(c+dc);
-    if (topIdx >= 0 && topIdx < SIZE) {
-      const pl = powerArr[topIdx];
-      if (pl === 1) count1hr++;
-      if (pl >= 10) count10hrPlus++;
-    }
-    // Bottom neighbor (row r+3)
-    const botIdx = (r+3)*COLS+(c+dc);
-    if (botIdx >= 0 && botIdx < SIZE) {
-      const pl = powerArr[botIdx];
+  // Top edge: (c, r-1), (c+1, r-1), (c+2, r-1)
+  for (let dc = 0; dc <= 2; dc++) {
+    const idx = (r-1)*COLS+(c+dc);
+    if (idx >= 0 && idx < SIZE) {
+      const pl = powerArr[idx];
       if (pl === 1) count1hr++;
       if (pl >= 10) count10hrPlus++;
     }
   }
   
-  // Left and right columns (excluding corners already counted)
-  for (let dr = 0; dr <= 2; dr++) {
-    // Left neighbor (col c-1)
-    const leftIdx = (r+dr)*COLS+(c-1);
-    if (leftIdx >= 0 && leftIdx < SIZE) {
-      const pl = powerArr[leftIdx];
+  // Bottom edge: (c, r+3), (c+1, r+3), (c+2, r+3)
+  for (let dc = 0; dc <= 2; dc++) {
+    const idx = (r+3)*COLS+(c+dc);
+    if (idx >= 0 && idx < SIZE) {
+      const pl = powerArr[idx];
       if (pl === 1) count1hr++;
       if (pl >= 10) count10hrPlus++;
     }
-    // Right neighbor (col c+3)
-    const rightIdx = (r+dr)*COLS+(c+3);
-    if (rightIdx >= 0 && rightIdx < SIZE) {
-      const pl = powerArr[rightIdx];
+  }
+  
+  // Left edge: (c-1, r), (c-1, r+1), (c-1, r+2)
+  for (let dr = 0; dr <= 2; dr++) {
+    const idx = (r+dr)*COLS+(c-1);
+    if (idx >= 0 && idx < SIZE) {
+      const pl = powerArr[idx];
+      if (pl === 1) count1hr++;
+      if (pl >= 10) count10hrPlus++;
+    }
+  }
+  
+  // Right edge: (c+3, r), (c+3, r+1), (c+3, r+2)
+  for (let dr = 0; dr <= 2; dr++) {
+    const idx = (r+dr)*COLS+(c+3);
+    if (idx >= 0 && idx < SIZE) {
+      const pl = powerArr[idx];
       if (pl === 1) count1hr++;
       if (pl >= 10) count10hrPlus++;
     }
