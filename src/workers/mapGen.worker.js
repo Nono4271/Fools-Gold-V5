@@ -91,16 +91,16 @@ const F_BORDER   = 1<<8;  // border terrain tile (impassable, not a gate)
 
 // ── Region list — 1850×1300 design space ──────────────────────────────────────
 const REGION_LIST = [
-  // Holy Grail
-  { key:"holyGrail",          name:"Holy Grail",              layer:"ring",     keepName:"The Holy Grail",              cx: 916, cy: 640 },
-  // Coldborns Capital
-  { key:"frosthold",          name:"Frosthold",               layer:"start",    keepName:"Frosthold",                   cx: 485, cy:  61, factions:["coldborns"] },
-  // Nightcreatures Capital
-  { key:"duskmire",           name:"Duskmire",                layer:"start",    keepName:"Duskmire",                    cx:1343, cy:  59, factions:["nightcreatures"] },
+  // Holy Grail - TRUE CENTER
+  { key:"holyGrail",          name:"Holy Grail",              layer:"ring",     keepName:"The Holy Grail",              cx: 925, cy: 650 },
+  // Coldborns Capital - moved inward from corner
+  { key:"frosthold",          name:"Frosthold",               layer:"start",    keepName:"Frosthold",                   cx: 485, cy:  90, factions:["coldborns"] },
+  // Nightcreatures Capital - moved inward from corner
+  { key:"duskmire",           name:"Duskmire",                layer:"start",    keepName:"Duskmire",                    cx:1365, cy:  90, factions:["nightcreatures"] },
   // Dragons Capital
   { key:"flamecrestPeak",     name:"Flamecrest Peak",         layer:"start",    keepName:"Flamecrest Peak",             cx:  95, cy: 347, factions:["dragons"] },
-  // Wizards Capital
-  { key:"arcaneum",           name:"Arcaneum",                layer:"start",    keepName:"Arcaneum",                    cx:1777, cy: 376, factions:["wizards"] },
+  // Wizards Capital - moved inward from corner
+  { key:"arcaneum",           name:"Arcaneum",                layer:"start",    keepName:"Arcaneum",                    cx:1710, cy: 400, factions:["wizards"] },
   // Orcs Capital
   { key:"bloodrockKeep",      name:"Bloodrock Keep",          layer:"start",    keepName:"Bloodrock Keep",              cx:  96, cy: 947, factions:["orcs"] },
   // Holyknights Capital
@@ -110,13 +110,13 @@ const REGION_LIST = [
   // Ashendead Capital
   { key:"bonehallow",         name:"Bonehallow",              layer:"start",    keepName:"Bonehallow",                  cx:1370, cy:1224, factions:["ashen_dead"] },
   
-  { key:"dragonsFarm1",       name:"Dragons Territory 1",     layer:"farm",     keepName:"Wyrmrest",                    cx: 103, cy:  76, factions:["dragons"] },
+  { key:"dragonsFarm1",       name:"Dragons Territory 1",     layer:"farm",     keepName:"Wyrmrest",                    cx: 180, cy: 120, factions:["dragons"] },
   { key:"coldbornsFarm1",     name:"Coldborns Territory 1",   layer:"farm",     keepName:"Icebreak Spire",              cx: 304, cy:  69, factions:["coldborns"] },
   { key:"coldbornsFarm2",     name:"Coldborns Territory 2",   layer:"farm",     keepName:"Frostbite Hall",              cx: 681, cy:  88, factions:["coldborns"] },
   { key:"coldbornsFarm3",     name:"Coldborns Territory 3",   layer:"farm",     keepName:"Ravencrag",                   cx: 912, cy:  74, factions:["coldborns"] },
   { key:"nightcreaturesFarm1",name:"Nightcreatures Territory 1",layer:"farm",   keepName:"Duskfall",                    cx:1081, cy:  89, factions:["nightcreatures"] },
-  { key:"nightcreaturesFarm2",name:"Nightcreatures Territory 2",layer:"farm",   keepName:"Shadowfen Halls",             cx:1538, cy:  74, factions:["nightcreatures"] },
-  { key:"wizardsFarm1",       name:"Wizards Territory 1",     layer:"farm",     keepName:"Thornwatch",                  cx:1728, cy:  82, factions:["wizards"] },
+  { key:"nightcreaturesFarm2",name:"Nightcreatures Territory 2",layer:"farm",   keepName:"Shadowfen Halls",             cx:1560, cy: 120, factions:["nightcreatures"] },
+  { key:"wizardsFarm1",       name:"Wizards Territory 1",     layer:"farm",     keepName:"Thornwatch",                  cx:1670, cy: 150, factions:["wizards"] },
   { key:"dragonsFarm2",       name:"Dragons Territory 2",     layer:"farm",     keepName:"Scorchstone",                 cx: 110, cy: 206, factions:["dragons"] },
   { key:"coldbornsFarm4",     name:"Coldborns Territory 4",   layer:"farm",     keepName:"Winterveil",                  cx: 302, cy: 206, factions:["coldborns"] },
   { key:"coldbornsFarm5",     name:"Coldborns Territory 5",   layer:"farm",     keepName:"Grimwald",                    cx: 713, cy: 246, factions:["coldborns"] },
@@ -354,61 +354,102 @@ function buildBorderLine(axis, bCoord, crossingsOnBorder) {
   return { impassable, gateA, gateB, pathTiles };
 }
 
-const POLYS = {
-  // Holy Grail
-  holyGrail:       [[701,341],[876,341],[876,474],[701,474]],
-  // Pirates
-  saltmere:        [[130,75],[328,75],[328,208],[130,208]],
-  plunderMaw:      [[130,75],[300,75],[295,25],[255,0],[200,4],[148,22],[130,75]],
-  brineHollow:     [[328,75],[526,75],[526,208],[328,208]],
-  deadAnchor:      [[130,208],[328,208],[328,341],[130,341]],
-  // Night Creatures
-  shadowmere:      [[1074,208],[1272,208],[1272,341],[1074,341]],
-  theShroud:       [[1272,222],[1348,238],[1396,275],[1400,315],[1362,340],[1325,355],[1272,345]],
-  crimsonVeil:     [[876,75],[1074,75],[1074,208],[876,208]],
-  paleCourt:       [[1074,75],[1272,75],[1272,208],[1074,208]],
-  duskHollow:      [[876,208],[1074,208],[1074,341],[876,341]],
-  bloodfen:        [[1074,341],[1272,341],[1272,474],[1074,474]],
-  // Dragons
-  emberpeak:       [[130,341],[328,341],[328,474],[130,474]],
-  smolderingMaw:   [[130,355],[58,368],[8,418],[0,465],[38,498],[72,518],[130,508]],
-  ashcrag:         [[328,341],[526,341],[526,474]],
-  cinderPass:      [[328,341],[526,474],[328,474]],
-  scorchveil:      [[130,474],[328,474],[328,607],[130,607]],
-  // Orcs
-  grimhold:        [[1074,474],[1272,474],[1272,607],[1074,607]],
-  theWarground:    [[1272,488],[1348,505],[1396,558],[1400,608],[1355,635],[1318,650],[1272,638]],
-  warbend:         [[876,341],[1074,341],[1074,474],[876,474]],
-  bloodfield:      [[876,474],[1074,474],[1074,607],[876,607]],
-  bonepile:        [[1074,607],[1272,607],[1272,740],[1074,740]],
-  // Wizards (Bounty Hunters)
-  ashenveil:       [[526,740],[701,740],[701,848],[526,848]],
-  arcaneDeep:      [[548,848],[562,898],[590,935],[622,968],[660,972],[695,970],[706,945],[712,920],[700,848]],
-  hexmire:         [[328,607],[526,607],[526,740],[328,740]],
-  ruinwatch:       [[526,607],[701,607],[701,740],[526,740]],
-  ashenFen:        [[130,740],[328,740],[328,848],[130,848]],
-  cursemoor:       [[328,740],[526,740],[526,848],[328,848]],
-  // Holy Knights
-  sanctumhold:     [[701,740],[876,740],[876,848],[701,848]],
-  blessedShore:    [[728,848],[740,895],[762,932],[788,968],[822,972],[852,970],[862,945],[868,920],[854,848]],
-  hallowedGround:  [[701,474],[876,474],[876,607],[701,607]],
-  pilgrimsRest:    [[876,607],[1074,607],[1074,740],[876,740]],
-  sacredVale:      [[876,740],[1074,740],[1074,848],[876,848]],
-  dawnmarch:       [[1074,740],[1272,740],[1272,848],[1074,848]],
-  // Neutral / Conflict
-  gallowsReach:    [[526,75],[701,75],[701,208],[526,208]],
-  greyExpanse:     [[701,75],[876,75],[876,208],[701,208]],
-  mistfall:        [[328,208],[526,208],[526,341]],
-  thornveil:       [[328,208],[526,341],[328,341]],
-  wanderingWastes: [[526,208],[701,208],[701,341],[526,341]],
-  dreadmoor:       [[701,208],[876,208],[876,341],[701,341]],
-  theHollow:       [[526,341],[701,341],[701,474],[526,474]],
-  grimward:        [[328,474],[526,474],[526,607],[328,607]],
-  shatteredPass:   [[526,474],[701,474],[701,607]],
-  sunkenRoad:      [[526,474],[701,607],[526,607]],
-  paleMarch:       [[701,607],[876,607],[876,740],[701,740]],
-  forsakenMarch:   [[130,607],[328,607],[328,740],[130,740]],
-};
+// ── Generate Voronoi polygons for all 70 regions ─────────────────────────────
+// Uses perpendicular bisector clipping to create exact Voronoi cells
+// ── Generate Voronoi polygons for all 70 regions ─────────────────────────────
+const POLYS = (() => {
+  const polys = {};
+  const sites = REGION_LIST.map(r => ({ key: r.key, x: r.cx, y: r.cy }));
+  
+  // Helper: Clip polygon against a half-plane defined by a line
+  function clipAgainstLine(polygon, px, py, nx, ny) {
+    if (polygon.length === 0) return [];
+    
+    const result = [];
+    
+    for (let i = 0; i < polygon.length; i++) {
+      const curr = polygon[i];
+      const next = polygon[(i + 1) % polygon.length];
+      
+      // Signed distance from line (positive = one side, negative = other)
+      const currDist = (curr[0] - px) * nx + (curr[1] - py) * ny;
+      const nextDist = (next[0] - px) * nx + (next[1] - py) * ny;
+      
+      // Current point is inside (positive side)
+      if (currDist >= 0) {
+        result.push(curr);
+      }
+      
+      // Edge crosses the line
+      if ((currDist >= 0 && nextDist < 0) || (currDist < 0 && nextDist >= 0)) {
+        // Compute intersection point
+        const t = currDist / (currDist - nextDist);
+        const ix = curr[0] + t * (next[0] - curr[0]);
+        const iy = curr[1] + t * (next[1] - curr[1]);
+        result.push([ix, iy]);
+      }
+    }
+    
+    return result;
+  }
+  
+  // Generate Voronoi cell for each site
+  for (let i = 0; i < sites.length; i++) {
+    const site = sites[i];
+    
+    // Start with map bounding box
+    let cell = [
+      [0, 0],
+      [COLS - 1, 0],
+      [COLS - 1, ROWS - 1],
+      [0, ROWS - 1]
+    ];
+    
+    // Clip against perpendicular bisector of every other site
+    for (let j = 0; j < sites.length; j++) {
+      if (i === j) continue;
+      
+      const other = sites[j];
+      
+      // Midpoint between sites
+      const mx = (site.x + other.x) / 2;
+      const my = (site.y + other.y) / 2;
+      
+      // Direction from site to other
+      const dx = other.x - site.x;
+      const dy = other.y - site.y;
+      
+      // Perpendicular bisector normal (points toward 'other')
+      const nx = dx;
+      const ny = dy;
+      
+      // Clip: keep the half-plane on site's side (negative side of normal)
+      // We want points where (p - midpoint) · normal < 0
+      // Which means we clip against the line and keep points with negative distance
+      // So we flip the normal to keep the correct side
+      cell = clipAgainstLine(cell, mx, my, -nx, -ny);
+      
+      if (cell.length === 0) break;
+    }
+    
+    // Simplify if too many vertices
+    if (cell.length > 16) {
+      const simplified = [];
+      const step = Math.ceil(cell.length / 12);
+      for (let k = 0; k < cell.length; k += step) {
+        simplified.push(cell[k]);
+      }
+      cell = simplified;
+    }
+    
+    // Round coordinates to integers
+    cell = cell.map(p => [Math.round(p[0]), Math.round(p[1])]);
+    
+    polys[site.key] = cell.length >= 3 ? cell : [[site.x-5,site.y-5],[site.x+5,site.y-5],[site.x+5,site.y+5],[site.x-5,site.y+5]];
+  }
+  
+  return polys;
+})();
 
 // ── Build CROSSINGS array by detecting shared polygon edges ──────────────────
 CROSSINGS = (() => {
@@ -425,39 +466,47 @@ CROSSINGS = (() => {
     return 'crossing';
   }
 
+  // Find edges that are TRULY shared - same coords, opposite directions
   function findSharedEdges(polyA, polyB) {
     const edges = [];
+    
     for (let i = 0; i < polyA.length; i++) {
       const [ax1, ay1] = polyA[i];
       const [ax2, ay2] = polyA[(i + 1) % polyA.length];
+      
       for (let j = 0; j < polyB.length; j++) {
         const [bx1, by1] = polyB[j];
         const [bx2, by2] = polyB[(j + 1) % polyB.length];
-        if (ay1 === ay2 && by1 === by2 && ay1 === by1) {
-          const aMinX = Math.min(ax1, ax2), aMaxX = Math.max(ax1, ax2);
-          const bMinX = Math.min(bx1, bx2), bMaxX = Math.max(bx1, bx2);
-          const overlapStart = Math.max(aMinX, bMinX);
-          const overlapEnd = Math.min(aMaxX, bMaxX);
-          if (overlapStart < overlapEnd) {
-            edges.push({ axis: 'H', coord: ay1, start: overlapStart, end: overlapEnd });
-          }
-        }
-        if (ax1 === ax2 && bx1 === bx2 && ax1 === bx1) {
-          const aMinY = Math.min(ay1, ay2), aMaxY = Math.max(ay1, ay2);
-          const bMinY = Math.min(by1, by2), bMaxY = Math.max(by1, by2);
-          const overlapStart = Math.max(aMinY, bMinY);
-          const overlapEnd = Math.min(aMaxY, bMaxY);
-          if (overlapStart < overlapEnd) {
-            edges.push({ axis: 'V', coord: ax1, start: overlapStart, end: overlapEnd });
+        
+        // Edges must be identical but reversed (shared border)
+        // Edge A: (ax1,ay1) → (ax2,ay2)
+        // Edge B: (bx2,by2) → (bx1,by1) (reversed direction)
+        const isSharedHorizontal = (ax1 === bx2 && ay1 === by2 && ax2 === bx1 && ay2 === by1);
+        const isSharedVertical = (ax1 === bx1 && ay1 === by1 && ax2 === bx2 && ay2 === by2);
+        
+        if (isSharedHorizontal || isSharedVertical) {
+          // Determine axis and coordinates
+          if (ay1 === ay2 && by1 === by2) {
+            // Horizontal edge
+            const minX = Math.min(ax1, ax2);
+            const maxX = Math.max(ax1, ax2);
+            edges.push({ axis: 'H', coord: ay1, start: minX, end: maxX });
+          } else if (ax1 === ax2 && bx1 === bx2) {
+            // Vertical edge
+            const minY = Math.min(ay1, ay2);
+            const maxY = Math.max(ay1, ay2);
+            edges.push({ axis: 'V', coord: ax1, start: minY, end: maxY });
           }
         }
       }
     }
+    
     return edges;
   }
 
   const regionKeys = Object.keys(POLYS);
   const processed = new Set();
+  
   for (let i = 0; i < regionKeys.length; i++) {
     for (let j = i + 1; j < regionKeys.length; j++) {
       const keyA = regionKeys[i];
@@ -465,20 +514,26 @@ CROSSINGS = (() => {
       const pairKey = [keyA, keyB].sort().join('|');
       if (processed.has(pairKey)) continue;
       processed.add(pairKey);
+      
       const polyA = POLYS[keyA];
       const polyB = POLYS[keyB];
       const sharedEdges = findSharedEdges(polyA, polyB);
+      
       for (const edge of sharedEdges) {
         const edgeLength = edge.end - edge.start;
+        if (edgeLength < 10) continue; // Skip tiny edges
+        
         const middleThirdStart = edge.start + edgeLength / 3;
         const middleThirdEnd = edge.end - edgeLength / 3;
         const seed = ((edge.coord * 73856093) ^ (Math.floor((edge.start + edge.end) / 2) * 19349663)) >>> 0;
         const rng = (seed >>> 16) / 0x7fff;
         const gCoord = Math.floor(middleThirdStart + rng * (middleThirdEnd - middleThirdStart));
+        
         const centerX = edge.axis === 'H' ? gCoord : edge.coord;
         const centerY = edge.axis === 'H' ? edge.coord : gCoord;
         const dist = distFromGrail(centerX, centerY);
         const type = gateTypeForDistance(dist);
+        
         crossings.push({
           axis: edge.axis,
           bCoord: edge.coord,
