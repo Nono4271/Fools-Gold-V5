@@ -168,7 +168,7 @@ function getDefCmdBranches(cmd) {
 // Maps loosely to rarity: soldier→tier1, veteran→tier2, champion→tier3.
 export const SUBSPECIES = {
   pirates:       { tier1: "First Mate",  tier2: "Shipwright",  tier3: "Captain"   },
-  bountyhunters: { tier1: "Apprentice",  tier2: "Sage",        tier3: "Warlock"   },
+  wizards: { tier1: "Apprentice",  tier2: "Sage",        tier3: "Warlock"   },
   orcs:          { tier1: "Raider",      tier2: "Marauder",    tier3: "Warlord"   },
   dragons:       { tier1: "Hatchling",   tier2: "Adult",       tier3: "Elder"     },
   holyknights:   { tier1: "Templar",     tier2: "BattlePriest",tier3: "Inquisitor"},
@@ -200,12 +200,12 @@ export const HDEFS = [
 
 
   // ── Bounty Hunters / Wizards ── (leader, attacker, support, defender covered; extras: support+attacker)
-  { id:"h5",  n:"Solarius Vex",         faction:"bountyhunters",  rarity:"veteran",  cls:"support",  atk:10,  foc:100, spd:70,  atkPerLevel:0.32, focPerLevel:2.39, spdPerLevel:1.75, icon:"🔮",          subspecies:"Sage", portrait:"/commanders/h5_solarius_vex_portrait.webp", bust:"/commanders/h5_solarius_vex_bust.webp" },
-  { id:"h6",  n:"Mira Ashveil",         faction:"bountyhunters",  rarity:"veteran",  cls:"attacker", atk:115, foc:27,  spd:90,  atkPerLevel:2.60, focPerLevel:0.43, spdPerLevel:1.90, icon:"✨",          subspecies:"Sage",       portrait:"/commanders/h6_mira_ashveil_portrait.webp",         bust:"/commanders/h6_mira_ashveil_bust.webp" },
-  { id:"h17", n:"Runekeeper Dov",       faction:"bountyhunters",  rarity:"soldier",  cls:"leader",   atk:5,   foc:100, spd:100, atkPerLevel:0.10, focPerLevel:2.12, spdPerLevel:2.20, icon:"📜",          subspecies:"Apprentice", portrait:"/commanders/h17_runekeeper_dov_portrait.webp", bust:"/commanders/h17_runekeeper_dov_bust.webp" },
-  { id:"h18", n:"Hexblade Oren",        faction:"bountyhunters",  rarity:"soldier",  cls:"balanced", atk:99,  foc:20,  spd:95,  atkPerLevel:2.12, focPerLevel:0.30, spdPerLevel:1.88, icon:"🔯",          subspecies:"Apprentice", portrait:"/commanders/h18_hexblade_oren_portrait.webp",       bust:"/commanders/h18_hexblade_oren_bust.webp" },
-  { id:"h29", n:"Archmage Theon",       faction:"bountyhunters",  rarity:"champion", cls:"support",  atk:22,  foc:130, spd:80,  atkPerLevel:0.57, focPerLevel:2.76, spdPerLevel:2.00, icon:"🌟",          subspecies:"Warlock",    portrait:"/commanders/h29_archmage_theon_portrait.webp",   bust:"/commanders/h29_archmage_theon_bust.webp" },
-  { id:"h30", n:"Spellblade Ryn",       faction:"bountyhunters",  rarity:"champion", cls:"strategist", atk:5,   foc:110, spd:110, atkPerLevel:0.15, focPerLevel:2.40, spdPerLevel:2.40, icon:"⚡",          subspecies:"Warlock",    portrait:"/commanders/h30_spellblade_ryn_portrait.webp",   bust:"/commanders/h30_spellblade_ryn_bust.webp" },
+  { id:"h5",  n:"Solarius Vex",         faction:"wizards",  rarity:"veteran",  cls:"support",  atk:10,  foc:100, spd:70,  atkPerLevel:0.32, focPerLevel:2.39, spdPerLevel:1.75, icon:"🔮",          subspecies:"Sage", portrait:"/commanders/h5_solarius_vex_portrait.webp", bust:"/commanders/h5_solarius_vex_bust.webp" },
+  { id:"h6",  n:"Mira Ashveil",         faction:"wizards",  rarity:"veteran",  cls:"attacker", atk:115, foc:27,  spd:90,  atkPerLevel:2.60, focPerLevel:0.43, spdPerLevel:1.90, icon:"✨",          subspecies:"Sage",       portrait:"/commanders/h6_mira_ashveil_portrait.webp",         bust:"/commanders/h6_mira_ashveil_bust.webp" },
+  { id:"h17", n:"Runekeeper Dov",       faction:"wizards",  rarity:"soldier",  cls:"leader",   atk:5,   foc:100, spd:100, atkPerLevel:0.10, focPerLevel:2.12, spdPerLevel:2.20, icon:"📜",          subspecies:"Apprentice", portrait:"/commanders/h17_runekeeper_dov_portrait.webp", bust:"/commanders/h17_runekeeper_dov_bust.webp" },
+  { id:"h18", n:"Hexblade Oren",        faction:"wizards",  rarity:"soldier",  cls:"balanced", atk:99,  foc:20,  spd:95,  atkPerLevel:2.12, focPerLevel:0.30, spdPerLevel:1.88, icon:"🔯",          subspecies:"Apprentice", portrait:"/commanders/h18_hexblade_oren_portrait.webp",       bust:"/commanders/h18_hexblade_oren_bust.webp" },
+  { id:"h29", n:"Archmage Theon",       faction:"wizards",  rarity:"champion", cls:"support",  atk:22,  foc:130, spd:80,  atkPerLevel:0.57, focPerLevel:2.76, spdPerLevel:2.00, icon:"🌟",          subspecies:"Warlock",    portrait:"/commanders/h29_archmage_theon_portrait.webp",   bust:"/commanders/h29_archmage_theon_bust.webp" },
+  { id:"h30", n:"Spellblade Ryn",       faction:"wizards",  rarity:"champion", cls:"strategist", atk:5,   foc:110, spd:110, atkPerLevel:0.15, focPerLevel:2.40, spdPerLevel:2.40, icon:"⚡",          subspecies:"Warlock",    portrait:"/commanders/h30_spellblade_ryn_portrait.webp",   bust:"/commanders/h30_spellblade_ryn_bust.webp" },
   // ── MerFolk ── (leader, attacker, support, defender covered; extras: attacker+defender)
 
 
@@ -306,7 +306,7 @@ const FACTION_CMD_SECOND_SKILL = {
 // Branch keys per faction — must stay in sync with FACTION_TROOPS in troops.js
 export const FACTION_BRANCHES_EXPORT = {
   pirates:        ["swashbucklers", "gunners",       "sea_beasts"   ],
-  bountyhunters:  ["spellblades",   "acolytes",      "golems"       ],
+  wizards:  ["spellblades",   "acolytes",      "golems"       ],
   orcs:           ["grunts",        "warg_riders",   "trolls"       ],
   dragons:        ["dragonkin",     "drake_riders",  "elder_dragons"],
   holyknights:    ["templars",      "battlepriests", "inquisitors"  ],
@@ -343,7 +343,7 @@ export function factionDefCmdForTile(c, r, playerFaction, powerLevel, waveIndex 
 
   // Inline alignment data to avoid circular dep issues
   const ALIGN = {
-    humans:   ["pirates","bountyhunters","holyknights"],
+    humans:   ["pirates","wizards","holyknights"],
     creatures:["orcs","dragons","nightcreatures"],
   };
   const playerAlign = ALIGN.humans.includes(playerFaction) ? "humans" : "creatures";

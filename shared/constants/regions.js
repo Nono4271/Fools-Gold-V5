@@ -118,7 +118,7 @@ export const FACTION_REGIONS = {
   nightcreatures: { start: 'duskmire', farm: 'nightcreaturesFarm1' },
   dragons: { start: 'flamecrestPeak', farm: 'dragonsFarm1' },
   orcs: { start: 'bloodrockKeep', farm: 'orcsFarm1' },
-  bountyhunters: { start: 'arcaneum', farm: 'wizardsFarm1' },
+  wizards: { start: 'arcaneum', farm: 'wizardsFarm1' },
   holyknights: { start: 'oathkeep', farm: 'holyknightsFarm1' },
   coldborns: { start: 'frosthold', farm: 'coldbornsFarm1' },
   ashendead: { start: 'bonehallow', farm: 'ashendeadFarm1' },

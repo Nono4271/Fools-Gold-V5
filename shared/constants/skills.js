@@ -1,7 +1,7 @@
 import { HOLYKNIGHTS_SKILLS, HOLYKNIGHTS_BRANCH_SKILL_MAP } from "./holyknights_skills.js";
 import { NIGHTCREATURES_SKILLS, NIGHTCREATURES_BRANCH_SKILL_MAP } from "./nightcreatures_skills.js";
 import { DRAGONS_SKILLS, DRAGONS_BRANCH_SKILL_MAP } from "./dragons_skills.js";
-import { BOUNTYHUNTERS_SKILLS, BOUNTYHUNTERS_BRANCH_SKILL_MAP } from "./bountyhunters_skills.js";
+import { BOUNTYHUNTERS_SKILLS, BOUNTYHUNTERS_BRANCH_SKILL_MAP } from "./wizards_skills.js";
 import { ORCS_SKILLS, ORCS_BRANCH_SKILL_MAP } from "./orcs_skills.js";
 import { PIRATES_SKILLS, PIRATES_BRANCH_SKILL_MAP } from "./pirates_skills.js";
 
@@ -490,7 +490,7 @@ function resolveBranchMap(cmdOrCls, treeOrCls) {
       holyknights:    HOLYKNIGHTS_BRANCH_SKILL_MAP,
       nightcreatures: NIGHTCREATURES_BRANCH_SKILL_MAP,
       dragons:        DRAGONS_BRANCH_SKILL_MAP,
-      bountyhunters:  BOUNTYHUNTERS_BRANCH_SKILL_MAP,
+      wizards:  BOUNTYHUNTERS_BRANCH_SKILL_MAP,
       orcs:           ORCS_BRANCH_SKILL_MAP,
       pirates:        PIRATES_BRANCH_SKILL_MAP,
     }[faction];
@@ -507,7 +507,7 @@ export function getDefCmdBranches(cmd) {
     holyknights:    HOLYKNIGHTS_BRANCH_SKILL_MAP,
     nightcreatures: NIGHTCREATURES_BRANCH_SKILL_MAP,
     dragons:        DRAGONS_BRANCH_SKILL_MAP,
-    bountyhunters:  BOUNTYHUNTERS_BRANCH_SKILL_MAP,
+    wizards:  BOUNTYHUNTERS_BRANCH_SKILL_MAP,
     orcs:           ORCS_BRANCH_SKILL_MAP,
     pirates:        PIRATES_BRANCH_SKILL_MAP,
   }[cmd.faction];
@@ -660,7 +660,7 @@ export const FACTION_MAIN_NAMES = {
   holyknights:    {},
   nightcreatures: {},
   dragons:        {},
-  bountyhunters:  {},
+  wizards:  {},
   orcs:           {},
   pirates:        {},
 };

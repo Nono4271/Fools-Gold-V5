@@ -194,7 +194,7 @@ export const FACTION_TROOPS = {
   },
 
   // ── WIZARDS ─────────────────────────────────────────────────────────────────
-  bountyhunters: {
+  wizards: {
     quarters: "Ethereal Vault",
     branches: [
       {
