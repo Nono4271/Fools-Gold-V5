@@ -244,114 +244,8 @@ const TERRAIN_NAMES = ["grass","forest","mountain","desert","river","ravine","ro
 // V = vertical border   (strip of cols at bCoord x, gate centered at gCoord y)
 // Border terrain: H→river, V→rockymountain, tollbridge→ravine on either axis
 
-// Build CROSSINGS array by detecting shared polygon edges between regions
-const CROSSINGS = (() => {
-  const HOLY_GRAIL = { cx: 916, cy: 640 }; // from holyGrail region
-  const crossings = [];
-
-  // Helper: calculate Euclidean distance from Holy Grail
-  function distFromGrail(x, y) {
-    return Math.sqrt((x - HOLY_GRAIL.cx) ** 2 + (y - HOLY_GRAIL.cy) ** 2);
-  }
-
-  // Helper: determine gate type based on distance (divide map into thirds)
-  // Max distance ≈ 1000, so: 0-333 = tollbridge, 333-667 = tunnel, 667+ = crossing
-  function gateTypeForDistance(dist) {
-    if (dist < 333) return 'tollbridge';
-    if (dist < 667) return 'tunnel';
-    return 'crossing';
-  }
-
-  // Helper: find shared edges between two polygons
-  // Returns array of { axis:'H'|'V', coord, start, end } for each shared edge
-  function findSharedEdges(polyA, polyB) {
-    const edges = [];
-    
-    // Check each edge of polyA against each edge of polyB
-    for (let i = 0; i < polyA.length; i++) {
-      const [ax1, ay1] = polyA[i];
-      const [ax2, ay2] = polyA[(i + 1) % polyA.length];
-      
-      for (let j = 0; j < polyB.length; j++) {
-        const [bx1, by1] = polyB[j];
-        const [bx2, by2] = polyB[(j + 1) % polyB.length];
-        
-        // Check for horizontal edge overlap (same y, overlapping x ranges)
-        if (ay1 === ay2 && by1 === by2 && ay1 === by1) {
-          const aMinX = Math.min(ax1, ax2), aMaxX = Math.max(ax1, ax2);
-          const bMinX = Math.min(bx1, bx2), bMaxX = Math.max(bx1, bx2);
-          const overlapStart = Math.max(aMinX, bMinX);
-          const overlapEnd = Math.min(aMaxX, bMaxX);
-          
-          if (overlapStart < overlapEnd) {
-            edges.push({ axis: 'H', coord: ay1, start: overlapStart, end: overlapEnd });
-          }
-        }
-        
-        // Check for vertical edge overlap (same x, overlapping y ranges)
-        if (ax1 === ax2 && bx1 === bx2 && ax1 === bx1) {
-          const aMinY = Math.min(ay1, ay2), aMaxY = Math.max(ay1, ay2);
-          const bMinY = Math.min(by1, by2), bMaxY = Math.max(by1, by2);
-          const overlapStart = Math.max(aMinY, bMinY);
-          const overlapEnd = Math.min(aMaxY, bMaxY);
-          
-          if (overlapStart < overlapEnd) {
-            edges.push({ axis: 'V', coord: ax1, start: overlapStart, end: overlapEnd });
-          }
-        }
-      }
-    }
-    
-    return edges;
-  }
-
-  // Find all neighboring region pairs
-  const regionKeys = Object.keys(POLYS);
-  const processed = new Set();
-  
-  for (let i = 0; i < regionKeys.length; i++) {
-    for (let j = i + 1; j < regionKeys.length; j++) {
-      const keyA = regionKeys[i];
-      const keyB = regionKeys[j];
-      const pairKey = [keyA, keyB].sort().join('|');
-      
-      if (processed.has(pairKey)) continue;
-      processed.add(pairKey);
-      
-      const polyA = POLYS[keyA];
-      const polyB = POLYS[keyB];
-      const sharedEdges = findSharedEdges(polyA, polyB);
-      
-      // For each shared edge, create a crossing
-      for (const edge of sharedEdges) {
-        const edgeLength = edge.end - edge.start;
-        const middleThirdStart = edge.start + edgeLength / 3;
-        const middleThirdEnd = edge.end - edgeLength / 3;
-        
-        // Random gate position in middle third
-        const seed = ((edge.coord * 73856093) ^ (Math.floor((edge.start + edge.end) / 2) * 19349663)) >>> 0;
-        const rng = (seed >>> 16) / 0x7fff;
-        const gCoord = Math.floor(middleThirdStart + rng * (middleThirdEnd - middleThirdStart));
-        
-        // Gate type based on distance from Holy Grail
-        const centerX = edge.axis === 'H' ? gCoord : edge.coord;
-        const centerY = edge.axis === 'H' ? edge.coord : gCoord;
-        const dist = distFromGrail(centerX, centerY);
-        const type = gateTypeForDistance(dist);
-        
-        crossings.push({
-          axis: edge.axis,
-          bCoord: edge.coord,
-          gCoord: gCoord,
-          type: type,
-          id: `${edge.axis.toLowerCase()}${gCoord}_${edge.coord}`,
-        });
-      }
-    }
-  }
-  
-  return crossings;
-})();
+// CROSSINGS array - populated after POLYS definition below
+let CROSSINGS = [];
 
 // Terrain type per crossing type
 function crossingTerrain(type) {
@@ -515,6 +409,89 @@ const POLYS = {
   paleMarch:       [[701,607],[876,607],[876,740],[701,740]],
   forsakenMarch:   [[130,607],[328,607],[328,740],[130,740]],
 };
+
+// ── Build CROSSINGS array by detecting shared polygon edges ──────────────────
+CROSSINGS = (() => {
+  const HOLY_GRAIL = { cx: 916, cy: 640 };
+  const crossings = [];
+
+  function distFromGrail(x, y) {
+    return Math.sqrt((x - HOLY_GRAIL.cx) ** 2 + (y - HOLY_GRAIL.cy) ** 2);
+  }
+
+  function gateTypeForDistance(dist) {
+    if (dist < 333) return 'tollbridge';
+    if (dist < 667) return 'tunnel';
+    return 'crossing';
+  }
+
+  function findSharedEdges(polyA, polyB) {
+    const edges = [];
+    for (let i = 0; i < polyA.length; i++) {
+      const [ax1, ay1] = polyA[i];
+      const [ax2, ay2] = polyA[(i + 1) % polyA.length];
+      for (let j = 0; j < polyB.length; j++) {
+        const [bx1, by1] = polyB[j];
+        const [bx2, by2] = polyB[(j + 1) % polyB.length];
+        if (ay1 === ay2 && by1 === by2 && ay1 === by1) {
+          const aMinX = Math.min(ax1, ax2), aMaxX = Math.max(ax1, ax2);
+          const bMinX = Math.min(bx1, bx2), bMaxX = Math.max(bx1, bx2);
+          const overlapStart = Math.max(aMinX, bMinX);
+          const overlapEnd = Math.min(aMaxX, bMaxX);
+          if (overlapStart < overlapEnd) {
+            edges.push({ axis: 'H', coord: ay1, start: overlapStart, end: overlapEnd });
+          }
+        }
+        if (ax1 === ax2 && bx1 === bx2 && ax1 === bx1) {
+          const aMinY = Math.min(ay1, ay2), aMaxY = Math.max(ay1, ay2);
+          const bMinY = Math.min(by1, by2), bMaxY = Math.max(by1, by2);
+          const overlapStart = Math.max(aMinY, bMinY);
+          const overlapEnd = Math.min(aMaxY, bMaxY);
+          if (overlapStart < overlapEnd) {
+            edges.push({ axis: 'V', coord: ax1, start: overlapStart, end: overlapEnd });
+          }
+        }
+      }
+    }
+    return edges;
+  }
+
+  const regionKeys = Object.keys(POLYS);
+  const processed = new Set();
+  for (let i = 0; i < regionKeys.length; i++) {
+    for (let j = i + 1; j < regionKeys.length; j++) {
+      const keyA = regionKeys[i];
+      const keyB = regionKeys[j];
+      const pairKey = [keyA, keyB].sort().join('|');
+      if (processed.has(pairKey)) continue;
+      processed.add(pairKey);
+      const polyA = POLYS[keyA];
+      const polyB = POLYS[keyB];
+      const sharedEdges = findSharedEdges(polyA, polyB);
+      for (const edge of sharedEdges) {
+        const edgeLength = edge.end - edge.start;
+        const middleThirdStart = edge.start + edgeLength / 3;
+        const middleThirdEnd = edge.end - edgeLength / 3;
+        const seed = ((edge.coord * 73856093) ^ (Math.floor((edge.start + edge.end) / 2) * 19349663)) >>> 0;
+        const rng = (seed >>> 16) / 0x7fff;
+        const gCoord = Math.floor(middleThirdStart + rng * (middleThirdEnd - middleThirdStart));
+        const centerX = edge.axis === 'H' ? gCoord : edge.coord;
+        const centerY = edge.axis === 'H' ? edge.coord : gCoord;
+        const dist = distFromGrail(centerX, centerY);
+        const type = gateTypeForDistance(dist);
+        crossings.push({
+          axis: edge.axis,
+          bCoord: edge.coord,
+          gCoord: gCoord,
+          type: type,
+          id: `${edge.axis.toLowerCase()}${gCoord}_${edge.coord}`,
+        });
+      }
+    }
+  }
+  return crossings;
+})();
+
 
 function buildLookups() {
   const TERRAIN_MAP = new Uint8Array(SIZE);
