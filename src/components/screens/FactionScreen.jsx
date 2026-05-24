@@ -317,11 +317,11 @@ export default function FactionScreen({
             <span style={{fontSize:9,color:"#7aaa40",letterSpacing:"0.12em"}}>{ALIGNMENT.creatures.n.toUpperCase()}</span>
           </div>
 
-          {/* 3×2 grid — fills available space proportionally */}
+          {/* 4×2 grid — fills available space proportionally */}
           <div style={{flex:1, display:"flex", flexDirection:"column", gap:8, minHeight:0}}>
             {rows.map((row, ri) => (
               <div key={ri} style={{
-                display:"grid", gridTemplateColumns:"1fr 1fr 1fr",
+                display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr",
                 gap:8, flex:1, minHeight:0,
               }}>
                 {row.map(f => {
