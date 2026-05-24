@@ -2,6 +2,8 @@ import { HOLYKNIGHTS_SKILLS, HOLYKNIGHTS_BRANCH_SKILL_MAP } from "./holyknights_
 import { NIGHTCREATURES_SKILLS, NIGHTCREATURES_BRANCH_SKILL_MAP } from "./nightcreatures_skills.js";
 import { DRAGONS_SKILLS, DRAGONS_BRANCH_SKILL_MAP } from "./dragons_skills.js";
 import { BOUNTYHUNTERS_SKILLS, BOUNTYHUNTERS_BRANCH_SKILL_MAP } from "./wizards_skills.js";
+import { COLDBORNS_SKILLS, COLDBORNS_BRANCH_SKILL_MAP } from "./coldborns_skills.js";
+import { ASHEN_DEAD_SKILLS, ASHEN_DEAD_BRANCH_SKILL_MAP } from "./ashen_dead_skills.js";
 import { ORCS_SKILLS, ORCS_BRANCH_SKILL_MAP } from "./orcs_skills.js";
 import { PIRATES_SKILLS, PIRATES_BRANCH_SKILL_MAP } from "./pirates_skills.js";
 
@@ -467,6 +469,8 @@ export const ALL_SKILLS = {
   ...NIGHTCREATURES_SKILLS,
   ...DRAGONS_SKILLS,
   ...BOUNTYHUNTERS_SKILLS,
+  ...COLDBORNS_SKILLS,
+  ...ASHEN_DEAD_SKILLS,
   ...ORCS_SKILLS,
   ...PIRATES_SKILLS,
 };
@@ -634,7 +638,7 @@ for (const branches of Object.values(BRANCH_SKILL_MAP)) {
   }
 }
 // Also sweep faction-specific maps
-for (const map of [HOLYKNIGHTS_BRANCH_SKILL_MAP, NIGHTCREATURES_BRANCH_SKILL_MAP, DRAGONS_BRANCH_SKILL_MAP, BOUNTYHUNTERS_BRANCH_SKILL_MAP, ORCS_BRANCH_SKILL_MAP, PIRATES_BRANCH_SKILL_MAP]) {
+for (const map of [HOLYKNIGHTS_BRANCH_SKILL_MAP, NIGHTCREATURES_BRANCH_SKILL_MAP, DRAGONS_BRANCH_SKILL_MAP, BOUNTYHUNTERS_BRANCH_SKILL_MAP, COLDBORNS_BRANCH_SKILL_MAP, ASHEN_DEAD_BRANCH_SKILL_MAP, ORCS_BRANCH_SKILL_MAP, PIRATES_BRANCH_SKILL_MAP]) {
   for (const branches of Object.values(map)) {
     for (const branch of branches) {
       if (branch.main) _mainKeys.add(branch.main);
@@ -661,6 +665,8 @@ export const FACTION_MAIN_NAMES = {
   nightcreatures: {},
   dragons:        {},
   wizards:  {},
+  coldborns:      {},
+  "ashen_dead":   {},
   orcs:           {},
   pirates:        {},
 };
