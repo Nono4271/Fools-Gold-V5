@@ -486,7 +486,66 @@ function buildLookups() {
   return {TERRAIN_MAP,REGION_MAP};
 }
 
-function randomSpawn(regionKey, usedKeys, flagArr, terrainArr) {
+// Check if position overlaps or is adjacent to any existing HQ (needs 1-tile gap)
+function isAdjacentToHQ(c, r, usedKeys) {
+  // Check a 5x5 area centered on the proposed HQ's top-left corner
+  // This ensures the 3x3 HQ footprint + 1-tile gap on all sides
+  for (let dr = -1; dr <= 4; dr++) {
+    for (let dc = -1; dc <= 4; dc++) {
+      const checkKey = `${c+dc},${r+dr}`;
+      if (usedKeys.has(checkKey)) return true;
+    }
+  }
+  return false;
+}
+
+// Check if HQ location has sufficient resource neighbors for spawn
+// Requires: at least 2 tiles with 1/hr (power level 1) and 1 tile with 10/hr+ (power level 10+)
+function hasValidResourceNeighbors(c, r, powerArr) {
+  let count1hr = 0;
+  let count10hrPlus = 0;
+  
+  // Check all tiles adjacent to the 3x3 HQ footprint (perimeter)
+  // Top and bottom rows
+  for (let dc = -1; dc <= 3; dc++) {
+    // Top neighbor (row r-1)
+    const topIdx = (r-1)*COLS+(c+dc);
+    if (topIdx >= 0 && topIdx < SIZE) {
+      const pl = powerArr[topIdx];
+      if (pl === 1) count1hr++;
+      if (pl >= 10) count10hrPlus++;
+    }
+    // Bottom neighbor (row r+3)
+    const botIdx = (r+3)*COLS+(c+dc);
+    if (botIdx >= 0 && botIdx < SIZE) {
+      const pl = powerArr[botIdx];
+      if (pl === 1) count1hr++;
+      if (pl >= 10) count10hrPlus++;
+    }
+  }
+  
+  // Left and right columns (excluding corners already counted)
+  for (let dr = 0; dr <= 2; dr++) {
+    // Left neighbor (col c-1)
+    const leftIdx = (r+dr)*COLS+(c-1);
+    if (leftIdx >= 0 && leftIdx < SIZE) {
+      const pl = powerArr[leftIdx];
+      if (pl === 1) count1hr++;
+      if (pl >= 10) count10hrPlus++;
+    }
+    // Right neighbor (col c+3)
+    const rightIdx = (r+dr)*COLS+(c+3);
+    if (rightIdx >= 0 && rightIdx < SIZE) {
+      const pl = powerArr[rightIdx];
+      if (pl === 1) count1hr++;
+      if (pl >= 10) count10hrPlus++;
+    }
+  }
+  
+  return count1hr >= 2 && count10hrPlus >= 1;
+}
+
+function randomSpawn(regionKey, usedKeys, flagArr, terrainArr, powerArr) {
   const reg=REGION_LIST.find(r=>r.key===regionKey);
   if (!reg) return null;
   for (let attempt=0;attempt<200;attempt++) {
@@ -495,6 +554,10 @@ function randomSpawn(regionKey, usedKeys, flagArr, terrainArr) {
     if (c<1||c>=COLS-2||r<1||r>=ROWS-2) continue; // 3x3 HQ needs 2-tile margin
     const k=`${c},${r}`;
     if (KEEP_FOOTPRINT_SET.has(k)||usedKeys.has(k)) continue;
+    
+    // SAFETY NET 2: Check HQ is not adjacent to another HQ (1-tile gap required)
+    if (isAdjacentToHQ(c, r, usedKeys)) continue;
+    
     // Also skip any dynamically placed P10-13 structure or its parts
     const fl = flagArr[r*COLS+c];
     if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) continue;
@@ -516,6 +579,10 @@ function randomSpawn(regionKey, usedKeys, flagArr, terrainArr) {
       if (!footClear) break;
     }
     if (!footClear) continue;
+    
+    // SAFETY NET 1: Check HQ has valid resource neighbors (only for spawn)
+    if (!hasValidResourceNeighbors(c, r, powerArr)) continue;
+    
     return k;
   }
   return `${reg.cx+5},${reg.cy+5}`;
@@ -1124,7 +1191,7 @@ self.onmessage = function(e) {
     const keys = [];
     for (let i = 0; i < 50; i++) {
       const reg = regions[i % regions.length];
-      const key = randomSpawn(reg.key, usedKeys, flagArr, terrainArr);
+      const key = randomSpawn(reg.key, usedKeys, flagArr, terrainArr, powerArr);
       if (key) {
         keys.push(key);
         usedKeys.add(key);
