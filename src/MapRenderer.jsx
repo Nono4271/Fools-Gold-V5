@@ -2228,10 +2228,27 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // Skip only keep parts, allow keep primary tiles
+      // Static keeps (5×5): draw outline around full footprint
+      if ((tile.isKeep && !tile.isGate) && pl < 10) {
+        const { cx, cy } = isoXY(sc, sr);
+        // 5×5 keep: center ±2 tiles in each direction
+        // Draw merged diamond encompassing all 25 tiles
+        const MERGED = [
+          cx,          cy - TH * 2,   // N (2 tiles up)
+          cx + TW * 2, cy,             // E (2 tiles right)
+          cx,          cy + TH * 2,   // S (2 tiles down)
+          cx - TW * 2, cy,             // W (2 tiles left)
+        ];
+        selGfx.lineStyle(3, 0xffffff, 0.95);
+        selGfx.drawPolygon(MERGED);
+        selGfx.lineStyle(0);
+        return;
+      }
+
+      // Skip keep parts (they redirect to primary)
       if (tile.isKeepPart) return;
       
-      // Static keeps and HQs use elevation 14
+      // Regular tiles, HQs, win tiles
       const elev = (tile.isHQ || tile.isKeep) ? 14 : tile.isWin ? 10 : 4;
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
