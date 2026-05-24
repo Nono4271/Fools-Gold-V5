@@ -43,7 +43,7 @@ function getRespectInfo(cmd) {
 // ── Faction colour + shape map ────────────────────────────────────────────────
 const FACTION_THEME = {
   pirates:       { color: "#d4832a", accent: "#ffc060" },
-  bountyhunters: { color: "#9955dd", accent: "#cc88ff" },
+  wizards:       { color: "#9955dd", accent: "#cc88ff" },
   orcs:          { color: "#6aa830", accent: "#aaff66" },
   dragons:       { color: "#cc3030", accent: "#ff8855" },
 };
@@ -85,7 +85,7 @@ function FactionNode({ faction, size, filled, color, accent, locked, isMain, sel
         );
       }
 
-      case "bountyhunters": { // cauldron
+      case "wizards": { // cauldron
         const bRx = r*.90, bRy = r*.72, bCy = cy + r*.12;
         const rimCy = bCy - bRy + r*.08, baseY = bCy + bRy*.82;
         return (

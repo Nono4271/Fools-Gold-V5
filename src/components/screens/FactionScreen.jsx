@@ -21,7 +21,7 @@ import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 
 const LEGENDARY_BY_FACTION = {
   pirates:        { n: "Ironjaw Reck",             portrait: "/commanders/h25_ironjaw_reck_portrait.webp" },
-  bountyhunters:  { n: "Archmage Theon",           portrait: "/commanders/h29_archmage_theon_portrait.webp" },
+  wizards:        { n: "Archmage Theon",           portrait: "/commanders/h29_archmage_theon_portrait.webp" },
   orcs:           { n: "Warlord Korgath",           portrait: "/commanders/h33_warlord_korgath_portrait.webp" },
   dragons:        { n: "Pyrewing Skar",             portrait: "/commanders/h35_pyrewing_skar_portrait.webp" },
   holyknights:    { n: "Grand Inquisitor Mourne",   portrait: "/commanders/h42_grand_inquistor_mourne_portrait.webp" },
@@ -32,7 +32,7 @@ const LEGENDARY_BY_FACTION = {
 
 const QUARTER_BY_FACTION = {
   pirates:        "Plunder Yard",
-  bountyhunters:  "Ethereal Vault",
+  wizards:        "Ethereal Vault",
   orcs:           "Grinding Grounds",
   dragons:        "The Eyrie",
   holyknights:    "The Sanctum",
@@ -43,7 +43,7 @@ const QUARTER_BY_FACTION = {
 
 const FACTION_ICONS = {
   pirates:        "🏴‍☠️",
-  bountyhunters:  "🔮",
+  wizards:        "🔮",
   orcs:           "⚔️",
   dragons:        "🐉",
   holyknights:    "✝️",
@@ -115,7 +115,7 @@ export default function FactionScreen({
       gear: { helmet: null, armor: null, bracers: null, accessory: null },
     }));
 
-    const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen dead"];
+    const allFactions = ["pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
     const aiFactions = allFactions.filter(fk => fk !== f.key);
     const allAiCmds = [];
     aiFactions.forEach((aiFk) => {
