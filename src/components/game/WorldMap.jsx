@@ -76,14 +76,11 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
     if (!crossings) return [];
     const result = [];
     for (const cr of crossings) {
-      const gx = cr.axis === 'H' ? cr.gCoord : cr.bCoord;
-      const gy = cr.axis === 'H' ? cr.bCoord : cr.gCoord;
-      // Gate A position in WorldMap design space
-      const axA = cr.axis === 'H' ? gx      : cr.bCoord - 2;
-      const ayA = cr.axis === 'H' ? cr.bCoord - 2 : gy;
-      // Gate B position
-      const axB = cr.axis === 'H' ? gx      : cr.bCoord + 2;
-      const ayB = cr.axis === 'H' ? cr.bCoord + 2 : gy;
+      // Gate A: offset -2 from bCoord, Gate B: offset +1 from bCoord (BORDER_HALF = 2)
+      const axA = cr.axis === 'H' ? cr.gCoord : cr.bCoord - 2;
+      const ayA = cr.axis === 'H' ? cr.bCoord - 2 : cr.gCoord;
+      const axB = cr.axis === 'H' ? cr.gCoord : cr.bCoord + 1;
+      const ayB = cr.axis === 'H' ? cr.bCoord + 1 : cr.gCoord;
       const typeIcon = cr.type === 'crossing' ? '🌊' : cr.type === 'tollbridge' ? '⌒' : '⛰';
       const t = tiles[`${axA},${ayA}`];
       result.push({
