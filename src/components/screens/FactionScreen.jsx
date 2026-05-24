@@ -302,9 +302,9 @@ export default function FactionScreen({
       {/* ── Body: 3 columns, fills remaining height ── */}
       <div style={{display:"flex", flex:1, overflow:"hidden", minHeight:0}}>
 
-        {/* ── LEFT: faction grid ── fixed 230px */}
+        {/* ── LEFT: faction grid ── fixed 270px */}
         <div style={{
-          width:230, flexShrink:0,
+          width:270, flexShrink:0,
           padding:"14px 14px 12px",
           display:"flex", flexDirection:"column",
           borderRight:"1px solid #1a1a2a",
@@ -317,14 +317,14 @@ export default function FactionScreen({
             <span style={{fontSize:9,color:"#7aaa40",letterSpacing:"0.12em"}}>{ALIGNMENT.creatures.n.toUpperCase()}</span>
           </div>
 
-          {/* 4×2 grid — fills available space proportionally */}
+          {/* 4×2 grid with gap between humans/creatures */}
           <div style={{flex:1, display:"flex", flexDirection:"column", gap:8, minHeight:0}}>
             {rows.map((row, ri) => (
               <div key={ri} style={{
-                display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr",
-                gap:8, flex:1, minHeight:0,
+                display:"grid", gridTemplateColumns:"1fr 1fr 12px 1fr 1fr",
+                gap:6, flex:1, minHeight:0,
               }}>
-                {row.map(f => {
+                {row.slice(0,2).map(f => {
                   const isSelected = selected.key === f.key;
                   return (
                     <button
@@ -366,7 +366,78 @@ export default function FactionScreen({
                         borderRadius:"3px 3px 0 0",
                         clipPath:"polygon(0 0,100% 0,100% 78%,50% 100%,0 78%)",
                         display:"flex", alignItems:"center", justifyContent:"center",
-                        fontSize:14,
+                        fontSize:18,
+                        flexShrink:0,
+                      }}>
+                        {FACTION_ICONS[f.key]}
+                      </div>
+
+                      <span style={{
+                        fontSize:7, fontWeight:700, letterSpacing:"0.04em",
+                        color: isSelected ? f.c : "#7a7080",
+                        textTransform:"uppercase", textAlign:"center",
+                        lineHeight:1.15,
+                      }}>
+                        {f.n}
+                      </span>
+                    </button>
+                  );
+                })}
+                
+                {/* Separator between humans and creatures */}
+                <div style={{
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                }}>
+                  <div style={{
+                    width:1, height:"80%",
+                    background:"linear-gradient(180deg, transparent, #3a3a4a 20%, #3a3a4a 80%, transparent)",
+                  }}/>
+                </div>
+                
+                {/* Creatures (second half of row) */}
+                {row.slice(2,4).map(f => {
+                  const isSelected = selected.key === f.key;
+                  return (
+                    <button
+                      key={f.key}
+                      onClick={() => setSelected(f)}
+                      className="faction-icon-btn"
+                      style={{
+                        background: isSelected
+                          ? `linear-gradient(145deg,${f.c}22,${f.c}08)`
+                          : "rgba(255,255,255,0.025)",
+                        border: isSelected
+                          ? `1px solid ${f.c}88`
+                          : "1px solid rgba(255,255,255,0.07)",
+                        borderRadius:6,
+                        cursor:"pointer",
+                        display:"flex", flexDirection:"column",
+                        alignItems:"center", justifyContent:"center",
+                        gap:4, padding:"6px 4px",
+                        transition:"all 0.15s ease",
+                        position:"relative", outline:"none",
+                        minHeight:0, overflow:"hidden",
+                      }}
+                    >
+                      {/* Vacancy dot */}
+                      <div style={{
+                        position:"absolute", top:4, right:4,
+                        width:5, height:5, borderRadius:"50%",
+                        background:"#3ddc84",
+                        boxShadow:"0 0 4px #3ddc84aa",
+                      }}/>
+
+                      {/* Banner icon */}
+                      <div style={{
+                        width:"50%", aspectRatio:"3/4",
+                        maxWidth:32, maxHeight:42,
+                        background: isSelected
+                          ? `linear-gradient(180deg,${f.c}cc,${f.c}66)`
+                          : `linear-gradient(180deg,${f.c}55,${f.c}22)`,
+                        borderRadius:"3px 3px 0 0",
+                        clipPath:"polygon(0 0,100% 0,100% 78%,50% 100%,0 78%)",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        fontSize:18,
                         flexShrink:0,
                       }}>
                         {FACTION_ICONS[f.key]}
