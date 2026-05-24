@@ -248,7 +248,6 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               gfx.lineStyle(2, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
             }
           }
-          if (hasCmds && !isSel) { gfx.lineStyle(2, 0xf0dc3c, 0.9); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
           if (isSel) { gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
           continue;
         }
@@ -452,9 +451,6 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         if (mode === "selectMarchDest" && owner !== "player") {
           gfx.beginFill(0x000000, 0.45); gfx.drawPolygon(TOP); gfx.endFill();
         }
-        if (hasCmds && !isSel) {
-          gfx.lineStyle(2, 0xf0dc3c, 0.9); gfx.drawPolygon(TOP); gfx.lineStyle(0);
-        }
         if (isSel) {
           gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         }
@@ -510,9 +506,6 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       }
       if (isMvTgt) {
         gfx.beginFill(0x28dc6e, 0.22); gfx.drawPolygon(TOP); gfx.endFill();
-      }
-      if (hasCmds && !isSel) {
-        gfx.lineStyle(2, 0xf0dc3c, 0.9); gfx.drawPolygon(TOP); gfx.lineStyle(0);
       }
 
       if (isSel) {
