@@ -1586,6 +1586,26 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     group.addChild(outlineGfx);
   }
 
+  // ── Border (draw before sprite so sprite renders on top) ──
+  const borderGfx = new PIXI.Graphics();
+  const borderTint = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+  
+  const borderPath = [];
+  borderPath.push(isoXY(pc, pr).cx, isoXY(pc, pr).cy - elev);
+  borderPath.push(isoXY(pc + 2, pr).cx + TW/2, isoXY(pc + 2, pr).cy - elev + TH/2);
+  borderPath.push(isoXY(pc + 2, pr + 2).cx, isoXY(pc + 2, pr + 2).cy - elev + TH);
+  borderPath.push(isoXY(pc, pr + 2).cx - TW/2, isoXY(pc, pr + 2).cy - elev + TH/2);
+  
+  borderGfx.lineStyle(8, 0x000000, 0.8);
+  borderGfx.drawPolygon(borderPath);
+  borderGfx.lineStyle(0);
+  
+  borderGfx.lineStyle(5, borderTint, 1.0);
+  borderGfx.drawPolygon(borderPath);
+  borderGfx.lineStyle(0);
+  
+  group.addChild(borderGfx);
+
   // ── Sprite ──
   const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
   const spriteUrl  = `/hq/${spriteName}`;
@@ -1708,44 +1728,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     onHQClick(tileKey, e.data?.originalEvent || e);
   });
   group.addChild(hit);
-  
-  // Draw borders only on outer edges of the 3×3 HQ footprint
-  const borderGfx = new PIXI.Graphics();
-  const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-  
-  // Collect all outer edge vertices in order to draw one continuous border
-  const borderPath = [];
-  
-  // Build the border path by tracing the perimeter clockwise
-  // Starting from top-left corner tile (0,0), go around the outside
-  const cornerTiles = [
-    { dc: 0, dr: 0 }, // top-left
-    { dc: 2, dr: 0 }, // top-right  
-    { dc: 2, dr: 2 }, // bottom-right
-    { dc: 0, dr: 2 }, // bottom-left
-  ];
-  
-  // Top edge: from (0,0) top vertex -> (2,0) right vertex
-  borderPath.push(isoXY(pc, pr).cx, isoXY(pc, pr).cy - elev); // TL top
-  borderPath.push(isoXY(pc + 2, pr).cx + TW/2, isoXY(pc + 2, pr).cy - elev + TH/2); // TR right
-  
-  // Right edge: from (2,0) right vertex -> (2,2) bottom vertex  
-  borderPath.push(isoXY(pc + 2, pr + 2).cx, isoXY(pc + 2, pr + 2).cy - elev + TH); // BR bottom
-  
-  // Bottom edge: from (2,2) bottom vertex -> (0,2) left vertex
-  borderPath.push(isoXY(pc, pr + 2).cx - TW/2, isoXY(pc, pr + 2).cy - elev + TH/2); // BL left
-  
-  // Path auto-closes back to start
-  
-  borderGfx.lineStyle(8, 0x000000, 0.8);
-  borderGfx.drawPolygon(borderPath);
-  borderGfx.lineStyle(0);
-  
-  borderGfx.lineStyle(5, ot, 1.0);
-  borderGfx.drawPolygon(borderPath);
-  borderGfx.lineStyle(0);
-  
-  group.addChild(borderGfx);
   
   return group;
 }
