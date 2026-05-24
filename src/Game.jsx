@@ -618,7 +618,7 @@ export default function RiseToWar() {
           
           // Determine faction for border coloring
           let faction = null;
-          const factionKeys = ["pirates", "orcs", "bountyhunters", "dragons", "holyknights", "nightcreatures", "coldborns", "ashen_dead"];
+          const factionKeys = ["pirates", "orcs", "wizards", "dragons", "holyknights", "nightcreatures", "coldborns", "ashen_dead"];
           if (isHQ || isHQPart) {
             if (factionKeys.includes(owner)) {
               // AI HQ tile - owner is the faction name
@@ -731,7 +731,7 @@ export default function RiseToWar() {
         }
 
         // Place AI HQs — each of the 50 AI players gets their own 3x3 HQ
-        const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
+        const allFactions = ["pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
         const aiFactions  = allFactions.filter(f => f !== facKey);
         // newAiHqKeys: { [fk]: string[] } — all HQ primary keys per faction.
         // HQ footprints are already fully stamped into the typed arrays by the worker
@@ -794,7 +794,7 @@ export default function RiseToWar() {
         ];
         const ICONS_BY_FACTION = {
           pirates:"🏴‍☠️", orcs:"⚔️", dragons:"🐉", nightcreatures:"🦇",
-          bountyhunters:"🔮", holyknights:"⚔",
+          wizards:"🔮", holyknights:"⚔",
         };
         const initialAiCmds = [];
         aiFactions.forEach(aiFk => {
@@ -834,7 +834,7 @@ export default function RiseToWar() {
         const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
         const primaryAiFk = aiFactions.find(f =>
           (oppAlign === "humans"
-            ? ["pirates","bountyhunters","holyknights"]
+            ? ["pirates","wizards","holyknights"]
             : ["orcs","dragons","nightcreatures"]).includes(f)
         ) || aiFactions[0];
 
