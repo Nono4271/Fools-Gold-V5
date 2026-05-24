@@ -1626,8 +1626,8 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     dragons:        { xOff:  5,    yOff:  10,   scale: 1.0  },
     holyknights:    { xOff: -5,    yOff:  10,   scale: 1.0  },
     nightcreatures: { xOff:  0,    yOff:  10,   scale: 1.0  },
-    coldborns:      { xOff:  0,    yOff:  0,    scale: 1.3  },
-    ashen_dead:     { xOff:  0,    yOff:  0,    scale: 1.3  },
+    coldborns:      { xOff:  0,    yOff:  15,   scale: 1.1  },
+    ashen_dead:     { xOff:  0,    yOff:  15,   scale: 1.1  },
   };
   const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0 };
 
