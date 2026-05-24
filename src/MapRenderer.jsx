@@ -1616,19 +1616,23 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // Source image is 2048x2048 (square) — preserve aspect ratio to avoid lean.
   // Scale so width fits the 3x3 footprint; height follows naturally.
   // Per-faction fine-tuning offsets (xOff/yOff in pixels, positive = right/down)
+  // scale multiplier (default 1.0) for factions that need larger sprites
   const HQ_OFFSETS = {
-    pirates:        { xOff:  0,    yOff:  0    },
-    player:         { xOff:  0,    yOff:  0    },
-    orcs:           { xOff:  0,    yOff:  0    },
-    ai:             { xOff:  0,    yOff:  0    },
-    wizards:        { xOff:  5,    yOff: -5    },
-    dragons:        { xOff:  5,    yOff:  10   },
-    holyknights:    { xOff: -5,    yOff:  10   },
-    nightcreatures: { xOff:  0,    yOff:  10   },
+    pirates:        { xOff:  0,    yOff:  0,    scale: 1.0  },
+    player:         { xOff:  0,    yOff:  0,    scale: 1.0  },
+    orcs:           { xOff:  0,    yOff:  0,    scale: 1.0  },
+    ai:             { xOff:  0,    yOff:  0,    scale: 1.0  },
+    wizards:        { xOff:  5,    yOff: -5,    scale: 1.0  },
+    dragons:        { xOff:  5,    yOff:  10,   scale: 1.0  },
+    holyknights:    { xOff: -5,    yOff:  10,   scale: 1.0  },
+    nightcreatures: { xOff:  0,    yOff:  10,   scale: 1.0  },
+    coldborns:      { xOff:  0,    yOff:  0,    scale: 1.3  },
+    ashen_dead:     { xOff:  0,    yOff:  0,    scale: 1.3  },
   };
-  const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0 };
+  const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0 };
 
-  const targetW = TW * 2.2;
+  const baseW = TW * 2.2;
+  const targetW = baseW * (off.scale || 1.0);
   const targetH = targetW * 0.80;
 
   const spriteX = bx + off.xOff;
