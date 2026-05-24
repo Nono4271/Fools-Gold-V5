@@ -15,8 +15,8 @@
 //   { type: 'pathResult',      requestId, path }       — null path = unreachable
 //   { type: 'pathResultBatch', results: [{requestId, path}] }
 
-const COLS = 1400;
-const ROWS = 1000;
+const COLS = 1850;
+const ROWS = 1300;
 const IMPASSABLE = new Set();
 
 function adj(c, r) {
