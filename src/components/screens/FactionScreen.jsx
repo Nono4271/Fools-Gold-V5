@@ -27,7 +27,7 @@ const LEGENDARY_BY_FACTION = {
   holyknights:    { n: "Grand Inquisitor Mourne",   portrait: "/commanders/h42_grand_inquistor_mourne_portrait.webp" },
   nightcreatures: { n: "Alpha Korrax",              portrait: "/commanders/h46_alpha_korrax_portrait.webp" },
   coldborns:      { n: "Bjorn Icevein",             portrait: "/commanders/h49_bjorn_icevein_portrait.webp" },
-  "ashen dead":   { n: "Malgrath the Eternal",      portrait: "/commanders/h55_malgrath_the_eternal_portrait.webp" },
+  ashen_dead:     { n: "Malgrath the Eternal",      portrait: "/commanders/h55_malgrath_the_eternal_portrait.webp" },
 };
 
 const QUARTER_BY_FACTION = {
@@ -38,7 +38,7 @@ const QUARTER_BY_FACTION = {
   holyknights:    "The Sanctum",
   nightcreatures: "The Shadowfen",
   coldborns:      "Frozen Hall",
-  "ashen dead":   "Necrotic Spire",
+  ashen_dead:     "Necrotic Spire",
 };
 
 const FACTION_ICONS = {
@@ -49,7 +49,7 @@ const FACTION_ICONS = {
   holyknights:    "✝️",
   nightcreatures: "🌑",
   coldborns:      "❄️",
-  "ashen dead":   "💀",
+  ashen_dead:     "💀",
 };
 
 function hexToRgb(hex) {
