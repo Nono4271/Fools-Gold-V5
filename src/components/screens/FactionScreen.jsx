@@ -171,7 +171,7 @@ export default function FactionScreen({
     setScreen("game");
   }
 
-  const rows = [PLAYABLE_FACTIONS.slice(0,3), PLAYABLE_FACTIONS.slice(3,6)];
+  const rows = [PLAYABLE_FACTIONS.slice(0,4), PLAYABLE_FACTIONS.slice(4,8)];
 
   // ── NAME STEP ───────────────────────────────────────────────────────────
   if (step === "name") return (
