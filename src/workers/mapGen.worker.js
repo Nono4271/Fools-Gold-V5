@@ -5,7 +5,7 @@
 //   outgoing: { type:'progress', pct, label }
 //             { type:'done', buffers, meta, spawnKeys, aiHqMap, playerSpawn }  ← transferable, zero-copy
 
-const COLS = 1400, ROWS = 1000;
+const COLS = 1850, ROWS = 1300;
 const SIZE = COLS * ROWS;
 const SIEGE_BASE = 50;
 
@@ -33,21 +33,21 @@ const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 }; // kept for keeps 
 // P10–P13 use weight 1 each but are converted to 2×2 structures after the main
 // tile pass — any tile that rolled P10-P13 becomes the top-left of a 2×2 block.
 const POWER_WEIGHTS = [
-  { pl:1,  w:226400 },
-  { pl:2,  w:230000 },
-  { pl:3,  w:210000 },
-  { pl:4,  w:210000 },
-  { pl:5,  w:170000 },
-  { pl:6,  w:150000 },
-  { pl:7,  w:100000 },
-  { pl:8,  w: 48000 },
-  { pl:9,  w: 32000 },
-  { pl:10, w:  9200 },
-  { pl:11, w:  6000 },
-  { pl:12, w:  4800 },
-  { pl:13, w:  3600 },
+  { pl:1,  w: 388927 },
+  { pl:2,  w: 395107 },
+  { pl:3,  w: 360750 },
+  { pl:4,  w: 360750 },
+  { pl:5,  w: 292035 },
+  { pl:6,  w: 257678 },
+  { pl:7,  w: 171785 },
+  { pl:8,  w:  82457 },
+  { pl:9,  w:  54971 },
+  { pl:10, w:  15804 },
+  { pl:11, w:  10307 },
+  { pl:12, w:   8245 },
+  { pl:13, w:   6184 },
 ];
-// Weights sum exactly to 1,400,000 (= COLS × ROWS) so expected count = weight for each level.
+// Weights sum exactly to 2,405,000 (= COLS × ROWS) so expected count = weight for each level.
 const POWER_TOTAL = POWER_WEIGHTS.reduce((s, e) => s + e.w, 0);
 
 // Fast per-tile RNG seeded from coords — deterministic, no global state
@@ -77,8 +77,8 @@ const RSS_ENC     = { stone:1, wood:2, ore:3, gas:4 };
 const RSS_DEC     = [null,"stone","wood","ore","gas"];
 const TROOP_ENC   = { infantry:1, mage:2, spearmen:3, horsemen:4 };
 const TROOP_DEC   = [null,"infantry","mage","spearmen","horsemen"];
-const OWNER_ENC   = { player:1, ai:2, pirates:3, orcs:4, bountyhunters:5, dragons:6, holyknights:7, nightcreatures:8, coldborns:9, ashen_dead:10 };
-const OWNER_DEC   = [null,"player","ai","pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns",ashen_dead];
+const OWNER_ENC   = { player:1, ai:2, pirates:3, orcs:4, wizards:5, dragons:6, holyknights:7, nightcreatures:8, coldborns:9, ashen_dead:10 };
+const OWNER_DEC   = [null,"player","ai","pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns",ashen_dead];
 
 const F_KEEP     = 1<<1;
 const F_KEEPPART = 1<<2;
@@ -90,84 +90,99 @@ const F_GATE     = 1<<7;  // crossing/tunnel/tollbridge gate tile (passable bord
 const F_BORDER   = 1<<8;  // border terrain tile (impassable, not a gate)
 const F_PGGATE   = 1<<9;  // peninsula gate — only attackable by homeFaction
 
-// ── Region list — v12 coordinates, 1400x1000 design space ────────────────────
+// ── Region list — 1850×1300 design space ──────────────────────────────────────
 const REGION_LIST = [
   // Holy Grail
-  { key:"holyGrail",       name:"Holy Grail",          layer:"ring",     keepName:"The Holy Grail",            cx: 788, cy: 407 },
-  // Pirates
-  { key:"saltmere",        name:"Saltmere",            layer:"start",    keepName:"Saltmere Keep",             cx: 229, cy: 141, factions:["pirates"] },
-  { key:"plunderMaw",      name:"The Plunder Maw",     layer:"farm",     keepName:"The Plunder Maw Keep",      cx: 215, cy:  42, factions:["pirates"] },
-  { key:"brineHollow",     name:"Brine Hollow",        layer:"farm",     keepName:"Brine Hollow Keep",         cx: 427, cy: 141, factions:["pirates"] },
-  { key:"deadAnchor",      name:"Dead Anchor",         layer:"farm",     keepName:"Dead Anchor Keep",          cx: 229, cy: 274, factions:["pirates"] },
-  // Night Creatures
-  { key:"shadowmere",      name:"Shadowmere",          layer:"start",    keepName:"Shadowmere Keep",           cx:1173, cy: 274, factions:["nightcreatures"] },
-  { key:"theShroud",       name:"The Shroud",          layer:"farm",     keepName:"The Shroud Keep",           cx:1334, cy: 288, factions:["nightcreatures"] },
-  { key:"crimsonVeil",     name:"Crimson Veil",        layer:"farm",     keepName:"Crimson Veil Keep",         cx: 975, cy: 141, factions:["nightcreatures"] },
-  { key:"paleCourt",       name:"The Pale Court",      layer:"farm",     keepName:"The Pale Court Keep",       cx:1173, cy: 141, factions:["nightcreatures"] },
-  { key:"duskHollow",      name:"Dusk Hollow",         layer:"farm",     keepName:"Dusk Hollow Keep",          cx: 975, cy: 274, factions:["nightcreatures"] },
-  { key:"bloodfen",        name:"Bloodfen",            layer:"farm",     keepName:"Bloodfen Keep",             cx:1173, cy: 407, factions:["nightcreatures"] },
-  // Dragons
-  { key:"emberpeak",       name:"Emberpeak",           layer:"start",    keepName:"Emberpeak Keep",            cx: 229, cy: 407, factions:["dragons"] },
-  { key:"smolderingMaw",   name:"Smoldering Maw",      layer:"farm",     keepName:"Smoldering Maw Keep",       cx:  55, cy: 437, factions:["dragons"] },
-  { key:"ashcrag",         name:"Ashcrag",             layer:"farm",     keepName:"Ashcrag Keep",              cx: 460, cy: 375, factions:["dragons"] },
-  { key:"cinderPass",      name:"Cinder Pass",         layer:"farm",     keepName:"Cinder Pass Keep",          cx: 390, cy: 432, factions:["dragons"] },
-  { key:"scorchveil",      name:"Scorchveil",          layer:"farm",     keepName:"Scorchveil Keep",           cx: 229, cy: 540, factions:["dragons"] },
-  // Orcs
-  { key:"grimhold",        name:"Grimhold",            layer:"start",    keepName:"Grimhold Keep",             cx:1173, cy: 540, factions:["orcs"] },
-  { key:"theWarground",    name:"The Warground",       layer:"farm",     keepName:"The Warground Keep",        cx:1334, cy: 563, factions:["orcs"] },
-  { key:"warbend",         name:"Warbend",             layer:"farm",     keepName:"Warbend Keep",              cx: 975, cy: 407, factions:["orcs"] },
-  { key:"bloodfield",      name:"Bloodfield",          layer:"farm",     keepName:"Bloodfield Keep",           cx: 975, cy: 540, factions:["orcs"] },
-  { key:"bonepile",        name:"Bonepile",            layer:"farm",     keepName:"Bonepile Keep",             cx:1173, cy: 673, factions:["orcs"] },
-  // Wizards (Bounty Hunters)
-  { key:"ashenveil",       name:"Ashenveil",           layer:"start",    keepName:"Ashenveil Keep",            cx: 613, cy: 794, factions:["bountyhunters"] },
-  { key:"arcaneDeep",      name:"The Arcane Deep",     layer:"farm",     keepName:"The Arcane Deep Keep",      cx: 628, cy: 910, factions:["bountyhunters"] },
-  { key:"hexmire",         name:"Hexmire",             layer:"farm",     keepName:"Hexmire Keep",              cx: 427, cy: 673, factions:["bountyhunters"] },
-  { key:"ruinwatch",       name:"Ruinwatch",           layer:"farm",     keepName:"Ruinwatch Keep",            cx: 613, cy: 673, factions:["bountyhunters"] },
-  { key:"ashenFen",        name:"The Ashen Fen",       layer:"farm",     keepName:"The Ashen Fen Keep",        cx: 229, cy: 794, factions:["bountyhunters"] },
-  { key:"cursemoor",       name:"Cursemoor",           layer:"farm",     keepName:"Cursemoor Keep",            cx: 427, cy: 794, factions:["bountyhunters"] },
-  // Holy Knights
-  { key:"sanctumhold",     name:"Sanctumhold",         layer:"start",    keepName:"Sanctumhold Keep",          cx: 788, cy: 794, factions:["holyknights"] },
-  { key:"blessedShore",    name:"The Blessed Shore",   layer:"farm",     keepName:"The Blessed Shore Keep",    cx: 795, cy: 910, factions:["holyknights"] },
-  { key:"hallowedGround",  name:"Hallowed Ground",     layer:"farm",     keepName:"Hallowed Ground Keep",      cx: 788, cy: 540, factions:["holyknights"] },
-  { key:"pilgrimsRest",    name:"Pilgrim's Rest",      layer:"farm",     keepName:"Pilgrim's Rest Keep",       cx: 975, cy: 673, factions:["holyknights"] },
-  { key:"sacredVale",      name:"Sacred Vale",         layer:"farm",     keepName:"Sacred Vale Keep",          cx: 975, cy: 794, factions:["holyknights"] },
-  { key:"dawnmarch",       name:"Dawnmarch",           layer:"farm",     keepName:"Dawnmarch Keep",            cx:1173, cy: 794, factions:["holyknights"] },
-  // Coldborns
-  { key:"frosthold",       name:"Frosthold",           layer:"start",    keepName:"Frosthold Keep",            cx: 485, cy:  61, factions:["coldborns"] },
-  { key:"coldbornsFarm1",  name:"Icebreak Spire",      layer:"farm",     keepName:"Icebreak Spire Keep",       cx: 304, cy:  69, factions:["coldborns"] },
-  { key:"coldbornsFarm2",  name:"Frostbite Hall",      layer:"farm",     keepName:"Frostbite Hall Keep",       cx: 681, cy:  88, factions:["coldborns"] },
-  { key:"coldbornsFarm3",  name:"Ravencrag",           layer:"farm",     keepName:"Ravencrag Keep",            cx: 912, cy:  74, factions:["coldborns"] },
-  { key:"coldbornsFarm4",  name:"Winterveil",          layer:"farm",     keepName:"Winterveil Keep",           cx: 302, cy: 206, factions:["coldborns"] },
-  // Ashen Dead
-  { key:"bonehallow",      name:"Bonehallow",          layer:"start",    keepName:"Bonehallow Keep",           cx:1370, cy:1224, factions:["ashen_dead"] },
-  { key:"ashendeadFarm1",  name:"Ironwood",            layer:"farm",     keepName:"Ironwood Keep",             cx: 968, cy: 966, factions:["ashen_dead"] },
-  { key:"ashendeadFarm2",  name:"Greywatch",           layer:"farm",     keepName:"Greywatch Keep",            cx:1157, cy: 916, factions:["ashen_dead"] },
-  { key:"ashendeadFarm3",  name:"Coldmarsh",           layer:"farm",     keepName:"Coldmarsh Keep",            cx:1172, cy:1074, factions:["ashen_dead"] },
-  { key:"ashendeadFarm4",  name:"Gravemist",           layer:"farm",     keepName:"Gravemist Keep",            cx:1331, cy:1095, factions:["ashen_dead"] },
-  // Neutral / Conflict
-  { key:"gallowsReach",    name:"Gallows Reach",       layer:"conflict", keepName:"Gallows Reach Keep",        cx: 613, cy: 141 },
-  { key:"greyExpanse",     name:"The Grey Expanse",    layer:"conflict", keepName:"The Grey Expanse Keep",     cx: 788, cy: 141 },
-  { key:"mistfall",        name:"Mistfall",            layer:"conflict", keepName:"Mistfall Keep",             cx: 460, cy: 242 },
-  { key:"thornveil",       name:"Thornveil",           layer:"conflict", keepName:"Thornveil Keep",            cx: 390, cy: 308 },
-  { key:"wanderingWastes", name:"Wandering Wastes",    layer:"conflict", keepName:"Wandering Wastes Keep",     cx: 613, cy: 274 },
-  { key:"dreadmoor",       name:"Dreadmoor",           layer:"conflict", keepName:"Dreadmoor Keep",            cx: 788, cy: 274 },
-  { key:"theHollow",       name:"The Hollow",          layer:"conflict", keepName:"The Hollow Keep",           cx: 613, cy: 407 },
-  { key:"grimward",        name:"Grimward",            layer:"conflict", keepName:"Grimward Keep",             cx: 427, cy: 540 },
-  { key:"shatteredPass",   name:"Shattered Pass",      layer:"conflict", keepName:"Shattered Pass Keep",       cx: 648, cy: 510 },
-  { key:"sunkenRoad",      name:"Sunken Road",         layer:"conflict", keepName:"Sunken Road Keep",          cx: 580, cy: 578 },
-  { key:"paleMarch",       name:"The Pale March",      layer:"conflict", keepName:"The Pale March Keep",       cx: 788, cy: 673 },
-  { key:"forsakenMarch",   name:"Forsaken March",      layer:"conflict", keepName:"Forsaken March Keep",       cx: 229, cy: 673 },
+  { key:"holyGrail",          name:"Holy Grail",              layer:"ring",     keepName:"The Holy Grail",              cx: 916, cy: 640 },
+  // Coldborns Capital
+  { key:"frosthold",          name:"Frosthold",               layer:"start",    keepName:"Frosthold",                   cx: 485, cy:  61, factions:["coldborns"] },
+  // Nightcreatures Capital
+  { key:"duskmire",           name:"Duskmire",                layer:"start",    keepName:"Duskmire",                    cx:1343, cy:  59, factions:["nightcreatures"] },
+  // Dragons Capital
+  { key:"flamecrestPeak",     name:"Flamecrest Peak",         layer:"start",    keepName:"Flamecrest Peak",             cx:  95, cy: 347, factions:["dragons"] },
+  // Wizards Capital
+  { key:"arcaneum",           name:"Arcaneum",                layer:"start",    keepName:"Arcaneum",                    cx:1777, cy: 376, factions:["wizards"] },
+  // Orcs Capital
+  { key:"bloodrockKeep",      name:"Bloodrock Keep",          layer:"start",    keepName:"Bloodrock Keep",              cx:  96, cy: 947, factions:["orcs"] },
+  // Holyknights Capital
+  { key:"oathkeep",           name:"Oathkeep",                layer:"start",    keepName:"Oathkeep",                    cx:1726, cy: 901, factions:["holyknights"] },
+  // Pirates Capital
+  { key:"deadmansHarbor",     name:"Deadman's Harbor",        layer:"start",    keepName:"Deadman's Harbor",            cx: 511, cy:1222, factions:["pirates"] },
+  // Ashendead Capital
+  { key:"bonehallow",         name:"Bonehallow",              layer:"start",    keepName:"Bonehallow",                  cx:1370, cy:1224, factions:["ashen_dead"] },
+  
+  { key:"dragonsFarm1",       name:"Dragons Territory 1",     layer:"farm",     keepName:"Wyrmrest",                    cx: 103, cy:  76, factions:["dragons"] },
+  { key:"coldbornsFarm1",     name:"Coldborns Territory 1",   layer:"farm",     keepName:"Icebreak Spire",              cx: 304, cy:  69, factions:["coldborns"] },
+  { key:"coldbornsFarm2",     name:"Coldborns Territory 2",   layer:"farm",     keepName:"Frostbite Hall",              cx: 681, cy:  88, factions:["coldborns"] },
+  { key:"coldbornsFarm3",     name:"Coldborns Territory 3",   layer:"farm",     keepName:"Ravencrag",                   cx: 912, cy:  74, factions:["coldborns"] },
+  { key:"nightcreaturesFarm1",name:"Nightcreatures Territory 1",layer:"farm",   keepName:"Duskfall",                    cx:1081, cy:  89, factions:["nightcreatures"] },
+  { key:"nightcreaturesFarm2",name:"Nightcreatures Territory 2",layer:"farm",   keepName:"Shadowfen Halls",             cx:1538, cy:  74, factions:["nightcreatures"] },
+  { key:"wizardsFarm1",       name:"Wizards Territory 1",     layer:"farm",     keepName:"Thornwatch",                  cx:1728, cy:  82, factions:["wizards"] },
+  { key:"dragonsFarm2",       name:"Dragons Territory 2",     layer:"farm",     keepName:"Scorchstone",                 cx: 110, cy: 206, factions:["dragons"] },
+  { key:"coldbornsFarm4",     name:"Coldborns Territory 4",   layer:"farm",     keepName:"Winterveil",                  cx: 302, cy: 206, factions:["coldborns"] },
+  { key:"coldbornsFarm5",     name:"Coldborns Territory 5",   layer:"farm",     keepName:"Grimwald",                    cx: 713, cy: 246, factions:["coldborns"] },
+  { key:"coldbornsFarm6",     name:"Coldborns Territory 6",   layer:"farm",     keepName:"Blackstone",                  cx: 894, cy: 220, factions:["coldborns"] },
+  { key:"nightcreaturesFarm3",name:"Nightcreatures Territory 3",layer:"farm",   keepName:"Veilwatch",                   cx:1523, cy: 239, factions:["nightcreatures"] },
+  { key:"wizardsFarm2",       name:"Wizards Territory 2",     layer:"farm",     keepName:"Mystic Sanctum",              cx:1759, cy: 230, factions:["wizards"] },
+  { key:"coldbornsFarm7",     name:"Coldborns Territory 7",   layer:"farm",     keepName:"Shadowmere",                  cx: 650, cy: 384, factions:["coldborns"] },
+  { key:"coldbornsFarm8",     name:"Coldborns Territory 8",   layer:"farm",     keepName:"Ironhold",                    cx: 886, cy: 373, factions:["coldborns"] },
+  { key:"wizardsFarm3",       name:"Wizards Territory 3",     layer:"farm",     keepName:"Runehaven",                   cx:1599, cy: 389, factions:["wizards"] },
+  { key:"dragonsFarm3",       name:"Dragons Territory 3",     layer:"farm",     keepName:"Emberforge",                  cx: 110, cy: 540, factions:["dragons"] },
+  { key:"dragonsFarm4",       name:"Dragons Territory 4",     layer:"farm",     keepName:"Darkwater",                   cx: 454, cy: 499, factions:["dragons"] },
+  { key:"coldbornsFarm9",     name:"Coldborns Territory 9",   layer:"farm",     keepName:"Stoneheart",                  cx: 726, cy: 492, factions:["coldborns"] },
+  { key:"nightcreaturesFarm4",name:"Nightcreatures Territory 4",layer:"farm",   keepName:"Nightfall",                   cx: 953, cy: 498, factions:["nightcreatures"] },
+  { key:"wizardsFarm4",       name:"Wizards Territory 4",     layer:"farm",     keepName:"Wolfmarch",                   cx:1489, cy: 519, factions:["wizards"] },
+  { key:"wizardsFarm5",       name:"Wizards Territory 5",     layer:"farm",     keepName:"Spellscar Tower",             cx:1751, cy: 507, factions:["wizards"] },
+  { key:"orcsFarm1",          name:"Orcs Territory 1",        layer:"farm",     keepName:"Drearfort",                   cx:  58, cy: 685, factions:["orcs"] },
+  { key:"orcsFarm2",          name:"Orcs Territory 2",        layer:"farm",     keepName:"Ashenmark",                   cx: 337, cy: 667, factions:["orcs"] },
+  { key:"dragonsFarm5",       name:"Dragons Territory 5",     layer:"farm",     keepName:"Grimstone",                   cx: 541, cy: 619, factions:["dragons"] },
+  { key:"coldbornsFarm10",    name:"Coldborns Territory 10",  layer:"farm",     keepName:"Blackmoor",                   cx: 715, cy: 629, factions:["coldborns"] },
+  { key:"holyknightsFarm1",   name:"Holyknights Territory 1", layer:"farm",     keepName:"Astral Hold",                 cx:1744, cy: 649, factions:["holyknights"] },
+  { key:"orcsFarm3",          name:"Orcs Territory 3",        layer:"farm",     keepName:"Warblade Keep",               cx: 137, cy: 783, factions:["orcs"] },
+  { key:"piratesFarm1",       name:"Pirates Territory 1",     layer:"farm",     keepName:"Dreadmarsh",                  cx: 746, cy: 793, factions:["pirates"] },
+  { key:"holyknightsFarm2",   name:"Holyknights Territory 2", layer:"farm",     keepName:"Sanctuary",                   cx:1522, cy: 793, factions:["holyknights"] },
+  { key:"holyknightsFarm3",   name:"Holyknights Territory 3", layer:"farm",     keepName:"Lightforge",                  cx:1776, cy: 779, factions:["holyknights"] },
+  { key:"ashendeadFarm1",     name:"Ashendead Territory 1",   layer:"farm",     keepName:"Ironwood",                    cx: 968, cy: 966, factions:["ashen_dead"] },
+  { key:"ashendeadFarm2",     name:"Ashendead Territory 2",   layer:"farm",     keepName:"Greywatch",                   cx:1157, cy: 916, factions:["ashen_dead"] },
+  { key:"holyknightsFarm4",   name:"Holyknights Territory 4", layer:"farm",     keepName:"Valorhall",                   cx:1578, cy: 973, factions:["holyknights"] },
+  { key:"orcsFarm4",          name:"Orcs Territory 4",        layer:"farm",     keepName:"Dreadstone",                  cx:  91, cy:1082, factions:["orcs"] },
+  { key:"piratesFarm2",       name:"Pirates Territory 2",     layer:"farm",     keepName:"Grimport",                    cx: 268, cy:1081, factions:["pirates"] },
+  { key:"piratesFarm3",       name:"Pirates Territory 3",     layer:"farm",     keepName:"Blackbrine",                  cx: 456, cy:1075, factions:["pirates"] },
+  { key:"piratesFarm4",       name:"Pirates Territory 4",     layer:"farm",     keepName:"Deadtide",                    cx: 660, cy:1052, factions:["pirates"] },
+  { key:"piratesFarm5",       name:"Pirates Territory 5",     layer:"farm",     keepName:"Stormbreak",                  cx: 874, cy:1105, factions:["pirates"] },
+  { key:"ashendeadFarm3",     name:"Ashendead Territory 3",   layer:"farm",     keepName:"Coldmarsh",                   cx:1172, cy:1074, factions:["ashen_dead"] },
+  { key:"ashendeadFarm4",     name:"Ashendead Territory 4",   layer:"farm",     keepName:"Gravemist",                   cx:1331, cy:1095, factions:["ashen_dead"] },
+  { key:"ashendeadFarm5",     name:"Ashendead Territory 5",   layer:"farm",     keepName:"Bleakhold",                   cx:1544, cy:1119, factions:["ashen_dead"] },
+  { key:"holyknightsFarm5",   name:"Holyknights Territory 5", layer:"farm",     keepName:"Dawnspire",                   cx:1754, cy:1062, factions:["holyknights"] },
+  { key:"orcsFarm5",          name:"Orcs Territory 5",        layer:"farm",     keepName:"Warkeep",                     cx:  97, cy:1247, factions:["orcs"] },
+  { key:"piratesFarm6",       name:"Pirates Territory 6",     layer:"farm",     keepName:"Ravenshore",                  cx: 285, cy:1239, factions:["pirates"] },
+  { key:"piratesFarm7",       name:"Pirates Territory 7",     layer:"farm",     keepName:"Skullwater",                  cx: 701, cy:1200, factions:["pirates"] },
+  { key:"ashendeadFarm6",     name:"Ashendead Territory 6",   layer:"farm",     keepName:"Shadowcrypt",                 cx: 918, cy:1195, factions:["ashen_dead"] },
+  { key:"ashendeadFarm7",     name:"Ashendead Territory 7",   layer:"farm",     keepName:"Ebonvault",                   cx:1133, cy:1186, factions:["ashen_dead"] },
+  { key:"ashendeadFarm8",     name:"Ashendead Territory 8",   layer:"farm",     keepName:"Bonechill",                   cx:1551, cy:1238, factions:["ashen_dead"] },
+  { key:"holyknightsFarm6",   name:"Holyknights Territory 6", layer:"farm",     keepName:"Valorkeep",                   cx:1742, cy:1229, factions:["holyknights"] },
+  { key:"ashendeadFarm9",     name:"Ashendead Territory 9",   layer:"farm",     keepName:"Wraithmoor",                  cx:1088, cy: 806, factions:["ashen_dead"] },
+  { key:"piratesFarm8",       name:"Pirates Territory 8",     layer:"farm",     keepName:"Blackrock",                   cx: 780, cy: 878, factions:["pirates"] },
+  { key:"nightcreaturesFarm5",name:"Nightcreatures Territory 5",layer:"farm",   keepName:"Duskwater",                   cx:1303, cy: 540, factions:["nightcreatures"] },
+  { key:"dragonsFarm6",       name:"Dragons Territory 6",     layer:"farm",     keepName:"Bloodstone",                  cx: 320, cy: 365, factions:["dragons"] },
+  { key:"coldbornsFarm11",    name:"Coldborns Territory 11",  layer:"farm",     keepName:"Snowpeak",                    cx: 479, cy: 264, factions:["coldborns"] },
+  { key:"nightcreaturesFarm6",name:"Nightcreatures Territory 6",layer:"farm",   keepName:"Grimveil",                    cx:1166, cy: 242, factions:["nightcreatures"] },
+  { key:"nightcreaturesFarm7",name:"Nightcreatures Territory 7",layer:"farm",   keepName:"Nightshade",                  cx:1340, cy: 258, factions:["nightcreatures"] },
+  { key:"orcsFarm6",          name:"Orcs Territory 6",        layer:"farm",     keepName:"Grimblade",                   cx: 305, cy: 827, factions:["orcs"] },
+  { key:"piratesFarm9",       name:"Pirates Territory 9",     layer:"farm",     keepName:"Reefbreaker",                 cx: 525, cy: 782, factions:["pirates"] },
+  { key:"ashendeadFarm10",    name:"Ashendead Territory 10",  layer:"farm",     keepName:"Deathmarsh",                  cx:1374, cy: 900, factions:["ashen_dead"] },
+  { key:"holyknightsFarm7",   name:"Holyknights Territory 7", layer:"farm",     keepName:"Radiance",                    cx:1485, cy: 660, factions:["holyknights"] },
 ];
 
 const FACTION_REGIONS = {
-  pirates:        { start:"saltmere",       farm:"brineHollow"      },
-  nightcreatures: { start:"shadowmere",     farm:"crimsonVeil"      },
-  dragons:        { start:"emberpeak",      farm:"scorchveil"       },
-  orcs:           { start:"grimhold",       farm:"bloodfield"       },
-  bountyhunters:  { start:"ashenveil",      farm:"ruinwatch"        },
-  holyknights:    { start:"sanctumhold",    farm:"pilgrimsRest"     },
-  coldborns:      { start:"frosthold",      farm:"coldbornsFarm1"   },
-  ashen_dead:     { start:"bonehallow",     farm:"ashendeadFarm1"   },
+  pirates:        { start:"deadmansHarbor", farm:"piratesFarm1"      },
+  nightcreatures: { start:"duskmire",       farm:"nightcreaturesFarm1" },
+  dragons:        { start:"flamecrestPeak", farm:"dragonsFarm1"      },
+  orcs:           { start:"bloodrockKeep",  farm:"orcsFarm1"         },
+  wizards:        { start:"arcaneum",       farm:"wizardsFarm1"      },
+  holyknights:    { start:"oathkeep",       farm:"holyknightsFarm1"  },
+  coldborns:      { start:"frosthold",      farm:"coldbornsFarm1"    },
+  ashen_dead:     { start:"bonehallow",     farm:"ashendeadFarm1"    },
 };
 
 const KEEP_SET = new Set(REGION_LIST.map(r => `${r.cx},${r.cy}`));
@@ -1181,7 +1196,7 @@ self.onmessage = function(e) {
   const STARTER_CMDS = {
     pirates:        { n:"Saltmere Captain",       icon:"⚓"  },
     orcs:           { n:"Grimhold Warchief",       icon:"💀"  },
-    bountyhunters:  { n:"Ashenveil Ranger",        icon:"🏹"  },
+    wizards:  { n:"Wizard Apprentice",        icon:"🧙"  },
     dragons:        { n:"Emberpeak Drake",         icon:"🔥"  },
     holyknights:    { n:"Sanctumhold Inquisitor",  icon:"✝️"  },
     nightcreatures: { n:"Shadowmere Nightlord",    icon:"🌑"  },
@@ -1341,8 +1356,8 @@ self.onmessage = function(e) {
       gate: [1272,563],
     },
     {
-      // ArcaneDeep (bountyhunters) — connects via row ~848, around col 628
-      faction: "bountyhunters",
+      // ArcaneDeep (wizards) — connects via row ~848, around col 628
+      faction: "wizards",
       keepName: "Arcane Deep Gate",
       border: [[548,848],[549,848],[550,848],[551,848],[552,848],[553,848],[554,848],[555,848],[556,848],[557,848],[558,848],[559,848],[560,848],[561,848],[562,848],[563,848],[564,848],[565,848],[566,848],[567,848],[568,848],[569,848],[570,848],[571,848],[572,848],[573,848],[574,848],[575,848],[576,848],[577,848],[578,848],[579,848],[580,848],[581,848],[582,848],[583,848],[584,848],[585,848],[586,848],[587,848],[588,848],[589,848],[590,848],[591,848],[592,848],[593,848],[594,848],[595,848],[596,848],[597,848],[598,848],[599,848],[600,848],[601,848],[602,848],[603,848],[604,848],[605,848],[606,848],[607,848],[608,848],[609,848],[610,848],[611,848],[612,848],[613,848],[614,848],[615,848],[616,848],[617,848],[618,848],[619,848],[620,848],[621,848],[622,848],[623,848],[624,848],[625,848],[626,848],[627,848],[629,848],[630,848],[631,848],[632,848],[633,848],[634,848],[635,848],[636,848],[637,848],[638,848],[639,848],[640,848],[641,848],[642,848],[643,848],[644,848],[645,848],[646,848],[647,848],[648,848],[649,848],[650,848],[651,848],[652,848],[653,848],[654,848],[655,848],[656,848],[657,848],[658,848],[659,848],[660,848],[661,848],[662,848],[663,848],[664,848],[665,848],[666,848],[667,848],[668,848],[669,848],[670,848],[671,848],[672,848],[673,848],[674,848],[675,848],[676,848],[677,848],[678,848],[679,848],[680,848],[681,848],[682,848],[683,848],[684,848],[685,848],[686,848],[687,848],[688,848],[689,848],[690,848],[691,848],[692,848],[693,848],[694,848],[695,848],[696,848],[697,848],[698,848],[699,848],[700,848],
                [548,849],[549,849],[550,849],[551,849],[552,849],[553,849],[554,849],[555,849],[556,849],[557,849],[558,849],[559,849],[560,849],[561,849],[562,849],[563,849],[564,849],[565,849],[566,849],[567,849],[568,849],[569,849],[570,849],[571,849],[572,849],[573,849],[574,849],[575,849],[576,849],[577,849],[578,849],[579,849],[580,849],[581,849],[582,849],[583,849],[584,849],[585,849],[586,849],[587,849],[588,849],[589,849],[590,849],[591,849],[592,849],[593,849],[594,849],[595,849],[596,849],[597,849],[598,849],[599,849],[600,849],[601,849],[602,849],[603,849],[604,849],[605,849],[606,849],[607,849],[608,849],[609,849],[610,849],[611,849],[612,849],[613,849],[614,849],[615,849],[616,849],[617,849],[618,849],[619,849],[620,849],[621,849],[622,849],[623,849],[624,849],[625,849],[626,849],[627,849],[629,849],[630,849],[631,849],[632,849],[633,849],[634,849],[635,849],[636,849],[637,849],[638,849],[639,849],[640,849],[641,849],[642,849],[643,849],[644,849],[645,849],[646,849],[647,849],[648,849],[649,849],[650,849],[651,849],[652,849],[653,849],[654,849],[655,849],[656,849],[657,849],[658,849],[659,849],[660,849],[661,849],[662,849],[663,849],[664,849],[665,849],[666,849],[667,849],[668,849],[669,849],[670,849],[671,849],[672,849],[673,849],[674,849],[675,849],[676,849],[677,849],[678,849],[679,849],[680,849],[681,849],[682,849],[683,849],[684,849],[685,849],[686,849],[687,849],[688,849],[689,849],[690,849],[691,849],[692,849],[693,849],[694,849],[695,849],[696,849],[697,849],[698,849],[699,849],[700,849]],
@@ -1604,7 +1619,7 @@ self.onmessage = function(e) {
 
   // Build per-faction region lists so we can spread 50 HQs across all home regions
   const FACTION_ALL_REGIONS = {};
-  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
+  for (const fk of ["pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
     FACTION_ALL_REGIONS[fk] = REGION_LIST.filter(r => r.factions && r.factions.includes(fk));
   }
 
@@ -1648,7 +1663,7 @@ self.onmessage = function(e) {
 
   const spawnKeys={}, usedKeys=new Set();
   // Place 50 HQs per faction, round-robin across that faction's home regions
-  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns",ashen_dead]) {
+  for (const fk of ["pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
     const regions = FACTION_ALL_REGIONS[fk];
     if (!regions || !regions.length) continue;
     const ownerCode = OWNER_ENC[fk];
@@ -1679,7 +1694,7 @@ self.onmessage = function(e) {
     10:10, 11:15, 12:20, 13:30,
   };
   const factionTileKeys = {};
-  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
+  for (const fk of ["pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
     factionTileKeys[fk] = [];
   }
   const playerTileKeys = [];
@@ -1716,7 +1731,7 @@ self.onmessage = function(e) {
   ];
 
   // Determine AI factions for the main thread
-  const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
+  const allFactions = ["pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
   const aiFactions  = allFactions.filter(f => f !== facKey);
   const aiHqMap     = {};
   aiFactions.forEach(aiFk => { aiHqMap[aiFk] = spawnKeys[aiFk] || []; });
