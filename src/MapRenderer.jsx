@@ -230,12 +230,12 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
           if (owner) {
             const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-            gfx.beginFill(ot, 0.18); gfx.drawPolygon(TOP); gfx.endFill();
+            // No fill - just border
             if (!isSel) { 
               // Black backing for contrast
-              gfx.lineStyle(8, 0x000000, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+              gfx.lineStyle(3, 0x000000, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0);
               // Colored border on top
-              gfx.lineStyle(5, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+              gfx.lineStyle(2, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
             }
           }
           if (hasCmds && !isSel) { gfx.lineStyle(2, 0xf0dc3c, 0.9); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
