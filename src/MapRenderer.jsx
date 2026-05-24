@@ -227,15 +227,14 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         // These are the 2 passable tiles between Gate A and Gate B. They have no
         // crossingType, so without this check they'd fall through to the tunnel else.
         if (!isKeep) {
-          gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
-          if (owner) {
+          // Draw terrain fill only if NOT owned
+          if (!owner) {
+            gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
+          } else {
+            // Owned tile: just draw border, no terrain fill
             const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-            // No fill - just border
             if (!isSel) { 
-              // Black backing for contrast
-              gfx.lineStyle(3, 0x000000, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0);
-              // Colored border on top
-              gfx.lineStyle(2, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+              gfx.lineStyle(1, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
             }
           }
           if (hasCmds && !isSel) { gfx.lineStyle(2, 0xf0dc3c, 0.9); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
@@ -1626,8 +1625,8 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     dragons:        { xOff:  5,    yOff:  10,   scale: 1.0  },
     holyknights:    { xOff: -5,    yOff:  10,   scale: 1.0  },
     nightcreatures: { xOff:  0,    yOff:  10,   scale: 1.0  },
-    coldborns:      { xOff:  0,    yOff:  15,   scale: 1.1  },
-    ashen_dead:     { xOff:  0,    yOff:  15,   scale: 1.1  },
+    coldborns:      { xOff:  0,    yOff:  15,   scale: 1.0  },
+    ashen_dead:     { xOff:  0,    yOff:  15,   scale: 1.0  },
   };
   const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0 };
 
