@@ -7,11 +7,11 @@ export const FAC = {
   holyknights:   { n:"Holy Knights",           s:"✝️",  key:"holyknights"    },
   nightcreatures:{ n:"Creatures of the Night", s:"🌑",  key:"nightcreatures" },
   coldborns:     { n:"Coldborns",              s:"❄️",  key:"coldborns"      },
-  ashen_dead:    { n:"Ashen Dead",             s:"💀",  key:"ashen_dead"     },
+  "ashen_dead":  { n:"Ashen Dead",             s:"💀",  key:"ashen_dead"     },
 };
 
 export const AI_FACTIONS = [
-  "pirates","bountyhunters","orcs","dragons","holyknights","nightcreatures","coldborns",ashen_dead
+  "pirates","bountyhunters","orcs","dragons","holyknights","nightcreatures","coldborns","ashen_dead"
 ];
 
 export const ALIGNMENT = {

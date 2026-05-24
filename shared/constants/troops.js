@@ -788,7 +788,7 @@ export const FACTION_TROOPS = {
   },
 
   // ── ASHEN DEAD ───────────────────────────────────────────────────────────────
-  ashen_dead: {
+  "ashen_dead": {
     quarters: "The Necropolis",
     branches: [
       {
