@@ -251,7 +251,6 @@ const GATE_CMD_LVL  = 20;
 // Crossings removed - no longer used with new region layout
 const CROSSINGS = [];
 
-  {axis:'H',bCoord:129,gCoord:484, type:'crossing', id:'h484_129'},
 // Terrain type per crossing type
 function crossingTerrain(type) {
   if (type === 'crossing')   return TERRAIN_ENC.river;
