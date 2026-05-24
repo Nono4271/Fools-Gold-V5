@@ -1629,7 +1629,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   if (texCache[spriteUrl]) {
     const sp = new PIXI.Sprite(texCache[spriteUrl]);
     applySprite(sp);
-    group.addChild(sp); // Add normally so it's on top
+    group.addChild(sp);
   } else {
     // Load async — replace placeholder gfx once loaded
     const placeholderGfx = new PIXI.Graphics();
@@ -1646,7 +1646,13 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       if (!group.destroyed) {
         const sp = new PIXI.Sprite(tex);
         applySprite(sp);
-        group.addChildAt(sp, 0); // Add at bottom so name badge stays on top
+        // Find name badge elements (pill and labelText) and insert sprite before them
+        const pillIndex = group.children.findIndex(c => c instanceof PIXI.Graphics && c.x === bx && c.y === nPt.cy - 18);
+        if (pillIndex > 0) {
+          group.addChildAt(sp, pillIndex);
+        } else {
+          group.addChild(sp);
+        }
       }
     }).catch(() => {
       // Sprite not found — placeholder stays, that's fine
