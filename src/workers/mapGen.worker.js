@@ -1,3 +1,4 @@
+// Build: 1779593291
 // ── Map Generation Web Worker ─────────────────────────────────────────────────
 // Communicates via postMessage:
 //   incoming: { facKey }
@@ -77,7 +78,7 @@ const RSS_DEC     = [null,"stone","wood","ore","gas"];
 const TROOP_ENC   = { infantry:1, mage:2, spearmen:3, horsemen:4 };
 const TROOP_DEC   = [null,"infantry","mage","spearmen","horsemen"];
 const OWNER_ENC   = { player:1, ai:2, pirates:3, orcs:4, bountyhunters:5, dragons:6, holyknights:7, nightcreatures:8, coldborns:9, ashen_dead:10 };
-const OWNER_DEC   = [null,"player","ai","pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
+const OWNER_DEC   = [null,"player","ai","pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns",ashen_dead];
 
 const F_KEEP     = 1<<1;
 const F_KEEPPART = 1<<2;
@@ -1587,7 +1588,7 @@ self.onmessage = function(e) {
 
   // Build per-faction region lists so we can spread 50 HQs across all home regions
   const FACTION_ALL_REGIONS = {};
-  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
+  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
     FACTION_ALL_REGIONS[fk] = REGION_LIST.filter(r => r.factions && r.factions.includes(fk));
   }
 
@@ -1631,7 +1632,7 @@ self.onmessage = function(e) {
 
   const spawnKeys={}, usedKeys=new Set();
   // Place 50 HQs per faction, round-robin across that faction's home regions
-  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
+  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns",ashen_dead]) {
     const regions = FACTION_ALL_REGIONS[fk];
     if (!regions || !regions.length) continue;
     const ownerCode = OWNER_ENC[fk];
@@ -1662,7 +1663,7 @@ self.onmessage = function(e) {
     10:10, 11:15, 12:20, 13:30,
   };
   const factionTileKeys = {};
-  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"]) {
+  for (const fk of ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
     factionTileKeys[fk] = [];
   }
   const playerTileKeys = [];
@@ -1699,7 +1700,7 @@ self.onmessage = function(e) {
   ];
 
   // Determine AI factions for the main thread
-  const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures"];
+  const allFactions = ["pirates","orcs","bountyhunters","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
   const aiFactions  = allFactions.filter(f => f !== facKey);
   const aiHqMap     = {};
   aiFactions.forEach(aiFk => { aiHqMap[aiFk] = spawnKeys[aiFk] || []; });
