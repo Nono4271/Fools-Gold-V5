@@ -919,14 +919,14 @@ const BRANCH_LVL_BONUS = [
   
 const FACTION_META = {
 pirates:       { n:"Pirates",               s:"🏴", c:"#d4832a" },
-bountyhunters: { n:"Wizards",               s:"🔮", c:"#9955dd" },
+wizards:       { n:"Wizards",               s:"🔮", c:"#9955dd" },
 orcs:          { n:"Orcs",                  s:"⚔️",  c:"#6aa830" },
 dragons:       { n:"Dragons",               s:"🐉",  c:"#cc3030" },
 holyknights:   { n:"Holy Knights",          s:"✝️",  c:"#d4af37" },
 nightcreatures:{ n:"Creatures of the Night",s:"🌑",  c:"#a030c0" },
 };
 const ALIGN_FACTIONS = {
-humans:   ["pirates","bountyhunters","holyknights"],
+humans:   ["pirates","wizards","holyknights"],
 creatures:["orcs","dragons","nightcreatures"],
 };
 function getAlignment(fk) {
