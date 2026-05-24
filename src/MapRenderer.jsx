@@ -79,9 +79,6 @@ function worldToKey(wx, wy, tiles) {
       if (!tile) continue;
 
       const pl = tile.powerLevel ?? 0;
-      // Only skip keep parts (they redirect to primary in onTileClick)
-      const isStaticPart = tile.isKeepPart && pl < 10;
-      if (isStaticPart) continue;
 
       if (pl >= 10 && (tile.isKeep || tile.isKeepPart)) {
         // Use full 2×2 footprint hitbox; always return the primary key
@@ -91,7 +88,15 @@ function worldToKey(wx, wy, tiles) {
         continue;
       }
 
-      // Static keeps now clickable with same elevation as HQ (14)
+      // Static keep parts: return primary key if clicked
+      if (tile.isKeepPart && pl < 10) {
+        const primKey = tile.keepPrimaryKey || key;
+        const elev = 14; // Same as primary keep
+        if (inTile(wx, wy, c, r, elev)) return primKey;
+        continue;
+      }
+
+      // Static keeps and HQs use elevation 14
       const elev = (tile.isHQ || tile.isKeep) ? 14 : tile.isWin ? 10 : 4;
       if (inTile(wx, wy, c, r, elev)) return key;
     }
