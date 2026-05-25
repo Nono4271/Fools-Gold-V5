@@ -1,4 +1,4 @@
-// Build: 1779593293
+// Build: 1779593294
 // ── Map Generation Web Worker ─────────────────────────────────────────────────
 // Communicates via postMessage:
 //   incoming: { facKey }
@@ -268,70 +268,106 @@ const MAP_X0 = 130, MAP_X1 = 1272;
 const MAP_Y0 =  75, MAP_Y1 =  848;
 
 
-// Build border tiles only along actual shared edge segments
-function buildBorderSegments(crossings) {
+// Find actual borders between regions and place gates
+function buildBordersFromRegionMap(REGION_MAP, CROSSINGS) {
   const impassable = [], gateA = [], gateB = [], pathTiles = [];
-
-  for (const crossing of crossings) {
+  
+  // For each crossing, find where regions actually meet
+  for (const crossing of CROSSINGS) {
     const { axis, bCoord, gCoord, start, end, type, id } = crossing;
-
+    
+    // Find the two regions this crossing connects
+    // Sample a point on each side of the border to get region IDs
+    let regionA_ID, regionB_ID;
+    
     if (axis === 'H') {
-      // Horizontal border segment
-      const y = bCoord;
-      const xStart = Math.max(MAP_X0, Math.floor(start));
-      const xEnd = Math.min(MAP_X1, Math.ceil(end));
+      // Horizontal border - sample above and below
+      const sampleX = Math.floor((start + end) / 2);
+      const sampleYAbove = Math.max(0, bCoord - 5);
+      const sampleYBelow = Math.min(ROWS - 1, bCoord + 5);
+      regionA_ID = REGION_MAP[sampleYAbove * COLS + sampleX];
+      regionB_ID = REGION_MAP[sampleYBelow * COLS + sampleX];
+    } else {
+      // Vertical border - sample left and right
+      const sampleY = Math.floor((start + end) / 2);
+      const sampleXLeft = Math.max(0, bCoord - 5);
+      const sampleXRight = Math.min(COLS - 1, bCoord + 5);
+      regionA_ID = REGION_MAP[sampleY * COLS + sampleXLeft];
+      regionB_ID = REGION_MAP[sampleY * COLS + sampleXRight];
+    }
+    
+    if (!regionA_ID || !regionB_ID || regionA_ID === regionB_ID) continue;
+    
+    // Find actual border tiles where these two regions meet
+    const borderTiles = [];
+    
+    if (axis === 'H') {
+      // Scan horizontal strip
+      const yMin = Math.max(MAP_Y0, bCoord - 10);
+      const yMax = Math.min(MAP_Y1, bCoord + 10);
+      const xMin = Math.max(MAP_X0, Math.floor(start));
+      const xMax = Math.min(MAP_X1, Math.ceil(end));
       
-      // Paint 4-tile-wide border strip only along this edge segment
-      for (let offset = -BORDER_HALF; offset < BORDER_HALF; offset++) {
-        const row = y + offset;
-        if (row < MAP_Y0 || row > MAP_Y1) continue;
-        
-        for (let x = xStart; x <= xEnd; x++) {
-          const isGateX = (x === gCoord);
+      for (let y = yMin; y <= yMax; y++) {
+        for (let x = xMin; x <= xMax; x++) {
+          const idx = y * COLS + x;
+          const reg = REGION_MAP[idx];
           
-          if (offset === -BORDER_HALF && isGateX) {
-            // Gate A (region A side)
-            gateA.push({x, y: row, id: id+'_A', type});
-          } else if (offset === BORDER_HALF - 1 && isGateX) {
-            // Gate B (region B side)
-            gateB.push({x, y: row, id: id+'_B', type});
-          } else if ((offset === -BORDER_HALF + 1 || offset === 0) && isGateX) {
-            // Path tiles (center 2 rows)
-            pathTiles.push({x, y: row});
-          } else {
-            // Impassable border
-            impassable.push({x, y: row});
+          // Check if this tile borders the other region
+          const hasNeighborA = [
+            REGION_MAP[idx - 1], REGION_MAP[idx + 1],
+            REGION_MAP[idx - COLS], REGION_MAP[idx + COLS]
+          ].includes(regionA_ID);
+          const hasNeighborB = [
+            REGION_MAP[idx - 1], REGION_MAP[idx + 1],
+            REGION_MAP[idx - COLS], REGION_MAP[idx + COLS]
+          ].includes(regionB_ID);
+          
+          if ((reg === regionA_ID && hasNeighborB) || (reg === regionB_ID && hasNeighborA)) {
+            borderTiles.push({x, y, regionID: reg});
           }
         }
       }
     } else {
-      // Vertical border segment
-      const x = bCoord;
-      const yStart = Math.max(MAP_Y0, Math.floor(start));
-      const yEnd = Math.min(MAP_Y1, Math.ceil(end));
+      // Scan vertical strip
+      const xMin = Math.max(MAP_X0, bCoord - 10);
+      const xMax = Math.min(MAP_X1, bCoord + 10);
+      const yMin = Math.max(MAP_Y0, Math.floor(start));
+      const yMax = Math.min(MAP_Y1, Math.ceil(end));
       
-      // Paint 4-tile-wide border strip only along this edge segment
-      for (let offset = -BORDER_HALF; offset < BORDER_HALF; offset++) {
-        const col = x + offset;
-        if (col < MAP_X0 || col > MAP_X1) continue;
-        
-        for (let y = yStart; y <= yEnd; y++) {
-          const isGateY = (y === gCoord);
+      for (let x = xMin; x <= xMax; x++) {
+        for (let y = yMin; y <= yMax; y++) {
+          const idx = y * COLS + x;
+          const reg = REGION_MAP[idx];
           
-          if (offset === -BORDER_HALF && isGateY) {
-            // Gate A (region A side)
-            gateA.push({x: col, y, id: id+'_A', type});
-          } else if (offset === BORDER_HALF - 1 && isGateY) {
-            // Gate B (region B side)
-            gateB.push({x: col, y, id: id+'_B', type});
-          } else if ((offset === -BORDER_HALF + 1 || offset === 0) && isGateY) {
-            // Path tiles (center 2 cols)
-            pathTiles.push({x: col, y});
-          } else {
-            // Impassable border
-            impassable.push({x: col, y});
+          const hasNeighborA = [
+            REGION_MAP[idx - 1], REGION_MAP[idx + 1],
+            REGION_MAP[idx - COLS], REGION_MAP[idx + COLS]
+          ].includes(regionA_ID);
+          const hasNeighborB = [
+            REGION_MAP[idx - 1], REGION_MAP[idx + 1],
+            REGION_MAP[idx - COLS], REGION_MAP[idx + COLS]
+          ].includes(regionB_ID);
+          
+          if ((reg === regionA_ID && hasNeighborB) || (reg === regionB_ID && hasNeighborA)) {
+            borderTiles.push({x, y, regionID: reg});
           }
         }
+      }
+    }
+    
+    // Place gate at gCoord position
+    for (const tile of borderTiles) {
+      const isGate = (axis === 'H' && tile.x === gCoord) || (axis === 'V' && tile.y === gCoord);
+      
+      if (isGate) {
+        if (tile.regionID === regionA_ID) {
+          gateA.push({x: tile.x, y: tile.y, id: id+'_A', type});
+        } else {
+          gateB.push({x: tile.x, y: tile.y, id: id+'_B', type});
+        }
+      } else {
+        impassable.push({x: tile.x, y: tile.y});
       }
     }
   }
@@ -990,8 +1026,8 @@ self.onmessage = function(e) {
   const gateMeta  = {};
   const impassKeys = [];
 
-  // Paint each crossing as an individual segment (not full-map lines)
-  const { impassable, gateA, gateB, pathTiles } = buildBorderSegments(CROSSINGS);
+  // Paint each crossing by finding actual borders in REGION_MAP
+  const { impassable, gateA, gateB, pathTiles } = buildBordersFromRegionMap(REGION_MAP, CROSSINGS);
 
   console.log(`[MapGen] CROSSINGS count: ${CROSSINGS.length}`);
   console.log(`[MapGen] Border tiles - impassable: ${impassable.length}, gateA: ${gateA.length}, gateB: ${gateB.length}, path: ${pathTiles.length}`);
