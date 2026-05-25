@@ -192,7 +192,7 @@ for (const r of REGION_LIST) {
 
 const REGION_KEY_TO_IDX = {};
 REGION_LIST.forEach((r,i) => { REGION_KEY_TO_IDX[r.key] = i+1; });
-const REGION_IDC_TO_KEY = {};
+const REGION_IDX_TO_KEY = {};
 REGION_LIST.forEach((r,i) => { REGION_IDX_TO_KEY[i+1] = r.key; });
 
 // Biome seeds scaled for 1400x1000
