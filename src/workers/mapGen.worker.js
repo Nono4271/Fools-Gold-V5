@@ -464,122 +464,122 @@ const POLYS = {
 // ── Gate crossings (auto-generated) ──────────────────────────────────────────
 // Total gates: 116
 CROSSINGS = [
-  { axis:"V", bCoord: 1640, gCoord:  202, type:"tollbridge", id:"gate_1" },  // arcaneum_ashenmark
-  { axis:"H", bCoord:  144, gCoord: 1752, type:"crossing", id:"gate_2" },  // arcaneum_gravemist
-  { axis:"H", bCoord:  288, gCoord: 1759, type:"crossing", id:"gate_3" },  // arcaneum_spellspire
-  { axis:"V", bCoord: 1230, gCoord:  203, type:"tollbridge", id:"gate_4" },  // ashenmark_deathmarsh
-  { axis:"H", bCoord:  144, gCoord: 1305, type:"tollbridge", id:"gate_5" },  // ashenmark_duskmire
-  { axis:"H", bCoord:  288, gCoord: 1543, type:"crossing", id:"gate_6" },  // ashenmark_ghosthollow
-  { axis:"H", bCoord:  144, gCoord: 1564, type:"crossing", id:"gate_7" },  // ashenmark_shadowfen
-  { axis:"H", bCoord:  288, gCoord: 1300, type:"crossing", id:"gate_8" },  // ashenmark_skullcrag
-  { axis:"V", bCoord:  410, gCoord:  650, type:"crossing", id:"gate_9" },  // ashenvale_bonewood
-  { axis:"H", bCoord:  576, gCoord:  480, type:"crossing", id:"gate_10" },  // ashenvale_duskwood
-  { axis:"H", bCoord:  720, gCoord:  527, type:"tollbridge", id:"gate_11" },  // ashenvale_frostbite
-  { axis:"H", bCoord: 1008, gCoord: 1148, type:"crossing", id:"gate_12" },  // battlemarsh_fogmire
-  { axis:"V", bCoord: 1025, gCoord:  948, type:"crossing", id:"gate_13" },  // battlemarsh_ironhold
-  { axis:"V", bCoord: 1230, gCoord:  933, type:"tunnel", id:"gate_14" },  // battlemarsh_stormwatch
-  { axis:"V", bCoord:  615, gCoord: 1245, type:"tunnel", id:"gate_15" },  // blackbrine_deadmansharbor
-  { axis:"V", bCoord:  820, gCoord: 1213, type:"crossing", id:"gate_16" },  // blackbrine_mysticfen
-  { axis:"H", bCoord: 1152, gCoord:  731, type:"tunnel", id:"gate_17" },  // blackbrine_salthaven
-  { axis:"V", bCoord: 1640, gCoord:  652, type:"crossing", id:"gate_18" },  // blackstone_darkhollow
-  { axis:"H", bCoord:  720, gCoord: 1714, type:"tunnel", id:"gate_19" },  // blackstone_lightshield
-  { axis:"H", bCoord:  576, gCoord: 1715, type:"tunnel", id:"gate_20" },  // blackstone_spellspire
-  { axis:"H", bCoord:  432, gCoord:  278, type:"tunnel", id:"gate_21" },  // bleakstone_doomspire
-  { axis:"V", bCoord:  410, gCoord:  341, type:"tunnel", id:"gate_22" },  // bleakstone_fellwood
-  { axis:"H", bCoord:  288, gCoord:  323, type:"tollbridge", id:"gate_23" },  // bleakstone_stoneheart
-  { axis:"H", bCoord:  288, gCoord: 1150, type:"tollbridge", id:"gate_24" },  // blightmoor_deathmarsh
-  { axis:"V", bCoord: 1025, gCoord:  363, type:"tollbridge", id:"gate_25" },  // blightmoor_rotmire
-  { axis:"V", bCoord: 1230, gCoord:  378, type:"tunnel", id:"gate_26" },  // blightmoor_skullcrag
-  { axis:"H", bCoord:  864, gCoord:  278, type:"tollbridge", id:"gate_27" },  // bloodmoor_deadwood
-  { axis:"H", bCoord: 1008, gCoord:  340, type:"crossing", id:"gate_28" },  // bloodmoor_dreadmarsh
-  { axis:"V", bCoord:  410, gCoord:  922, type:"tunnel", id:"gate_29" },  // bloodmoor_wargrim
-  { axis:"V", bCoord:  205, gCoord: 1069, type:"tollbridge", id:"gate_30" },  // bloodrock_dreadmarsh
-  { axis:"H", bCoord: 1152, gCoord:  125, type:"crossing", id:"gate_31" },  // bloodrock_runestone
-  { axis:"H", bCoord: 1008, gCoord:  127, type:"tunnel", id:"gate_32" },  // bloodrock_warbane
-  { axis:"V", bCoord: 1230, gCoord: 1244, type:"tollbridge", id:"gate_33" },  // bonehallow_graveshroud
-  { axis:"V", bCoord: 1435, gCoord: 1232, type:"tollbridge", id:"gate_34" },  // bonehallow_greywatch
-  { axis:"H", bCoord: 1152, gCoord: 1323, type:"crossing", id:"gate_35" },  // bonehallow_ironwood
-  { axis:"V", bCoord:  205, gCoord:  635, type:"tunnel", id:"gate_36" },  // bonewood_cryptwood
-  { axis:"H", bCoord:  720, gCoord:  285, type:"tollbridge", id:"gate_37" },  // bonewood_deadwood
-  { axis:"H", bCoord:  576, gCoord:  278, type:"tollbridge", id:"gate_38" },  // bonewood_doomspire
-  { axis:"H", bCoord:  576, gCoord:   94, type:"tollbridge", id:"gate_39" },  // cryptwood_emberfang
-  { axis:"H", bCoord:  720, gCoord:  115, type:"crossing", id:"gate_40" },  // cryptwood_warbane
-  { axis:"H", bCoord:  288, gCoord:  730, type:"crossing", id:"gate_41" },  // cursedfen_ebonvault
-  { axis:"V", bCoord:  615, gCoord:  374, type:"tunnel", id:"gate_42" },  // cursedfen_fellwood
-  { axis:"V", bCoord:  820, gCoord:  346, type:"crossing", id:"gate_43" },  // cursedfen_rotmire
-  { axis:"V", bCoord: 1435, gCoord:  666, type:"tunnel", id:"gate_44" },  // darkhollow_grimstone
-  { axis:"H", bCoord:  576, gCoord: 1521, type:"crossing", id:"gate_45" },  // darkhollow_nightmarsh
-  { axis:"H", bCoord:  720, gCoord: 1565, type:"tollbridge", id:"gate_46" },  // darkhollow_thornvale
-  { axis:"V", bCoord: 1025, gCoord:  677, type:"tunnel", id:"gate_47" },  // dawngate_finalhope
-  { axis:"H", bCoord:  720, gCoord: 1120, type:"tollbridge", id:"gate_48" },  // dawngate_finalhope
-  { axis:"V", bCoord: 1025, gCoord:  674, type:"tollbridge", id:"gate_49" },  // dawngate_holyGrail
-  { axis:"H", bCoord:  720, gCoord:  977, type:"crossing", id:"gate_50" },  // dawngate_holyGrail
-  { axis:"V", bCoord: 1230, gCoord:  790, type:"tunnel", id:"gate_51" },  // dawngate_icefall
-  { axis:"V", bCoord:  410, gCoord: 1206, type:"tollbridge", id:"gate_52" },  // deadmansharbor_skullcove
-  { axis:"V", bCoord:  410, gCoord:  794, type:"tunnel", id:"gate_53" },  // deadwood_frostbite
-  { axis:"H", bCoord:  144, gCoord: 1144, type:"tunnel", id:"gate_54" },  // deathmarsh_shadowmire
-  { axis:"V", bCoord: 1025, gCoord:  235, type:"tunnel", id:"gate_55" },  // deathmarsh_wraithmoor
-  { axis:"V", bCoord: 1025, gCoord: 1080, type:"crossing", id:"gate_56" },  // deepwater_fogmire
-  { axis:"H", bCoord: 1008, gCoord:  913, type:"crossing", id:"gate_57" },  // deepwater_ironhold
-  { axis:"H", bCoord: 1152, gCoord:  939, type:"crossing", id:"gate_58" },  // deepwater_mysticfen
-  { axis:"V", bCoord:  820, gCoord: 1063, type:"crossing", id:"gate_59" },  // deepwater_salthaven
-  { axis:"V", bCoord:  410, gCoord:  518, type:"tunnel", id:"gate_60" },  // doomspire_duskwood
-  { axis:"H", bCoord: 1152, gCoord:  332, type:"crossing", id:"gate_61" },  // dreadmarsh_skullcove
-  { axis:"V", bCoord:  820, gCoord:   73, type:"tollbridge", id:"gate_62" },  // drearfort_icebreak
-  { axis:"V", bCoord: 1025, gCoord:   76, type:"tunnel", id:"gate_63" },  // drearfort_shadowmire
-  { axis:"H", bCoord:  144, gCoord:  914, type:"tunnel", id:"gate_64" },  // drearfort_wraithmoor
-  { axis:"V", bCoord: 1435, gCoord:   80, type:"crossing", id:"gate_65" },  // duskmire_shadowfen
-  { axis:"V", bCoord: 1230, gCoord:   80, type:"tollbridge", id:"gate_66" },  // duskmire_shadowmire
-  { axis:"H", bCoord:  432, gCoord:  529, type:"tollbridge", id:"gate_67" },  // duskwood_fellwood
-  { axis:"H", bCoord:  144, gCoord:  706, type:"tunnel", id:"gate_68" },  // ebonvault_icebreak
-  { axis:"V", bCoord:  615, gCoord:  192, type:"tollbridge", id:"gate_69" },  // ebonvault_stoneheart
-  { axis:"V", bCoord:  820, gCoord:  212, type:"tunnel", id:"gate_70" },  // ebonvault_wraithmoor
-  { axis:"H", bCoord:  288, gCoord:  128, type:"tunnel", id:"gate_71" },  // emberfang_flamecrestpeak
-  { axis:"H", bCoord:  288, gCoord:  544, type:"crossing", id:"gate_72" },  // fellwood_stoneheart
-  { axis:"H", bCoord:  576, gCoord:  982, type:"crossing", id:"gate_73" },  // finalhope_holyGrail
-  { axis:"V", bCoord: 1025, gCoord:  605, type:"tollbridge", id:"gate_74" },  // finalhope_holyGrail
-  { axis:"H", bCoord:  144, gCoord:  103, type:"crossing", id:"gate_75" },  // flamecrestpeak_shadowmere
-  { axis:"V", bCoord:  205, gCoord:  233, type:"tunnel", id:"gate_76" },  // flamecrestpeak_stoneheart
-  { axis:"H", bCoord: 1152, gCoord: 1134, type:"crossing", id:"gate_77" },  // fogmire_graveshroud
-  { axis:"V", bCoord: 1230, gCoord: 1096, type:"tollbridge", id:"gate_78" },  // fogmire_ironwood
-  { axis:"V", bCoord:  615, gCoord:  785, type:"crossing", id:"gate_79" },  // frostbite_twilightspire
-  { axis:"H", bCoord:  864, gCoord:  515, type:"tollbridge", id:"gate_80" },  // frostbite_wargrim
-  { axis:"V", bCoord:  615, gCoord:   92, type:"tollbridge", id:"gate_81" },  // frosthold_icebreak
-  { axis:"V", bCoord:  410, gCoord:   53, type:"tunnel", id:"gate_82" },  // frosthold_icepeak
-  { axis:"H", bCoord:  144, gCoord:  500, type:"crossing", id:"gate_83" },  // frosthold_stoneheart
-  { axis:"H", bCoord:  432, gCoord: 1563, type:"tunnel", id:"gate_84" },  // ghosthollow_nightmarsh
-  { axis:"V", bCoord: 1435, gCoord:  347, type:"crossing", id:"gate_85" },  // ghosthollow_skullcrag
-  { axis:"H", bCoord:  576, gCoord: 1354, type:"tollbridge", id:"gate_86" },  // gloomvale_grimstone
-  { axis:"V", bCoord: 1435, gCoord:  484, type:"tunnel", id:"gate_87" },  // gloomvale_nightmarsh
-  { axis:"H", bCoord:  432, gCoord: 1358, type:"crossing", id:"gate_88" },  // gloomvale_skullcrag
-  { axis:"V", bCoord: 1640, gCoord:   84, type:"crossing", id:"gate_89" },  // gravemist_shadowfen
-  { axis:"V", bCoord: 1025, gCoord: 1231, type:"tollbridge", id:"gate_90" },  // graveshroud_mysticfen
-  { axis:"H", bCoord: 1152, gCoord: 1514, type:"tollbridge", id:"gate_91" },  // greywatch_ironwood
-  { axis:"V", bCoord: 1640, gCoord: 1241, type:"tunnel", id:"gate_92" },  // greywatch_voidmarsh
-  { axis:"H", bCoord:  720, gCoord: 1364, type:"tollbridge", id:"gate_93" },  // grimstone_icefall
-  { axis:"H", bCoord:  576, gCoord:  876, type:"crossing", id:"gate_94" },  // holyGrail_lastwatch
-  { axis:"V", bCoord:  821, gCoord:  600, type:"crossing", id:"gate_95" },  // holyGrail_lastwatch
-  { axis:"H", bCoord:  720, gCoord:  885, type:"crossing", id:"gate_96" },  // holyGrail_twilightspire
-  { axis:"V", bCoord:  821, gCoord:  677, type:"tollbridge", id:"gate_97" },  // holyGrail_twilightspire
-  { axis:"H", bCoord:  864, gCoord: 1312, type:"tunnel", id:"gate_98" },  // icefall_stormwatch
-  { axis:"V", bCoord: 1435, gCoord:  804, type:"tollbridge", id:"gate_99" },  // icefall_thornvale
-  { axis:"V", bCoord:  205, gCoord:   79, type:"tunnel", id:"gate_100" },  // icepeak_shadowmere
-  { axis:"H", bCoord:  144, gCoord:  300, type:"tollbridge", id:"gate_101" },  // icepeak_stoneheart
-  { axis:"V", bCoord:  820, gCoord:  955, type:"tunnel", id:"gate_102" },  // ironhold_steelwatch
-  { axis:"V", bCoord: 1640, gCoord: 1084, type:"crossing", id:"gate_103" },  // ironwood_oathkeep
-  { axis:"H", bCoord: 1008, gCoord: 1306, type:"crossing", id:"gate_104" },  // ironwood_stormwatch
-  { axis:"H", bCoord: 1008, gCoord: 1507, type:"crossing", id:"gate_105" },  // ironwood_tidecrag
-  { axis:"H", bCoord:  648, gCoord:  875, type:"crossing", id:"gate_106" },  // lastwatch_twilightspire
-  { axis:"V", bCoord:  821, gCoord:  673, type:"tollbridge", id:"gate_107" },  // lastwatch_twilightspire
-  { axis:"H", bCoord:  720, gCoord:  687, type:"crossing", id:"gate_108" },  // lastwatch_twilightspire
-  { axis:"H", bCoord: 1008, gCoord: 1770, type:"tunnel", id:"gate_109" },  // lightshield_oathkeep
-  { axis:"H", bCoord: 1152, gCoord: 1713, type:"crossing", id:"gate_110" },  // oathkeep_voidmarsh
-  { axis:"H", bCoord:  288, gCoord:  907, type:"tunnel", id:"gate_111" },  // rotmire_wraithmoor
-  { axis:"V", bCoord:  205, gCoord: 1210, type:"crossing", id:"gate_112" },  // runestone_skullcove
-  { axis:"H", bCoord: 1008, gCoord:  732, type:"tollbridge", id:"gate_113" },  // salthaven_steelwatch
-  { axis:"V", bCoord:  615, gCoord:  939, type:"crossing", id:"gate_114" },  // steelwatch_wargrim
-  { axis:"V", bCoord: 1435, gCoord:  949, type:"tunnel", id:"gate_115" },  // stormwatch_tidecrag
-  { axis:"H", bCoord:  864, gCoord: 1516, type:"crossing", id:"gate_116" },  // thornvale_tidecrag
+  { axis:"H", bCoord:  144, gCoord: 1753, start: 1640, end: 1845, type:"tunnel", id:"gate_1" },
+  { axis:"H", bCoord:  288, gCoord: 1737, start: 1640, end: 1845, type:"tunnel", id:"gate_2" },
+  { axis:"V", bCoord: 1640, gCoord:  233, start:  144, end:  288, type:"crossing", id:"gate_3" },
+  { axis:"H", bCoord:  144, gCoord: 1344, start: 1230, end: 1435, type:"tollbridge", id:"gate_4" },
+  { axis:"H", bCoord:  144, gCoord: 1510, start: 1435, end: 1640, type:"tunnel", id:"gate_5" },
+  { axis:"H", bCoord:  288, gCoord: 1553, start: 1435, end: 1640, type:"crossing", id:"gate_6" },
+  { axis:"H", bCoord:  288, gCoord: 1315, start: 1230, end: 1435, type:"crossing", id:"gate_7" },
+  { axis:"V", bCoord: 1230, gCoord:  217, start:  144, end:  288, type:"crossing", id:"gate_8" },
+  { axis:"H", bCoord:  576, gCoord:  507, start:  410, end:  615, type:"tunnel", id:"gate_9" },
+  { axis:"H", bCoord:  720, gCoord:  509, start:  410, end:  615, type:"crossing", id:"gate_10" },
+  { axis:"V", bCoord:  410, gCoord:  645, start:  576, end:  720, type:"tollbridge", id:"gate_11" },
+  { axis:"V", bCoord: 1230, gCoord:  916, start:  864, end: 1008, type:"tollbridge", id:"gate_12" },
+  { axis:"H", bCoord: 1008, gCoord: 1161, start: 1025, end: 1230, type:"crossing", id:"gate_13" },
+  { axis:"V", bCoord: 1025, gCoord:  958, start:  864, end: 1008, type:"crossing", id:"gate_14" },
+  { axis:"H", bCoord: 1152, gCoord:  694, start:  615, end:  820, type:"tunnel", id:"gate_15" },
+  { axis:"V", bCoord:  820, gCoord: 1223, start: 1152, end: 1296, type:"tunnel", id:"gate_16" },
+  { axis:"V", bCoord:  615, gCoord: 1243, start: 1152, end: 1296, type:"crossing", id:"gate_17" },
+  { axis:"H", bCoord:  576, gCoord: 1734, start: 1640, end: 1845, type:"tunnel", id:"gate_18" },
+  { axis:"H", bCoord:  720, gCoord: 1726, start: 1640, end: 1845, type:"tunnel", id:"gate_19" },
+  { axis:"V", bCoord: 1640, gCoord:  637, start:  576, end:  720, type:"tollbridge", id:"gate_20" },
+  { axis:"H", bCoord:  288, gCoord:  338, start:  205, end:  410, type:"tollbridge", id:"gate_21" },
+  { axis:"V", bCoord:  410, gCoord:  367, start:  288, end:  432, type:"tunnel", id:"gate_22" },
+  { axis:"H", bCoord:  432, gCoord:  283, start:  205, end:  410, type:"tunnel", id:"gate_23" },
+  { axis:"H", bCoord:  288, gCoord: 1108, start: 1025, end: 1230, type:"crossing", id:"gate_24" },
+  { axis:"V", bCoord: 1230, gCoord:  363, start:  288, end:  432, type:"tollbridge", id:"gate_25" },
+  { axis:"V", bCoord: 1025, gCoord:  338, start:  288, end:  432, type:"tunnel", id:"gate_26" },
+  { axis:"H", bCoord:  864, gCoord:  277, start:  205, end:  410, type:"tollbridge", id:"gate_27" },
+  { axis:"V", bCoord:  410, gCoord:  934, start:  864, end: 1008, type:"tollbridge", id:"gate_28" },
+  { axis:"H", bCoord: 1008, gCoord:  284, start:  205, end:  410, type:"tollbridge", id:"gate_29" },
+  { axis:"H", bCoord: 1008, gCoord:   73, start:    0, end:  205, type:"crossing", id:"gate_30" },
+  { axis:"V", bCoord:  205, gCoord: 1059, start: 1008, end: 1152, type:"crossing", id:"gate_31" },
+  { axis:"H", bCoord: 1152, gCoord:  114, start:    0, end:  205, type:"crossing", id:"gate_32" },
+  { axis:"H", bCoord: 1152, gCoord: 1325, start: 1230, end: 1435, type:"tollbridge", id:"gate_33" },
+  { axis:"V", bCoord: 1435, gCoord: 1211, start: 1152, end: 1296, type:"tollbridge", id:"gate_34" },
+  { axis:"V", bCoord: 1230, gCoord: 1201, start: 1152, end: 1296, type:"crossing", id:"gate_35" },
+  { axis:"H", bCoord:  576, gCoord:  301, start:  205, end:  410, type:"tollbridge", id:"gate_36" },
+  { axis:"H", bCoord:  720, gCoord:  311, start:  205, end:  410, type:"tunnel", id:"gate_37" },
+  { axis:"V", bCoord:  205, gCoord:  668, start:  576, end:  720, type:"crossing", id:"gate_38" },
+  { axis:"H", bCoord:  576, gCoord:  114, start:    0, end:  205, type:"tunnel", id:"gate_39" },
+  { axis:"H", bCoord:  720, gCoord:   84, start:    0, end:  205, type:"tunnel", id:"gate_40" },
+  { axis:"H", bCoord:  288, gCoord:  692, start:  615, end:  820, type:"tollbridge", id:"gate_41" },
+  { axis:"V", bCoord:  820, gCoord:  350, start:  288, end:  432, type:"tunnel", id:"gate_42" },
+  { axis:"V", bCoord:  615, gCoord:  380, start:  288, end:  432, type:"crossing", id:"gate_43" },
+  { axis:"H", bCoord:  576, gCoord: 1503, start: 1435, end: 1640, type:"tollbridge", id:"gate_44" },
+  { axis:"H", bCoord:  720, gCoord: 1571, start: 1435, end: 1640, type:"crossing", id:"gate_45" },
+  { axis:"V", bCoord: 1435, gCoord:  627, start:  576, end:  720, type:"crossing", id:"gate_46" },
+  { axis:"V", bCoord: 1025, gCoord:  684, start:  648, end:  720, type:"crossing", id:"gate_47" },
+  { axis:"H", bCoord:  720, gCoord: 1157, start: 1025, end: 1230, type:"crossing", id:"gate_48" },
+  { axis:"V", bCoord: 1230, gCoord:  810, start:  720, end:  864, type:"tunnel", id:"gate_49" },
+  { axis:"V", bCoord:  410, gCoord: 1213, start: 1152, end: 1296, type:"tunnel", id:"gate_50" },
+  { axis:"V", bCoord:  410, gCoord:  808, start:  720, end:  864, type:"tollbridge", id:"gate_51" },
+  { axis:"H", bCoord:  144, gCoord: 1114, start: 1025, end: 1230, type:"tollbridge", id:"gate_52" },
+  { axis:"V", bCoord: 1025, gCoord:  217, start:  144, end:  288, type:"tollbridge", id:"gate_53" },
+  { axis:"H", bCoord: 1008, gCoord:  944, start:  820, end: 1025, type:"tunnel", id:"gate_54" },
+  { axis:"V", bCoord: 1025, gCoord: 1100, start: 1008, end: 1152, type:"crossing", id:"gate_55" },
+  { axis:"H", bCoord: 1152, gCoord:  952, start:  820, end: 1025, type:"crossing", id:"gate_56" },
+  { axis:"V", bCoord:  820, gCoord: 1068, start: 1008, end: 1152, type:"crossing", id:"gate_57" },
+  { axis:"V", bCoord:  410, gCoord:  515, start:  432, end:  576, type:"crossing", id:"gate_58" },
+  { axis:"V", bCoord: 1025, gCoord:   61, start:    0, end:  144, type:"tollbridge", id:"gate_59" },
+  { axis:"H", bCoord:  144, gCoord:  902, start:  820, end: 1025, type:"tunnel", id:"gate_60" },
+  { axis:"V", bCoord:  820, gCoord:   57, start:    0, end:  144, type:"tollbridge", id:"gate_61" },
+  { axis:"H", bCoord: 1152, gCoord:  331, start:  205, end:  410, type:"tollbridge", id:"gate_62" },
+  { axis:"V", bCoord: 1435, gCoord:   71, start:    0, end:  144, type:"crossing", id:"gate_63" },
+  { axis:"V", bCoord: 1230, gCoord:   52, start:    0, end:  144, type:"tunnel", id:"gate_64" },
+  { axis:"H", bCoord:  432, gCoord:  535, start:  410, end:  615, type:"crossing", id:"gate_65" },
+  { axis:"H", bCoord:  144, gCoord:  683, start:  615, end:  820, type:"crossing", id:"gate_66" },
+  { axis:"V", bCoord:  820, gCoord:  222, start:  144, end:  288, type:"tunnel", id:"gate_67" },
+  { axis:"V", bCoord:  615, gCoord:  199, start:  144, end:  288, type:"tunnel", id:"gate_68" },
+  { axis:"H", bCoord:  288, gCoord:  106, start:    0, end:  205, type:"tunnel", id:"gate_69" },
+  { axis:"H", bCoord:  288, gCoord:  516, start:  410, end:  615, type:"crossing", id:"gate_70" },
+  { axis:"H", bCoord:  144, gCoord:   73, start:    0, end:  205, type:"tollbridge", id:"gate_71" },
+  { axis:"V", bCoord:  205, gCoord:  235, start:  144, end:  288, type:"tollbridge", id:"gate_72" },
+  { axis:"V", bCoord: 1230, gCoord: 1057, start: 1008, end: 1152, type:"tunnel", id:"gate_73" },
+  { axis:"H", bCoord: 1152, gCoord: 1133, start: 1025, end: 1230, type:"crossing", id:"gate_74" },
+  { axis:"V", bCoord:  615, gCoord:  788, start:  720, end:  864, type:"crossing", id:"gate_75" },
+  { axis:"H", bCoord:  864, gCoord:  499, start:  410, end:  615, type:"crossing", id:"gate_76" },
+  { axis:"V", bCoord:  615, gCoord:   91, start:    0, end:  144, type:"crossing", id:"gate_77" },
+  { axis:"H", bCoord:  144, gCoord:  524, start:  410, end:  615, type:"tollbridge", id:"gate_78" },
+  { axis:"V", bCoord:  410, gCoord:   52, start:    0, end:  144, type:"tollbridge", id:"gate_79" },
+  { axis:"H", bCoord:  432, gCoord: 1563, start: 1435, end: 1640, type:"tunnel", id:"gate_80" },
+  { axis:"V", bCoord: 1435, gCoord:  382, start:  288, end:  432, type:"tollbridge", id:"gate_81" },
+  { axis:"H", bCoord:  432, gCoord: 1308, start: 1230, end: 1435, type:"crossing", id:"gate_82" },
+  { axis:"V", bCoord: 1435, gCoord:  521, start:  432, end:  576, type:"crossing", id:"gate_83" },
+  { axis:"H", bCoord:  576, gCoord: 1358, start: 1230, end: 1435, type:"crossing", id:"gate_84" },
+  { axis:"V", bCoord: 1640, gCoord:   56, start:    0, end:  144, type:"tunnel", id:"gate_85" },
+  { axis:"V", bCoord: 1025, gCoord: 1237, start: 1152, end: 1296, type:"tunnel", id:"gate_86" },
+  { axis:"H", bCoord: 1152, gCoord: 1558, start: 1435, end: 1640, type:"tollbridge", id:"gate_87" },
+  { axis:"V", bCoord: 1640, gCoord: 1238, start: 1152, end: 1296, type:"tunnel", id:"gate_88" },
+  { axis:"H", bCoord:  720, gCoord: 1309, start: 1230, end: 1435, type:"tollbridge", id:"gate_89" },
+  { axis:"V", bCoord: 1435, gCoord:  773, start:  720, end:  864, type:"crossing", id:"gate_90" },
+  { axis:"H", bCoord:  864, gCoord: 1357, start: 1230, end: 1435, type:"crossing", id:"gate_91" },
+  { axis:"H", bCoord:  144, gCoord:  286, start:  205, end:  410, type:"tunnel", id:"gate_92" },
+  { axis:"V", bCoord:  205, gCoord:   64, start:    0, end:  144, type:"crossing", id:"gate_93" },
+  { axis:"V", bCoord:  820, gCoord:  922, start:  864, end: 1008, type:"tollbridge", id:"gate_94" },
+  { axis:"H", bCoord: 1008, gCoord: 1311, start: 1230, end: 1435, type:"tunnel", id:"gate_95" },
+  { axis:"H", bCoord: 1008, gCoord: 1522, start: 1435, end: 1640, type:"crossing", id:"gate_96" },
+  { axis:"V", bCoord: 1640, gCoord: 1102, start: 1008, end: 1152, type:"tunnel", id:"gate_97" },
+  { axis:"H", bCoord:  648, gCoord:  866, start:  821, end:  923, type:"tollbridge", id:"gate_98" },
+  { axis:"V", bCoord:  821, gCoord:  681, start:  648, end:  720, type:"tollbridge", id:"gate_99" },
+  { axis:"H", bCoord:  720, gCoord:  706, start:  615, end:  821, type:"crossing", id:"gate_100" },
+  { axis:"H", bCoord: 1008, gCoord: 1716, start: 1640, end: 1845, type:"tunnel", id:"gate_101" },
+  { axis:"H", bCoord: 1152, gCoord: 1720, start: 1640, end: 1845, type:"tunnel", id:"gate_102" },
+  { axis:"H", bCoord:  288, gCoord:  890, start:  820, end: 1025, type:"tollbridge", id:"gate_103" },
+  { axis:"V", bCoord:  205, gCoord: 1220, start: 1152, end: 1296, type:"tollbridge", id:"gate_104" },
+  { axis:"H", bCoord: 1008, gCoord:  737, start:  615, end:  820, type:"tunnel", id:"gate_105" },
+  { axis:"V", bCoord:  615, gCoord:  941, start:  864, end: 1008, type:"tollbridge", id:"gate_106" },
+  { axis:"V", bCoord: 1435, gCoord:  917, start:  864, end: 1008, type:"tollbridge", id:"gate_107" },
+  { axis:"H", bCoord:  864, gCoord: 1516, start: 1435, end: 1640, type:"crossing", id:"gate_108" },
+  { axis:"H", bCoord:  576, gCoord:  876, start:  821, end:  923, type:"crossing", id:"gate_109" },
+  { axis:"H", bCoord:  576, gCoord:  982, start:  923, end: 1025, type:"crossing", id:"gate_110" },
+  { axis:"V", bCoord: 1025, gCoord:  605, start:  576, end:  648, type:"tollbridge", id:"gate_111" },
+  { axis:"V", bCoord: 1025, gCoord:  674, start:  648, end:  720, type:"tollbridge", id:"gate_112" },
+  { axis:"H", bCoord:  720, gCoord:  885, start:  821, end:  923, type:"crossing", id:"gate_113" },
+  { axis:"H", bCoord:  720, gCoord:  977, start:  923, end: 1025, type:"crossing", id:"gate_114" },
+  { axis:"V", bCoord:  821, gCoord:  600, start:  576, end:  648, type:"crossing", id:"gate_115" },
+  { axis:"V", bCoord:  821, gCoord:  677, start:  648, end:  720, type:"tollbridge", id:"gate_116" },
 ];
 
 
@@ -1146,166 +1146,118 @@ self.onmessage = function(e) {
     }
   }
 
-  // ── Pass 2: Static road network ──────────────────────────────────────────────
-  // All keep and gate coords are fixed so roads are fixed.
-  // Rule: every gate tile roads to its nearest keep. Peninsula keeps with no
-  // gates road to their parent keep. Manhattan walk: horizontal then vertical.
+// ── Dynamic Road Generation ──────────────────────────────────────────────────
+// Replace the hardcoded ROAD_SEGMENTS array with this dynamic generation
+// This runs AFTER gates are placed and gateMeta is populated
+
+{
   postMessage({ type:"progress", pct:94, label:"Building road network..." });
-  {
-    const ROAD_SEGMENTS = [
-
-      // ══ H border row 208 ══
-      [229,207,  229,141],  // h229_208 A → saltmere
-      [229,209,  229,274],  // h229_208 B → deadAnchor
-      [427,207,  427,141],  // h427_208 A → brineHollow
-      [427,209,  460,242],  // h427_208 B → mistfall
-      [613,207,  613,141],  // h613_208 A → gallowsReach
-      [613,209,  613,274],  // h613_208 B → wanderingWastes
-      [788,207,  788,141],  // h788_208 A → greyExpanse
-      [788,209,  788,274],  // h788_208 B → dreadmoor
-      [975,207,  975,141],  // h975_208 A → crimsonVeil
-      [975,209,  975,274],  // h975_208 B → duskHollow
-      [1173,207, 1173,141], // h1173_208 A → paleCourt
-      [1173,209, 1173,274], // h1173_208 B → shadowmere
-
-      // ══ H border row 341 ══
-      [613,340,  613,274],  // h613_341 A → wanderingWastes
-      [613,342,  613,407],  // h613_341 B → theHollow
-      [788,340,  788,274],  // h788_341 A → dreadmoor
-      [788,342,  788,407],  // h788_341 B → holyGrail
-      [975,340,  975,274],  // h975_341 A → duskHollow
-      [975,342,  975,407],  // h975_341 B → warbend
-
-      // ══ H border row 474 ══
-      [229,473,  229,407],  // h229_474 A → emberpeak
-      [229,475,  229,540],  // h229_474 B → scorchveil
-      [427,473,  427,540],  // h427_474 A → grimward
-      [427,475,  427,540],  // h427_474 B → grimward
-      [613,473,  613,407],  // h613_474 A → theHollow
-      [613,475,  613,407],  // h613_474 B → theHollow
-      [788,473,  788,407],  // h788_474 A → holyGrail
-      [788,475,  788,540],  // h788_474 B → hallowedGround
-      [975,473,  975,407],  // h975_474 A → warbend
-      [975,475,  975,540],  // h975_474 B → bloodfield
-      [1173,473, 1173,407], // h1173_474 A → bloodfen
-      [1173,475, 1173,540], // h1173_474 B → grimhold
-
-      // ══ H border row 607 ══
-      [229,606,  229,540],  // h229_607 A → scorchveil
-      [229,608,  229,673],  // h229_607 B → forsakenMarch
-      [613,606,  580,578],  // h613_607 A → sunkenRoad
-      [613,608,  580,578],  // h613_607 B → sunkenRoad
-      [788,606,  788,540],  // h788_607 A → hallowedGround
-      [788,608,  788,673],  // h788_607 B → paleMarch
-      [1173,606, 1173,540], // h1173_607 A → grimhold
-      [1173,608, 1173,673], // h1173_607 B → bonepile
-
-      // ══ H border row 740 ══
-      [427,739,  427,794],  // h427_740 A → cursemoor
-      [427,741,  427,794],  // h427_740 B → cursemoor
-      [613,739,  613,673],  // h613_740 A → ruinwatch
-      [613,741,  613,794],  // h613_740 B → ashenveil
-      [788,739,  788,673],  // h788_740 A → paleMarch
-      [788,741,  788,794],  // h788_740 B → sanctumhold
-      [975,739,  975,673],  // h975_740 A → pilgrimsRest
-      [975,741,  975,794],  // h975_740 B → sacredVale
-
-      // ══ V border col 328 ══
-      [327,141,  229,141],  // v328_141 A → saltmere
-      [329,141,  427,141],  // v328_141 B → brineHollow
-      [327,274,  229,274],  // v328_274 A → deadAnchor
-      [329,274,  390,308],  // v328_274 B → thornveil
-      [327,407,  390,432],  // v328_407 A → cinderPass
-      [329,407,  390,432],  // v328_407 B → cinderPass
-      [327,540,  229,540],  // v328_540 A → scorchveil
-      [329,540,  427,540],  // v328_540 B → grimward
-      [327,794,  229,794],  // v328_794 A → ashenFen
-      [329,794,  427,794],  // v328_794 B → cursemoor
-
-      // ══ V border col 526 ══
-      [525,141,  427,141],  // v526_141 A → brineHollow
-      [527,141,  613,141],  // v526_141 B → gallowsReach
-      [525,274,  460,242],  // v526_274 A → mistfall
-      [527,274,  613,274],  // v526_274 B → wanderingWastes
-      [525,407,  460,375],  // v526_407 A → ashcrag
-      [527,407,  613,407],  // v526_407 B → theHollow
-      [525,673,  427,673],  // v526_673 A → hexmire
-      [527,673,  613,673],  // v526_673 B → ruinwatch
-      [525,794,  427,794],  // v526_794 A → cursemoor
-      [527,794,  613,794],  // v526_794 B → ashenveil
-
-      // ══ V border col 701 ══
-      [700,141,  613,141],  // v701_141 A → gallowsReach
-      [702,141,  788,141],  // v701_141 B → greyExpanse
-      [700,274,  613,274],  // v701_274 A → wanderingWastes
-      [702,274,  788,274],  // v701_274 B → dreadmoor
-      [700,407,  613,407],  // v701_407 A → theHollow
-      [702,407,  788,407],  // v701_407 B → holyGrail
-      [700,540,  648,510],  // v701_540 A → shatteredPass
-      [702,540,  648,510],  // v701_540 B → shatteredPass
-
-      // ══ V border col 876 ══
-      [875,141,  788,141],  // v876_141 A → greyExpanse
-      [877,141,  975,141],  // v876_141 B → crimsonVeil
-      [875,274,  788,274],  // v876_274 A → dreadmoor
-      [877,274,  975,274],  // v876_274 B → duskHollow
-      [875,407,  788,407],  // v876_407 A → holyGrail
-      [877,407,  975,407],  // v876_407 B → warbend
-      [875,540,  788,540],  // v876_540 A → hallowedGround
-      [877,540,  975,540],  // v876_540 B → bloodfield
-      [875,794,  788,794],  // v876_794 A → sanctumhold
-      [877,794,  975,794],  // v876_794 B → sacredVale
-
-      // ══ V border col 1074 ══
-      [1073,141, 975,141],  // v1074_141 A → crimsonVeil
-      [1075,141, 1173,141], // v1074_141 B → paleCourt
-      [1073,274, 975,274],  // v1074_274 A → duskHollow
-      [1075,274, 1173,274], // v1074_274 B → shadowmere
-      [1073,407, 975,407],  // v1074_407 A → warbend
-      [1075,407, 1173,407], // v1074_407 B → bloodfen
-      [1073,540, 975,540],  // v1074_540 A → bloodfield
-      [1075,540, 1173,540], // v1074_540 B → grimhold
-      [1073,794, 975,794],  // v1074_794 A → sacredVale
-      [1075,794, 1173,794], // v1074_794 B → dawnmarch
-
-      // ══ Peninsula keeps — no gates, road to parent keep ══
-      [215,42,   229,141],  // plunderMaw → saltmere
-      [55,437,   229,407],  // smolderingMaw → emberpeak
-      [1334,288, 1173,274], // theShroud → shadowmere
-      [1334,563, 1173,540], // theWarground → grimhold
-      [628,910,  613,794],  // arcaneDeep → ashenveil
-      [795,910,  788,794],  // blessedShore → sanctumhold
-
-      // ══ Same-region keep pairs needing internal connection ══
-      [390,308,  460,242],  // thornveil ↔ mistfall
-      [390,432,  460,375],  // cinderPass ↔ ashcrag
-      [648,510,  580,578],  // shatteredPass ↔ sunkenRoad
-      [427,673,  427,794],  // hexmire ↔ cursemoor
-      [613,673,  613,794],  // ruinwatch ↔ ashenveil
-      [975,673,  975,794],  // pilgrimsRest ↔ sacredVale
-    ];
-
-    const stampRoad = (c, r) => {
-      if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return;
-      const idx = r * COLS + c;
-      const fl  = flagArr[idx];
-      if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) return;
-      terrainArr[idx]  = TERRAIN_ENC.hellfire;
-      if (powerArr[idx] !== 1) {
-        powerArr[idx]    = 1;
-        garrisonArr[idx] = Math.round(POWER_DEFS[1].command * 100); // stored ×100
-      }
-    };
-
-    // Carve each segment: horizontal leg first, then vertical
-    for (const [c1, r1, c2, r2] of ROAD_SEGMENTS) {
-      const dc = c2 > c1 ? 1 : c2 < c1 ? -1 : 0;
-      const dr = r2 > r1 ? 1 : r2 < r1 ? -1 : 0;
-      for (let c = c1; c !== c2; c += dc) stampRoad(c, r1);
-      if (dr !== 0) for (let r = r1; r !== r2 + dr; r += dr) stampRoad(c2, r);
-      else stampRoad(c2, r1);
+  
+  // Collect all gates and their positions
+  const gatesPerRegion = {}; // regionKey -> array of gate positions
+  
+  // Parse gate metadata to find which gates belong to which regions
+  for (const key in gateMeta) {
+    const gate = gateMeta[key];
+    const [x, y] = key.split(',').map(Number);
+    
+    // Find which region this gate belongs to by checking REGION_MAP
+    const idx = y * COLS + x;
+    const regionID = REGION_MAP[idx];
+    if (!regionID) continue;
+    
+    const regionKey = REGION_IDX_TO_KEY[regionID];
+    if (!regionKey) continue;
+    
+    if (!gatesPerRegion[regionKey]) {
+      gatesPerRegion[regionKey] = [];
+    }
+    gatesPerRegion[regionKey].push({ x, y });
+  }
+  
+  // Also collect gate positions from gateA and gateB arrays
+  for (const gate of gateA) {
+    const idx = gate.y * COLS + gate.x;
+    const regionID = REGION_MAP[idx];
+    if (!regionID) continue;
+    
+    const regionKey = REGION_IDX_TO_KEY[regionID];
+    if (!regionKey) continue;
+    
+    if (!gatesPerRegion[regionKey]) {
+      gatesPerRegion[regionKey] = [];
+    }
+    gatesPerRegion[regionKey].push({ x: gate.x, y: gate.y });
+  }
+  
+  for (const gate of gateB) {
+    const idx = gate.y * COLS + gate.x;
+    const regionID = REGION_MAP[idx];
+    if (!regionID) continue;
+    
+    const regionKey = REGION_IDX_TO_KEY[regionID];
+    if (!regionKey) continue;
+    
+    if (!gatesPerRegion[regionKey]) {
+      gatesPerRegion[regionKey] = [];
+    }
+    gatesPerRegion[regionKey].push({ x: gate.x, y: gate.y });
+  }
+  
+  // Generate road segments from each keep to all gates in that region
+  const ROAD_SEGMENTS = [];
+  
+  for (const region of REGION_LIST) {
+    const regionKey = region.key;
+    const keepX = region.cx;
+    const keepY = region.cy;
+    
+    const gates = gatesPerRegion[regionKey] || [];
+    
+    // Create road from keep to each gate
+    for (const gate of gates) {
+      // Manhattan routing: horizontal first, then vertical
+      ROAD_SEGMENTS.push([keepX, keepY, gate.x, gate.y]);
     }
   }
+  
+  console.log(`[MapGen] Generated ${ROAD_SEGMENTS.length} road segments`);
+  console.log(`[MapGen] Regions with gates:`, Object.keys(gatesPerRegion).length);
+  
+  // Stamp roads into the map
+  const stampRoad = (c, r) => {
+    if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return;
+    const idx = r * COLS + c;
+    const fl  = flagArr[idx];
+    if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) return;
+    terrainArr[idx]  = TERRAIN_ENC.road;  // Use road terrain, not hellfire
+    if (powerArr[idx] !== 1) {
+      powerArr[idx]    = 1;
+      garrisonArr[idx] = Math.round(POWER_DEFS[1].command * 100); // 0.30 * 100 = 30
+    }
+  };
+  
+  // Carve each segment: horizontal leg first, then vertical
+  for (const [c1, r1, c2, r2] of ROAD_SEGMENTS) {
+    const dc = c2 > c1 ? 1 : c2 < c1 ? -1 : 0;
+    const dr = r2 > r1 ? 1 : r2 < r1 ? -1 : 0;
+    
+    // Horizontal leg
+    for (let c = c1; c !== c2; c += dc) {
+      stampRoad(c, r1);
+    }
+    
+    // Vertical leg
+    if (dr !== 0) {
+      for (let r = r1; r !== r2 + dr; r += dr) {
+        stampRoad(c2, r);
+      }
+    } else {
+      stampRoad(c2, r1);
+    }
+  }
+}
+
 
   postMessage({ type:"progress", pct:96, label:"Finding spawn points..." });
 
