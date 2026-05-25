@@ -275,7 +275,7 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
     const { axis, bCoord, gCoord, start, end, type, id } = crossing;
     
     // Find actual border tiles in REGION_MAP near the theoretical border
-    const searchRadius = 10;
+    const searchRadius = 3;
     const borderTiles = [];
     
     if (axis === 'H') {
