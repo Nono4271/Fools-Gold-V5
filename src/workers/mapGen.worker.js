@@ -244,7 +244,7 @@ const TERRAIN_NAMES = ["grass","forest","mountain","desert","river","ravine","ro
 // Border terrain: H→river, V→rockymountain, tollbridge→ravine on either axis
 
 // CROSSINGS array - populated after POLYS definition below
-let CROSSINGS = [];
+
 
 // Terrain type per crossing type
 function crossingTerrain(type) {
