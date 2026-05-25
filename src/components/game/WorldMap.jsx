@@ -29,7 +29,7 @@ function centroid(pts) {
 }
 
 
-export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom, crossings }) {
+export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom, crossings, keepMeta }) {
   const [selected, setSelected] = useState(null);
   const [clickPos, setClickPos] = useState(null); // { x, y } in screen px
   const [dotPos, setDotPos] = useState(() => panRef?.current || { x: 4, y: 4 });
@@ -71,17 +71,19 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
     });
   }, [tiles]);
 
-  // Build gate list from tiles with F_GATE flag (worker-placed gates)
+  // Build gate list from keepMeta (worker-placed gates)
   const gates = useMemo(() => {
-    if (!tiles) return [];
+    if (!keepMeta) return [];
     const result = [];
     
-    for (const [key, tile] of Object.entries(tiles)) {
-      // Check if tile has gate flag and keep metadata (gates are marked as keeps)
-      if (tile.flags?.gate && tile.flags?.keep && tile.keepMeta) {
+    for (const [key, meta] of Object.entries(keepMeta)) {
+      // Only process gate entries (they have 'side' and 'type' properties)
+      if (meta.side && meta.type) {
         const [x, y] = key.split(',').map(Number);
-        const meta = tile.keepMeta;
-        const typeIcon = meta.type === 'crossing' ? '🌊' : meta.type === 'tollbridge' ? '⌒' : '⛰';
+        const tile = tiles[key];
+        const typeIcon = meta.type === 'crossing' ? '🌊' 
+                       : meta.type === 'tollbridge' ? '⌒' 
+                       : '⛰';
         
         result.push({
           key: key,
@@ -91,17 +93,17 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
           cx: x,
           cy: y,
           icon: typeIcon,
-          owner: tile.owner || null,
-          garrison: tile.garrison || 0,
-          siege: tile.siege || 0,
-          siegeMax: tile.siegeMax || 0,
+          owner: tile?.owner || null,
+          garrison: tile?.garrison || 0,
+          siege: tile?.siege || 0,
+          siegeMax: tile?.siegeMax || 0,
           name: meta.keepName || 'Gate',
         });
       }
     }
     
     return result;
-  }, [tiles]);
+  }, [keepMeta, tiles]);
 
   const allClickable = useMemo(() => [...keeps, ...gates], [keeps, gates]);
   const selectedItem = selected ? allClickable.find(k => k.key === selected) : null;
