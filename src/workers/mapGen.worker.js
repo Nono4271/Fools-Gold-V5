@@ -486,31 +486,47 @@ CROSSINGS = (() => {
           const edgeLength = Math.sqrt((ax2 - ax1) ** 2 + (ay2 - ay1) ** 2);
           if (edgeLength < 10) continue; // Skip tiny edges
           
-          // Midpoint of edge
-          const mx = Math.round((ax1 + ax2) / 2);
-          const my = Math.round((ay1 + ay2) / 2);
-          
           // Determine primary axis (which direction is dominant)
           const dx = Math.abs(ax2 - ax1);
           const dy = Math.abs(ay2 - ay1);
           
           if (dx > dy) {
-            // More horizontal than vertical
+            // Horizontal border - use average y as border coord
+            const borderY = Math.round((ay1 + ay2) / 2);
+            const startX = Math.min(ax1, ax2);
+            const endX = Math.max(ax1, ax2);
+            const edgeLen = endX - startX;
+            
+            // Gate in middle third of edge
+            const thirdStart = startX + Math.floor(edgeLen / 3);
+            const thirdEnd = startX + Math.floor(2 * edgeLen / 3);
+            const gateX = Math.floor((thirdStart + thirdEnd) / 2);
+            
             edges.push({ 
               axis: 'H', 
-              coord: my,  // y coordinate of the horizontal-ish border
-              start: Math.min(ax1, ax2), 
-              end: Math.max(ax1, ax2),
-              gCoord: mx  // pre-calculated gate position
+              coord: borderY,
+              start: startX, 
+              end: endX,
+              gCoord: gateX
             });
           } else {
-            // More vertical than horizontal  
+            // Vertical border - use average x as border coord
+            const borderX = Math.round((ax1 + ax2) / 2);
+            const startY = Math.min(ay1, ay2);
+            const endY = Math.max(ay1, ay2);
+            const edgeLen = endY - startY;
+            
+            // Gate in middle third of edge
+            const thirdStart = startY + Math.floor(edgeLen / 3);
+            const thirdEnd = startY + Math.floor(2 * edgeLen / 3);
+            const gateY = Math.floor((thirdStart + thirdEnd) / 2);
+            
             edges.push({ 
               axis: 'V', 
-              coord: mx,  // x coordinate of the vertical-ish border
-              start: Math.min(ay1, ay2), 
-              end: Math.max(ay1, ay2),
-              gCoord: my  // pre-calculated gate position
+              coord: borderX,
+              start: startY, 
+              end: endY,
+              gCoord: gateY
             });
           }
         }
