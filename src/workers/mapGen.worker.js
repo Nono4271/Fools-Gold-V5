@@ -1,4 +1,4 @@
-// Build: 1779593291
+// Build: 1779593292
 // ── Map Generation Web Worker ─────────────────────────────────────────────────
 // Communicates via postMessage:
 //   incoming: { facKey }
