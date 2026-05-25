@@ -1,8 +1,12 @@
 import { useState, useMemo, useEffect, memo } from "react";
-import { REGION_LIST, POLYS } from "../../../shared/constants/regions.js";
+import { REGIONS, REGION_POLYGONS } from "../../../shared/constants/regions.js";
 import { PLAYABLE_FACTIONS } from "../../../shared/constants/factions.js";
 import { ISO_W, ISO_H, TW, TH, TOP_PAD, ROWS } from "../../../shared/constants/geometry.js";
 import { ICON_SCALE, HIT_PAD } from "../../constants/device.js";
+
+// Convert REGIONS object to REGION_LIST array for compatibility
+const REGION_LIST = Object.values(REGIONS);
+const POLYS = REGION_POLYGONS;
 
 const FAC_COLOR = { player: "#44aaff" };
 PLAYABLE_FACTIONS.forEach(f => { FAC_COLOR[f.key] = f.c; });

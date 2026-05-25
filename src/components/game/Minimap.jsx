@@ -1,6 +1,9 @@
 import { useEffect, useRef, useMemo, memo, useCallback } from "react";
 import { COLS, ROWS, TW, TH } from "../../../shared/constants/geometry.js";
-import { REGION_LIST } from "../../../shared/constants/regions.js";
+import { REGIONS } from "../../../shared/constants/regions.js";
+
+// Convert REGIONS object to REGION_LIST array for compatibility
+const REGION_LIST = Object.values(REGIONS);
 
 const MM_SIZE    = 104;
 const MM_RADIUS  = 48;
