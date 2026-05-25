@@ -60,6 +60,7 @@ export default function RiseToWar() {
   const [tileVersion, setTileVersion] = useState(0);
   const tilesMapRef = useRef({});
   const [crossingsState, setCrossingsState] = useState([]);
+  const [keepMeta, setKeepMeta] = useState({});
   // useMemo gives a stable object identity between tileVersion bumps so
   // MapRenderer's memo() wrapper and every other consumer only re-renders
   // when tiles actually changed, not on every unrelated Game re-render.
@@ -854,6 +855,7 @@ export default function RiseToWar() {
         // tilesMapRef in the mapReady effect, leaving the loading screen up.
         unstable_batchedUpdates(() => {
           setCrossingsState(crossings || []);
+          setKeepMeta(keepMeta);
           setAiHqKeys(newAiHqKeys);
           setAiFactionKeys(aiFactions);
           setAiCmds(initialAiCmds);
