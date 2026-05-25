@@ -310,8 +310,21 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       
       for (let y = 0; y < ROWS; y++) {
         if (gateYSet.has(y)) {
-          // Gate tile - passable
+          // Gate/path tile - passable but add perpendicular borders
           pathTiles.push({ x: bx, y });
+          
+          // Add borders on perpendicular sides of path tiles (only the 2 middle path tiles)
+          gates.forEach(g => {
+            if (y === g.gateStart + 1 || y === g.gateStart + 2) { // Path tiles only
+              for (let pdy = -BORDER_WIDTH; pdy <= BORDER_WIDTH; pdy++) {
+                if (pdy === 0) continue;
+                const pby = y + pdy;
+                if (pby >= 0 && pby < ROWS && !gateYSet.has(pby)) {
+                  impassable.push({ x: bx, y: pby });
+                }
+              }
+            }
+          });
         } else {
           // Border tile - impassable
           impassable.push({ x: bx, y });
@@ -337,8 +350,21 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       
       for (let x = 0; x < COLS; x++) {
         if (gateXSet.has(x)) {
-          // Gate tile - passable
+          // Gate/path tile - passable but add perpendicular borders
           pathTiles.push({ x, y: by });
+          
+          // Add borders on perpendicular sides of path tiles (only the 2 middle path tiles)
+          gates.forEach(g => {
+            if (x === g.gateStart + 1 || x === g.gateStart + 2) { // Path tiles only
+              for (let pdx = -BORDER_WIDTH; pdx <= BORDER_WIDTH; pdx++) {
+                if (pdx === 0) continue;
+                const pbx = x + pdx;
+                if (pbx >= 0 && pbx < COLS && !gateXSet.has(pbx)) {
+                  impassable.push({ x: pbx, y: by });
+                }
+              }
+            }
+          });
         } else {
           // Border tile - impassable
           impassable.push({ x, y: by });
@@ -353,12 +379,16 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
     
     if (axis === 'H') {
       // Horizontal border at y = bCoord, gate at x = gCoord
-      gateA.push({ x: gCoord, y: bCoord - 1, id: id+'_A', type });
-      gateB.push({ x: gCoord, y: bCoord + 1, id: id+'_B', type });
+      // 4-tile gap: gCoord-2, gCoord-1, gCoord, gCoord+1
+      // Layout: Gate A at gCoord-2, Path at gCoord-1, Path at gCoord, Gate B at gCoord+1
+      gateA.push({ x: gCoord - 2, y: bCoord, id: id+'_A', type });
+      gateB.push({ x: gCoord + 1, y: bCoord, id: id+'_B', type });
     } else {
-      // Vertical border at x = bCoord, gate at y = gCoord  
-      gateA.push({ x: bCoord - 1, y: gCoord, id: id+'_A', type });
-      gateB.push({ x: bCoord + 1, y: gCoord, id: id+'_B', type });
+      // Vertical border at x = bCoord, gate at y = gCoord
+      // 4-tile gap: gCoord-2, gCoord-1, gCoord, gCoord+1
+      // Layout: Gate A at gCoord-2, Path at gCoord-1, Path at gCoord, Gate B at gCoord+1
+      gateA.push({ x: bCoord, y: gCoord - 2, id: id+'_A', type });
+      gateB.push({ x: bCoord, y: gCoord + 1, id: id+'_B', type });
     }
   }
   
@@ -841,7 +871,7 @@ self.onmessage = function(e) {
     }
   }
 
-  postMessage({ type:"progress", pct:82, label:"Placing keeps..." });
+  postMessage({ type:"progress", pct:82, label:"Pre-computing roads..." });
 
   // ── Pre-compute road tile set so P10+ keeps don't land on roads ──────────────
   // Roads are stamped later (pct 94) but segments are static, so we can walk them now.
@@ -888,6 +918,100 @@ self.onmessage = function(e) {
       else addRoadTile(c2,r1);
     }
   }
+
+  postMessage({ type:"progress", pct:83, label:"Painting borders..." });
+
+  // ── Paint border segments + place crossing gate structures ─────────────
+  // MUST happen before P10+ placement so F_BORDER flags are set!
+  const gateMeta  = {};
+  const impassKeys = [];
+
+  // Use CROSSINGS to find borders, then locate actual positions in REGION_MAP
+  const { impassable, gateA, gateB, pathTiles } = buildBordersFromCrossings(REGION_MAP, CROSSINGS);
+
+  console.log(`[MapGen] CROSSINGS count: ${CROSSINGS.length}`);
+  console.log(`[MapGen] Border tiles - impassable: ${impassable.length}, gateA: ${gateA.length}, gateB: ${gateB.length}, path: ${pathTiles.length}`);
+  if (CROSSINGS.length > 0) {
+    console.log(`[MapGen] Sample crossing:`, CROSSINGS[0]);
+  }
+
+  // Paint impassable border tiles
+  for (const {x, y} of impassable) {
+    const idx = y*COLS+x;
+    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
+    // Use river for all borders for now (can be enhanced per-crossing later)
+    terrainArr[idx]  = TERRAIN_ENC.river;
+    flagArr[idx]     = (flagArr[idx] & ~F_GATE) | F_BORDER;
+    rssArr[idx]      = 0;
+    garrisonArr[idx] = 0;
+    impassKeys.push(`${x},${y}`);
+  }
+
+  // Paint path tiles — passable, use border terrain
+  for (const {x, y} of pathTiles) {
+    const idx = y*COLS+x;
+    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
+    terrainArr[idx]  = TERRAIN_ENC.river;
+    flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE;
+    rssArr[idx]      = 0;
+    garrisonArr[idx] = 0;
+  }
+
+  // Place Gate A structures
+  for (const {x, y, id, type} of gateA) {
+    const idx = y*COLS+x;
+    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
+    terrainArr[idx]  = TERRAIN_ENC.river;
+    flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
+    garrisonArr[idx] = GATE_GARRISON;
+    siegeArr[idx]    = GATE_SIEGE;
+    siegeMaxArr[idx] = GATE_SIEGE;
+    rssArr[idx]      = 0;
+    const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
+    gateMeta[`${x},${y}`] = {
+      keepName: `${typeName} Gate A`,
+      garrisonWaves: 2,
+      garrison: GATE_GARRISON,
+      garrisonTroops: 20, // 20 command budget
+      cx: x, cy: y, side: 'A', type,
+      defCmd: {
+        n: `${typeName} Gate A Defender`,
+        icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
+        cls:'defender', faction:null, rarity:'veteran',
+        lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
+        atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
+      },
+    };
+  }
+
+  // Place Gate B structures
+  for (const {x, y, id, type} of gateB) {
+    const idx = y*COLS+x;
+    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
+    terrainArr[idx]  = TERRAIN_ENC.river;
+    flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
+    garrisonArr[idx] = GATE_GARRISON;
+    siegeArr[idx]    = GATE_SIEGE;
+    siegeMaxArr[idx] = GATE_SIEGE;
+    rssArr[idx]      = 0;
+    const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
+    gateMeta[`${x},${y}`] = {
+      keepName: `${typeName} Gate B`,
+      garrisonWaves: 2,
+      garrison: GATE_GARRISON,
+      garrisonTroops: 20, // 20 command budget
+      cx: x, cy: y, side: 'B', type,
+      defCmd: {
+        n: `${typeName} Gate B Defender`,
+        icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
+        cls:'defender', faction:null, rarity:'veteran',
+        lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
+        atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
+      },
+    };
+  }
+
+  postMessage({ type:"progress", pct:85, label:"Placing keeps..." });
 
   // ── P10–P13: stamp 2×2 structures ────────────────────────────────────────────
   // Each tile that rolled P10-P13 becomes the top-left of a 2×2 footprint.
@@ -1013,100 +1137,6 @@ self.onmessage = function(e) {
       }
     }
   }
-
-  postMessage({ type:"progress", pct:88, label:"Painting borders..." });
-
-  // ── Paint border segments + place crossing gate structures ─────────────
-  const gateMeta  = {};
-  const impassKeys = [];
-
-  // Use CROSSINGS to find borders, then locate actual positions in REGION_MAP
-  const { impassable, gateA, gateB, pathTiles } = buildBordersFromCrossings(REGION_MAP, CROSSINGS);
-
-  console.log(`[MapGen] CROSSINGS count: ${CROSSINGS.length}`);
-  console.log(`[MapGen] Border tiles - impassable: ${impassable.length}, gateA: ${gateA.length}, gateB: ${gateB.length}, path: ${pathTiles.length}`);
-  if (CROSSINGS.length > 0) {
-    console.log(`[MapGen] Sample crossing:`, CROSSINGS[0]);
-  }
-
-  // Paint impassable border tiles
-  for (const {x, y} of impassable) {
-    const idx = y*COLS+x;
-    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-    // Use river for all borders for now (can be enhanced per-crossing later)
-    terrainArr[idx]  = TERRAIN_ENC.river;
-    flagArr[idx]     = (flagArr[idx] & ~F_GATE) | F_BORDER;
-    rssArr[idx]      = 0;
-    garrisonArr[idx] = 0;
-    impassKeys.push(`${x},${y}`);
-  }
-
-  // Paint path tiles — passable, use border terrain
-  for (const {x, y} of pathTiles) {
-    const idx = y*COLS+x;
-    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-    terrainArr[idx]  = TERRAIN_ENC.river;
-    flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE;
-    rssArr[idx]      = 0;
-    garrisonArr[idx] = 0;
-  }
-
-  // Place Gate A structures
-  for (const {x, y, id, type} of gateA) {
-    const idx = y*COLS+x;
-    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-    terrainArr[idx]  = TERRAIN_ENC.river;
-    flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
-    garrisonArr[idx] = GATE_GARRISON;
-    siegeArr[idx]    = GATE_SIEGE;
-    siegeMaxArr[idx] = GATE_SIEGE;
-    rssArr[idx]      = 0;
-    const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
-    gateMeta[`${x},${y}`] = {
-      keepName: `${typeName} Gate A`,
-      garrisonWaves: 2,
-      garrison: GATE_GARRISON,
-      garrisonTroops: 20, // 20 command budget
-      cx: x, cy: y, side: 'A', type,
-      defCmd: {
-        n: `${typeName} Gate A Defender`,
-        icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
-        cls:'defender', faction:null, rarity:'veteran',
-        lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
-        atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
-      },
-    };
-  }
-
-  // Place Gate B structures
-  for (const {x, y, id, type} of gateB) {
-    const idx = y*COLS+x;
-    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-    terrainArr[idx]  = TERRAIN_ENC.river;
-    flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
-    garrisonArr[idx] = GATE_GARRISON;
-    siegeArr[idx]    = GATE_SIEGE;
-    siegeMaxArr[idx] = GATE_SIEGE;
-    rssArr[idx]      = 0;
-    const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
-    gateMeta[`${x},${y}`] = {
-      keepName: `${typeName} Gate B`,
-      garrisonWaves: 2,
-      garrison: GATE_GARRISON,
-      garrisonTroops: 20, // 20 command budget
-      cx: x, cy: y, side: 'B', type,
-      defCmd: {
-        n: `${typeName} Gate B Defender`,
-        icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
-        cls:'defender', faction:null, rarity:'veteran',
-        lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
-        atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
-      },
-    };
-  }
-
-  // Merge gateMeta into keepMeta
-  Object.assign(keepMeta, gateMeta);
 
   // ── Anti-lockout pass ──────────────────────────────────────────────────────────
   // For every faction start keep, guarantee at least 2 of the 4 orthogonal
