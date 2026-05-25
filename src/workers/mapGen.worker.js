@@ -1,4 +1,4 @@
-// Build: 1779593294
+// Build: 1779593295
 // ── Map Generation Web Worker ─────────────────────────────────────────────────
 // Communicates via postMessage:
 //   incoming: { facKey }
@@ -356,18 +356,50 @@ function buildBordersFromRegionMap(REGION_MAP, CROSSINGS) {
       }
     }
     
-    // Place gate at gCoord position
+    // Place gate at gCoord position and create path between gates
+    const gatePositions = { A: null, B: null };
+    
+    // First pass: identify gate positions
     for (const tile of borderTiles) {
       const isGate = (axis === 'H' && tile.x === gCoord) || (axis === 'V' && tile.y === gCoord);
       
       if (isGate) {
         if (tile.regionID === regionA_ID) {
+          gatePositions.A = tile;
           gateA.push({x: tile.x, y: tile.y, id: id+'_A', type});
-        } else {
+        } else if (tile.regionID === regionB_ID) {
+          gatePositions.B = tile;
           gateB.push({x: tile.x, y: tile.y, id: id+'_B', type});
         }
-      } else {
-        impassable.push({x: tile.x, y: tile.y});
+      }
+    }
+    
+    // Second pass: mark border tiles and create path between gates
+    for (const tile of borderTiles) {
+      const isGate = (axis === 'H' && tile.x === gCoord) || (axis === 'V' && tile.y === gCoord);
+      
+      if (!isGate) {
+        // Check if this tile is between the two gates (creates passage)
+        let isPath = false;
+        if (gatePositions.A && gatePositions.B) {
+          if (axis === 'H' && tile.x === gCoord) {
+            // Between gates vertically
+            const minY = Math.min(gatePositions.A.y, gatePositions.B.y);
+            const maxY = Math.max(gatePositions.A.y, gatePositions.B.y);
+            isPath = tile.y > minY && tile.y < maxY;
+          } else if (axis === 'V' && tile.y === gCoord) {
+            // Between gates horizontally
+            const minX = Math.min(gatePositions.A.x, gatePositions.B.x);
+            const maxX = Math.max(gatePositions.A.x, gatePositions.B.x);
+            isPath = tile.x > minX && tile.x < maxX;
+          }
+        }
+        
+        if (isPath) {
+          pathTiles.push({x: tile.x, y: tile.y});
+        } else {
+          impassable.push({x: tile.x, y: tile.y});
+        }
       }
     }
   }
