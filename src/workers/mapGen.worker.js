@@ -919,6 +919,10 @@ self.onmessage = function(e) {
     }
   }
 
+  // Gate and Keep constants (needed for border painting below)
+  const KEEP_CMD_LVL=20, KEEP_TROOPS=2000, KEEP_SIEGE=5000, KEEP_RADIUS=2;
+  const GATE_CMD_LVL=20, GATE_GARRISON=2000, GATE_SIEGE=10000; // 20 command @ 0.01 per small troop
+
   postMessage({ type:"progress", pct:83, label:"Painting borders..." });
 
   // ── Paint border segments + place crossing gate structures ─────────────
@@ -1020,6 +1024,9 @@ self.onmessage = function(e) {
   const P10_SIEGE = { 10:8000, 11:10000, 12:14000, 13:20000 };
   const keepMeta = {};
 
+  // Merge gate metadata from border painting (happened earlier)
+  Object.assign(keepMeta, gateMeta);
+
   for (let r2 = 0; r2 < ROWS - 1; r2++) {
     for (let c2 = 0; c2 < COLS - 1; c2++) {
       const idx2 = r2 * COLS + c2;
@@ -1063,9 +1070,6 @@ self.onmessage = function(e) {
       };
     }
   }
-
-  const KEEP_CMD_LVL=20, KEEP_TROOPS=2000, KEEP_SIEGE=5000, KEEP_RADIUS=2;
-  const GATE_CMD_LVL=20, GATE_GARRISON=2000, GATE_SIEGE=10000; // 20 command @ 0.01 per small troop
 
   for (const reg of REGION_LIST) {
     const idx = reg.cy*COLS + reg.cx;
