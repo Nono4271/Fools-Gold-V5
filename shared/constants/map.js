@@ -24,9 +24,9 @@ ashendead:    { base:"#1a1a22", bdr:"#4a4a6a", dot:"#6a6a8a", hq:"#0e0e14" },
 export const HQP = { player:{ c:363, r:200 }, ai:{ c:1037, r:200 } };
 export const AI_HQ_KEY = `${HQP.ai.c},${HQP.ai.r}`;
 
-// Win tile — Holy Grail keep (cx:923, cy:648 from regions.js)
-export const WIN_C = 923;
-export const WIN_R = 648;
+// Win tile — Holy Grail keep (cx:922, cy:652 from regions.js)
+export const WIN_C = 922;
+export const WIN_R = 652;
 export const WIN_KEY = `${WIN_C},${WIN_R}`;
 
 export const POWER_DEFS = {
