@@ -254,7 +254,6 @@ function crossingTerrain(type) {
   return TERRAIN_ENC.rockymountain; // tunnel
 }
 
-// Build set of all gate tiles and border tiles for a crossing
 // ── Border width ─────────────────────────────────────────────────────────────
 const BORDER_W = 4; // tiles wide/tall for each border strip
 const BORDER_HALF = Math.floor(BORDER_W / 2); // = 2
@@ -268,89 +267,75 @@ const BORDER_HALF = Math.floor(BORDER_W / 2); // = 2
 const MAP_X0 = 130, MAP_X1 = 1272;
 const MAP_Y0 =  75, MAP_Y1 =  848;
 
-// Group crossings by border line so we can paint the full strip once per border
-function groupCrossingsByBorder(crossings) {
-  const map = {};
-  for (const c of crossings) {
-    const key = c.axis + c.bCoord;
-    if (!map[key]) map[key] = { axis: c.axis, bCoord: c.bCoord, crossings: [] };
-    map[key].crossings.push(c);
-  }
-  return Object.values(map);
-}
 
-// Returns terrain type for a border
-function borderTerrain(axis, bCoord, crossings) {
-  // Use the type of the first crossing on this border for the terrain flavor
-  const c = crossings[0];
-  if (!c) return TERRAIN_ENC.river;
-  return crossingTerrain(c.type);
-}
-
-// Build the full set of tiles for one border line (all crossings on it)
-function buildBorderLine(axis, bCoord, crossingsOnBorder) {
+// Build border tiles only along actual shared edge segments
+function buildBorderSegments(crossings) {
   const impassable = [], gateA = [], gateB = [], pathTiles = [];
 
-  // Build gate windows for every crossing on this border
-  const gateWindows = crossingsOnBorder.map(c => {
-    const g = c.axis === 'H' ? c.gCoord : c.gCoord; // gate center on non-border axis
-    return {
-      gCoord: c.gCoord,
-      type: c.type,
-      id: c.id,
-      gateAOffset: -BORDER_HALF, // gate A hugs region A
-      gateBOffset: +BORDER_HALF, // gate B hugs region B
-    };
-  });
+  for (const crossing of crossings) {
+    const { axis, bCoord, gCoord, start, end, type, id } = crossing;
 
-  if (axis === 'H') {
-    // Horizontal border: strip of rows bCoord-2, bCoord-1, bCoord, bCoord+1
-    // Runs full width MAP_X0..MAP_X1
-    for (let offset = -BORDER_HALF; offset < BORDER_HALF; offset++) {
-      const y = bCoord + offset;
-      if (y < MAP_Y0 || y > MAP_Y1) continue;
-      for (let x = MAP_X0; x <= MAP_X1; x++) {
-        // Check if this x is the gate center coord on this border
-        let isGateA = false, isGateB = false, isPath = false;
-        for (const gw of gateWindows) {
-          const gx = gw.gCoord;
-          // Gate A: offset=-2 (outermost region A row), x === gx (1 tile)
-          if (offset === -BORDER_HALF && x === gx) { isGateA = true; break; }
-          // Gate B: offset=+1 (outermost region B row), x === gx (1 tile)
-          if (offset === BORDER_HALF - 1 && x === gx) { isGateB = true; break; }
-          // Path: offsets -1 and 0 (two center rows), x === gx (1 tile each)
-          if ((offset === -BORDER_HALF + 1 || offset === 0) && x === gx) { isPath = true; break; }
+    if (axis === 'H') {
+      // Horizontal border segment
+      const y = bCoord;
+      const xStart = Math.max(MAP_X0, Math.floor(start));
+      const xEnd = Math.min(MAP_X1, Math.ceil(end));
+      
+      // Paint 4-tile-wide border strip only along this edge segment
+      for (let offset = -BORDER_HALF; offset < BORDER_HALF; offset++) {
+        const row = y + offset;
+        if (row < MAP_Y0 || row > MAP_Y1) continue;
+        
+        for (let x = xStart; x <= xEnd; x++) {
+          const isGateX = (x === gCoord);
+          
+          if (offset === -BORDER_HALF && isGateX) {
+            // Gate A (region A side)
+            gateA.push({x, y: row, id: id+'_A', type});
+          } else if (offset === BORDER_HALF - 1 && isGateX) {
+            // Gate B (region B side)
+            gateB.push({x, y: row, id: id+'_B', type});
+          } else if ((offset === -BORDER_HALF + 1 || offset === 0) && isGateX) {
+            // Path tiles (center 2 rows)
+            pathTiles.push({x, y: row});
+          } else {
+            // Impassable border
+            impassable.push({x, y: row});
+          }
         }
-        if      (isGateA) { const gw = gateWindows.find(g => x === g.gCoord); gateA.push({x,y,id:gw.id+'_A',type:gw.type}); }
-        else if (isGateB) { const gw = gateWindows.find(g => x === g.gCoord); gateB.push({x,y,id:gw.id+'_B',type:gw.type}); }
-        else if (isPath)  pathTiles.push({x,y});
-        else              impassable.push({x,y});
       }
-    }
-  } else {
-    // Vertical border: strip of cols bCoord-2, bCoord-1, bCoord, bCoord+1
-    // Runs full height MAP_Y0..MAP_Y1
-    for (let offset = -BORDER_HALF; offset < BORDER_HALF; offset++) {
-      const x = bCoord + offset;
-      if (x < MAP_X0 || x > MAP_X1) continue;
-      for (let y = MAP_Y0; y <= MAP_Y1; y++) {
-        let isGateA = false, isGateB = false, isPath = false;
-        for (const gw of gateWindows) {
-          const gy = gw.gCoord;
-          // Gate A: offset=-2 (outermost region A col), y === gy (1 tile)
-          if (offset === -BORDER_HALF && y === gy) { isGateA = true; break; }
-          // Gate B: offset=+1 (outermost region B col), y === gy (1 tile)
-          if (offset === BORDER_HALF - 1 && y === gy) { isGateB = true; break; }
-          // Path: offsets -1 and 0 (two center cols), y === gy (1 tile each)
-          if ((offset === -BORDER_HALF + 1 || offset === 0) && y === gy) { isPath = true; break; }
+    } else {
+      // Vertical border segment
+      const x = bCoord;
+      const yStart = Math.max(MAP_Y0, Math.floor(start));
+      const yEnd = Math.min(MAP_Y1, Math.ceil(end));
+      
+      // Paint 4-tile-wide border strip only along this edge segment
+      for (let offset = -BORDER_HALF; offset < BORDER_HALF; offset++) {
+        const col = x + offset;
+        if (col < MAP_X0 || col > MAP_X1) continue;
+        
+        for (let y = yStart; y <= yEnd; y++) {
+          const isGateY = (y === gCoord);
+          
+          if (offset === -BORDER_HALF && isGateY) {
+            // Gate A (region A side)
+            gateA.push({x: col, y, id: id+'_A', type});
+          } else if (offset === BORDER_HALF - 1 && isGateY) {
+            // Gate B (region B side)
+            gateB.push({x: col, y, id: id+'_B', type});
+          } else if ((offset === -BORDER_HALF + 1 || offset === 0) && isGateY) {
+            // Path tiles (center 2 cols)
+            pathTiles.push({x: col, y});
+          } else {
+            // Impassable border
+            impassable.push({x: col, y});
+          }
         }
-        if      (isGateA) { const gw = gateWindows.find(g => y === g.gCoord); gateA.push({x,y,id:gw.id+'_A',type:gw.type}); }
-        else if (isGateB) { const gw = gateWindows.find(g => y === g.gCoord); gateB.push({x,y,id:gw.id+'_B',type:gw.type}); }
-        else if (isPath)  pathTiles.push({x,y});
-        else              impassable.push({x,y});
       }
     }
   }
+  
   return { impassable, gateA, gateB, pathTiles };
 }
 
@@ -561,6 +546,8 @@ CROSSINGS = (() => {
           axis: edge.axis,
           bCoord: edge.coord,
           gCoord: edge.gCoord,
+          start: edge.start,
+          end: edge.end,
           type: type,
           id: `${edge.axis.toLowerCase()}${edge.gCoord}_${edge.coord}`,
         });
@@ -999,89 +986,87 @@ self.onmessage = function(e) {
 
   postMessage({ type:"progress", pct:88, label:"Painting borders..." });
 
-  // ── Paint full border strips + place crossing gate structures ─────────────
+  // ── Paint border segments + place crossing gate structures ─────────────
   const gateMeta  = {};
   const impassKeys = [];
 
-  for (const bl of groupCrossingsByBorder(CROSSINGS)) {
-    const terrEnc = borderTerrain(bl.axis, bl.bCoord, bl.crossings);
-    const { impassable, gateA, gateB, pathTiles } = buildBorderLine(bl.axis, bl.bCoord, bl.crossings);
+  // Paint each crossing as an individual segment (not full-map lines)
+  const { impassable, gateA, gateB, pathTiles } = buildBorderSegments(CROSSINGS);
 
-    // Paint impassable border tiles
-    for (const {x, y} of impassable) {
-      const idx = y*COLS+x;
-      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-      terrainArr[idx]  = terrEnc;
-      flagArr[idx]     = (flagArr[idx] & ~F_GATE) | F_BORDER;
-      rssArr[idx]      = 0;
-      garrisonArr[idx] = 0;
-      impassKeys.push(`${x},${y}`);
-    }
+  // Paint impassable border tiles
+  for (const {x, y} of impassable) {
+    const idx = y*COLS+x;
+    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
+    // Use river for all borders for now (can be enhanced per-crossing later)
+    terrainArr[idx]  = TERRAIN_ENC.river;
+    flagArr[idx]     = (flagArr[idx] & ~F_GATE) | F_BORDER;
+    rssArr[idx]      = 0;
+    garrisonArr[idx] = 0;
+    impassKeys.push(`${x},${y}`);
+  }
 
-    // Paint path tiles — passable, use border terrain so they visually match
-    // the surrounding border strip (river/ravine/rockymountain)
-    for (const {x, y} of pathTiles) {
-      const idx = y*COLS+x;
-      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-      terrainArr[idx]  = terrEnc;
-      flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE;
-      rssArr[idx]      = 0;
-      garrisonArr[idx] = 0;
-    }
+  // Paint path tiles — passable, use border terrain
+  for (const {x, y} of pathTiles) {
+    const idx = y*COLS+x;
+    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
+    terrainArr[idx]  = TERRAIN_ENC.river;
+    flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE;
+    rssArr[idx]      = 0;
+    garrisonArr[idx] = 0;
+  }
 
-    // Place Gate A structures
-    for (const {x, y, id, type} of gateA) {
-      const idx = y*COLS+x;
-      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-      terrainArr[idx]  = terrEnc;
-      flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
-      garrisonArr[idx] = GATE_GARRISON;
-      siegeArr[idx]    = GATE_SIEGE;
-      siegeMaxArr[idx] = GATE_SIEGE;
-      rssArr[idx]      = 0;
-      const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
-      gateMeta[`${x},${y}`] = {
-        keepName: `${typeName} Gate A`,
-        garrisonWaves: 2,
-        garrison: GATE_GARRISON,
-        garrisonTroops: 20, // 20 command budget
-        cx: x, cy: y, side: 'A', type,
-        defCmd: {
-          n: `${typeName} Gate A Defender`,
-          icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
-          cls:'defender', faction:null, rarity:'veteran',
-          lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
-          atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
-        },
-      };
-    }
+  // Place Gate A structures
+  for (const {x, y, id, type} of gateA) {
+    const idx = y*COLS+x;
+    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
+    terrainArr[idx]  = TERRAIN_ENC.river;
+    flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
+    garrisonArr[idx] = GATE_GARRISON;
+    siegeArr[idx]    = GATE_SIEGE;
+    siegeMaxArr[idx] = GATE_SIEGE;
+    rssArr[idx]      = 0;
+    const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
+    gateMeta[`${x},${y}`] = {
+      keepName: `${typeName} Gate A`,
+      garrisonWaves: 2,
+      garrison: GATE_GARRISON,
+      garrisonTroops: 20, // 20 command budget
+      cx: x, cy: y, side: 'A', type,
+      defCmd: {
+        n: `${typeName} Gate A Defender`,
+        icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
+        cls:'defender', faction:null, rarity:'veteran',
+        lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
+        atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
+      },
+    };
+  }
 
-    // Place Gate B structures
-    for (const {x, y, id, type} of gateB) {
-      const idx = y*COLS+x;
-      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-      terrainArr[idx]  = terrEnc;
-      flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
-      garrisonArr[idx] = GATE_GARRISON;
-      siegeArr[idx]    = GATE_SIEGE;
-      siegeMaxArr[idx] = GATE_SIEGE;
-      rssArr[idx]      = 0;
-      const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
-      gateMeta[`${x},${y}`] = {
-        keepName: `${typeName} Gate B`,
-        garrisonWaves: 2,
-        garrison: GATE_GARRISON,
-        garrisonTroops: 20, // 20 command budget
-        cx: x, cy: y, side: 'B', type,
-        defCmd: {
-          n: `${typeName} Gate B Defender`,
-          icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
-          cls:'defender', faction:null, rarity:'veteran',
-          lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
-          atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
-        },
-      };
-    }
+  // Place Gate B structures
+  for (const {x, y, id, type} of gateB) {
+    const idx = y*COLS+x;
+    if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
+    terrainArr[idx]  = TERRAIN_ENC.river;
+    flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
+    garrisonArr[idx] = GATE_GARRISON;
+    siegeArr[idx]    = GATE_SIEGE;
+    siegeMaxArr[idx] = GATE_SIEGE;
+    rssArr[idx]      = 0;
+    const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
+    gateMeta[`${x},${y}`] = {
+      keepName: `${typeName} Gate B`,
+      garrisonWaves: 2,
+      garrison: GATE_GARRISON,
+      garrisonTroops: 20, // 20 command budget
+      cx: x, cy: y, side: 'B', type,
+      defCmd: {
+        n: `${typeName} Gate B Defender`,
+        icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
+        cls:'defender', faction:null, rarity:'veteran',
+        lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
+        atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
+      },
+    };
   }
 
   // Merge gateMeta into keepMeta
