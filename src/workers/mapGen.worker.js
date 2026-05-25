@@ -5,7 +5,7 @@
 //   outgoing: { type:'progress', pct, label }
 //             { type:'done', buffers, meta, spawnKeys, aiHqMap, playerSpawn }  ← transferable, zero-copy
 
-const COLS = 1850, ROWS = 1300;
+const COLS = 1845, ROWS = 1305;
 const SIZE = COLS * ROWS;
 const SIEGE_BASE = 50;
 
@@ -33,7 +33,7 @@ const REGION_POWER = { start:1, farm:2, conflict:3, ring:4 }; // kept for keeps 
 // P10–P13 use weight 1 each but are converted to 2×2 structures after the main
 // tile pass — any tile that rolled P10-P13 becomes the top-left of a 2×2 block.
 const POWER_WEIGHTS = [
-  { pl:1,  w: 388927 },
+  { pl:1,  w: 388952 }, // +25 for new map size
   { pl:2,  w: 395107 },
   { pl:3,  w: 360750 },
   { pl:4,  w: 360750 },
@@ -91,94 +91,86 @@ const F_BORDER   = 1<<8;  // border terrain tile (impassable, not a gate)
 
 // ── Region list — 1850×1300 design space ──────────────────────────────────────
 const REGION_LIST = [
-  { key:"lastwatch", name:"Lastwatch", layer:"farm", keepName:"Lastwatch Keep", cx:786, cy:600, factions:null },
-  { key:"finalhope", name:"Finalhope", layer:"farm", keepName:"Finalhope Keep", cx:1059, cy:588, factions:null },
-  { key:"dawngate", name:"Dawngate", layer:"farm", keepName:"Dawngate Keep", cx:1059, cy:756, factions:null },
-  { key:"twilightspire", name:"Twilightspire", layer:"farm", keepName:"Twilightspire Keep", cx:786, cy:744, factions:null },
-  { key:"stoneheart", name:"Stoneheart", layer:"farm", keepName:"Stoneheart Keep", cx: 410, cy: 216, factions:[] },
-  { key:"ashenmark", name:"Ashenmark", layer:"farm", keepName:"Ashenmark Keep", cx:1435, cy: 216, factions:[] },
-  { key:"dreadmarsh", name:"Dreadmarsh", layer:"farm", keepName:"Dreadmarsh Keep", cx: 410, cy:1080, factions:[] },
-  { key:"ironwood", name:"Ironwood", layer:"farm", keepName:"Ironwood Keep", cx:1435, cy:1080, factions:[] },
-  { key:"emberfang", name:"Emberfang", layer:"farm", keepName:"Flamecrest Peak Keep", cx: 103, cy: 432, factions:["dragons"] },
-  { key:"spellspire", name:"Spellspire", layer:"farm", keepName:"Arcaneum Keep", cx:1743, cy: 432, factions:["wizards"] },
-  { key:"warbane", name:"Warbane", layer:"farm", keepName:"Bloodrock Keep", cx: 103, cy: 864, factions:["orcs"] },
-  { key:"lightshield", name:"Lightshield", layer:"farm", keepName:"Oathkeep Keep", cx:1743, cy: 864, factions:["holyknights"] },
-  { key:"shadowmere", name:"Shadowmere", layer:"farm", keepName:"Shadowmere Keep", cx: 103, cy:  72, factions:[] },
-  { key:"icepeak", name:"Icepeak", layer:"farm", keepName:"Icepeak Keep", cx: 308, cy:  72, factions:["coldborns"] },
-  // Frosthold - Coldborns Capital
-  { key:"frosthold", name:"Frosthold", layer:"start", keepName:"Frosthold Keep", cx: 513, cy:  72, factions:["coldborns"] },
-  { key:"icebreak", name:"Icebreak", layer:"farm", keepName:"Icebreak Keep", cx: 718, cy:  72, factions:["coldborns"] },
-  { key:"drearfort", name:"Drearfort", layer:"farm", keepName:"Drearfort Keep", cx: 923, cy:  72, factions:[] },
-  { key:"shadowmire", name:"Shadowmire", layer:"farm", keepName:"Shadowmire Keep", cx:1128, cy:  72, factions:["nightcreatures"] },
-  // Duskmire - Nightcreatures Capital
-  { key:"duskmire", name:"Duskmire", layer:"start", keepName:"Duskmire Keep", cx:1333, cy:  72, factions:["nightcreatures"] },
-  { key:"shadowfen", name:"Shadowfen", layer:"farm", keepName:"Shadowfen Keep", cx:1538, cy:  72, factions:["nightcreatures"] },
-  { key:"gravemist", name:"Gravemist", layer:"farm", keepName:"Gravemist Keep", cx:1743, cy:  72, factions:[] },
-  // Flamecrest Peak - Dragons Capital
-  { key:"flamecrestpeak", name:"Flamecrest Peak", layer:"start", keepName:"Flamecrest Peak Keep", cx: 103, cy: 216, factions:["dragons"] },
-  { key:"ebonvault", name:"Ebonvault", layer:"farm", keepName:"Ebonvault Keep", cx: 718, cy: 216, factions:[] },
-  { key:"wraithmoor", name:"Wraithmoor", layer:"farm", keepName:"Wraithmoor Keep", cx: 923, cy: 216, factions:[] },
-  { key:"deathmarsh", name:"Deathmarsh", layer:"farm", keepName:"Deathmarsh Keep", cx:1128, cy: 216, factions:[] },
-  // Arcaneum - Wizards Capital
-  { key:"arcaneum", name:"Arcaneum", layer:"start", keepName:"Arcaneum Keep", cx:1743, cy: 216, factions:["wizards"] },
-  { key:"bleakstone", name:"Bleakstone", layer:"farm", keepName:"Bleakstone Keep", cx: 308, cy: 360, factions:[] },
-  { key:"fellwood", name:"Fellwood", layer:"farm", keepName:"Fellwood Keep", cx: 513, cy: 360, factions:[] },
-  { key:"cursedfen", name:"Cursedfen", layer:"farm", keepName:"Cursedfen Keep", cx: 718, cy: 360, factions:[] },
-  { key:"rotmire", name:"Rotmire", layer:"farm", keepName:"Rotmire Keep", cx: 923, cy: 360, factions:[] },
-  { key:"blightmoor", name:"Blightmoor", layer:"farm", keepName:"Blightmoor Keep", cx:1128, cy: 360, factions:[] },
-  { key:"skullcrag", name:"Skullcrag", layer:"farm", keepName:"Skullcrag Keep", cx:1333, cy: 360, factions:[] },
-  { key:"ghosthollow", name:"Ghosthollow", layer:"farm", keepName:"Ghosthollow Keep", cx:1538, cy: 360, factions:[] },
-  { key:"doomspire", name:"Doomspire", layer:"farm", keepName:"Doomspire Keep", cx: 308, cy: 504, factions:[] },
-  { key:"duskwood", name:"Duskwood", layer:"farm", keepName:"Duskwood Keep", cx: 513, cy: 504, factions:[] },
-  { key:"gloomvale", name:"Gloomvale", layer:"farm", keepName:"Gloomvale Keep", cx:1333, cy: 504, factions:[] },
-  { key:"nightmarsh", name:"Nightmarsh", layer:"farm", keepName:"Nightmarsh Keep", cx:1538, cy: 504, factions:[] },
-  { key:"cryptwood", name:"Cryptwood", layer:"farm", keepName:"Cryptwood Keep", cx: 103, cy: 648, factions:[] },
-  { key:"bonewood", name:"Bonewood", layer:"farm", keepName:"Bonewood Keep", cx: 308, cy: 648, factions:[] },
-  { key:"ashenvale", name:"Ashenvale", layer:"farm", keepName:"Ashenvale Keep", cx: 513, cy: 648, factions:[] },
-  { key:"holyGrail", name:"Holy Grail", layer:"ring", keepName:"The Holy Grail", cx: 923, cy: 648, factions:[] },
-  { key:"grimstone", name:"Grimstone", layer:"farm", keepName:"Grimstone Keep", cx:1333, cy: 648, factions:[] },
-  { key:"darkhollow", name:"Darkhollow", layer:"farm", keepName:"Darkhollow Keep", cx:1538, cy: 648, factions:[] },
-  { key:"blackstone", name:"Blackstone", layer:"farm", keepName:"Blackstone Keep", cx:1743, cy: 648, factions:[] },
-  { key:"deadwood", name:"Deadwood", layer:"farm", keepName:"Deadwood Keep", cx: 308, cy: 792, factions:[] },
-  { key:"frostbite", name:"Frostbite", layer:"farm", keepName:"Frostbite Keep", cx: 513, cy: 792, factions:[] },
-  { key:"icefall", name:"Icefall", layer:"farm", keepName:"Icefall Keep", cx:1333, cy: 792, factions:[] },
-  { key:"thornvale", name:"Thornvale", layer:"farm", keepName:"Thornvale Keep", cx:1538, cy: 792, factions:[] },
-  { key:"bloodmoor", name:"Bloodmoor", layer:"farm", keepName:"Bloodmoor Keep", cx: 308, cy: 936, factions:[] },
-  { key:"wargrim", name:"Wargrim", layer:"farm", keepName:"Wargrim Keep", cx: 513, cy: 936, factions:[] },
-  { key:"steelwatch", name:"Steelwatch", layer:"farm", keepName:"Steelwatch Keep", cx: 718, cy: 936, factions:[] },
-  { key:"ironhold", name:"Ironhold", layer:"farm", keepName:"Ironhold Keep", cx: 923, cy: 936, factions:[] },
-  { key:"battlemarsh", name:"Battlemarsh", layer:"farm", keepName:"Battlemarsh Keep", cx:1128, cy: 936, factions:[] },
-  { key:"stormwatch", name:"Stormwatch", layer:"farm", keepName:"Stormwatch Keep", cx:1333, cy: 936, factions:[] },
-  { key:"tidecrag", name:"Tidecrag", layer:"farm", keepName:"Tidecrag Keep", cx:1538, cy: 936, factions:[] },
-  // Bloodrock Keep - Orcs Capital
-  { key:"bloodrock", name:"Bloodrock Keep", layer:"start", keepName:"Bloodrock Keep", cx: 103, cy:1080, factions:["orcs"] },
-  { key:"salthaven", name:"Salthaven", layer:"farm", keepName:"Salthaven Keep", cx: 718, cy:1080, factions:[] },
-  { key:"deepwater", name:"Deepwater", layer:"farm", keepName:"Deepwater Keep", cx: 923, cy:1080, factions:[] },
-  { key:"fogmire", name:"Fogmire", layer:"farm", keepName:"Fogmire Keep", cx:1128, cy:1080, factions:[] },
-  // Oathkeep - Holyknights Capital
-  { key:"oathkeep", name:"Oathkeep", layer:"start", keepName:"Oathkeep Keep", cx:1743, cy:1080, factions:["holyknights"] },
-  { key:"runestone", name:"Runestone", layer:"farm", keepName:"Runestone Keep", cx: 103, cy:1224, factions:[] },
-  { key:"skullcove", name:"Skullcove", layer:"farm", keepName:"Deadmans Harbor Keep", cx: 308, cy:1224, factions:["pirates"] },
-  // Deadman's Harbor - Pirates Capital
-  { key:"deadmansharbor", name:"Deadmans Harbor", layer:"start", keepName:"Deadmans Harbor Keep", cx: 513, cy:1224, factions:["pirates"] },
-  { key:"blackbrine", name:"Blackbrine", layer:"farm", keepName:"Blackbrine Keep", cx: 718, cy:1224, factions:["pirates"] },
-  { key:"mysticfen", name:"Mysticfen", layer:"farm", keepName:"Mysticfen Keep", cx: 923, cy:1224, factions:[] },
-  { key:"graveshroud", name:"Graveshroud", layer:"farm", keepName:"Bonehallow Keep", cx:1128, cy:1224, factions:["ashen_dead"] },
-  // Bonehallow - Ashen Dead Capital
-  { key:"bonehallow", name:"Bonehallow", layer:"start", keepName:"Bonehallow Keep", cx:1333, cy:1224, factions:["ashen_dead"] },
-  { key:"greywatch", name:"Greywatch", layer:"farm", keepName:"Greywatch Keep", cx:1538, cy:1224, factions:["ashen_dead"] },
-  { key:"voidmarsh", name:"Voidmarsh", layer:"farm", keepName:"Voidmarsh Keep", cx:1743, cy:1224, factions:[] },
+  { key:"shadowmere", name:"Shadowmere", layer:"farm", keepName:"Shadowmere Keep", cx:102, cy:1232, factions:[] },
+  { key:"icepeak", name:"Icepeak", layer:"farm", keepName:"Icepeak Keep", cx:307, cy:1232, factions:["coldborns"] },
+  { key:"frosthold", name:"Frosthold", layer:"start", keepName:"Frosthold Keep", cx:512, cy:1232, factions:["coldborns"] },
+  { key:"icebreak", name:"Icebreak", layer:"farm", keepName:"Icebreak Keep", cx:717, cy:1232, factions:["coldborns"] },
+  { key:"drearfort", name:"Drearfort", layer:"farm", keepName:"Drearfort Keep", cx:922, cy:1232, factions:[] },
+  { key:"shadowmire", name:"Shadowmire", layer:"farm", keepName:"Shadowmire Keep", cx:1127, cy:1232, factions:["nightcreatures"] },
+  { key:"duskmire", name:"Duskmire", layer:"start", keepName:"Duskmire Keep", cx:1332, cy:1232, factions:["nightcreatures"] },
+  { key:"shadowfen", name:"Shadowfen", layer:"farm", keepName:"Shadowfen Keep", cx:1537, cy:1232, factions:["nightcreatures"] },
+  { key:"gravemist", name:"Gravemist", layer:"farm", keepName:"Gravemist Keep", cx:1742, cy:1232, factions:[] },
+  { key:"flamecrestpeak", name:"Flamecrest Peak", layer:"start", keepName:"Flamecrest Peak Keep", cx:102, cy:1087, factions:["dragons"] },
+  { key:"ebonvault", name:"Ebonvault", layer:"farm", keepName:"Ebonvault Keep", cx:410, cy:1087, factions:["dragons"] },
+  { key:"wraithmoor", name:"Wraithmoor", layer:"farm", keepName:"Wraithmoor Keep", cx:717, cy:1087, factions:[] },
+  { key:"deathmarsh", name:"Deathmarsh", layer:"farm", keepName:"Deathmarsh Keep", cx:922, cy:1087, factions:[] },
+  { key:"bleakstone", name:"Bleakstone", layer:"farm", keepName:"Bleakstone Keep", cx:1127, cy:1087, factions:[] },
+  { key:"fellwood", name:"Fellwood", layer:"farm", keepName:"Fellwood Keep", cx:1435, cy:1087, factions:["wizards"] },
+  { key:"arcaneum", name:"Arcaneum", layer:"start", keepName:"Arcaneum Keep", cx:1742, cy:1087, factions:["wizards"] },
+  { key:"cursedfen", name:"Cursedfen", layer:"farm", keepName:"Cursedfen Keep", cx:102, cy:870, factions:[] },
+  { key:"rotmire", name:"Rotmire", layer:"farm", keepName:"Rotmire Keep", cx:307, cy:942, factions:[] },
+  { key:"blightmoor", name:"Blightmoor", layer:"farm", keepName:"Blightmoor Keep", cx:512, cy:942, factions:[] },
+  { key:"skullcrag", name:"Skullcrag", layer:"farm", keepName:"Skullcrag Keep", cx:717, cy:942, factions:[] },
+  { key:"ghosthollow", name:"Ghosthollow", layer:"farm", keepName:"Ghosthollow Keep", cx:922, cy:942, factions:[] },
+  { key:"doomspire", name:"Doomspire", layer:"farm", keepName:"Doomspire Keep", cx:1127, cy:942, factions:[] },
+  { key:"duskwood", name:"Duskwood", layer:"farm", keepName:"Duskwood Keep", cx:1332, cy:942, factions:[] },
+  { key:"gloomvale", name:"Gloomvale", layer:"farm", keepName:"Gloomvale Keep", cx:1537, cy:942, factions:[] },
+  { key:"nightmarsh", name:"Nightmarsh", layer:"farm", keepName:"Nightmarsh Keep", cx:1742, cy:870, factions:[] },
+  { key:"cryptwood", name:"Cryptwood", layer:"farm", keepName:"Cryptwood Keep", cx:307, cy:797, factions:[] },
+  { key:"bonewood", name:"Bonewood", layer:"farm", keepName:"Bonewood Keep", cx:512, cy:797, factions:[] },
+  { key:"ashenvale", name:"Ashenvale", layer:"farm", keepName:"Ashenvale Keep", cx:769, cy:761, factions:null },
+  { key:"thornvale", name:"Thornvale", layer:"farm", keepName:"Thornvale Keep", cx:1076, cy:761, factions:null },
+  { key:"grimstone", name:"Grimstone", layer:"farm", keepName:"Grimstone Keep", cx:1332, cy:797, factions:[] },
+  { key:"darkhollow", name:"Darkhollow", layer:"farm", keepName:"Darkhollow Keep", cx:1537, cy:797, factions:[] },
+  { key:"blackstone", name:"Blackstone", layer:"farm", keepName:"Blackstone Keep", cx:102, cy:652, factions:[] },
+  { key:"deadwood", name:"Deadwood", layer:"farm", keepName:"Deadwood Keep", cx:307, cy:652, factions:[] },
+  { key:"frostbite", name:"Frostbite", layer:"farm", keepName:"Frostbite Keep", cx:512, cy:652, factions:[] },
+  { key:"holygrail", name:"Holy Grail", layer:"ring", keepName:"Holy Grail Keep", cx:922, cy:652, factions:[] },
+  { key:"bloodmoor", name:"Bloodmoor", layer:"farm", keepName:"Bloodmoor Keep", cx:1332, cy:652, factions:[] },
+  { key:"wargrim", name:"Wargrim", layer:"farm", keepName:"Wargrim Keep", cx:1537, cy:652, factions:[] },
+  { key:"icefall", name:"Icefall", layer:"farm", keepName:"Icefall Keep", cx:1742, cy:652, factions:[] },
+  { key:"steelwatch", name:"Steelwatch", layer:"farm", keepName:"Steelwatch Keep", cx:307, cy:507, factions:[] },
+  { key:"ironhold", name:"Ironhold", layer:"farm", keepName:"Ironhold Keep", cx:512, cy:507, factions:[] },
+  { key:"battlemarsh", name:"Battlemarsh", layer:"farm", keepName:"Battlemarsh Keep", cx:769, cy:543, factions:null },
+  { key:"stormwatch", name:"Stormwatch", layer:"farm", keepName:"Stormwatch Keep", cx:1076, cy:543, factions:null },
+  { key:"tidecrag", name:"Tidecrag", layer:"farm", keepName:"Tidecrag Keep", cx:1332, cy:507, factions:[] },
+  { key:"warbane", name:"Warbane", layer:"farm", keepName:"Warbane Keep", cx:1537, cy:507, factions:[] },
+  { key:"lightshield", name:"Lightshield", layer:"farm", keepName:"Lightshield Keep", cx:102, cy:435, factions:[] },
+  { key:"emberfang", name:"Emberfang", layer:"farm", keepName:"Emberfang Keep", cx:307, cy:362, factions:[] },
+  { key:"spellspire", name:"Spellspire", layer:"farm", keepName:"Spellspire Keep", cx:512, cy:362, factions:[] },
+  { key:"runestone", name:"Runestone", layer:"farm", keepName:"Runestone Keep", cx:717, cy:362, factions:[] },
+  { key:"skullcove", name:"Skullcove", layer:"farm", keepName:"Skullcove Keep", cx:922, cy:362, factions:[] },
+  { key:"blackbrine", name:"Blackbrine", layer:"farm", keepName:"Blackbrine Keep", cx:1127, cy:362, factions:[] },
+  { key:"mysticfen", name:"Mysticfen", layer:"farm", keepName:"Mysticfen Keep", cx:1332, cy:362, factions:[] },
+  { key:"salthaven", name:"Salthaven", layer:"farm", keepName:"Salthaven Keep", cx:1537, cy:362, factions:[] },
+  { key:"deepwater", name:"Deepwater", layer:"farm", keepName:"Deepwater Keep", cx:1742, cy:435, factions:[] },
+  { key:"bloodrock", name:"Bloodrock", layer:"start", keepName:"Bloodrock Keep", cx:102, cy:217, factions:["orcs"] },
+  { key:"fogmire", name:"Fogmire", layer:"farm", keepName:"Fogmire Keep", cx:410, cy:217, factions:["orcs"] },
+  { key:"graveshroud", name:"Graveshroud", layer:"farm", keepName:"Graveshroud Keep", cx:717, cy:217, factions:[] },
+  { key:"greywatch", name:"Greywatch", layer:"farm", keepName:"Greywatch Keep", cx:922, cy:217, factions:[] },
+  { key:"voidmarsh", name:"Voidmarsh", layer:"farm", keepName:"Voidmarsh Keep", cx:1127, cy:217, factions:[] },
+  { key:"stoneheart", name:"Stoneheart", layer:"farm", keepName:"Stoneheart Keep", cx:1435, cy:217, factions:["holyknights"] },
+  { key:"oathkeep", name:"Oathkeep", layer:"start", keepName:"Oathkeep Keep", cx:1742, cy:217, factions:["holyknights"] },
+  { key:"ashenmark", name:"Ashenmark", layer:"farm", keepName:"Ashenmark Keep", cx:102, cy:72, factions:[] },
+  { key:"dreadmarsh", name:"Dreadmarsh", layer:"farm", keepName:"Dreadmarsh Keep", cx:307, cy:72, factions:[] },
+  { key:"deadmansharbor", name:"Deadmans Harbor", layer:"start", keepName:"Deadmans Harbor Keep", cx:512, cy:72, factions:["pirates"] },
+  { key:"ironwood", name:"Ironwood", layer:"farm", keepName:"Ironwood Keep", cx:717, cy:72, factions:[] },
+  { key:"lastwatch", name:"Lastwatch", layer:"farm", keepName:"Lastwatch Keep", cx:922, cy:72, factions:[] },
+  { key:"finalhope", name:"Finalhope", layer:"farm", keepName:"Finalhope Keep", cx:1127, cy:72, factions:[] },
+  { key:"bonehallow", name:"Bonehallow", layer:"start", keepName:"Bonehallow Keep", cx:1332, cy:72, factions:["ashen_dead"] },
+  { key:"dawngate", name:"Dawngate", layer:"farm", keepName:"Dawngate Keep", cx:1537, cy:72, factions:[] },
+  { key:"twilightspire", name:"Twilightspire", layer:"farm", keepName:"Twilightspire Keep", cx:1742, cy:72, factions:[] },
 ];
 
 const FACTION_REGIONS = {
-  ashen_dead     : { start:"bonehallow", farm:"graveshroud" },
+  ashen_dead     : { start:"bonehallow", farm:"dawngate" },
   coldborns      : { start:"frosthold", farm:"icepeak" },
-  dragons        : { start:"flamecrestpeak", farm:"emberfang" },
-  holyknights    : { start:"oathkeep", farm:"lightshield" },
+  dragons        : { start:"flamecrestpeak", farm:"ebonvault" },
+  holyknights    : { start:"oathkeep", farm:"stoneheart" },
   nightcreatures : { start:"duskmire", farm:"shadowmire" },
-  orcs           : { start:"bloodrock", farm:"warbane" },
-  pirates        : { start:"deadmansharbor", farm:"skullcove" },
-  wizards        : { start:"arcaneum", farm:"spellspire" },
+  orcs           : { start:"bloodrock", farm:"fogmire" },
+  pirates        : { start:"deadmansharbor", farm:"ironwood" },
+  wizards        : { start:"arcaneum", farm:"fellwood" },
 };
 
 const KEEP_SET = new Set(REGION_LIST.map(r => `${r.cx},${r.cy}`));
@@ -265,8 +257,97 @@ const MAP_Y0 =  75, MAP_Y1 =  848;
 
 // Place gates directly at crossing coordinates
 function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
-  const gateA = [], gateB = [];
+  const gateA = [], gateB = [], pathTiles = [], impassable = [];
+  const BORDER_WIDTH = 2; // 4 tiles total (2 on each side of boundary)
   
+  // Extract all vertical and horizontal borders from CROSSINGS
+  // Each crossing defines a border line with gates
+  const verticalBorders = new Map(); // x -> [{yStart, yEnd, gates: Set}]
+  const horizontalBorders = new Map(); // y -> [{xStart, xEnd, gates: Set}]
+  
+  for (const crossing of CROSSINGS) {
+    const { axis, bCoord, gCoord } = crossing;
+    
+    if (axis === 'V') {
+      // Vertical border at x = bCoord
+      if (!verticalBorders.has(bCoord)) {
+        verticalBorders.set(bCoord, []);
+      }
+      // Gate at y = gCoord (4 tiles: gCoord-2 to gCoord+1)
+      verticalBorders.get(bCoord).push({
+        gateY: gCoord,
+        gateStart: gCoord - 2,
+        gateEnd: gCoord + 1
+      });
+    } else if (axis === 'H') {
+      // Horizontal border at y = bCoord
+      if (!horizontalBorders.has(bCoord)) {
+        horizontalBorders.set(bCoord, []);
+      }
+      // Gate at x = gCoord (4 tiles: gCoord-2 to gCoord+1)
+      horizontalBorders.get(bCoord).push({
+        gateX: gCoord,
+        gateStart: gCoord - 2,
+        gateEnd: gCoord + 1
+      });
+    }
+  }
+  
+  // Draw vertical borders (4 tiles wide: -2, -1, +1, +2 from center line)
+  for (const [x, gates] of verticalBorders) {
+    const gateYSet = new Set();
+    gates.forEach(g => {
+      for (let y = g.gateStart; y <= g.gateEnd; y++) {
+        gateYSet.add(y);
+      }
+    });
+    
+    // Draw border on both sides of the line
+    for (let dx = -BORDER_WIDTH; dx <= BORDER_WIDTH; dx++) {
+      if (dx === 0) continue; // Skip the exact boundary line
+      const bx = x + dx;
+      if (bx < 0 || bx >= COLS) continue;
+      
+      for (let y = 0; y < ROWS; y++) {
+        if (gateYSet.has(y)) {
+          // Gate tile - passable
+          pathTiles.push({ x: bx, y });
+        } else {
+          // Border tile - impassable
+          impassable.push({ x: bx, y });
+        }
+      }
+    }
+  }
+  
+  // Draw horizontal borders (4 tiles wide: -2, -1, +1, +2 from center line)
+  for (const [y, gates] of horizontalBorders) {
+    const gateXSet = new Set();
+    gates.forEach(g => {
+      for (let x = g.gateStart; x <= g.gateEnd; x++) {
+        gateXSet.add(x);
+      }
+    });
+    
+    // Draw border on both sides of the line
+    for (let dy = -BORDER_WIDTH; dy <= BORDER_WIDTH; dy++) {
+      if (dy === 0) continue; // Skip the exact boundary line
+      const by = y + dy;
+      if (by < 0 || by >= ROWS) continue;
+      
+      for (let x = 0; x < COLS; x++) {
+        if (gateXSet.has(x)) {
+          // Gate tile - passable
+          pathTiles.push({ x, y: by });
+        } else {
+          // Border tile - impassable
+          impassable.push({ x, y: by });
+        }
+      }
+    }
+  }
+  
+  // Build gate structures at crossing positions
   for (const crossing of CROSSINGS) {
     const { axis, bCoord, gCoord, type, id } = crossing;
     
@@ -281,198 +362,217 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
     }
   }
   
-  return { impassable: [], gateA, gateB, pathTiles: [] };
+  return { impassable, gateA, gateB, pathTiles };
 }
 
-// ── Generate Voronoi polygons for all 70 regions ─────────────────────────────
+// ── Generate Voronoi polygons for all 69 regions ─────────────────────────────
 // Uses perpendicular bisector clipping to create exact Voronoi cells
-// ── Generate Voronoi polygons for all 70 regions ─────────────────────────────
+// ── Generate Voronoi polygons for all 69 regions ─────────────────────────────
 const POLYS = {
-  arcaneum: [[1640, 144], [1845, 144], [1845, 288], [1640, 288]],
-  ashenmark: [[1230, 144], [1435, 144], [1640, 144], [1640, 288], [1435, 288], [1230, 288]],
-  ashenvale: [[410, 576], [615, 576], [615, 720], [410, 720]],
-  battlemarsh: [[1025, 864], [1230, 864], [1230, 1008], [1025, 1008]],
-  blackbrine: [[615, 1152], [820, 1152], [820, 1296], [615, 1296]],
-  blackstone: [[1640, 576], [1845, 576], [1845, 720], [1640, 720]],
-  bleakstone: [[205, 288], [410, 288], [410, 432], [205, 432]],
-  blightmoor: [[1025, 288], [1230, 288], [1230, 432], [1025, 432]],
-  bloodmoor: [[205, 864], [410, 864], [410, 1008], [205, 1008]],
-  bloodrock: [[0, 1008], [205, 1008], [205, 1152], [0, 1152]],
-  bonehallow: [[1230, 1152], [1435, 1152], [1435, 1296], [1230, 1296]],
-  bonewood: [[205, 576], [410, 576], [410, 720], [205, 720]],
-  cryptwood: [[0, 576], [205, 576], [205, 720], [0, 720]],
-  cursedfen: [[615, 288], [820, 288], [820, 432], [615, 432]],
-  darkhollow: [[1435, 576], [1640, 576], [1640, 720], [1435, 720]],
-  dawngate: [[1025, 648], [1025, 720], [1230, 720], [1230, 864], [923, 864], [923, 720]],
-  deadmansharbor: [[410, 1152], [615, 1152], [615, 1296], [410, 1296]],
-  deadwood: [[205, 720], [410, 720], [410, 864], [205, 864]],
-  deathmarsh: [[1025, 144], [1230, 144], [1230, 288], [1025, 288]],
-  deepwater: [[820, 1008], [1025, 1008], [1025, 1152], [820, 1152]],
-  doomspire: [[205, 432], [410, 432], [410, 576], [205, 576]],
-  drearfort: [[820, 0], [1025, 0], [1025, 144], [820, 144]],
-  dreadmarsh: [[205, 1008], [410, 1008], [410, 1152], [205, 1152]],
-  duskmire: [[1230, 0], [1435, 0], [1435, 144], [1230, 144]],
-  duskwood: [[410, 432], [615, 432], [615, 576], [410, 576]],
-  ebonvault: [[615, 144], [820, 144], [820, 288], [615, 288]],
-  emberfang: [[0, 288], [205, 288], [205, 576], [0, 576]],
-  fellwood: [[410, 288], [615, 288], [615, 432], [410, 432]],
-  finalhope: [[923, 432], [1230, 432], [1230, 720], [1025, 720], [1025, 648], [923, 576]],
-  flamecrestpeak: [[0, 144], [205, 144], [205, 288], [0, 288]],
-  fogmire: [[1025, 1008], [1230, 1008], [1230, 1152], [1025, 1152]],
-  frostbite: [[410, 720], [615, 720], [615, 864], [410, 864]],
-  frosthold: [[410, 0], [615, 0], [615, 144], [410, 144]],
-  ghosthollow: [[1435, 288], [1640, 288], [1640, 432], [1435, 432]],
-  gloomvale: [[1230, 432], [1435, 432], [1435, 576], [1230, 576]],
-  gravemist: [[1640, 0], [1845, 0], [1845, 144], [1640, 144]],
-  graveshroud: [[1025, 1152], [1230, 1152], [1230, 1296], [1025, 1296]],
-  greywatch: [[1435, 1152], [1640, 1152], [1640, 1296], [1435, 1296]],
-  grimstone: [[1230, 576], [1435, 576], [1435, 720], [1230, 720]],
-  holyGrail: [[821, 576], [1025, 576], [1025, 720], [821, 720]],
-  icebreak: [[615, 0], [820, 0], [820, 144], [615, 144]],
-  icefall: [[1230, 720], [1435, 720], [1435, 864], [1230, 864]],
-  icepeak: [[205, 0], [410, 0], [410, 144], [205, 144]],
-  ironhold: [[820, 864], [1025, 864], [1025, 1008], [820, 1008]],
-  ironwood: [[1230, 1008], [1435, 1008], [1640, 1008], [1640, 1152], [1435, 1152], [1230, 1152]],
-  lastwatch: [[615, 432], [923, 432], [923, 648], [821, 648], [821, 720], [615, 720]],
-  lightshield: [[1640, 720], [1845, 720], [1845, 1008], [1640, 1008]],
-  mysticfen: [[820, 1152], [1025, 1152], [1025, 1296], [820, 1296]],
-  nightmarsh: [[1435, 432], [1640, 432], [1640, 576], [1435, 576]],
-  oathkeep: [[1640, 1008], [1845, 1008], [1845, 1152], [1640, 1152]],
-  rotmire: [[820, 288], [1025, 288], [1025, 432], [820, 432]],
-  runestone: [[0, 1152], [205, 1152], [205, 1296], [0, 1296]],
-  salthaven: [[615, 1008], [820, 1008], [820, 1152], [615, 1152]],
-  shadowfen: [[1435, 0], [1640, 0], [1640, 144], [1435, 144]],
-  shadowmere: [[0, 0], [205, 0], [205, 144], [0, 144]],
-  shadowmire: [[1025, 0], [1230, 0], [1230, 144], [1025, 144]],
-  skullcove: [[205, 1152], [410, 1152], [410, 1296], [205, 1296]],
-  skullcrag: [[1230, 288], [1435, 288], [1435, 432], [1230, 432]],
-  spellspire: [[1640, 288], [1845, 288], [1845, 576], [1640, 576]],
-  steelwatch: [[615, 864], [820, 864], [820, 1008], [615, 1008]],
-  stoneheart: [[205, 144], [410, 144], [615, 144], [615, 288], [410, 288], [205, 288]],
-  stormwatch: [[1230, 864], [1435, 864], [1435, 1008], [1230, 1008]],
-  thornvale: [[1435, 720], [1640, 720], [1640, 864], [1435, 864]],
-  tidecrag: [[1435, 864], [1640, 864], [1640, 1008], [1435, 1008]],
-  twilightspire: [[615, 720], [821, 720], [821, 648], [923, 648], [923, 864], [615, 864]],
-  voidmarsh: [[1640, 1152], [1845, 1152], [1845, 1296], [1640, 1296]],
-  warbane: [[0, 720], [205, 720], [205, 1008], [0, 1008]],
-  wargrim: [[410, 864], [615, 864], [615, 1008], [410, 1008]],
-  wraithmoor: [[820, 144], [1025, 144], [1025, 288], [820, 288]],
+  arcaneum: [[1640,1015], [1845,1015], [1845,1160], [1640,1160]],
+  ashenmark: [[0,0], [205,0], [205,145], [0,145]],
+  ashenvale: [[615,870], [615,652], [820,652], [820,725], [923,725], [923,870]],
+  battlemarsh: [[615,652], [615,435], [923,435], [923,580], [820,580], [820,652]],
+  blackbrine: [[1025,290], [1230,290], [1230,435], [1025,435]],
+  blackstone: [[0,580], [205,580], [205,725], [0,725]],
+  bleakstone: [[1025,1015], [1230,1015], [1230,1160], [1025,1160]],
+  blightmoor: [[410,870], [615,870], [615,1015], [410,1015]],
+  bloodmoor: [[1230,580], [1435,580], [1435,725], [1230,725]],
+  bloodrock: [[0,145], [205,145], [205,290], [0,290]],
+  bonehallow: [[1230,0], [1435,0], [1435,145], [1230,145]],
+  bonewood: [[410,725], [615,725], [615,870], [410,870]],
+  cryptwood: [[205,725], [410,725], [410,870], [205,870]],
+  cursedfen: [[0,725], [205,725], [205,1015], [0,1015]],
+  darkhollow: [[1435,725], [1640,725], [1640,870], [1435,870]],
+  dawngate: [[1435,0], [1640,0], [1640,145], [1435,145]],
+  deadmansharbor: [[410,0], [615,0], [615,145], [410,145]],
+  deadwood: [[205,580], [410,580], [410,725], [205,725]],
+  deathmarsh: [[820,1015], [1025,1015], [1025,1160], [820,1160]],
+  deepwater: [[1640,290], [1845,290], [1845,580], [1640,580]],
+  doomspire: [[1025,870], [1230,870], [1230,1015], [1025,1015]],
+  dreadmarsh: [[205,0], [410,0], [410,145], [205,145]],
+  drearfort: [[820,1160], [1025,1160], [1025,1305], [820,1305]],
+  duskmire: [[1230,1160], [1435,1160], [1435,1305], [1230,1305]],
+  duskwood: [[1230,870], [1435,870], [1435,1015], [1230,1015]],
+  ebonvault: [[205,1015], [615,1015], [615,1160], [205,1160]],
+  emberfang: [[205,290], [410,290], [410,435], [205,435]],
+  fellwood: [[1230,1015], [1640,1015], [1640,1160], [1230,1160]],
+  finalhope: [[1025,0], [1230,0], [1230,145], [1025,145]],
+  flamecrestpeak: [[0,1015], [205,1015], [205,1160], [0,1160]],
+  fogmire: [[205,145], [615,145], [615,290], [205,290]],
+  frostbite: [[410,580], [615,580], [615,725], [410,725]],
+  frosthold: [[410,1160], [615,1160], [615,1305], [410,1305]],
+  ghosthollow: [[820,870], [1025,870], [1025,1015], [820,1015]],
+  gloomvale: [[1435,870], [1640,870], [1640,1015], [1435,1015]],
+  gravemist: [[1640,1160], [1845,1160], [1845,1305], [1640,1305]],
+  graveshroud: [[615,145], [820,145], [820,290], [615,290]],
+  greywatch: [[820,145], [1025,145], [1025,290], [820,290]],
+  grimstone: [[1230,725], [1435,725], [1435,870], [1230,870]],
+  holygrail: [[820,580], [1025,580], [1025,725], [820,725]],
+  icebreak: [[615,1160], [820,1160], [820,1305], [615,1305]],
+  icefall: [[1640,580], [1845,580], [1845,725], [1640,725]],
+  icepeak: [[205,1160], [410,1160], [410,1305], [205,1305]],
+  ironhold: [[410,435], [615,435], [615,580], [410,580]],
+  ironwood: [[615,0], [820,0], [820,145], [615,145]],
+  lastwatch: [[820,0], [1025,0], [1025,145], [820,145]],
+  lightshield: [[0,290], [205,290], [205,580], [0,580]],
+  mysticfen: [[1230,290], [1435,290], [1435,435], [1230,435]],
+  nightmarsh: [[1640,725], [1845,725], [1845,1015], [1640,1015]],
+  oathkeep: [[1640,145], [1845,145], [1845,290], [1640,290]],
+  rotmire: [[205,870], [410,870], [410,1015], [205,1015]],
+  runestone: [[615,290], [820,290], [820,435], [615,435]],
+  salthaven: [[1435,290], [1640,290], [1640,435], [1435,435]],
+  shadowfen: [[1435,1160], [1640,1160], [1640,1305], [1435,1305]],
+  shadowmere: [[0,1160], [205,1160], [205,1305], [0,1305]],
+  shadowmire: [[1025,1160], [1230,1160], [1230,1305], [1025,1305]],
+  skullcove: [[820,290], [1025,290], [1025,435], [820,435]],
+  skullcrag: [[615,870], [820,870], [820,1015], [615,1015]],
+  spellspire: [[410,290], [615,290], [615,435], [410,435]],
+  steelwatch: [[205,435], [410,435], [410,580], [205,580]],
+  stoneheart: [[1230,145], [1640,145], [1640,290], [1230,290]],
+  stormwatch: [[923,580], [923,435], [1230,435], [1230,652], [1025,652], [1025,580]],
+  thornvale: [[923,725], [923,870], [1230,870], [1230,652], [1025,652], [1025,725]],
+  tidecrag: [[1230,435], [1435,435], [1435,580], [1230,580]],
+  twilightspire: [[1640,0], [1845,0], [1845,145], [1640,145]],
+  voidmarsh: [[1025,145], [1230,145], [1230,290], [1025,290]],
+  warbane: [[1435,435], [1640,435], [1640,580], [1435,580]],
+  wargrim: [[1435,580], [1640,580], [1640,725], [1435,725]],
+  wraithmoor: [[615,1015], [820,1015], [820,1160], [615,1160]],
 };
 
 // ── Gate crossings (auto-generated from polygon edges) ───────────────────────
-// Total gates: 111
+// Total gates: 130
 const CROSSINGS = [
-  { axis:"H", bCoord:  144, gCoord: 1742, start: 1640, end: 1845, type:"tunnel", id:"gate_1" },
-  { axis:"H", bCoord:  288, gCoord: 1742, start: 1640, end: 1845, type:"tollbridge", id:"gate_2" },
-  { axis:"V", bCoord: 1640, gCoord:  216, start:  144, end:  288, type:"crossing", id:"gate_3" },
-  { axis:"H", bCoord:  144, gCoord: 1332, start: 1230, end: 1435, type:"tunnel", id:"gate_4" },
-  { axis:"H", bCoord:  144, gCoord: 1537, start: 1435, end: 1640, type:"tollbridge", id:"gate_5" },
-  { axis:"H", bCoord:  288, gCoord: 1537, start: 1435, end: 1640, type:"crossing", id:"gate_6" },
-  { axis:"H", bCoord:  288, gCoord: 1332, start: 1230, end: 1435, type:"tunnel", id:"gate_7" },
-  { axis:"V", bCoord: 1230, gCoord:  216, start:  144, end:  288, type:"tollbridge", id:"gate_8" },
-  { axis:"H", bCoord:  576, gCoord:  512, start:  410, end:  615, type:"crossing", id:"gate_9" },
-  { axis:"H", bCoord:  720, gCoord:  512, start:  410, end:  615, type:"tunnel", id:"gate_10" },
-  { axis:"V", bCoord:  410, gCoord:  648, start:  576, end:  720, type:"tollbridge", id:"gate_11" },
-  { axis:"V", bCoord: 1230, gCoord:  936, start:  864, end: 1008, type:"crossing", id:"gate_12" },
-  { axis:"H", bCoord: 1008, gCoord: 1127, start: 1025, end: 1230, type:"tunnel", id:"gate_13" },
-  { axis:"V", bCoord: 1025, gCoord:  936, start:  864, end: 1008, type:"tollbridge", id:"gate_14" },
-  { axis:"H", bCoord: 1152, gCoord:  717, start:  615, end:  820, type:"crossing", id:"gate_15" },
-  { axis:"V", bCoord:  820, gCoord: 1224, start: 1152, end: 1296, type:"tunnel", id:"gate_16" },
-  { axis:"V", bCoord:  615, gCoord: 1224, start: 1152, end: 1296, type:"tollbridge", id:"gate_17" },
-  { axis:"H", bCoord:  576, gCoord: 1742, start: 1640, end: 1845, type:"crossing", id:"gate_18" },
-  { axis:"H", bCoord:  720, gCoord: 1742, start: 1640, end: 1845, type:"tunnel", id:"gate_19" },
-  { axis:"V", bCoord: 1640, gCoord:  648, start:  576, end:  720, type:"tollbridge", id:"gate_20" },
-  { axis:"H", bCoord:  288, gCoord:  307, start:  205, end:  410, type:"crossing", id:"gate_21" },
-  { axis:"V", bCoord:  410, gCoord:  360, start:  288, end:  432, type:"tunnel", id:"gate_22" },
-  { axis:"H", bCoord:  432, gCoord:  307, start:  205, end:  410, type:"tollbridge", id:"gate_23" },
-  { axis:"H", bCoord:  288, gCoord: 1127, start: 1025, end: 1230, type:"crossing", id:"gate_24" },
-  { axis:"V", bCoord: 1230, gCoord:  360, start:  288, end:  432, type:"tunnel", id:"gate_25" },
-  { axis:"V", bCoord: 1025, gCoord:  360, start:  288, end:  432, type:"tollbridge", id:"gate_26" },
-  { axis:"H", bCoord:  864, gCoord:  307, start:  205, end:  410, type:"crossing", id:"gate_27" },
-  { axis:"V", bCoord:  410, gCoord:  936, start:  864, end: 1008, type:"tunnel", id:"gate_28" },
-  { axis:"H", bCoord: 1008, gCoord:  307, start:  205, end:  410, type:"tollbridge", id:"gate_29" },
-  { axis:"H", bCoord: 1008, gCoord:  102, start:    0, end:  205, type:"crossing", id:"gate_30" },
-  { axis:"V", bCoord:  205, gCoord: 1080, start: 1008, end: 1152, type:"tunnel", id:"gate_31" },
-  { axis:"H", bCoord: 1152, gCoord:  102, start:    0, end:  205, type:"tollbridge", id:"gate_32" },
-  { axis:"H", bCoord: 1152, gCoord: 1332, start: 1230, end: 1435, type:"crossing", id:"gate_33" },
-  { axis:"V", bCoord: 1435, gCoord: 1224, start: 1152, end: 1296, type:"tunnel", id:"gate_34" },
-  { axis:"V", bCoord: 1230, gCoord: 1224, start: 1152, end: 1296, type:"tollbridge", id:"gate_35" },
-  { axis:"H", bCoord:  576, gCoord:  307, start:  205, end:  410, type:"crossing", id:"gate_36" },
-  { axis:"H", bCoord:  720, gCoord:  307, start:  205, end:  410, type:"tunnel", id:"gate_37" },
-  { axis:"V", bCoord:  205, gCoord:  648, start:  576, end:  720, type:"tollbridge", id:"gate_38" },
-  { axis:"H", bCoord:  576, gCoord:  102, start:    0, end:  205, type:"crossing", id:"gate_39" },
-  { axis:"H", bCoord:  720, gCoord:  102, start:    0, end:  205, type:"tunnel", id:"gate_40" },
-  { axis:"H", bCoord:  288, gCoord:  717, start:  615, end:  820, type:"tollbridge", id:"gate_41" },
-  { axis:"V", bCoord:  820, gCoord:  360, start:  288, end:  432, type:"crossing", id:"gate_42" },
-  { axis:"V", bCoord:  615, gCoord:  360, start:  288, end:  432, type:"tunnel", id:"gate_43" },
-  { axis:"H", bCoord:  576, gCoord: 1537, start: 1435, end: 1640, type:"tollbridge", id:"gate_44" },
-  { axis:"H", bCoord:  720, gCoord: 1537, start: 1435, end: 1640, type:"crossing", id:"gate_45" },
-  { axis:"V", bCoord: 1435, gCoord:  648, start:  576, end:  720, type:"tunnel", id:"gate_46" },
-  { axis:"V", bCoord: 1025, gCoord:  684, start:  648, end:  720, type:"tollbridge", id:"gate_47" },
-  { axis:"H", bCoord:  720, gCoord: 1127, start: 1025, end: 1230, type:"crossing", id:"gate_48" },
-  { axis:"V", bCoord: 1230, gCoord:  792, start:  720, end:  864, type:"tunnel", id:"gate_49" },
-  { axis:"H", bCoord: 1152, gCoord:  512, start:  410, end:  615, type:"tollbridge", id:"gate_50" },
-  { axis:"V", bCoord:  410, gCoord: 1224, start: 1152, end: 1296, type:"crossing", id:"gate_51" },
-  { axis:"V", bCoord:  410, gCoord:  792, start:  720, end:  864, type:"tunnel", id:"gate_52" },
-  { axis:"H", bCoord:  144, gCoord: 1127, start: 1025, end: 1230, type:"tollbridge", id:"gate_53" },
-  { axis:"V", bCoord: 1025, gCoord:  216, start:  144, end:  288, type:"crossing", id:"gate_54" },
-  { axis:"H", bCoord: 1008, gCoord:  922, start:  820, end: 1025, type:"tunnel", id:"gate_55" },
-  { axis:"V", bCoord: 1025, gCoord: 1080, start: 1008, end: 1152, type:"tollbridge", id:"gate_56" },
-  { axis:"H", bCoord: 1152, gCoord:  922, start:  820, end: 1025, type:"crossing", id:"gate_57" },
-  { axis:"V", bCoord:  820, gCoord: 1080, start: 1008, end: 1152, type:"tunnel", id:"gate_58" },
-  { axis:"V", bCoord:  410, gCoord:  504, start:  432, end:  576, type:"tollbridge", id:"gate_59" },
-  { axis:"H", bCoord: 1008, gCoord:  512, start:  410, end:  615, type:"crossing", id:"gate_60" },
-  { axis:"V", bCoord:  615, gCoord: 1080, start: 1008, end: 1152, type:"tunnel", id:"gate_61" },
-  { axis:"H", bCoord: 1152, gCoord:  307, start:  205, end:  410, type:"tollbridge", id:"gate_62" },
-  { axis:"V", bCoord: 1025, gCoord:   72, start:    0, end:  144, type:"crossing", id:"gate_63" },
-  { axis:"H", bCoord:  144, gCoord:  922, start:  820, end: 1025, type:"tunnel", id:"gate_64" },
-  { axis:"V", bCoord:  820, gCoord:   72, start:    0, end:  144, type:"tollbridge", id:"gate_65" },
-  { axis:"V", bCoord: 1435, gCoord:   72, start:    0, end:  144, type:"crossing", id:"gate_66" },
-  { axis:"V", bCoord: 1230, gCoord:   72, start:    0, end:  144, type:"tunnel", id:"gate_67" },
-  { axis:"H", bCoord:  432, gCoord:  512, start:  410, end:  615, type:"tollbridge", id:"gate_68" },
-  { axis:"H", bCoord:  144, gCoord:  717, start:  615, end:  820, type:"crossing", id:"gate_69" },
-  { axis:"V", bCoord:  820, gCoord:  216, start:  144, end:  288, type:"tunnel", id:"gate_70" },
-  { axis:"V", bCoord:  615, gCoord:  216, start:  144, end:  288, type:"tollbridge", id:"gate_71" },
-  { axis:"H", bCoord:  288, gCoord:  102, start:    0, end:  205, type:"crossing", id:"gate_72" },
-  { axis:"H", bCoord:  288, gCoord:  512, start:  410, end:  615, type:"tunnel", id:"gate_73" },
-  { axis:"H", bCoord:  144, gCoord:  102, start:    0, end:  205, type:"tollbridge", id:"gate_74" },
-  { axis:"V", bCoord:  205, gCoord:  216, start:  144, end:  288, type:"crossing", id:"gate_75" },
-  { axis:"V", bCoord: 1230, gCoord: 1080, start: 1008, end: 1152, type:"tunnel", id:"gate_76" },
-  { axis:"H", bCoord: 1152, gCoord: 1127, start: 1025, end: 1230, type:"tollbridge", id:"gate_77" },
-  { axis:"V", bCoord:  615, gCoord:  792, start:  720, end:  864, type:"crossing", id:"gate_78" },
-  { axis:"H", bCoord:  864, gCoord:  512, start:  410, end:  615, type:"tunnel", id:"gate_79" },
-  { axis:"V", bCoord:  615, gCoord:   72, start:    0, end:  144, type:"tollbridge", id:"gate_80" },
-  { axis:"H", bCoord:  144, gCoord:  512, start:  410, end:  615, type:"crossing", id:"gate_81" },
-  { axis:"V", bCoord:  410, gCoord:   72, start:    0, end:  144, type:"tunnel", id:"gate_82" },
-  { axis:"H", bCoord:  432, gCoord: 1537, start: 1435, end: 1640, type:"tollbridge", id:"gate_83" },
-  { axis:"V", bCoord: 1435, gCoord:  360, start:  288, end:  432, type:"crossing", id:"gate_84" },
-  { axis:"H", bCoord:  432, gCoord: 1332, start: 1230, end: 1435, type:"tunnel", id:"gate_85" },
-  { axis:"V", bCoord: 1435, gCoord:  504, start:  432, end:  576, type:"tollbridge", id:"gate_86" },
-  { axis:"H", bCoord:  576, gCoord: 1332, start: 1230, end: 1435, type:"crossing", id:"gate_87" },
-  { axis:"V", bCoord: 1640, gCoord:   72, start:    0, end:  144, type:"tunnel", id:"gate_88" },
-  { axis:"V", bCoord: 1025, gCoord: 1224, start: 1152, end: 1296, type:"tollbridge", id:"gate_89" },
-  { axis:"H", bCoord: 1152, gCoord: 1537, start: 1435, end: 1640, type:"crossing", id:"gate_90" },
-  { axis:"V", bCoord: 1640, gCoord: 1224, start: 1152, end: 1296, type:"tunnel", id:"gate_91" },
-  { axis:"H", bCoord:  720, gCoord: 1332, start: 1230, end: 1435, type:"tollbridge", id:"gate_92" },
-  { axis:"V", bCoord: 1435, gCoord:  792, start:  720, end:  864, type:"crossing", id:"gate_93" },
-  { axis:"H", bCoord:  864, gCoord: 1332, start: 1230, end: 1435, type:"tunnel", id:"gate_94" },
-  { axis:"H", bCoord:  144, gCoord:  307, start:  205, end:  410, type:"tollbridge", id:"gate_95" },
-  { axis:"V", bCoord:  205, gCoord:   72, start:    0, end:  144, type:"crossing", id:"gate_96" },
-  { axis:"V", bCoord:  820, gCoord:  936, start:  864, end: 1008, type:"tunnel", id:"gate_97" },
-  { axis:"H", bCoord: 1008, gCoord: 1332, start: 1230, end: 1435, type:"tollbridge", id:"gate_98" },
-  { axis:"H", bCoord: 1008, gCoord: 1537, start: 1435, end: 1640, type:"crossing", id:"gate_99" },
-  { axis:"V", bCoord: 1640, gCoord: 1080, start: 1008, end: 1152, type:"tunnel", id:"gate_100" },
-  { axis:"H", bCoord:  648, gCoord:  872, start:  821, end:  923, type:"tollbridge", id:"gate_101" },
-  { axis:"V", bCoord:  821, gCoord:  684, start:  648, end:  720, type:"crossing", id:"gate_102" },
-  { axis:"H", bCoord:  720, gCoord:  718, start:  615, end:  821, type:"tunnel", id:"gate_103" },
-  { axis:"H", bCoord: 1008, gCoord: 1742, start: 1640, end: 1845, type:"tollbridge", id:"gate_104" },
-  { axis:"H", bCoord: 1152, gCoord: 1742, start: 1640, end: 1845, type:"crossing", id:"gate_105" },
-  { axis:"H", bCoord:  288, gCoord:  922, start:  820, end: 1025, type:"tunnel", id:"gate_106" },
-  { axis:"V", bCoord:  205, gCoord: 1224, start: 1152, end: 1296, type:"tollbridge", id:"gate_107" },
-  { axis:"H", bCoord: 1008, gCoord:  717, start:  615, end:  820, type:"crossing", id:"gate_108" },
-  { axis:"V", bCoord:  615, gCoord:  936, start:  864, end: 1008, type:"tunnel", id:"gate_109" },
-  { axis:"V", bCoord: 1435, gCoord:  936, start:  864, end: 1008, type:"tollbridge", id:"gate_110" },
-  { axis:"H", bCoord:  864, gCoord: 1537, start: 1435, end: 1640, type:"crossing", id:"gate_111" },
+  { axis:"V", bCoord:  205, gCoord:  203, start:  201, end:  205, type:"tunnel", id:"gate_1" },
+  { axis:"V", bCoord:  410, gCoord:  408, start:  406, end:  410, type:"tollbridge", id:"gate_2" },
+  { axis:"V", bCoord:  615, gCoord:  613, start:  611, end:  615, type:"crossing", id:"gate_3" },
+  { axis:"V", bCoord:  820, gCoord:  818, start:  816, end:  820, type:"tunnel", id:"gate_4" },
+  { axis:"V", bCoord: 1025, gCoord: 1023, start: 1021, end: 1025, type:"tollbridge", id:"gate_5" },
+  { axis:"V", bCoord: 1230, gCoord: 1228, start: 1226, end: 1230, type:"crossing", id:"gate_6" },
+  { axis:"V", bCoord: 1435, gCoord: 1433, start: 1431, end: 1435, type:"tunnel", id:"gate_7" },
+  { axis:"V", bCoord: 1640, gCoord: 1638, start: 1636, end: 1640, type:"tollbridge", id:"gate_8" },
+  { axis:"V", bCoord:  205, gCoord:  203, start:  201, end:  205, type:"crossing", id:"gate_9" },
+  { axis:"V", bCoord:  615, gCoord:  613, start:  611, end:  615, type:"tunnel", id:"gate_10" },
+  { axis:"V", bCoord:  820, gCoord:  818, start:  816, end:  820, type:"tollbridge", id:"gate_11" },
+  { axis:"V", bCoord: 1025, gCoord: 1023, start: 1021, end: 1025, type:"crossing", id:"gate_12" },
+  { axis:"V", bCoord: 1230, gCoord: 1228, start: 1226, end: 1230, type:"tunnel", id:"gate_13" },
+  { axis:"V", bCoord: 1435, gCoord: 1433, start: 1431, end: 1435, type:"tollbridge", id:"gate_14" },
+  { axis:"V", bCoord: 1640, gCoord: 1638, start: 1636, end: 1640, type:"crossing", id:"gate_15" },
+  { axis:"V", bCoord:  205, gCoord:  203, start:  201, end:  205, type:"tunnel", id:"gate_16" },
+  { axis:"V", bCoord:  410, gCoord:  408, start:  406, end:  410, type:"tollbridge", id:"gate_17" },
+  { axis:"V", bCoord: 1640, gCoord: 1638, start: 1636, end: 1640, type:"crossing", id:"gate_18" },
+  { axis:"V", bCoord:  410, gCoord:  408, start:  406, end:  410, type:"tunnel", id:"gate_19" },
+  { axis:"V", bCoord: 1435, gCoord: 1433, start: 1431, end: 1435, type:"tollbridge", id:"gate_20" },
+  { axis:"V", bCoord: 1640, gCoord: 1638, start: 1636, end: 1640, type:"crossing", id:"gate_21" },
+  { axis:"V", bCoord:  205, gCoord:  203, start:  201, end:  205, type:"tunnel", id:"gate_22" },
+  { axis:"V", bCoord:  410, gCoord:  408, start:  406, end:  410, type:"tollbridge", id:"gate_23" },
+  { axis:"V", bCoord: 1230, gCoord: 1228, start: 1226, end: 1230, type:"crossing", id:"gate_24" },
+  { axis:"V", bCoord: 1435, gCoord: 1433, start: 1431, end: 1435, type:"tunnel", id:"gate_25" },
+  { axis:"V", bCoord: 1640, gCoord: 1638, start: 1636, end: 1640, type:"tollbridge", id:"gate_26" },
+  { axis:"V", bCoord:  205, gCoord:  203, start:  201, end:  205, type:"crossing", id:"gate_27" },
+  { axis:"V", bCoord:  410, gCoord:  408, start:  406, end:  410, type:"tunnel", id:"gate_28" },
+  { axis:"V", bCoord:  615, gCoord:  613, start:  611, end:  615, type:"tollbridge", id:"gate_29" },
+  { axis:"V", bCoord:  820, gCoord:  818, start:  816, end:  820, type:"crossing", id:"gate_30" },
+  { axis:"V", bCoord: 1025, gCoord: 1023, start: 1021, end: 1025, type:"tunnel", id:"gate_31" },
+  { axis:"V", bCoord: 1230, gCoord: 1228, start: 1226, end: 1230, type:"tollbridge", id:"gate_32" },
+  { axis:"V", bCoord: 1435, gCoord: 1433, start: 1431, end: 1435, type:"crossing", id:"gate_33" },
+  { axis:"V", bCoord: 1640, gCoord: 1638, start: 1636, end: 1640, type:"tunnel", id:"gate_34" },
+  { axis:"V", bCoord:  205, gCoord:  203, start:  201, end:  205, type:"tollbridge", id:"gate_35" },
+  { axis:"V", bCoord:  615, gCoord:  613, start:  611, end:  615, type:"crossing", id:"gate_36" },
+  { axis:"V", bCoord:  820, gCoord:  818, start:  816, end:  820, type:"tunnel", id:"gate_37" },
+  { axis:"V", bCoord: 1025, gCoord: 1023, start: 1021, end: 1025, type:"tollbridge", id:"gate_38" },
+  { axis:"V", bCoord: 1230, gCoord: 1228, start: 1226, end: 1230, type:"crossing", id:"gate_39" },
+  { axis:"V", bCoord: 1435, gCoord: 1433, start: 1431, end: 1435, type:"tunnel", id:"gate_40" },
+  { axis:"V", bCoord: 1640, gCoord: 1638, start: 1636, end: 1640, type:"tollbridge", id:"gate_41" },
+  { axis:"V", bCoord:  205, gCoord:  203, start:  201, end:  205, type:"crossing", id:"gate_42" },
+  { axis:"V", bCoord:  410, gCoord:  408, start:  406, end:  410, type:"tunnel", id:"gate_43" },
+  { axis:"V", bCoord:  615, gCoord:  613, start:  611, end:  615, type:"tollbridge", id:"gate_44" },
+  { axis:"V", bCoord:  820, gCoord:  818, start:  816, end:  820, type:"crossing", id:"gate_45" },
+  { axis:"V", bCoord: 1025, gCoord: 1023, start: 1021, end: 1025, type:"tunnel", id:"gate_46" },
+  { axis:"V", bCoord: 1230, gCoord: 1228, start: 1226, end: 1230, type:"tollbridge", id:"gate_47" },
+  { axis:"V", bCoord: 1435, gCoord: 1433, start: 1431, end: 1435, type:"crossing", id:"gate_48" },
+  { axis:"V", bCoord: 1640, gCoord: 1638, start: 1636, end: 1640, type:"tunnel", id:"gate_49" },
+  { axis:"V", bCoord:  205, gCoord:  203, start:  201, end:  205, type:"tollbridge", id:"gate_50" },
+  { axis:"V", bCoord:  410, gCoord:  408, start:  406, end:  410, type:"crossing", id:"gate_51" },
+  { axis:"V", bCoord:  615, gCoord:  613, start:  611, end:  615, type:"tunnel", id:"gate_52" },
+  { axis:"V", bCoord:  820, gCoord:  818, start:  816, end:  820, type:"tollbridge", id:"gate_53" },
+  { axis:"V", bCoord: 1230, gCoord: 1228, start: 1226, end: 1230, type:"crossing", id:"gate_54" },
+  { axis:"V", bCoord: 1435, gCoord: 1433, start: 1431, end: 1435, type:"tunnel", id:"gate_55" },
+  { axis:"V", bCoord: 1640, gCoord: 1638, start: 1636, end: 1640, type:"tollbridge", id:"gate_56" },
+  { axis:"H", bCoord: 1162, gCoord:  102, start:  100, end:  104, type:"crossing", id:"gate_57" },
+  { axis:"H", bCoord: 1162, gCoord:  307, start:  305, end:  309, type:"tunnel", id:"gate_58" },
+  { axis:"H", bCoord: 1162, gCoord:  512, start:  510, end:  514, type:"tollbridge", id:"gate_59" },
+  { axis:"H", bCoord: 1162, gCoord:  717, start:  715, end:  719, type:"crossing", id:"gate_60" },
+  { axis:"H", bCoord: 1162, gCoord:  922, start:  920, end:  924, type:"tunnel", id:"gate_61" },
+  { axis:"H", bCoord: 1162, gCoord: 1127, start: 1125, end: 1129, type:"tollbridge", id:"gate_62" },
+  { axis:"H", bCoord: 1162, gCoord: 1332, start: 1330, end: 1334, type:"crossing", id:"gate_63" },
+  { axis:"H", bCoord: 1162, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_64" },
+  { axis:"H", bCoord: 1162, gCoord: 1742, start: 1740, end: 1744, type:"tollbridge", id:"gate_65" },
+  { axis:"H", bCoord: 1017, gCoord:  102, start:  100, end:  104, type:"crossing", id:"gate_66" },
+  { axis:"H", bCoord: 1017, gCoord:  307, start:  305, end:  309, type:"tunnel", id:"gate_67" },
+  { axis:"H", bCoord: 1017, gCoord:  512, start:  510, end:  514, type:"tollbridge", id:"gate_68" },
+  { axis:"H", bCoord: 1017, gCoord:  717, start:  715, end:  719, type:"crossing", id:"gate_69" },
+  { axis:"H", bCoord: 1017, gCoord:  922, start:  920, end:  924, type:"tunnel", id:"gate_70" },
+  { axis:"H", bCoord: 1017, gCoord: 1127, start: 1125, end: 1129, type:"tollbridge", id:"gate_71" },
+  { axis:"H", bCoord: 1017, gCoord: 1332, start: 1330, end: 1334, type:"crossing", id:"gate_72" },
+  { axis:"H", bCoord: 1017, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_73" },
+  { axis:"H", bCoord: 1017, gCoord: 1742, start: 1740, end: 1744, type:"tollbridge", id:"gate_74" },
+  { axis:"H", bCoord:  872, gCoord:  307, start:  305, end:  309, type:"crossing", id:"gate_75" },
+  { axis:"H", bCoord:  872, gCoord:  512, start:  510, end:  514, type:"tunnel", id:"gate_76" },
+  { axis:"H", bCoord:  872, gCoord:  675, start:  673, end:  677, type:"tollbridge", id:"gate_77" },
+  { axis:"H", bCoord:  872, gCoord: 1170, start: 1168, end: 1172, type:"crossing", id:"gate_78" },
+  { axis:"H", bCoord:  872, gCoord: 1332, start: 1330, end: 1334, type:"tunnel", id:"gate_79" },
+  { axis:"H", bCoord:  872, gCoord: 1537, start: 1535, end: 1539, type:"tollbridge", id:"gate_80" },
+  { axis:"H", bCoord:  727, gCoord:  102, start:  100, end:  104, type:"crossing", id:"gate_81" },
+  { axis:"H", bCoord:  727, gCoord:  307, start:  305, end:  309, type:"tunnel", id:"gate_82" },
+  { axis:"H", bCoord:  727, gCoord:  512, start:  510, end:  514, type:"tollbridge", id:"gate_83" },
+  { axis:"H", bCoord:  727, gCoord: 1332, start: 1330, end: 1334, type:"crossing", id:"gate_84" },
+  { axis:"H", bCoord:  727, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_85" },
+  { axis:"H", bCoord:  727, gCoord: 1742, start: 1740, end: 1744, type:"tollbridge", id:"gate_86" },
+  { axis:"H", bCoord:  582, gCoord:  102, start:  100, end:  104, type:"crossing", id:"gate_87" },
+  { axis:"H", bCoord:  582, gCoord:  307, start:  305, end:  309, type:"tunnel", id:"gate_88" },
+  { axis:"H", bCoord:  582, gCoord:  512, start:  510, end:  514, type:"tollbridge", id:"gate_89" },
+  { axis:"H", bCoord:  582, gCoord: 1332, start: 1330, end: 1334, type:"crossing", id:"gate_90" },
+  { axis:"H", bCoord:  582, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_91" },
+  { axis:"H", bCoord:  582, gCoord: 1742, start: 1740, end: 1744, type:"tollbridge", id:"gate_92" },
+  { axis:"H", bCoord:  437, gCoord:  307, start:  305, end:  309, type:"crossing", id:"gate_93" },
+  { axis:"H", bCoord:  437, gCoord:  512, start:  510, end:  514, type:"tunnel", id:"gate_94" },
+  { axis:"H", bCoord:  437, gCoord: 1332, start: 1330, end: 1334, type:"tollbridge", id:"gate_95" },
+  { axis:"H", bCoord:  437, gCoord: 1537, start: 1535, end: 1539, type:"crossing", id:"gate_96" },
+  { axis:"H", bCoord:  292, gCoord:  102, start:  100, end:  104, type:"tunnel", id:"gate_97" },
+  { axis:"H", bCoord:  292, gCoord:  307, start:  305, end:  309, type:"tollbridge", id:"gate_98" },
+  { axis:"H", bCoord:  292, gCoord:  512, start:  510, end:  514, type:"crossing", id:"gate_99" },
+  { axis:"H", bCoord:  292, gCoord:  717, start:  715, end:  719, type:"tunnel", id:"gate_100" },
+  { axis:"H", bCoord:  292, gCoord:  922, start:  920, end:  924, type:"tollbridge", id:"gate_101" },
+  { axis:"H", bCoord:  292, gCoord: 1127, start: 1125, end: 1129, type:"crossing", id:"gate_102" },
+  { axis:"H", bCoord:  292, gCoord: 1332, start: 1330, end: 1334, type:"tunnel", id:"gate_103" },
+  { axis:"H", bCoord:  292, gCoord: 1537, start: 1535, end: 1539, type:"tollbridge", id:"gate_104" },
+  { axis:"H", bCoord:  292, gCoord: 1742, start: 1740, end: 1744, type:"crossing", id:"gate_105" },
+  { axis:"H", bCoord:  147, gCoord:  102, start:  100, end:  104, type:"tunnel", id:"gate_106" },
+  { axis:"H", bCoord:  147, gCoord:  307, start:  305, end:  309, type:"tollbridge", id:"gate_107" },
+  { axis:"H", bCoord:  147, gCoord:  512, start:  510, end:  514, type:"crossing", id:"gate_108" },
+  { axis:"H", bCoord:  147, gCoord:  717, start:  715, end:  719, type:"tunnel", id:"gate_109" },
+  { axis:"H", bCoord:  147, gCoord:  922, start:  920, end:  924, type:"tollbridge", id:"gate_110" },
+  { axis:"H", bCoord:  147, gCoord: 1127, start: 1125, end: 1129, type:"crossing", id:"gate_111" },
+  { axis:"H", bCoord:  147, gCoord: 1332, start: 1330, end: 1334, type:"tunnel", id:"gate_112" },
+  { axis:"H", bCoord:  147, gCoord: 1537, start: 1535, end: 1539, type:"tollbridge", id:"gate_113" },
+  { axis:"H", bCoord:  147, gCoord: 1742, start: 1740, end: 1744, type:"crossing", id:"gate_114" },
+  { axis:"V", bCoord:  615, gCoord:  613, start:  611, end:  615, type:"tunnel", id:"gate_115" },
+  { axis:"V", bCoord: 1230, gCoord: 1228, start: 1226, end: 1230, type:"tollbridge", id:"gate_116" },
+  { axis:"V", bCoord: 1230, gCoord: 1228, start: 1226, end: 1230, type:"crossing", id:"gate_117" },
+  { axis:"V", bCoord:  615, gCoord:  613, start:  611, end:  615, type:"tunnel", id:"gate_118" },
+  { axis:"V", bCoord:  923, gCoord:  921, start:  919, end:  923, type:"tollbridge", id:"gate_119" },
+  { axis:"V", bCoord:  923, gCoord:  921, start:  919, end:  923, type:"crossing", id:"gate_120" },
+  { axis:"H", bCoord:  872, gCoord:  675, start:  673, end:  677, type:"tunnel", id:"gate_121" },
+  { axis:"H", bCoord:  872, gCoord: 1170, start: 1168, end: 1172, type:"tollbridge", id:"gate_122" },
+  { axis:"H", bCoord:  437, gCoord: 1170, start: 1168, end: 1172, type:"crossing", id:"gate_123" },
+  { axis:"H", bCoord:  437, gCoord:  675, start:  673, end:  677, type:"tunnel", id:"gate_124" },
+  { axis:"H", bCoord:  727, gCoord:  870, start:  868, end:  872, type:"tollbridge", id:"gate_125" },
+  { axis:"H", bCoord:  727, gCoord:  975, start:  973, end:  977, type:"crossing", id:"gate_126" },
+  { axis:"H", bCoord:  582, gCoord:  870, start:  868, end:  872, type:"tunnel", id:"gate_127" },
+  { axis:"H", bCoord:  582, gCoord:  975, start:  973, end:  977, type:"tollbridge", id:"gate_128" },
+  { axis:"H", bCoord:  654, gCoord:  718, start:  716, end:  720, type:"crossing", id:"gate_129" },
+  { axis:"H", bCoord:  654, gCoord: 1127, start: 1125, end: 1129, type:"tunnel", id:"gate_130" },
 ];
 
 
