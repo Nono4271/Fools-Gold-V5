@@ -1,4 +1,4 @@
-// Build: 1779593292
+// Build: 1779593293
 // ── Map Generation Web Worker ─────────────────────────────────────────────────
 // Communicates via postMessage:
 //   incoming: { facKey }
@@ -992,6 +992,12 @@ self.onmessage = function(e) {
 
   // Paint each crossing as an individual segment (not full-map lines)
   const { impassable, gateA, gateB, pathTiles } = buildBorderSegments(CROSSINGS);
+
+  console.log(`[MapGen] CROSSINGS count: ${CROSSINGS.length}`);
+  console.log(`[MapGen] Border tiles - impassable: ${impassable.length}, gateA: ${gateA.length}, gateB: ${gateB.length}, path: ${pathTiles.length}`);
+  if (CROSSINGS.length > 0) {
+    console.log(`[MapGen] Sample crossing:`, CROSSINGS[0]);
+  }
 
   // Paint impassable border tiles
   for (const {x, y} of impassable) {
