@@ -18,7 +18,7 @@ function keepColor(owner) {
 }
 
 // ── Design space: 700×700 ────────────────────────────────────────────────────
-const DW = 1850, DH = 1300;
+const DW = 1845, DH = 1305;
 
 
 function scalePts(pts, sx, sy) {
