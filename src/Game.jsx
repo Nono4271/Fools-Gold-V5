@@ -1911,6 +1911,7 @@ export default function RiseToWar() {
         <WorldMap
           tiles={tiles}
           crossings={crossingsState}
+          keepMeta={keepMeta}
           onClose={() => setWorldMapOpen(false)}
           onTeleport={teleportTo}
           panRef={panRef}
