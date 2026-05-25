@@ -1,4 +1,4 @@
-// Build: 1779593295
+// Build: 1779593296
 // ── Map Generation Web Worker ─────────────────────────────────────────────────
 // Communicates via postMessage:
 //   incoming: { facKey }
@@ -268,138 +268,115 @@ const MAP_X0 = 130, MAP_X1 = 1272;
 const MAP_Y0 =  75, MAP_Y1 =  848;
 
 
-// Find actual borders between regions and place gates
-function buildBordersFromRegionMap(REGION_MAP, CROSSINGS) {
+// Find all actual region borders and place one gate per border
+function buildBordersFromRegionMap(REGION_MAP) {
   const impassable = [], gateA = [], gateB = [], pathTiles = [];
   
-  // For each crossing, find where regions actually meet
-  for (const crossing of CROSSINGS) {
-    const { axis, bCoord, gCoord, start, end, type, id } = crossing;
-    
-    // Find the two regions this crossing connects
-    // Sample a point on each side of the border to get region IDs
-    let regionA_ID, regionB_ID;
-    
-    if (axis === 'H') {
-      // Horizontal border - sample above and below
-      const sampleX = Math.floor((start + end) / 2);
-      const sampleYAbove = Math.max(0, bCoord - 5);
-      const sampleYBelow = Math.min(ROWS - 1, bCoord + 5);
-      regionA_ID = REGION_MAP[sampleYAbove * COLS + sampleX];
-      regionB_ID = REGION_MAP[sampleYBelow * COLS + sampleX];
-    } else {
-      // Vertical border - sample left and right
-      const sampleY = Math.floor((start + end) / 2);
-      const sampleXLeft = Math.max(0, bCoord - 5);
-      const sampleXRight = Math.min(COLS - 1, bCoord + 5);
-      regionA_ID = REGION_MAP[sampleY * COLS + sampleXLeft];
-      regionB_ID = REGION_MAP[sampleY * COLS + sampleXRight];
-    }
-    
-    if (!regionA_ID || !regionB_ID || regionA_ID === regionB_ID) continue;
-    
-    // Find actual border tiles where these two regions meet
-    const borderTiles = [];
-    
-    if (axis === 'H') {
-      // Scan horizontal strip
-      const yMin = Math.max(MAP_Y0, bCoord - 10);
-      const yMax = Math.min(MAP_Y1, bCoord + 10);
-      const xMin = Math.max(MAP_X0, Math.floor(start));
-      const xMax = Math.min(MAP_X1, Math.ceil(end));
+  // Find all unique region pairs that share a border
+  const borderPairs = new Map(); // key: "regA_regB", value: {tiles: [{x,y}], axis}
+  
+  for (let y = MAP_Y0; y <= MAP_Y1; y++) {
+    for (let x = MAP_X0; x <= MAP_X1; x++) {
+      const idx = y * COLS + x;
+      const regionID = REGION_MAP[idx];
+      if (!regionID) continue;
       
-      for (let y = yMin; y <= yMax; y++) {
-        for (let x = xMin; x <= xMax; x++) {
-          const idx = y * COLS + x;
-          const reg = REGION_MAP[idx];
-          
-          // Check if this tile borders the other region
-          const hasNeighborA = [
-            REGION_MAP[idx - 1], REGION_MAP[idx + 1],
-            REGION_MAP[idx - COLS], REGION_MAP[idx + COLS]
-          ].includes(regionA_ID);
-          const hasNeighborB = [
-            REGION_MAP[idx - 1], REGION_MAP[idx + 1],
-            REGION_MAP[idx - COLS], REGION_MAP[idx + COLS]
-          ].includes(regionB_ID);
-          
-          if ((reg === regionA_ID && hasNeighborB) || (reg === regionB_ID && hasNeighborA)) {
-            borderTiles.push({x, y, regionID: reg});
-          }
-        }
-      }
-    } else {
-      // Scan vertical strip
-      const xMin = Math.max(MAP_X0, bCoord - 10);
-      const xMax = Math.min(MAP_X1, bCoord + 10);
-      const yMin = Math.max(MAP_Y0, Math.floor(start));
-      const yMax = Math.min(MAP_Y1, Math.ceil(end));
+      // Check neighbors to find border tiles
+      const neighbors = [
+        {dx: 1, dy: 0, idx: idx + 1},      // right
+        {dx: 0, dy: 1, idx: idx + COLS},   // down
+      ];
       
-      for (let x = xMin; x <= xMax; x++) {
-        for (let y = yMin; y <= yMax; y++) {
-          const idx = y * COLS + x;
-          const reg = REGION_MAP[idx];
-          
-          const hasNeighborA = [
-            REGION_MAP[idx - 1], REGION_MAP[idx + 1],
-            REGION_MAP[idx - COLS], REGION_MAP[idx + COLS]
-          ].includes(regionA_ID);
-          const hasNeighborB = [
-            REGION_MAP[idx - 1], REGION_MAP[idx + 1],
-            REGION_MAP[idx - COLS], REGION_MAP[idx + COLS]
-          ].includes(regionB_ID);
-          
-          if ((reg === regionA_ID && hasNeighborB) || (reg === regionB_ID && hasNeighborA)) {
-            borderTiles.push({x, y, regionID: reg});
-          }
-        }
-      }
-    }
-    
-    // Place gate at gCoord position and create path between gates
-    const gatePositions = { A: null, B: null };
-    
-    // First pass: identify gate positions
-    for (const tile of borderTiles) {
-      const isGate = (axis === 'H' && tile.x === gCoord) || (axis === 'V' && tile.y === gCoord);
-      
-      if (isGate) {
-        if (tile.regionID === regionA_ID) {
-          gatePositions.A = tile;
-          gateA.push({x: tile.x, y: tile.y, id: id+'_A', type});
-        } else if (tile.regionID === regionB_ID) {
-          gatePositions.B = tile;
-          gateB.push({x: tile.x, y: tile.y, id: id+'_B', type});
-        }
-      }
-    }
-    
-    // Second pass: mark border tiles and create path between gates
-    for (const tile of borderTiles) {
-      const isGate = (axis === 'H' && tile.x === gCoord) || (axis === 'V' && tile.y === gCoord);
-      
-      if (!isGate) {
-        // Check if this tile is between the two gates (creates passage)
-        let isPath = false;
-        if (gatePositions.A && gatePositions.B) {
-          if (axis === 'H' && tile.x === gCoord) {
-            // Between gates vertically
-            const minY = Math.min(gatePositions.A.y, gatePositions.B.y);
-            const maxY = Math.max(gatePositions.A.y, gatePositions.B.y);
-            isPath = tile.y > minY && tile.y < maxY;
-          } else if (axis === 'V' && tile.y === gCoord) {
-            // Between gates horizontally
-            const minX = Math.min(gatePositions.A.x, gatePositions.B.x);
-            const maxX = Math.max(gatePositions.A.x, gatePositions.B.x);
-            isPath = tile.x > minX && tile.x < maxX;
-          }
+      for (const {dx, dy, idx: nIdx} of neighbors) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < MAP_X0 || nx > MAP_X1 || ny < MAP_Y0 || ny > MAP_Y1) continue;
+        
+        const neighborID = REGION_MAP[nIdx];
+        if (!neighborID || neighborID === regionID) continue;
+        
+        // Found a border between regionID and neighborID
+        const [regA, regB] = regionID < neighborID 
+          ? [regionID, neighborID] 
+          : [neighborID, regionID];
+        const pairKey = `${regA}_${regB}`;
+        
+        if (!borderPairs.has(pairKey)) {
+          // Determine axis based on which direction the border runs
+          const axis = dx === 1 ? 'V' : 'H'; // vertical border if moving right, horizontal if moving down
+          borderPairs.set(pairKey, {tiles: [], axis, regA, regB});
         }
         
-        if (isPath) {
-          pathTiles.push({x: tile.x, y: tile.y});
-        } else {
-          impassable.push({x: tile.x, y: tile.y});
+        borderPairs.get(pairKey).tiles.push({x, y, regionID});
+      }
+    }
+  }
+  
+  // For each border pair, place ONE gate in the middle
+  for (const [pairKey, border] of borderPairs) {
+    const {tiles, axis, regA, regB} = border;
+    if (tiles.length === 0) continue;
+    
+    // Find middle tile for gate placement
+    const midIdx = Math.floor(tiles.length / 2);
+    const gateTile = tiles[midIdx];
+    
+    // Separate tiles by region
+    const tilesA = tiles.filter(t => t.regionID === regA);
+    const tilesB = tiles.filter(t => t.regionID === regB);
+    
+    // Place gate on each side
+    const gateA_tile = tilesA.find(t => 
+      (axis === 'H' && t.x === gateTile.x) || 
+      (axis === 'V' && t.y === gateTile.y)
+    );
+    const gateB_tile = tilesB.find(t => 
+      (axis === 'H' && t.x === gateTile.x) || 
+      (axis === 'V' && t.y === gateTile.y)
+    );
+    
+    if (gateA_tile) {
+      gateA.push({
+        x: gateA_tile.x, 
+        y: gateA_tile.y, 
+        id: `${pairKey}_A`, 
+        type: 'crossing'
+      });
+    }
+    
+    if (gateB_tile) {
+      gateB.push({
+        x: gateB_tile.x, 
+        y: gateB_tile.y, 
+        id: `${pairKey}_B`, 
+        type: 'crossing'
+      });
+    }
+    
+    // Create path tiles between gates if both exist
+    if (gateA_tile && gateB_tile) {
+      for (const tile of tiles) {
+        const isGatePos = (tile.x === gateTile.x && axis === 'H') || 
+                         (tile.y === gateTile.y && axis === 'V');
+        
+        if (isGatePos) {
+          const notGate = tile.x !== gateA_tile.x || tile.y !== gateA_tile.y;
+          const notGateB = tile.x !== gateB_tile.x || tile.y !== gateB_tile.y;
+          if (notGate && notGateB) {
+            pathTiles.push({x: tile.x, y: tile.y});
+          }
         }
+      }
+    }
+    
+    // Mark all other border tiles as impassable
+    for (const tile of tiles) {
+      const isGateA = gateA_tile && tile.x === gateA_tile.x && tile.y === gateA_tile.y;
+      const isGateB = gateB_tile && tile.x === gateB_tile.x && tile.y === gateB_tile.y;
+      const isPath = pathTiles.some(p => p.x === tile.x && p.y === tile.y);
+      
+      if (!isGateA && !isGateB && !isPath) {
+        impassable.push({x: tile.x, y: tile.y});
       }
     }
   }
@@ -1058,8 +1035,8 @@ self.onmessage = function(e) {
   const gateMeta  = {};
   const impassKeys = [];
 
-  // Paint each crossing by finding actual borders in REGION_MAP
-  const { impassable, gateA, gateB, pathTiles } = buildBordersFromRegionMap(REGION_MAP, CROSSINGS);
+  // Find all actual borders in REGION_MAP and place gates
+  const { impassable, gateA, gateB, pathTiles } = buildBordersFromRegionMap(REGION_MAP);
 
   console.log(`[MapGen] CROSSINGS count: ${CROSSINGS.length}`);
   console.log(`[MapGen] Border tiles - impassable: ${impassable.length}, gateA: ${gateA.length}, gateB: ${gateB.length}, path: ${pathTiles.length}`);
