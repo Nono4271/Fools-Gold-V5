@@ -71,40 +71,37 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
     });
   }, [tiles]);
 
-  // Build gate list from crossings prop
+  // Build gate list from tiles with F_GATE flag (worker-placed gates)
   const gates = useMemo(() => {
-    if (!crossings) return [];
+    if (!tiles) return [];
     const result = [];
-    for (const cr of crossings) {
-      // Gate A: offset -2 from bCoord, Gate B: offset +1 from bCoord (BORDER_HALF = 2)
-      const axA = cr.axis === 'H' ? cr.gCoord : cr.bCoord - 2;
-      const ayA = cr.axis === 'H' ? cr.bCoord - 2 : cr.gCoord;
-      const axB = cr.axis === 'H' ? cr.gCoord : cr.bCoord + 1;
-      const ayB = cr.axis === 'H' ? cr.bCoord + 1 : cr.gCoord;
-      const typeIcon = cr.type === 'crossing' ? '🌊' : cr.type === 'tollbridge' ? '⌒' : '⛰';
-      const t = tiles[`${axA},${ayA}`];
-      result.push({
-        key: cr.id + '_A', id: cr.id, side: 'A', type: cr.type,
-        cx: axA, cy: ayA, icon: typeIcon,
-        owner:    t?.owner    || null,
-        garrison: t?.garrison || 0,
-        siege:    t?.siege    || 0,
-        siegeMax: t?.siegeMax || 0,
-        name: `${cr.type === 'crossing' ? 'Crossing' : cr.type === 'tollbridge' ? 'Toll Bridge' : 'Tunnel'} Gate A`,
-      });
-      const t2 = tiles[`${axB},${ayB}`];
-      result.push({
-        key: cr.id + '_B', id: cr.id, side: 'B', type: cr.type,
-        cx: axB, cy: ayB, icon: typeIcon,
-        owner:    t2?.owner    || null,
-        garrison: t2?.garrison || 0,
-        siege:    t2?.siege    || 0,
-        siegeMax: t2?.siegeMax || 0,
-        name: `${cr.type === 'crossing' ? 'Crossing' : cr.type === 'tollbridge' ? 'Toll Bridge' : 'Tunnel'} Gate B`,
-      });
+    
+    for (const [key, tile] of Object.entries(tiles)) {
+      // Check if tile has gate flag and keep metadata (gates are marked as keeps)
+      if (tile.flags?.gate && tile.flags?.keep && tile.keepMeta) {
+        const [x, y] = key.split(',').map(Number);
+        const meta = tile.keepMeta;
+        const typeIcon = meta.type === 'crossing' ? '🌊' : meta.type === 'tollbridge' ? '⌒' : '⛰';
+        
+        result.push({
+          key: key,
+          id: meta.id || key,
+          side: meta.side,
+          type: meta.type,
+          cx: x,
+          cy: y,
+          icon: typeIcon,
+          owner: tile.owner || null,
+          garrison: tile.garrison || 0,
+          siege: tile.siege || 0,
+          siegeMax: tile.siegeMax || 0,
+          name: meta.keepName || 'Gate',
+        });
+      }
     }
+    
     return result;
-  }, [crossings, tiles]);
+  }, [tiles]);
 
   const allClickable = useMemo(() => [...keeps, ...gates], [keeps, gates]);
   const selectedItem = selected ? allClickable.find(k => k.key === selected) : null;
@@ -282,117 +279,66 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
             );
           })()}
 
-          {/* Vignette */}
-          <rect width={DW} height={DH} fill="url(#wm-vig)" style={{ pointerEvents: "none" }}/>
+          {/* ── Region keep icons ── */}
+          {keeps.map(k => {
+            const cx = k.cx * sx, cy = k.cy * sy;
+            const owned = k.owner;
+            const isHG = k.key === "holyGrail";
+            const isSel = selected === k.key;
+            const sz = (isHG ? 17 : 13) * iconMult;
+            const facCol = owned ? (owned === "player" ? "#44aaff" : (FAC_COLOR[owned] || "#cc8844")) : null;
+            const col = owned ? facCol : (isHG ? "#f0c040" : "#b8a88a");
 
-          {/* ── Player viewport dot ── */}
-          {dotPos && zoom && (() => {
-            const worldX = (screenW / 2 - dotPos.x) / zoom;
-            const worldY = (screenH / 2 - dotPos.y) / zoom;
-            const u = worldX - ROWS * TW / 2;
-            const v = worldY - TOP_PAD;
-            const tileC = (u / (TW / 2) + v / (TH / 2)) / 2;
-            const tileR = (v / (TH / 2) - u / (TW / 2)) / 2;
-            const dotX = tileC * sx;
-            const dotY = tileR * sy;
-            if (dotX < 0 || dotX > DW || dotY < 0 || dotY > DH) return null;
             return (
-              <g style={{ pointerEvents: "none" }}>
-                <circle cx={dotX} cy={dotY} r={6 * sx} fill="rgba(68,170,255,0.18)" stroke="#44aaff" strokeWidth={1.2}/>
-                <circle cx={dotX} cy={dotY} r={2.5 * sx} fill="#44aaff" opacity={0.95}/>
+              <g key={k.key} style={{ pointerEvents: "none" }}>
+                {/* Outer ring (selected) */}
+                {isSel && <circle cx={cx} cy={cy} r={sz + 4} fill="white" opacity={0.12}/>}
+                {/* Keep icon */}
+                <circle cx={cx} cy={cy} r={sz} fill="#0a0c10" stroke={col} strokeWidth={1.4}/>
+                <rect x={cx - sz * 0.35} y={cy - sz * 0.3} width={sz * 0.7} height={sz * 0.7}
+                  fill="none" stroke={col} strokeWidth={1.2} rx={1}/>
+                <rect x={cx - sz * 0.2} y={cy - sz * 0.55} width={sz * 0.4} height={sz * 0.35}
+                  fill="none" stroke={col} strokeWidth={1.2}/>
+                <path d={`M${cx - sz * 0.2},${cy - sz * 0.2} L${cx},${cy - sz * 0.45} L${cx + sz * 0.2},${cy - sz * 0.2} Z`}
+                  fill={col} opacity={0.3}/>
               </g>
+            );
+          })}
+
+          {/* ── Your current position dot ── */}
+          {dotPos && (() => {
+            const r = 3 * iconMult;
+            return (
+              <circle
+                cx={dotPos.x * sx} cy={dotPos.y * sy}
+                r={r}
+                fill="#44aaff"
+                stroke="#fff"
+                strokeWidth={1}
+                filter="url(#wm-drop)"
+                style={{ pointerEvents: "none" }}
+              />
             );
           })()}
-
-          {/* ── Region labels ── */}
-          {keeps.map(reg => {
-            if (reg.key === "holyGrail") return null;
-            const poly = POLYS[reg.key];
-            if (!poly) return null;
-            const owned = reg.owner;
-            const col = owned
-              ? (owned === "player" ? "#88ccff" : (FAC_COLOR[owned] || "#ddaa66"))
-              : "rgba(160,140,100,0.45)";
-            const fs = Math.max(6, Math.min(9, 7.5 * sx));
-            if (reg.cy * sy > DH - 20) return null;
-            return (
-              <text key={`lbl_${reg.key}`}
-                x={reg.cx * sx} y={reg.cy * sy + 3}
-                textAnchor="middle" fontSize={fs}
-                fill={col} fontFamily="'Cinzel',serif"
-                letterSpacing=".02em"
-                style={{ pointerEvents: "none", userSelect: "none" }}>
-                {reg.name.replace("The ", "").replace(" Keep", "").replace("Shattered ", "Sh. ")}
-              </text>
-            );
-          })}
-
-          {/* ── Keep icons ── */}
-          {keeps.map(reg => {
-            const poly = POLYS[reg.key];
-            if (!poly) return null;
-            const cx = reg.cx * sx, cy = reg.cy * sy;
-            if (cy > DH - 15) return null;
-            const owned  = reg.owner;
-            const col    = keepColor(owned);
-            const isHG   = reg.key === "holyGrail";
-            const sz     = (isHG ? 14 * sx : reg.layer === "conflict" ? 11 * sx : 10 * sx) * iconMult;
-            const isSel  = selected === reg.key;
-            const by     = cy - sz * 1.2;
-
-            if (isHG) return (
-              <g key={`icon_${reg.key}`} style={{ pointerEvents: "none" }}>
-                {isSel && <circle cx={cx} cy={cy} r={sz * 2.5} fill="none" stroke="#f0c040" strokeWidth={1.5} opacity={0.7}/>}
-                <circle cx={cx} cy={cy} r={sz * 1.8} fill="rgba(240,192,64,0.12)" stroke="#f0c040" strokeWidth={0.8} opacity={0.7}/>
-                <path d={`M${cx-sz*.5},${cy-sz*.5} L${cx+sz*.5},${cy-sz*.5} L${cx+sz*.35},${cy+sz*.15} L${cx-sz*.35},${cy+sz*.15}Z`}
-                  fill="#f0c040" opacity={0.9}/>
-                <path d={`M${cx-sz*.2},${cy+sz*.15} L${cx+sz*.2},${cy+sz*.15} L${cx+sz*.1},${cy+sz*.5} L${cx-sz*.1},${cy+sz*.5}Z`}
-                  fill="#c8a020" opacity={0.9}/>
-                <text x={cx} y={cy + sz * 1.5} textAnchor="middle" fontSize={Math.max(5.5, sz * .85)}
-                  fill="rgba(240,192,64,0.85)" fontFamily="'Cinzel',serif" letterSpacing=".06em"
-                  style={{ pointerEvents: "none" }}>Holy Grail</text>
-              </g>
-            );
-
-            return (
-              <g key={`icon_${reg.key}`} style={{ pointerEvents: "none" }}>
-                {owned && <circle cx={cx} cy={by} r={sz * 1.6} fill={col} opacity={0.15}/>}
-                {isSel && <circle cx={cx} cy={by} r={sz * 2.1} fill="none" stroke={col} strokeWidth={1.4} opacity={0.8}/>}
-                <rect x={cx - sz * .58} y={by} width={sz * 1.16} height={sz} rx={1}
-                  fill={col} opacity={owned ? 0.92 : 0.45}/>
-                {[-0.4, -0.13, 0.13, 0.4].map((dx, i) => (
-                  <rect key={i} x={cx + dx * sz * 2 - sz * .13} y={by - sz * .48} width={sz * .24} height={sz * .52} rx={1}
-                    fill={col} opacity={owned ? 0.92 : 0.45}/>
-                ))}
-                <path d={`M${cx-sz*.2},${by+sz} L${cx-sz*.2},${by+sz*.5} Q${cx},${by+sz*.28} ${cx+sz*.2},${by+sz*.5} L${cx+sz*.2},${by+sz}Z`}
-                  fill={owned ? "rgba(0,0,0,0.55)" : "#111"}/>
-                {owned && <>
-                  <line x1={cx} y1={by - sz * .48} x2={cx} y2={by - sz * 1.4} stroke={col} strokeWidth={1.3}/>
-                  <polygon points={`${cx},${by-sz*1.4} ${cx+sz*.5},${by-sz*1.18} ${cx},${by-sz*.95}`}
-                    fill={col} opacity={0.95}/>
-                </>}
-              </g>
-            );
-          })}
 
           {/* ── Crossing / Gate icons ── */}
           {gates.map(gate => {
             const cx = gate.cx * sx, cy = gate.cy * sy;
-            if (cx < 0 || cx > DW || cy < 0 || cy > DH) return null;
             const owned = gate.owner;
-            const col   = owned ? (owned === "player" ? "#44aaff" : (FAC_COLOR[owned] || "#cc8844")) : "#484858";
             const isSel = selected === gate.key;
-            const sz    = 7 * iconMult;
-            // Color by type
-            const typeCol = gate.type === 'crossing' ? '#4ab8d8'
-                          : gate.type === 'tollbridge' ? '#c8a030' : '#6a6a8a';
+            const sz = 12 * iconMult;
+            const facCol = owned ? (owned === "player" ? "#44aaff" : (FAC_COLOR[owned] || "#cc8844")) : null;
+            const typeCol = gate.type === 'crossing' ? "#4ab8d8"
+                          : gate.type === 'tollbridge' ? "#c8a030"
+                          : "#8a8aaa";
 
             return (
-              <g key={`gate_${gate.key}`} style={{ pointerEvents: "none" }}>
-                {isSel && <circle cx={cx} cy={cy} r={sz*2.2} fill="none" stroke={typeCol} strokeWidth={1.5} opacity={0.8}/>}
-                {/* Gate background */}
-                <rect x={cx-sz*.9} y={cy-sz*.6} width={sz*1.8} height={sz*1.2} rx={2}
-                  fill="#0a0e18" stroke={typeCol} strokeWidth={1} opacity={0.9}/>
+              <g key={gate.key} style={{ pointerEvents: "none" }}>
+                {/* Selection ring */}
+                {isSel && <circle cx={cx} cy={cy} r={sz + 4} fill="white" opacity={0.12}/>}
+                {/* Base circle */}
+                <circle cx={cx} cy={cy} r={sz} fill="#0a0c10" stroke={facCol || typeCol}
+                  strokeWidth={1.4} opacity={facCol ? 1 : 0.8}/>
                 {/* Type icon */}
                 {gate.type === 'crossing' && <>
                   <path d={`M${cx-sz*.7},${cy-sz*.1} Q${cx-sz*.35},${cy-sz*.4} ${cx},${cy-sz*.1} Q${cx+sz*.35},${cy+sz*.2} ${cx+sz*.7},${cy-sz*.1}`}
