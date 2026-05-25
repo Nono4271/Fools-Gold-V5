@@ -465,7 +465,7 @@ const POLYS = {
 
 // ── Gate crossings (auto-generated) ──────────────────────────────────────────
 // Total gates: 116
-cosnt CROSSINGS = [
+const CROSSINGS = [
   { axis:"H", bCoord:  144, gCoord: 1753, start: 1640, end: 1845, type:"tunnel", id:"gate_1" },
   { axis:"H", bCoord:  288, gCoord: 1737, start: 1640, end: 1845, type:"tunnel", id:"gate_2" },
   { axis:"V", bCoord: 1640, gCoord:  233, start:  144, end:  288, type:"crossing", id:"gate_3" },
