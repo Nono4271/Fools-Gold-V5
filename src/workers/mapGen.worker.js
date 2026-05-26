@@ -164,14 +164,14 @@ const REGION_LIST = [
 ];
 
 const FACTION_REGIONS = {
-  ashen_dead     : { start:"bonehallow", farm:"dawngate" },
-  coldborns      : { start:"frosthold", farm:"icepeak" },
-  dragons        : { start:"flamecrestpeak", farm:"ebonvault" },
-  holyknights    : { start:"oathkeep", farm:"stoneheart" },
-  nightcreatures : { start:"duskmire", farm:"shadowmire" },
-  orcs           : { start:"bloodrock", farm:"fogmire" },
-  pirates        : { start:"deadmansharbor", farm:"ironwood" },
-  wizards        : { start:"arcaneum", farm:"fellwood" },
+  ashen_dead     : { start:"duskmire",       farm:"shadowmire" },
+  coldborns      : { start:"deadmansharbor", farm:"icepeak" },
+  dragons        : { start:"bloodrock",      farm:"ebonvault" },
+  holyknights    : { start:"arcaneum",       farm:"stoneheart" },
+  nightcreatures : { start:"bonehallow",     farm:"shadowmire" },
+  orcs           : { start:"flamecrestpeak", farm:"fogmire" },
+  pirates        : { start:"frosthold",      farm:"ironwood" },
+  wizards        : { start:"oathkeep",       farm:"fellwood" },
 };
 
 const KEEP_SET = new Set(REGION_LIST.map(r => `${r.cx},${r.cy}`));
