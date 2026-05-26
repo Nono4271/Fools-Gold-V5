@@ -1013,6 +1013,35 @@ self.onmessage = function(e) {
     };
   }
 
+  // Place path tiles between gates
+  for (const crossing of CROSSINGS) {
+    const { axis, bCoord, gCoord } = crossing;
+    
+    if (axis === 'V') {
+      // Vertical border: paths at (bCoord-1, gCoord) and (bCoord, gCoord)
+      for (const dx of [-1, 0]) {
+        const px = bCoord + dx;
+        const py = gCoord;
+        const idx = py * COLS + px;
+        terrainArr[idx] = TERRAIN_ENC.grass;
+        flagArr[idx] = (flagArr[idx] & ~F_BORDER) | F_GATE;  // F_GATE but not F_KEEP
+        garrisonArr[idx] = 0;
+        rssArr[idx] = 0;
+      }
+    } else {
+      // Horizontal border: paths at (gCoord, bCoord-1) and (gCoord, bCoord)
+      for (const dy of [-1, 0]) {
+        const px = gCoord;
+        const py = bCoord + dy;
+        const idx = py * COLS + px;
+        terrainArr[idx] = TERRAIN_ENC.grass;
+        flagArr[idx] = (flagArr[idx] & ~F_BORDER) | F_GATE;  // F_GATE but not F_KEEP
+        garrisonArr[idx] = 0;
+        rssArr[idx] = 0;
+      }
+    }
+  }
+
   postMessage({ type:"progress", pct:85, label:"Placing keeps..." });
 
   // ── P10–P13: stamp 2×2 structures ────────────────────────────────────────────
