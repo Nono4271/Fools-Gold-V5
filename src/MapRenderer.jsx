@@ -1305,6 +1305,62 @@ function drawAmbientScatter(gfx, tile, cx, sy, pl = 1) {
   }
 }
 
+const _hqStateCache = new Map(); // tileKey → { faction, owner, isSelected }
+const _hqKeyIndex = new Set();
+export function clearHQCache() { _hqStateCache.clear(); _hqKeyIndex.clear(); }
+
+const _hqTexCache = {}; // shared texture cache across rebuilds
+
+function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids, vb) {
+  if (_hqKeyIndex.size === 0) {
+    for (const [tileKey, tile] of Object.entries(tiles)) {
+      if (tile?.isHQ) _hqKeyIndex.add(tileKey);
+    }
+  }
+
+  for (const tileKey of _hqKeyIndex) {
+    const tile = tiles[tileKey];
+    if (!tile?.isHQ) { _hqKeyIndex.delete(tileKey); continue; }
+
+    if (vb) {
+      const [tc, tr] = tileKey.split(",").map(Number);
+      const isPlayerHQ = tile.owner === "player";
+      if (!isPlayerHQ && (tc < vb.cMin || tc > vb.cMax || tr < vb.rMin || tr > vb.rMax)) {
+        for (let i = hqCont.children.length - 1; i >= 0; i--) {
+          const child = hqCont.children[i];
+          if (child.__hqKey === tileKey) {
+            hqCont.removeChild(child);
+            child.destroy({ children: true });
+            _hqStateCache.delete(tileKey);
+            break;
+          }
+        }
+        continue;
+      }
+    }
+
+    const isSelected = selKey === tileKey;
+    const owner      = tile.owner || null;
+    const faction    = tile.faction || owner || null;
+    const prev       = _hqStateCache.get(tileKey);
+
+    const curPlayerName = owner === "player" ? playerName : null;
+    if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName) continue;
+
+    for (let i = hqCont.children.length - 1; i >= 0; i--) {
+      const child = hqCont.children[i];
+      if (child.__hqKey === tileKey) {
+        hqCont.removeChild(child);
+        child.destroy({ children: true });
+        break;
+      }
+    }
+
+    hqCont.addChild(_buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids));
+    _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null });
+  }
+}
+
 function drawMarchLines(gfx, cmds, reinMarches, tiles) {
   gfx.clear();
   const drawPath = (path, col) => {
