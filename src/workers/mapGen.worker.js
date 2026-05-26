@@ -321,6 +321,10 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
         if (bx >= 1433 && bx <= 1436 && y >= 1015 && y <= 1160) {
           continue; // Fellwood
         }
+        // Skip L-shaped region interior borders
+        if (bx >= 818 && bx <= 821 && y >= 439 && y <= 579) {
+          continue; // Battlemarsh vertical interior
+        }
         
         if (gateYSet.has(y)) {
           // This y-coordinate has a gate crossing
@@ -375,6 +379,10 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
         }
         if (by >= 870 && by <= 873 && x >= 1640 && x <= 1845) {
           continue; // Nightmarsh
+        }
+        // Skip L-shaped region interior borders
+        if (by >= 580 && by <= 583 && x >= 617 && x <= 817) {
+          continue; // Battlemarsh horizontal interior
         }
         
         if (gateXSet.has(x)) {
@@ -1075,30 +1083,6 @@ self.onmessage = function(e) {
 
   postMessage({ type:"progress", pct:85, label:"Placing keeps..." });
 
-  // ── Add all road tiles to ROAD_TILE_SET BEFORE P10+ placement ─────────────────
-  // P10-P13 structures need to check ROAD_TILE_SET to avoid overlapping roads
-  for (const [c1, r1, c2, r2] of ROAD_SEGMENTS) {
-    const dc = c2 > c1 ? 1 : c2 < c1 ? -1 : 0;
-    const dr = r2 > r1 ? 1 : r2 < r1 ? -1 : 0;
-    
-    // Horizontal leg
-    for (let c = c1; c !== c2; c += dc) {
-      const idx = r1 * COLS + c;
-      ROAD_TILE_SET.add(idx);
-    }
-    
-    // Vertical leg
-    if (dr !== 0) {
-      for (let r = r1; r !== r2 + dr; r += dr) {
-        const idx = r * COLS + c2;
-        ROAD_TILE_SET.add(idx);
-      }
-    } else {
-      const idx = r1 * COLS + c2;
-      ROAD_TILE_SET.add(idx);
-    }
-  }
-
   // ── P10–P13: stamp 2×2 structures ────────────────────────────────────────────
   // Each tile that rolled P10-P13 becomes the top-left of a 2×2 footprint.
   // Primary (top-left): F_KEEP. Other 3 cells: F_KEEPPART pointing to primary.
@@ -1115,14 +1099,13 @@ self.onmessage = function(e) {
       const pl2  = powerArr[idx2];
       if (pl2 < 10) continue;
 
-      // All 4 cells must be clear of flags AND outside static keep footprints AND not on roads
+      // All 4 cells must be clear of flags AND outside static keep footprints
       const cells = [[c2,r2],[c2+1,r2],[c2,r2+1],[c2+1,r2+1]];
       let blocked = false;
       for (const [tc, tr] of cells) {
         const ti = tr * COLS + tc;
         if (flagArr[ti] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { blocked = true; break; }
         if (KEEP_FOOTPRINT_SET.has(`${tc},${tr}`)) { blocked = true; break; }
-        if (ROAD_TILE_SET.has(ti)) { blocked = true; break; }
       }
       if (blocked) { powerArr[idx2] = 9; continue; }
 
