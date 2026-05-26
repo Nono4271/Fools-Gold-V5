@@ -309,21 +309,22 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       
       for (let y = 0; y < ROWS; y++) {
         if (gateYSet.has(y)) {
-          // Gate/path tile - passable but add perpendicular borders
-          pathTiles.push({ x: bx, y });
-          
-          // Add borders on perpendicular sides of path tiles (only the 2 middle path tiles)
-          gates.forEach(g => {
-            if (y === g.gateStart + 1 || y === g.gateStart + 2) { // Path tiles only
-              for (let pdy = -BORDER_WIDTH; pdy <= BORDER_WIDTH; pdy++) {
-                if (pdy === 0) continue;
-                const pby = y + pdy;
-                if (pby >= 0 && pby < ROWS && !gateYSet.has(pby)) {
-                  impassable.push({ x: bx, y: pby });
-                }
+          // This y-coordinate has a gate crossing
+          // Only the middle 2 x-offsets (-1, 0) are paths; outer 2 (-2, +1) are gate structures
+          if (dx === -1 || dx === 0) {
+            // Path tile - passable, add perpendicular borders
+            pathTiles.push({ x: bx, y });
+            
+            // Add borders on perpendicular sides of path tiles
+            for (let pdy = -BORDER_WIDTH; pdy < BORDER_WIDTH; pdy++) {
+              if (pdy === 0) continue;
+              const pby = y + pdy;
+              if (pby >= 0 && pby < ROWS && !gateYSet.has(pby)) {
+                impassable.push({ x: bx, y: pby });
               }
             }
-          });
+          }
+          // For dx === -2 or dx === +1 (gate structures), skip entirely - handled later
         } else {
           // Border tile - impassable
           impassable.push({ x: bx, y });
@@ -348,21 +349,22 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       
       for (let x = 0; x < COLS; x++) {
         if (gateXSet.has(x)) {
-          // Gate/path tile - passable but add perpendicular borders
-          pathTiles.push({ x, y: by });
-          
-          // Add borders on perpendicular sides of path tiles (only the 2 middle path tiles)
-          gates.forEach(g => {
-            if (x === g.gateStart + 1 || x === g.gateStart + 2) { // Path tiles only
-              for (let pdx = -BORDER_WIDTH; pdx <= BORDER_WIDTH; pdx++) {
-                if (pdx === 0) continue;
-                const pbx = x + pdx;
-                if (pbx >= 0 && pbx < COLS && !gateXSet.has(pbx)) {
-                  impassable.push({ x: pbx, y: by });
-                }
+          // This x-coordinate has a gate crossing
+          // Only the middle 2 y-offsets (-1, 0) are paths; outer 2 (-2, +1) are gate structures
+          if (dy === -1 || dy === 0) {
+            // Path tile - passable, add perpendicular borders
+            pathTiles.push({ x, y: by });
+            
+            // Add borders on perpendicular sides of path tiles
+            for (let pdx = -BORDER_WIDTH; pdx < BORDER_WIDTH; pdx++) {
+              if (pdx === 0) continue;
+              const pbx = x + pdx;
+              if (pbx >= 0 && pbx < COLS && !gateXSet.has(pbx)) {
+                impassable.push({ x: pbx, y: by });
               }
             }
-          });
+          }
+          // For dy === -2 or dy === +1 (gate structures), skip entirely - handled later
         } else {
           // Border tile - impassable
           impassable.push({ x, y: by });
