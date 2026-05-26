@@ -63,10 +63,11 @@ function worldToKey(wx, wy, tiles) {
   }
 
   // Check if point is inside the 2x visual diamond for a P10+ single tile structure.
-  // Diamond center is at (cx, cy+TH), half-widths TW and TH.
+  // Diamond centered at tile center (cx, cy + TH/2), half-widths TW and TH.
   function inP10Footprint(wx, wy, pc, pr) {
     const { cx, cy } = isoXY(pc, pr);
-    return Math.abs(wx - cx) / TW + Math.abs(wy - (cy + TH)) / TH <= 1.05;
+    const tileCenterY = cy + TH / 2;
+    return Math.abs(wx - cx) / TW + Math.abs(wy - tileCenterY) / TH <= 1.05;
   }
 
   // Scan ±2 tiles around estimate, checking P10+ footprints first
@@ -530,15 +531,16 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (!tile) continue;
       const pl = tile.powerLevel ?? 0;
       if (pl < 10 || !tile.isKeep || tile.isGate) continue;
-      // Single tile — draw 2x diamond centered on this tile
+      // Single tile — draw 2x diamond centered on this tile's center point
       const { cx, cy } = isoXY(c, r);
+      const tileCenterY = cy + TH / 2; // vertical center of the tile
       const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
-      // 2x diamond: same shape as the old 2×2 merged diamond
+      // 2x diamond: extends TW left/right and TH up/down from tile center
       const MERGED = [
-        cx,           cy,          // N (top of tile)
-        cx + TW,      cy + TH,     // E
-        cx,           cy + TH * 2, // S
-        cx - TW,      cy + TH,     // W
+        cx,           tileCenterY - TH,  // N
+        cx + TW,      tileCenterY,        // E
+        cx,           tileCenterY + TH,   // S
+        cx - TW,      tileCenterY,        // W
       ];
       gfx.beginFill(baseColor); gfx.drawPolygon(MERGED); gfx.endFill();
       gfx.lineStyle(0);
@@ -1859,11 +1861,12 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const pl = tile.powerLevel ?? 0;
       if (pl >= 10 && tile.isKeep) {
         const { cx, cy } = isoXY(sc, sr);
+        const tileCenterY = cy + TH / 2;
         const MERGED = [
-          cx,        cy,            // N
-          cx + TW,   cy + TH,       // E
-          cx,        cy + TH * 2,   // S
-          cx - TW,   cy + TH,       // W
+          cx,      tileCenterY - TH,  // N
+          cx + TW, tileCenterY,        // E
+          cx,      tileCenterY + TH,   // S
+          cx - TW, tileCenterY,        // W
         ];
         selGfx.lineStyle(3, 0xffffff, 0.95);
         selGfx.drawPolygon(MERGED);
