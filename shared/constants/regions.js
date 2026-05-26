@@ -4,20 +4,20 @@
 export const REGIONS = {
   shadowmere: { key:"shadowmere", name:"Shadowmere", layer:"farm", keepName:"Shadowmere Keep", cx:102, cy:1232, factions:[] },
   icepeak: { key:"icepeak", name:"Icepeak", layer:"farm", keepName:"Icepeak Keep", cx:307, cy:1232, factions:["coldborns"] },
-  key:"frosthold", name:"Deadmans Harbor", layer:"start", keepName:"Deadmans Harbor Keep", cx:512, cy:1232, factions:["pirates"]
+  frosthold: { key:"frosthold", name:"Deadmans Harbor", layer:"start", keepName:"Deadmans Harbor Keep", cx:512, cy:1232, factions:["pirates"] },
   icebreak: { key:"icebreak", name:"Icebreak", layer:"farm", keepName:"Icebreak Keep", cx:717, cy:1232, factions:["coldborns"] },
   drearfort: { key:"drearfort", name:"Drearfort", layer:"farm", keepName:"Drearfort Keep", cx:922, cy:1232, factions:[] },
   shadowmire: { key:"shadowmire", name:"Shadowmire", layer:"farm", keepName:"Shadowmire Keep", cx:1127, cy:1232, factions:["nightcreatures"] },
-  key:"duskmire", name:"Bonehallow", layer:"start", keepName:"Bonehallow Keep", cx:1332, cy:1232, factions:["ashen_dead"]
+  duskmire: { key:"duskmire", name:"Bonehallow", layer:"start", keepName:"Bonehallow Keep", cx:1332, cy:1232, factions:["ashen_dead"] },
   shadowfen: { key:"shadowfen", name:"Shadowfen", layer:"farm", keepName:"Shadowfen Keep", cx:1537, cy:1232, factions:["nightcreatures"] },
   gravemist: { key:"gravemist", name:"Gravemist", layer:"farm", keepName:"Gravemist Keep", cx:1742, cy:1232, factions:[] },
-  key:"flamecrestpeak", name:"Bloodrock", layer:"start", keepName:"Bloodrock Keep", cx:102, cy:1087, factions:["orcs"]
+  flamecrestpeak: { key:"flamecrestpeak", name:"Bloodrock", layer:"start", keepName:"Bloodrock Keep", cx:102, cy:1087, factions:["orcs"] },
   ebonvault: { key:"ebonvault", name:"Ebonvault", layer:"farm", keepName:"Ebonvault Keep", cx:410, cy:1087, factions:["dragons"] },
   wraithmoor: { key:"wraithmoor", name:"Wraithmoor", layer:"farm", keepName:"Wraithmoor Keep", cx:717, cy:1087, factions:[] },
   deathmarsh: { key:"deathmarsh", name:"Deathmarsh", layer:"farm", keepName:"Deathmarsh Keep", cx:922, cy:1087, factions:[] },
   bleakstone: { key:"bleakstone", name:"Bleakstone", layer:"farm", keepName:"Bleakstone Keep", cx:1127, cy:1087, factions:[] },
   fellwood: { key:"fellwood", name:"Fellwood", layer:"farm", keepName:"Fellwood Keep", cx:1435, cy:1087, factions:["wizards"] },
-  key:"arcaneum", name:"Oathkeep", layer:"start", keepName:"Oathkeep Keep", cx:1742, cy:1087, factions:["holyknights"]
+  arcaneum: { key:"arcaneum", name:"Oathkeep", layer:"start", keepName:"Oathkeep Keep", cx:1742, cy:1087, factions:["holyknights"] },
   cursedfen: { key:"cursedfen", name:"Cursedfen", layer:"farm", keepName:"Cursedfen Keep", cx:102, cy:870, factions:[] },
   rotmire: { key:"rotmire", name:"Rotmire", layer:"farm", keepName:"Rotmire Keep", cx:307, cy:942, factions:[] },
   blightmoor: { key:"blightmoor", name:"Blightmoor", layer:"farm", keepName:"Blightmoor Keep", cx:512, cy:942, factions:[] },
@@ -55,20 +55,20 @@ export const REGIONS = {
   mysticfen: { key:"mysticfen", name:"Mysticfen", layer:"farm", keepName:"Mysticfen Keep", cx:1332, cy:362, factions:[] },
   salthaven: { key:"salthaven", name:"Salthaven", layer:"farm", keepName:"Salthaven Keep", cx:1537, cy:362, factions:[] },
   deepwater: { key:"deepwater", name:"Deepwater", layer:"farm", keepName:"Deepwater Keep", cx:1742, cy:435, factions:[] },
-  key:"bloodrock", name:"Flamecrest Peak", layer:"start", keepName:"Flamecrest Peak Keep", cx:102, cy:217, factions:["dragons"]
+  bloodrock: { key:"bloodrock", name:"Flamecrest Peak", layer:"start", keepName:"Flamecrest Peak Keep", cx:102, cy:217, factions:["dragons"] },
   fogmire: { key:"fogmire", name:"Fogmire", layer:"farm", keepName:"Fogmire Keep", cx:410, cy:217, factions:["orcs"] },
   graveshroud: { key:"graveshroud", name:"Graveshroud", layer:"farm", keepName:"Graveshroud Keep", cx:717, cy:217, factions:[] },
   greywatch: { key:"greywatch", name:"Greywatch", layer:"farm", keepName:"Greywatch Keep", cx:922, cy:217, factions:[] },
   voidmarsh: { key:"voidmarsh", name:"Voidmarsh", layer:"farm", keepName:"Voidmarsh Keep", cx:1127, cy:217, factions:[] },
   stoneheart: { key:"stoneheart", name:"Stoneheart", layer:"farm", keepName:"Stoneheart Keep", cx:1435, cy:217, factions:["holyknights"] },
-  key:"oathkeep", name:"Arcaneum", layer:"start", keepName:"Arcaneum Keep", cx:1742, cy:217, factions:["wizards"]
+  oathkeep: { key:"oathkeep", name:"Arcaneum", layer:"start", keepName:"Arcaneum Keep", cx:1742, cy:217, factions:["wizards"] },
   ashenmark: { key:"ashenmark", name:"Ashenmark", layer:"farm", keepName:"Ashenmark Keep", cx:102, cy:72, factions:[] },
   dreadmarsh: { key:"dreadmarsh", name:"Dreadmarsh", layer:"farm", keepName:"Dreadmarsh Keep", cx:307, cy:72, factions:[] },
-  key:"deadmansharbor", name:"Frosthold", layer:"start", keepName:"Frosthold Keep", cx:512, cy:72, factions:["coldborns"]
+  deadmansharbor: { key:"deadmansharbor", name:"Frosthold", layer:"start", keepName:"Frosthold Keep", cx:512, cy:72, factions:["coldborns"] },
   ironwood: { key:"ironwood", name:"Ironwood", layer:"farm", keepName:"Ironwood Keep", cx:717, cy:72, factions:[] },
   lastwatch: { key:"lastwatch", name:"Lastwatch", layer:"farm", keepName:"Lastwatch Keep", cx:922, cy:72, factions:[] },
   finalhope: { key:"finalhope", name:"Finalhope", layer:"farm", keepName:"Finalhope Keep", cx:1127, cy:72, factions:[] },
-  key:"bonehallow", name:"Duskmire", layer:"start", keepName:"Duskmire Keep", cx:1332, cy:72, factions:["nightcreatures"]
+  bonehallow: { key:"bonehallow", name:"Duskmire", layer:"start", keepName:"Duskmire Keep", cx:1332, cy:72, factions:["nightcreatures"] },
   dawngate: { key:"dawngate", name:"Dawngate", layer:"farm", keepName:"Dawngate Keep", cx:1537, cy:72, factions:[] },
   twilightspire: { key:"twilightspire", name:"Twilightspire", layer:"farm", keepName:"Twilightspire Keep", cx:1742, cy:72, factions:[] },
 };
