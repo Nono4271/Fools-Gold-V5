@@ -42,12 +42,13 @@ const POWER_WEIGHTS = [
   { pl:7,  w: 171785 },
   { pl:8,  w:  82457 },
   { pl:9,  w:  54971 },
-  { pl:10, w:  15804 },
-  { pl:11, w:  10307 },
-  { pl:12, w:   8245 },
-  { pl:13, w:   6184 },
+  { pl:10, w:   3951 },
+  { pl:11, w:   2577 },
+  { pl:12, w:   2061 },
+  { pl:13, w:   1546 },
 ];
 // Weights sum exactly to 2,405,000 (= COLS × ROWS) so expected count = weight for each level.
+// P10–P13 weights are divided by 4 vs original since each is now a single tile (was 2×2).
 const POWER_TOTAL = POWER_WEIGHTS.reduce((s, e) => s + e.w, 0);
 
 // Fast per-tile RNG seeded from coords — deterministic, no global state
@@ -1371,30 +1372,26 @@ self.onmessage = function(e) {
   Object.assign(keepMeta, gateMeta);
 
   let p10Total = 0, p10Placed = 0, p10Demoted = 0;
-  for (let r2 = 0; r2 < ROWS - 1; r2++) {
-    for (let c2 = 0; c2 < COLS - 1; c2++) {
+  for (let r2 = 0; r2 < ROWS; r2++) {
+    for (let c2 = 0; c2 < COLS; c2++) {
       const idx2 = r2 * COLS + c2;
       const pl2  = powerArr[idx2];
       if (pl2 < 10) continue;
       p10Total++;
 
-      // All 4 cells must be clear of flags AND outside static keep footprints
-      const cells = [[c2,r2],[c2+1,r2],[c2,r2+1],[c2+1,r2+1]];
+      // Tile itself must be clear
       let blocked = false;
-      for (const [tc, tr] of cells) {
-        const ti = tr * COLS + tc;
-        if (flagArr[ti] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { blocked = true; break; }
-        if (KEEP_FOOTPRINT_SET.has(`${tc},${tr}`)) { blocked = true; break; }
-        if (ROAD_TILE_SET.has(ti)) { blocked = true; break; }
-      }
+      if (flagArr[idx2] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { blocked = true; }
+      if (!blocked && KEEP_FOOTPRINT_SET.has(`${c2},${r2}`)) { blocked = true; }
+      if (!blocked && ROAD_TILE_SET.has(idx2)) { blocked = true; }
       if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
 
-      // Adjacent tiles (1-tile perimeter around the 2×2) must not be HQ, gate, keep, or road
+      // Adjacent tiles (1-tile perimeter) must not be HQ, gate, keep, or road
       const ADJ_FLAGS = F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER;
       adjCheck:
-      for (let dr = -1; dr <= 2; dr++) {
-        for (let dc = -1; dc <= 2; dc++) {
-          if (dr >= 0 && dr <= 1 && dc >= 0 && dc <= 1) continue; // skip the 2×2 itself
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
           const ac = c2 + dc, ar = r2 + dr;
           if (ac < 0 || ar < 0 || ac >= COLS || ar >= ROWS) continue;
           const ai = ar * COLS + ac;
@@ -1406,22 +1403,11 @@ self.onmessage = function(e) {
 
       const siege2 = P10_SIEGE[pl2] ?? 8000;
 
-      // Primary tile — preserve natural terrain and rss for prop rendering
+      // Single tile — no keepPart cells
       flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
-      garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100); // stored ×100, divide on read
+      garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100);
       siegeArr[idx2]    = siege2;
       siegeMaxArr[idx2] = siege2;
-
-      // 3 KEEPPART tiles — preserve natural terrain, copy primary's rss so all 4 cells share the same prop type
-      const primaryRss = rssArr[idx2];
-      for (const [tc, tr] of [[c2+1,r2],[c2,r2+1],[c2+1,r2+1]]) {
-        const ti = tr * COLS + tc;
-        powerArr[ti]    = pl2;
-        regionArr[ti]   = regionArr[idx2];
-        flagArr[ti]     = (flagArr[ti] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
-        keepPrimArr[ti] = idx2;
-        rssArr[ti]      = primaryRss;
-      }
 
       keepMeta[`${c2},${r2}`] = {
         keepName:      `P${pl2} Structure`,
