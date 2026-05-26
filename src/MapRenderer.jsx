@@ -230,12 +230,12 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         const TOP = [cx, sy, cx+TW/2, mid, cx, sy+TH, cx-TW/2, mid];
         const ct  = crossingType;
         const axis = crossingAxis;
-        // Debug: log first 10 gates
-        if (isKeep && ct) {
-          if (!window.__gateLogCount) window.__gateLogCount = 0;
-          if (window.__gateLogCount < 10) {
-            console.log(`Gate at ${c},${r}: type=${ct}, axis=${axis}`);
-            window.__gateLogCount++;
+        // Debug: inspect first few gate tiles
+        if (isGate) {
+          if (!window.__gateInspectCount) window.__gateInspectCount = 0;
+          if (window.__gateInspectCount < 5) {
+            console.log(`Tile ${c},${r}: isGate=${isGate}, isKeep=${isKeep}, ct=${ct}, axis=${axis}`);
+            window.__gateInspectCount++;
           }
         }
         const key = `${c},${r}`;
