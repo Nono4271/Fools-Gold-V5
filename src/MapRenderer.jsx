@@ -62,8 +62,8 @@ function worldToKey(wx, wy, tiles) {
     return Math.abs(wx - cx) / (TW / 2) + Math.abs(wy - (sy + TH / 2)) / (TH / 2) <= 1.08;
   }
 
-  // Check if point is inside the full 2×2 outer diamond for a P10+ structure.
-  // The 2×2 diamond center is at (cx, cy+TH), half-widths are TW and TH.
+  // Check if point is inside the 2x visual diamond for a P10+ single tile structure.
+  // Diamond center is at (cx, cy+TH), half-widths TW and TH.
   function inP10Footprint(wx, wy, pc, pr) {
     const { cx, cy } = isoXY(pc, pr);
     return Math.abs(wx - cx) / TW + Math.abs(wy - (cy + TH)) / TH <= 1.05;
@@ -80,11 +80,9 @@ function worldToKey(wx, wy, tiles) {
 
       const pl = tile.powerLevel ?? 0;
 
-      if (pl >= 10 && (tile.isKeep || tile.isKeepPart)) {
-        // Use full 2×2 footprint hitbox; always return the primary key
-        const primKey = tile.isKeepPart ? tile.keepPrimaryKey : key;
-        const [pc, pr2] = (primKey || key).split(",").map(Number);
-        if (inP10Footprint(wx, wy, pc, pr2)) return primKey || key;
+      if (pl >= 10 && tile.isKeep) {
+        // Single tile at 2x visual size — use 2x hitbox
+        if (inP10Footprint(wx, wy, c, r)) return key;
         continue;
       }
 
@@ -202,13 +200,12 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         continue;
       }
 
-      // Keep and keepPart tiles — render as plain ground only.
       // Keep and keepPart tiles render as plain ground. Gate tiles render with their terrain.
-      // P10–P13 dynamic structures are handled in second pass below.
+      // P10–P13 single-tile structures are handled in second pass below.
       if ((isKeep && !isGate) || isKeepPart) {
         const pl10 = (tile.powerLevel ?? 0) >= 10;
         if (pl10) {
-          // P10–P13: skip all 4 cells in the main pass — drawn in second pass below
+          // P10–P13: skip in main pass — drawn at 2x size in second pass
           continue;
         } else {
           const { cx, cy } = isoXY(c, r);
@@ -521,9 +518,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
     }
   }
 
-  // ── Second pass: P10–P13 merged diamonds drawn AFTER all regular tiles ────
-  // This ensures the merged ground fill always sits on top and never gets
-  // clipped by adjacent tiles rendered in later diagonal strips.
+  // ── Second pass: P10–P13 drawn AFTER all regular tiles at 2x visual size ────
+  // P10+ is now a single tile that renders at double width/height visually.
   for (let d = dMin; d <= dMax; d++) {
     const cLo = Math.max(cMin, d - rMax);
     const cHi = Math.min(cMax, d - rMin);
@@ -534,38 +530,23 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (!tile) continue;
       const pl = tile.powerLevel ?? 0;
       if (pl < 10 || !tile.isKeep || tile.isGate) continue;
-      // Primary cell only — draw merged 2×2 diamond covering all 4 cells
+      // Single tile — draw 2x diamond centered on this tile
       const { cx, cy } = isoXY(c, r);
-      // Use the tile's actual terrain so the P10+ footprint blends with its cluster
       const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
-      // Overdraw by 4px on every edge to fully cover neighbor tile stroke artifacts,
-      // but skip overdraw on sides adjacent to an HQ tile (any part of 3x3) to avoid painting over it.
-      const isHQTile = (key) => { const t = tiles[key]; return t?.isHQ || t?.isHQPart; };
-      const hqN = isHQTile(`${c},${r-1}`)   || isHQTile(`${c+1},${r-1}`) || isHQTile(`${c+2},${r-1}`);
-      const hqE = isHQTile(`${c+2},${r}`)   || isHQTile(`${c+2},${r+1}`) || isHQTile(`${c+2},${r+2}`);
-      const hqS = isHQTile(`${c},${r+2}`)   || isHQTile(`${c+1},${r+2}`) || isHQTile(`${c+2},${r+2}`);
-      const hqW = isHQTile(`${c-1},${r}`)   || isHQTile(`${c-1},${r+1}`) || isHQTile(`${c-1},${r+2}`);
-      const OD = 2.2;
-      const odN = hqN ? 0 : OD;
-      const odE = hqE ? 0 : OD;
-      const odS = hqS ? 0 : OD;
-      const odW = hqW ? 0 : OD;
+      // 2x diamond: same shape as the old 2×2 merged diamond
       const MERGED = [
-        cx,           cy - odN,          // N
-        cx + TW + odE, cy + TH,          // E
-        cx,           cy + TH * 2 + odS, // S
-        cx - TW - odW, cy + TH,          // W
+        cx,           cy,          // N (top of tile)
+        cx + TW,      cy + TH,     // E
+        cx,           cy + TH * 2, // S
+        cx - TW,      cy + TH,     // W
       ];
-      // Stroke the outline with the fill color so neighbor edges are painted over
-      gfx.lineStyle(OD * 2, baseColor, 1);
       gfx.beginFill(baseColor); gfx.drawPolygon(MERGED); gfx.endFill();
       gfx.lineStyle(0);
 
-      // Owner tint over the full footprint
+      // Owner tint
       const owner2 = tile.owner || null;
       if (owner2) {
         const ot = ownerTint(owner2, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-        // NO FILL for owned keeps - just 1px border
         gfx.lineStyle(2, ot, 1.0);
         gfx.drawPolygon(MERGED);
         gfx.lineStyle(0);
@@ -589,22 +570,15 @@ function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
       const isStaticKeep = (tile.isKeep && !tile.isGate) && (tile.powerLevel ?? 0) < 10;
       const isStaticPart = tile.isKeepPart && (tile.powerLevel ?? 0) < 10;
       if (isStaticKeep || isStaticPart) continue;
-      // P10–P13 keepPart: skip — primary handles the single unified prop
       const pl = tile.powerLevel || 1;
-      if (tile.isKeepPart && pl >= 10) continue;
       const { cx, cy } = isoXY(c, r);
       const sy = cy - 4;
       if (pl === 1) continue; // P1 has all resources but no individual props
       if (tile.rss) {
         if (tile.isKeep && pl >= 10) {
-          // Draw one giant prop centered on the 2×2 footprint midpoint.
-          // Each tier gets a distinct size well above the P9 ceiling (sizeMult tops
-          // out at pl=13). Synthetic pl: P10→16, P11→19, P12→22, P13→25.
-          // The 2×2 diamond's visual centre is TH below the primary tile centre,
-          // so shift sy down by TH so the prop base sits inside the merged footprint.
+          // Single tile at 2x size — prop centered on the tile's visual midpoint
           const syntheticPl = 13 + (pl - 9) * 3;
-          const midCy = cy + TH / 2;
-          drawRssProp(gfx, tile.rss, cx, midCy + TH / 2, c, r, syntheticPl);
+          drawRssProp(gfx, tile.rss, cx, cy + TH / 2, c, r, syntheticPl);
         } else {
           drawRssProp(gfx, tile.rss, cx, sy, c, r, pl);
         }
@@ -1881,14 +1855,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const tile = tilesRef.current[key];
       if (!tile) return;
 
-      // P10–P13 primary or part: draw white outline around full 2×2 footprint (outer border only)
+      // P10–P13: draw white outline around the 2x visual diamond
       const pl = tile.powerLevel ?? 0;
-      if (pl >= 10 && (tile.isKeep || tile.isKeepPart)) {
-        // Resolve to primary
-        const primKey   = tile.isKeepPart ? tile.keepPrimaryKey : key;
-        const [pc, pr]  = (primKey || key).split(",").map(Number);
-        const { cx, cy } = isoXY(pc, pr);
-        // Single outer diamond encompassing all 4 cells — no internal lines
+      if (pl >= 10 && tile.isKeep) {
+        const { cx, cy } = isoXY(sc, sr);
         const MERGED = [
           cx,        cy,            // N
           cx + TW,   cy + TH,       // E
@@ -2019,8 +1989,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
               const isStaticKeep = (tile.isKeep && !tile.isGate) && pl < 10;
               const isStaticPart = tile.isKeepPart && pl < 10;
               if (isStaticKeep || isStaticPart) continue;
-              // P10–P13 keepPart: skip — primary draws the single unified sprite
-              if (tile.isKeepPart && pl >= 10) continue;
               const texPl = pl; // textures stored under raw pl, baked with syntheticPl for P10-P13
               // Use lazy baking on iOS; fall back to direct lookup on other platforms.
               const tex = isIOS
@@ -2405,10 +2373,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           const wy = (t.clientY-rect.top -panRef.current.y)/zoomRef.current;
           const key = worldToKey(wx, wy, tilesRef.current);
           if (key) {
-            // Resolve P10-13 keepPart to primary so drawSelection outlines all 4 cells
+            // No keepPart redirect needed for P10+ (now single tile)
             const rawTile = tilesRef.current[key];
-            const selKey2 = (rawTile?.isKeepPart && (rawTile?.powerLevel ?? 0) >= 10 && rawTile?.keepPrimaryKey)
-              ? rawTile.keepPrimaryKey : key;
+            const selKey2 = key;
             selGfx.clear();
             selRef.current = selKey2;
             drawSelection(selKey2);
