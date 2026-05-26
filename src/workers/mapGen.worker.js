@@ -1075,6 +1075,30 @@ self.onmessage = function(e) {
 
   postMessage({ type:"progress", pct:85, label:"Placing keeps..." });
 
+  // ── Add all road tiles to ROAD_TILE_SET BEFORE P10+ placement ─────────────────
+  // P10-P13 structures need to check ROAD_TILE_SET to avoid overlapping roads
+  for (const [c1, r1, c2, r2] of ROAD_SEGMENTS) {
+    const dc = c2 > c1 ? 1 : c2 < c1 ? -1 : 0;
+    const dr = r2 > r1 ? 1 : r2 < r1 ? -1 : 0;
+    
+    // Horizontal leg
+    for (let c = c1; c !== c2; c += dc) {
+      const idx = r1 * COLS + c;
+      ROAD_TILE_SET.add(idx);
+    }
+    
+    // Vertical leg
+    if (dr !== 0) {
+      for (let r = r1; r !== r2 + dr; r += dr) {
+        const idx = r * COLS + c2;
+        ROAD_TILE_SET.add(idx);
+      }
+    } else {
+      const idx = r1 * COLS + c2;
+      ROAD_TILE_SET.add(idx);
+    }
+  }
+
   // ── P10–P13: stamp 2×2 structures ────────────────────────────────────────────
   // Each tile that rolled P10-P13 becomes the top-left of a 2×2 footprint.
   // Primary (top-left): F_KEEP. Other 3 cells: F_KEEPPART pointing to primary.
@@ -1321,36 +1345,13 @@ self.onmessage = function(e) {
   console.log(`[MapGen] Generated ${ROAD_SEGMENTS.length} road segments`);
   console.log(`[MapGen] Regions with gates:`, Object.keys(gatesPerRegion).length);
   
-  // Add all road tiles to ROAD_TILE_SET so P10+ structures avoid them
-  for (const [c1, r1, c2, r2] of ROAD_SEGMENTS) {
-    const dc = c2 > c1 ? 1 : c2 < c1 ? -1 : 0;
-    const dr = r2 > r1 ? 1 : r2 < r1 ? -1 : 0;
-    
-    // Horizontal leg
-    for (let c = c1; c !== c2; c += dc) {
-      const idx = r1 * COLS + c;
-      ROAD_TILE_SET.add(idx);
-    }
-    
-    // Vertical leg
-    if (dr !== 0) {
-      for (let r = r1; r !== r2 + dr; r += dr) {
-        const idx = r * COLS + c2;
-        ROAD_TILE_SET.add(idx);
-      }
-    } else {
-      const idx = r1 * COLS + c2;
-      ROAD_TILE_SET.add(idx);
-    }
-  }
-  
   // Stamp roads into the map
   const stampRoad = (c, r) => {
     if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return;
     const idx = r * COLS + c;
     const fl  = flagArr[idx];
     if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) return;
-    terrainArr[idx]  = TERRAIN_ENC.road;  // Use road terrain, not hellfire
+    terrainArr[idx]  = TERRAIN_ENC.hellfire;  // Use hellfire terrain for roads
     if (powerArr[idx] !== 1) {
       powerArr[idx]    = 1;
       garrisonArr[idx] = Math.round(POWER_DEFS[1].command * 100); // 0.30 * 100 = 30
