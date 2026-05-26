@@ -2074,6 +2074,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles) {
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
 export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds }, ref) {
+  console.log("🔥 MAPRENDERER LOADED - GATE DEBUG VERSION 🔥");
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
   const worldRef       = useRef(null);
