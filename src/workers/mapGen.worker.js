@@ -94,20 +94,20 @@ const F_BORDER   = 1<<8;  // border terrain tile (impassable, not a gate)
 const REGION_LIST = [
   { key:"shadowmere", name:"Shadowmere", layer:"farm", keepName:"Shadowmere Keep", cx:102, cy:1232, factions:[] },
   { key:"icepeak", name:"Icepeak", layer:"farm", keepName:"Icepeak Keep", cx:307, cy:1232, factions:["coldborns"] },
-  { key:"frosthold", name:"Frosthold", layer:"start", keepName:"Frosthold Keep", cx:512, cy:1232, factions:["coldborns"] },
+  { key:"frosthold", name:"Deadmans Harbor", layer:"start", keepName:"Deadmans Harbor Keep", cx:512, cy:1232, factions:["pirates"] },
   { key:"icebreak", name:"Icebreak", layer:"farm", keepName:"Icebreak Keep", cx:717, cy:1232, factions:["coldborns"] },
   { key:"drearfort", name:"Drearfort", layer:"farm", keepName:"Drearfort Keep", cx:922, cy:1232, factions:[] },
   { key:"shadowmire", name:"Shadowmire", layer:"farm", keepName:"Shadowmire Keep", cx:1127, cy:1232, factions:["nightcreatures"] },
-  { key:"duskmire", name:"Duskmire", layer:"start", keepName:"Duskmire Keep", cx:1332, cy:1232, factions:["nightcreatures"] },
+  { key:"duskmire", name:"Bonehallow", layer:"start", keepName:"Bonehallow Keep", cx:1332, cy:1232, factions:["ashen_dead"] },
   { key:"shadowfen", name:"Shadowfen", layer:"farm", keepName:"Shadowfen Keep", cx:1537, cy:1232, factions:["nightcreatures"] },
   { key:"gravemist", name:"Gravemist", layer:"farm", keepName:"Gravemist Keep", cx:1742, cy:1232, factions:[] },
-  { key:"flamecrestpeak", name:"Flamecrest Peak", layer:"start", keepName:"Flamecrest Peak Keep", cx:102, cy:1087, factions:["dragons"] },
+  { key:"flamecrestpeak", name:"Bloodrock", layer:"start", keepName:"Bloodrock Keep", cx:102, cy:1087, factions:["orcs"] },
   { key:"ebonvault", name:"Ebonvault", layer:"farm", keepName:"Ebonvault Keep", cx:410, cy:1087, factions:["dragons"] },
   { key:"wraithmoor", name:"Wraithmoor", layer:"farm", keepName:"Wraithmoor Keep", cx:717, cy:1087, factions:[] },
   { key:"deathmarsh", name:"Deathmarsh", layer:"farm", keepName:"Deathmarsh Keep", cx:922, cy:1087, factions:[] },
   { key:"bleakstone", name:"Bleakstone", layer:"farm", keepName:"Bleakstone Keep", cx:1127, cy:1087, factions:[] },
   { key:"fellwood", name:"Fellwood", layer:"farm", keepName:"Fellwood Keep", cx:1435, cy:1087, factions:["wizards"] },
-  { key:"arcaneum", name:"Arcaneum", layer:"start", keepName:"Arcaneum Keep", cx:1742, cy:1087, factions:["wizards"] },
+  { key:"arcaneum", name:"Oathkeep", layer:"start", keepName:"Oathkeep Keep", cx:1742, cy:1087, factions:["holyknights"] },
   { key:"cursedfen", name:"Cursedfen", layer:"farm", keepName:"Cursedfen Keep", cx:102, cy:870, factions:[] },
   { key:"rotmire", name:"Rotmire", layer:"farm", keepName:"Rotmire Keep", cx:307, cy:942, factions:[] },
   { key:"blightmoor", name:"Blightmoor", layer:"farm", keepName:"Blightmoor Keep", cx:512, cy:942, factions:[] },
@@ -145,20 +145,20 @@ const REGION_LIST = [
   { key:"mysticfen", name:"Mysticfen", layer:"farm", keepName:"Mysticfen Keep", cx:1332, cy:362, factions:[] },
   { key:"salthaven", name:"Salthaven", layer:"farm", keepName:"Salthaven Keep", cx:1537, cy:362, factions:[] },
   { key:"deepwater", name:"Deepwater", layer:"farm", keepName:"Deepwater Keep", cx:1742, cy:435, factions:[] },
-  { key:"bloodrock", name:"Bloodrock", layer:"start", keepName:"Bloodrock Keep", cx:102, cy:217, factions:["orcs"] },
+  { key:"bloodrock", name:"Flamecrest Peak", layer:"start", keepName:"Flamecrest Peak Keep", cx:102, cy:217, factions:["dragons"] },
   { key:"fogmire", name:"Fogmire", layer:"farm", keepName:"Fogmire Keep", cx:410, cy:217, factions:["orcs"] },
   { key:"graveshroud", name:"Graveshroud", layer:"farm", keepName:"Graveshroud Keep", cx:717, cy:217, factions:[] },
   { key:"greywatch", name:"Greywatch", layer:"farm", keepName:"Greywatch Keep", cx:922, cy:217, factions:[] },
   { key:"voidmarsh", name:"Voidmarsh", layer:"farm", keepName:"Voidmarsh Keep", cx:1127, cy:217, factions:[] },
   { key:"stoneheart", name:"Stoneheart", layer:"farm", keepName:"Stoneheart Keep", cx:1435, cy:217, factions:["holyknights"] },
-  { key:"oathkeep", name:"Oathkeep", layer:"start", keepName:"Oathkeep Keep", cx:1742, cy:217, factions:["holyknights"] },
+  { key:"oathkeep", name:"Arcaneum", layer:"start", keepName:"Arcaneum Keep", cx:1742, cy:217, factions:["wizards"] },
   { key:"ashenmark", name:"Ashenmark", layer:"farm", keepName:"Ashenmark Keep", cx:102, cy:72, factions:[] },
   { key:"dreadmarsh", name:"Dreadmarsh", layer:"farm", keepName:"Dreadmarsh Keep", cx:307, cy:72, factions:[] },
-  { key:"deadmansharbor", name:"Deadmans Harbor", layer:"start", keepName:"Deadmans Harbor Keep", cx:512, cy:72, factions:["pirates"] },
+  { key:"deadmansharbor", name:"Frosthold", layer:"start", keepName:"Frosthold Keep", cx:512, cy:72, factions:["coldborns"] },
   { key:"ironwood", name:"Ironwood", layer:"farm", keepName:"Ironwood Keep", cx:717, cy:72, factions:[] },
   { key:"lastwatch", name:"Lastwatch", layer:"farm", keepName:"Lastwatch Keep", cx:922, cy:72, factions:[] },
   { key:"finalhope", name:"Finalhope", layer:"farm", keepName:"Finalhope Keep", cx:1127, cy:72, factions:[] },
-  { key:"bonehallow", name:"Bonehallow", layer:"start", keepName:"Bonehallow Keep", cx:1332, cy:72, factions:["ashen_dead"] },
+  { key:"bonehallow", name:"Duskmire", layer:"start", keepName:"Duskmire Keep", cx:1332, cy:72, factions:["nightcreatures"] },
   { key:"dawngate", name:"Dawngate", layer:"farm", keepName:"Dawngate Keep", cx:1537, cy:72, factions:[] },
   { key:"twilightspire", name:"Twilightspire", layer:"farm", keepName:"Twilightspire Keep", cx:1742, cy:72, factions:[] },
 ];
@@ -1370,7 +1370,6 @@ self.onmessage = function(e) {
   // ── P10–P13: place BEFORE HQs — HQs will avoid F_KEEP tiles via randomSpawn ──
   {
     let p10Total = 0, p10Placed = 0, p10Demoted = 0;
-    const ADJ_FLAGS = F_KEEP|F_KEEPPART|F_GATE|F_BORDER; // no HQ flags — HQs not placed yet
     for (let r2 = 0; r2 < ROWS; r2++) {
       for (let c2 = 0; c2 < COLS; c2++) {
         const idx2 = r2 * COLS + c2;
@@ -1379,23 +1378,9 @@ self.onmessage = function(e) {
         p10Total++;
 
         let blocked = false;
-        if (flagArr[idx2] & ADJ_FLAGS) { blocked = true; }
+        if (flagArr[idx2] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER)) { blocked = true; }
         if (!blocked && KEEP_FOOTPRINT_SET.has(`${c2},${r2}`)) { blocked = true; }
         if (!blocked && ROAD_TILE_SET.has(idx2)) { blocked = true; }
-        if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
-
-        // Adjacent tiles must not be keep, gate, border, or road (no HQ check — none placed yet)
-        adjCheck:
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const ac = c2 + dc, ar = r2 + dr;
-            if (ac < 0 || ar < 0 || ac >= COLS || ar >= ROWS) continue;
-            const ai = ar * COLS + ac;
-            if (flagArr[ai] & ADJ_FLAGS) { blocked = true; break adjCheck; }
-            if (ROAD_TILE_SET.has(ai)) { blocked = true; break adjCheck; }
-          }
-        }
         if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
 
         const siege2 = P10_SIEGE[pl2] ?? 8000;
