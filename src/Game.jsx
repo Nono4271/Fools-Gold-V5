@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { unstable_batchedUpdates } from "react-dom";
-import { MapRenderer, clearKeepCache, clearHQCache } from "./MapRenderer";
+import { MapRenderer, clearHQCache } from "./MapRenderer";
 
 // Constants
 import { CSS } from "./constants/css.js";
@@ -853,7 +853,6 @@ export default function RiseToWar() {
         setImpassableTiles(impassKeys || []);
         initPathfinding(impassKeys || []);
         perfLog(`impass: ${(impassKeys||[]).length} border tiles sent`);
-        clearKeepCache();
         clearHQCache();
 
         // ── FIX 3: Batch all final setState calls so they flush in one React
@@ -913,7 +912,6 @@ export default function RiseToWar() {
   useEffect(() => {
     if (screen === "title" || screen === "faction") {
       setMapReady(false);
-      clearKeepCache();
       clearHQCache();
       setTiles({});
       setLoadPct(0);
