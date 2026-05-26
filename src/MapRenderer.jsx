@@ -230,8 +230,14 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         const TOP = [cx, sy, cx+TW/2, mid, cx, sy+TH, cx-TW/2, mid];
         const ct  = crossingType;
         const axis = crossingAxis;
-        // Debug: log first few gates to verify axis data
-        if (c < 300 && r < 300 && isKeep) console.log(`Gate at ${c},${r}: type=${ct}, axis=${axis}`);
+        // Debug: log first 10 gates
+        if (isKeep && ct) {
+          if (!window.__gateLogCount) window.__gateLogCount = 0;
+          if (window.__gateLogCount < 10) {
+            console.log(`Gate at ${c},${r}: type=${ct}, axis=${axis}`);
+            window.__gateLogCount++;
+          }
+        }
         const key = `${c},${r}`;
         const isSel   = selKey === key;
         const hasCmds = Boolean(cByTile[key]?.length);
