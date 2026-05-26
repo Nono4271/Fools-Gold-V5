@@ -1222,32 +1222,28 @@ self.onmessage = function(e) {
   // Collect all gates and their positions
   const gatesPerRegion = {}; // regionKey -> array of gate positions
   
-  // Parse gate metadata to find which gates belong to which regions
-  for (const key in gateMeta) {
-    const gate = gateMeta[key];
-    const [x, y] = key.split(',').map(Number);
+  // For each gate, determine its region by checking adjacent non-border tiles
+  const getGateRegion = (x, y, axis) => {
+    // For vertical borders (axis='V'), check left/right neighbors
+    // For horizontal borders (axis='H'), check top/bottom neighbors
+    const neighbors = axis === 'V' 
+      ? [[x - 1, y], [x + 1, y]]  // left, right
+      : [[x, y - 1], [x, y + 1]]; // top, bottom
     
-    // Find which region this gate belongs to by checking REGION_MAP
-    const idx = y * COLS + x;
-    const regionID = REGION_MAP[idx];
-    if (!regionID) continue;
-    
-    const regionKey = REGION_IDX_TO_KEY[regionID];
-    if (!regionKey) continue;
-    
-    if (!gatesPerRegion[regionKey]) {
-      gatesPerRegion[regionKey] = [];
+    for (const [nx, ny] of neighbors) {
+      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
+      const idx = ny * COLS + nx;
+      const regionID = REGION_MAP[idx];
+      if (regionID && regionID > 0) {
+        return REGION_IDX_TO_KEY[regionID];
+      }
     }
-    gatesPerRegion[regionKey].push({ x, y });
-  }
+    return null;
+  };
   
-  // Also collect gate positions from gateA and gateB arrays
+  // Add Gate A structures to their regions
   for (const gate of gateA) {
-    const idx = gate.y * COLS + gate.x;
-    const regionID = REGION_MAP[idx];
-    if (!regionID) continue;
-    
-    const regionKey = REGION_IDX_TO_KEY[regionID];
+    const regionKey = getGateRegion(gate.x, gate.y, gate.axis);
     if (!regionKey) continue;
     
     if (!gatesPerRegion[regionKey]) {
@@ -1256,12 +1252,9 @@ self.onmessage = function(e) {
     gatesPerRegion[regionKey].push({ x: gate.x, y: gate.y });
   }
   
+  // Add Gate B structures to their regions
   for (const gate of gateB) {
-    const idx = gate.y * COLS + gate.x;
-    const regionID = REGION_MAP[idx];
-    if (!regionID) continue;
-    
-    const regionKey = REGION_IDX_TO_KEY[regionID];
+    const regionKey = getGateRegion(gate.x, gate.y, gate.axis);
     if (!regionKey) continue;
     
     if (!gatesPerRegion[regionKey]) {
