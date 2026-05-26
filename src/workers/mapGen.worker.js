@@ -613,6 +613,9 @@ const CROSSINGS = [
   { axis:"H", bCoord:  582, gCoord:  975, start:  973, end:  977, type:"tollbridge", id:"gate_128" },
   { axis:"H", bCoord:  654, gCoord:  718, start:  716, end:  720, type:"crossing", id:"gate_129" },
   { axis:"H", bCoord:  654, gCoord: 1127, start: 1125, end: 1129, type:"tunnel", id:"gate_130" },
+  // Missing gates
+  { axis:"V", bCoord:  923, gCoord:  530, start:  528, end:  532, type:"crossing", id:"gate_battlemarsh_stormwatch" },
+  { axis:"V", bCoord: 1230, gCoord:  528, start:  526, end:  530, type:"tunnel", id:"gate_stormwatch_tidecrag" },
 ];
 
 
