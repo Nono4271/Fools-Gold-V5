@@ -308,6 +308,11 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       if (bx < 0 || bx >= COLS) continue;
       
       for (let y = 0; y < ROWS; y++) {
+        // Skip Ebonvault interior borders
+        if (bx >= 408 && bx <= 411 && y >= 1015 && y <= 1160) {
+          continue; // Don't draw border through Ebonvault interior
+        }
+        
         if (gateYSet.has(y)) {
           // This y-coordinate has a gate crossing
           // Paths are at x-1 and x (offsets -1, 0); Gates at x-2 and x+1
