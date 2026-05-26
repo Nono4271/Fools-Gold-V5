@@ -1367,6 +1367,54 @@ self.onmessage = function(e) {
   // Merge gate metadata from border painting (happened earlier)
   Object.assign(keepMeta, gateMeta);
 
+  // ── P10–P13: place BEFORE HQs — HQs will avoid F_KEEP tiles via randomSpawn ──
+  {
+    let p10Total = 0, p10Placed = 0, p10Demoted = 0;
+    const ADJ_FLAGS = F_KEEP|F_KEEPPART|F_GATE|F_BORDER; // no HQ flags — HQs not placed yet
+    for (let r2 = 0; r2 < ROWS; r2++) {
+      for (let c2 = 0; c2 < COLS; c2++) {
+        const idx2 = r2 * COLS + c2;
+        const pl2  = powerArr[idx2];
+        if (pl2 < 10) continue;
+        p10Total++;
+
+        let blocked = false;
+        if (flagArr[idx2] & ADJ_FLAGS) { blocked = true; }
+        if (!blocked && KEEP_FOOTPRINT_SET.has(`${c2},${r2}`)) { blocked = true; }
+        if (!blocked && ROAD_TILE_SET.has(idx2)) { blocked = true; }
+        if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
+
+        // Adjacent tiles must not be keep, gate, border, or road (no HQ check — none placed yet)
+        adjCheck:
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const ac = c2 + dc, ar = r2 + dr;
+            if (ac < 0 || ar < 0 || ac >= COLS || ar >= ROWS) continue;
+            const ai = ar * COLS + ac;
+            if (flagArr[ai] & ADJ_FLAGS) { blocked = true; break adjCheck; }
+            if (ROAD_TILE_SET.has(ai)) { blocked = true; break adjCheck; }
+          }
+        }
+        if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
+
+        const siege2 = P10_SIEGE[pl2] ?? 8000;
+        flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
+        garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100);
+        siegeArr[idx2]    = siege2;
+        siegeMaxArr[idx2] = siege2;
+
+        keepMeta[`${c2},${r2}`] = {
+          keepName:      `P${pl2} Structure`,
+          garrisonWaves: 2,
+          cx: c2, cy: r2,
+        };
+        p10Placed++;
+      }
+    }
+    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed, ${p10Demoted} demoted to P9 (${p10Total > 0 ? Math.round(p10Placed/p10Total*100) : 0}% placed)`);
+  }
+
   for (const reg of REGION_LIST) {
     const idx = reg.cy*COLS + reg.cx;
     if (flagArr[idx] & (F_HQ | F_HQPART)) continue;
@@ -1659,55 +1707,6 @@ self.onmessage = function(e) {
   }
 
   postMessage({ type:"progress", pct:98, label:"Finishing up..." });
-
-  // ── P10–P13: single-tile structures placed AFTER HQs so adjacency check sees F_HQ flags ──
-  {
-    let p10Total = 0, p10Placed = 0, p10Demoted = 0;
-    const ADJ_FLAGS = F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER;
-    for (let r2 = 0; r2 < ROWS; r2++) {
-      for (let c2 = 0; c2 < COLS; c2++) {
-        const idx2 = r2 * COLS + c2;
-        const pl2  = powerArr[idx2];
-        if (pl2 < 10) continue;
-        p10Total++;
-
-        // Tile itself must be clear
-        let blocked = false;
-        if (flagArr[idx2] & ADJ_FLAGS) { blocked = true; }
-        if (!blocked && KEEP_FOOTPRINT_SET.has(`${c2},${r2}`)) { blocked = true; }
-        if (!blocked && ROAD_TILE_SET.has(idx2)) { blocked = true; }
-        if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
-
-        // Adjacent tiles (1-tile perimeter) must not be HQ, gate, keep, or road
-        adjCheck:
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const ac = c2 + dc, ar = r2 + dr;
-            if (ac < 0 || ar < 0 || ac >= COLS || ar >= ROWS) continue;
-            const ai = ar * COLS + ac;
-            if (flagArr[ai] & ADJ_FLAGS) { blocked = true; break adjCheck; }
-            if (ROAD_TILE_SET.has(ai)) { blocked = true; break adjCheck; }
-          }
-        }
-        if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
-
-        const siege2 = P10_SIEGE[pl2] ?? 8000;
-        flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
-        garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100);
-        siegeArr[idx2]    = siege2;
-        siegeMaxArr[idx2] = siege2;
-
-        keepMeta[`${c2},${r2}`] = {
-          keepName:      `P${pl2} Structure`,
-          garrisonWaves: 2,
-          cx: c2, cy: r2,
-        };
-        p10Placed++;
-      }
-    }
-    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed, ${p10Demoted} demoted to P9 (${p10Total > 0 ? Math.round(p10Placed/p10Total*100) : 0}% placed)`);
-  }
 
   // ── Pre-build per-faction tile key lists ──────────────────────────────────
   // Scanning ownerArr here (worker thread, no jank) saves the main thread from
