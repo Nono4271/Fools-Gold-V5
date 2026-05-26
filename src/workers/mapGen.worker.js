@@ -302,9 +302,8 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       }
     });
     
-    // Draw border on both sides of the line
+    // Draw border on all 4 tiles (including center)
     for (let dx = -BORDER_WIDTH; dx <= BORDER_WIDTH; dx++) {
-      if (dx === 0) continue; // Skip the exact boundary line
       const bx = x + dx;
       if (bx < 0 || bx >= COLS) continue;
       
@@ -342,9 +341,8 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       }
     });
     
-    // Draw border on both sides of the line
+    // Draw border on all 4 tiles (including center)
     for (let dy = -BORDER_WIDTH; dy <= BORDER_WIDTH; dy++) {
-      if (dy === 0) continue; // Skip the exact boundary line
       const by = y + dy;
       if (by < 0 || by >= ROWS) continue;
       
