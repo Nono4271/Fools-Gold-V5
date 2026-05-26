@@ -190,7 +190,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         if (!window.__totalGatesRendered) window.__totalGatesRendered = 0;
         window.__totalGatesRendered++;
         if (window.__totalGatesRendered <= 5) {
-          console.log(`Tile ${c},${r}: isGate=${isGate}, isKeep=${isKeep}, ct=${ct}, axis=${axis}`);
+          console.log(`Tile ${c},${r}: isGate=${isGate}, isKeep=${isKeep}, ct=${crossingType}, axis=${crossingAxis}`);
         }
       }
 
