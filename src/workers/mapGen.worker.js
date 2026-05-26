@@ -1370,11 +1370,13 @@ self.onmessage = function(e) {
   // Merge gate metadata from border painting (happened earlier)
   Object.assign(keepMeta, gateMeta);
 
+  let p10Total = 0, p10Placed = 0, p10Demoted = 0;
   for (let r2 = 0; r2 < ROWS - 1; r2++) {
     for (let c2 = 0; c2 < COLS - 1; c2++) {
       const idx2 = r2 * COLS + c2;
       const pl2  = powerArr[idx2];
       if (pl2 < 10) continue;
+      p10Total++;
 
       // All 4 cells must be clear of flags AND outside static keep footprints
       const cells = [[c2,r2],[c2+1,r2],[c2,r2+1],[c2+1,r2+1]];
@@ -1385,7 +1387,22 @@ self.onmessage = function(e) {
         if (KEEP_FOOTPRINT_SET.has(`${tc},${tr}`)) { blocked = true; break; }
         if (ROAD_TILE_SET.has(ti)) { blocked = true; break; }
       }
-      if (blocked) { powerArr[idx2] = 9; continue; }
+      if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
+
+      // Adjacent tiles (1-tile perimeter around the 2×2) must not be HQ, gate, keep, or road
+      const ADJ_FLAGS = F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER;
+      adjCheck:
+      for (let dr = -1; dr <= 2; dr++) {
+        for (let dc = -1; dc <= 2; dc++) {
+          if (dr >= 0 && dr <= 1 && dc >= 0 && dc <= 1) continue; // skip the 2×2 itself
+          const ac = c2 + dc, ar = r2 + dr;
+          if (ac < 0 || ar < 0 || ac >= COLS || ar >= ROWS) continue;
+          const ai = ar * COLS + ac;
+          if (flagArr[ai] & ADJ_FLAGS) { blocked = true; break adjCheck; }
+          if (ROAD_TILE_SET.has(ai)) { blocked = true; break adjCheck; }
+        }
+      }
+      if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
 
       const siege2 = P10_SIEGE[pl2] ?? 8000;
 
@@ -1411,8 +1428,10 @@ self.onmessage = function(e) {
         garrisonWaves: 2,
         cx: c2, cy: r2,
       };
+      p10Placed++;
     }
   }
+  console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed, ${p10Demoted} demoted to P9 (${p10Total > 0 ? Math.round(p10Placed/p10Total*100) : 0}% placed)`);
 
   for (const reg of REGION_LIST) {
     const idx = reg.cy*COLS + reg.cx;
