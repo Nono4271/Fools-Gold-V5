@@ -297,9 +297,9 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
   for (const [x, gates] of verticalBorders) {
     const gateYSet = new Set();
     gates.forEach(g => {
-      for (let y = g.gateStart; y <= g.gateEnd; y++) {
-        gateYSet.add(y);
-      }
+      // For vertical borders, gate crosses at a single y-coordinate (gateY)
+      // The 4 gate tiles span in the x-direction at this y
+      gateYSet.add(g.gateY);
     });
     
     // Draw border on 4 tiles: offsets -2, -1, 0, +1 from centerline
@@ -338,9 +338,9 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
   for (const [y, gates] of horizontalBorders) {
     const gateXSet = new Set();
     gates.forEach(g => {
-      for (let x = g.gateStart; x <= g.gateEnd; x++) {
-        gateXSet.add(x);
-      }
+      // For horizontal borders, gate crosses at a single x-coordinate (gateX)
+      // The 4 gate tiles span in the y-direction at this x
+      gateXSet.add(g.gateX);
     });
     
     // Draw border on 4 tiles: offsets -2, -1, 0, +1 from centerline
