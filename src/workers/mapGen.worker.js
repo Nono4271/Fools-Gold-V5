@@ -325,6 +325,15 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
         if (bx >= 818 && bx <= 821 && y >= 439 && y <= 579) {
           continue; // Battlemarsh vertical interior
         }
+        if (bx >= 1023 && bx <= 1026 && y >= 439 && y <= 579) {
+          continue; // Stormwatch vertical interior
+        }
+        if (bx >= 818 && bx <= 821 && y >= 729 && y <= 869) {
+          continue; // Ashenvale vertical interior
+        }
+        if (bx >= 1023 && bx <= 1026 && y >= 729 && y <= 869) {
+          continue; // Thornvale vertical interior
+        }
         
         if (gateYSet.has(y)) {
           // This y-coordinate has a gate crossing
@@ -383,6 +392,15 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
         // Skip L-shaped region interior borders
         if (by >= 580 && by <= 583 && x >= 617 && x <= 817) {
           continue; // Battlemarsh horizontal interior
+        }
+        if (by >= 580 && by <= 583 && x >= 1027 && x <= 1227) {
+          continue; // Stormwatch horizontal interior
+        }
+        if (by >= 725 && by <= 728 && x >= 617 && x <= 817) {
+          continue; // Ashenvale horizontal interior
+        }
+        if (by >= 725 && by <= 728 && x >= 1027 && x <= 1227) {
+          continue; // Thornvale horizontal interior
         }
         
         if (gateXSet.has(x)) {
