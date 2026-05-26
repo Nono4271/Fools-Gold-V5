@@ -1222,28 +1222,35 @@ self.onmessage = function(e) {
   // Collect all gates and their positions
   const gatesPerRegion = {}; // regionKey -> array of gate positions
   
-  // For each gate, determine its region by checking adjacent non-border tiles
-  const getGateRegion = (x, y, axis) => {
-    // For vertical borders (axis='V'), check left/right neighbors
-    // For horizontal borders (axis='H'), check top/bottom neighbors
-    const neighbors = axis === 'V' 
-      ? [[x - 1, y], [x + 1, y]]  // left, right
-      : [[x, y - 1], [x, y + 1]]; // top, bottom
+  // For Gate A: check the "inward" neighbor (toward region A)
+  // For Gate B: check the "outward" neighbor (toward region B)
+  const getGateARegion = (x, y, axis) => {
+    // Gate A is at offset -2 from center
+    // For vertical borders: check LEFT (x-1)
+    // For horizontal borders: check TOP (y-1)
+    const [nx, ny] = axis === 'V' ? [x - 1, y] : [x, y - 1];
     
-    for (const [nx, ny] of neighbors) {
-      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-      const idx = ny * COLS + nx;
-      const regionID = REGION_MAP[idx];
-      if (regionID && regionID > 0) {
-        return REGION_IDX_TO_KEY[regionID];
-      }
-    }
-    return null;
+    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return null;
+    const idx = ny * COLS + nx;
+    const regionID = REGION_MAP[idx];
+    return (regionID && regionID > 0) ? REGION_IDX_TO_KEY[regionID] : null;
+  };
+  
+  const getGateBRegion = (x, y, axis) => {
+    // Gate B is at offset +1 from center
+    // For vertical borders: check RIGHT (x+1)
+    // For horizontal borders: check BOTTOM (y+1)
+    const [nx, ny] = axis === 'V' ? [x + 1, y] : [x, y + 1];
+    
+    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return null;
+    const idx = ny * COLS + nx;
+    const regionID = REGION_MAP[idx];
+    return (regionID && regionID > 0) ? REGION_IDX_TO_KEY[regionID] : null;
   };
   
   // Add Gate A structures to their regions
   for (const gate of gateA) {
-    const regionKey = getGateRegion(gate.x, gate.y, gate.axis);
+    const regionKey = getGateARegion(gate.x, gate.y, gate.axis);
     if (!regionKey) continue;
     
     if (!gatesPerRegion[regionKey]) {
@@ -1254,7 +1261,7 @@ self.onmessage = function(e) {
   
   // Add Gate B structures to their regions
   for (const gate of gateB) {
-    const regionKey = getGateRegion(gate.x, gate.y, gate.axis);
+    const regionKey = getGateBRegion(gate.x, gate.y, gate.axis);
     if (!regionKey) continue;
     
     if (!gatesPerRegion[regionKey]) {
@@ -1282,6 +1289,29 @@ self.onmessage = function(e) {
   
   console.log(`[MapGen] Generated ${ROAD_SEGMENTS.length} road segments`);
   console.log(`[MapGen] Regions with gates:`, Object.keys(gatesPerRegion).length);
+  
+  // Add all road tiles to ROAD_TILE_SET so P10+ structures avoid them
+  for (const [c1, r1, c2, r2] of ROAD_SEGMENTS) {
+    const dc = c2 > c1 ? 1 : c2 < c1 ? -1 : 0;
+    const dr = r2 > r1 ? 1 : r2 < r1 ? -1 : 0;
+    
+    // Horizontal leg
+    for (let c = c1; c !== c2; c += dc) {
+      const idx = r1 * COLS + c;
+      ROAD_TILE_SET.add(idx);
+    }
+    
+    // Vertical leg
+    if (dr !== 0) {
+      for (let r = r1; r !== r2 + dr; r += dr) {
+        const idx = r * COLS + c2;
+        ROAD_TILE_SET.add(idx);
+      }
+    } else {
+      const idx = r1 * COLS + c2;
+      ROAD_TILE_SET.add(idx);
+    }
+  }
   
   // Stamp roads into the map
   const stampRoad = (c, r) => {
