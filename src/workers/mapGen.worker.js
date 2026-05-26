@@ -297,34 +297,35 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
   for (const [x, gates] of verticalBorders) {
     const gateYSet = new Set();
     gates.forEach(g => {
-      for (let y = g.gateStart; y <= g.gateEnd; y++) {
-        gateYSet.add(y);
-      }
+      // For vertical borders, gate crosses at a single y-coordinate (gateY)
+      // The 4 gate tiles span in the x-direction at this y
+      gateYSet.add(g.gateY);
     });
     
-    // Draw border on both sides of the line
-    for (let dx = -BORDER_WIDTH; dx <= BORDER_WIDTH; dx++) {
-      if (dx === 0) continue; // Skip the exact boundary line
+    // Draw border on 4 tiles: offsets -2, -1, 0, +1 from centerline
+    for (let dx = -BORDER_WIDTH; dx < BORDER_WIDTH; dx++) {
       const bx = x + dx;
       if (bx < 0 || bx >= COLS) continue;
       
       for (let y = 0; y < ROWS; y++) {
         if (gateYSet.has(y)) {
-          // Gate/path tile - passable but add perpendicular borders
-          pathTiles.push({ x: bx, y });
-          
-          // Add borders on perpendicular sides of path tiles (only the 2 middle path tiles)
-          gates.forEach(g => {
-            if (y === g.gateStart + 1 || y === g.gateStart + 2) { // Path tiles only
-              for (let pdy = -BORDER_WIDTH; pdy <= BORDER_WIDTH; pdy++) {
-                if (pdy === 0) continue;
-                const pby = y + pdy;
-                if (pby >= 0 && pby < ROWS && !gateYSet.has(pby)) {
-                  impassable.push({ x: bx, y: pby });
-                }
+          // This y-coordinate has a gate crossing
+          // Paths are at x-1 and x (offsets -1, 0); Gates at x-2 and x+1
+          const isPath = (bx === x - 1 || bx === x);
+          if (isPath) {
+            // Path tile - passable, add perpendicular borders
+            pathTiles.push({ x: bx, y });
+            
+            // Add borders on perpendicular sides of path tiles
+            for (let pdy = -BORDER_WIDTH; pdy < BORDER_WIDTH; pdy++) {
+              if (pdy === 0) continue;
+              const pby = y + pdy;
+              if (pby >= 0 && pby < ROWS && !gateYSet.has(pby)) {
+                impassable.push({ x: bx, y: pby });
               }
             }
-          });
+          }
+          // For gate structures (x-2 and x+1), skip entirely - handled later
         } else {
           // Border tile - impassable
           impassable.push({ x: bx, y });
@@ -337,34 +338,35 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
   for (const [y, gates] of horizontalBorders) {
     const gateXSet = new Set();
     gates.forEach(g => {
-      for (let x = g.gateStart; x <= g.gateEnd; x++) {
-        gateXSet.add(x);
-      }
+      // For horizontal borders, gate crosses at a single x-coordinate (gateX)
+      // The 4 gate tiles span in the y-direction at this x
+      gateXSet.add(g.gateX);
     });
     
-    // Draw border on both sides of the line
-    for (let dy = -BORDER_WIDTH; dy <= BORDER_WIDTH; dy++) {
-      if (dy === 0) continue; // Skip the exact boundary line
+    // Draw border on 4 tiles: offsets -2, -1, 0, +1 from centerline
+    for (let dy = -BORDER_WIDTH; dy < BORDER_WIDTH; dy++) {
       const by = y + dy;
       if (by < 0 || by >= ROWS) continue;
       
       for (let x = 0; x < COLS; x++) {
         if (gateXSet.has(x)) {
-          // Gate/path tile - passable but add perpendicular borders
-          pathTiles.push({ x, y: by });
-          
-          // Add borders on perpendicular sides of path tiles (only the 2 middle path tiles)
-          gates.forEach(g => {
-            if (x === g.gateStart + 1 || x === g.gateStart + 2) { // Path tiles only
-              for (let pdx = -BORDER_WIDTH; pdx <= BORDER_WIDTH; pdx++) {
-                if (pdx === 0) continue;
-                const pbx = x + pdx;
-                if (pbx >= 0 && pbx < COLS && !gateXSet.has(pbx)) {
-                  impassable.push({ x: pbx, y: by });
-                }
+          // This x-coordinate has a gate crossing
+          // Paths are at y-1 and y (offsets -1, 0); Gates at y-2 and y+1
+          const isPath = (by === y - 1 || by === y);
+          if (isPath) {
+            // Path tile - passable, add perpendicular borders
+            pathTiles.push({ x, y: by });
+            
+            // Add borders on perpendicular sides of path tiles
+            for (let pdx = -BORDER_WIDTH; pdx < BORDER_WIDTH; pdx++) {
+              if (pdx === 0) continue;
+              const pbx = x + pdx;
+              if (pbx >= 0 && pbx < COLS && !gateXSet.has(pbx)) {
+                impassable.push({ x: pbx, y: by });
               }
             }
-          });
+          }
+          // For gate structures (y-2 and y+1), skip entirely - handled later
         } else {
           // Border tile - impassable
           impassable.push({ x, y: by });
@@ -378,13 +380,13 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
     const { axis, bCoord, gCoord, type, id } = crossing;
     
     if (axis === 'H') {
-      // Horizontal border - place gates VERTICALLY for isometric view
-      gateA.push({ x: bCoord, y: gCoord - 2, id: id+'_A', type });
-      gateB.push({ x: bCoord, y: gCoord + 1, id: id+'_B', type });
+      // Horizontal border at y = bCoord (spans vertically), gate spans vertically
+      gateA.push({ x: gCoord, y: bCoord - 2, id: id+'_A', type, axis });
+      gateB.push({ x: gCoord, y: bCoord + 1, id: id+'_B', type, axis });
     } else {
-      // Vertical border - place gates HORIZONTALLY for isometric view
-      gateA.push({ x: gCoord - 2, y: bCoord, id: id+'_A', type });
-      gateB.push({ x: gCoord + 1, y: bCoord, id: id+'_B', type });
+      // Vertical border at x = bCoord (spans horizontally), gate spans horizontally  
+      gateA.push({ x: bCoord - 2, y: gCoord, id: id+'_A', type, axis });
+      gateB.push({ x: bCoord + 1, y: gCoord, id: id+'_B', type, axis });
     }
   }
   
@@ -611,9 +613,6 @@ const CROSSINGS = [
   { axis:"H", bCoord:  582, gCoord:  975, start:  973, end:  977, type:"tollbridge", id:"gate_128" },
   { axis:"H", bCoord:  654, gCoord:  718, start:  716, end:  720, type:"crossing", id:"gate_129" },
   { axis:"H", bCoord:  654, gCoord: 1127, start: 1125, end: 1129, type:"tunnel", id:"gate_130" },
-  // Missing gates between adjacent regions
-  { axis:"V", bCoord:  923, gCoord:  530, start:  528, end:  532, type:"crossing", id:"gate_battlemarsh_stormwatch" },
-  { axis:"V", bCoord: 1230, gCoord:  528, start:  526, end:  530, type:"tunnel", id:"gate_stormwatch_tidecrag" },
 ];
 
 
@@ -961,7 +960,7 @@ self.onmessage = function(e) {
   }
 
   // Place Gate A structures
-  for (const {x, y, id, type} of gateA) {
+  for (const {x, y, id, type, axis} of gateA) {
     const idx = y*COLS+x;
     if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
     terrainArr[idx]  = TERRAIN_ENC.river;
@@ -976,7 +975,7 @@ self.onmessage = function(e) {
       garrisonWaves: 2,
       garrison: GATE_GARRISON,
       garrisonTroops: 20, // 20 command budget
-      cx: x, cy: y, side: 'A', type,
+      cx: x, cy: y, side: 'A', type, axis,
       defCmd: {
         n: `${typeName} Gate A Defender`,
         icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
@@ -988,7 +987,7 @@ self.onmessage = function(e) {
   }
 
   // Place Gate B structures
-  for (const {x, y, id, type} of gateB) {
+  for (const {x, y, id, type, axis} of gateB) {
     const idx = y*COLS+x;
     if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
     terrainArr[idx]  = TERRAIN_ENC.river;
@@ -1003,7 +1002,7 @@ self.onmessage = function(e) {
       garrisonWaves: 2,
       garrison: GATE_GARRISON,
       garrisonTroops: 20, // 20 command budget
-      cx: x, cy: y, side: 'B', type,
+      cx: x, cy: y, side: 'B', type, axis,
       defCmd: {
         n: `${typeName} Gate B Defender`,
         icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
@@ -1012,6 +1011,35 @@ self.onmessage = function(e) {
         atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
       },
     };
+  }
+
+  // Place path tiles between gates
+  for (const crossing of CROSSINGS) {
+    const { axis, bCoord, gCoord } = crossing;
+    
+    if (axis === 'V') {
+      // Vertical border: paths at (bCoord-1, gCoord) and (bCoord, gCoord)
+      for (const dx of [-1, 0]) {
+        const px = bCoord + dx;
+        const py = gCoord;
+        const idx = py * COLS + px;
+        terrainArr[idx] = TERRAIN_ENC.road;
+        flagArr[idx] = (flagArr[idx] & ~F_BORDER) | F_GATE;  // F_GATE but not F_KEEP
+        garrisonArr[idx] = 0;
+        rssArr[idx] = 0;
+      }
+    } else {
+      // Horizontal border: paths at (gCoord, bCoord-1) and (gCoord, bCoord)
+      for (const dy of [-1, 0]) {
+        const px = gCoord;
+        const py = bCoord + dy;
+        const idx = py * COLS + px;
+        terrainArr[idx] = TERRAIN_ENC.road;
+        flagArr[idx] = (flagArr[idx] & ~F_BORDER) | F_GATE;  // F_GATE but not F_KEEP
+        garrisonArr[idx] = 0;
+        rssArr[idx] = 0;
+      }
+    }
   }
 
   postMessage({ type:"progress", pct:85, label:"Placing keeps..." });
@@ -1194,32 +1222,35 @@ self.onmessage = function(e) {
   // Collect all gates and their positions
   const gatesPerRegion = {}; // regionKey -> array of gate positions
   
-  // Parse gate metadata to find which gates belong to which regions
-  for (const key in gateMeta) {
-    const gate = gateMeta[key];
-    const [x, y] = key.split(',').map(Number);
+  // For Gate A: check the "inward" neighbor (toward region A)
+  // For Gate B: check the "outward" neighbor (toward region B)
+  const getGateARegion = (x, y, axis) => {
+    // Gate A is at offset -2 from center
+    // For vertical borders: check LEFT (x-1)
+    // For horizontal borders: check TOP (y-1)
+    const [nx, ny] = axis === 'V' ? [x - 1, y] : [x, y - 1];
     
-    // Find which region this gate belongs to by checking REGION_MAP
-    const idx = y * COLS + x;
+    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return null;
+    const idx = ny * COLS + nx;
     const regionID = REGION_MAP[idx];
-    if (!regionID) continue;
-    
-    const regionKey = REGION_IDX_TO_KEY[regionID];
-    if (!regionKey) continue;
-    
-    if (!gatesPerRegion[regionKey]) {
-      gatesPerRegion[regionKey] = [];
-    }
-    gatesPerRegion[regionKey].push({ x, y });
-  }
+    return (regionID && regionID > 0) ? REGION_IDX_TO_KEY[regionID] : null;
+  };
   
-  // Also collect gate positions from gateA and gateB arrays
-  for (const gate of gateA) {
-    const idx = gate.y * COLS + gate.x;
-    const regionID = REGION_MAP[idx];
-    if (!regionID) continue;
+  const getGateBRegion = (x, y, axis) => {
+    // Gate B is at offset +1 from center
+    // For vertical borders: check RIGHT (x+1)
+    // For horizontal borders: check BOTTOM (y+1)
+    const [nx, ny] = axis === 'V' ? [x + 1, y] : [x, y + 1];
     
-    const regionKey = REGION_IDX_TO_KEY[regionID];
+    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return null;
+    const idx = ny * COLS + nx;
+    const regionID = REGION_MAP[idx];
+    return (regionID && regionID > 0) ? REGION_IDX_TO_KEY[regionID] : null;
+  };
+  
+  // Add Gate A structures to their regions
+  for (const gate of gateA) {
+    const regionKey = getGateARegion(gate.x, gate.y, gate.axis);
     if (!regionKey) continue;
     
     if (!gatesPerRegion[regionKey]) {
@@ -1228,12 +1259,9 @@ self.onmessage = function(e) {
     gatesPerRegion[regionKey].push({ x: gate.x, y: gate.y });
   }
   
+  // Add Gate B structures to their regions
   for (const gate of gateB) {
-    const idx = gate.y * COLS + gate.x;
-    const regionID = REGION_MAP[idx];
-    if (!regionID) continue;
-    
-    const regionKey = REGION_IDX_TO_KEY[regionID];
+    const regionKey = getGateBRegion(gate.x, gate.y, gate.axis);
     if (!regionKey) continue;
     
     if (!gatesPerRegion[regionKey]) {
@@ -1261,6 +1289,29 @@ self.onmessage = function(e) {
   
   console.log(`[MapGen] Generated ${ROAD_SEGMENTS.length} road segments`);
   console.log(`[MapGen] Regions with gates:`, Object.keys(gatesPerRegion).length);
+  
+  // Add all road tiles to ROAD_TILE_SET so P10+ structures avoid them
+  for (const [c1, r1, c2, r2] of ROAD_SEGMENTS) {
+    const dc = c2 > c1 ? 1 : c2 < c1 ? -1 : 0;
+    const dr = r2 > r1 ? 1 : r2 < r1 ? -1 : 0;
+    
+    // Horizontal leg
+    for (let c = c1; c !== c2; c += dc) {
+      const idx = r1 * COLS + c;
+      ROAD_TILE_SET.add(idx);
+    }
+    
+    // Vertical leg
+    if (dr !== 0) {
+      for (let r = r1; r !== r2 + dr; r += dr) {
+        const idx = r * COLS + c2;
+        ROAD_TILE_SET.add(idx);
+      }
+    } else {
+      const idx = r1 * COLS + c2;
+      ROAD_TILE_SET.add(idx);
+    }
+  }
   
   // Stamp roads into the map
   const stampRoad = (c, r) => {
