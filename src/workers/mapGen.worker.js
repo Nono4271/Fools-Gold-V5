@@ -86,7 +86,7 @@ const F_HQ       = 1<<3;
 const F_HQPART   = 1<<4;
 const F_WIN      = 1<<5;
 const F_DEFEATED = 1<<6;
-const F_GATE     = 1<<7;  // crossing/tunnel/tollbridge gate tile (passable border)
+const F_GATE     = 1<<7;  // crossing/tunnel gate tile (passable border)
 const F_BORDER   = 1<<8;  // border terrain tile (impassable, not a gate)
 
 // ── Region list — 1850×1300 design space ──────────────────────────────────────
@@ -230,14 +230,13 @@ const BIOME_SEEDS = (() => {
 const TERRAIN_NAMES = ["grass","forest","mountain","desert","river","ravine","rockymountain"];
 
 // ── Border crossings — auto-generated from polygon edges ─────────────────────
-// Each entry: { axis:'H'|'V', bCoord, gCoord, type:'crossing'|'tunnel'|'tollbridge', id }
+// Each entry: { axis:'H'|'V', bCoord, gCoord, type:'crossing'|'tunnel', id }
 // H = horizontal border (strip of rows at bCoord y, gate centered at gCoord x)
 // V = vertical border   (strip of cols at bCoord x, gate centered at gCoord y)
 
-// Terrain type per crossing type
+// Terrain type per crossing type — V borders use river, H borders use rockymountain
 function crossingTerrain(type) {
-  if (type === 'crossing')   return TERRAIN_ENC.river;
-  if (type === 'tollbridge') return TERRAIN_ENC.ravine;
+  if (type === 'crossing') return TERRAIN_ENC.river;
   return TERRAIN_ENC.rockymountain; // tunnel
 }
 
@@ -558,144 +557,144 @@ const POLYS = {
 const CROSSINGS = [
   // Row 1 vertical gates (y=1213)
   { axis:"V", bCoord:  205, gCoord: 1213, start: 1211, end: 1215, type:"tunnel", id:"gate_1" },
-  { axis:"V", bCoord:  410, gCoord: 1213, start: 1211, end: 1215, type:"tollbridge", id:"gate_2" },
+  { axis:"V", bCoord:  410, gCoord: 1213, start: 1211, end: 1215, type:"crossing", id:"gate_2" },
   { axis:"V", bCoord:  615, gCoord: 1213, start: 1211, end: 1215, type:"crossing", id:"gate_3" },
   { axis:"V", bCoord:  820, gCoord: 1213, start: 1211, end: 1215, type:"tunnel", id:"gate_4" },
-  { axis:"V", bCoord: 1025, gCoord: 1213, start: 1211, end: 1215, type:"tollbridge", id:"gate_5" },
+  { axis:"V", bCoord: 1025, gCoord: 1213, start: 1211, end: 1215, type:"crossing", id:"gate_5" },
   { axis:"V", bCoord: 1230, gCoord: 1213, start: 1211, end: 1215, type:"crossing", id:"gate_6" },
   { axis:"V", bCoord: 1435, gCoord: 1213, start: 1211, end: 1215, type:"tunnel", id:"gate_7" },
-  { axis:"V", bCoord: 1640, gCoord: 1213, start: 1211, end: 1215, type:"tollbridge", id:"gate_8" },
+  { axis:"V", bCoord: 1640, gCoord: 1213, start: 1211, end: 1215, type:"crossing", id:"gate_8" },
   // Row 2 vertical gates (y=1078)
   { axis:"V", bCoord:  205, gCoord: 1078, start: 1076, end: 1080, type:"crossing", id:"gate_9" },
   { axis:"V", bCoord:  615, gCoord: 1078, start: 1076, end: 1080, type:"tunnel", id:"gate_10" },
-  { axis:"V", bCoord:  820, gCoord: 1078, start: 1076, end: 1080, type:"tollbridge", id:"gate_11" },
+  { axis:"V", bCoord:  820, gCoord: 1078, start: 1076, end: 1080, type:"crossing", id:"gate_11" },
   { axis:"V", bCoord: 1025, gCoord: 1078, start: 1076, end: 1080, type:"crossing", id:"gate_12" },
   { axis:"V", bCoord: 1230, gCoord: 1078, start: 1076, end: 1080, type:"tunnel", id:"gate_13" },
-  { axis:"V", bCoord: 1640, gCoord: 1078, start: 1076, end: 1080, type:"tollbridge", id:"gate_14" },
+  { axis:"V", bCoord: 1640, gCoord: 1078, start: 1076, end: 1080, type:"crossing", id:"gate_14" },
   // Row 3 vertical gates (y=942)
   { axis:"V", bCoord:  205, gCoord:  942, start:  940, end:  944, type:"crossing", id:"gate_15" },
   { axis:"V", bCoord:  410, gCoord:  942, start:  940, end:  944, type:"tunnel", id:"gate_16" },
-  { axis:"V", bCoord:  615, gCoord:  942, start:  940, end:  944, type:"tollbridge", id:"gate_17" },
+  { axis:"V", bCoord:  615, gCoord:  942, start:  940, end:  944, type:"crossing", id:"gate_17" },
   { axis:"V", bCoord:  820, gCoord:  942, start:  940, end:  944, type:"crossing", id:"gate_18" },
   { axis:"V", bCoord: 1025, gCoord:  942, start:  940, end:  944, type:"tunnel", id:"gate_19" },
-  { axis:"V", bCoord: 1230, gCoord:  942, start:  940, end:  944, type:"tollbridge", id:"gate_20" },
+  { axis:"V", bCoord: 1230, gCoord:  942, start:  940, end:  944, type:"crossing", id:"gate_20" },
   { axis:"V", bCoord: 1435, gCoord:  942, start:  940, end:  944, type:"crossing", id:"gate_21" },
   { axis:"V", bCoord: 1640, gCoord:  942, start:  940, end:  944, type:"tunnel", id:"gate_22" },
   // Row 4 vertical gates (y=797)
-  { axis:"V", bCoord:  205, gCoord:  797, start:  795, end:  799, type:"tollbridge", id:"gate_23" },
+  { axis:"V", bCoord:  205, gCoord:  797, start:  795, end:  799, type:"crossing", id:"gate_23" },
   { axis:"V", bCoord:  410, gCoord:  797, start:  795, end:  799, type:"crossing", id:"gate_24" },
   { axis:"V", bCoord: 1435, gCoord:  797, start:  795, end:  799, type:"tunnel", id:"gate_25" },
-  { axis:"V", bCoord: 1640, gCoord:  797, start:  795, end:  799, type:"tollbridge", id:"gate_26" },
+  { axis:"V", bCoord: 1640, gCoord:  797, start:  795, end:  799, type:"crossing", id:"gate_26" },
   // Row 5 vertical gates (y=652)
   { axis:"V", bCoord:  205, gCoord:  652, start:  650, end:  654, type:"crossing", id:"gate_27" },
   { axis:"V", bCoord:  410, gCoord:  652, start:  650, end:  654, type:"tunnel", id:"gate_28" },
-  { axis:"V", bCoord: 1435, gCoord:  652, start:  650, end:  654, type:"tollbridge", id:"gate_29" },
+  { axis:"V", bCoord: 1435, gCoord:  652, start:  650, end:  654, type:"crossing", id:"gate_29" },
   { axis:"V", bCoord: 1640, gCoord:  652, start:  650, end:  654, type:"crossing", id:"gate_30" },
   // Row 6 vertical gates (y=507)
   { axis:"V", bCoord:  205, gCoord:  507, start:  505, end:  509, type:"tunnel", id:"gate_31" },
-  { axis:"V", bCoord:  410, gCoord:  507, start:  505, end:  509, type:"tollbridge", id:"gate_32" },
+  { axis:"V", bCoord:  410, gCoord:  507, start:  505, end:  509, type:"crossing", id:"gate_32" },
   { axis:"V", bCoord: 1435, gCoord:  507, start:  505, end:  509, type:"crossing", id:"gate_33" },
   { axis:"V", bCoord: 1640, gCoord:  507, start:  505, end:  509, type:"tunnel", id:"gate_34" },
   // Row 7 vertical gates (y=362)
-  { axis:"V", bCoord:  205, gCoord:  362, start:  360, end:  364, type:"tollbridge", id:"gate_35" },
+  { axis:"V", bCoord:  205, gCoord:  362, start:  360, end:  364, type:"crossing", id:"gate_35" },
   { axis:"V", bCoord:  410, gCoord:  362, start:  360, end:  364, type:"crossing", id:"gate_36" },
   { axis:"V", bCoord:  615, gCoord:  362, start:  360, end:  364, type:"tunnel", id:"gate_37" },
-  { axis:"V", bCoord:  820, gCoord:  362, start:  360, end:  364, type:"tollbridge", id:"gate_38" },
+  { axis:"V", bCoord:  820, gCoord:  362, start:  360, end:  364, type:"crossing", id:"gate_38" },
   { axis:"V", bCoord: 1025, gCoord:  362, start:  360, end:  364, type:"crossing", id:"gate_39" },
   { axis:"V", bCoord: 1230, gCoord:  362, start:  360, end:  364, type:"tunnel", id:"gate_40" },
-  { axis:"V", bCoord: 1435, gCoord:  362, start:  360, end:  364, type:"tollbridge", id:"gate_41" },
+  { axis:"V", bCoord: 1435, gCoord:  362, start:  360, end:  364, type:"crossing", id:"gate_41" },
   { axis:"V", bCoord: 1640, gCoord:  362, start:  360, end:  364, type:"crossing", id:"gate_42" },
   // Row 8 vertical gates (y=217)
   { axis:"V", bCoord:  205, gCoord:  217, start:  215, end:  219, type:"tunnel", id:"gate_43" },
-  { axis:"V", bCoord:  615, gCoord:  217, start:  215, end:  219, type:"tollbridge", id:"gate_44" },
+  { axis:"V", bCoord:  615, gCoord:  217, start:  215, end:  219, type:"crossing", id:"gate_44" },
   { axis:"V", bCoord:  820, gCoord:  217, start:  215, end:  219, type:"crossing", id:"gate_45" },
   { axis:"V", bCoord: 1025, gCoord:  217, start:  215, end:  219, type:"tunnel", id:"gate_46" },
-  { axis:"V", bCoord: 1230, gCoord:  217, start:  215, end:  219, type:"tollbridge", id:"gate_47" },
+  { axis:"V", bCoord: 1230, gCoord:  217, start:  215, end:  219, type:"crossing", id:"gate_47" },
   { axis:"V", bCoord: 1640, gCoord:  217, start:  215, end:  219, type:"crossing", id:"gate_48" },
   // Row 9 vertical gates (y=72)
   { axis:"V", bCoord:  205, gCoord:   72, start:   70, end:   74, type:"tunnel", id:"gate_49" },
-  { axis:"V", bCoord:  410, gCoord:   72, start:   70, end:   74, type:"tollbridge", id:"gate_50" },
+  { axis:"V", bCoord:  410, gCoord:   72, start:   70, end:   74, type:"crossing", id:"gate_50" },
   { axis:"V", bCoord:  615, gCoord:   72, start:   70, end:   74, type:"crossing", id:"gate_51" },
   { axis:"V", bCoord:  820, gCoord:   72, start:   70, end:   74, type:"tunnel", id:"gate_52" },
-  { axis:"V", bCoord: 1025, gCoord:   72, start:   70, end:   74, type:"tollbridge", id:"gate_53" },
+  { axis:"V", bCoord: 1025, gCoord:   72, start:   70, end:   74, type:"crossing", id:"gate_53" },
   { axis:"V", bCoord: 1230, gCoord:   72, start:   70, end:   74, type:"crossing", id:"gate_54" },
   { axis:"V", bCoord: 1435, gCoord:   72, start:   70, end:   74, type:"tunnel", id:"gate_55" },
-  { axis:"V", bCoord: 1640, gCoord:   72, start:   70, end:   74, type:"tollbridge", id:"gate_56" },
+  { axis:"V", bCoord: 1640, gCoord:   72, start:   70, end:   74, type:"crossing", id:"gate_56" },
   // Horizontal gates (unchanged)
   { axis:"H", bCoord: 1162, gCoord:  102, start:  100, end:  104, type:"crossing", id:"gate_57" },
   { axis:"H", bCoord: 1162, gCoord:  307, start:  305, end:  309, type:"tunnel", id:"gate_58" },
-  { axis:"H", bCoord: 1162, gCoord:  512, start:  510, end:  514, type:"tollbridge", id:"gate_59" },
+  { axis:"H", bCoord: 1162, gCoord:  512, start:  510, end:  514, type:"tunnel", id:"gate_59" },
   { axis:"H", bCoord: 1162, gCoord:  717, start:  715, end:  719, type:"crossing", id:"gate_60" },
   { axis:"H", bCoord: 1162, gCoord:  922, start:  920, end:  924, type:"tunnel", id:"gate_61" },
-  { axis:"H", bCoord: 1162, gCoord: 1127, start: 1125, end: 1129, type:"tollbridge", id:"gate_62" },
+  { axis:"H", bCoord: 1162, gCoord: 1127, start: 1125, end: 1129, type:"tunnel", id:"gate_62" },
   { axis:"H", bCoord: 1162, gCoord: 1332, start: 1330, end: 1334, type:"crossing", id:"gate_63" },
   { axis:"H", bCoord: 1162, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_64" },
-  { axis:"H", bCoord: 1162, gCoord: 1742, start: 1740, end: 1744, type:"tollbridge", id:"gate_65" },
+  { axis:"H", bCoord: 1162, gCoord: 1742, start: 1740, end: 1744, type:"tunnel", id:"gate_65" },
   { axis:"H", bCoord: 1017, gCoord:  102, start:  100, end:  104, type:"crossing", id:"gate_66" },
   { axis:"H", bCoord: 1017, gCoord:  307, start:  305, end:  309, type:"tunnel", id:"gate_67" },
-  { axis:"H", bCoord: 1017, gCoord:  512, start:  510, end:  514, type:"tollbridge", id:"gate_68" },
+  { axis:"H", bCoord: 1017, gCoord:  512, start:  510, end:  514, type:"tunnel", id:"gate_68" },
   { axis:"H", bCoord: 1017, gCoord:  717, start:  715, end:  719, type:"crossing", id:"gate_69" },
   { axis:"H", bCoord: 1017, gCoord:  922, start:  920, end:  924, type:"tunnel", id:"gate_70" },
-  { axis:"H", bCoord: 1017, gCoord: 1127, start: 1125, end: 1129, type:"tollbridge", id:"gate_71" },
+  { axis:"H", bCoord: 1017, gCoord: 1127, start: 1125, end: 1129, type:"tunnel", id:"gate_71" },
   { axis:"H", bCoord: 1017, gCoord: 1332, start: 1330, end: 1334, type:"crossing", id:"gate_72" },
   { axis:"H", bCoord: 1017, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_73" },
-  { axis:"H", bCoord: 1017, gCoord: 1742, start: 1740, end: 1744, type:"tollbridge", id:"gate_74" },
+  { axis:"H", bCoord: 1017, gCoord: 1742, start: 1740, end: 1744, type:"tunnel", id:"gate_74" },
   { axis:"H", bCoord:  872, gCoord:  307, start:  305, end:  309, type:"crossing", id:"gate_75" },
   { axis:"H", bCoord:  872, gCoord:  512, start:  510, end:  514, type:"tunnel", id:"gate_76" },
-  { axis:"H", bCoord:  872, gCoord:  675, start:  673, end:  677, type:"tollbridge", id:"gate_77" },
+  { axis:"H", bCoord:  872, gCoord:  675, start:  673, end:  677, type:"tunnel", id:"gate_77" },
   { axis:"H", bCoord:  872, gCoord: 1170, start: 1168, end: 1172, type:"crossing", id:"gate_78" },
   { axis:"H", bCoord:  872, gCoord: 1332, start: 1330, end: 1334, type:"tunnel", id:"gate_79" },
-  { axis:"H", bCoord:  872, gCoord: 1537, start: 1535, end: 1539, type:"tollbridge", id:"gate_80" },
+  { axis:"H", bCoord:  872, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_80" },
   { axis:"H", bCoord:  727, gCoord:  102, start:  100, end:  104, type:"crossing", id:"gate_81" },
   { axis:"H", bCoord:  727, gCoord:  307, start:  305, end:  309, type:"tunnel", id:"gate_82" },
-  { axis:"H", bCoord:  727, gCoord:  512, start:  510, end:  514, type:"tollbridge", id:"gate_83" },
+  { axis:"H", bCoord:  727, gCoord:  512, start:  510, end:  514, type:"tunnel", id:"gate_83" },
   { axis:"H", bCoord:  727, gCoord: 1332, start: 1330, end: 1334, type:"crossing", id:"gate_84" },
   { axis:"H", bCoord:  727, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_85" },
-  { axis:"H", bCoord:  727, gCoord: 1742, start: 1740, end: 1744, type:"tollbridge", id:"gate_86" },
+  { axis:"H", bCoord:  727, gCoord: 1742, start: 1740, end: 1744, type:"tunnel", id:"gate_86" },
   { axis:"H", bCoord:  582, gCoord:  102, start:  100, end:  104, type:"crossing", id:"gate_87" },
   { axis:"H", bCoord:  582, gCoord:  307, start:  305, end:  309, type:"tunnel", id:"gate_88" },
-  { axis:"H", bCoord:  582, gCoord:  512, start:  510, end:  514, type:"tollbridge", id:"gate_89" },
+  { axis:"H", bCoord:  582, gCoord:  512, start:  510, end:  514, type:"tunnel", id:"gate_89" },
   { axis:"H", bCoord:  582, gCoord: 1332, start: 1330, end: 1334, type:"crossing", id:"gate_90" },
   { axis:"H", bCoord:  582, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_91" },
-  { axis:"H", bCoord:  582, gCoord: 1742, start: 1740, end: 1744, type:"tollbridge", id:"gate_92" },
+  { axis:"H", bCoord:  582, gCoord: 1742, start: 1740, end: 1744, type:"tunnel", id:"gate_92" },
   { axis:"H", bCoord:  437, gCoord:  307, start:  305, end:  309, type:"crossing", id:"gate_93" },
   { axis:"H", bCoord:  437, gCoord:  512, start:  510, end:  514, type:"tunnel", id:"gate_94" },
-  { axis:"H", bCoord:  437, gCoord: 1332, start: 1330, end: 1334, type:"tollbridge", id:"gate_95" },
+  { axis:"H", bCoord:  437, gCoord: 1332, start: 1330, end: 1334, type:"tunnel", id:"gate_95" },
   { axis:"H", bCoord:  437, gCoord: 1537, start: 1535, end: 1539, type:"crossing", id:"gate_96" },
   { axis:"H", bCoord:  292, gCoord:  102, start:  100, end:  104, type:"tunnel", id:"gate_97" },
-  { axis:"H", bCoord:  292, gCoord:  307, start:  305, end:  309, type:"tollbridge", id:"gate_98" },
+  { axis:"H", bCoord:  292, gCoord:  307, start:  305, end:  309, type:"tunnel", id:"gate_98" },
   { axis:"H", bCoord:  292, gCoord:  512, start:  510, end:  514, type:"crossing", id:"gate_99" },
   { axis:"H", bCoord:  292, gCoord:  717, start:  715, end:  719, type:"tunnel", id:"gate_100" },
-  { axis:"H", bCoord:  292, gCoord:  922, start:  920, end:  924, type:"tollbridge", id:"gate_101" },
+  { axis:"H", bCoord:  292, gCoord:  922, start:  920, end:  924, type:"tunnel", id:"gate_101" },
   { axis:"H", bCoord:  292, gCoord: 1127, start: 1125, end: 1129, type:"crossing", id:"gate_102" },
   { axis:"H", bCoord:  292, gCoord: 1332, start: 1330, end: 1334, type:"tunnel", id:"gate_103" },
-  { axis:"H", bCoord:  292, gCoord: 1537, start: 1535, end: 1539, type:"tollbridge", id:"gate_104" },
+  { axis:"H", bCoord:  292, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_104" },
   { axis:"H", bCoord:  292, gCoord: 1742, start: 1740, end: 1744, type:"crossing", id:"gate_105" },
   { axis:"H", bCoord:  147, gCoord:  102, start:  100, end:  104, type:"tunnel", id:"gate_106" },
-  { axis:"H", bCoord:  147, gCoord:  307, start:  305, end:  309, type:"tollbridge", id:"gate_107" },
+  { axis:"H", bCoord:  147, gCoord:  307, start:  305, end:  309, type:"tunnel", id:"gate_107" },
   { axis:"H", bCoord:  147, gCoord:  512, start:  510, end:  514, type:"crossing", id:"gate_108" },
   { axis:"H", bCoord:  147, gCoord:  717, start:  715, end:  719, type:"tunnel", id:"gate_109" },
-  { axis:"H", bCoord:  147, gCoord:  922, start:  920, end:  924, type:"tollbridge", id:"gate_110" },
+  { axis:"H", bCoord:  147, gCoord:  922, start:  920, end:  924, type:"tunnel", id:"gate_110" },
   { axis:"H", bCoord:  147, gCoord: 1127, start: 1125, end: 1129, type:"crossing", id:"gate_111" },
   { axis:"H", bCoord:  147, gCoord: 1332, start: 1330, end: 1334, type:"tunnel", id:"gate_112" },
-  { axis:"H", bCoord:  147, gCoord: 1537, start: 1535, end: 1539, type:"tollbridge", id:"gate_113" },
+  { axis:"H", bCoord:  147, gCoord: 1537, start: 1535, end: 1539, type:"tunnel", id:"gate_113" },
   { axis:"H", bCoord:  147, gCoord: 1742, start: 1740, end: 1744, type:"crossing", id:"gate_114" },
   // L-shape vertical gates
   { axis:"V", bCoord:  615, gCoord:  810, start:  808, end:  812, type:"tunnel", id:"gate_115" },
-  { axis:"V", bCoord: 1230, gCoord:  810, start:  808, end:  812, type:"tollbridge", id:"gate_116" },
+  { axis:"V", bCoord: 1230, gCoord:  810, start:  808, end:  812, type:"crossing", id:"gate_116" },
   { axis:"V", bCoord: 1230, gCoord:  810, start:  808, end:  812, type:"crossing", id:"gate_117" },
   { axis:"V", bCoord:  615, gCoord:  543, start:  541, end:  545, type:"tunnel", id:"gate_118" },
-  { axis:"V", bCoord:  923, gCoord:  798, start:  796, end:  800, type:"tollbridge", id:"gate_119" },
+  { axis:"V", bCoord:  923, gCoord:  798, start:  796, end:  800, type:"crossing", id:"gate_119" },
   { axis:"V", bCoord:  923, gCoord:  798, start:  796, end:  800, type:"crossing", id:"gate_120" },
   // L-shape horizontal gates
   { axis:"H", bCoord:  872, gCoord:  675, start:  673, end:  677, type:"tunnel", id:"gate_121" },
-  { axis:"H", bCoord:  872, gCoord: 1170, start: 1168, end: 1172, type:"tollbridge", id:"gate_122" },
+  { axis:"H", bCoord:  872, gCoord: 1170, start: 1168, end: 1172, type:"tunnel", id:"gate_122" },
   { axis:"H", bCoord:  437, gCoord: 1170, start: 1168, end: 1172, type:"crossing", id:"gate_123" },
   { axis:"H", bCoord:  437, gCoord:  675, start:  673, end:  677, type:"tunnel", id:"gate_124" },
-  { axis:"H", bCoord:  727, gCoord:  870, start:  868, end:  872, type:"tollbridge", id:"gate_125" },
+  { axis:"H", bCoord:  727, gCoord:  870, start:  868, end:  872, type:"tunnel", id:"gate_125" },
   { axis:"H", bCoord:  727, gCoord:  975, start:  973, end:  977, type:"crossing", id:"gate_126" },
   { axis:"H", bCoord:  582, gCoord:  870, start:  868, end:  872, type:"tunnel", id:"gate_127" },
-  { axis:"H", bCoord:  582, gCoord:  975, start:  973, end:  977, type:"tollbridge", id:"gate_128" },
+  { axis:"H", bCoord:  582, gCoord:  975, start:  973, end:  977, type:"tunnel", id:"gate_128" },
   { axis:"H", bCoord:  654, gCoord:  718, start:  716, end:  720, type:"crossing", id:"gate_129" },
   { axis:"H", bCoord:  654, gCoord: 1127, start: 1125, end: 1129, type:"tunnel", id:"gate_130" },
   // Missing gates
@@ -1026,22 +1025,25 @@ self.onmessage = function(e) {
   }
 
   // Paint impassable border tiles
+  // Vertical borders (axis V) = river; horizontal borders (axis H) = rockymountain
+  const verticalBorderXSet = new Set(CROSSINGS.filter(c => c.axis === 'V').map(c => c.bCoord));
   for (const {x, y} of impassable) {
     const idx = y*COLS+x;
     if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-    // Use river for all borders for now (can be enhanced per-crossing later)
-    terrainArr[idx]  = TERRAIN_ENC.river;
+    const isVertical = [...verticalBorderXSet].some(bx => x >= bx - 2 && x <= bx + 1);
+    terrainArr[idx]  = isVertical ? TERRAIN_ENC.river : TERRAIN_ENC.rockymountain;
     flagArr[idx]     = (flagArr[idx] & ~F_GATE) | F_BORDER;
     rssArr[idx]      = 0;
     garrisonArr[idx] = 0;
     impassKeys.push(`${x},${y}`);
   }
 
-  // Paint path tiles — passable, use border terrain
+  // Paint path tiles — passable, match border terrain
   for (const {x, y} of pathTiles) {
     const idx = y*COLS+x;
     if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-    terrainArr[idx]  = TERRAIN_ENC.river;
+    const isVertical = [...verticalBorderXSet].some(bx => x >= bx - 2 && x <= bx + 1);
+    terrainArr[idx]  = isVertical ? TERRAIN_ENC.river : TERRAIN_ENC.rockymountain;
     flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE;
     rssArr[idx]      = 0;
     garrisonArr[idx] = 0;
@@ -1051,22 +1053,23 @@ self.onmessage = function(e) {
   for (const {x, y, id, type, axis} of gateA) {
     const idx = y*COLS+x;
     if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-    terrainArr[idx]  = TERRAIN_ENC.river;
+    terrainArr[idx]  = axis === 'V' ? TERRAIN_ENC.river : TERRAIN_ENC.rockymountain;
     flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
     garrisonArr[idx] = GATE_GARRISON;
     siegeArr[idx]    = GATE_SIEGE;
     siegeMaxArr[idx] = GATE_SIEGE;
     rssArr[idx]      = 0;
-    const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
+    const typeName   = axis === 'V' ? 'Crossing' : 'Tunnel';
+    const resolvedType = axis === 'V' ? 'crossing' : 'tunnel';
     gateMeta[`${x},${y}`] = {
       keepName: `${typeName} Gate A`,
       garrisonWaves: 2,
       garrison: GATE_GARRISON,
       garrisonTroops: 20, // 20 command budget
-      cx: x, cy: y, side: 'A', type, axis,
+      cx: x, cy: y, side: 'A', type: resolvedType, axis,
       defCmd: {
         n: `${typeName} Gate A Defender`,
-        icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
+        icon: axis === 'V' ? '🌊' : '🪨',
         cls:'defender', faction:null, rarity:'veteran',
         lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
         atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
@@ -1078,22 +1081,23 @@ self.onmessage = function(e) {
   for (const {x, y, id, type, axis} of gateB) {
     const idx = y*COLS+x;
     if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART)) continue;
-    terrainArr[idx]  = TERRAIN_ENC.river;
+    terrainArr[idx]  = axis === 'V' ? TERRAIN_ENC.river : TERRAIN_ENC.rockymountain;
     flagArr[idx]     = (flagArr[idx] & ~F_BORDER) | F_GATE | F_KEEP;
     garrisonArr[idx] = GATE_GARRISON;
     siegeArr[idx]    = GATE_SIEGE;
     siegeMaxArr[idx] = GATE_SIEGE;
     rssArr[idx]      = 0;
-    const typeName   = type==='crossing'?'Crossing':type==='tollbridge'?'Toll Bridge':'Tunnel';
+    const typeName   = axis === 'V' ? 'Crossing' : 'Tunnel';
+    const resolvedType = axis === 'V' ? 'crossing' : 'tunnel';
     gateMeta[`${x},${y}`] = {
       keepName: `${typeName} Gate B`,
       garrisonWaves: 2,
       garrison: GATE_GARRISON,
       garrisonTroops: 20, // 20 command budget
-      cx: x, cy: y, side: 'B', type, axis,
+      cx: x, cy: y, side: 'B', type: resolvedType, axis,
       defCmd: {
         n: `${typeName} Gate B Defender`,
-        icon: type==='crossing'?'🌊':type==='tollbridge'?'⌒':'🪨',
+        icon: axis === 'V' ? '🌊' : '🪨',
         cls:'defender', faction:null, rarity:'veteran',
         lvl: GATE_CMD_LVL, troops: GATE_GARRISON,
         atk: 120*GATE_CMD_LVL, spd: 40+GATE_CMD_LVL*2,
@@ -1155,6 +1159,7 @@ self.onmessage = function(e) {
         const ti = tr * COLS + tc;
         if (flagArr[ti] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { blocked = true; break; }
         if (KEEP_FOOTPRINT_SET.has(`${tc},${tr}`)) { blocked = true; break; }
+        if (ROAD_TILE_SET.has(ti)) { blocked = true; break; }
       }
       if (blocked) { powerArr[idx2] = 9; continue; }
 
