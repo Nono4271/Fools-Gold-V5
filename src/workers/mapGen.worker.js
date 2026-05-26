@@ -302,8 +302,8 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       }
     });
     
-    // Draw border on all 4 tiles (including center)
-    for (let dx = -BORDER_WIDTH; dx <= BORDER_WIDTH; dx++) {
+    // Draw border on 4 tiles: offsets -2, -1, 0, +1 from centerline
+    for (let dx = -BORDER_WIDTH; dx < BORDER_WIDTH; dx++) {
       const bx = x + dx;
       if (bx < 0 || bx >= COLS) continue;
       
@@ -341,8 +341,8 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       }
     });
     
-    // Draw border on all 4 tiles (including center)
-    for (let dy = -BORDER_WIDTH; dy <= BORDER_WIDTH; dy++) {
+    // Draw border on 4 tiles: offsets -2, -1, 0, +1 from centerline
+    for (let dy = -BORDER_WIDTH; dy < BORDER_WIDTH; dy++) {
       const by = y + dy;
       if (by < 0 || by >= ROWS) continue;
       
