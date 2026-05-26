@@ -309,16 +309,6 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       if (bx < 0 || bx >= COLS) continue;
       
       for (let y = 0; y < ROWS; y++) {
-        // Skip borders that cut through double-height regions
-        let skipBorder = false;
-        if (x === 410) {
-          // Fogmire: skip y 147-288, Ebonvault: skip y 1017-1158
-          if ((y >= 147 && y <= 288) || (y >= 1017 && y <= 1158)) skipBorder = true;
-        } else if (x === 1435) {
-          // Stoneheart: skip y 147-288, Fellwood: skip y 1017-1158
-          if ((y >= 147 && y <= 288) || (y >= 1017 && y <= 1158)) skipBorder = true;
-        }
-        
         if (gateYSet.has(y)) {
           // Gate/path tile - passable but add perpendicular borders
           pathTiles.push({ x: bx, y });
@@ -335,8 +325,8 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
               }
             }
           });
-        } else if (!skipBorder) {
-          // Border tile - impassable (unless in skip zone)
+        } else {
+          // Border tile - impassable
           impassable.push({ x: bx, y });
         }
       }
@@ -359,16 +349,6 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       if (by < 0 || by >= ROWS) continue;
       
       for (let x = 0; x < COLS; x++) {
-        // Skip borders that cut through double-width regions
-        let skipBorder = false;
-        if (y === 437) {
-          // Lightshield: skip x 2-203, Deepwater: skip x 1642-1843
-          if ((x >= 2 && x <= 203) || (x >= 1642 && x <= 1843)) skipBorder = true;
-        } else if (y === 872) {
-          // Cursedfen: skip x 2-203, Nightmarsh: skip x 1642-1843
-          if ((x >= 2 && x <= 203) || (x >= 1642 && x <= 1843)) skipBorder = true;
-        }
-        
         if (gateXSet.has(x)) {
           // Gate/path tile - passable but add perpendicular borders
           pathTiles.push({ x, y: by });
@@ -385,8 +365,8 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
               }
             }
           });
-        } else if (!skipBorder) {
-          // Border tile - impassable (unless in skip zone)
+        } else {
+          // Border tile - impassable
           impassable.push({ x, y: by });
         }
       }
@@ -631,7 +611,7 @@ const CROSSINGS = [
   { axis:"H", bCoord:  582, gCoord:  975, start:  973, end:  977, type:"tollbridge", id:"gate_128" },
   { axis:"H", bCoord:  654, gCoord:  718, start:  716, end:  720, type:"crossing", id:"gate_129" },
   { axis:"H", bCoord:  654, gCoord: 1127, start: 1125, end: 1129, type:"tunnel", id:"gate_130" },
-  // Missing gates
+  // Missing gates between adjacent regions
   { axis:"V", bCoord:  923, gCoord:  530, start:  528, end:  532, type:"crossing", id:"gate_battlemarsh_stormwatch" },
   { axis:"V", bCoord: 1230, gCoord:  528, start:  526, end:  530, type:"tunnel", id:"gate_stormwatch_tidecrag" },
 ];
