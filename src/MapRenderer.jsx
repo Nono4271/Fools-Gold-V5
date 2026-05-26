@@ -167,6 +167,11 @@ function getTileBaseColor(c, r, terrain) {
 ══════════════════════════════════════════════════════════════════════════ */
 
 function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null) {
+  if (!window.__rangeLogged) {
+    console.log(`MapRenderer bounds: r[${rMin}, ${rMax}], c[${cMin}, ${cMax}]`);
+    console.log(`First gate should be around: 205,1211`);
+    window.__rangeLogged = true;
+  }
   gfx.clear();
   const dMin = cMin + rMin, dMax = cMax + rMax;
   for (let d = dMin; d <= dMax; d++) {
@@ -179,6 +184,15 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (!tile) continue;
 
       const { terrain, owner, isHQ, isWin, isKeep, isKeepPart, isHQPart, isShore, isGate, crossingType, crossingAxis } = tile;
+
+      // Debug: count gates
+      if (isGate) {
+        if (!window.__totalGatesRendered) window.__totalGatesRendered = 0;
+        window.__totalGatesRendered++;
+        if (window.__totalGatesRendered <= 5) {
+          console.log(`Tile ${c},${r}: isGate=${isGate}, isKeep=${isKeep}, ct=${ct}, axis=${axis}`);
+        }
+      }
 
       if (isShore) {
         const { cx, cy } = isoXY(c, r);
