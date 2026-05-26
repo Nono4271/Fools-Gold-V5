@@ -1305,9 +1305,254 @@ function drawAmbientScatter(gfx, tile, cx, sy, pl = 1) {
   }
 }
 
+const HQ_SPRITES = {
+  pirates:       "hq_pirates.webp",
+  orcs:          "hq_orcs.webp",
+  nightcreatures:"hq_nightcreatures.webp",
+  holyknights:   "hq_holyknights.webp",
+  dragons:       "hq_dragons.webp",
+  wizards:       "hq_arcane.webp",
+  coldborns:     "hq_coldborns.webp",
+  ashen_dead:  "hq_ashen_dead.webp",
+  player:        "hq_pirates.webp",
+  ai:            "hq_orcs.webp",
+};
+
 const _hqStateCache = new Map(); // tileKey → { faction, owner, isSelected }
 const _hqKeyIndex = new Set();
 export function clearHQCache() { _hqStateCache.clear(); _hqKeyIndex.clear(); }
+
+function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids) {
+  const [pc, pr] = tileKey.split(",").map(Number);
+  // Visual centre = middle tile of 3×3
+  const { cx: bx, cy: worldCY } = isoXY(pc + 1, pr + 1);
+  const elev = 0;
+
+  // 3×3 outer diamond corners (for hit area + selection outline)
+  // N=(pc+1,pr), E=(pc+2,pr+1), S=(pc+1,pr+2), W=(pc,pr+1) — all shifted by elev
+  const nPt = isoXY(pc + 1, pr);
+  const ePt = isoXY(pc + 2, pr + 1);
+  const sPt = isoXY(pc + 1, pr + 2);
+  const wPt = isoXY(pc,     pr + 1);
+
+  // Sprite-aligned footprint — corners map to the 3x3 iso diamond.
+  // rotation=0 so no trig needed; fractions derived from sprite dims + anchor.
+  const _sW  = TW * 3.0;
+  const _sH  = _sW * 0.80;
+  const _aY  = 0.905;
+  const _sx  = bx;
+  const _sy  = sPt.cy - elev + TH * 0.95;
+  const _fp  = (fx, fy) => ({
+    x: _sx + (fx - 0.5) * _sW,
+    y: _sy + (fy - _aY) * _sH,
+  });
+  const _fpN = _fp(0.75, 0.25);
+  const _fpE = _fp(0.75, 0.65);
+  const _fpS = _fp(0.25, 0.65);
+  const _fpW = _fp(0.25, 0.25);
+
+  const FOOTPRINT = [
+    _fpN.x, _fpN.y,
+    _fpE.x, _fpE.y,
+    _fpS.x, _fpS.y,
+    _fpW.x, _fpW.y,
+  ];
+
+  const isSelected = selKey === tileKey;
+  const owner      = tile.owner || null;
+  const faction    = tile.faction || owner || "player";
+
+  const group = new PIXI.Container();
+  group.__hqKey = tileKey;
+
+  // Draw solid fill - use the outermost vertices from the 4 corner tiles
+  // Top-left corner tile (pc, pr) - use its top vertex
+  const tlPt = isoXY(pc, pr);
+  const nVertex = { x: tlPt.cx, y: tlPt.cy - elev };
+  
+  // Top-right corner tile (pc+2, pr) - use its right vertex  
+  const trPt = isoXY(pc + 2, pr);
+  const eVertex = { x: trPt.cx + TW/2, y: trPt.cy - elev + TH/2 };
+  
+  // Bottom-right corner tile (pc+2, pr+2) - use its bottom vertex
+  const brPt = isoXY(pc + 2, pr + 2);
+  const sVertex = { x: brPt.cx, y: brPt.cy - elev + TH };
+  
+  // Bottom-left corner tile (pc, pr+2) - use its left vertex
+  const blPt = isoXY(pc, pr + 2);
+  const wVertex = { x: blPt.cx - TW/2, y: blPt.cy - elev + TH/2 };
+  
+  const fillGfx = new PIXI.Graphics();
+  const terrainColor = 0xd4a574; // Desert/tan color
+  fillGfx.beginFill(terrainColor, 1.0);
+  fillGfx.drawPolygon([
+    nVertex.x, nVertex.y,
+    eVertex.x, eVertex.y,
+    sVertex.x, sVertex.y,
+    wVertex.x, wVertex.y,
+  ]);
+  fillGfx.endFill();
+  group.addChild(fillGfx);
+
+  // ── Selection outline ──
+  if (isSelected) {
+    const outlineGfx = new PIXI.Graphics();
+    const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+    outlineGfx.lineStyle(3, 0xffffff, 0.95);
+    outlineGfx.drawPolygon(FOOTPRINT);
+    outlineGfx.lineStyle(0);
+    group.addChild(outlineGfx);
+  }
+
+  // ── Border (draw before sprite so sprite renders on top) ──
+  const borderGfx = new PIXI.Graphics();
+  const borderTint = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+  
+  const borderPath = [];
+  borderPath.push(isoXY(pc, pr).cx, isoXY(pc, pr).cy - elev);
+  borderPath.push(isoXY(pc + 2, pr).cx + TW/2, isoXY(pc + 2, pr).cy - elev + TH/2);
+  borderPath.push(isoXY(pc + 2, pr + 2).cx, isoXY(pc + 2, pr + 2).cy - elev + TH);
+  borderPath.push(isoXY(pc, pr + 2).cx - TW/2, isoXY(pc, pr + 2).cy - elev + TH/2);
+  
+  borderGfx.lineStyle(8, 0x000000, 0.8);
+  borderGfx.drawPolygon(borderPath);
+  borderGfx.lineStyle(0);
+  
+  borderGfx.lineStyle(5, borderTint, 1.0);
+  borderGfx.drawPolygon(borderPath);
+  borderGfx.lineStyle(0);
+  
+  group.addChild(borderGfx);
+
+  // ── Sprite ──
+  const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
+  const spriteUrl  = `/hq/${spriteName}`;
+
+  // Width covers the full 3x3 diamond left<->right extent.
+  // Height = 0.75x width so towers stay visible without blocking back tiles.
+  // anchor.y = 0.78 keeps the base grounded on the front tile row.
+  // Source image is 2048x2048 (square) — preserve aspect ratio to avoid lean.
+  // Scale so width fits the 3x3 footprint; height follows naturally.
+  // Per-faction fine-tuning offsets (xOff/yOff in pixels, positive = right/down)
+  // scale multiplier (default 1.0) for factions that need larger sprites
+  const HQ_OFFSETS = {
+    pirates:        { xOff:  0,    yOff:  0,    scale: 1.0  },
+    player:         { xOff:  0,    yOff:  0,    scale: 1.0  },
+    orcs:           { xOff:  0,    yOff:  0,    scale: 1.0  },
+    ai:             { xOff:  0,    yOff:  0,    scale: 1.0  },
+    wizards:        { xOff:  5,    yOff: -5,    scale: 1.0  },
+    dragons:        { xOff:  5,    yOff:  10,   scale: 1.0  },
+    holyknights:    { xOff: -5,    yOff:  10,   scale: 1.0  },
+    nightcreatures: { xOff:  0,    yOff:  10,   scale: 1.0  },
+    coldborns:      { xOff:  0,    yOff:  15,   scale: 1.0  },
+    ashen_dead:     { xOff:  0,    yOff:  15,   scale: 1.0  },
+  };
+  const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0 };
+
+  const baseW = TW * 2.2;
+  const targetW = baseW * (off.scale || 1.0);
+  const targetH = targetW * 0.80;
+
+  const spriteX = bx + off.xOff;
+  const spriteY = sPt.cy - elev + TH * 0.60 + off.yOff;
+
+  const applySprite = (sp) => {
+    sp.anchor.set(0.5, 0.905);
+    sp.width  = targetW;
+    sp.height = targetH;
+    sp.x = spriteX;
+    sp.y = spriteY;
+
+    sp.rotation = 0;
+    sp.skew.x   = 0;
+    sp.skew.y   = 0;
+  };
+
+  if (texCache[spriteUrl]) {
+    const sp = new PIXI.Sprite(texCache[spriteUrl]);
+    applySprite(sp);
+    group.addChild(sp);
+  } else {
+    // Load async — replace placeholder gfx once loaded
+    const placeholderGfx = new PIXI.Graphics();
+    const fc = ownerTint(owner, tile?.faction, playerFacKey, null, tile?.ownerPlayerId) ?? 0x888888;
+    placeholderGfx.beginFill(fc, 0.3);
+    placeholderGfx.drawPolygon(FOOTPRINT);
+    placeholderGfx.endFill();
+    group.addChild(placeholderGfx);
+
+    PIXI.Texture.fromURL(spriteUrl).then(tex => {
+      texCache[spriteUrl] = tex;
+      if (placeholderGfx.parent) placeholderGfx.parent.removeChild(placeholderGfx);
+      placeholderGfx.destroy();
+      if (!group.destroyed) {
+        const sp = new PIXI.Sprite(tex);
+        applySprite(sp);
+        // Find name badge elements (pill and labelText) and insert sprite before them
+        const pillIndex = group.children.findIndex(c => c instanceof PIXI.Graphics && c.x === bx && c.y === nPt.cy - 18);
+        if (pillIndex > 0) {
+          group.addChildAt(sp, pillIndex);
+        } else {
+          group.addChild(sp);
+        }
+      }
+    }).catch(() => {
+      // Sprite not found — placeholder stays, that's fine
+    });
+  }
+
+  // ── Player name label above HQ ──
+  if (owner === "player" && playerName) {
+    // Background pill behind the name
+    const labelText = new PIXI.Text(playerName, {
+      fontFamily: "'Cinzel', serif",
+      fontSize:   11,
+      fontWeight: "700",
+      fill:       0xf0c040,
+      letterSpacing: 1.5,
+      dropShadow: true,
+      dropShadowColor: 0x000000,
+      dropShadowBlur:  4,
+      dropShadowDistance: 1,
+    });
+    // Position above the north tip of the HQ diamond
+    labelText.anchor.set(0.5, 1);
+    labelText.x = bx;
+    labelText.y = nPt.cy - 18;
+
+    // Dark pill background
+    const pill = new PIXI.Graphics();
+    const pw = labelText.width + 14;
+    const ph = labelText.height + 6;
+    pill.beginFill(0x080604, 0.78);
+    pill.lineStyle(1, 0xc8a040, 0.9);
+    pill.drawRoundedRect(-pw / 2, -ph, pw, ph, 4);
+    pill.endFill();
+    pill.x = bx;
+    pill.y = nPt.cy - 18;
+
+    group.addChild(pill);
+    group.addChild(labelText);
+  }
+
+  // ── Hit area ──
+  const hit = new PIXI.Graphics();
+  hit.beginFill(0xffffff, 0.001);
+  hit.drawPolygon(FOOTPRINT);
+  hit.endFill();
+  hit.hitArea     = new PIXI.Polygon(FOOTPRINT);
+  hit.interactive = true;
+  hit.buttonMode  = true;
+  hit.cursor      = "pointer";
+  hit.on("pointerdown", (e) => {
+    if (isPanningRef?.current) return;
+    e.stopPropagation();
+    onHQClick(tileKey, e.data?.originalEvent || e);
+  });
+  group.addChild(hit);
+  
+  return group;
+}
 
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
