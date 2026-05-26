@@ -203,10 +203,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       }
 
       // Keep and keepPart tiles — render as plain ground only.
-      // The keep layer (buildKeepLayer) handles all visuals and interaction.
-      // Exception: gate tiles (crossings/tunnels/toll bridges) have isKeep=true but
-      // are NOT in KEEP_REGION_LIST — render them with their actual terrain color.
-      // P10–P13 dynamic structures are also handled here with selection outline.
+      // Keep and keepPart tiles render as plain ground. Gate tiles render with their terrain.
+      // P10–P13 dynamic structures are handled in second pass below.
       if ((isKeep && !isGate) || isKeepPart) {
         const pl10 = (tile.powerLevel ?? 0) >= 10;
         if (pl10) {
@@ -1307,627 +1305,6 @@ function drawAmbientScatter(gfx, tile, cx, sy, pl = 1) {
   }
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   KEEP LAYER — one large interactive landmark per keep, above tile layer.
-   Styled after RotK: a wide isometric fortress footprint with towers,
-   walls, and a banner. Fully clickable as a single unit.
-══════════════════════════════════════════════════════════════════════════ */
-
-const KEEP_REGION_LIST = [
-  // Holy Grail
-  { key:"holyGrail",       cx: 788, cy: 407, isWin:true  },
-  // Pirates
-  { key:"saltmere",        cx: 229, cy: 141, isWin:false },
-  { key:"plunderMaw",      cx: 215, cy:  42, isWin:false },
-  { key:"brineHollow",     cx: 427, cy: 141, isWin:false },
-  { key:"deadAnchor",      cx: 229, cy: 274, isWin:false },
-  // Night Creatures
-  { key:"shadowmere",      cx:1173, cy: 274, isWin:false },
-  { key:"theShroud",       cx:1334, cy: 288, isWin:false },
-  { key:"crimsonVeil",     cx: 975, cy: 141, isWin:false },
-  { key:"paleCourt",       cx:1173, cy: 141, isWin:false },
-  { key:"duskHollow",      cx: 975, cy: 274, isWin:false },
-  { key:"bloodfen",        cx:1173, cy: 407, isWin:false },
-  // Dragons
-  { key:"emberpeak",       cx: 229, cy: 407, isWin:false },
-  { key:"smolderingMaw",   cx:  55, cy: 437, isWin:false },
-  { key:"ashcrag",         cx: 460, cy: 375, isWin:false },
-  { key:"cinderPass",      cx: 390, cy: 432, isWin:false },
-  { key:"scorchveil",      cx: 229, cy: 540, isWin:false },
-  // Orcs
-  { key:"grimhold",        cx:1173, cy: 540, isWin:false },
-  { key:"theWarground",    cx:1334, cy: 563, isWin:false },
-  { key:"warbend",         cx: 975, cy: 407, isWin:false },
-  { key:"bloodfield",      cx: 975, cy: 540, isWin:false },
-  { key:"bonepile",        cx:1173, cy: 673, isWin:false },
-  // Wizards (Bounty Hunters)
-  { key:"ashenveil",       cx: 613, cy: 794, isWin:false },
-  { key:"arcaneDeep",      cx: 628, cy: 910, isWin:false },
-  { key:"hexmire",         cx: 427, cy: 673, isWin:false },
-  { key:"ruinwatch",       cx: 613, cy: 673, isWin:false },
-  { key:"ashenFen",        cx: 229, cy: 794, isWin:false },
-  { key:"cursemoor",       cx: 427, cy: 794, isWin:false },
-  // Holy Knights
-  { key:"sanctumhold",     cx: 788, cy: 794, isWin:false },
-  { key:"blessedShore",    cx: 795, cy: 910, isWin:false },
-  { key:"hallowedGround",  cx: 788, cy: 540, isWin:false },
-  { key:"pilgrimsRest",    cx: 975, cy: 673, isWin:false },
-  { key:"sacredVale",      cx: 975, cy: 794, isWin:false },
-  { key:"dawnmarch",       cx:1173, cy: 794, isWin:false },
-  // Neutral / Conflict
-  { key:"gallowsReach",    cx: 613, cy: 141, isWin:false },
-  { key:"greyExpanse",     cx: 788, cy: 141, isWin:false },
-  { key:"mistfall",        cx: 460, cy: 242, isWin:false },
-  { key:"thornveil",       cx: 390, cy: 308, isWin:false },
-  { key:"wanderingWastes", cx: 613, cy: 274, isWin:false },
-  { key:"dreadmoor",       cx: 788, cy: 274, isWin:false },
-  { key:"theHollow",       cx: 613, cy: 407, isWin:false },
-  { key:"grimward",        cx: 427, cy: 540, isWin:false },
-  { key:"shatteredPass",   cx: 648, cy: 510, isWin:false },
-  { key:"sunkenRoad",      cx: 580, cy: 578, isWin:false },
-  { key:"paleMarch",       cx: 788, cy: 673, isWin:false },
-  { key:"forsakenMarch",   cx: 229, cy: 673, isWin:false },
-];
-
-function drawKeepGfx(gfx, bx, by, owner, isWin, isSelected) {
-  const isPlayer  = owner === "player";
-  const isAi      = owner === "ai"    ;
-  const fc  = isPlayer ? 0x4dcc70 : isAi ? 0xdd4422 : isWin ? 0xf0c040 : 0xc8a060;
-  const fc2 = isPlayer ? 0x1a5228 : isAi ? 0x5c1008 : isWin ? 0x7a6010 : 0x6a5020;
-  const wall= isPlayer ? 0x2a7a40 : isAi ? 0x882010 : isWin ? 0xb08828 : 0x8a6c30;
-
-  gfx.clear();
-
-  // ── Ground shadow ellipse ──
-  gfx.beginFill(0x000000, 0.28);
-  gfx.drawEllipse(bx, by + 6, 38, 14);
-  gfx.endFill();
-
-  // ── Base courtyard — wide isometric diamond ──
-  // 2.2 px overdraw stroke (same as P10+ tiles) to cover black border seams
-  // from neighbouring tiles that bleed through beneath the keep sprite.
-  const OD = 2.2;
-  gfx.lineStyle(OD * 2, fc2, 1);
-  gfx.beginFill(fc2);
-  gfx.drawPolygon([
-    bx,      by - 28,
-    bx + 36, by - 10,
-    bx,      by + 8,
-    bx - 36, by - 10,
-  ]);
-  gfx.endFill();
-  gfx.lineStyle(0);
-
-  // ── Courtyard lit face (right) ──
-  gfx.beginFill(fc, 0.35);
-  gfx.drawPolygon([bx, by - 28, bx + 36, by - 10, bx + 36, by - 2, bx, by - 20]);
-  gfx.endFill();
-
-  // ── Outer walls — four segments tracing the diamond ──
-  gfx.lineStyle(2.5, wall, 0.9);
-  gfx.drawPolygon([
-    bx,      by - 28,
-    bx + 36, by - 10,
-    bx,      by + 8,
-    bx - 36, by - 10,
-    bx,      by - 28,
-  ]);
-  gfx.lineStyle(0);
-
-  // ── Corner towers (4 diamonds, one per corner) ──
-  const towers = [
-    [bx,      by - 30],   // top
-    [bx + 36, by - 12],   // right
-    [bx,      by + 6],    // bottom
-    [bx - 36, by - 12],   // left
-  ];
-  for (const [tx, ty] of towers) {
-    const ts = 7;
-    gfx.beginFill(fc2);
-    gfx.drawPolygon([tx, ty-ts, tx+ts*0.75, ty, tx, ty+ts*0.6, tx-ts*0.75, ty]);
-    gfx.endFill();
-    gfx.beginFill(fc, 0.5);
-    gfx.drawPolygon([tx, ty-ts, tx+ts*0.75, ty, tx+ts*0.75, ty+ts*0.25, tx, ty-ts*0.35]);
-    gfx.endFill();
-    // Battlements
-    for (let bi = -1; bi <= 1; bi++) {
-      gfx.beginFill(fc);
-      gfx.drawRect(tx + bi * 3.5 - 1, ty - ts - 3, 2, 3);
-      gfx.endFill();
-    }
-  }
-
-  // ── Central keep tower ──
-  const kh = 22;
-  gfx.beginFill(fc2);
-  gfx.drawPolygon([bx, by-28-kh, bx+10, by-22-kh, bx, by-16-kh, bx-10, by-22-kh]);
-  gfx.endFill();
-  gfx.beginFill(fc, 0.55);
-  gfx.drawPolygon([bx, by-28-kh, bx+10, by-22-kh, bx+10, by-14-kh, bx, by-20-kh]);
-  gfx.endFill();
-  // Keep battlements
-  for (let bi = -2; bi <= 2; bi++) {
-    gfx.beginFill(fc);
-    gfx.drawRect(bx + bi * 3.5 - 1.5, by - 28 - kh - 4, 3, 4);
-    gfx.endFill();
-  }
-
-  // ── Banner / flag on keep tower ──
-  const flagCol = isWin ? 0xf0c040 : fc;
-  gfx.lineStyle(1.2, 0x000000, 0.6);
-  gfx.moveTo(bx, by - 28 - kh - 4);
-  gfx.lineTo(bx, by - 28 - kh - 14);
-  gfx.lineStyle(0);
-  gfx.beginFill(flagCol, 0.95);
-  gfx.drawPolygon([bx, by-28-kh-14, bx+9, by-28-kh-10, bx, by-28-kh-7]);
-  gfx.endFill();
-
-  // ── Holy Grail crown ring ──
-  if (isWin) {
-    gfx.lineStyle(2, 0xf0c040, 0.7);
-    gfx.drawEllipse(bx, by - 16, 42, 16);
-    gfx.lineStyle(0);
-    gfx.beginFill(0xf0c040, 0.9);
-    for (let pi = 0; pi < 5; pi++) {
-      const a = (pi / 5) * Math.PI * 2 - Math.PI / 2;
-      const px2 = bx + Math.cos(a) * 44;
-      const py2 = by - 16 + Math.sin(a) * 17;
-      gfx.drawPolygon([px2-3, py2-2, px2, py2-7, px2+3, py2-2]);
-    }
-    gfx.endFill();
-  }
-
-}
-
-// Fix #8: Selective keep rebuild.
-// Track last-rendered state per keep (owner + isSelected). Only destroy+rebuild
-// a keep's container when its state actually changes. Unchanged keeps are left
-// untouched. Each group is tagged with __keepKey for targeted lookup.
-const _keepStateCache = new Map(); // tileKey → { owner, isSelected }
-
-// Call this whenever the tile map is fully reset (e.g. new game) so keeps rebuild from scratch.
-export function clearKeepCache() { _keepStateCache.clear(); }
-
-// ── HQ Sprite Layer ───────────────────────────────────────────────────────────
-// Each player/AI HQ renders as a faction-specific sprite centered on the 3×3
-// footprint. The primary tile is the top-left corner (isHQ===true); the other
-// 8 cells are isHQPart===true. We track the primary tile key only.
-//
-// Faction → sprite filename mapping. Files live in /public/hq/
-const HQ_SPRITES = {
-  pirates:       "hq_pirates.webp",
-  orcs:          "hq_orcs.webp",
-  nightcreatures:"hq_nightcreatures.webp",
-  holyknights:   "hq_holyknights.webp",
-  dragons:       "hq_dragons.webp",
-  wizards:       "hq_arcane.webp",
-  coldborns:     "hq_coldborns.webp",
-  ashen_dead:  "hq_ashen_dead.webp",
-  player:        "hq_pirates.webp",
-  ai:            "hq_orcs.webp",
-};
-
-const _hqStateCache = new Map(); // tileKey → { faction, owner, isSelected }
-// Fast index: Set of primary HQ tile keys (isHQ===true). Built once in buildHQLayer,
-// avoids scanning all 490k tiles on every redrawHQs() call.
-const _hqKeyIndex = new Set();
-export function clearHQCache() { _hqStateCache.clear(); _hqKeyIndex.clear(); }
-
-// 3×3 footprint: primary tile is top-left (c,r); parts go to (c+2,r+2)
-// The visual centre of a 3×3 in isometric space is the centre tile (c+1,r+1).
-// isoXY gives us the diamond centre of any tile; the 3×3 centre is at (c+1,r+1).
-// We size the sprite to cover the full 3×3 diamond footprint.
-function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids) {
-  const [pc, pr] = tileKey.split(",").map(Number);
-  // Visual centre = middle tile of 3×3
-  const { cx: bx, cy: worldCY } = isoXY(pc + 1, pr + 1);
-  const elev = 0;
-
-  // 3×3 outer diamond corners (for hit area + selection outline)
-  // N=(pc+1,pr), E=(pc+2,pr+1), S=(pc+1,pr+2), W=(pc,pr+1) — all shifted by elev
-  const nPt = isoXY(pc + 1, pr);
-  const ePt = isoXY(pc + 2, pr + 1);
-  const sPt = isoXY(pc + 1, pr + 2);
-  const wPt = isoXY(pc,     pr + 1);
-
-  // Sprite-aligned footprint — corners map to the 3x3 iso diamond.
-  // rotation=0 so no trig needed; fractions derived from sprite dims + anchor.
-  const _sW  = TW * 3.0;
-  const _sH  = _sW * 0.80;
-  const _aY  = 0.905;
-  const _sx  = bx;
-  const _sy  = sPt.cy - elev + TH * 0.95;
-  const _fp  = (fx, fy) => ({
-    x: _sx + (fx - 0.5) * _sW,
-    y: _sy + (fy - _aY) * _sH,
-  });
-  const _fpN = _fp(0.75, 0.25);
-  const _fpE = _fp(0.75, 0.65);
-  const _fpS = _fp(0.25, 0.65);
-  const _fpW = _fp(0.25, 0.25);
-
-  const FOOTPRINT = [
-    _fpN.x, _fpN.y,
-    _fpE.x, _fpE.y,
-    _fpS.x, _fpS.y,
-    _fpW.x, _fpW.y,
-  ];
-
-  const isSelected = selKey === tileKey;
-  const owner      = tile.owner || null;
-  const faction    = tile.faction || owner || "player";
-
-  const group = new PIXI.Container();
-  group.__hqKey = tileKey;
-
-  // Draw solid fill - use the outermost vertices from the 4 corner tiles
-  // Top-left corner tile (pc, pr) - use its top vertex
-  const tlPt = isoXY(pc, pr);
-  const nVertex = { x: tlPt.cx, y: tlPt.cy - elev };
-  
-  // Top-right corner tile (pc+2, pr) - use its right vertex  
-  const trPt = isoXY(pc + 2, pr);
-  const eVertex = { x: trPt.cx + TW/2, y: trPt.cy - elev + TH/2 };
-  
-  // Bottom-right corner tile (pc+2, pr+2) - use its bottom vertex
-  const brPt = isoXY(pc + 2, pr + 2);
-  const sVertex = { x: brPt.cx, y: brPt.cy - elev + TH };
-  
-  // Bottom-left corner tile (pc, pr+2) - use its left vertex
-  const blPt = isoXY(pc, pr + 2);
-  const wVertex = { x: blPt.cx - TW/2, y: blPt.cy - elev + TH/2 };
-  
-  const fillGfx = new PIXI.Graphics();
-  const terrainColor = 0xd4a574; // Desert/tan color
-  fillGfx.beginFill(terrainColor, 1.0);
-  fillGfx.drawPolygon([
-    nVertex.x, nVertex.y,
-    eVertex.x, eVertex.y,
-    sVertex.x, sVertex.y,
-    wVertex.x, wVertex.y,
-  ]);
-  fillGfx.endFill();
-  group.addChild(fillGfx);
-
-  // ── Selection outline ──
-  if (isSelected) {
-    const outlineGfx = new PIXI.Graphics();
-    const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-    outlineGfx.lineStyle(3, 0xffffff, 0.95);
-    outlineGfx.drawPolygon(FOOTPRINT);
-    outlineGfx.lineStyle(0);
-    group.addChild(outlineGfx);
-  }
-
-  // ── Border (draw before sprite so sprite renders on top) ──
-  const borderGfx = new PIXI.Graphics();
-  const borderTint = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-  
-  const borderPath = [];
-  borderPath.push(isoXY(pc, pr).cx, isoXY(pc, pr).cy - elev);
-  borderPath.push(isoXY(pc + 2, pr).cx + TW/2, isoXY(pc + 2, pr).cy - elev + TH/2);
-  borderPath.push(isoXY(pc + 2, pr + 2).cx, isoXY(pc + 2, pr + 2).cy - elev + TH);
-  borderPath.push(isoXY(pc, pr + 2).cx - TW/2, isoXY(pc, pr + 2).cy - elev + TH/2);
-  
-  borderGfx.lineStyle(8, 0x000000, 0.8);
-  borderGfx.drawPolygon(borderPath);
-  borderGfx.lineStyle(0);
-  
-  borderGfx.lineStyle(5, borderTint, 1.0);
-  borderGfx.drawPolygon(borderPath);
-  borderGfx.lineStyle(0);
-  
-  group.addChild(borderGfx);
-
-  // ── Sprite ──
-  const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
-  const spriteUrl  = `/hq/${spriteName}`;
-
-  // Width covers the full 3x3 diamond left<->right extent.
-  // Height = 0.75x width so towers stay visible without blocking back tiles.
-  // anchor.y = 0.78 keeps the base grounded on the front tile row.
-  // Source image is 2048x2048 (square) — preserve aspect ratio to avoid lean.
-  // Scale so width fits the 3x3 footprint; height follows naturally.
-  // Per-faction fine-tuning offsets (xOff/yOff in pixels, positive = right/down)
-  // scale multiplier (default 1.0) for factions that need larger sprites
-  const HQ_OFFSETS = {
-    pirates:        { xOff:  0,    yOff:  0,    scale: 1.0  },
-    player:         { xOff:  0,    yOff:  0,    scale: 1.0  },
-    orcs:           { xOff:  0,    yOff:  0,    scale: 1.0  },
-    ai:             { xOff:  0,    yOff:  0,    scale: 1.0  },
-    wizards:        { xOff:  5,    yOff: -5,    scale: 1.0  },
-    dragons:        { xOff:  5,    yOff:  10,   scale: 1.0  },
-    holyknights:    { xOff: -5,    yOff:  10,   scale: 1.0  },
-    nightcreatures: { xOff:  0,    yOff:  10,   scale: 1.0  },
-    coldborns:      { xOff:  0,    yOff:  15,   scale: 1.0  },
-    ashen_dead:     { xOff:  0,    yOff:  15,   scale: 1.0  },
-  };
-  const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0 };
-
-  const baseW = TW * 2.2;
-  const targetW = baseW * (off.scale || 1.0);
-  const targetH = targetW * 0.80;
-
-  const spriteX = bx + off.xOff;
-  const spriteY = sPt.cy - elev + TH * 0.60 + off.yOff;
-
-  const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.905);
-    sp.width  = targetW;
-    sp.height = targetH;
-    sp.x = spriteX;
-    sp.y = spriteY;
-
-    sp.rotation = 0;
-    sp.skew.x   = 0;
-    sp.skew.y   = 0;
-  };
-
-  if (texCache[spriteUrl]) {
-    const sp = new PIXI.Sprite(texCache[spriteUrl]);
-    applySprite(sp);
-    group.addChild(sp);
-  } else {
-    // Load async — replace placeholder gfx once loaded
-    const placeholderGfx = new PIXI.Graphics();
-    const fc = ownerTint(owner, tile?.faction, playerFacKey, null, tile?.ownerPlayerId) ?? 0x888888;
-    placeholderGfx.beginFill(fc, 0.3);
-    placeholderGfx.drawPolygon(FOOTPRINT);
-    placeholderGfx.endFill();
-    group.addChild(placeholderGfx);
-
-    PIXI.Texture.fromURL(spriteUrl).then(tex => {
-      texCache[spriteUrl] = tex;
-      if (placeholderGfx.parent) placeholderGfx.parent.removeChild(placeholderGfx);
-      placeholderGfx.destroy();
-      if (!group.destroyed) {
-        const sp = new PIXI.Sprite(tex);
-        applySprite(sp);
-        // Find name badge elements (pill and labelText) and insert sprite before them
-        const pillIndex = group.children.findIndex(c => c instanceof PIXI.Graphics && c.x === bx && c.y === nPt.cy - 18);
-        if (pillIndex > 0) {
-          group.addChildAt(sp, pillIndex);
-        } else {
-          group.addChild(sp);
-        }
-      }
-    }).catch(() => {
-      // Sprite not found — placeholder stays, that's fine
-    });
-  }
-
-  // ── Player name label above HQ ──
-  if (owner === "player" && playerName) {
-    // Background pill behind the name
-    const labelText = new PIXI.Text(playerName, {
-      fontFamily: "'Cinzel', serif",
-      fontSize:   11,
-      fontWeight: "700",
-      fill:       0xf0c040,
-      letterSpacing: 1.5,
-      dropShadow: true,
-      dropShadowColor: 0x000000,
-      dropShadowBlur:  4,
-      dropShadowDistance: 1,
-    });
-    // Position above the north tip of the HQ diamond
-    labelText.anchor.set(0.5, 1);
-    labelText.x = bx;
-    labelText.y = nPt.cy - 18;
-
-    // Dark pill background
-    const pill = new PIXI.Graphics();
-    const pw = labelText.width + 14;
-    const ph = labelText.height + 6;
-    pill.beginFill(0x080604, 0.78);
-    pill.lineStyle(1, 0xc8a040, 0.9);
-    pill.drawRoundedRect(-pw / 2, -ph, pw, ph, 4);
-    pill.endFill();
-    pill.x = bx;
-    pill.y = nPt.cy - 18;
-
-    group.addChild(pill);
-    group.addChild(labelText);
-  }
-
-  // ── Hit area ──
-  const hit = new PIXI.Graphics();
-  hit.beginFill(0xffffff, 0.001);
-  hit.drawPolygon(FOOTPRINT);
-  hit.endFill();
-  hit.hitArea     = new PIXI.Polygon(FOOTPRINT);
-  hit.interactive = true;
-  hit.buttonMode  = true;
-  hit.cursor      = "pointer";
-  hit.on("pointerdown", (e) => {
-    if (isPanningRef?.current) return;
-    e.stopPropagation();
-    onHQClick(tileKey, e.data?.originalEvent || e);
-  });
-  group.addChild(hit);
-  
-  return group;
-}
-
-const _hqTexCache = {}; // shared texture cache across rebuilds
-
-function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids, vb) {
-  // Build the fast index on first call (or after clearHQCache). This is O(n) once,
-  // then all subsequent calls are O(HQs) instead of O(all 490k tiles).
-  if (_hqKeyIndex.size === 0) {
-    for (const [tileKey, tile] of Object.entries(tiles)) {
-      if (tile?.isHQ) _hqKeyIndex.add(tileKey);
-    }
-  }
-
-  // Find all primary HQ tiles (isHQ === true, not isHQPart)
-  for (const tileKey of _hqKeyIndex) {
-    const tile = tiles[tileKey];
-    if (!tile?.isHQ) { _hqKeyIndex.delete(tileKey); continue; } // HQ was destroyed
-
-    // ── Viewport culling ─────────────────────────────────────────────────────
-    // Skip HQs outside the visible area + a generous buffer to prevent WebGL
-    // OOM crashes on iOS Safari (~256 MB limit) when many HQs enter the viewport.
-    if (vb) {
-      const [tc, tr] = tileKey.split(",").map(Number);
-      const isPlayerHQ = tile.owner === "player";
-      if (!isPlayerHQ && (tc < vb.cMin || tc > vb.cMax || tr < vb.rMin || tr > vb.rMax)) {
-        // Out of view — remove any existing container for this HQ so it doesn't
-        // pile up in the display list, then skip building a new one.
-        for (let i = hqCont.children.length - 1; i >= 0; i--) {
-          const child = hqCont.children[i];
-          if (child.__hqKey === tileKey) {
-            hqCont.removeChild(child);
-            child.destroy({ children: true });
-            _hqStateCache.delete(tileKey); // force rebuild when it comes back on-screen
-            break;
-          }
-        }
-        continue;
-      }
-    }
-    // ─────────────────────────────────────────────────────────────────────────
-
-    const isSelected = selKey === tileKey;
-    const owner      = tile.owner || null;
-    const faction    = tile.faction || owner || null;
-    const prev       = _hqStateCache.get(tileKey);
-
-    const curPlayerName = owner === "player" ? playerName : null;
-    if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName) continue;
-
-    // Remove old group for this HQ
-    for (let i = hqCont.children.length - 1; i >= 0; i--) {
-      const child = hqCont.children[i];
-      if (child.__hqKey === tileKey) {
-        hqCont.removeChild(child);
-        child.destroy({ children: true });
-        break;
-      }
-    }
-
-    hqCont.addChild(_buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids));
-    _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null });
-  }
-}
-
-function _buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningRef) {
-  const { cx: bx, cy: worldCY } = isoXY(reg.cx, reg.cy);
-  const elev = 8;
-  const by   = worldCY + 26.5 - elev - 10;  // centered on 5×5 footprint midpoint (gy+26.5)
-  const gy   = worldCY;
-  const FOOTPRINT = [
-     bx,        gy - 100,
-     bx + 220,  gy +  20,
-     bx,        gy + 120,
-     bx - 220,  gy +  20,
-  ];
-  const isSelected = selKey === tileKey;
-  const owner      = tile.owner || null;
-
-  const group = new PIXI.Container();
-  group.__keepKey = tileKey;
-
-  if (isSelected) {
-    // Outline traces the full 5×5 tile footprint (KEEP_RADIUS=2).
-    // From center (bx, gy): N=(0,-106), E=(+200,+26.5), S=(0,+159), W=(-200,+26.5)
-    const KEEP_OUTLINE = [
-      bx,        gy - 106,
-      bx + 200,  gy +  26.5,
-      bx,        gy + 159,
-      bx - 200,  gy +  26.5,
-    ];
-    const outlineGfx = new PIXI.Graphics();
-    outlineGfx.lineStyle(3, 0xffffff, 0.95);
-    outlineGfx.drawPolygon(KEEP_OUTLINE);
-    outlineGfx.lineStyle(0);
-    group.addChild(outlineGfx);
-  }
-
-  const gfx = new PIXI.Graphics();
-  drawKeepGfx(gfx, bx, by, owner, reg.isWin, false);
-  group.addChild(gfx);
-
-  // ── Keep name label above keep ──
-  if (reg.keepName) {
-    const labelText = new PIXI.Text(reg.keepName, {
-      fontFamily: "'Cinzel', serif",
-      fontSize:   11,
-      fontWeight: "700",
-      fill:       0xf0c040,
-      letterSpacing: 1.5,
-      dropShadow: true,
-      dropShadowColor: 0x000000,
-      dropShadowBlur:  4,
-      dropShadowDistance: 1,
-    });
-    // Position above the north tip of the keep
-    labelText.anchor.set(0.5, 1);
-    labelText.x = bx;
-    labelText.y = gy - 106 - 18;
-
-    // Dark pill background
-    const pill = new PIXI.Graphics();
-    const pw = labelText.width + 14;
-    const ph = labelText.height + 6;
-    pill.beginFill(0x080604, 0.78);
-    pill.lineStyle(1, 0xc8a040, 0.9);
-    pill.drawRoundedRect(-pw / 2, -ph, pw, ph, 4);
-    pill.endFill();
-    pill.x = bx;
-    pill.y = gy - 106 - 18;
-
-    group.addChild(pill);
-    group.addChild(labelText);
-  }
-
-  const hit = new PIXI.Graphics();
-  hit.beginFill(0xffffff, 0.001);
-  hit.drawRect(bx - 220, gy - 100, 440, 220);
-  hit.endFill();
-  hit.hitArea     = new PIXI.Polygon(FOOTPRINT);
-  hit.interactive = true;
-  hit.buttonMode  = true;
-  hit.cursor      = "pointer";
-  hit.on("pointerdown", (e) => {
-    // Do not fire a keep click if the user is panning — the finger touching the
-    // keep's hit area during a pan gesture should not open a popup.
-    if (isPanningRef?.current) return;
-    e.stopPropagation();
-    onKeepClick(tileKey, e.data?.originalEvent || e);
-  });
-  group.addChild(hit);
-  return group;
-}
-
-function buildKeepLayer(keepCont, tiles, selKey, onKeepClick, PIXI, isPanningRef) {
-  for (const reg of KEEP_REGION_LIST) {
-    const tileKey = `${reg.cx},${reg.cy}`;
-    const tile    = tiles[tileKey];
-    if (!tile) continue;
-
-    const isSelected = selKey === tileKey;
-    const owner      = tile.owner || null;
-    const prev       = _keepStateCache.get(tileKey);
-
-    // Nothing changed for this keep — skip it entirely
-    if (prev && prev.owner === owner && prev.isSelected === isSelected) continue;
-
-    // Remove only this keep's old group
-    for (let i = keepCont.children.length - 1; i >= 0; i--) {
-      const child = keepCont.children[i];
-      if (child.__keepKey === tileKey) {
-        keepCont.removeChild(child);
-        child.destroy({ children: true });
-        break;
-      }
-    }
-
-    keepCont.addChild(_buildOneKeep(tileKey, reg, tile, selKey, onKeepClick, PIXI, isPanningRef));
-    _keepStateCache.set(tileKey, { owner, isSelected });
-  }
-}
-
 function drawMarchLines(gfx, cmds, reinMarches, tiles) {
   gfx.clear();
   const drawPath = (path, col) => {
@@ -2024,7 +1401,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const marchGfxRef    = useRef(null);
   const cmdGfxRef      = useRef(null);
   const cmdTextContRef = useRef(null);
-  const keepContRef    = useRef(null);
   const hqContRef      = useRef(null);
 
   const lastBoundsRef  = useRef(null);
@@ -2074,7 +1450,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       }
       lastBoundsRef.current = null;
       redrawRef.current?.redraw(true);
-      redrawRef.current?.redrawKeeps();
       redrawRef.current?.redrawHQs();
     },
     redrawOverlays() {
@@ -2087,7 +1462,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       lastBoundsRef.current = null;
       redrawRef.current?.markPropsDirty();
       redrawRef.current?.redraw(true);
-      redrawRef.current?.redrawKeeps();
       redrawRef.current?.redrawHQs();
     },
   }), []);
@@ -2187,17 +1561,12 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       // No upfront baking — getOrBakeTex() handles everything lazily on first use.
     }
 
-    const keepCont = new PIXI.Container(); 
-    keepCont.interactiveChildren = true;
-    world.addChild(keepCont); keepContRef.current = keepCont;
-
-    // HQ container sits BELOW keepCont so keeps that are south of the HQ
-    // render on top. We insert it just before keepCont in the display list.
+    // HQ container
     const hqCont = new PIXI.Container();
     hqCont.interactiveChildren = true;
     hqCont.interactive = true;
     hqCont.hitArea = new PIXI.Rectangle(-10000, -10000, 20000, 20000);
-    world.addChildAt(hqCont, world.children.indexOf(keepCont));
+    world.addChild(hqCont);
     hqContRef.current = hqCont;
     const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
@@ -2479,23 +1848,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       // Rebuild HQ and keep layers so they appear as soon as the viewport moves,
       // without waiting for a tile click to trigger them.
       redrawHQs();
-      redrawKeeps();
     }
 
     function redrawOverlays() {
       drawMarchLines(marchGfxRef.current, cmdsRef.current, reinRef.current, tilesRef.current);
       drawCmdIcons(cmdGfxRef.current, cmdTextContRef.current, cmdsRef.current, tilesRef.current);
-    }
-
-    function redrawKeeps() {
-      if (!keepContRef.current) return;
-      buildKeepLayer(keepContRef.current, tilesRef.current, selRef.current, (key, e) => {
-        selRef.current = key;
-        selGfx.clear();
-        drawSelection(key);
-        lastBoundsRef.current = null;
-        onTileClickRef.current(key, e);
-      }, PIXI, isPanning);
     }
 
     function redrawHQs() {
@@ -2515,17 +1872,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     redrawRef.current = {
       redraw,
       redrawOverlays,
-      redrawKeeps,
       redrawHQs,
       markPropsDirty,
-      clearSel: () => { selGfx.clear(); redrawKeeps(); redrawHQs(); },
-      redrawSelection: (key) => { selGfx.clear(); if (key) drawSelection(key); redrawKeeps(); redrawHQs(); },
+      clearSel: () => { selGfx.clear(); redrawHQs(); },
+      redrawSelection: (key) => { selGfx.clear(); if (key) drawSelection(key); redrawHQs(); },
       checkAndStartHellfire,
     };
 
     redraw(true);
     redrawOverlays();
-    redrawKeeps();
     redrawHQs();
 
     // ── Hellfire animation ticker ─────────────────────────────────────────────
@@ -2944,7 +2299,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       worldRef.current.scale.set(zoomRef.current);
     }
     redrawRef.current?.redraw(true);
-    redrawRef.current?.redrawKeeps();
     redrawRef.current?.redrawHQs();
   }, [tiles]);
 
