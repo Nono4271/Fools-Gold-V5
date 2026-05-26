@@ -378,17 +378,13 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
     const { axis, bCoord, gCoord, type, id } = crossing;
     
     if (axis === 'H') {
-      // Horizontal border at y = bCoord, gate at x = gCoord
-      // 4-tile gap: gCoord-2, gCoord-1, gCoord, gCoord+1
-      // Layout: Gate A at gCoord-2, Path at gCoord-1, Path at gCoord, Gate B at gCoord+1
-      gateA.push({ x: gCoord - 2, y: bCoord, id: id+'_A', type });
-      gateB.push({ x: gCoord + 1, y: bCoord, id: id+'_B', type });
-    } else {
-      // Vertical border at x = bCoord, gate at y = gCoord
-      // 4-tile gap: gCoord-2, gCoord-1, gCoord, gCoord+1
-      // Layout: Gate A at gCoord-2, Path at gCoord-1, Path at gCoord, Gate B at gCoord+1
+      // Horizontal border - place gates VERTICALLY for isometric view
       gateA.push({ x: bCoord, y: gCoord - 2, id: id+'_A', type });
       gateB.push({ x: bCoord, y: gCoord + 1, id: id+'_B', type });
+    } else {
+      // Vertical border - place gates HORIZONTALLY for isometric view
+      gateA.push({ x: gCoord - 2, y: bCoord, id: id+'_A', type });
+      gateB.push({ x: gCoord + 1, y: bCoord, id: id+'_B', type });
     }
   }
   
