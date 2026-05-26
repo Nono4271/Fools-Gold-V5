@@ -558,6 +558,7 @@ export default function RiseToWar() {
           TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
           F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER,
         } = meta;
+        console.log('Flag constants:', { F_KEEP, F_GATE, F_BORDER });
         const SIZE = C * R;
 
         // ── FIX 1a: Shared prototype for garrisonDefeated getter ─────────
@@ -607,7 +608,7 @@ export default function RiseToWar() {
           if (isGate) {
             if (!window.__gatesCreated) window.__gatesCreated = 0;
             if (window.__gatesCreated < 5) {
-              console.log(`makeTile(${c},${r}): isGate=${isGate}, isKeep=${isKeep}, flags=${flags.toString(2)}`);
+              console.log(`makeTile(${c},${r}): isGate=${isGate}, isKeep=${isKeep}, flags=${flags}, F_KEEP=${F_KEEP}, F_GATE=${F_GATE}, hasKeep=${!!(flags & F_KEEP)}, hasGate=${!!(flags & F_GATE)}`);
               window.__gatesCreated++;
             }
           }
