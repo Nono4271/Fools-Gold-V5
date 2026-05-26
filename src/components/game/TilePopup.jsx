@@ -145,7 +145,6 @@ export default memo(function TilePopup({
     : popupMode==="recallPick" ? "↩ Recall Commander"
     : selTile.isWin   ? "⚜ The Holy Grail"
     : selTile.isGate && selTile.crossingType === "crossing"   ? `🌊 ${selTile.keepName || "River Crossing"}`
-    : selTile.isGate && selTile.crossingType === "tollbridge" ? `⌒ ${selTile.keepName || "Toll Bridge"}`
     : selTile.isGate && selTile.crossingType === "tunnel"     ? `⛰ ${selTile.keepName || "Tunnel Gate"}`
     : selTile.isKeep  ? `🏰 ${selTile.keepName || selTile.regionName + " Keep"}`
     : selTile.isRuin  ? "🏚 Ruin"
