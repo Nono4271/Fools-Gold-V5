@@ -310,8 +310,9 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       for (let y = 0; y < ROWS; y++) {
         if (gateYSet.has(y)) {
           // This y-coordinate has a gate crossing
-          // Only the middle 2 x-offsets (-1, 0) are paths; outer 2 (-2, +1) are gate structures
-          if (dx === -1 || dx === 0) {
+          // Paths are at x-1 and x (offsets -1, 0); Gates at x-2 and x+1
+          const isPath = (bx === x - 1 || bx === x);
+          if (isPath) {
             // Path tile - passable, add perpendicular borders
             pathTiles.push({ x: bx, y });
             
@@ -324,7 +325,7 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
               }
             }
           }
-          // For dx === -2 or dx === +1 (gate structures), skip entirely - handled later
+          // For gate structures (x-2 and x+1), skip entirely - handled later
         } else {
           // Border tile - impassable
           impassable.push({ x: bx, y });
@@ -350,8 +351,9 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       for (let x = 0; x < COLS; x++) {
         if (gateXSet.has(x)) {
           // This x-coordinate has a gate crossing
-          // Only the middle 2 y-offsets (-1, 0) are paths; outer 2 (-2, +1) are gate structures
-          if (dy === -1 || dy === 0) {
+          // Paths are at y-1 and y (offsets -1, 0); Gates at y-2 and y+1
+          const isPath = (by === y - 1 || by === y);
+          if (isPath) {
             // Path tile - passable, add perpendicular borders
             pathTiles.push({ x, y: by });
             
@@ -364,7 +366,7 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
               }
             }
           }
-          // For dy === -2 or dy === +1 (gate structures), skip entirely - handled later
+          // For gate structures (y-2 and y+1), skip entirely - handled later
         } else {
           // Border tile - impassable
           impassable.push({ x, y: by });
