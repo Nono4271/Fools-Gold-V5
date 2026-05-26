@@ -430,6 +430,9 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
         if (by >= 652 && by <= 655 && x >= 925 && x <= 1022) {
           continue; // Holy Grail interior
         }
+        if (by === 655 && x >= 920 && x <= 924) {
+          continue; // Holy Grail interior single-row gap
+        }
         
         if (gateXSet.has(x)) {
           // This x-coordinate has a gate crossing
