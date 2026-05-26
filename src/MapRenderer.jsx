@@ -178,7 +178,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const tile = tiles[`${c},${r}`];
       if (!tile) continue;
 
-      const { terrain, owner, isHQ, isWin, isKeep, isKeepPart, isHQPart, isShore, isGate, crossingType } = tile;
+      const { terrain, owner, isHQ, isWin, isKeep, isKeepPart, isHQPart, isShore, isGate, crossingType, crossingAxis } = tile;
 
       if (isShore) {
         const { cx, cy } = isoXY(c, r);
@@ -277,24 +277,31 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               gfx.moveTo(px - sw * 0.75, py + sh * 0.05); gfx.lineTo(px + sw * 0.75, py + sh * 0.10);
               gfx.lineStyle(0);
             }
-            // Iron chain posts (circles at left & right platform tips)
-            const postL = { x: cx - sw * 0.98, y: mid };
-            const postR = { x: cx + sw * 0.98, y: mid - sh * 0.05 };
+            // Iron chain posts (perpendicular to border)
+            // For H (horizontal border), gates should be vertical → posts top/bottom
+            // For V (vertical border), gates should be horizontal → posts left/right
+            const isVerticalGate = crossingAxis === 'H';
+            const postA = isVerticalGate 
+              ? { x: cx, y: mid - sh * 0.98 }  // top
+              : { x: cx - sw * 0.98, y: mid }; // left
+            const postB = isVerticalGate
+              ? { x: cx, y: mid + sh * 0.98 }  // bottom
+              : { x: cx + sw * 0.98, y: mid - sh * 0.05 }; // right
             gfx.beginFill(0x606878, 0.9);
-            gfx.drawCircle(postL.x, postL.y, TW * 0.045);
-            gfx.drawCircle(postR.x, postR.y, TW * 0.045);
+            gfx.drawCircle(postA.x, postA.y, TW * 0.045);
+            gfx.drawCircle(postB.x, postB.y, TW * 0.045);
             gfx.endFill();
             gfx.lineStyle(1.2, 0xa0a8b0, 0.8);
-            gfx.drawCircle(postL.x, postL.y, TW * 0.045);
-            gfx.drawCircle(postR.x, postR.y, TW * 0.045);
+            gfx.drawCircle(postA.x, postA.y, TW * 0.045);
+            gfx.drawCircle(postB.x, postB.y, TW * 0.045);
             gfx.lineStyle(0);
             // Heavy dashed iron chain between posts
             gfx.lineStyle(2.2, 0x6a7888, 0.85);
-            gfx.moveTo(postL.x, postL.y - TH * 0.12);
+            gfx.moveTo(postA.x, postA.y - TH * 0.12);
             gfx.bezierCurveTo(
               cx, mid - sh * 0.55,
               cx, mid - sh * 0.55,
-              postR.x, postR.y - TH * 0.12
+              postB.x, postB.y - TH * 0.12
             );
             gfx.lineStyle(0);
             // Water sparkles in corners

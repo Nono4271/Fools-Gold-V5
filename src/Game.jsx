@@ -657,6 +657,7 @@ export default function RiseToWar() {
           tile.isBorder   = isBorder;
           tile.homeFaction     = km?.homeFaction || null;
           tile.crossingType    = km?.type || null;
+          tile.crossingAxis    = km?.axis || null;
           tile.keepPrimaryKey  = keepPrimaryKey;
           tile.defCmd          = km?.defCmd || null;
           tile.faction         = faction;
