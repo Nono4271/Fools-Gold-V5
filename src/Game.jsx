@@ -857,6 +857,11 @@ export default function RiseToWar() {
         unstable_batchedUpdates(() => {
           setCrossingsState(crossings || []);
           setKeepMeta(keepMeta);
+          // Debug: log first gate in keepMeta to verify axis
+          const firstGateKey = Object.keys(keepMeta).find(k => keepMeta[k]?.type);
+          if (firstGateKey) {
+            console.log(`[Game] First gate in keepMeta:`, keepMeta[firstGateKey]);
+          }
           setAiHqKeys(newAiHqKeys);
           setAiFactionKeys(aiFactions);
           setAiCmds(initialAiCmds);
