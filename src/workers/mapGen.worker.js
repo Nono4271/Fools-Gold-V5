@@ -308,9 +308,18 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       if (bx < 0 || bx >= COLS) continue;
       
       for (let y = 0; y < ROWS; y++) {
-        // Skip Ebonvault interior borders
+        // Skip double-height region interior borders
         if (bx >= 408 && bx <= 411 && y >= 1015 && y <= 1160) {
-          continue; // Don't draw border through Ebonvault interior
+          continue; // Ebonvault
+        }
+        if (bx >= 408 && bx <= 411 && y >= 145 && y <= 290) {
+          continue; // Fogmire
+        }
+        if (bx >= 1433 && bx <= 1436 && y >= 145 && y <= 290) {
+          continue; // Stoneheart
+        }
+        if (bx >= 1433 && bx <= 1436 && y >= 1015 && y <= 1160) {
+          continue; // Fellwood
         }
         
         if (gateYSet.has(y)) {
