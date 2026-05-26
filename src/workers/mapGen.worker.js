@@ -777,12 +777,14 @@ function buildLookups() {
 
 // Check if position overlaps or is adjacent to any existing HQ (needs 1-tile gap)
 function isAdjacentToHQ(c, r, usedKeys) {
-  // Check a 5x5 area centered on the proposed HQ's top-left corner
-  // This ensures the 3x3 HQ footprint + 1-tile gap on all sides
-  for (let dr = -1; dr <= 4; dr++) {
-    for (let dc = -1; dc <= 4; dc++) {
-      const checkKey = `${c+dc},${r+dr}`;
-      if (usedKeys.has(checkKey)) return true;
+  // For each existing HQ top-left (ec, er), its 3x3 footprint spans ec..ec+2, er..er+2.
+  // A new 3x3 HQ at (c,r) spans c..c+2, r..r+2.
+  // They conflict (overlap or touch) if the footprints are within 1 tile of each other:
+  //   c+2+1 >= ec  &&  ec+2+1 >= c  →  ec ranges from c-3 to c+3
+  //   r+2+1 >= er  &&  er+2+1 >= r  →  er ranges from r-3 to r+3
+  for (let dr = -3; dr <= 3; dr++) {
+    for (let dc = -3; dc <= 3; dc++) {
+      if (usedKeys.has(`${c+dc},${r+dr}`)) return true;
     }
   }
   return false;
