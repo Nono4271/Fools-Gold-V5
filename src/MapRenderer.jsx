@@ -281,9 +281,9 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               gfx.lineStyle(0);
             }
             // Iron chain posts (perpendicular to border)
-            // For H (horizontal border), gates should be vertical → posts top/bottom
-            // For V (vertical border), gates should be horizontal → posts left/right
-            const isVerticalGate = crossingAxis === 'H';
+            // For V (vertical border in data), renders as NE-SW diagonal → needs NW-SE posts
+            // For H (horizontal border in data), renders as NW-SE diagonal → needs NE-SW posts
+            const isVerticalGate = crossingAxis === 'V';  // INVERTED from before
             const postA = isVerticalGate 
               ? { x: cx, y: mid - sh * 0.98 }  // top
               : { x: cx - sw * 0.98, y: mid }; // left
@@ -343,15 +343,27 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               gfx.moveTo(cx - bw * 0.55, bpy + bh * 0.32); gfx.lineTo(cx + bw * 0.55, bpy - bh * 0.22);
               gfx.lineStyle(0);
             }
-            // Side railing posts (left & right uprights)
+            // Side railing posts - perpendicular to border
+            const isVerticalGate = crossingAxis === 'V';
             const railY0 = bpy - bh * 0.52, railY1 = bpy + bh * 0.08;
             gfx.lineStyle(2.2, 0xa07040, 0.92);
-            gfx.moveTo(cx - bw * 0.98, bpy); gfx.lineTo(cx - bw * 0.98, railY0);
-            gfx.moveTo(cx + bw * 0.98, bpy - bh * 0.05); gfx.lineTo(cx + bw * 0.98, railY0 - TH * 0.04);
+            if (isVerticalGate) {
+              // Posts top/bottom for V borders
+              gfx.moveTo(cx, bpy - bh * 0.98); gfx.lineTo(cx, railY0);
+              gfx.moveTo(cx, bpy + bh * 0.98); gfx.lineTo(cx, railY0 - TH * 0.04);
+            } else {
+              // Posts left/right for H borders
+              gfx.moveTo(cx - bw * 0.98, bpy); gfx.lineTo(cx - bw * 0.98, railY0);
+              gfx.moveTo(cx + bw * 0.98, bpy - bh * 0.05); gfx.lineTo(cx + bw * 0.98, railY0 - TH * 0.04);
+            }
             gfx.lineStyle(0);
-            // Top horizontal rail
+            // Top rail
             gfx.lineStyle(1.6, 0xa07040, 0.88);
-            gfx.moveTo(cx - bw * 0.98, railY0); gfx.lineTo(cx + bw * 0.98, railY0 - TH * 0.04);
+            if (isVerticalGate) {
+              gfx.moveTo(cx, railY0); gfx.lineTo(cx, railY0 - TH * 0.04);
+            } else {
+              gfx.moveTo(cx - bw * 0.98, railY0); gfx.lineTo(cx + bw * 0.98, railY0 - TH * 0.04);
+            }
             gfx.lineStyle(0);
             // X-brace crosses on each post
             if (zoom >= 0.75) {
@@ -397,9 +409,9 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
             gfx.drawPolygon([cx - TW * 0.05, sy + TH * 0.04, cx + TW * 0.06, sy, cx + TH * 0.02, sy + TH * 0.18]);
             gfx.endFill();
             // Stone arch pillars — perpendicular to border
-            // For H (horizontal border), gates vertical → pillars top/bottom
-            // For V (vertical border), gates horizontal → pillars left/right  
-            const isVerticalGate = crossingAxis === 'H';
+            // For V (vertical border in data), renders as NE-SW diagonal → needs NW-SE pillars
+            // For H (horizontal border in data), renders as NW-SE diagonal → needs NE-SW pillars
+            const isVerticalGate = crossingAxis === 'V';  // INVERTED
             const pilW = TW * 0.09, pilH = TH * 0.38;
             const pilA = isVerticalGate
               ? { x: cx, y: mid - TH * 0.30 }  // top
