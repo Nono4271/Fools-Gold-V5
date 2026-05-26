@@ -603,6 +603,15 @@ export default function RiseToWar() {
           const isGate    = !!(flags & F_GATE);
           const isBorder  = !!(flags & F_BORDER);
 
+          // Debug: log first few gate tiles being created
+          if (isGate) {
+            if (!window.__gatesCreated) window.__gatesCreated = 0;
+            if (window.__gatesCreated < 5) {
+              console.log(`makeTile(${c},${r}): isGate=${isGate}, isKeep=${isKeep}, flags=${flags.toString(2)}`);
+              window.__gatesCreated++;
+            }
+          }
+
           let keepPrimaryKey = null;
           if (isKeepPart || isHQPart) {
             const pi = keepPrimArr[idx];
@@ -857,11 +866,6 @@ export default function RiseToWar() {
         unstable_batchedUpdates(() => {
           setCrossingsState(crossings || []);
           setKeepMeta(keepMeta);
-          // Debug: log first gate in keepMeta to verify axis
-          const firstGateKey = Object.keys(keepMeta).find(k => keepMeta[k]?.type);
-          if (firstGateKey) {
-            console.log(`[Game] First gate in keepMeta:`, keepMeta[firstGateKey]);
-          }
           setAiHqKeys(newAiHqKeys);
           setAiFactionKeys(aiFactions);
           setAiCmds(initialAiCmds);
