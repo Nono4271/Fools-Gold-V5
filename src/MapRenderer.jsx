@@ -530,12 +530,11 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const tile = tiles[`${c},${r}`];
       if (!tile) continue;
       const pl = tile.powerLevel ?? 0;
-      if (pl < 10 || !tile.isKeep || tile.isGate) continue;
-      // Single tile — draw 2x diamond centered on this tile's center point
+      if (pl < 10 || !tile.isKeep || tile.isGate || tile.isWin) continue;
+      // Single tile rendered at 2x visual size, no overdraw stroke
       const { cx, cy } = isoXY(c, r);
-      const tileCenterY = cy + TH / 2; // vertical center of the tile
+      const tileCenterY = cy + TH / 2;
       const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
-      // 2x diamond: extends TW left/right and TH up/down from tile center
       const MERGED = [
         cx,           tileCenterY - TH,  // N
         cx + TW,      tileCenterY,        // E
