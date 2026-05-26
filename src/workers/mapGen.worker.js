@@ -363,6 +363,20 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
       if (by < 0 || by >= ROWS) continue;
       
       for (let x = 0; x < COLS; x++) {
+        // Skip double-width region interior borders
+        if (by >= 435 && by <= 438 && x >= 0 && x <= 205) {
+          continue; // Lightshield
+        }
+        if (by >= 435 && by <= 438 && x >= 1640 && x <= 1845) {
+          continue; // Deepwater
+        }
+        if (by >= 870 && by <= 873 && x >= 0 && x <= 205) {
+          continue; // Cursedfen
+        }
+        if (by >= 870 && by <= 873 && x >= 1640 && x <= 1845) {
+          continue; // Nightmarsh
+        }
+        
         if (gateXSet.has(x)) {
           // This x-coordinate has a gate crossing
           // Paths are at y-1 and y (offsets -1, 0); Gates at y-2 and y+1
