@@ -378,17 +378,13 @@ function buildBordersFromCrossings(REGION_MAP, CROSSINGS) {
     const { axis, bCoord, gCoord, type, id } = crossing;
     
     if (axis === 'H') {
-      // Horizontal border at y = bCoord, gate spans vertically to cross perpendicular
-      // 4-tile gap: gCoord-2, gCoord-1, gCoord, gCoord+1
-      // Layout: Gate A at gCoord-2, Path at gCoord-1, Path at gCoord, Gate B at gCoord+1
-      gateA.push({ x: bCoord, y: gCoord - 2, id: id+'_A', type, axis });
-      gateB.push({ x: bCoord, y: gCoord + 1, id: id+'_B', type, axis });
+      // Horizontal border at y = bCoord (spans vertically), gate spans vertically
+      gateA.push({ x: gCoord, y: bCoord - 2, id: id+'_A', type, axis });
+      gateB.push({ x: gCoord, y: bCoord + 1, id: id+'_B', type, axis });
     } else {
-      // Vertical border at x = bCoord, gate spans horizontally to cross perpendicular
-      // 4-tile gap: gCoord-2, gCoord-1, gCoord, gCoord+1
-      // Layout: Gate A at gCoord-2, Path at gCoord-1, Path at gCoord, Gate B at gCoord+1
-      gateA.push({ x: gCoord - 2, y: bCoord, id: id+'_A', type, axis });
-      gateB.push({ x: gCoord + 1, y: bCoord, id: id+'_B', type, axis });
+      // Vertical border at x = bCoord (spans horizontally), gate spans horizontally  
+      gateA.push({ x: bCoord - 2, y: gCoord, id: id+'_A', type, axis });
+      gateB.push({ x: bCoord + 1, y: gCoord, id: id+'_B', type, axis });
     }
   }
   
