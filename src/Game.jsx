@@ -264,7 +264,7 @@ export default function RiseToWar() {
   const aiBldgsMapRef    = useRef(new Map()); // Map<fk, bldgsObj>
   const aiPoolMapRef     = useRef(new Map()); // Map<fk, number>
   const aiTileKeysMapRef = useRef(new Map()); // Map<fk, Set<tileKey>>
-  const aiLastMarchMapRef= useRef(new Map()); // Map<fk, Map<cmdUid, timestamp>>
+
   const aiHqKeysRef      = useRef({});        // { [fk]: hqTileKey[] }
   const aiPlayerIdMapRef = useRef(new Map()); // Map<hqKey, playerId>  e.g. "ai_pirates_3"
   const spawnedAiHqsRef  = useRef(new Set()); // Set<hqKey> — already spawned commanders
@@ -789,7 +789,6 @@ export default function RiseToWar() {
           aiBldgsMapRef.current.set(aiFk, { ...INIT_BLDGS_VAL });
           aiPoolMapRef.current.set(aiFk, barracksCapacity(0));
           aiTileKeysMapRef.current.set(aiFk, new Set(factionTileKeys?.[aiFk] || []));
-          aiLastMarchMapRef.current.set(aiFk, new Map());
         });
 
         // ── Assign per-HQ AI player IDs and seed first-HQ commanders ────────
@@ -1125,7 +1124,7 @@ export default function RiseToWar() {
     screen,
     aiFactionKeys,
     cmdsRef, tilesRef,
-    aiRssMapRef, aiBldgsMapRef, aiPoolMapRef, aiTileKeysMapRef, aiLastMarchMapRef,
+    aiRssMapRef, aiBldgsMapRef, aiPoolMapRef, aiTileKeysMapRef,
     aiHqKeysRef,
     setCmds: setAiCmds,
     setAiRssMap, setAiBldgsMap, setAiPoolMap,
@@ -1179,6 +1178,9 @@ export default function RiseToWar() {
     reinMarches,
     aiFaction,
     defeatedTilesRef,
+    aiTileKeysMapRef,
+    aiFactionKeys,
+    aiPoolMapRef,
     onSiegeReset: (changedKeys) => {
       let changed = false;
       changedKeys.forEach(k => {
@@ -1207,7 +1209,7 @@ export default function RiseToWar() {
       });
     },
     onAiRssTick:    tickAiRss,
-    onAiMarchCheck: tickAiMarch,
+    onAiMarchCheck: tickAiMarch,  // now receives dispatches from worker
     onAiEconTick:   tickAiEcon,
     onTick: (now) => {
       // Only update nowTick every 5s — it's only used for draw-timer countdown display
