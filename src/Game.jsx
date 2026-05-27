@@ -811,8 +811,17 @@ export default function RiseToWar() {
 
         let globalAiIdx = 0;
         const initialAiCmds = [];
+        const [pSpawnC, pSpawnR] = (playerSpawn || "0,0").split(",").map(Number);
 
         Object.keys(newAiHqKeys).forEach(aiFk => {
+          // Sort HQs by distance to player so the closest one gets commanders
+          newAiHqKeys[aiFk] = [...newAiHqKeys[aiFk]].sort((a, b) => {
+            const [ac, ar] = a.split(",").map(Number);
+            const [bc, br] = b.split(",").map(Number);
+            const dA = Math.abs(ac - pSpawnC) + Math.abs(ar - pSpawnR);
+            const dB = Math.abs(bc - pSpawnC) + Math.abs(br - pSpawnR);
+            return dA - dB;
+          });
           const hqArr = newAiHqKeys[aiFk] || [];
           if (!hqArr.length) return;
           const starters = AI_STARTERS[aiFk];
@@ -849,6 +858,7 @@ export default function RiseToWar() {
                 });
               });
               spawnedAiHqsRef.current.add(hqKey);
+              console.log(`[AI HQ] ${aiFk} → ${hqKey}`);
             }
             globalAiIdx++;
           });
@@ -1182,6 +1192,7 @@ export default function RiseToWar() {
     aiRssMapRef,
     aiBldgsMapRef,
     aiHqKeysRef,
+    playerHqKey,
     onSiegeReset: (changedKeys) => {
       let changed = false;
       changedKeys.forEach(k => {
