@@ -1527,9 +1527,11 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     }
   }
 
+  let processedCount = 0;
   for (const tileKey of _hqKeyIndex) {
     const tile = tiles[tileKey];
     if (!tile?.isHQ) { _hqKeyIndex.delete(tileKey); continue; }
+    processedCount++;
 
     if (vb) {
       const [tc, tr] = tileKey.split(",").map(Number);
@@ -1573,6 +1575,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     hqCont.addChild(_buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids));
     _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew });
   }
+  if (!vb) console.log(`[buildHQLayer] processed:${processedCount} of _hqKeyIndex:${_hqKeyIndex.size} (no-vb full rebuild)`);
 }
 
 function drawMarchLines(gfx, cmds, reinMarches, tiles) {
