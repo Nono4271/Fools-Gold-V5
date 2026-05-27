@@ -5,7 +5,7 @@ import { MapRenderer, clearHQCache } from "./MapRenderer";
 // Constants
 import { CSS } from "./constants/css.js";
 import { getFactionAlignment } from "../shared/constants/factions.js";
-import { npcForPowerLevel, factionDefCmdForTile } from "../shared/constants/heroes.js";
+import { npcForPowerLevel, factionDefCmdForTile, HDEFS } from "../shared/constants/heroes.js";
 import { HQP, POWER_DEFS, SIEGE_BASE, hqSiegeValue } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST } from "../shared/constants/troops.js";
 import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainingQueueCount, tierFromBranchLevel } from "../shared/constants/buildings.js";
@@ -265,7 +265,9 @@ export default function RiseToWar() {
   const aiPoolMapRef     = useRef(new Map()); // Map<fk, number>
   const aiTileKeysMapRef = useRef(new Map()); // Map<fk, Set<tileKey>>
   const aiLastMarchMapRef= useRef(new Map()); // Map<fk, Map<cmdUid, timestamp>>
-  const aiHqKeysRef      = useRef({});        // { [fk]: hqTileKey }
+  const aiHqKeysRef      = useRef({});        // { [fk]: hqTileKey[] }
+  const aiPlayerIdMapRef = useRef(new Map()); // Map<hqKey, playerId>  e.g. "ai_pirates_3"
+  const spawnedAiHqsRef  = useRef(new Set()); // Set<hqKey> — already spawned commanders
   const [aiFactionKeys,  setAiFactionKeys]   = useState([]);
 
   // Updater helpers — write to map ref, no setState
@@ -459,9 +461,10 @@ export default function RiseToWar() {
       panNotifyTimerRef.current = setTimeout(() => {
         panNotifyTimerRef.current = null;
         minimapRedrawRef.current?.();
+        lazySpawnAiCmds();
       }, 100);
     }
-  }, []);
+  }, [lazySpawnAiCmds]);
 
   const teleportTo = useCallback((tc, tr) => {
     const { cx, cy } = isoXY(tc, tr);
@@ -791,55 +794,66 @@ export default function RiseToWar() {
           aiLastMarchMapRef.current.set(aiFk, new Map());
         });
 
-        // ── Seed one commander per AI player, each at their own HQ ────────
-        const AI_CMD_NAMES = [
-          "Ravenport","Stormfist","Greymantle","Ironveil","Ashcroft","Duskblade",
-          "Thornwall","Coppergrin","Sablewind","Flintmoor","Emberpeak","Coldforge",
-          "Dreadmaw","Nighthollow","Scaleback","Cindervane","Mudthorn","Brakespear",
-          "Rimeclaw","Brinewatch","Hellgrip","Saltmere","Vexhorn","Ashgallow",
-          "Gryphonspire","Stonemarrow","Bonecrest","Ironridge","Darkfen","Runehelm",
-          "Voidmere","Scorchvale","Grimtide","Ashroot","Ravenprow","Dustmantle",
-          "Wolfmark","Slagmire","Blackthorn","Stonecrow","Flamewick","Dreadhollow",
-          "Moltenspire","Blightmere","Grimstock","Veinhollow","Ironscale","Cragmaw",
-          "Stormcrow","Saltveil",
-        ];
+        // ── Assign per-HQ AI player IDs and seed first-HQ commanders ────────
+        // Each of the 50 HQs per faction gets a stable ID: "ai_pirates_0" … "ai_pirates_49"
+        // Economy (rss/bldgs/pool) stays shared per faction for performance.
+        // Commanders are spawned lazily as HQs enter the viewport (see lazySpawnAiCmds).
+        // The first HQ per faction gets commanders immediately so the AI is active at start.
+        const AI_STARTERS = {}; // { [fk]: [soldierHDef, veteranHDef] }
+        for (const aiFk of aiFactions) {
+          AI_STARTERS[aiFk] = [
+            HDEFS.find(h => h.faction === aiFk && h.rarity === "soldier"),
+            HDEFS.find(h => h.faction === aiFk && h.rarity === "veteran"),
+          ].filter(Boolean);
+        }
+
         const ICONS_BY_FACTION = {
           pirates:"🏴‍☠️", orcs:"⚔️", dragons:"🐉", nightcreatures:"🦇",
-          wizards:"🔮", holyknights:"⚔",
+          wizards:"🔮", holyknights:"⚔", coldborns:"❄️", ashen_dead:"💀",
         };
+
+        let globalAiIdx = 0;
         const initialAiCmds = [];
+
         aiFactions.forEach(aiFk => {
-          const hqArr    = newAiHqKeys[aiFk] || [];
+          const hqArr = newAiHqKeys[aiFk] || [];
           if (!hqArr.length) return;
-          const branches = FACTION_TROOPS[aiFk]?.branches || [];
-          // One starting commander per faction placed at their first HQ.
-          // Additional commanders are earned via gameplay, not pre-spawned.
-          // Previously this created one commander per HQ spawn (up to 50 × 5 factions
-          // = 250 commanders) which saturated the main thread on map load and
-          // starved the props idle callback for 10-15 seconds.
-          const hqKey  = hqArr[0];
-          const branch = branches[0];
-          const tBranch = { faction: aiFk, branch: branch?.key || "swashbucklers", tier: 0 };
-          initialAiCmds.push({
-            uid:    `ai_${aiFk}_0_${Date.now()}`,
-            id:     `ai_${aiFk}_0`,
-            owner:  "ai",
-            faction: aiFk,
-            n:      AI_CMD_NAMES[aiFactions.indexOf(aiFk) % AI_CMD_NAMES.length],
-            icon:   ICONS_BY_FACTION[aiFk] || "⚔",
-            tk:     hqKey,
-            hqKey:  hqKey,
-            troops: 200,
-            troopBranch: tBranch,
-            troopSlots: [],
-            march:  null,
-            lvl: 5, xp: 0,
-            atk: 80 + Math.floor(Math.random() * 40),
-            foc: 20, spd: 60 + Math.floor(Math.random() * 30),
-            cls: ["attacker","leader","support","balanced"][aiFactions.indexOf(aiFk) % 4],
-            rarity: "soldier",
-            skillPoints: {}, unspentSkillPoints: 0,
-            gear: { helmet:null, armor:null, bracers:null, accessory:null },
+          const starters = AI_STARTERS[aiFk];
+
+          hqArr.forEach((hqKey, i) => {
+            const playerId = `ai_${aiFk}_${i}`;
+            aiPlayerIdMapRef.current.set(hqKey, playerId);
+
+            // Set ownerPlayerId on the HQ tile itself
+            const hqTile = _tileStore[hqKey] || rawMap[hqKey];
+            if (hqTile) {
+              hqTile.ownerPlayerId = playerId;
+              hqTile.faction = aiFk;
+              _tileStore[hqKey] = hqTile;
+            }
+
+            // Spawn commanders for the first HQ of each faction immediately
+            // All others are spawned lazily when they enter the viewport
+            if (i === 0) {
+              starters.forEach((h, si) => {
+                initialAiCmds.push({
+                  ...h,
+                  uid: `${playerId}_cmd${si}_${Date.now()}`,
+                  id:  `${playerId}_cmd${si}`,
+                  owner: "ai",
+                  faction: aiFk,
+                  ownerPlayerId: playerId,
+                  tk: hqKey, hqKey,
+                  troops: 0, troopBranch: null, troopSlots: [],
+                  march: null, lvl: 5, xp: 0,
+                  respectPoints: 0, respectLevel: 0,
+                  skillPoints: {}, unspentSkillPoints: 5,
+                  gear: { helmet:null, armor:null, bracers:null, accessory:null },
+                });
+              });
+              spawnedAiHqsRef.current.add(hqKey);
+            }
+            globalAiIdx++;
           });
         });
         const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
@@ -945,6 +959,76 @@ export default function RiseToWar() {
   }, []);
   // Give useGacha access to floaty now that it's defined.
   floatyRef.current = floaty;
+
+  // ── Lazy AI commander spawning ──────────────────────────────────────────
+  // Called on pan/zoom change. Spawns 2 commanders for any AI HQ that has
+  // entered the viewport and hasn't been spawned yet.
+  const lazySpawnAiCmds = useCallback(() => {
+    if (!mapReady) return;
+    const pan = panRef.current, zoom = zoomRef.current;
+    const TILE_BUFFER = 8; // tiles beyond screen edge to pre-spawn
+    // Convert viewport to world tile range (approximate)
+    const wxL = (-pan.x / zoom);
+    const wxR = (-pan.x + window.innerWidth)  / zoom;
+    const wyT = (-pan.y / zoom);
+    const wyB = (-pan.y + window.innerHeight) / zoom;
+
+    const newCmds = [];
+    for (const [fk, hqArr] of Object.entries(aiHqKeysRef.current)) {
+      const starters = [
+        HDEFS.find(h => h.faction === fk && h.rarity === "soldier"),
+        HDEFS.find(h => h.faction === fk && h.rarity === "veteran"),
+      ].filter(Boolean);
+
+      for (const hqKey of hqArr) {
+        if (spawnedAiHqsRef.current.has(hqKey)) continue;
+        const tile = tilesRef.current[hqKey];
+        if (!tile) continue;
+        const { cx, cy } = isoXY(tile.c, tile.r);
+        // Check if HQ is near the viewport
+        if (cx < wxL - TILE_BUFFER * 80 || cx > wxR + TILE_BUFFER * 80) continue;
+        if (cy < wyT - TILE_BUFFER * 53 || cy > wyB + TILE_BUFFER * 53) continue;
+
+        const playerId = aiPlayerIdMapRef.current.get(hqKey) || `ai_${fk}_x`;
+        spawnedAiHqsRef.current.add(hqKey);
+        starters.forEach((h, si) => {
+          newCmds.push({
+            ...h,
+            uid: `${playerId}_cmd${si}_${Date.now()}`,
+            id:  `${playerId}_cmd${si}`,
+            owner: "ai",
+            faction: fk,
+            ownerPlayerId: playerId,
+            tk: hqKey, hqKey,
+            troops: 0, troopBranch: null, troopSlots: [],
+            march: null, lvl: 5, xp: 0,
+            respectPoints: 0, respectLevel: 0,
+            skillPoints: {}, unspentSkillPoints: 5,
+            gear: { helmet:null, armor:null, bracers:null, accessory:null },
+          });
+        });
+      }
+    }
+    if (newCmds.length) {
+      setAiCmds(prev => [...prev, ...newCmds]);
+    }
+  }, [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Crew coloring — crewmatePlayerIds ───────────────────────────────────
+  // Set of ownerPlayerIds belonging to AI factions in the player's crew.
+  const crewmatePlayerIds = useMemo(() => {
+    if (!playerCrewId || !crews.length) return new Set();
+    const myCrew = crews.find(c => c.id === playerCrewId);
+    if (!myCrew) return new Set();
+    // Collect all AI player IDs whose faction is a crew member
+    const crewFactions = new Set(myCrew.members || []);
+    const ids = new Set();
+    for (const [hqKey, playerId] of aiPlayerIdMapRef.current) {
+      const fk = playerId.split("_")[1]; // "ai_pirates_3" → "pirates"
+      if (crewFactions.has(fk)) ids.add(playerId);
+    }
+    return ids;
+  }, [playerCrewId, crews]);
 
 
   // ── Server sync — authoritative tile state ──
@@ -1714,6 +1798,7 @@ export default function RiseToWar() {
         playerHqKey={playerHqKey}
         playerFacKey={facKey}
         playerName={facName}
+        crewmatePlayerIds={crewmatePlayerIds}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
@@ -1816,7 +1901,7 @@ export default function RiseToWar() {
         />
       )}
 
-      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} />
+      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} />
 
       {/* Wizard's Tomes trigger — bottom-left below minimap */}
       {!tomesOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
@@ -1971,11 +2056,23 @@ export default function RiseToWar() {
           crewCreationCost={500}
           onCreateCrew={(name, abbr) => {
             const id = `crew_${Date.now()}`;
-            setCrews(prev => [...prev, { id, name, abbr, faction: facKey, members: [facName] }]);
+            // members stores faction keys for AI, player's facKey for the human
+            setCrews(prev => [...prev, { id, name, abbr, faction: facKey, members: [facKey], cap: 40 }]);
             setPlayerCrewId(id);
           }}
-          onJoinRequest={(crewId) => setPendingCrewId(crewId)}
-          onLeaveCrew={() => { setPlayerCrewId(null); setPendingCrewId(null); }}
+          onJoinRequest={(crewId) => {
+            // Auto-accept for local play — add player's faction to the crew
+            setCrews(prev => prev.map(c =>
+              c.id === crewId ? { ...c, members: [...(c.members||[]), facKey] } : c
+            ));
+            setPlayerCrewId(crewId);
+          }}
+          onLeaveCrew={() => {
+            setCrews(prev => prev.map(c =>
+              c.id === playerCrewId ? { ...c, members: (c.members||[]).filter(m => m !== facKey) } : c
+            ));
+            setPlayerCrewId(null); setPendingCrewId(null);
+          }}
         />
       )}
 
