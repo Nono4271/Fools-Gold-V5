@@ -78,11 +78,10 @@ function worldToKey(wx, wy, tiles) {
   }
 
   function inHQFootprint(wx, wy, pc, pr) {
-    // Exactly the 9 HQ tiles: center (pc,pr) + 8 HQPART at pc±1,pr±1
-    // Diamond: N=top of (pc,pr-1), E=right of (pc+1,pr), S=bottom of (pc,pr+1), W=left of (pc-1,pr)
-    const { cx, cy } = isoXY(pc, pr);
+    // pc,pr is top-left of the 3x3 — center is at pc+1, pr+1
+    const { cx, cy } = isoXY(pc + 1, pr + 1);
     const midY = cy + TH;
-    return Math.abs(wx - cx) / TW + Math.abs(wy - midY) / TH <= 1.0;
+    return Math.abs(wx - cx) / (TW * 1.5) + Math.abs(wy - midY) / (TH * 1.5) <= 1.0;
   }
 
   // Scan ±3 tiles around estimate, checking large footprints first
@@ -1568,11 +1567,12 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   hit.beginFill(0xffffff, 0.001);
   hit.drawPolygon(FOOTPRINT);
   // Hit area matches the fourth pass fill geometry exactly (pc,pr = center)
+  // pc,pr is top-left; center is pc+1,pr+1. Diamond spans from N tip of (pc+1,pr) to S tip of (pc+1,pr+2).
   const HIT_POLY = [
-    isoXY(pc,   pr-1).cx,           isoXY(pc,   pr-1).cy,
-    isoXY(pc+1, pr  ).cx + TW/2,    isoXY(pc+1, pr  ).cy + TH/2,
-    isoXY(pc,   pr+1).cx,           isoXY(pc,   pr+1).cy + TH,
-    isoXY(pc-1, pr  ).cx - TW/2,    isoXY(pc-1, pr  ).cy + TH/2,
+    isoXY(pc+1, pr  ).cx,           isoXY(pc+1, pr  ).cy,           // N
+    isoXY(pc+2, pr+1).cx + TW/2,    isoXY(pc+2, pr+1).cy + TH/2,   // E
+    isoXY(pc+1, pr+2).cx,           isoXY(pc+1, pr+2).cy + TH,      // S
+    isoXY(pc,   pr+1).cx - TW/2,    isoXY(pc,   pr+1).cy + TH/2,   // W
   ];
   hit.endFill();
   hit.hitArea     = new PIXI.Polygon(HIT_POLY);
@@ -1901,7 +1901,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const hqCont = new PIXI.Container();
     hqCont.interactiveChildren = true;
     hqCont.interactive = true;
-    hqCont.hitArea = new PIXI.Rectangle(-10000, -10000, 20000, 20000);
+
     world.addChild(hqCont);
     hqContRef.current = hqCont;
     const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
