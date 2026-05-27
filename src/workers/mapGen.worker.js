@@ -1407,70 +1407,7 @@ self.onmessage = function(e) {
     }
   }
 
-  // ── P10–P13: place AFTER static keeps and borders, BEFORE HQs ──────────────
-  {
-    let p10Total = 0, p10Placed = 0, p10Demoted = 0;
-    for (let r2 = 0; r2 < ROWS; r2++) {
-      for (let c2 = 0; c2 < COLS; c2++) {
-        const idx2 = r2 * COLS + c2;
-        const pl2  = powerArr[idx2];
-        if (pl2 < 10) continue;
-        p10Total++;
 
-        let blocked = false;
-        if (flagArr[idx2] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER)) { blocked = true; }
-        if (!blocked && KEEP_FOOTPRINT_SET.has(`${c2},${r2}`)) { blocked = true; }
-        if (!blocked && ROAD_TILE_SET.has(idx2)) { blocked = true; }
-        if (!blocked) {
-          const t = terrainArr[idx2];
-          if (t === TERRAIN_ENC.river || t === TERRAIN_ENC.rockymountain || t === TERRAIN_ENC.hellfire || t === TERRAIN_ENC.road) { blocked = true; }
-        }
-        if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
-
-        // Debug: verify this tile isn't a road (should never happen)
-        if (ROAD_TILE_SET.has(idx2)) {
-          console.warn(`[P10+ BUG] Tile ${c2},${r2} passed blocked check but is in ROAD_TILE_SET`);
-        }
-
-        const siege2 = P10_SIEGE[pl2] ?? 8000;
-        flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
-        garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100);
-        siegeArr[idx2]    = siege2;
-        siegeMaxArr[idx2] = siege2;
-
-        // Clear rss on the 3 tiles visually covered by the 2x diamond
-        // and demote their powerArr so they can't spawn their own P10+ structure
-        for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
-          const nc = c2+dc, nr = r2+dr;
-          if (nc < COLS && nr < ROWS) {
-            const ni = nr*COLS+nc;
-            rssArr[ni] = 0;
-            if (powerArr[ni] >= 10) powerArr[ni] = 9;
-            flagArr[ni] = (flagArr[ni] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
-          }
-        }
-
-        // Clear rss on the 3 tiles visually covered by the 2x diamond so their props don't show
-        for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
-          const nc = c2+dc, nr = r2+dr;
-          if (nc >= 0 && nr >= 0 && nc < COLS && nr < ROWS) {
-            const ni = nr*COLS+nc;
-            if (!(flagArr[ni] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER))) {
-              rssArr[ni] = 0;
-            }
-          }
-        }
-
-        keepMeta[`${c2},${r2}`] = {
-          keepName:      `P${pl2} Structure`,
-          garrisonWaves: 2,
-          cx: c2, cy: r2,
-        };
-        p10Placed++;
-      }
-    }
-    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed, ${p10Demoted} demoted to P9 (${p10Total > 0 ? Math.round(p10Placed/p10Total*100) : 0}% placed)`);
-  }
 
   // Pre-own starter keeps
   const STARTER_CMDS = {
@@ -1624,8 +1561,78 @@ self.onmessage = function(e) {
   
   console.log(`[MapGen] Generated ${ROAD_SEGMENTS.length} road segments`);
   console.log(`[MapGen] Regions with gates:`, Object.keys(gatesPerRegion).length);
-  // Debug: log first 10 dynamic segments to compare with ROAD_SEGS_EARLY
   console.log(`[MapGen] Sample dynamic segments:`, JSON.stringify(ROAD_SEGMENTS.slice(0,10)));
+
+  // ── Rebuild ROAD_TILE_SET from actual dynamic segments ────────────────────
+  ROAD_TILE_SET.clear();
+  for (const [c1, r1, c2, r2] of ROAD_SEGMENTS) {
+    const dc = c2>c1?1:c2<c1?-1:0;
+    const dr = r2>r1?1:r2<r1?-1:0;
+    for (let c=c1; c!==c2; c+=dc) { if (c>=0&&r1>=0&&c<COLS&&r1<ROWS) ROAD_TILE_SET.add(r1*COLS+c); }
+    if (dr!==0) { for (let r=r1; r!==r2+dr; r+=dr) { if (c2>=0&&r>=0&&c2<COLS&&r<ROWS) ROAD_TILE_SET.add(r*COLS+c2); } }
+    else { if (c2>=0&&r1>=0&&c2<COLS&&r1<ROWS) ROAD_TILE_SET.add(r1*COLS+c2); }
+  }
+
+  // ── P10–P13: place AFTER roads defined, BEFORE roads stamped ─────────────
+  {
+    let p10Total = 0, p10Placed = 0, p10Demoted = 0;
+    for (let r2 = 0; r2 < ROWS; r2++) {
+      for (let c2 = 0; c2 < COLS; c2++) {
+        const idx2 = r2 * COLS + c2;
+        const pl2  = powerArr[idx2];
+        if (pl2 < 10) continue;
+        p10Total++;
+
+        let blocked = false;
+        if (flagArr[idx2] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER)) { blocked = true; }
+        if (!blocked && KEEP_FOOTPRINT_SET.has(`${c2},${r2}`)) { blocked = true; }
+        if (!blocked && ROAD_TILE_SET.has(idx2)) { blocked = true; }
+        if (!blocked) {
+          const t = terrainArr[idx2];
+          if (t === TERRAIN_ENC.river || t === TERRAIN_ENC.rockymountain || t === TERRAIN_ENC.hellfire || t === TERRAIN_ENC.road) { blocked = true; }
+        }
+        // Also check the 3 tiles the 2x diamond visually covers
+        if (!blocked) {
+          for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
+            const nc = c2+dc, nr = r2+dr;
+            if (nc >= COLS || nr >= ROWS) continue;
+            const ni = nr*COLS+nc;
+            if (flagArr[ni] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER)) { blocked = true; break; }
+            if (ROAD_TILE_SET.has(ni)) { blocked = true; break; }
+            const t = terrainArr[ni];
+            if (t === TERRAIN_ENC.river || t === TERRAIN_ENC.rockymountain || t === TERRAIN_ENC.hellfire || t === TERRAIN_ENC.road) { blocked = true; break; }
+            if (KEEP_FOOTPRINT_SET.has(`${nc},${nr}`)) { blocked = true; break; }
+          }
+        }
+        if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
+
+        const siege2 = P10_SIEGE[pl2] ?? 8000;
+        flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
+        garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100);
+        siegeArr[idx2]    = siege2;
+        siegeMaxArr[idx2] = siege2;
+
+        // Clear rss and demote powerArr on the 3 visually covered tiles
+        for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
+          const nc = c2+dc, nr = r2+dr;
+          if (nc < COLS && nr < ROWS) {
+            const ni = nr*COLS+nc;
+            rssArr[ni] = 0;
+            if (powerArr[ni] >= 10) powerArr[ni] = 9;
+            flagArr[ni] = (flagArr[ni] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
+          }
+        }
+
+        keepMeta[`${c2},${r2}`] = {
+          keepName:      `P${pl2} Structure`,
+          garrisonWaves: 2,
+          cx: c2, cy: r2,
+        };
+        p10Placed++;
+      }
+    }
+    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed, ${p10Demoted} demoted to P9 (${p10Total > 0 ? Math.round(p10Placed/p10Total*100) : 0}% placed)`);
+  }
   
   // Stamp roads into the map
   const stampRoad = (c, r) => {
