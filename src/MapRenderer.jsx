@@ -78,14 +78,14 @@ function worldToKey(wx, wy, tiles) {
   }
 
   function inHQFootprint(wx, wy, pc, pr) {
-    // F_HQ is center, top-left = pc-1,pr-1 matching existing border system
-    const tl = isoXY(pc-1, pr-1); const tr = isoXY(pc+1, pr-1);
-    const br = isoXY(pc+1, pr+1);
-    const elev = 4;
-    const midX = tl.cx;
-    const midY = (tl.cy - elev + br.cy - elev + TH) / 2;
-    const halfW = tr.cx + TW/2 - midX;
-    const halfH = midY - (tl.cy - elev);
+    // pc,pr = center tile (F_HQ). Matches existing border: N=(pc,pr), S=(pc+2,pr+2)
+    const nY = isoXY(pc, pr).cy;
+    const sY = isoXY(pc+2, pr+2).cy + TH;
+    const eX = isoXY(pc+2, pr).cx + TW/2;
+    const midX = isoXY(pc, pr).cx;
+    const midY = (nY + sY) / 2;
+    const halfW = eX - midX;
+    const halfH = midY - nY;
     return Math.abs(wx - midX) / halfW + Math.abs(wy - midY) / halfH <= 1.0;
   }
 
@@ -599,14 +599,12 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (!tile || !tile.isHQ) continue;
       const elev = 0;
       const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
-      // F_HQ is center (c,r), top-left = (c-1,r-1) matching existing HQ border system
-      const tl = isoXY(c-1, r-1); const tr = isoXY(c+1, r-1);
-      const br = isoXY(c+1, r+1); const bl = isoXY(c-1, r+1);
+      // Exact same geometry as existing HQ border (pc=center=c,r)
       const HQ3 = [
-        tl.cx,           tl.cy - elev,
-        tr.cx + TW/2,    tr.cy - elev + TH/2,
-        br.cx,           br.cy - elev + TH,
-        bl.cx - TW/2,    bl.cy - elev + TH/2,
+        isoXY(c,   r  ).cx,           isoXY(c,   r  ).cy - elev,
+        isoXY(c+2, r  ).cx + TW/2,    isoXY(c+2, r  ).cy - elev + TH/2,
+        isoXY(c+2, r+2).cx,           isoXY(c+2, r+2).cy - elev + TH,
+        isoXY(c,   r+2).cx - TW/2,    isoXY(c,   r+2).cy - elev + TH/2,
       ];
       gfx.beginFill(baseColor); gfx.drawPolygon(HQ3); gfx.endFill();
       gfx.lineStyle(0);
