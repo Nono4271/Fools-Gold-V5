@@ -268,6 +268,8 @@ export default function RiseToWar() {
   const aiHqKeysRef      = useRef({});        // { [fk]: hqTileKey[] }
   const aiPlayerIdMapRef = useRef(new Map()); // Map<hqKey, playerId>  e.g. "ai_pirates_3"
   const spawnedAiHqsRef  = useRef(new Set()); // Set<hqKey> — already spawned commanders
+  const aiGemsRef        = useRef(new Map()); // Map<playerId, gems>
+  const aiFoundersRef    = useRef(new Set()); // Set<playerId> — AIs seeded with 1000 gems to found crews
   const [aiFactionKeys,  setAiFactionKeys]   = useState([]);
 
   // Updater helpers — write to map ref, no setState
@@ -861,6 +863,26 @@ export default function RiseToWar() {
             globalAiIdx++;
           });
         });
+        // ── Seed AI crew founders ─────────────────────────────────────────
+        // 3 founders per faction (2 for player's faction) each get 1000 gems.
+        // At 500 gems creation cost, each can found exactly one crew → 3 crews/faction.
+        aiGemsRef.current.clear();
+        aiFoundersRef.current.clear();
+        Object.entries(newAiHqKeys).forEach(([fk, hqArr]) => {
+          const founderCount = fk === facKey ? 2 : 3;
+          // Pick evenly-spaced indices so founders are spread across the map
+          const step = Math.max(1, Math.floor(hqArr.length / founderCount));
+          for (let f = 0; f < founderCount; f++) {
+            const idx = f * step;
+            if (idx >= hqArr.length) break;
+            const playerId = aiPlayerIdMapRef.current.get(hqArr[idx]);
+            if (playerId) {
+              aiGemsRef.current.set(playerId, 1000);
+              aiFoundersRef.current.add(playerId);
+            }
+          }
+        });
+
         const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
         const primaryAiFk = aiFactions.find(f =>
           (oppAlign === "humans"
@@ -1035,6 +1057,69 @@ export default function RiseToWar() {
     }
     return ids;
   }, [playerCrewId, crews]);
+
+  // ── AI crew ticker — runs every 30s ─────────────────────────────────────
+  // Founders create a crew (500 gems). Others join a same-faction crew with space.
+  useEffect(() => {
+    if (screen !== "game" || !mapReady) return;
+    const CREW_COST = 500;
+    const CREW_CAP  = 40;
+
+    const id = setInterval(() => {
+      setCrews(prevCrews => {
+        let nextCrews = [...prevCrews];
+
+        // Build a lookup: faction → crews of that faction with space
+        const crewsByFaction = {};
+        for (const crew of nextCrews) {
+          if (!crew.faction) continue;
+          if (!crewsByFaction[crew.faction]) crewsByFaction[crew.faction] = [];
+          crewsByFaction[crew.faction].push(crew);
+        }
+
+        // Build set of playerIds already in a crew
+        const inCrew = new Set();
+        for (const crew of nextCrews) {
+          for (const m of (crew.members || [])) inCrew.add(m);
+        }
+
+        const newCrews = [];
+
+        for (const [hqKey, playerId] of aiPlayerIdMapRef.current) {
+          if (inCrew.has(playerId)) continue;
+          const fk = playerId.split("_")[1];
+
+          // Founders: create a new crew if they can afford it
+          if (aiFoundersRef.current.has(playerId)) {
+            const gems = aiGemsRef.current.get(playerId) ?? 0;
+            if (gems >= CREW_COST) {
+              const crewId   = `crew_ai_${playerId}_${Date.now()}`;
+              const abbr     = fk.slice(0, 4).toUpperCase();
+              const existing = nextCrews.filter(c => c.faction === fk).length + newCrews.filter(c => c.faction === fk).length;
+              const name     = `${fk.charAt(0).toUpperCase() + fk.slice(1)} ${["Vanguard","Legion","Order"][existing] || "Band"}`;
+              newCrews.push({ id: crewId, name, abbr, faction: fk, members: [playerId], cap: CREW_CAP });
+              aiGemsRef.current.set(playerId, gems - CREW_COST);
+              inCrew.add(playerId);
+              continue;
+            }
+          }
+
+          // Non-founders: join a same-faction crew with space
+          const options = [...(crewsByFaction[fk] || []), ...newCrews.filter(c => c.faction === fk)];
+          const target  = options.find(c => (c.members || []).length < CREW_CAP);
+          if (target) {
+            target.members = [...(target.members || []), playerId];
+            inCrew.add(playerId);
+          }
+        }
+
+        if (!newCrews.length && nextCrews === prevCrews) return prevCrews;
+        return [...nextCrews, ...newCrews];
+      });
+    }, 30000);
+
+    return () => clearInterval(id);
+  }, [screen, mapReady]);
 
 
   // ── Server sync — authoritative tile state ──

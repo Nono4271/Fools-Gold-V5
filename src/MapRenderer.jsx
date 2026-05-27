@@ -78,8 +78,8 @@ function worldToKey(wx, wy, tiles) {
   }
 
   function inHQFootprint(wx, wy, pc, pr) {
-    // pc,pr is the CENTER tile of the 3x3
-    const { cx, cy } = isoXY(pc, pr);
+    // pc,pr is top-left of the 3x3 — center is at pc+1, pr+1
+    const { cx, cy } = isoXY(pc + 1, pr + 1);
     const midY = cy + TH;
     return Math.abs(wx - cx) / (TW * 1.5) + Math.abs(wy - midY) / (TH * 1.5) <= 1.0;
   }
@@ -1566,13 +1566,13 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   hit.beginFill(0xffffff, 0.001);
   hit.drawPolygon(FOOTPRINT);
   // Hit area matches the fourth pass fill geometry exactly (pc,pr = center)
-  // HIT_POLY matches the selection outline and green border geometry exactly.
-  // pc,pr is the CENTER tile (isHQ key). Top-left is pc-1, pr-1.
+  // HIT_POLY: pc,pr is CENTER tile. Subtract 1 to get top-left, matching green border.
+  const tl = pc - 1, tt = pr - 1;
   const HIT_POLY = [
-    isoXY(pc-1, pr-1).cx,           isoXY(pc-1, pr-1).cy - elev,           // N
-    isoXY(pc+1, pr-1).cx + TW/2,    isoXY(pc+1, pr-1).cy - elev + TH/2,   // E
-    isoXY(pc+1, pr+1).cx,           isoXY(pc+1, pr+1).cy - elev + TH,     // S
-    isoXY(pc-1, pr+1).cx - TW/2,    isoXY(pc-1, pr+1).cy - elev + TH/2,   // W
+    isoXY(tl,   tt  ).cx,           isoXY(tl,   tt  ).cy - elev,           // N
+    isoXY(tl+2, tt  ).cx + TW/2,    isoXY(tl+2, tt  ).cy - elev + TH/2,   // E
+    isoXY(tl+2, tt+2).cx,           isoXY(tl+2, tt+2).cy - elev + TH,     // S
+    isoXY(tl,   tt+2).cx - TW/2,    isoXY(tl,   tt+2).cy - elev + TH/2,   // W
   ];
   hit.endFill();
   hit.hitArea     = new PIXI.Polygon(HIT_POLY);
@@ -1949,14 +1949,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // HQ: sc,sr is the center tile. Top-left is sc-1, sr-1.
+      // HQ: sc,sr is the CENTER tile. Subtract 1 to get top-left, matching green border.
       if (tile.isHQ) {
         const elev = 0;
+        const tl = sc - 1, tt = sr - 1;
         const path = [
-          isoXY(sc-1, sr-1).cx,           isoXY(sc-1, sr-1).cy - elev,
-          isoXY(sc+1, sr-1).cx + TW/2,    isoXY(sc+1, sr-1).cy - elev + TH/2,
-          isoXY(sc+1, sr+1).cx,           isoXY(sc+1, sr+1).cy - elev + TH,
-          isoXY(sc-1, sr+1).cx - TW/2,    isoXY(sc-1, sr+1).cy - elev + TH/2,
+          isoXY(tl,   tt  ).cx,           isoXY(tl,   tt  ).cy - elev,
+          isoXY(tl+2, tt  ).cx + TW/2,    isoXY(tl+2, tt  ).cy - elev + TH/2,
+          isoXY(tl+2, tt+2).cx,           isoXY(tl+2, tt+2).cy - elev + TH,
+          isoXY(tl,   tt+2).cx - TW/2,    isoXY(tl,   tt+2).cy - elev + TH/2,
         ];
         selGfx.lineStyle(3, 0xffffff, 0.95);
         selGfx.drawPolygon(path);
