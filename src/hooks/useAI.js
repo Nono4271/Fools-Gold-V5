@@ -4,26 +4,21 @@
 // Economy (rss/bldgs/pool) is shared per-faction. March is per-commander.
 
 import { useCallback } from "react";
-import { FACTION_TROOPS } from "../../shared/constants/troops.js";
-import { barracksCapacity, maxAvailLevel, upgCost, cmdCommand, rssRate } from "../../shared/constants/buildings.js";
+import { rssRate } from "../../shared/constants/buildings.js";
 import { bfsPath, effectiveMarchSpd, marchStepMs } from "../../shared/utils/pathfinding.js";
-import { getBranchMainSkill, getBranchSideSkills } from "../../shared/constants/skills.js";
 
 export function useAI({
-  screen,
-  aiFactionKeys,      // string[] — factions the AI controls (all factions except player's)
-  cmdsRef,            // ref: all cmds (player + ai)
+  aiFactionKeys,
+  cmdsRef,
   tilesRef,
-  // Per-faction Maps (Map<factionKey, value>) stored in refs
-  aiRssMapRef,        // Map<fk, {stone,wood,ore,gas}>
-  aiBldgsMapRef,      // Map<fk, bldgsObj>
-  aiPoolMapRef,       // Map<fk, number>
-  aiTileKeysMapRef,   // Map<fk, Set<tileKey>>
-  aiHqKeysRef,        // ref: { [fk]: hqTileKey }
-  setCmds,            // setAiCmds
-  setAiRssMap,        // (fk, updater) => void
-  setAiBldgsMap,      // (fk, updater) => void
-  setAiPoolMap,       // (fk, updater) => void
+  aiRssMapRef,
+  aiBldgsMapRef,
+  aiPoolMapRef,
+  aiTileKeysMapRef,
+  setCmds,
+  setAiRssMap,
+  setAiBldgsMap,
+  setAiPoolMap,
 }) {
 
 // ── Resource tick — called every 1s ──────────────────────────────────────
@@ -82,103 +77,29 @@ const tickAiMarch = useCallback((dispatches) => {
   });
 }, [cmdsRef, setCmds]);
 
-// ── Economy tick — called every 5s ───────────────────────────────────────
-// Per-faction: assign troops to idle commanders at HQ, train, upgrade buildings.
-const tickAiEcon = useCallback(() => {
-  if (!aiFactionKeys?.length) return;
-  console.log(`[AI:econ] aiFactionKeys=${JSON.stringify(aiFactionKeys)}`);
-  const curCmds = cmdsRef.current;
-  const hqKeys  = aiHqKeysRef.current || {};
+// ── Economy apply — called when worker sends aiEconReady ──────────────────
+// Worker computed all diffs. Main thread applies in one pass.
+const tickAiEcon = useCallback((updates) => {
+  if (!updates) return;
+  const { cmdUpdates, poolUpdates, rssUpdates, bldgUpdates } = updates;
 
-  for (const fk of aiFactionKeys) {
-    const curRss   = aiRssMapRef.current.get(fk)   || { stone:0, wood:0, ore:0, gas:0 };
-    const curBldgs = aiBldgsMapRef.current.get(fk)  || { hq:1, barracks:0, commandcenter:0 };
-    const curPool  = aiPoolMapRef.current.get(fk)   ?? barracksCapacity(0);
-    const fkCmds   = curCmds.filter(c => c.owner === "ai" && c.faction === fk);
-    const hqKeyVal = hqKeys[fk];
-    const hqKey    = Array.isArray(hqKeyVal) ? hqKeyVal[0] : hqKeyVal;
-
-    // Spend skill points for ALL commanders with unspent points this tick
-    const cmdsWithPoints = fkCmds.filter(c => (c.unspentSkillPoints ?? 0) > 0);
-    if (cmdsWithPoints.length) {
-      const updates = [];
-      for (const cmd of cmdsWithPoints) {
-        const sp  = cmd.skillPoints || {};
-        const MAX_SKILL_LVL = 5;
-        let skillToSpend = null;
-        outer: for (const pass of ["main", "side"]) {
-          for (let b = 0; b < 4; b++) {
-            const rawKeys = pass === "main"
-              ? [getBranchMainSkill(cmd.cls, b, cmd)]
-              : getBranchSideSkills(cmd.cls, b, cmd);
-            const keys = rawKeys.map(k => (typeof k === "object" && k !== null) ? k.key : k);
-            for (const key of keys) {
-              if (!key) continue;
-              if ((sp[key] ?? 0) < MAX_SKILL_LVL) { skillToSpend = key; break outer; }
-            }
-          }
-        }
-        if (skillToSpend) updates.push({ uid: cmd.uid, skill: skillToSpend });
-      }
-      if (updates.length) {
-        setCmds(p => p.map(c => {
-          const upd = updates.find(u => u.uid === c.uid);
-          if (!upd) return c;
-          return {
-            ...c,
-            unspentSkillPoints: (c.unspentSkillPoints ?? 1) - 1,
-            skillPoints: { ...(c.skillPoints || {}), [upd.skill]: ((c.skillPoints?.[upd.skill] ?? 0) + 1) },
-          };
-        }));
-      }
-      // Fall through to troop assignment — don't skip it
-    }
-
-    // Assign troops to idle commanders at their own HQ with no troops
-    const idleNoTroops = fkCmds.filter(c => !c.march && !(c.troops || 0) && c.tk === (c.hqKey || hqKey));
-    console.log(`[AI:${fk}] fkCmds=${fkCmds.length} idleNoTroops=${idleNoTroops.length} pool=${curPool}`);
-    if (idleNoTroops.length && curPool > 0) {
-      const cmd     = idleNoTroops[0];
-      const cmdCap  = cmdCommand(cmd.lvl || 5, curBldgs.commandcenter || 0, cmd.commandBonus ?? 0);
-      const assign  = Math.min(cmdCap, curPool);
-      const branches = FACTION_TROOPS[fk]?.branches || [];
-      const branch   = branches[Math.floor(Math.random() * branches.length)];
-      const tBranch  = { faction: fk, branch: branch?.key || "swashbucklers", tier: 0 };
-      setAiPoolMap(fk, p => Math.max(0, p - assign));
-      setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, troops: assign, troopBranch: tBranch } : c));
-      continue;
-    }
-
-    // Train troops
-    const aiBarrCap = barracksCapacity(curBldgs.barracks || 0);
-    if (curPool < aiBarrCap) {
-      const trainAmt = Math.min(500, aiBarrCap - curPool);
-      const cost = { stone: trainAmt*2, wood: trainAmt*2, ore: trainAmt, gas: Math.floor(trainAmt*0.5) };
-      if (Object.entries(cost).every(([k, v]) => (curRss[k] || 0) >= v)) {
-        setAiRssMap(fk, p => ({ stone:p.stone-cost.stone, wood:p.wood-cost.wood, ore:p.ore-cost.ore, gas:p.gas-cost.gas }));
-        setAiPoolMap(fk, p => Math.min(aiBarrCap, p + trainAmt));
-        continue;
-      }
-    }
-
-    // Upgrade buildings
-    const upgPriority = ["quarry","lumber","forge","barracks","hq","training","refinery","commandcenter","walls"];
-    for (const bType of upgPriority) {
-      const curLvl = curBldgs[bType] || 0;
-      const avail  = bType === "hq" ? 10 : maxAvailLevel(bType, curBldgs.hq || 1);
-      if (curLvl >= avail) continue;
-      const cost = upgCost(bType, curLvl);
-      if (!Object.entries(cost).every(([k, v]) => (curRss[k] || 0) >= v)) continue;
-      setAiRssMap(fk, p => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v - (cost[k] || 0)])));
-      setAiBldgsMap(fk, p => {
-        const next = { ...p, [bType]: (p[bType] || 0) + 1 };
-        if (bType === "barracks") setAiPoolMap(fk, pool => Math.min(barracksCapacity(next.barracks), pool));
-        return next;
-      });
-      break;
-    }
+  if (cmdUpdates?.length) {
+    setCmds(p => p.map(c => {
+      const upd = cmdUpdates.find(u => u.uid === c.uid);
+      if (!upd) return c;
+      return { ...c, troops: upd.troops, troopBranch: upd.troopBranch };
+    }));
   }
-}, [aiFactionKeys, cmdsRef, aiRssMapRef, aiBldgsMapRef, aiPoolMapRef, aiHqKeysRef, setCmds, setAiRssMap, setAiBldgsMap, setAiPoolMap]);
+  if (poolUpdates) {
+    for (const [fk, val] of Object.entries(poolUpdates)) setAiPoolMap(fk, () => val);
+  }
+  if (rssUpdates) {
+    for (const [fk, val] of Object.entries(rssUpdates)) setAiRssMap(fk, () => val);
+  }
+  if (bldgUpdates) {
+    for (const [fk, val] of Object.entries(bldgUpdates)) setAiBldgsMap(fk, () => val);
+  }
+}, [setCmds, setAiPoolMap, setAiRssMap, setAiBldgsMap]);
 
 return { tickAiRss, tickAiMarch, tickAiEcon };
 }

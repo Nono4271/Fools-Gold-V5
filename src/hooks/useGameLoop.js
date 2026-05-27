@@ -20,6 +20,8 @@
 //   onTick(now)                   — update nowTick (HUD countdowns)
 
 import { useEffect, useRef } from 'react';
+import { FACTION_TROOPS } from '../shared/constants/troops.js';
+import { barracksCapacity, maxAvailLevel, upgCost, cmdCommand, rssRate } from '../shared/constants/buildings.js';
 
 export function useGameLoop({
   screen,
@@ -31,6 +33,9 @@ export function useGameLoop({
   aiTileKeysMapRef,
   aiFactionKeys,
   aiPoolMapRef,
+  aiRssMapRef,
+  aiBldgsMapRef,
+  aiHqKeysRef,
   onMarchStep,
   onDrawTick,
   onSiegeReset,
@@ -49,7 +54,10 @@ export function useGameLoop({
   const factionRef_ = useRef(aiFaction);
   const aiFactionKeysRef_     = useRef(null);
   const aiFactionKeysListRef_ = useRef([]);
-  const aiPoolRef_            = useRef({});
+  const aiPoolRef_  = useRef({});
+  const aiRssRef_   = useRef({});
+  const aiBldgsRef_ = useRef({});
+  const aiHqKeysRef_= useRef({});
 
   useEffect(() => { cmdsRef_.current    = cmds;        }, [cmds]);
   useEffect(() => { tilesRef_.current   = tiles;       }, [tiles]);
@@ -60,17 +68,32 @@ export function useGameLoop({
     aiFactionKeysListRef_.current = aiFactionKeys || [];
   }, [aiTileKeysMapRef, aiFactionKeys]);
   useEffect(() => {
-    if (!aiPoolMapRef) return;
-    const obj = {};
-    for (const [fk, v] of aiPoolMapRef.current) obj[fk] = v;
+    if (!aiPoolMapRef?.current) return;
+    const obj = {}; for (const [fk,v] of aiPoolMapRef.current) obj[fk]=v;
     aiPoolRef_.current = obj;
-  }, [aiPoolMapRef]);
+  });
+  useEffect(() => {
+    if (!aiRssMapRef?.current) return;
+    const obj = {}; for (const [fk,v] of aiRssMapRef.current) obj[fk]=v;
+    aiRssRef_.current = obj;
+  });
+  useEffect(() => {
+    if (!aiBldgsMapRef?.current) return;
+    const obj = {}; for (const [fk,v] of aiBldgsMapRef.current) obj[fk]=v;
+    aiBldgsRef_.current = obj;
+  });
+  useEffect(() => {
+    if (!aiHqKeysRef?.current) return;
+    aiHqKeysRef_.current = aiHqKeysRef.current;
+  });
 
-  // Keep callbacks current without re-creating the worker
   useEffect(() => {
     callbackRef.current = {
       onMarchStep, onDrawTick, onSiegeReset,
-      onReinStep, onAiRssTick, onAiMarchCheck, onAiMarchReady: onAiMarchCheck, onAiEconTick, onTick,
+      onReinStep, onAiRssTick, onAiMarchCheck,
+      onAiMarchReady: onAiMarchCheck,
+      onAiEconReady: onAiEconTick,
+      onAiEconTick, onTick,
     };
   });
 
@@ -91,7 +114,8 @@ export function useGameLoop({
         case 'aiRssTick':    cb.onAiRssTick?.(e.data.now);                       break;
         case 'aiMarchReady': cb.onAiMarchReady?.(e.data.dispatches, e.data.now); break;
         case 'aiMarchCheck': cb.onAiMarchCheck?.(e.data.now);                    break;
-        case 'aiEconTick':  cb.onAiEconTick?.(e.data.now);                     break;
+        case 'aiEconReady':  cb.onAiEconReady?.(e.data.updates, e.data.now);     break;
+        case 'aiEconTick':   cb.onAiEconTick?.(e.data.now);                      break;
         case 'tick':        cb.onTick?.(e.data.now);                           break;
         default: break;
       }
@@ -177,16 +201,18 @@ export function useGameLoop({
         }
       }
 
-      // AI commander snapshot — just what the worker needs for march decisions
+      // AI commander snapshot — march + econ fields
       const aiCmdSnapshot = cmds
         ? cmds.filter(c => c.owner === 'ai').map(c => ({
-            uid:           c.uid,
-            faction:       c.faction,
-            tk:            c.tk,
-            hqKey:         c.hqKey,
-            troops:        c.troops || 0,
-            march:         c.march ? { type: c.march.type } : null,
-            ownerPlayerId: c.ownerPlayerId || null,
+            uid:               c.uid,
+            faction:           c.faction,
+            tk:                c.tk,
+            hqKey:             c.hqKey,
+            troops:            c.troops || 0,
+            march:             c.march ? { type: c.march.type } : null,
+            ownerPlayerId:     c.ownerPlayerId || null,
+            lvl:               c.lvl || 5,
+            unspentSkillPoints: c.unspentSkillPoints || 0,
           }))
         : [];
 
@@ -202,6 +228,9 @@ export function useGameLoop({
           aiTileKeys:    aiTileKeysObj,
           aiFactionKeys: aiFactionKeysListRef_.current || [],
           aiPool:        aiPoolRef_.current  || {},
+          aiRss:         aiRssRef_.current   || {},
+          aiBldgs:       aiBldgsRef_.current || {},
+          aiHqKeys:      aiHqKeysRef_.current || {},
           CMD_MARCH_COOLDOWN_MS: 15000,
         },
       });
