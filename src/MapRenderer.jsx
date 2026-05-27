@@ -1447,7 +1447,8 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   borderGfx.lineStyle(5, borderTint, 1.0);
   borderGfx.drawPolygon(borderPath);
   borderGfx.lineStyle(0);
-  
+  group.__borderPts = borderPath; // used by drawSelection and HIT_POLY
+
   group.addChild(borderGfx);
 
   // ── Sprite ──
@@ -1566,14 +1567,8 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   hit.beginFill(0xffffff, 0.001);
   hit.drawPolygon(FOOTPRINT);
   // Hit area matches the fourth pass fill geometry exactly (pc,pr = center)
-  // HIT_POLY: pc,pr is CENTER tile. Subtract 1 to get top-left, matching green border.
-  const tl = pc - 1, tt = pr - 1;
-  const HIT_POLY = [
-    isoXY(tl,   tt  ).cx,           isoXY(tl,   tt  ).cy - elev,           // N
-    isoXY(tl+2, tt  ).cx + TW/2,    isoXY(tl+2, tt  ).cy - elev + TH/2,   // E
-    isoXY(tl+2, tt+2).cx,           isoXY(tl+2, tt+2).cy - elev + TH,     // S
-    isoXY(tl,   tt+2).cx - TW/2,    isoXY(tl,   tt+2).cy - elev + TH/2,   // W
-  ];
+  // HIT_POLY is identical to the colored border polygon — guaranteed correct.
+  const HIT_POLY = borderPath;
   hit.endFill();
   hit.hitArea     = new PIXI.Polygon(HIT_POLY);
   hit.interactive = true;
@@ -1949,19 +1944,16 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // HQ: sc,sr is the CENTER tile. Subtract 1 to get top-left, matching green border.
+      // HQ: use the exact same polygon as the colored border — guaranteed match.
       if (tile.isHQ) {
-        const elev = 0;
-        const tl = sc - 1, tt = sr - 1;
-        const path = [
-          isoXY(tl,   tt  ).cx,           isoXY(tl,   tt  ).cy - elev,
-          isoXY(tl+2, tt  ).cx + TW/2,    isoXY(tl+2, tt  ).cy - elev + TH/2,
-          isoXY(tl+2, tt+2).cx,           isoXY(tl+2, tt+2).cy - elev + TH,
-          isoXY(tl,   tt+2).cx - TW/2,    isoXY(tl,   tt+2).cy - elev + TH/2,
-        ];
-        selGfx.lineStyle(3, 0xffffff, 0.95);
-        selGfx.drawPolygon(path);
-        selGfx.lineStyle(0);
+        // Find the HQ group in hqCont and reuse its pre-computed border points
+        const hqGroup = hqContRef.current?.children?.find(g => g.__hqKey === key);
+        const pts = hqGroup?.__borderPts;
+        if (pts) {
+          selGfx.lineStyle(3, 0xffffff, 0.95);
+          selGfx.drawPolygon(pts);
+          selGfx.lineStyle(0);
+        }
         return;
       }
 
@@ -2449,9 +2441,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           const wx = (t.clientX-rect.left-panRef.current.x)/zoomRef.current;
           const wy = (t.clientY-rect.top -panRef.current.y)/zoomRef.current;
           const key = worldToKey(wx, wy, tilesRef.current);
-          const _u = wx - ROWS * TW / 2, _v = wy - TOP_PAD;
-          const _ce = Math.round((_u/(TW/2)+_v/(TH/2))/2), _re = Math.round((_v/(TH/2)-_u/(TW/2))/2);
-          console.log(`[TAP] wx=${Math.round(wx)} wy=${Math.round(wy)} est=${_ce},${_re} → key=${key} tile=${key ? JSON.stringify({isHQ:tilesRef.current[key]?.isHQ, isHQPart:tilesRef.current[key]?.isHQPart, isKeep:tilesRef.current[key]?.isKeep}) : 'null'}`);
           if (key) {
             // No keepPart redirect needed for P10+ (now single tile)
             const rawTile = tilesRef.current[key];
