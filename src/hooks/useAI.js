@@ -64,6 +64,7 @@ const tickAiMarch = useCallback((dispatches) => {
       return;
     }
     const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
+    console.log(`[AI March] DISPATCHED ${cmd.uid} (${cmd.faction}) → ${destKey} path length:${path.length} stepMs:${stepMs}`);
     updates.push({ uid, march: { type:"attack", path, step:0, dest:destKey, origin:cmd.tk, stepMs, lastStepTime:now } });
   });
 
