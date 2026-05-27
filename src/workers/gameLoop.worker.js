@@ -165,10 +165,76 @@ function tickAiRss() {
 }
 
 // ── AI march decision: 3000ms ──────────────────────────────────────────────
-// Just tells main thread to run its AI march logic (it owns pathfinding).
+// Runs frontier computation and candidate scoring in the worker.
+// Sends aiMarchReady for each commander that should march.
+const aiLastMarch = {}; // uid → timestamp
+const WIN_C = 922, WIN_R = 652; // map center win tile (matches shared/constants/map.js)
+
+function adj(c, r) {
+  const out = [];
+  if (c > 0)         out.push(`${c-1},${r}`);
+  if (c < 1844)      out.push(`${c+1},${r}`);
+  if (r > 0)         out.push(`${c},${r-1}`);
+  if (r < 1304)      out.push(`${c},${r+1}`);
+  return out;
+}
+
 function tickAiMarch() {
-  if (!snapshot?.aiFaction) return;
-  self.postMessage({ type: 'aiMarchCheck', now: Date.now() });
+  if (!snapshot?.aiFactionKeys?.length) return;
+  const { aiCmds, aiTileKeys, aiFactionKeys, tiles, CMD_MARCH_COOLDOWN_MS: COOLDOWN = 15000 } = snapshot;
+  if (!aiCmds?.length) return;
+
+  const now = Date.now();
+  const idleArmed = aiCmds.filter(c => !c.march && (c.troops || 0) > 0);
+  if (!idleArmed.length) return;
+
+  // Precompute frontier per faction
+  const factionFrontier = {};
+  for (const fk of aiFactionKeys) {
+    const ownedKeys = aiTileKeys?.[fk] || [];
+    const frontier = new Set();
+    for (const ownedKey of ownedKeys) {
+      const [oc, or_] = ownedKey.split(',').map(Number);
+      for (const k of adj(oc, or_)) {
+        if (!ownedKeys.includes(k)) frontier.add(k);
+      }
+    }
+    factionFrontier[fk] = [...frontier];
+  }
+
+  const toProcess = idleArmed.slice(0, 20);
+  const dispatches = [];
+
+  for (const cmd of toProcess) {
+    const lastMs = aiLastMarch[cmd.uid] || 0;
+    if (now - lastMs < COOLDOWN) continue;
+
+    const candidates = (factionFrontier[cmd.faction] || []).filter(k => {
+      if (!tiles) return true; // no tile data, allow all
+      return true; // tile passability checked on main thread via bfsPath
+    });
+    if (!candidates.length) continue;
+
+    const hqKey = cmd.hqKey;
+    const [hc, hr] = hqKey ? hqKey.split(',').map(Number) : [0, 0];
+
+    const scored = candidates.map(k => {
+      const [tc, tr] = k.split(',').map(Number);
+      const distToWin = Math.abs(tc - WIN_C) + Math.abs(tr - WIN_R);
+      const distToHq  = Math.abs(tc - hc) + Math.abs(tr - hr);
+      const resourceBonus = distToHq <= 4 ? -200 : 0; // prefer tiles near HQ
+      return { k, score: distToWin + resourceBonus + Math.random() * 30 };
+    });
+    scored.sort((a, b) => a.score - b.score);
+    const destKey = scored[0].k;
+
+    dispatches.push({ uid: cmd.uid, destKey, faction: cmd.faction });
+    aiLastMarch[cmd.uid] = now;
+  }
+
+  if (dispatches.length) {
+    self.postMessage({ type: 'aiMarchReady', dispatches, now });
+  }
 }
 
 // ── AI economy: 5000ms ────────────────────────────────────────────────────
