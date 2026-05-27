@@ -2448,6 +2448,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           const wx = (t.clientX-rect.left-panRef.current.x)/zoomRef.current;
           const wy = (t.clientY-rect.top -panRef.current.y)/zoomRef.current;
           const key = worldToKey(wx, wy, tilesRef.current);
+          console.log(`[TAP] wx=${Math.round(wx)} wy=${Math.round(wy)} → key=${key} tile=${key ? JSON.stringify({isHQ:tilesRef.current[key]?.isHQ, isHQPart:tilesRef.current[key]?.isHQPart, isKeep:tilesRef.current[key]?.isKeep}) : 'null'}`);
           if (key) {
             // No keepPart redirect needed for P10+ (now single tile)
             const rawTile = tilesRef.current[key];
