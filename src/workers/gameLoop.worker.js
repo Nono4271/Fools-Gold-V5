@@ -244,15 +244,12 @@ function tickAiMarch() {
       continue;
     }
 
-    const hqKey = cmd.hqKey;
-    const [hc, hr] = hqKey ? hqKey.split(',').map(Number) : [0, 0];
+    const [cc, cr] = cmd.tk.split(',').map(Number);
 
     const scored = candidates.map(k => {
       const [tc, tr] = k.split(',').map(Number);
-      const distToWin = Math.abs(tc - WIN_C) + Math.abs(tr - WIN_R);
-      const distToHq  = Math.abs(tc - hc) + Math.abs(tr - hr);
-      const resourceBonus = distToHq <= 4 ? -200 : 0; // prefer tiles near HQ
-      return { k, score: distToWin + resourceBonus + Math.random() * 30 };
+      const distToCmd = Math.abs(tc - cc) + Math.abs(tr - cr); // primary: nearest to commander
+      return { k, score: distToCmd + Math.random() * 3 }; // tiny random to avoid ties
     });
     scored.sort((a, b) => a.score - b.score);
     const destKey = scored[0].k;
