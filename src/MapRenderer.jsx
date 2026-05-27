@@ -79,10 +79,8 @@ function worldToKey(wx, wy, tiles) {
 
   function inHQFootprint(wx, wy, pc, pr) {
     const { cx, cy } = isoXY(pc, pr);
-    const ox = TW/2, oy = TH/2;
-    const midX = cx + ox;
-    const midY = cy - 4 + TH*0.5 + oy;
-    return Math.abs(wx - midX) / (TW * 1.5) + Math.abs(wy - midY) / (TH * 1.5) <= 1.0;
+    const midY = cy - 4;
+    return Math.abs(wx - cx) / TW + Math.abs(wy - midY) / TH <= 1.0;
   }
 
   // Scan ±3 tiles around estimate, checking large footprints first
@@ -218,16 +216,10 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // Keep and keepPart tiles render as plain ground. Gate tiles render with their terrain.
       // P10–P13 single-tile structures are handled in second pass below.
       // Static keeps (5x5) and HQs (3x3) are handled in their own passes.
-      if ((isKeep && !isGate) || isKeepPart || isHQPart || isHQ) {
-        const pl10 = (tile.powerLevel ?? 0) >= 10;
-        if (pl10) {
-          // P10–P13: skip in main pass — drawn at 2x size in second pass
-          continue;
-        } else {
-          // Static keep center and parts: skip — drawn as single 5x5 diamond in third pass
-          // HQ center and parts: skip — drawn as single 3x3 diamond in fourth pass
-          continue;
-        }
+      // isHQPart tiles render normally in main pass — fourth pass draws over them.
+      if ((isKeep && !isGate) || isKeepPart || isHQ) {
+        if ((tile.powerLevel ?? 0) >= 10) continue; // P10+ handled in second pass
+        continue; // keeps handled in third pass, HQ center in fourth pass
       }
 
       // ── Gate tiles: crossing / tollbridge / tunnel — distinct visuals ──────
@@ -601,13 +593,13 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (!tile || !tile.isHQ) continue;
       const { cx, cy } = isoXY(c, r);
       const elev = 4;
-      const ox = TW/2, oy = TH/2; // shift one tile SE
       const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
+      // 3x3 diamond: center tile is F_HQ, diamond extends 1 tile in each direction
       const HQ3 = [
-        cx + ox,          cy - elev - TH + oy,         // N
-        cx + TW*1.5 + ox, cy - elev + TH*0.5 + oy,    // E
-        cx + ox,          cy - elev + TH*2 + oy,       // S
-        cx - TW*1.5 + ox, cy - elev + TH*0.5 + oy,    // W
+        cx,          cy - elev - TH,         // N (1 tile above center)
+        cx + TW,     cy - elev,              // E (1 tile right of center)
+        cx,          cy - elev + TH,         // S (1 tile below center)
+        cx - TW,     cy - elev,              // W (1 tile left of center)
       ];
       gfx.beginFill(baseColor); gfx.drawPolygon(HQ3); gfx.endFill();
       gfx.lineStyle(0);
@@ -1959,12 +1951,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       if (tile.isHQ) {
         const { cx, cy } = isoXY(sc, sr);
         const elev = 4;
-        const ox = TW/2, oy = TH/2;
         const HQ3 = [
-          cx + ox,          cy - elev - TH + oy,
-          cx + TW*1.5 + ox, cy - elev + TH*0.5 + oy,
-          cx + ox,          cy - elev + TH*2 + oy,
-          cx - TW*1.5 + ox, cy - elev + TH*0.5 + oy,
+          cx,      cy - elev - TH,
+          cx + TW, cy - elev,
+          cx,      cy - elev + TH,
+          cx - TW, cy - elev,
         ];
         selGfx.lineStyle(3, 0xffffff, 0.95);
         selGfx.drawPolygon(HQ3);
