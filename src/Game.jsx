@@ -1521,6 +1521,7 @@ export default function RiseToWar() {
     })();
 
     if (isPlayerHqTile || isPlayerHqPartTile) {
+      console.log(`[HQ] popup triggered — key=${k} isHQ=${tile.isHQ} isHQPart=${tile.isHQPart} keepPrimaryKey=${tile.keepPrimaryKey}`);
       // Show HQ popup with Enter / Summon options
       const zoom = zoomRef.current;
       const elev = 14;
