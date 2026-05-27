@@ -191,12 +191,13 @@ export function useGameLoop({
           }))
         : [];
 
-      // Serialize aiTileKeysMap (Map<fk, Set<key>>) → plain object for worker
+      // Only serialize the player's faction tile keys — that's all we need for testing.
+      // Serializing all 8 factions × thousands of tiles every 500ms blocks the main thread.
+      const playerFk = factionRef_.current;
       const aiTileKeysObj = {};
-      if (aiFactionKeysRef_.current?.current) {
-        for (const [fk, keySet] of aiFactionKeysRef_.current.current) {
-          aiTileKeysObj[fk] = [...keySet];
-        }
+      if (playerFk && aiFactionKeysRef_.current?.current) {
+        const keySet = aiFactionKeysRef_.current.current.get(playerFk);
+        if (keySet) aiTileKeysObj[playerFk] = [...keySet];
       }
 
       // AI commander snapshot — march + econ fields
@@ -236,7 +237,7 @@ export function useGameLoop({
 
     // Send immediately on game start, then every 500ms
     sendSnapshot();
-    const id = setInterval(sendSnapshot, 500);
+    const id = setInterval(sendSnapshot, 2000);
     return () => clearInterval(id);
   }, [screen]); // screen only — no reactive state deps
 }
