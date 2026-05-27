@@ -1067,6 +1067,7 @@ export default function RiseToWar() {
           // Founders: create a new crew if they can afford it
           if (aiFoundersRef.current.has(playerId)) {
             const gems = aiGemsRef.current.get(playerId) ?? 0;
+            if (fk === facKey) console.log(`[CrewTicker] founder ${playerId} gems:${gems} inCrew:${inCrew.has(playerId)}`);
             if (gems >= CREW_COST) {
               const crewId   = `crew_ai_${playerId}_${Date.now()}`;
               const abbr     = fk.slice(0, 4).toUpperCase();
