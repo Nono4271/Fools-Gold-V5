@@ -71,6 +71,7 @@ const tickAiMarch = useCallback(() => {
   // Loop over ALL AI commanders, not just one per faction
   const aiCmds = curCmds.filter(c => c.owner === "ai" && c.faction && aiFactionKeys.includes(c.faction));
   const idleArmed = aiCmds.filter(c => !c.march && (c.troops || 0) > 0);
+  console.log(`[AI:march] total=${aiCmds.length} idleArmed=${idleArmed.length}`);
 
   for (const cmd of idleArmed) {
     const fk = cmd.faction;
@@ -78,11 +79,11 @@ const tickAiMarch = useCallback(() => {
     const lastMarch = aiLastMarchMapRef.current.get(fk) || new Map();
 
     const lastMs = lastMarch.get(cmd.uid) || 0;
-    if (now - lastMs < CMD_MARCH_COOLDOWN_MS) continue;
+    if (now - lastMs < CMD_MARCH_COOLDOWN_MS) { console.log(`[AI:march] ${cmd.uid} cooldown`); continue; }
 
     const [cc, cr] = cmd.tk.split(",").map(Number);
     const candidates = adj(cc, cr).filter(k => !tileKeys.has(k) && curTiles[k]);
-    if (!candidates.length) continue;
+    if (!candidates.length) { console.log(`[AI:march] ${cmd.uid} no candidates`); continue; }
 
     // Scoring: strongly prioritize the 3 HQ-adjacent resource tiles
     // (pl=1 = 1/hr, pl>=10 = 10/hr+) so low-level commanders level up fast.
