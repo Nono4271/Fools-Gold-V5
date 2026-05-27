@@ -82,7 +82,21 @@ const tickAiMarch = useCallback(() => {
     if (now - lastMs < CMD_MARCH_COOLDOWN_MS) { console.log(`[AI:march] ${cmd.uid} cooldown`); continue; }
 
     const [cc, cr] = cmd.tk.split(",").map(Number);
-    const candidates = adj(cc, cr).filter(k => !tileKeys.has(k) && curTiles[k]);
+    const cmdTile = curTiles[cmd.tk];
+    let candidates;
+    if (cmdTile?.isHQ || cmdTile?.isHQPart) {
+      // Commander on HQ — scan adj to all owned tiles so HQ parts don't block
+      const adjToOwned = new Set();
+      for (const ownedKey of tileKeys) {
+        const [oc, or_] = ownedKey.split(",").map(Number);
+        for (const k of adj(oc, or_)) {
+          if (!tileKeys.has(k)) adjToOwned.add(k);
+        }
+      }
+      candidates = [...adjToOwned].filter(k => curTiles[k]);
+    } else {
+      candidates = adj(cc, cr).filter(k => !tileKeys.has(k) && curTiles[k]);
+    }
     if (!candidates.length) { console.log(`[AI:march] ${cmd.uid} no candidates`); continue; }
 
     // Scoring: strongly prioritize the 3 HQ-adjacent resource tiles
