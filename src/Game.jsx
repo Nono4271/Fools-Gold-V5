@@ -858,7 +858,7 @@ export default function RiseToWar() {
                 });
               });
               spawnedAiHqsRef.current.add(hqKey);
-              console.log(`[AI HQ] ${aiFk} → ${hqKey}`);
+              if (aiFk === facKey) console.log(`[AI HQ] Your faction (${aiFk}) closest AI → ${hqKey}`);
             }
             globalAiIdx++;
           });
