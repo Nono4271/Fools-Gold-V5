@@ -1088,6 +1088,7 @@ export default function RiseToWar() {
         }
 
         if (!newCrews.length && nextCrews === prevCrews) return prevCrews;
+        if (newCrews.length) console.log(`[Crew] ${newCrews.length} new crew(s) founded:`, newCrews.map(c => `${c.name} (${c.faction})`));
         return [...nextCrews, ...newCrews];
       });
     }, 30000);
@@ -1159,6 +1160,7 @@ export default function RiseToWar() {
     tiles,
     reinMarches,
     aiFaction,
+    playerFacKey: facKey,
     defeatedTilesRef,
     aiTileKeysMapRef,
     aiFactionKeys,
