@@ -78,11 +78,14 @@ function worldToKey(wx, wy, tiles) {
   }
 
   function inHQFootprint(wx, wy, pc, pr) {
-    // pc,pr = F_HQ center = same as pc in _buildOneHQ border system
-    const nY = isoXY(pc,   pr  ).cy;
-    const sY = isoXY(pc+2, pr+2).cy + TH;
-    const eX = isoXY(pc+2, pr  ).cx + TW/2;
-    const wX = isoXY(pc,   pr+2).cx - TW/2;
+    // Match only the actual 9 HQ tiles — center + 8 HQPART tiles
+    // Center is at (pc,pr), footprint spans pc-1..pc+1, pr-1..pr+1
+    // Use the tight diamond formed by those 9 tiles
+    const tl = isoXY(pc-1, pr-1); const br = isoXY(pc+1, pr+1);
+    const nY = tl.cy;
+    const sY = br.cy + TH;
+    const eX = isoXY(pc+1, pr-1).cx + TW/2;
+    const wX = isoXY(pc-1, pr+1).cx - TW/2;
     const midX = (eX + wX) / 2;
     const midY = (nY + sY) / 2;
     return Math.abs(wx - midX) / (eX - midX) + Math.abs(wy - midY) / (midY - nY) <= 1.0;
@@ -114,8 +117,11 @@ function worldToKey(wx, wy, tiles) {
         continue;
       }
 
-      // Skip parts — clicks register on the primary tile above
-      if (tile.isKeepPart || tile.isHQPart) continue;
+      // HQPart tiles — redirect click to HQ center
+      if (tile.isHQPart) {
+        if (tile.keepPrimaryKey) return tile.keepPrimaryKey;
+        continue;
+      }
 
       const elev = tile.isWin ? 10 : 4;
       if (inTile(wx, wy, c, r, elev)) return key;
