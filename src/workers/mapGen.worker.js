@@ -1783,25 +1783,23 @@ self.onmessage = function(e) {
   // main thread, this blocked the props idle callback for 10-15 seconds.
   const HQ_SIEGE = Math.round(50 * 100); // hqSiegeValue(0) × 100, stored ×100
   function stampHQFootprint(key, ownerCode) {
+    // key is the top-left of the 3x3 — center is at (hc+1, hr+1)
     const [hc, hr] = key.split(",").map(Number);
-    const centerIdx = hr*COLS + hc;
-    for (let dr = 0; dr < 3; dr++) {
-      for (let dc = 0; dc < 3; dc++) {
-        const idx = (hr+dr)*COLS + (hc+dc);
-        if (idx < 0 || idx >= SIZE) continue;
+    const cc = hc + 1, cr = hr + 1; // true center
+    const centerIdx = cr*COLS + cc;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const fc = cc+dc, fr = cr+dr;
+        if (fc < 0 || fr < 0 || fc >= COLS || fr >= ROWS) continue;
+        const idx = fr*COLS + fc;
         const isCenter = dc === 0 && dr === 0;
-        // Flags
         flagArr[idx] = (flagArr[idx] & ~(F_KEEP|F_KEEPPART|F_WIN)) | (isCenter ? F_HQ : F_HQPART);
-        // Ownership
         ownerArr[idx] = ownerCode;
-        // Keep primary key for border rendering
         if (!isCenter) keepPrimArr[idx] = centerIdx;
-        // Terrain — HQ footprint uses desert for better border visibility
         terrainArr[idx] = TERRAIN_ENC.desert;
-        rssArr[idx]     = 0;
-        // Garrison/siege — center tile gets full siege value, parts get 0
+        rssArr[idx] = 0;
         if (isCenter) {
-          garrisonArr[idx] = 0; // HQs start with no garrison troops
+          garrisonArr[idx] = 0;
           siegeArr[idx]    = HQ_SIEGE;
           siegeMaxArr[idx] = HQ_SIEGE;
         } else {
@@ -1811,6 +1809,8 @@ self.onmessage = function(e) {
         }
       }
     }
+    // Return the center key so spawnKeys records the correct tile
+    return `${cc},${cr}`;
   }
 
   const spawnKeys={}, usedKeys=new Set();
@@ -1824,9 +1824,10 @@ self.onmessage = function(e) {
       const reg = regions[i % regions.length];
       const key = randomSpawn(reg.key, usedKeys, flagArr, terrainArr, powerArr);
       if (key) {
-        keys.push(key);
+        const centerKey = stampHQFootprint(key, ownerCode);
+        keys.push(centerKey);
         usedKeys.add(key);
-        stampHQFootprint(key, ownerCode); // writes flags + owner + terrain + garrison + siege
+        usedKeys.add(centerKey);
       }
     }
     spawnKeys[fk] = keys; // array of up to 50 keys
