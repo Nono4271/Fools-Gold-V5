@@ -1367,39 +1367,6 @@ self.onmessage = function(e) {
   // Merge gate metadata from border painting (happened earlier)
   Object.assign(keepMeta, gateMeta);
 
-  // ── P10–P13: place BEFORE HQs — HQs will avoid F_KEEP tiles via randomSpawn ──
-  {
-    let p10Total = 0, p10Placed = 0, p10Demoted = 0;
-    for (let r2 = 0; r2 < ROWS; r2++) {
-      for (let c2 = 0; c2 < COLS; c2++) {
-        const idx2 = r2 * COLS + c2;
-        const pl2  = powerArr[idx2];
-        if (pl2 < 10) continue;
-        p10Total++;
-
-        let blocked = false;
-        if (flagArr[idx2] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER)) { blocked = true; }
-        if (!blocked && KEEP_FOOTPRINT_SET.has(`${c2},${r2}`)) { blocked = true; }
-        if (!blocked && ROAD_TILE_SET.has(idx2)) { blocked = true; }
-        if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
-
-        const siege2 = P10_SIEGE[pl2] ?? 8000;
-        flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
-        garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100);
-        siegeArr[idx2]    = siege2;
-        siegeMaxArr[idx2] = siege2;
-
-        keepMeta[`${c2},${r2}`] = {
-          keepName:      `P${pl2} Structure`,
-          garrisonWaves: 2,
-          cx: c2, cy: r2,
-        };
-        p10Placed++;
-      }
-    }
-    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed, ${p10Demoted} demoted to P9 (${p10Total > 0 ? Math.round(p10Placed/p10Total*100) : 0}% placed)`);
-  }
-
   for (const reg of REGION_LIST) {
     const idx = reg.cy*COLS + reg.cx;
     if (flagArr[idx] & (F_HQ | F_HQPART)) continue;
@@ -1437,6 +1404,43 @@ self.onmessage = function(e) {
         keepPrimArr[fi] = reg.cy*COLS+reg.cx;
       }
     }
+  }
+
+  // ── P10–P13: place AFTER static keeps and borders, BEFORE HQs ──────────────
+  {
+    let p10Total = 0, p10Placed = 0, p10Demoted = 0;
+    for (let r2 = 0; r2 < ROWS; r2++) {
+      for (let c2 = 0; c2 < COLS; c2++) {
+        const idx2 = r2 * COLS + c2;
+        const pl2  = powerArr[idx2];
+        if (pl2 < 10) continue;
+        p10Total++;
+
+        let blocked = false;
+        if (flagArr[idx2] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER)) { blocked = true; }
+        if (!blocked && KEEP_FOOTPRINT_SET.has(`${c2},${r2}`)) { blocked = true; }
+        if (!blocked && ROAD_TILE_SET.has(idx2)) { blocked = true; }
+        if (!blocked) {
+          const t = terrainArr[idx2];
+          if (t === TERRAIN_ENC.river || t === TERRAIN_ENC.rockymountain || t === TERRAIN_ENC.hellfire || t === TERRAIN_ENC.road) { blocked = true; }
+        }
+        if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
+
+        const siege2 = P10_SIEGE[pl2] ?? 8000;
+        flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
+        garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100);
+        siegeArr[idx2]    = siege2;
+        siegeMaxArr[idx2] = siege2;
+
+        keepMeta[`${c2},${r2}`] = {
+          keepName:      `P${pl2} Structure`,
+          garrisonWaves: 2,
+          cx: c2, cy: r2,
+        };
+        p10Placed++;
+      }
+    }
+    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed, ${p10Demoted} demoted to P9 (${p10Total > 0 ? Math.round(p10Placed/p10Total*100) : 0}% placed)`);
   }
 
   // Pre-own starter keeps
