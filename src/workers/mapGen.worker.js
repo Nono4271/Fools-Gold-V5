@@ -853,6 +853,8 @@ function randomSpawn(regionKey, usedKeys, flagArr, terrainArr, powerArr) {
     if (usedKeys.has(k)) continue;
     const [c, r] = k.split(",").map(Number);
     if (isAdjacentToHQ(c, r, usedKeys)) continue;
+    // Ensure full 3x3 footprint + 2-tile buffer fits within map bounds
+    if (c < 2 || r < 2 || c + 4 >= COLS || r + 4 >= ROWS) continue;
     // Re-check flags since HQs stamped earlier may have changed nearby tiles
     const fl = flagArr[r*COLS+c];
     if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) continue;
