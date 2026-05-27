@@ -20,8 +20,6 @@
 //   onTick(now)                   — update nowTick (HUD countdowns)
 
 import { useEffect, useRef } from 'react';
-import { FACTION_TROOPS } from '../shared/constants/troops.js';
-import { barracksCapacity, maxAvailLevel, upgCost, cmdCommand, rssRate } from '../shared/constants/buildings.js';
 
 export function useGameLoop({
   screen,
