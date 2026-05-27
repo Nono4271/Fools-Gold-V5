@@ -1414,7 +1414,7 @@ export default function RiseToWar() {
       const t = tiles[ak];
       if (!t) return false;
       if (t.owner === "player") return true;
-      if (t.owner === "ai" && t.faction === facKey) return true;
+      if (t.faction === facKey) return true; // same faction regardless of owner format
       const pid = t.ownerPlayerId || aiPlayerIdMapRef.current.get(ak);
       if (pid && crewmatePlayerIds.has(pid)) return true;
       return false;

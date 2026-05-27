@@ -144,12 +144,11 @@ function buildCByTile(cmds) {
 function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
   if (owner === "player") return 0x22cc55; // Bright green
   if (!owner) return null;
-  // Blue: AI tile owned by a crewmate (requires tile.ownerPlayerId)
-  const isCrew = owner === "ai" && ownerPlayerId && crewPids?.has(ownerPlayerId);
+  // Normalize: faction-string owners (e.g. "pirates") count as "ai" for tint purposes
+  const isAiOwned = owner === "ai" || (owner !== "player" && owner !== null);
+  // Blue: AI tile owned by a crewmate
+  const isCrew = isAiOwned && ownerPlayerId && crewPids?.has(ownerPlayerId);
   if (isCrew) return 0x2299ff;
-  if (owner === "ai" && ownerPlayerId && crewPids?.size > 0) {
-    console.log(`[ownerTint] MISS — ownerPlayerId:${ownerPlayerId} crewPids has it:${crewPids.has(ownerPlayerId)} crewPids sample:`, [...crewPids].slice(0,3));
-  }
   // Purple: same faction, not crew
   if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xaa44ff;
   return 0xdc3c28;
@@ -1557,11 +1556,12 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
 
     const curPlayerName = owner === "player" ? playerName : null;
     const ownerPlayerId = aiPlayerIdMap?.get(tileKey) || tile.ownerPlayerId || null;
-    const isCrew = !!(ownerPlayerId && crewPids?.has(ownerPlayerId));
-    if (owner === "ai" && tile.faction === playerFacKey && !isCrew) {
-      console.log(`[HQ Tint MISS] ${tileKey} ownerPlayerId:${ownerPlayerId} inMap:${aiPlayerIdMap?.has(tileKey)} crewPidsSize:${crewPids?.size} hasPid:${crewPids?.has(ownerPlayerId)}`);
+    const isAiOwned = owner === "ai" || (owner !== "player" && owner !== null);
+    const isCrew = !!(isAiOwned && ownerPlayerId && crewPids?.has(ownerPlayerId));
+    if (isAiOwned && tile.faction === playerFacKey && !isCrew) {
+      console.log(`[HQ Tint MISS] ${tileKey} owner:${owner} ownerPlayerId:${ownerPlayerId} inMap:${aiPlayerIdMap?.has(tileKey)} crewPidsSize:${crewPids?.size} hasPid:${crewPids?.has(ownerPlayerId)}`);
     }
-    if (owner === "ai" && tile.faction === playerFacKey && isCrew) {
+    if (isAiOwned && tile.faction === playerFacKey && isCrew) {
       console.log(`[HQ Tint HIT] ${tileKey} → BLUE`);
     }
     if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName && prev.isCrew === isCrew) continue;
@@ -1611,7 +1611,7 @@ function drawMarchLines(gfx, cmds, reinMarches, tiles) {
   (reinMarches || []).forEach(rm => drawPath(rm.path.slice(rm.step), 0x88aaff));
 }
 
-function drawCmdIcons(gfx, textCont, cmds, tiles) {
+function drawCmdIcons(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlayerIdMap) {
   gfx.clear();
   if (textCont) {
     const toDestroy = [...textCont.children];
@@ -1625,10 +1625,17 @@ function drawCmdIcons(gfx, textCont, cmds, tiles) {
     const elev = tile.isWin ? 10 : 4;
     const sy = cy - elev;
     const playerG = tileCmds.filter(c => c.owner === "player");
-    const aiG = tileCmds.filter(c => c.owner !== "player");
+    const allAiG  = tileCmds.filter(c => c.owner !== "player");
+    const friendlyG = allAiG.filter(c => {
+      if (c.faction === playerFacKey) return true;
+      const pid = c.ownerPlayerId || aiPlayerIdMap?.get(key);
+      return pid && crewPids?.has(pid);
+    });
+    const enemyG = allAiG.filter(c => !friendlyG.includes(c));
     const groups = [];
-    if (playerG.length) groups.push({ cmds: playerG, col: 0xf0dc3c });
-    if (aiG.length)     groups.push({ cmds: aiG,     col: 0xdd3322 });
+    if (playerG.length)   groups.push({ cmds: playerG,   col: 0xf0dc3c });
+    if (friendlyG.length) groups.push({ cmds: friendlyG, col: 0x2299ff });
+    if (enemyG.length)    groups.push({ cmds: enemyG,    col: 0xdd3322 });
     groups.forEach(({ cmds: grp, col }, gi) => {
       const ey = sy + TH * 0.72 - gi * 6;
       gfx.beginFill(col, 0.13); gfx.lineStyle(1.4, col, 1); gfx.drawEllipse(cx,ey,15,5); gfx.lineStyle(0); gfx.endFill();
@@ -2146,7 +2153,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     function redrawOverlays() {
       drawMarchLines(marchGfxRef.current, cmdsRef.current, reinRef.current, tilesRef.current);
-      drawCmdIcons(cmdGfxRef.current, cmdTextContRef.current, cmdsRef.current, tilesRef.current);
+      drawCmdIcons(cmdGfxRef.current, cmdTextContRef.current, cmdsRef.current, tilesRef.current, crewPidsRef.current, playerFacKeyRef.current, aiPlayerIdMapRef_.current);
     }
 
     function redrawHQs() {
