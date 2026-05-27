@@ -671,10 +671,12 @@ arrivedAI.forEach(async cmd => {
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
       patchTile(destKey, { owner:"ai", faction: cmd.faction, ownerPlayerId: cmd.ownerPlayerId || null, garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor((cmd.troops||0)*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
       floaty("⚠ ENEMY CAPTURED TILE!", "#dd3322", destKey);
+      console.log(`[AI Attack] ${cmd.n} (${cmd.faction}) → tile ${destKey} | result: WON (siege break) | tile captured: true`);
       if (destKey === WIN_KEY || isPlayerHQ) setWinner("ai");
       setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
     } else {
       patchTile(destKey, { siege:currentSiege-siegePower, resetAt:Date.now()+garrisonResetMs(defTile) });
+      console.log(`[AI Attack] ${cmd.n} (${cmd.faction}) → tile ${destKey} | result: SIEGE HIT (${siegePower}/${currentSiege}) | tile captured: false`);
       setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null, tk:originKey } : c));
     }
     return;
@@ -714,6 +716,7 @@ arrivedAI.forEach(async cmd => {
     return { ...updated, ...applyXp(updated, res.xpGain, null) };
   }));
   setBLog(p => [`${res.won?"🔴":"✅"} ENEMY ${cmd.n} Lv${cmd.lvl||5} ${res.won?"captured":"repelled"} tile`, ...p].slice(0, 99));
+  console.log(`[AI Attack] ${cmd.n} (${cmd.faction}) → tile ${destKey} | result: ${res.won ? "WON" : "LOST"} | tile captured: ${tileCaptured}`);
 });
 
 }, [cmds, screen, tileVersion, bldgs.walls]);
