@@ -2154,6 +2154,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     function redrawAllHQs() {
       if (!hqContRef.current) return;
+      console.log('[redrawAllHQs] called, allHqKeys:', allHqKeysRef.current?.length, 'crewPidsSize:', crewPidsRef.current?.size);
       buildHQLayer(hqContRef.current, tilesRef.current, selRef.current, (key, e) => {
         selRef.current = key;
         selGfx.clear();
