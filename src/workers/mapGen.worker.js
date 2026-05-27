@@ -1432,6 +1432,23 @@ self.onmessage = function(e) {
         siegeArr[idx2]    = siege2;
         siegeMaxArr[idx2] = siege2;
 
+        // Clear rss on the 3 tiles visually covered by the 2x diamond
+        for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
+          const nc = c2+dc, nr = r2+dr;
+          if (nc < COLS && nr < ROWS) rssArr[nr*COLS+nc] = 0;
+        }
+
+        // Clear rss on the 3 tiles visually covered by the 2x diamond so their props don't show
+        for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
+          const nc = c2+dc, nr = r2+dr;
+          if (nc >= 0 && nr >= 0 && nc < COLS && nr < ROWS) {
+            const ni = nr*COLS+nc;
+            if (!(flagArr[ni] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER))) {
+              rssArr[ni] = 0;
+            }
+          }
+        }
+
         keepMeta[`${c2},${r2}`] = {
           keepName:      `P${pl2} Structure`,
           garrisonWaves: 2,
