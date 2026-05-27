@@ -1705,12 +1705,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   useEffect(() => {
     crewPidsRef.current = crewmatePlayerIds ?? new Set();
     console.log('[crewPids] updated, size:', crewPidsRef.current.size, [...crewPidsRef.current].slice(0, 5));
-    // Clear the HQ sprite cache so off-screen and on-screen HQs all rebuild
-    // with the correct border color (purple → blue for crew members).
     clearHQCache();
-    // Force full redraw so tiles re-tint immediately
     redrawRef.current?.redraw?.();
-    redrawRef.current?.redrawHQs?.();
+    redrawRef.current?.redrawAllHQs?.();
   }, [crewmatePlayerIds]);
 
   useImperativeHandle(ref, () => ({
@@ -2149,10 +2146,24 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, vb);
     }
 
+    function redrawAllHQs() {
+      if (!hqContRef.current) return;
+      // No viewport culling — rebuilds every HQ regardless of position.
+      // Used when crew membership changes so off-screen HQs get correct tint.
+      buildHQLayer(hqContRef.current, tilesRef.current, selRef.current, (key, e) => {
+        selRef.current = key;
+        selGfx.clear();
+        drawSelection(key);
+        lastBoundsRef.current = null;
+        onTileClickRef.current(key, e);
+      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, null);
+    }
+
     redrawRef.current = {
       redraw,
       redrawOverlays,
       redrawHQs,
+      redrawAllHQs,
       markPropsDirty,
       clearSel: () => { selGfx.clear(); redrawHQs(); },
       redrawSelection: (key) => { selGfx.clear(); if (key) drawSelection(key); redrawHQs(); },
