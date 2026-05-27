@@ -1431,15 +1431,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   fillGfx.endFill();
   group.addChild(fillGfx);
 
-  // ── Selection outline ──
-  if (isSelected) {
-    const outlineGfx = new PIXI.Graphics();
-    const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-    outlineGfx.lineStyle(3, 0xffffff, 0.95);
-    outlineGfx.drawPolygon(FOOTPRINT);
-    outlineGfx.lineStyle(0);
-    group.addChild(outlineGfx);
-  }
+  // ── Selection outline handled by selGfx in drawSelection ──
 
   // ── Border (draw before sprite so sprite renders on top) ──
   const borderGfx = new PIXI.Graphics();
