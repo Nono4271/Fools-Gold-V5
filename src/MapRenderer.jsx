@@ -1417,16 +1417,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const wVertex = { x: blPt.cx - TW/2, y: blPt.cy - elev + TH/2 };
   
   const fillGfx = new PIXI.Graphics();
-  const terrainColor = 0xd4a574; // Desert/tan color
-  fillGfx.beginFill(terrainColor, 1.0);
-  fillGfx.drawPolygon([
-    nVertex.x, nVertex.y,
-    eVertex.x, eVertex.y,
-    sVertex.x, sVertex.y,
-    wVertex.x, wVertex.y,
-  ]);
-  fillGfx.endFill();
-  group.addChild(fillGfx);
+  const terrainColor = 0xd4a574;
 
   // ── Selection outline handled by selGfx in drawSelection ──
 
@@ -1439,6 +1430,12 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   borderPath.push(isoXY(pc + 2, pr).cx + TW/2, isoXY(pc + 2, pr).cy - elev + TH/2);
   borderPath.push(isoXY(pc + 2, pr + 2).cx, isoXY(pc + 2, pr + 2).cy - elev + TH);
   borderPath.push(isoXY(pc, pr + 2).cx - TW/2, isoXY(pc, pr + 2).cy - elev + TH/2);
+
+  // Fill uses same polygon as border — guaranteed alignment
+  fillGfx.beginFill(terrainColor, 1.0);
+  fillGfx.drawPolygon(borderPath);
+  fillGfx.endFill();
+  group.addChild(fillGfx);
   
   borderGfx.lineStyle(8, 0x000000, 0.8);
   borderGfx.drawPolygon(borderPath);
@@ -1504,7 +1501,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     const placeholderGfx = new PIXI.Graphics();
     const fc = ownerTint(owner, tile?.faction, playerFacKey, null, tile?.ownerPlayerId) ?? 0x888888;
     placeholderGfx.beginFill(fc, 0.3);
-    placeholderGfx.drawPolygon(FOOTPRINT);
+    placeholderGfx.drawPolygon(borderPath);
     placeholderGfx.endFill();
     group.addChild(placeholderGfx);
 
@@ -1565,12 +1562,9 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // ── Hit area ──
   const hit = new PIXI.Graphics();
   hit.beginFill(0xffffff, 0.001);
-  hit.drawPolygon(FOOTPRINT);
-  // Hit area matches the fourth pass fill geometry exactly (pc,pr = center)
-  // HIT_POLY is identical to the colored border polygon — guaranteed correct.
-  const HIT_POLY = borderPath;
+  hit.drawPolygon(borderPath);
   hit.endFill();
-  hit.hitArea     = new PIXI.Polygon(HIT_POLY);
+  hit.hitArea     = new PIXI.Polygon(borderPath);
   hit.interactive = true;
   hit.buttonMode  = true;
   hit.cursor      = "pointer";
