@@ -17,7 +17,7 @@ import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
 export default memo(function TilePopup({
   selKey, selTile, popupPos, popupMode, setPopupMode,
   onEnterHQ,
-  cmds, cmdsOnSel, marchingToSel, canAtk,
+  cmds, cmdsOnSel, marchingToSel, canAtk, crewmatePlayerIds,
   barracksPool, editArmyCmd, setEditArmyCmd,
   sliderVals, setSliderVals,
   deletingTiles, deletingSecsLeft, setDeletingTiles, setDeletingSecsLeft,
@@ -455,6 +455,9 @@ export default memo(function TilePopup({
 
           {selTile.owner!=="player" && !canAtk && !selTile.isWin && (
             <div style={{fontSize:7,color:"#5a4a3a",fontFamily:"'Crimson Pro',serif",fontStyle:"italic",marginTop:3,textAlign:"center"}}>Own an adjacent tile to attack</div>
+          )}
+          {selTile.owner!=="player" && canAtk && crewmatePlayerIds?.has(selTile.ownerPlayerId) && (
+            <div style={{fontSize:7,color:"#2299ff",fontFamily:"'Crimson Pro',serif",fontStyle:"italic",marginTop:3,textAlign:"center"}}>🤝 Crew territory — you can move here freely</div>
           )}
         </>)}
 
