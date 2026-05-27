@@ -78,15 +78,14 @@ function worldToKey(wx, wy, tiles) {
   }
 
   function inHQFootprint(wx, wy, pc, pr) {
-    // pc,pr = center tile (F_HQ). Matches existing border: N=(pc,pr), S=(pc+2,pr+2)
-    const nY = isoXY(pc, pr).cy;
+    // pc,pr = F_HQ center = same as pc in _buildOneHQ border system
+    const nY = isoXY(pc,   pr  ).cy;
     const sY = isoXY(pc+2, pr+2).cy + TH;
-    const eX = isoXY(pc+2, pr).cx + TW/2;
-    const midX = isoXY(pc, pr).cx;
+    const eX = isoXY(pc+2, pr  ).cx + TW/2;
+    const wX = isoXY(pc,   pr+2).cx - TW/2;
+    const midX = (eX + wX) / 2;
     const midY = (nY + sY) / 2;
-    const halfW = eX - midX;
-    const halfH = midY - nY;
-    return Math.abs(wx - midX) / halfW + Math.abs(wy - midY) / halfH <= 1.0;
+    return Math.abs(wx - midX) / (eX - midX) + Math.abs(wy - midY) / (midY - nY) <= 1.0;
   }
 
   // Scan ±3 tiles around estimate, checking large footprints first
@@ -1952,8 +1951,20 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // HQ: selection handled by existing HQ sprite system — skip here
-      if (tile.isHQ) return;
+      // HQ: match existing border geometry exactly (sc,sr = center = pc in _buildOneHQ)
+      if (tile.isHQ) {
+        const elev = 0;
+        const path = [
+          isoXY(sc,   sr  ).cx,           isoXY(sc,   sr  ).cy - elev,
+          isoXY(sc+2, sr  ).cx + TW/2,    isoXY(sc+2, sr  ).cy - elev + TH/2,
+          isoXY(sc+2, sr+2).cx,           isoXY(sc+2, sr+2).cy - elev + TH,
+          isoXY(sc,   sr+2).cx - TW/2,    isoXY(sc,   sr+2).cy - elev + TH/2,
+        ];
+        selGfx.lineStyle(3, 0xffffff, 0.95);
+        selGfx.drawPolygon(path);
+        selGfx.lineStyle(0);
+        return;
+      }
 
       // Skip keep parts and HQ parts (no individual selection)
       if (tile.isKeepPart || tile.isHQPart) return;
