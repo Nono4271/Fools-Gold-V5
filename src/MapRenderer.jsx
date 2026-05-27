@@ -210,10 +210,10 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // Keep and keepPart tiles render as plain ground. Gate tiles render with their terrain.
       // P10–P13 single-tile structures are handled in second pass below.
       // Static keeps (5x5) and HQs (3x3) are handled in their own passes.
-      // isHQPart tiles are skipped here — buildHQLayer/_buildOneHQ draws the full 3x3 footprint.
-      if ((isKeep && !isGate) || isKeepPart || isHQ || isHQPart) {
+      // isHQPart tiles render their terrain here but NOT their owner border — buildHQLayer draws that.
+      if ((isKeep && !isGate) || isKeepPart || isHQ) {
         if ((tile.powerLevel ?? 0) >= 10) continue; // P10+ handled in second pass
-        continue; // keeps handled in third pass, HQ tiles in buildHQLayer
+        continue; // keeps handled in third pass, HQ center in fourth pass
       }
 
       // ── Gate tiles: crossing / tollbridge / tunnel — distinct visuals ──────
@@ -1354,11 +1354,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
   
-  const fillGfx = new PIXI.Graphics();
-  const terrainColor = 0xd4a574;
-
-  // ── Selection outline handled by selGfx in drawSelection ──
-
   // ── Border (draw before sprite so sprite renders on top) ──
   const borderGfx = new PIXI.Graphics();
   const borderTint = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
@@ -1369,12 +1364,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   borderPath.push(isoXY(pc + 2, pr + 2).cx, isoXY(pc + 2, pr + 2).cy - elev + TH);
   borderPath.push(isoXY(pc, pr + 2).cx - TW/2, isoXY(pc, pr + 2).cy - elev + TH/2);
 
-  // Fill uses same polygon as border — guaranteed alignment
-  fillGfx.beginFill(terrainColor, 1.0);
-  fillGfx.drawPolygon(borderPath);
-  fillGfx.endFill();
-  group.addChild(fillGfx);
-  
   borderGfx.lineStyle(8, 0x000000, 0.8);
   borderGfx.drawPolygon(borderPath);
   borderGfx.lineStyle(0);
