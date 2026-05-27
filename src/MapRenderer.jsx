@@ -109,8 +109,9 @@ function worldToKey(wx, wy, tiles) {
         continue; // HQ clicks handled by PIXI hit area in buildHQLayer
       }
 
-      // HQPart tiles — also skip, PIXI hit area on the HQ sprite covers the full footprint
+      // HQPart tiles — route click to the primary HQ tile key
       if (tile.isHQPart) {
+        if (tile.hqPrimaryKey && inTile(wx, wy, c, r, 4)) return tile.hqPrimaryKey;
         continue;
       }
 
@@ -1400,7 +1401,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   };
   const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0 };
 
-  const baseW = TW * 2.2;
+  const baseW = TW * 0.22;  // TEST: scaled down 10x to confirm sprite overlap was blocking clicks
   const targetW = baseW * (off.scale || 1.0);
   const targetH = targetW * 0.80;
 
@@ -1413,6 +1414,8 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     sp.height = targetH;
     sp.x = spriteX;
     sp.y = spriteY;
+    sp.interactive = false; // hit area handled by borderPath polygon on the hit graphic
+    sp.interactiveChildren = false;
 
     sp.rotation = 0;
     sp.skew.x   = 0;
