@@ -78,17 +78,11 @@ function worldToKey(wx, wy, tiles) {
   }
 
   function inHQFootprint(wx, wy, pc, pr) {
-    // Match only the actual 9 HQ tiles — center + 8 HQPART tiles
-    // Center is at (pc,pr), footprint spans pc-1..pc+1, pr-1..pr+1
-    // Use the tight diamond formed by those 9 tiles
-    const tl = isoXY(pc-1, pr-1); const br = isoXY(pc+1, pr+1);
-    const nY = tl.cy;
-    const sY = br.cy + TH;
-    const eX = isoXY(pc+1, pr-1).cx + TW/2;
-    const wX = isoXY(pc-1, pr+1).cx - TW/2;
-    const midX = (eX + wX) / 2;
-    const midY = (nY + sY) / 2;
-    return Math.abs(wx - midX) / (eX - midX) + Math.abs(wy - midY) / (midY - nY) <= 1.0;
+    // Exactly the 9 HQ tiles: center (pc,pr) + 8 HQPART at pc±1,pr±1
+    // Diamond: N=top of (pc,pr-1), E=right of (pc+1,pr), S=bottom of (pc,pr+1), W=left of (pc-1,pr)
+    const { cx, cy } = isoXY(pc, pr);
+    const midY = cy + TH;
+    return Math.abs(wx - cx) / TW + Math.abs(wy - midY) / TH <= 1.0;
   }
 
   // Scan ±3 tiles around estimate, checking large footprints first
