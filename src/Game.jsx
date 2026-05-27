@@ -723,21 +723,25 @@ export default function RiseToWar() {
           // Override ownership only — all other data already correct from worker
           rawMap[playerSpawn] = Object.assign(Object.create(Object.getPrototypeOf(rawMap[playerSpawn])),
             rawMap[playerSpawn], { owner: "player", faction: facKey, defCmd: null, defeatedWaves: [], resetAt: null });
-          const [hc, hr] = playerSpawn.split(",").map(Number);
-          [[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]].forEach(([dc,dr]) => {
-            const fk = `${hc+dc},${hr+dr}`;
-            if (rawMap[fk]) {
-              const existing = rawMap[fk];
-              rawMap[fk] = Object.assign(Object.create(Object.getPrototypeOf(existing)),
-                existing, { owner: "player" });
+        // playerSpawn is the CENTER tile (cc,cr from map gen).
+        // Set owner on all 9 tiles: center ± 1 in c and r.
+        const [hc, hr] = playerSpawn.split(",").map(Number);
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              const fk = `${hc+dc},${hr+dr}`;
+              if (rawMap[fk]) {
+                const existing = rawMap[fk];
+                rawMap[fk] = Object.assign(Object.create(Object.getPrototypeOf(existing)),
+                  existing, { owner: "player" });
+              }
             }
-          });
+          }
           setPlayerHqKey(playerSpawn);
 
           // ── Diagnostic: log ownership/flags for the 5x5 area around the HQ center ──
           // Center tile = hc+1, hr+1 (playerSpawn is top-left of 3x3)
-          const diagCx = hc + 1, diagCy = hr + 1;
-          console.log(`[HQ Diag] Player HQ center: ${diagCx},${diagCy} | top-left spawn: ${playerSpawn}`);
+          const diagCx = hc, diagCy = hr;
+          console.log(`[HQ Diag] Player HQ center: ${diagCx},${diagCy}`);
           for (let dr = -2; dr <= 2; dr++) {
             for (let dc = -2; dc <= 2; dc++) {
               const tk = `${diagCx + dc},${diagCy + dr}`;
