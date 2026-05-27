@@ -452,6 +452,7 @@ export default function RiseToWar() {
   }, []);
 
   const minimapRedrawRef = useRef(null);
+  const lazySpawnRef = useRef(null); // set after lazySpawnAiCmds is defined below
   const panNotifyTimerRef = useRef(null);
   const onPanChange = useCallback(np => {
     panRef.current = np;
@@ -461,10 +462,10 @@ export default function RiseToWar() {
       panNotifyTimerRef.current = setTimeout(() => {
         panNotifyTimerRef.current = null;
         minimapRedrawRef.current?.();
-        lazySpawnAiCmds();
+        lazySpawnRef.current?.();
       }, 100);
     }
-  }, [lazySpawnAiCmds]);
+  }, []);
 
   const teleportTo = useCallback((tc, tr) => {
     const { cx, cy } = isoXY(tc, tr);
@@ -1013,6 +1014,7 @@ export default function RiseToWar() {
       setAiCmds(prev => [...prev, ...newCmds]);
     }
   }, [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  lazySpawnRef.current = lazySpawnAiCmds;
 
   // ── Crew coloring — crewmatePlayerIds ───────────────────────────────────
   // Set of ownerPlayerIds belonging to AI factions in the player's crew.
