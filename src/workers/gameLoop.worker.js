@@ -325,8 +325,10 @@ function tickAiEcon() {
     }
     for (const cmd of idleNoTroops) {
       if (newPool <= 0) break;
-      const cap    = _cmdCap(cmd.lvl || 5);
-      const assign = Math.min(cap, newPool); // fill to capacity
+      const commandSlots = _cmdCap(cmd.lvl || 5);
+      const troopsPerCommand = 0.01; // small troop rate — most troops per command
+      const cap = Math.floor(commandSlots / troopsPerCommand); // e.g. 18 slots / 0.01 = 1800
+      const assign = Math.min(cap, newPool);
       const branches = FALLBACK_BRANCHES[fk] || ['soldiers'];
       const brKey  = branches[Math.floor(Math.random() * branches.length)];
       cmdUpdates.push({ uid: cmd.uid, troops: assign, troopBranch: { faction: fk, branch: brKey, tier: 0 } });
