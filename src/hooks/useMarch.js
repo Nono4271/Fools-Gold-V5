@@ -646,6 +646,8 @@ useEffect(() => {
 useEffect(() => {
 if (screen !== "game") return;
 const arrivedAI = cmds.filter(c => c.owner === "ai" && c.march?.arrived && c.march?.type === "attack");
+const marchingAI = cmds.filter(c => c.owner === "ai" && c.march && !c.march.arrived);
+if (marchingAI.length) console.log(`[AI March] ${marchingAI.length} marching, ${arrivedAI.length} arrived`);
 if (!arrivedAI.length) return;
 
 arrivedAI.forEach(async cmd => {
