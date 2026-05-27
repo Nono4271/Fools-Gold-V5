@@ -1705,6 +1705,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const crewPidsRef = useRef(crewmatePlayerIds ?? new Set());
   useEffect(() => {
     crewPidsRef.current = crewmatePlayerIds ?? new Set();
+    console.log('[crewPids] updated, size:', crewPidsRef.current.size, [...crewPidsRef.current].slice(0, 5));
+    // Clear the HQ sprite cache so off-screen and on-screen HQs all rebuild
+    // with the correct border color (purple → blue for crew members).
+    clearHQCache();
     // Force full redraw so tiles re-tint immediately
     redrawRef.current?.redraw?.();
     redrawRef.current?.redrawHQs?.();

@@ -794,7 +794,7 @@ export default function RiseToWar() {
         // ── Assign per-HQ AI player IDs and seed first-HQ commanders ────────
         // Each of the 50 HQs per faction gets a stable ID: "ai_pirates_0" … "ai_pirates_49"
         // Economy (rss/bldgs/pool) stays shared per faction for performance.
-        // Commanders are spawned lazily as HQs enter the viewport (see lazySpawnAiCmds).
+        // Only the closest same-faction HQ gets commanders (spawned below). All others get none.
         // The first HQ per faction gets commanders immediately so the AI is active at start.
         const AI_STARTERS = {}; // { [fk]: [soldierHDef, veteranHDef] }
         for (const aiFk of Object.keys(newAiHqKeys)) {
@@ -838,9 +838,9 @@ export default function RiseToWar() {
               _tileStore[hqKey] = hqTile;
             }
 
-            // Spawn commanders for the first HQ of each faction immediately
-            // All others are spawned lazily when they enter the viewport
-            if (i === 0) {
+            // Only spawn commanders for the single closest HQ of the player's own faction.
+            // All other HQs (other factions, or further HQs of player's faction) get no commanders.
+            if (i === 0 && aiFk === facKey) {
               starters.forEach((h, si) => {
                 initialAiCmds.push({
                   ...h,
@@ -858,7 +858,7 @@ export default function RiseToWar() {
                 });
               });
               spawnedAiHqsRef.current.add(hqKey);
-              if (aiFk === facKey) console.log(`[AI HQ] Your faction (${aiFk}) closest AI → ${hqKey}`);
+              console.log(`[AI HQ] Active commander HQ → ${hqKey} (faction: ${aiFk})`);
             }
             globalAiIdx++;
           });
@@ -988,58 +988,9 @@ export default function RiseToWar() {
   floatyRef.current = floaty;
 
   // ── Lazy AI commander spawning ──────────────────────────────────────────
-  // Called on pan/zoom change. Spawns 2 commanders for any AI HQ that has
-  // entered the viewport and hasn't been spawned yet.
-  const lazySpawnAiCmds = useCallback(() => {
-    if (!mapReady) return;
-    const pan = panRef.current, zoom = zoomRef.current;
-    const TILE_BUFFER = 8; // tiles beyond screen edge to pre-spawn
-    // Convert viewport to world tile range (approximate)
-    const wxL = (-pan.x / zoom);
-    const wxR = (-pan.x + window.innerWidth)  / zoom;
-    const wyT = (-pan.y / zoom);
-    const wyB = (-pan.y + window.innerHeight) / zoom;
-
-    const newCmds = [];
-    for (const [fk, hqArr] of Object.entries(aiHqKeysRef.current)) {
-      const starters = [
-        HDEFS.find(h => h.faction === fk && h.rarity === "soldier"),
-        HDEFS.find(h => h.faction === fk && h.rarity === "veteran"),
-      ].filter(Boolean);
-
-      for (const hqKey of hqArr) {
-        if (spawnedAiHqsRef.current.has(hqKey)) continue;
-        const tile = tilesRef.current[hqKey];
-        if (!tile) continue;
-        const { cx, cy } = isoXY(tile.c, tile.r);
-        // Check if HQ is near the viewport
-        if (cx < wxL - TILE_BUFFER * 80 || cx > wxR + TILE_BUFFER * 80) continue;
-        if (cy < wyT - TILE_BUFFER * 53 || cy > wyB + TILE_BUFFER * 53) continue;
-
-        const playerId = aiPlayerIdMapRef.current.get(hqKey) || `ai_${fk}_x`;
-        spawnedAiHqsRef.current.add(hqKey);
-        starters.forEach((h, si) => {
-          newCmds.push({
-            ...h,
-            uid: `${playerId}_cmd${si}_${Date.now()}`,
-            id:  `${playerId}_cmd${si}`,
-            owner: "ai",
-            faction: fk,
-            ownerPlayerId: playerId,
-            tk: hqKey, hqKey,
-            troops: 0, troopBranch: null, troopSlots: [],
-            march: null, lvl: 5, xp: 0,
-            respectPoints: 0, respectLevel: 0,
-            skillPoints: {}, unspentSkillPoints: 5,
-            gear: { helmet:null, armor:null, bracers:null, accessory:null },
-          });
-        });
-      }
-    }
-    if (newCmds.length) {
-      setAiCmds(prev => [...prev, ...newCmds]);
-    }
-  }, [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Disabled: only the single closest same-faction HQ gets commanders (spawned at init).
+  // All other HQs exist on the map but have no commanders.
+  const lazySpawnAiCmds = useCallback(() => {}, []);
   lazySpawnRef.current = lazySpawnAiCmds;
 
   // ── Crew coloring — crewmatePlayerIds ───────────────────────────────────
@@ -1055,6 +1006,7 @@ export default function RiseToWar() {
       const fk = playerId.split("_")[1]; // "ai_pirates_3" → "pirates"
       if (members.has(playerId) || members.has(fk)) ids.add(playerId);
     }
+    console.log('[crewPids] recomputed, size:', ids.size, [...ids].slice(0, 5));
     return ids;
   }, [playerCrewId, crews]);
 
