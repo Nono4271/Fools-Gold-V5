@@ -109,18 +109,8 @@ function worldToKey(wx, wy, tiles) {
         continue; // HQ clicks handled by PIXI hit area in buildHQLayer
       }
 
-      // HQPart tiles — redirect click to HQ center only if click is within the HQ footprint
+      // HQPart tiles — also skip, PIXI hit area on the HQ sprite covers the full footprint
       if (tile.isHQPart) {
-        if (tile.keepPrimaryKey) {
-          const [hc, hr] = tile.keepPrimaryKey.split(",").map(Number);
-          // keepPrimaryKey is the CENTER tile; inHQFootprint expects top-left (hc-1, hr-1)
-          if (inHQFootprint(wx, wy, hc - 1, hr - 1)) {
-            console.log(`[HQ] isHQPart at ${c},${r} → redirect to ${tile.keepPrimaryKey}`);
-            return tile.keepPrimaryKey;
-          } else {
-            console.log(`[HQ] isHQPart at ${c},${r} → click NOT in footprint, skipping`);
-          }
-        }
         continue;
       }
 
