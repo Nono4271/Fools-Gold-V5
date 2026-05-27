@@ -1566,12 +1566,14 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   hit.beginFill(0xffffff, 0.001);
   hit.drawPolygon(FOOTPRINT);
   // Hit area matches the fourth pass fill geometry exactly (pc,pr = center)
-  // pc,pr is top-left; center is pc+1,pr+1. Diamond spans from N tip of (pc+1,pr) to S tip of (pc+1,pr+2).
+  // HIT_POLY matches the selection outline and green border geometry exactly.
+  // pc,pr is the top-left of the 3x3 (same as sc,sr in drawSelection).
+  const elev = 0;
   const HIT_POLY = [
-    isoXY(pc+1, pr  ).cx,           isoXY(pc+1, pr  ).cy,           // N
-    isoXY(pc+2, pr+1).cx + TW/2,    isoXY(pc+2, pr+1).cy + TH/2,   // E
-    isoXY(pc+1, pr+2).cx,           isoXY(pc+1, pr+2).cy + TH,      // S
-    isoXY(pc,   pr+1).cx - TW/2,    isoXY(pc,   pr+1).cy + TH/2,   // W
+    isoXY(pc,   pr  ).cx,           isoXY(pc,   pr  ).cy - elev,           // N
+    isoXY(pc+2, pr  ).cx + TW/2,    isoXY(pc+2, pr  ).cy - elev + TH/2,   // E
+    isoXY(pc+2, pr+2).cx,           isoXY(pc+2, pr+2).cy - elev + TH,     // S
+    isoXY(pc,   pr+2).cx - TW/2,    isoXY(pc,   pr+2).cy - elev + TH/2,   // W
   ];
   hit.endFill();
   hit.hitArea     = new PIXI.Polygon(HIT_POLY);
@@ -1581,7 +1583,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   hit.on("pointerdown", (e) => {
     if (isPanningRef?.current) return;
     e.stopPropagation();
-    console.log(`[HQ] PIXI pointerdown on HQ tileKey=${tileKey}`);
     onHQClick(tileKey, e.data?.originalEvent || e);
   });
   group.addChild(hit);
