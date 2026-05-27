@@ -213,7 +213,10 @@ function tickAiMarch() {
       if (!tiles) return true; // no tile data, allow all
       return true; // tile passability checked on main thread via bfsPath
     });
-    if (!candidates.length) continue;
+    if (!candidates.length) {
+      self.postMessage({ type: 'aiMarchNoCandidate', uid: cmd.uid, faction: cmd.faction, reason: 'no frontier tiles', now });
+      continue;
+    }
 
     const hqKey = cmd.hqKey;
     const [hc, hr] = hqKey ? hqKey.split(',').map(Number) : [0, 0];
