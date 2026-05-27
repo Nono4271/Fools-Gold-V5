@@ -70,9 +70,23 @@ function worldToKey(wx, wy, tiles) {
     return Math.abs(wx - cx) / TW + Math.abs(wy - (cy - elev + TH)) / TH <= 1.0;
   }
 
-  // Scan ±2 tiles around estimate, checking P10+ footprints first
-  for (let dr = -2; dr <= 2; dr++) {
-    for (let dc = -2; dc <= 2; dc++) {
+  function inKeepFootprint(wx, wy, pc, pr) {
+    // 5x5 diamond centered at (pc,pr): half-width=TW*2.5, half-height=TH*2.5
+    const { cx, cy } = isoXY(pc, pr);
+    const midY = cy - 4 + TH * 0.5;
+    return Math.abs(wx - cx) / (TW * 2.5) + Math.abs(wy - midY) / (TH * 2.5) <= 1.0;
+  }
+
+  function inHQFootprint(wx, wy, pc, pr) {
+    // 3x3 diamond centered at (pc,pr): half-width=TW*1.5, half-height=TH*1.5
+    const { cx, cy } = isoXY(pc, pr);
+    const midY = cy - 4 + TH * 0.5;
+    return Math.abs(wx - cx) / (TW * 1.5) + Math.abs(wy - midY) / (TH * 1.5) <= 1.0;
+  }
+
+  // Scan ±3 tiles around estimate, checking large footprints first
+  for (let dr = -3; dr <= 3; dr++) {
+    for (let dc = -3; dc <= 3; dc++) {
       const c = cEst + dc, r = rEst + dr;
       if (c < 0 || r < 0 || c >= COLS || r >= ROWS) continue;
       const key = `${c},${r}`;
@@ -82,25 +96,24 @@ function worldToKey(wx, wy, tiles) {
       const pl = tile.powerLevel ?? 0;
 
       if (pl >= 10 && tile.isKeep) {
-        // Single tile at 2x visual size — use 2x hitbox
         if (inP10Footprint(wx, wy, c, r)) return key;
         continue;
       }
 
-      // Static keep parts: return primary key if clicked
-      if (tile.isKeepPart && pl < 10) {
-        console.log(`[worldToKey] Keep part clicked: ${key}, primKey: ${tile.keepPrimaryKey}, pl: ${pl}`);
-        const primKey = tile.keepPrimaryKey || key;
-        const elev = 14; // Same as primary keep
-        if (inTile(wx, wy, c, r, elev)) {
-          console.log(`[worldToKey] Keep part hit! Returning: ${primKey}`);
-          return primKey;
-        }
+      if (tile.isKeep && !tile.isGate && pl < 10) {
+        if (inKeepFootprint(wx, wy, c, r)) return key;
         continue;
       }
 
-      // Static keeps and HQs use elevation 14
-      const elev = (tile.isHQ || tile.isKeep) ? 14 : tile.isWin ? 10 : 4;
+      if (tile.isHQ) {
+        if (inHQFootprint(wx, wy, c, r)) return key;
+        continue;
+      }
+
+      // Skip parts — clicks register on the primary tile above
+      if (tile.isKeepPart || tile.isHQPart) continue;
+
+      const elev = tile.isWin ? 10 : 4;
       if (inTile(wx, wy, c, r, elev)) return key;
     }
   }
@@ -203,33 +216,17 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
       // Keep and keepPart tiles render as plain ground. Gate tiles render with their terrain.
       // P10–P13 single-tile structures are handled in second pass below.
-      if ((isKeep && !isGate) || isKeepPart) {
+      // Static keeps (5x5) and HQs (3x3) are handled in their own passes.
+      if ((isKeep && !isGate) || isKeepPart || isHQPart || isHQ) {
         const pl10 = (tile.powerLevel ?? 0) >= 10;
         if (pl10) {
           // P10–P13: skip in main pass — drawn at 2x size in second pass
           continue;
         } else {
-          const { cx, cy } = isoXY(c, r);
-          const mid = cy + TH / 2;
-          const TOP = [cx, cy, cx+TW/2, mid, cx, cy+TH, cx-TW/2, mid];
-          const baseColor = getTileBaseColor(c, r, terrain || "grass");
-          // Outer ring of the 5×5 keep region (|dc|==2 or |dr|==2): apply 2.2 px
-          // overdraw stroke to cover black border seams from neighbouring tiles.
-          const primKey = tile.isKeep ? `${c},${r}` : tile.keepPrimaryKey;
-          if (primKey) {
-            const [pc, pr] = primKey.split(",").map(Number);
-            const isOuter = Math.abs(c - pc) === 2 || Math.abs(r - pr) === 2;
-            if (isOuter) {
-              const OD = 2.8;
-              gfx.lineStyle(OD * 2, baseColor, 1);
-              gfx.beginFill(baseColor); gfx.drawPolygon(TOP); gfx.endFill();
-              gfx.lineStyle(0);
-              continue;
-            }
-          }
-          gfx.beginFill(baseColor); gfx.drawPolygon(TOP); gfx.endFill();
+          // Static keep center and parts: skip — drawn as single 5x5 diamond in third pass
+          // HQ center and parts: skip — drawn as single 3x3 diamond in fourth pass
+          continue;
         }
-        continue;
       }
 
       // ── Gate tiles: crossing / tollbridge / tunnel — distinct visuals ──────
@@ -551,6 +548,70 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         const ot = ownerTint(owner2, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
         gfx.lineStyle(2, ot, 1.0);
         gfx.drawPolygon(MERGED);
+        gfx.lineStyle(0);
+      }
+    }
+  }
+
+  // ── Third pass: static keeps drawn as single 5x5 diamond ─────────────────
+  for (let d = dMin; d <= dMax + 4; d++) {
+    const cLo = Math.max(cMin, d - rMax);
+    const cHi = Math.min(cMax, d - rMin);
+    for (let c = cLo; c <= cHi; c++) {
+      const r = d - c;
+      if (r < rMin || r > rMax) continue;
+      const tile = tiles[`${c},${r}`];
+      if (!tile) continue;
+      const pl = tile.powerLevel ?? 0;
+      if (pl >= 10 || !tile.isKeep || tile.isGate || tile.isWin) continue;
+      // 5x5 diamond centered on data tile
+      const { cx, cy } = isoXY(c, r);
+      const elev = 4;
+      const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
+      const KEEP5 = [
+        cx,          cy - elev - TH * 2,       // N
+        cx + TW*2.5, cy - elev + TH * 0.5,    // E
+        cx,          cy - elev + TH * 3,       // S
+        cx - TW*2.5, cy - elev + TH * 0.5,    // W
+      ];
+      gfx.beginFill(baseColor); gfx.drawPolygon(KEEP5); gfx.endFill();
+      gfx.lineStyle(0);
+      // Owner tint
+      const owner3 = tile.owner || null;
+      if (owner3) {
+        const ot = ownerTint(owner3, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+        gfx.lineStyle(2, ot, 1.0);
+        gfx.drawPolygon(KEEP5);
+        gfx.lineStyle(0);
+      }
+    }
+  }
+
+  // ── Fourth pass: HQs drawn as single 3x3 diamond ──────────────────────────
+  for (let d = dMin; d <= dMax + 2; d++) {
+    const cLo = Math.max(cMin, d - rMax);
+    const cHi = Math.min(cMax, d - rMin);
+    for (let c = cLo; c <= cHi; c++) {
+      const r = d - c;
+      if (r < rMin || r > rMax) continue;
+      const tile = tiles[`${c},${r}`];
+      if (!tile || !tile.isHQ) continue;
+      const { cx, cy } = isoXY(c, r);
+      const elev = 4;
+      const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
+      const HQ3 = [
+        cx,          cy - elev - TH,          // N
+        cx + TW*1.5, cy - elev + TH * 0.5,   // E
+        cx,          cy - elev + TH * 2,      // S
+        cx - TW*1.5, cy - elev + TH * 0.5,   // W
+      ];
+      gfx.beginFill(baseColor); gfx.drawPolygon(HQ3); gfx.endFill();
+      gfx.lineStyle(0);
+      const owner4 = tile.owner || null;
+      if (owner4) {
+        const ot = ownerTint(owner4, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+        gfx.lineStyle(2, ot, 1.0);
+        gfx.drawPolygon(HQ3);
         gfx.lineStyle(0);
       }
     }
@@ -1877,25 +1938,40 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       // Static keeps (5×5): draw outline around full footprint
       if ((tile.isKeep && !tile.isGate) && pl < 10) {
         const { cx, cy } = isoXY(sc, sr);
-        // 5×5 keep: center ±2 tiles in each direction
-        // Draw merged diamond encompassing all 25 tiles
-        const MERGED = [
-          cx,          cy - TH * 2,   // N (2 tiles up)
-          cx + TW * 2, cy,             // E (2 tiles right)
-          cx,          cy + TH * 2,   // S (2 tiles down)
-          cx - TW * 2, cy,             // W (2 tiles left)
+        const elev = 4;
+        const KEEP5 = [
+          cx,          cy - elev - TH * 2,       // N
+          cx + TW*2.5, cy - elev + TH * 0.5,    // E
+          cx,          cy - elev + TH * 3,       // S
+          cx - TW*2.5, cy - elev + TH * 0.5,    // W
         ];
         selGfx.lineStyle(3, 0xffffff, 0.95);
-        selGfx.drawPolygon(MERGED);
+        selGfx.drawPolygon(KEEP5);
         selGfx.lineStyle(0);
         return;
       }
 
-      // Skip keep parts (they redirect to primary)
-      if (tile.isKeepPart) return;
-      
-      // Regular tiles, HQs, win tiles
-      const elev = (tile.isHQ || tile.isKeep) ? 14 : tile.isWin ? 10 : 4;
+      // HQ: draw 3x3 diamond outline
+      if (tile.isHQ) {
+        const { cx, cy } = isoXY(sc, sr);
+        const elev = 4;
+        const HQ3 = [
+          cx,          cy - elev - TH,          // N
+          cx + TW*1.5, cy - elev + TH * 0.5,   // E
+          cx,          cy - elev + TH * 2,      // S
+          cx - TW*1.5, cy - elev + TH * 0.5,   // W
+        ];
+        selGfx.lineStyle(3, 0xffffff, 0.95);
+        selGfx.drawPolygon(HQ3);
+        selGfx.lineStyle(0);
+        return;
+      }
+
+      // Skip keep parts and HQ parts (no individual selection)
+      if (tile.isKeepPart || tile.isHQPart) return;
+
+      // Regular tiles, win tiles
+      const elev = tile.isWin ? 10 : 4;
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
       const mid = sy2 + TH / 2;
