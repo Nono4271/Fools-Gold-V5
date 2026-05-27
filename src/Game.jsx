@@ -1121,11 +1121,9 @@ export default function RiseToWar() {
     sessionId,
   });
   const { tickAiRss, tickAiMarch, tickAiEcon } = useAI({
-    screen,
     aiFactionKeys,
     cmdsRef, tilesRef,
     aiRssMapRef, aiBldgsMapRef, aiPoolMapRef, aiTileKeysMapRef,
-    aiHqKeysRef,
     setCmds: setAiCmds,
     setAiRssMap, setAiBldgsMap, setAiPoolMap,
   });
@@ -1181,6 +1179,9 @@ export default function RiseToWar() {
     aiTileKeysMapRef,
     aiFactionKeys,
     aiPoolMapRef,
+    aiRssMapRef,
+    aiBldgsMapRef,
+    aiHqKeysRef,
     onSiegeReset: (changedKeys) => {
       let changed = false;
       changedKeys.forEach(k => {
