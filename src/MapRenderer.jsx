@@ -1314,16 +1314,18 @@ export function clearHQCache() { _hqStateCache.clear(); _hqKeyIndex.clear(); }
 
 function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids) {
   const [pc, pr] = tileKey.split(",").map(Number);
+  // tileKey is the CENTER tile. Top-left of the 3×3 is one step back.
+  const tlc = pc - 1, tlr = pr - 1;
   // Visual centre = middle tile of 3×3
-  const { cx: bx, cy: worldCY } = isoXY(pc + 1, pr + 1);
+  const { cx: bx, cy: worldCY } = isoXY(pc, pr);
   const elev = 0;
 
   // 3×3 outer diamond corners (for hit area + selection outline)
-  // N=(pc+1,pr), E=(pc+2,pr+1), S=(pc+1,pr+2), W=(pc,pr+1) — all shifted by elev
-  const nPt = isoXY(pc + 1, pr);
-  const ePt = isoXY(pc + 2, pr + 1);
-  const sPt = isoXY(pc + 1, pr + 2);
-  const wPt = isoXY(pc,     pr + 1);
+  // N=(tlc+1,tlr), E=(tlc+2,tlr+1), S=(tlc+1,tlr+2), W=(tlc,tlr+1)
+  const nPt = isoXY(tlc + 1, tlr);
+  const ePt = isoXY(tlc + 2, tlr + 1);
+  const sPt = isoXY(tlc + 1, tlr + 2);
+  const wPt = isoXY(tlc,     tlr + 1);
 
   // Sprite-aligned footprint — corners map to the 3x3 iso diamond.
   // rotation=0 so no trig needed; fractions derived from sprite dims + anchor.
@@ -1360,10 +1362,10 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const borderTint = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
   
   const borderPath = [];
-  borderPath.push(isoXY(pc, pr).cx, isoXY(pc, pr).cy - elev);
-  borderPath.push(isoXY(pc + 2, pr).cx + TW/2, isoXY(pc + 2, pr).cy - elev + TH/2);
-  borderPath.push(isoXY(pc + 2, pr + 2).cx, isoXY(pc + 2, pr + 2).cy - elev + TH);
-  borderPath.push(isoXY(pc, pr + 2).cx - TW/2, isoXY(pc, pr + 2).cy - elev + TH/2);
+  borderPath.push(isoXY(tlc, tlr).cx, isoXY(tlc, tlr).cy - elev);
+  borderPath.push(isoXY(tlc + 2, tlr).cx + TW/2, isoXY(tlc + 2, tlr).cy - elev + TH/2);
+  borderPath.push(isoXY(tlc + 2, tlr + 2).cx, isoXY(tlc + 2, tlr + 2).cy - elev + TH);
+  borderPath.push(isoXY(tlc, tlr + 2).cx - TW/2, isoXY(tlc, tlr + 2).cy - elev + TH/2);
 
   borderGfx.lineStyle(8, 0x000000, 0.8);
   borderGfx.drawPolygon(borderPath);
@@ -1401,7 +1403,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   };
   const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0 };
 
-  const baseW = TW * 0.22;  // TEST: scaled down 10x to confirm sprite overlap was blocking clicks
+  const baseW = TW * 2.2;
   const targetW = baseW * (off.scale || 1.0);
   const targetH = targetW * 0.80;
 
@@ -1414,8 +1416,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     sp.height = targetH;
     sp.x = spriteX;
     sp.y = spriteY;
-    sp.interactive = false; // hit area handled by borderPath polygon on the hit graphic
-    sp.interactiveChildren = false;
 
     sp.rotation = 0;
     sp.skew.x   = 0;
