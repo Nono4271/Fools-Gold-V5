@@ -1573,173 +1573,6 @@ self.onmessage = function(e) {
     else { if (c2>=0&&r1>=0&&c2<COLS&&r1<ROWS) ROAD_TILE_SET.add(r1*COLS+c2); }
   }
 
-  // ── P10–P13: place AFTER HQs and roads defined ───────────────────────────
-  // Spawn regions = the 24 faction HQ regions (3 per faction).
-  // Strategy per candidate tile:
-  //   1. Try placing in its own region (already the natural location)
-  //   2. On fail: try another tile in the same spawn region
-  //   3. On 2nd fail: relocate to a random non-spawn region tile with pl>=10
-  {
-    // Build set of spawn region keys
-    const HQ_REGION_KEYS = new Set();
-    for (const fk of ["pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
-      const regs = REGION_LIST.filter(r => r.factions && r.factions.includes(fk));
-      for (const reg of regs) HQ_REGION_KEYS.add(reg.key);
-    }
-
-    // Helper: check if a tile is valid for P10+ placement
-    const isP10Valid = (c, r) => {
-      if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return false;
-      const idx = r*COLS+c;
-      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER|F_HQ|F_HQPART)) return false;
-      if (KEEP_FOOTPRINT_SET.has(`${c},${r}`)) return false;
-      if (ROAD_TILE_SET.has(idx)) return false;
-      const t = terrainArr[idx];
-      if (t === TERRAIN_ENC.river || t === TERRAIN_ENC.rockymountain || t === TERRAIN_ENC.hellfire || t === TERRAIN_ENC.road) return false;
-      // Check 3 covered neighbors (SE)
-      for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
-        const nc = c+dc, nr = r+dr;
-        if (nc >= COLS || nr >= ROWS) return false;
-        const ni = nr*COLS+nc;
-        if (flagArr[ni] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER|F_HQ|F_HQPART)) return false;
-        if (ROAD_TILE_SET.has(ni)) return false;
-        const nt = terrainArr[ni];
-        if (nt === TERRAIN_ENC.river || nt === TERRAIN_ENC.rockymountain || nt === TERRAIN_ENC.hellfire || nt === TERRAIN_ENC.road) return false;
-        if (KEEP_FOOTPRINT_SET.has(`${nc},${nr}`)) return false;
-      }
-      // Check 3 NW neighbors (visual diamond extends that direction too)
-      for (const [dc, dr] of [[-1,0],[0,-1],[-1,-1]]) {
-        const nc = c+dc, nr = r+dr;
-        if (nc < 0 || nr < 0) continue;
-        const ni = nr*COLS+nc;
-        if (flagArr[ni] & (F_HQ|F_HQPART)) return false;
-      }
-      return true;
-    };
-
-    // Helper: stamp a P10+ tile
-    const stampP10 = (c, r, pl) => {
-      const idx = r*COLS+c;
-      const siege2 = P10_SIEGE[pl] ?? 8000;
-      flagArr[idx]     = (flagArr[idx] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
-      garrisonArr[idx] = Math.round(POWER_DEFS[pl].command * 100);
-      siegeArr[idx]    = siege2;
-      siegeMaxArr[idx] = siege2;
-      for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
-        const nc = c+dc, nr = r+dr;
-        if (nc < COLS && nr < ROWS) {
-          const ni = nr*COLS+nc;
-          rssArr[ni] = 0;
-          if (powerArr[ni] >= 10) powerArr[ni] = 9;
-          flagArr[ni] = (flagArr[ni] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
-        }
-      }
-      keepMeta[`${c},${r}`] = { keepName:`P${pl} Structure`, garrisonWaves:2, cx:c, cy:r };
-    };
-
-    // Build region membership lookup: idx -> regionKey
-    // (REGION_MAP already has regionID, use REGION_IDX_TO_KEY)
-
-    // Collect all non-spawn region tiles with pl>=10 for relocation pool
-    const relocPool = []; // [c, r, pl]
-
-    let p10Total = 0, p10Placed = 0, p10Relocated = 0, p10Demoted = 0;
-
-    // First pass: collect all candidates, try to place in own region
-    const deferred = []; // tiles that need relocation
-
-    for (let r2 = 0; r2 < ROWS; r2++) {
-      for (let c2 = 0; c2 < COLS; c2++) {
-        const idx2 = r2*COLS+c2;
-        const pl2  = powerArr[idx2];
-        if (pl2 < 10) continue;
-        p10Total++;
-
-        // Get this tile's region
-        const regIdx = REGION_MAP[idx2];
-        const regKey = regIdx ? REGION_IDX_TO_KEY[regIdx] : null;
-        const inSpawnRegion = regKey && HQ_REGION_KEYS.has(regKey);
-
-        if (isP10Valid(c2, r2)) {
-          if (inSpawnRegion) {
-            stampP10(c2, r2, pl2);
-            p10Placed++;
-          } else {
-            // Not in spawn region — add to reloc pool
-            relocPool.push([c2, r2, pl2]);
-          }
-        } else {
-          if (inSpawnRegion) {
-            // Failed in spawn region — try another tile in same region
-            deferred.push([c2, r2, pl2, regKey]);
-          } else {
-            powerArr[idx2] = 9;
-            p10Demoted++;
-          }
-        }
-      }
-    }
-
-    // Second pass: try deferred spawn-region tiles in same region, then relocate
-    for (const [c2, r2, pl2, regKey] of deferred) {
-      if (powerArr[r2*COLS+c2] < 10) continue; // already stamped/demoted
-
-      // Try another valid tile in same region
-      const reg = REGION_LIST.find(r => r.key === regKey);
-      let placed = false;
-      if (reg) {
-        // Search within a radius around region center
-        const searchR = 15;
-        for (let dr = -searchR; dr <= searchR && !placed; dr++) {
-          for (let dc = -searchR; dc <= searchR && !placed; dc++) {
-            const nc = reg.cx+dc, nr = reg.cy+dr;
-            if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS) continue;
-            const ni = nr*COLS+nc;
-            if (powerArr[ni] < 10) continue;
-            const nRegIdx = REGION_MAP[ni];
-            const nRegKey = nRegIdx ? REGION_IDX_TO_KEY[nRegIdx] : null;
-            if (nRegKey !== regKey) continue;
-            if (!isP10Valid(nc, nr)) continue;
-            stampP10(nc, nr, powerArr[ni]);
-            powerArr[r2*COLS+c2] = 9; // demote original
-            p10Placed++;
-            p10Relocated++;
-            placed = true;
-          }
-        }
-      }
-
-      if (!placed) {
-        // Try relocating to non-spawn region from pool
-        while (relocPool.length > 0 && !placed) {
-          const [rc, rr, rpl] = relocPool.shift();
-          const ri = rr*COLS+rc;
-          if (powerArr[ri] < 10) continue; // already used
-          if (!isP10Valid(rc, rr)) continue;
-          stampP10(rc, rr, rpl);
-          powerArr[r2*COLS+c2] = 9;
-          p10Placed++;
-          p10Relocated++;
-          placed = true;
-        }
-        if (!placed) {
-          powerArr[r2*COLS+c2] = 9;
-          p10Demoted++;
-        }
-      }
-    }
-
-    // Place remaining reloc pool tiles that are valid
-    for (const [rc, rr, rpl] of relocPool) {
-      if (powerArr[rr*COLS+rc] < 10) continue;
-      if (!isP10Valid(rc, rr)) { powerArr[rr*COLS+rc] = 9; p10Demoted++; continue; }
-      stampP10(rc, rr, rpl);
-      p10Placed++;
-    }
-
-    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed (${p10Relocated} relocated), ${p10Demoted} demoted`);
-  }
-  
   // Stamp roads into the map
   const stampRoad = (c, r) => {
     if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return;
@@ -1838,6 +1671,119 @@ self.onmessage = function(e) {
       }
     }
     spawnKeys[fk] = keys; // array of up to 50 keys
+  }
+
+  // ── P10–P13: place AFTER HQs stamped so F_HQ|F_HQPART flags are set ────────
+  {
+    const HQ_REGION_KEYS = new Set();
+    for (const fk of ["pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
+      const regs = REGION_LIST.filter(r => r.factions && r.factions.includes(fk));
+      for (const reg of regs) HQ_REGION_KEYS.add(reg.key);
+    }
+
+    const isP10Valid = (c, r) => {
+      if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return false;
+      const idx = r*COLS+c;
+      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER|F_HQ|F_HQPART)) return false;
+      if (KEEP_FOOTPRINT_SET.has(`${c},${r}`)) return false;
+      if (ROAD_TILE_SET.has(idx)) return false;
+      const t = terrainArr[idx];
+      if (t === TERRAIN_ENC.river || t === TERRAIN_ENC.rockymountain || t === TERRAIN_ENC.hellfire || t === TERRAIN_ENC.road) return false;
+      for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
+        const nc = c+dc, nr = r+dr;
+        if (nc >= COLS || nr >= ROWS) return false;
+        const ni = nr*COLS+nc;
+        if (flagArr[ni] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER|F_HQ|F_HQPART)) return false;
+        if (ROAD_TILE_SET.has(ni)) return false;
+        const nt = terrainArr[ni];
+        if (nt === TERRAIN_ENC.river || nt === TERRAIN_ENC.rockymountain || nt === TERRAIN_ENC.hellfire || nt === TERRAIN_ENC.road) return false;
+        if (KEEP_FOOTPRINT_SET.has(`${nc},${nr}`)) return false;
+      }
+      return true;
+    };
+
+    const stampP10 = (c, r, pl) => {
+      const idx = r*COLS+c;
+      const siege2 = P10_SIEGE[pl] ?? 8000;
+      flagArr[idx]     = (flagArr[idx] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
+      garrisonArr[idx] = Math.round(POWER_DEFS[pl].command * 100);
+      siegeArr[idx]    = siege2;
+      siegeMaxArr[idx] = siege2;
+      for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
+        const nc = c+dc, nr = r+dr;
+        if (nc < COLS && nr < ROWS) {
+          const ni = nr*COLS+nc;
+          rssArr[ni] = 0;
+          if (powerArr[ni] >= 10) powerArr[ni] = 9;
+          flagArr[ni] = (flagArr[ni] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
+        }
+      }
+      keepMeta[`${c},${r}`] = { keepName:`P${pl} Structure`, garrisonWaves:2, cx:c, cy:r };
+    };
+
+    const relocPool = [];
+    let p10Total = 0, p10Placed = 0, p10Relocated = 0, p10Demoted = 0;
+    const deferred = [];
+
+    for (let r2 = 0; r2 < ROWS; r2++) {
+      for (let c2 = 0; c2 < COLS; c2++) {
+        const idx2 = r2*COLS+c2;
+        const pl2  = powerArr[idx2];
+        if (pl2 < 10) continue;
+        p10Total++;
+        const regIdx = REGION_MAP[idx2];
+        const regKey = regIdx ? REGION_IDX_TO_KEY[regIdx] : null;
+        const inSpawnRegion = regKey && HQ_REGION_KEYS.has(regKey);
+        if (isP10Valid(c2, r2)) {
+          if (inSpawnRegion) { stampP10(c2, r2, pl2); p10Placed++; }
+          else { relocPool.push([c2, r2, pl2]); }
+        } else {
+          if (inSpawnRegion) { deferred.push([c2, r2, pl2, regKey]); }
+          else { powerArr[idx2] = 9; p10Demoted++; }
+        }
+      }
+    }
+
+    for (const [c2, r2, pl2, regKey] of deferred) {
+      if (powerArr[r2*COLS+c2] < 10) continue;
+      const reg = REGION_LIST.find(r => r.key === regKey);
+      let placed = false;
+      if (reg) {
+        const searchR = 15;
+        for (let dr = -searchR; dr <= searchR && !placed; dr++) {
+          for (let dc = -searchR; dc <= searchR && !placed; dc++) {
+            const nc = reg.cx+dc, nr = reg.cy+dr;
+            if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS) continue;
+            const ni = nr*COLS+nc;
+            if (powerArr[ni] < 10) continue;
+            const nRegIdx = REGION_MAP[ni];
+            if ((nRegIdx ? REGION_IDX_TO_KEY[nRegIdx] : null) !== regKey) continue;
+            if (!isP10Valid(nc, nr)) continue;
+            stampP10(nc, nr, powerArr[ni]);
+            powerArr[r2*COLS+c2] = 9;
+            p10Placed++; p10Relocated++; placed = true;
+          }
+        }
+      }
+      if (!placed) {
+        while (relocPool.length > 0 && !placed) {
+          const [rc, rr, rpl] = relocPool.shift();
+          if (powerArr[rr*COLS+rc] < 10 || !isP10Valid(rc, rr)) continue;
+          stampP10(rc, rr, rpl);
+          powerArr[r2*COLS+c2] = 9;
+          p10Placed++; p10Relocated++; placed = true;
+        }
+        if (!placed) { powerArr[r2*COLS+c2] = 9; p10Demoted++; }
+      }
+    }
+
+    for (const [rc, rr, rpl] of relocPool) {
+      if (powerArr[rr*COLS+rc] < 10) continue;
+      if (!isP10Valid(rc, rr)) { powerArr[rr*COLS+rc] = 9; p10Demoted++; continue; }
+      stampP10(rc, rr, rpl); p10Placed++;
+    }
+
+    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed (${p10Relocated} relocated), ${p10Demoted} demoted`);
   }
 
   postMessage({ type:"progress", pct:98, label:"Finishing up..." });
