@@ -181,8 +181,7 @@ function getTileBaseColor(c, r, terrain) {
 
 function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null) {
   if (!window.__rangeLogged) {
-    console.log(`MapRenderer bounds: r[${rMin}, ${rMax}], c[${cMin}, ${cMax}]`);
-    console.log(`First gate should be around: 205,1211`);
+
     window.__rangeLogged = true;
   }
   gfx.clear();
@@ -198,14 +197,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
       const { terrain, owner, isHQ, isWin, isKeep, isKeepPart, isHQPart, isShore, isGate, crossingType, crossingAxis } = tile;
 
-      // Debug: count gates
-      if (isGate) {
-        if (!window.__totalGatesRendered) window.__totalGatesRendered = 0;
-        window.__totalGatesRendered++;
-        if (window.__totalGatesRendered <= 5) {
-          console.log(`Tile ${c},${r}: isGate=${isGate}, isKeep=${isKeep}, ct=${crossingType}, axis=${crossingAxis}`);
-        }
-      }
+
 
       if (isShore) {
         const { cx, cy } = isoXY(c, r);
@@ -232,14 +224,6 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         const TOP = [cx, sy, cx+TW/2, mid, cx, sy+TH, cx-TW/2, mid];
         const ct  = crossingType;
         const axis = crossingAxis;
-        // Debug: inspect first few gate tiles
-        if (isGate) {
-          if (!window.__gateInspectCount) window.__gateInspectCount = 0;
-          if (window.__gateInspectCount < 5) {
-            console.log(`Tile ${c},${r}: isGate=${isGate}, isKeep=${isKeep}, ct=${ct}, axis=${axis}`);
-            window.__gateInspectCount++;
-          }
-        }
         const key = `${c},${r}`;
         const isSel   = selKey === key;
         const hasCmds = Boolean(cByTile[key]?.length);
@@ -582,37 +566,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
     }
   }
 
-  // ── Fourth pass: HQs drawn as single 3x3 diamond ──────────────────────────
-  // F_HQ is at the CENTER of the 3x3. Diamond corners are the outer tips of
-  // the 4 adjacent tiles: N=(c,r-1) top, E=(c+1,r) right, S=(c,r+1) bottom, W=(c-1,r) left.
-  for (let d = dMin; d <= dMax + 2; d++) {
-    const cLo = Math.max(cMin, d - rMax);
-    const cHi = Math.min(cMax, d - rMin);
-    for (let c = cLo; c <= cHi; c++) {
-      const r = d - c;
-      if (r < rMin || r > rMax) continue;
-      const tile = tiles[`${c},${r}`];
-      if (!tile || !tile.isHQ) continue;
-      const elev = 0;
-      const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
-      // Exact same geometry as existing HQ border (pc=center=c,r)
-      const HQ3 = [
-        isoXY(c,   r  ).cx,           isoXY(c,   r  ).cy - elev,
-        isoXY(c+2, r  ).cx + TW/2,    isoXY(c+2, r  ).cy - elev + TH/2,
-        isoXY(c+2, r+2).cx,           isoXY(c+2, r+2).cy - elev + TH,
-        isoXY(c,   r+2).cx - TW/2,    isoXY(c,   r+2).cy - elev + TH/2,
-      ];
-      gfx.beginFill(baseColor); gfx.drawPolygon(HQ3); gfx.endFill();
-      gfx.lineStyle(0);
-      const owner4 = tile.owner || null;
-      if (owner4) {
-        const ot = ownerTint(owner4, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
-        gfx.lineStyle(2, ot, 1.0);
-        gfx.drawPolygon(HQ3);
-        gfx.lineStyle(0);
-      }
-    }
-  }
+  // ── Fourth pass: HQs are fully rendered by buildHQLayer/_buildOneHQ ─────────
+  // No additional drawing needed here.
 }
 
 function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
@@ -1398,23 +1353,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
-
-  // Draw solid fill - use the outermost vertices from the 4 corner tiles
-  // Top-left corner tile (pc, pr) - use its top vertex
-  const tlPt = isoXY(pc, pr);
-  const nVertex = { x: tlPt.cx, y: tlPt.cy - elev };
-  
-  // Top-right corner tile (pc+2, pr) - use its right vertex  
-  const trPt = isoXY(pc + 2, pr);
-  const eVertex = { x: trPt.cx + TW/2, y: trPt.cy - elev + TH/2 };
-  
-  // Bottom-right corner tile (pc+2, pr+2) - use its bottom vertex
-  const brPt = isoXY(pc + 2, pr + 2);
-  const sVertex = { x: brPt.cx, y: brPt.cy - elev + TH };
-  
-  // Bottom-left corner tile (pc, pr+2) - use its left vertex
-  const blPt = isoXY(pc, pr + 2);
-  const wVertex = { x: blPt.cx - TW/2, y: blPt.cy - elev + TH/2 };
   
   const fillGfx = new PIXI.Graphics();
   const terrainColor = 0xd4a574;
@@ -1714,7 +1652,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles) {
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
 export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds }, ref) {
-  console.log("🔥 MAPRENDERER LOADED - GATE DEBUG VERSION 🔥");
+
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
   const worldRef       = useRef(null);
