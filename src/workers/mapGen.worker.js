@@ -1426,6 +1426,11 @@ self.onmessage = function(e) {
         }
         if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
 
+        // Debug: verify this tile isn't a road (should never happen)
+        if (ROAD_TILE_SET.has(idx2)) {
+          console.warn(`[P10+ BUG] Tile ${c2},${r2} passed blocked check but is in ROAD_TILE_SET`);
+        }
+
         const siege2 = P10_SIEGE[pl2] ?? 8000;
         flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
         garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100);
@@ -1433,9 +1438,15 @@ self.onmessage = function(e) {
         siegeMaxArr[idx2] = siege2;
 
         // Clear rss on the 3 tiles visually covered by the 2x diamond
+        // and demote their powerArr so they can't spawn their own P10+ structure
         for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
           const nc = c2+dc, nr = r2+dr;
-          if (nc < COLS && nr < ROWS) rssArr[nr*COLS+nc] = 0;
+          if (nc < COLS && nr < ROWS) {
+            const ni = nr*COLS+nc;
+            rssArr[ni] = 0;
+            if (powerArr[ni] >= 10) powerArr[ni] = 9;
+            flagArr[ni] = (flagArr[ni] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
+          }
         }
 
         // Clear rss on the 3 tiles visually covered by the 2x diamond so their props don't show
