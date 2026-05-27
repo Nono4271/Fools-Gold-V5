@@ -92,7 +92,7 @@ const F_BORDER   = 1<<8;  // border terrain tile (impassable, not a gate)
 
 // ── Region list — 1850×1300 design space ──────────────────────────────────────
 const REGION_LIST = [
-  { key:"shadowmere", name:"Skullcove", layer:"farm", keepName:"Skullcove Keep", cx:102, cy:1232, factions:["pirates"] },
+  { key:"shadowmere", name:"Skullcove", layer:"farm", keepName:"Skullcove Keep", cx:102, cy:1232, factions:[] },
   { key:"icepeak", name:"Salthaven", layer:"farm", keepName:"Salthaven Keep", cx:307, cy:1232, factions:["pirates"] },
   { key:"frosthold", name:"Deadmans Harbor", layer:"start", keepName:"Deadmans Harbor Keep", cx:512, cy:1232, factions:["pirates"] },
   { key:"icebreak", name:"Blackbrine", layer:"farm", keepName:"Blackbrine Keep", cx:717, cy:1232, factions:["pirates"] },
@@ -100,7 +100,7 @@ const REGION_LIST = [
   { key:"shadowmire", name:"Wraithmoor", layer:"farm", keepName:"Wraithmoor Keep", cx:1127, cy:1232, factions:["ashen_dead"] },
   { key:"duskmire", name:"Bonehallow", layer:"start", keepName:"Bonehallow Keep", cx:1332, cy:1232, factions:["ashen_dead"] },
   { key:"shadowfen", name:"Ghosthollow", layer:"farm", keepName:"Ghosthollow Keep", cx:1537, cy:1232, factions:["ashen_dead"] },
-  { key:"gravemist", name:"Gravemist", layer:"farm", keepName:"Gravemist Keep", cx:1742, cy:1232, factions:["ashen_dead"] },
+  { key:"gravemist", name:"Gravemist", layer:"farm", keepName:"Gravemist Keep", cx:1742, cy:1232, factions:[] },
   { key:"flamecrestpeak", name:"Bloodrock", layer:"start", keepName:"Bloodrock Keep", cx:102, cy:1087, factions:["orcs"] },
   { key:"ebonvault", name:"Battlemarsh", layer:"farm", keepName:"Battlemarsh Keep", cx:410, cy:1087, factions:["orcs"] },
   { key:"wraithmoor", name:"Nightmarsh", layer:"farm", keepName:"Nightmarsh Keep", cx:717, cy:1087, factions:[] },
@@ -109,13 +109,13 @@ const REGION_LIST = [
   { key:"fellwood", name:"Steelwatch", layer:"farm", keepName:"Steelwatch Keep", cx:1435, cy:1087, factions:["holyknights"] },
   { key:"arcaneum", name:"Oathkeep", layer:"start", keepName:"Oathkeep Keep", cx:1742, cy:1087, factions:["holyknights"] },
   { key:"cursedfen", name:"Wargrim", layer:"farm", keepName:"Wargrim Keep", cx:102, cy:870, factions:["orcs"] },
-  { key:"rotmire", name:"Warbane", layer:"farm", keepName:"Warbane Keep", cx:307, cy:942, factions:["orcs"] },
+  { key:"rotmire", name:"Warbane", layer:"farm", keepName:"Warbane Keep", cx:307, cy:942, factions:[] },
   { key:"blightmoor", name:"Blightmoor", layer:"farm", keepName:"Blightmoor Keep", cx:512, cy:942, factions:[] },
   { key:"skullcrag", name:"Skullcrag", layer:"farm", keepName:"Skullcrag Keep", cx:717, cy:942, factions:[] },
   { key:"ghosthollow", name:"Fellwood", layer:"farm", keepName:"Fellwood Keep", cx:922, cy:942, factions:[] },
   { key:"doomspire", name:"Doomspire", layer:"farm", keepName:"Doomspire Keep", cx:1127, cy:942, factions:[] },
   { key:"duskwood", name:"Duskwood", layer:"farm", keepName:"Duskwood Keep", cx:1332, cy:942, factions:[] },
-  { key:"gloomvale", name:"Stoneheart", layer:"farm", keepName:"Stoneheart Keep", cx:1537, cy:942, factions:["holyknights"] },
+  { key:"gloomvale", name:"Stoneheart", layer:"farm", keepName:"Stoneheart Keep", cx:1537, cy:942, factions:[] },
   { key:"nightmarsh", name:"Lightshield", layer:"farm", keepName:"Lightshield Keep", cx:1742, cy:870, factions:["holyknights"] },
   { key:"cryptwood", name:"Cryptwood", layer:"farm", keepName:"Cryptwood Keep", cx:307, cy:797, factions:[] },
   { key:"bonewood", name:"Bonewood", layer:"farm", keepName:"Bonewood Keep", cx:512, cy:797, factions:[] },
@@ -137,13 +137,13 @@ const REGION_LIST = [
   { key:"tidecrag", name:"Tidecrag", layer:"farm", keepName:"Tidecrag Keep", cx:1332, cy:507, factions:[] },
   { key:"warbane", name:"Stormwatch", layer:"farm", keepName:"Stormwatch Keep", cx:1537, cy:507, factions:[] },
   { key:"lightshield", name:"Ebonvault", layer:"farm", keepName:"Ebonvault Keep", cx:102, cy:435, factions:["dragons"] },
-  { key:"emberfang", name:"Emberfang", layer:"farm", keepName:"Emberfang Keep", cx:307, cy:362, factions:["dragons"] },
+  { key:"emberfang", name:"Emberfang", layer:"farm", keepName:"Emberfang Keep", cx:307, cy:362, factions:[] },
   { key:"spellspire", name:"Thornvale", layer:"farm", keepName:"Thornvale Keep", cx:512, cy:362, factions:[] },
   { key:"runestone", name:"Rotmire", layer:"farm", keepName:"Rotmire Keep", cx:717, cy:362, factions:[] },
   { key:"skullcove", name:"Dreadmarsh", layer:"farm", keepName:"Dreadmarsh Keep", cx:922, cy:362, factions:[] },
   { key:"blackbrine", name:"Ironwood", layer:"farm", keepName:"Ironwood Keep", cx:1127, cy:362, factions:[] },
   { key:"mysticfen", name:"Deepwater", layer:"farm", keepName:"Deepwater Keep", cx:1332, cy:362, factions:[] },
-  { key:"salthaven", name:"Runestone", layer:"farm", keepName:"Runestone Keep", cx:1537, cy:362, factions:["wizards"] },
+  { key:"salthaven", name:"Runestone", layer:"farm", keepName:"Runestone Keep", cx:1537, cy:362, factions:[] },
   { key:"deepwater", name:"Spellspire", layer:"farm", keepName:"Spellspire Keep", cx:1742, cy:435, factions:["wizards"] },
   { key:"bloodrock", name:"Flamecrest Peak", layer:"start", keepName:"Flamecrest Peak Keep", cx:102, cy:217, factions:["dragons"] },
   { key:"fogmire", name:"Fogmire", layer:"farm", keepName:"Fogmire Keep", cx:410, cy:217, factions:["dragons"] },
@@ -152,7 +152,7 @@ const REGION_LIST = [
   { key:"voidmarsh", name:"Voidmarsh", layer:"farm", keepName:"Voidmarsh Keep", cx:1127, cy:217, factions:[] },
   { key:"stoneheart", name:"Mysticfen", layer:"farm", keepName:"Mysticfen Keep", cx:1435, cy:217, factions:["wizards"] },
   { key:"oathkeep", name:"Arcaneum", layer:"start", keepName:"Arcaneum Keep", cx:1742, cy:217, factions:["wizards"] },
-  { key:"ashenmark", name:"Icefall", layer:"farm", keepName:"Icefall Keep", cx:102, cy:72, factions:["coldborns"] },
+  { key:"ashenmark", name:"Icefall", layer:"farm", keepName:"Icefall Keep", cx:102, cy:72, factions:[] },
   { key:"dreadmarsh", name:"Icepeak", layer:"farm", keepName:"Icepeak Keep", cx:307, cy:72, factions:["coldborns"] },
   { key:"deadmansharbor", name:"Frosthold", layer:"start", keepName:"Frosthold Keep", cx:512, cy:72, factions:["coldborns"] },
   { key:"ironwood", name:"Icebreak", layer:"farm", keepName:"Icebreak Keep", cx:717, cy:72, factions:["coldborns"] },
@@ -160,18 +160,18 @@ const REGION_LIST = [
   { key:"finalhope", name:"Shadowmere", layer:"farm", keepName:"Shadowmere Keep", cx:1127, cy:72, factions:["nightcreatures"] },
   { key:"bonehallow", name:"Duskmire", layer:"start", keepName:"Duskmire Keep", cx:1332, cy:72, factions:["nightcreatures"] },
   { key:"dawngate", name:"Shadowfen", layer:"farm", keepName:"Shadowfen Keep", cx:1537, cy:72, factions:["nightcreatures"] },
-  { key:"twilightspire", name:"Shadowmire", layer:"farm", keepName:"Shadowmire Keep", cx:1742, cy:72, factions:["nightcreatures"] },
+  { key:"twilightspire", name:"Shadowmire", layer:"farm", keepName:"Shadowmire Keep", cx:1742, cy:72, factions:[] },
 ];
 
 const FACTION_REGIONS = {
-  ashen_dead     : { start:"duskmire",       farm:"shadowmire" },
-  coldborns      : { start:"deadmansharbor", farm:"icepeak" },
-  dragons        : { start:"bloodrock",      farm:"ebonvault" },
-  holyknights    : { start:"arcaneum",       farm:"stoneheart" },
-  nightcreatures : { start:"bonehallow",     farm:"shadowmire" },
-  orcs           : { start:"flamecrestpeak", farm:"fogmire" },
-  pirates        : { start:"frosthold",      farm:"ironwood" },
-  wizards        : { start:"oathkeep",       farm:"fellwood" },
+  coldborns      : { start:"deadmansharbor" },
+  nightcreatures : { start:"bonehallow"     },
+  dragons        : { start:"bloodrock"      },
+  wizards        : { start:"oathkeep"       },
+  orcs           : { start:"flamecrestpeak" },
+  pirates        : { start:"frosthold"      },
+  ashen_dead     : { start:"duskmire"       },
+  holyknights    : { start:"arcaneum"       },
 };
 
 const KEEP_SET = new Set(REGION_LIST.map(r => `${r.cx},${r.cy}`));
@@ -1573,65 +1573,164 @@ self.onmessage = function(e) {
     else { if (c2>=0&&r1>=0&&c2<COLS&&r1<ROWS) ROAD_TILE_SET.add(r1*COLS+c2); }
   }
 
-  // ── P10–P13: place AFTER roads defined, BEFORE roads stamped ─────────────
+  // ── P10–P13: place AFTER HQs and roads defined ───────────────────────────
+  // Spawn regions = the 24 faction HQ regions (3 per faction).
+  // Strategy per candidate tile:
+  //   1. Try placing in its own region (already the natural location)
+  //   2. On fail: try another tile in the same spawn region
+  //   3. On 2nd fail: relocate to a random non-spawn region tile with pl>=10
   {
-    let p10Total = 0, p10Placed = 0, p10Demoted = 0;
+    // Build set of spawn region keys
+    const HQ_REGION_KEYS = new Set();
+    for (const fk of ["pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns","ashen_dead"]) {
+      const regs = REGION_LIST.filter(r => r.factions && r.factions.includes(fk));
+      for (const reg of regs) HQ_REGION_KEYS.add(reg.key);
+    }
+
+    // Helper: check if a tile is valid for P10+ placement
+    const isP10Valid = (c, r) => {
+      if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return false;
+      const idx = r*COLS+c;
+      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER|F_HQ|F_HQPART)) return false;
+      if (KEEP_FOOTPRINT_SET.has(`${c},${r}`)) return false;
+      if (ROAD_TILE_SET.has(idx)) return false;
+      const t = terrainArr[idx];
+      if (t === TERRAIN_ENC.river || t === TERRAIN_ENC.rockymountain || t === TERRAIN_ENC.hellfire || t === TERRAIN_ENC.road) return false;
+      // Check 3 covered neighbors
+      for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
+        const nc = c+dc, nr = r+dr;
+        if (nc >= COLS || nr >= ROWS) return false;
+        const ni = nr*COLS+nc;
+        if (flagArr[ni] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER|F_HQ|F_HQPART)) return false;
+        if (ROAD_TILE_SET.has(ni)) return false;
+        const nt = terrainArr[ni];
+        if (nt === TERRAIN_ENC.river || nt === TERRAIN_ENC.rockymountain || nt === TERRAIN_ENC.hellfire || nt === TERRAIN_ENC.road) return false;
+        if (KEEP_FOOTPRINT_SET.has(`${nc},${nr}`)) return false;
+      }
+      return true;
+    };
+
+    // Helper: stamp a P10+ tile
+    const stampP10 = (c, r, pl) => {
+      const idx = r*COLS+c;
+      const siege2 = P10_SIEGE[pl] ?? 8000;
+      flagArr[idx]     = (flagArr[idx] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
+      garrisonArr[idx] = Math.round(POWER_DEFS[pl].command * 100);
+      siegeArr[idx]    = siege2;
+      siegeMaxArr[idx] = siege2;
+      for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
+        const nc = c+dc, nr = r+dr;
+        if (nc < COLS && nr < ROWS) {
+          const ni = nr*COLS+nc;
+          rssArr[ni] = 0;
+          if (powerArr[ni] >= 10) powerArr[ni] = 9;
+          flagArr[ni] = (flagArr[ni] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
+        }
+      }
+      keepMeta[`${c},${r}`] = { keepName:`P${pl} Structure`, garrisonWaves:2, cx:c, cy:r };
+    };
+
+    // Build region membership lookup: idx -> regionKey
+    // (REGION_MAP already has regionID, use REGION_IDX_TO_KEY)
+
+    // Collect all non-spawn region tiles with pl>=10 for relocation pool
+    const relocPool = []; // [c, r, pl]
+
+    let p10Total = 0, p10Placed = 0, p10Relocated = 0, p10Demoted = 0;
+
+    // First pass: collect all candidates, try to place in own region
+    const deferred = []; // tiles that need relocation
+
     for (let r2 = 0; r2 < ROWS; r2++) {
       for (let c2 = 0; c2 < COLS; c2++) {
-        const idx2 = r2 * COLS + c2;
+        const idx2 = r2*COLS+c2;
         const pl2  = powerArr[idx2];
         if (pl2 < 10) continue;
         p10Total++;
 
-        let blocked = false;
-        if (flagArr[idx2] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER)) { blocked = true; }
-        if (!blocked && KEEP_FOOTPRINT_SET.has(`${c2},${r2}`)) { blocked = true; }
-        if (!blocked && ROAD_TILE_SET.has(idx2)) { blocked = true; }
-        if (!blocked) {
-          const t = terrainArr[idx2];
-          if (t === TERRAIN_ENC.river || t === TERRAIN_ENC.rockymountain || t === TERRAIN_ENC.hellfire || t === TERRAIN_ENC.road) { blocked = true; }
-        }
-        // Also check the 3 tiles the 2x diamond visually covers
-        if (!blocked) {
-          for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
-            const nc = c2+dc, nr = r2+dr;
-            if (nc >= COLS || nr >= ROWS) continue;
-            const ni = nr*COLS+nc;
-            if (flagArr[ni] & (F_KEEP|F_KEEPPART|F_GATE|F_BORDER)) { blocked = true; break; }
-            if (ROAD_TILE_SET.has(ni)) { blocked = true; break; }
-            const t = terrainArr[ni];
-            if (t === TERRAIN_ENC.river || t === TERRAIN_ENC.rockymountain || t === TERRAIN_ENC.hellfire || t === TERRAIN_ENC.road) { blocked = true; break; }
-            if (KEEP_FOOTPRINT_SET.has(`${nc},${nr}`)) { blocked = true; break; }
+        // Get this tile's region
+        const regIdx = REGION_MAP[idx2];
+        const regKey = regIdx ? REGION_IDX_TO_KEY[regIdx] : null;
+        const inSpawnRegion = regKey && HQ_REGION_KEYS.has(regKey);
+
+        if (isP10Valid(c2, r2)) {
+          if (inSpawnRegion) {
+            stampP10(c2, r2, pl2);
+            p10Placed++;
+          } else {
+            // Not in spawn region — add to reloc pool
+            relocPool.push([c2, r2, pl2]);
+          }
+        } else {
+          if (inSpawnRegion) {
+            // Failed in spawn region — try another tile in same region
+            deferred.push([c2, r2, pl2, regKey]);
+          } else {
+            powerArr[idx2] = 9;
+            p10Demoted++;
           }
         }
-        if (blocked) { powerArr[idx2] = 9; p10Demoted++; continue; }
-
-        const siege2 = P10_SIEGE[pl2] ?? 8000;
-        flagArr[idx2]     = (flagArr[idx2] & ~(F_KEEPPART|F_HQ|F_HQPART)) | F_KEEP;
-        garrisonArr[idx2] = Math.round(POWER_DEFS[pl2].command * 100);
-        siegeArr[idx2]    = siege2;
-        siegeMaxArr[idx2] = siege2;
-
-        // Clear rss and demote powerArr on the 3 visually covered tiles
-        for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
-          const nc = c2+dc, nr = r2+dr;
-          if (nc < COLS && nr < ROWS) {
-            const ni = nr*COLS+nc;
-            rssArr[ni] = 0;
-            if (powerArr[ni] >= 10) powerArr[ni] = 9;
-            flagArr[ni] = (flagArr[ni] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
-          }
-        }
-
-        keepMeta[`${c2},${r2}`] = {
-          keepName:      `P${pl2} Structure`,
-          garrisonWaves: 2,
-          cx: c2, cy: r2,
-        };
-        p10Placed++;
       }
     }
-    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed, ${p10Demoted} demoted to P9 (${p10Total > 0 ? Math.round(p10Placed/p10Total*100) : 0}% placed)`);
+
+    // Second pass: try deferred spawn-region tiles in same region, then relocate
+    for (const [c2, r2, pl2, regKey] of deferred) {
+      if (powerArr[r2*COLS+c2] < 10) continue; // already stamped/demoted
+
+      // Try another valid tile in same region
+      const reg = REGION_LIST.find(r => r.key === regKey);
+      let placed = false;
+      if (reg) {
+        // Search within a radius around region center
+        const searchR = 15;
+        for (let dr = -searchR; dr <= searchR && !placed; dr++) {
+          for (let dc = -searchR; dc <= searchR && !placed; dc++) {
+            const nc = reg.cx+dc, nr = reg.cy+dr;
+            if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS) continue;
+            const ni = nr*COLS+nc;
+            if (powerArr[ni] < 10) continue;
+            const nRegIdx = REGION_MAP[ni];
+            const nRegKey = nRegIdx ? REGION_IDX_TO_KEY[nRegIdx] : null;
+            if (nRegKey !== regKey) continue;
+            if (!isP10Valid(nc, nr)) continue;
+            stampP10(nc, nr, powerArr[ni]);
+            powerArr[r2*COLS+c2] = 9; // demote original
+            p10Placed++;
+            p10Relocated++;
+            placed = true;
+          }
+        }
+      }
+
+      if (!placed) {
+        // Try relocating to non-spawn region from pool
+        while (relocPool.length > 0 && !placed) {
+          const [rc, rr, rpl] = relocPool.shift();
+          const ri = rr*COLS+rc;
+          if (powerArr[ri] < 10) continue; // already used
+          if (!isP10Valid(rc, rr)) continue;
+          stampP10(rc, rr, rpl);
+          powerArr[r2*COLS+c2] = 9;
+          p10Placed++;
+          p10Relocated++;
+          placed = true;
+        }
+        if (!placed) {
+          powerArr[r2*COLS+c2] = 9;
+          p10Demoted++;
+        }
+      }
+    }
+
+    // Place remaining reloc pool tiles that are valid
+    for (const [rc, rr, rpl] of relocPool) {
+      if (powerArr[rr*COLS+rc] < 10) continue;
+      if (!isP10Valid(rc, rr)) { powerArr[rr*COLS+rc] = 9; p10Demoted++; continue; }
+      stampP10(rc, rr, rpl);
+      p10Placed++;
+    }
+
+    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed (${p10Relocated} relocated), ${p10Demoted} demoted`);
   }
   
   // Stamp roads into the map
