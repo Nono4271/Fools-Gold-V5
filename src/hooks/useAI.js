@@ -138,6 +138,7 @@ const tickAiMarch = useCallback(() => {
 // Per-faction: assign troops to idle commanders at HQ, train, upgrade buildings.
 const tickAiEcon = useCallback(() => {
   if (!aiFactionKeys?.length) return;
+  console.log(`[AI:econ] aiFactionKeys=${JSON.stringify(aiFactionKeys)}`);
   const curCmds = cmdsRef.current;
   const hqKeys  = aiHqKeysRef.current || {};
 
