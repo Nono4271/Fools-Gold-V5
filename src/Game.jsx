@@ -46,6 +46,7 @@ import WinScreen from "./components/game/WinScreen.jsx";
 import Minimap from "./components/game/Minimap.jsx";
 import WizardsTomes, { ScrollStackIcon } from "./components/game/WizardsTomes.jsx";
 import GameBar from "./components/game/GameBar.jsx";
+import CrewPanel from "./components/game/CrewPanel.jsx";
 import CommanderScreen from "./components/screens/CommanderScreen.jsx";
 import GearScreen from "./components/screens/GearScreen.jsx";
 
@@ -171,6 +172,10 @@ export default function RiseToWar() {
   const [playerHqKey, setPlayerHqKey] = useState(null);
   const [rss,    setRss]     = useState({ stone:200_000, wood:200_000, ore:200_000, gas:200_000 });
   const [gems,   setGems]    = useState(20000);
+  const [crewOpen,      setCrewOpen]      = useState(false);
+  const [playerCrewId,  setPlayerCrewId]  = useState(null);
+  const [pendingCrewId, setPendingCrewId] = useState(null);
+  const [crews,         setCrews]         = useState([]);
 
   const [playerCmds, setPlayerCmds] = useState([]);
   const aiCmdsRef = useRef([]);
@@ -1949,9 +1954,30 @@ export default function RiseToWar() {
         zoomRef={zoomRef}
         mapRendererRef={mapRendererRef}
         voidTapReady={voidTapReady}
+        crewOpen={crewOpen} setCrewOpen={setCrewOpen} playerCrewId={playerCrewId}
       />
 
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
+
+      {crewOpen && (
+        <CrewPanel
+          onClose={() => setCrewOpen(false)}
+          crews={crews}
+          playerCrewId={playerCrewId}
+          pendingCrewId={pendingCrewId}
+          playerName={facName}
+          facKey={facKey}
+          playerGems={gems}
+          crewCreationCost={500}
+          onCreateCrew={(name, abbr) => {
+            const id = `crew_${Date.now()}`;
+            setCrews(prev => [...prev, { id, name, abbr, faction: facKey, members: [facName] }]);
+            setPlayerCrewId(id);
+          }}
+          onJoinRequest={(crewId) => setPendingCrewId(crewId)}
+          onLeaveCrew={() => { setPlayerCrewId(null); setPendingCrewId(null); }}
+        />
+      )}
 
     </div>
   );
