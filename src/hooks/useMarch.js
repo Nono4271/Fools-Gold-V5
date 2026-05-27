@@ -124,6 +124,8 @@ emitTileCapture, emitTileSiege,
 gatePartners,
 facKey,
 troopSkillLevels,
+crewmatePlayerIds,
+aiPlayerIdMap,
 }) {
 // Battle worker — runs simBattle off the main thread
 const { runBattle } = useBattle();
@@ -138,7 +140,15 @@ const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
 // any other tiles near the border.
 const hasPlayerFoothold = (destKey, originKey, tileMap) => {
   const [dc, dr] = destKey.split(",").map(Number);
-  if (adj(dc, dr).some(k => tileMap[k]?.owner === "player")) return true;
+  if (adj(dc, dr).some(k => {
+    const t = tileMap[k];
+    if (!t) return false;
+    if (t.owner === "player") return true;
+    if (t.owner === "ai" && t.faction === facKey) return true;
+    const pid = t.ownerPlayerId || aiPlayerIdMap?.get(k);
+    if (pid && crewmatePlayerIds?.has(pid)) return true;
+    return false;
+  })) return true;
   if (gatePartners?.[originKey] === destKey) return true;
   return false;
 };
@@ -673,8 +683,9 @@ arrivedAI.forEach(async cmd => {
     const currentSiege = defTile.siege ?? SIEGE_BASE;
     if (siegePower >= currentSiege) {
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
+      const isFriendly = cmd.faction === facKey;
       patchTile(destKey, { owner:"ai", faction: cmd.faction, ownerPlayerId: cmd.ownerPlayerId || null, garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor((cmd.troops||0)*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
-      floaty("⚠ ENEMY CAPTURED TILE!", "#dd3322", destKey);
+      floaty(isFriendly ? "🤝 Ally captured tile!" : "⚠ ENEMY CAPTURED TILE!", isFriendly ? "#2299ff" : "#dd3322", destKey);
       console.log(`[AI Attack] ${cmd.n} (${cmd.faction}) → tile ${destKey} | result: WON (siege break) | tile captured: true`);
       if (destKey === WIN_KEY || isPlayerHQ) setWinner("ai");
       setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
@@ -699,8 +710,9 @@ arrivedAI.forEach(async cmd => {
     if (siegePower >= currentSiege) {
       tileCaptured = true;
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
+      const isFriendly = cmd.faction === facKey;
       patchTile(destKey, { owner:"ai", faction: cmd.faction, ownerPlayerId: cmd.ownerPlayerId || null, garrison:0, siege:300, siegeMax:300, defeatedWaves:[], resetAt:null, hasAiCommander:true, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor(newTroops*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
-      floaty("⚠ ENEMY CAPTURED TILE!", "#dd3322", destKey);
+      floaty(isFriendly ? "🤝 Ally captured tile!" : "⚠ ENEMY CAPTURED TILE!", isFriendly ? "#2299ff" : "#dd3322", destKey);
       if (destKey === WIN_KEY || isPlayerHQ) setWinner("ai");
     } else {
       patchTile(destKey, { siege:currentSiege-siegePower, defeatedWaves: defTile.defeatedWaves ?? [], resetAt:Date.now()+garrisonResetMs(defTile) });
