@@ -695,6 +695,7 @@ arrivedAI.forEach(async cmd => {
   if (res.won) {
     const siegePower = cmdSiegePower({ ...cmd, troops: newTroops }, boostedCmd2);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
+    console.log(`[AI Siege] ${cmd.n} troops:${aiTroops} survived:${newTroops} siegePower:${siegePower} vs siege:${currentSiege} — ${siegePower >= currentSiege ? 'CAPTURE' : 'HIT'}`);
     if (siegePower >= currentSiege) {
       tileCaptured = true;
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
