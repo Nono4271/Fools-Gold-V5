@@ -1514,10 +1514,16 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
-function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids, vb) {
-  if (_hqKeyIndex.size === 0) {
+function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids, vb, allHqKeys) {
+  if (_hqKeyIndex.size === 0 || !vb) {
+    if (!vb) _hqKeyIndex.clear();
+    // Seed from patched tiles
     for (const [tileKey, tile] of Object.entries(tiles)) {
       if (tile?.isHQ) _hqKeyIndex.add(tileKey);
+    }
+    // Seed from known HQ keys (catches AI HQs never in viewport)
+    if (allHqKeys) {
+      for (const key of allHqKeys) _hqKeyIndex.add(key);
     }
   }
 
@@ -1652,7 +1658,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles) {
 /* ══════════════════════════════════════════════════════════════════════════
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys }, ref) {
 
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
@@ -1699,6 +1705,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   // Keep playerFacKey in a ref so drawAllTiles can read it without a re-render
   const playerFacKeyRef = useRef(playerFacKey);
   useEffect(() => { playerFacKeyRef.current = playerFacKey; }, [playerFacKey]);
+  const allHqKeysRef = useRef(allHqKeys || []);
+  useEffect(() => { allHqKeysRef.current = allHqKeys || []; }, [allHqKeys]);
 
   // Keep crewmatePlayerIds in a ref for tile coloring
   const crewPidsRef = useRef(crewmatePlayerIds ?? new Set());
@@ -2134,8 +2142,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     function redrawHQs() {
       if (!hqContRef.current) return;
-      // Pass viewport bounds so buildHQLayer can cull off-screen HQs.
-      // A buffer of 6 tiles ensures HQs pop in before they reach the screen edge.
       const vb = getViewBounds(6);
       buildHQLayer(hqContRef.current, tilesRef.current, selRef.current, (key, e) => {
         selRef.current = key;
@@ -2143,20 +2149,18 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, vb);
+      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current);
     }
 
     function redrawAllHQs() {
       if (!hqContRef.current) return;
-      // No viewport culling — rebuilds every HQ regardless of position.
-      // Used when crew membership changes so off-screen HQs get correct tint.
       buildHQLayer(hqContRef.current, tilesRef.current, selRef.current, (key, e) => {
         selRef.current = key;
         selGfx.clear();
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, null);
+      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current);
     }
 
     redrawRef.current = {
