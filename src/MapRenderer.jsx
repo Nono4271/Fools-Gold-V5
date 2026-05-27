@@ -78,8 +78,8 @@ function worldToKey(wx, wy, tiles) {
   }
 
   function inHQFootprint(wx, wy, pc, pr) {
-    // pc,pr is top-left of the 3x3 — center is at pc+1, pr+1
-    const { cx, cy } = isoXY(pc + 1, pr + 1);
+    // pc,pr is the CENTER tile of the 3x3
+    const { cx, cy } = isoXY(pc, pr);
     const midY = cy + TH;
     return Math.abs(wx - cx) / (TW * 1.5) + Math.abs(wy - midY) / (TH * 1.5) <= 1.0;
   }
@@ -1567,12 +1567,12 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   hit.drawPolygon(FOOTPRINT);
   // Hit area matches the fourth pass fill geometry exactly (pc,pr = center)
   // HIT_POLY matches the selection outline and green border geometry exactly.
-  // pc,pr is the top-left of the 3x3 (same as sc,sr in drawSelection).
+  // pc,pr is the CENTER tile (isHQ key). Top-left is pc-1, pr-1.
   const HIT_POLY = [
-    isoXY(pc,   pr  ).cx,           isoXY(pc,   pr  ).cy - elev,           // N
-    isoXY(pc+2, pr  ).cx + TW/2,    isoXY(pc+2, pr  ).cy - elev + TH/2,   // E
-    isoXY(pc+2, pr+2).cx,           isoXY(pc+2, pr+2).cy - elev + TH,     // S
-    isoXY(pc,   pr+2).cx - TW/2,    isoXY(pc,   pr+2).cy - elev + TH/2,   // W
+    isoXY(pc-1, pr-1).cx,           isoXY(pc-1, pr-1).cy - elev,           // N
+    isoXY(pc+1, pr-1).cx + TW/2,    isoXY(pc+1, pr-1).cy - elev + TH/2,   // E
+    isoXY(pc+1, pr+1).cx,           isoXY(pc+1, pr+1).cy - elev + TH,     // S
+    isoXY(pc-1, pr+1).cx - TW/2,    isoXY(pc-1, pr+1).cy - elev + TH/2,   // W
   ];
   hit.endFill();
   hit.hitArea     = new PIXI.Polygon(HIT_POLY);
@@ -1949,14 +1949,14 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // HQ: match existing border geometry exactly (sc,sr = center = pc in _buildOneHQ)
+      // HQ: sc,sr is the center tile. Top-left is sc-1, sr-1.
       if (tile.isHQ) {
         const elev = 0;
         const path = [
-          isoXY(sc,   sr  ).cx,           isoXY(sc,   sr  ).cy - elev,
-          isoXY(sc+2, sr  ).cx + TW/2,    isoXY(sc+2, sr  ).cy - elev + TH/2,
-          isoXY(sc+2, sr+2).cx,           isoXY(sc+2, sr+2).cy - elev + TH,
-          isoXY(sc,   sr+2).cx - TW/2,    isoXY(sc,   sr+2).cy - elev + TH/2,
+          isoXY(sc-1, sr-1).cx,           isoXY(sc-1, sr-1).cy - elev,
+          isoXY(sc+1, sr-1).cx + TW/2,    isoXY(sc+1, sr-1).cy - elev + TH/2,
+          isoXY(sc+1, sr+1).cx,           isoXY(sc+1, sr+1).cy - elev + TH,
+          isoXY(sc-1, sr+1).cx - TW/2,    isoXY(sc-1, sr+1).cy - elev + TH/2,
         ];
         selGfx.lineStyle(3, 0xffffff, 0.95);
         selGfx.drawPolygon(path);
@@ -2448,7 +2448,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           const wx = (t.clientX-rect.left-panRef.current.x)/zoomRef.current;
           const wy = (t.clientY-rect.top -panRef.current.y)/zoomRef.current;
           const key = worldToKey(wx, wy, tilesRef.current);
-          console.log(`[TAP] wx=${Math.round(wx)} wy=${Math.round(wy)} → key=${key} tile=${key ? JSON.stringify({isHQ:tilesRef.current[key]?.isHQ, isHQPart:tilesRef.current[key]?.isHQPart, isKeep:tilesRef.current[key]?.isKeep}) : 'null'}`);
+          const _u = wx - ROWS * TW / 2, _v = wy - TOP_PAD;
+          const _ce = Math.round((_u/(TW/2)+_v/(TH/2))/2), _re = Math.round((_v/(TH/2)-_u/(TW/2))/2);
+          console.log(`[TAP] wx=${Math.round(wx)} wy=${Math.round(wy)} est=${_ce},${_re} → key=${key} tile=${key ? JSON.stringify({isHQ:tilesRef.current[key]?.isHQ, isHQPart:tilesRef.current[key]?.isHQPart, isKeep:tilesRef.current[key]?.isKeep}) : 'null'}`);
           if (key) {
             // No keepPart redirect needed for P10+ (now single tile)
             const rawTile = tilesRef.current[key];
