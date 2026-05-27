@@ -1713,6 +1713,12 @@ self.onmessage = function(e) {
       if (ROAD_TILE_SET.has(idx)) return false;
       const t = terrainArr[idx];
       if (t === TERRAIN_ENC.river || t === TERRAIN_ENC.rockymountain || t === TERRAIN_ENC.hellfire || t === TERRAIN_ENC.road) return false;
+      // Check all 8 surrounding tiles for HQ proximity (2x diamond can visually overlap)
+      for (const [dc, dr] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]) {
+        const nc = c+dc, nr = r+dr;
+        if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS) continue;
+        if (flagArr[nr*COLS+nc] & (F_HQ|F_HQPART)) return false;
+      }
       for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
         const nc = c+dc, nr = r+dr;
         if (nc >= COLS || nr >= ROWS) return false;
@@ -1737,12 +1743,21 @@ self.onmessage = function(e) {
         const nc = c+dc, nr = r+dr;
         if (nc < COLS && nr < ROWS) {
           const ni = nr*COLS+nc;
+          if (flagArr[ni] & (F_HQ|F_HQPART)) continue; // never overwrite HQ tiles
           rssArr[ni] = 0;
           if (powerArr[ni] >= 10) powerArr[ni] = 9;
-          flagArr[ni] = (flagArr[ni] & ~(F_KEEP|F_HQ|F_HQPART|F_WIN)) | F_KEEPPART;
+          flagArr[ni] = (flagArr[ni] & ~(F_KEEP|F_WIN)) | F_KEEPPART;
         }
       }
       keepMeta[`${c},${r}`] = { keepName:`P${pl} Structure`, garrisonWaves:2, cx:c, cy:r };
+      // Verify no covered neighbor is an HQ tile
+      for (const [dc, dr] of [[1,0],[0,1],[1,1]]) {
+        const nc=c+dc, nr=r+dr;
+        if (nc < COLS && nr < ROWS) {
+          const ni=nr*COLS+nc;
+          if (flagArr[ni] & (F_HQ|F_HQPART)) console.error(`[P10+ BUG] ${c},${r} covered neighbor ${nc},${nr} is HQ tile!`);
+        }
+      }
     };
 
     const relocPool = [];
