@@ -1154,6 +1154,8 @@ export default function RiseToWar() {
     facKey,
     troopSkillLevels,
     runBattle,
+    crewmatePlayerIds,
+    aiPlayerIdMap: aiPlayerIdMapRef.current,
   });
 
   useGameLoop({
@@ -1408,17 +1410,17 @@ export default function RiseToWar() {
 
   const selAdjToPlayer = useMemo(() => {
     if (!selTile || selTile.owner==="player") return false;
-    return adj(selTile.c, selTile.r).some(ak => {
+    const result = adj(selTile.c, selTile.r).some(ak => {
       const t = tiles[ak];
       if (!t) return false;
-      // Own tile
       if (t.owner === "player") return true;
-      // Same-faction AI tile (purple)
       if (t.owner === "ai" && t.faction === facKey) return true;
-      // Crew member tile (blue)
-      if (crewmatePlayerIds.has(t.ownerPlayerId)) return true;
+      const pid = t.ownerPlayerId || aiPlayerIdMapRef.current.get(ak);
+      if (pid && crewmatePlayerIds.has(pid)) return true;
       return false;
     });
+    console.log(`[selAdj] key:${selKey} owner:${selTile.owner} faction:${selTile.faction} adjResult:${result}`, adj(selTile.c, selTile.r).map(ak => `${ak}:${tiles[ak]?.owner}/${tiles[ak]?.faction}`));
+    return result;
   }, [selTile, tileVersion, facKey, crewmatePlayerIds]);
 
   const cmdsAdjToSel = useMemo(() => {
@@ -1451,7 +1453,7 @@ export default function RiseToWar() {
     const freshCmdTroops = normaliseTroopSlots(freshCmd).reduce((s,sl)=>s+(sl.troops||0),0) || freshCmd.troops || 0;
     if (!freshCmdTroops || freshCmdTroops < 1) { floaty("⚠ Assign troops first!", "#cc8030", freshCmd.tk); return; }
     const destTile = tilesMapRef.current[destKey];
-    const isCrewTile = crewmatePlayerIds.has(destTile?.ownerPlayerId);
+    const isCrewTile = crewmatePlayerIds.has(destTile?.ownerPlayerId || aiPlayerIdMapRef.current.get(destKey));
     const isCrewHQ   = isCrewTile && (destTile?.isHQ || destTile?.isHQPart);
     const type = (destTile?.owner==="player" || isCrewTile) ? "move" : "attack";
     if (type==="move" && destTile?.owner!=="player" && !isCrewTile) return;

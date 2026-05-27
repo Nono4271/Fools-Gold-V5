@@ -1558,8 +1558,11 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     const curPlayerName = owner === "player" ? playerName : null;
     const ownerPlayerId = aiPlayerIdMap?.get(tileKey) || tile.ownerPlayerId || null;
     const isCrew = !!(ownerPlayerId && crewPids?.has(ownerPlayerId));
-    if (owner === "ai" && tile.faction === playerFacKey) {
-      console.log(`[HQ Tint] ${tileKey} ownerPlayerId:${ownerPlayerId} isCrew:${isCrew} crewPidsSize:${crewPids?.size} hasPid:${crewPids?.has(ownerPlayerId)}`);
+    if (owner === "ai" && tile.faction === playerFacKey && !isCrew) {
+      console.log(`[HQ Tint MISS] ${tileKey} ownerPlayerId:${ownerPlayerId} inMap:${aiPlayerIdMap?.has(tileKey)} crewPidsSize:${crewPids?.size} hasPid:${crewPids?.has(ownerPlayerId)}`);
+    }
+    if (owner === "ai" && tile.faction === playerFacKey && isCrew) {
+      console.log(`[HQ Tint HIT] ${tileKey} → BLUE`);
     }
     if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName && prev.isCrew === isCrew) continue;
 
