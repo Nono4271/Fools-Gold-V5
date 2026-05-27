@@ -107,8 +107,7 @@ function worldToKey(wx, wy, tiles) {
       }
 
       if (tile.isHQ) {
-        if (inHQFootprint(wx, wy, c, r)) return key;
-        continue;
+        continue; // HQ clicks handled by PIXI hit area in buildHQLayer
       }
 
       // HQPart tiles — redirect click to HQ center
