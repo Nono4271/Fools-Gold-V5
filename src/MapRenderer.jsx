@@ -145,7 +145,11 @@ function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
   if (owner === "player") return 0x22cc55; // Bright green
   if (!owner) return null;
   // Blue: AI tile owned by a crewmate (requires tile.ownerPlayerId)
-  if (owner === "ai" && ownerPlayerId && crewPids?.has(ownerPlayerId)) return 0x2299ff;
+  const isCrew = owner === "ai" && ownerPlayerId && crewPids?.has(ownerPlayerId);
+  if (isCrew) return 0x2299ff;
+  if (owner === "ai" && ownerPlayerId && crewPids?.size > 0) {
+    console.log(`[ownerTint] MISS — ownerPlayerId:${ownerPlayerId} crewPids has it:${crewPids.has(ownerPlayerId)} crewPids sample:`, [...crewPids].slice(0,3));
+  }
   // Purple: same faction, not crew
   if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xaa44ff;
   return 0xdc3c28;
