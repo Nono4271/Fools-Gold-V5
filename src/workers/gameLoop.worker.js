@@ -237,10 +237,104 @@ function tickAiMarch() {
   }
 }
 
+// ── Inlined building helpers (no imports in worker) ──────────────────────────
+const BLDG_COST = {
+  hq:{stone:800,wood:600,ore:400,gas:300},quarry:{stone:50,wood:30,ore:10,gas:0},
+  lumber:{stone:30,wood:50,ore:10,gas:0},forge:{stone:40,wood:20,ore:0,gas:0},
+  refinery:{stone:60,wood:40,ore:30,gas:0},barracks:{stone:80,wood:80,ore:40,gas:20},
+  training:{stone:60,wood:60,ore:30,gas:10},commandcenter:{stone:150,wood:120,ore:80,gas:60},
+  healingtent:{stone:60,wood:80,ore:60,gas:0},walls:{stone:100,wood:60,ore:0,gas:0},
+};
+const BLDG_MAX = {hq:10,quarry:20,lumber:20,forge:20,refinery:20,barracks:10,training:10,commandcenter:10,healingtent:10,walls:10};
+const RSS_BLDGS = new Set(["quarry","lumber","forge","refinery","storage"]);
+function _barrCap(lvl)  { return lvl<=0 ? 2000 : Math.round(2000*Math.pow(45,(lvl-1)/9)); }
+function _cmdCap(lvl)   { const CC=[0,2,4,7,10,13,17,21,25,30,35]; return (lvl||1)+(CC[Math.min(10,lvl||0)]||0); }
+function _upgCost(type,lvl) { const b=BLDG_COST[type]; if(!b) return {}; const m=Math.pow(1.8,lvl); return Object.fromEntries(Object.entries(b).map(([k,v])=>[k,Math.round(v*m)])); }
+function _maxLvl(type,hqLvl) { const abs=BLDG_MAX[type]||10; if(type==="hq") return abs; return Math.min(abs, RSS_BLDGS.has(type)?hqLvl*2:hqLvl); }
+
 // ── AI economy: 5000ms ────────────────────────────────────────────────────
+// Fully computed in worker — sends back diffs for main thread to apply in one pass.
+const FACTION_BRANCH_KEYS = {}; // populated from first snapshot that has aiFactionKeys
+
 function tickAiEcon() {
-  if (!snapshot?.aiFaction) return;
-  self.postMessage({ type: 'aiEconTick', now: Date.now() });
+  const { aiCmds, aiFactionKeys, aiPool, aiRss, aiBldgs, aiHqKeys } = snapshot || {};
+  if (!aiFactionKeys?.length || !aiCmds) return;
+
+  // Build per-faction branch list from snapshot (sent in aiCmds faction field)
+  // We don't have FACTION_TROOPS in worker — use a simple fallback branch key per faction
+  const FALLBACK_BRANCHES = {
+    pirates:['swashbucklers','corsairs','privateers'],
+    orcs:['grunts','marauders','warchief'],
+    wizards:['apprentices','mages','archmages'],
+    dragons:['drakes','wyverns','dragonlords'],
+    holyknights:['paladins','crusaders','templars'],
+    nightcreatures:['shades','wraiths','dreadlords'],
+    coldborns:['frostguard','glacialmages','iceweavers'],
+    ashen_dead:['skeletal','wraiths','liches'],
+  };
+
+  const cmdUpdates   = []; // { uid, troops, troopBranch, unspentSkillPoints, skillPoints }
+  const poolUpdates  = {}; // { fk: newPool }
+  const rssUpdates   = {}; // { fk: { stone, wood, ore, gas } }
+  const bldgUpdates  = {}; // { fk: { ...bldgs } }
+
+  for (const fk of aiFactionKeys) {
+    const curPool  = aiPool?.[fk]  ?? _barrCap(0);
+    const curRss   = { ...(aiRss?.[fk]  || { stone:5000, wood:5000, ore:5000, gas:5000 }) };
+    const curBldgs = { ...(aiBldgs?.[fk] || { hq:1, barracks:0, commandcenter:0 }) };
+    const hqKeyVal = aiHqKeys?.[fk];
+    const hqKey    = Array.isArray(hqKeyVal) ? hqKeyVal[0] : hqKeyVal;
+    const fkCmds   = aiCmds.filter(c => c.faction === fk);
+
+    let newPool  = curPool;
+    let newRss   = { ...curRss };
+    let newBldgs = { ...curBldgs };
+
+    // Troop assignment — one idle troopless commander at their HQ per tick
+    const idleNoTroops = fkCmds.filter(c => !c.march && !(c.troops||0) && c.tk === (c.hqKey || hqKey));
+    if (idleNoTroops.length && newPool > 0) {
+      const cmd    = idleNoTroops[0];
+      const cap    = _cmdCap(cmd.lvl || 5);
+      const assign = Math.min(cap, newPool);
+      const branches = FALLBACK_BRANCHES[fk] || ['soldiers'];
+      const brKey  = branches[Math.floor(Math.random() * branches.length)];
+      cmdUpdates.push({ uid: cmd.uid, troops: assign, troopBranch: { faction: fk, branch: brKey, tier: 0 } });
+      newPool = Math.max(0, newPool - assign);
+    }
+
+    // Train troops
+    const barrCap = _barrCap(curBldgs.barracks || 0);
+    if (newPool < barrCap) {
+      const trainAmt = Math.min(500, barrCap - newPool);
+      const cost = { stone:trainAmt*2, wood:trainAmt*2, ore:trainAmt, gas:Math.floor(trainAmt*0.5) };
+      if (Object.entries(cost).every(([k,v]) => newRss[k] >= v)) {
+        Object.entries(cost).forEach(([k,v]) => newRss[k] -= v);
+        newPool = Math.min(barrCap, newPool + trainAmt);
+      }
+    }
+
+    // Upgrade buildings
+    const upgPriority = ["quarry","lumber","forge","barracks","hq","training","refinery","commandcenter","walls"];
+    for (const bType of upgPriority) {
+      const curLvl = newBldgs[bType] || 0;
+      const avail  = _maxLvl(bType, newBldgs.hq || 1);
+      if (curLvl >= avail) continue;
+      const cost = _upgCost(bType, curLvl);
+      if (!Object.entries(cost).every(([k,v]) => newRss[k] >= v)) continue;
+      Object.entries(cost).forEach(([k,v]) => newRss[k] -= v);
+      newBldgs[bType] = curLvl + 1;
+      if (bType === "barracks") newPool = Math.min(_barrCap(newBldgs.barracks), newPool);
+      break;
+    }
+
+    if (newPool !== curPool)  poolUpdates[fk] = newPool;
+    if (JSON.stringify(newRss)   !== JSON.stringify(curRss))   rssUpdates[fk]  = newRss;
+    if (JSON.stringify(newBldgs) !== JSON.stringify(curBldgs)) bldgUpdates[fk] = newBldgs;
+  }
+
+  if (cmdUpdates.length || Object.keys(poolUpdates).length || Object.keys(rssUpdates).length || Object.keys(bldgUpdates).length) {
+    self.postMessage({ type: 'aiEconReady', updates: { cmdUpdates, poolUpdates, rssUpdates, bldgUpdates }, now: Date.now() });
+  }
 }
 
 // ── Start all intervals ────────────────────────────────────────────────────
