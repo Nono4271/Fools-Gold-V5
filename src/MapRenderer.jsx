@@ -78,10 +78,11 @@ function worldToKey(wx, wy, tiles) {
   }
 
   function inHQFootprint(wx, wy, pc, pr) {
-    // 3x3 diamond centered at (pc,pr): half-width=TW*1.5, half-height=TH*1.5
     const { cx, cy } = isoXY(pc, pr);
-    const midY = cy - 4 + TH * 0.5;
-    return Math.abs(wx - cx) / (TW * 1.5) + Math.abs(wy - midY) / (TH * 1.5) <= 1.0;
+    const ox = TW/2, oy = TH/2;
+    const midX = cx + ox;
+    const midY = cy - 4 + TH*0.5 + oy;
+    return Math.abs(wx - midX) / (TW * 1.5) + Math.abs(wy - midY) / (TH * 1.5) <= 1.0;
   }
 
   // Scan ±3 tiles around estimate, checking large footprints first
@@ -588,6 +589,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
   }
 
   // ── Fourth pass: HQs drawn as single 3x3 diamond ──────────────────────────
+  // F_HQ is at the CENTER of the 3x3. Diamond corners are the outer tips of
+  // the 4 adjacent tiles: N=(c,r-1) top, E=(c+1,r) right, S=(c,r+1) bottom, W=(c-1,r) left.
   for (let d = dMin; d <= dMax + 2; d++) {
     const cLo = Math.max(cMin, d - rMax);
     const cHi = Math.min(cMax, d - rMin);
@@ -598,12 +601,13 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (!tile || !tile.isHQ) continue;
       const { cx, cy } = isoXY(c, r);
       const elev = 4;
+      const ox = TW/2, oy = TH/2; // shift one tile SE
       const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
       const HQ3 = [
-        cx,          cy - elev - TH,          // N
-        cx + TW*1.5, cy - elev + TH * 0.5,   // E
-        cx,          cy - elev + TH * 2,      // S
-        cx - TW*1.5, cy - elev + TH * 0.5,   // W
+        cx + ox,          cy - elev - TH + oy,         // N
+        cx + TW*1.5 + ox, cy - elev + TH*0.5 + oy,    // E
+        cx + ox,          cy - elev + TH*2 + oy,       // S
+        cx - TW*1.5 + ox, cy - elev + TH*0.5 + oy,    // W
       ];
       gfx.beginFill(baseColor); gfx.drawPolygon(HQ3); gfx.endFill();
       gfx.lineStyle(0);
@@ -1955,11 +1959,12 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       if (tile.isHQ) {
         const { cx, cy } = isoXY(sc, sr);
         const elev = 4;
+        const ox = TW/2, oy = TH/2;
         const HQ3 = [
-          cx,          cy - elev - TH,          // N
-          cx + TW*1.5, cy - elev + TH * 0.5,   // E
-          cx,          cy - elev + TH * 2,      // S
-          cx - TW*1.5, cy - elev + TH * 0.5,   // W
+          cx + ox,          cy - elev - TH + oy,
+          cx + TW*1.5 + ox, cy - elev + TH*0.5 + oy,
+          cx + ox,          cy - elev + TH*2 + oy,
+          cx - TW*1.5 + ox, cy - elev + TH*0.5 + oy,
         ];
         selGfx.lineStyle(3, 0xffffff, 0.95);
         selGfx.drawPolygon(HQ3);
