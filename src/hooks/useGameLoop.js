@@ -23,13 +23,14 @@ import { useEffect, useRef } from 'react';
 
 export function useGameLoop({
   screen,
-  // snapshot pieces — only the fields the worker needs for timing
   cmds,
-  tiles,           // pass tilesRef.current snapshot (shallow copy OK)
+  tiles,
   reinMarches,
   aiFaction,
-  defeatedTilesRef, // ref to small index { key → { garrisonDefeated, resetAt } }
-  // callbacks
+  defeatedTilesRef,
+  aiTileKeysMapRef,
+  aiFactionKeys,
+  aiPoolMapRef,
   onMarchStep,
   onDrawTick,
   onSiegeReset,
@@ -42,25 +43,34 @@ export function useGameLoop({
   const workerRef   = useRef(null);
   const callbackRef = useRef({});
 
-  // ── Refs for snapshot data ──────────────────────────────────────────────────
-  // Store latest values in refs so the snapshot timer always has current data
-  // WITHOUT being a reactive dependency that triggers re-renders.
-  // This breaks the feedback loop: marchStep → setCmds → snapshot → marchStep.
   const cmdsRef_    = useRef(cmds);
   const tilesRef_   = useRef(tiles);
   const reinRef_    = useRef(reinMarches);
   const factionRef_ = useRef(aiFaction);
+  const aiFactionKeysRef_     = useRef(null);
+  const aiFactionKeysListRef_ = useRef([]);
+  const aiPoolRef_            = useRef({});
 
   useEffect(() => { cmdsRef_.current    = cmds;        }, [cmds]);
   useEffect(() => { tilesRef_.current   = tiles;       }, [tiles]);
   useEffect(() => { reinRef_.current    = reinMarches; }, [reinMarches]);
   useEffect(() => { factionRef_.current = aiFaction;   }, [aiFaction]);
+  useEffect(() => {
+    aiFactionKeysRef_.current = aiTileKeysMapRef;
+    aiFactionKeysListRef_.current = aiFactionKeys || [];
+  }, [aiTileKeysMapRef, aiFactionKeys]);
+  useEffect(() => {
+    if (!aiPoolMapRef) return;
+    const obj = {};
+    for (const [fk, v] of aiPoolMapRef.current) obj[fk] = v;
+    aiPoolRef_.current = obj;
+  }, [aiPoolMapRef]);
 
   // Keep callbacks current without re-creating the worker
   useEffect(() => {
     callbackRef.current = {
       onMarchStep, onDrawTick, onSiegeReset,
-      onReinStep, onAiRssTick, onAiMarchCheck, onAiEconTick, onTick,
+      onReinStep, onAiRssTick, onAiMarchCheck, onAiMarchReady: onAiMarchCheck, onAiEconTick, onTick,
     };
   });
 
@@ -74,12 +84,13 @@ export function useGameLoop({
       const { type } = e.data;
       const cb = callbackRef.current;
       switch (type) {
-        case 'marchStep':   cb.onMarchStep?.(e.data.updates, e.data.now);     break;
-        case 'drawTick':    cb.onDrawTick?.(e.data.expiredUids, e.data.now);   break;
-        case 'siegeReset':  cb.onSiegeReset?.(e.data.changedKeys, e.data.now); break;
-        case 'reinStep':    cb.onReinStep?.(e.data.updates, e.data.now);       break;
-        case 'aiRssTick':   cb.onAiRssTick?.(e.data.now);                      break;
-        case 'aiMarchCheck':cb.onAiMarchCheck?.(e.data.now);                   break;
+        case 'marchStep':    cb.onMarchStep?.(e.data.updates, e.data.now);      break;
+        case 'drawTick':     cb.onDrawTick?.(e.data.expiredUids, e.data.now);    break;
+        case 'siegeReset':   cb.onSiegeReset?.(e.data.changedKeys, e.data.now);  break;
+        case 'reinStep':     cb.onReinStep?.(e.data.updates, e.data.now);        break;
+        case 'aiRssTick':    cb.onAiRssTick?.(e.data.now);                       break;
+        case 'aiMarchReady': cb.onAiMarchReady?.(e.data.dispatches, e.data.now); break;
+        case 'aiMarchCheck': cb.onAiMarchCheck?.(e.data.now);                    break;
         case 'aiEconTick':  cb.onAiEconTick?.(e.data.now);                     break;
         case 'tick':        cb.onTick?.(e.data.now);                           break;
         default: break;
@@ -158,14 +169,40 @@ export function useGameLoop({
           }))
         : [];
 
+      // Serialize aiTileKeysMap (Map<fk, Set<key>>) → plain object for worker
+      const aiTileKeysObj = {};
+      if (aiFactionKeysRef_.current?.current) {
+        for (const [fk, keySet] of aiFactionKeysRef_.current.current) {
+          aiTileKeysObj[fk] = [...keySet];
+        }
+      }
+
+      // AI commander snapshot — just what the worker needs for march decisions
+      const aiCmdSnapshot = cmds
+        ? cmds.filter(c => c.owner === 'ai').map(c => ({
+            uid:           c.uid,
+            faction:       c.faction,
+            tk:            c.tk,
+            hqKey:         c.hqKey,
+            troops:        c.troops || 0,
+            march:         c.march ? { type: c.march.type } : null,
+            ownerPlayerId: c.ownerPlayerId || null,
+          }))
+        : [];
+
       w.postMessage({
         type: 'snapshot',
         data: {
-          screen:      'game',
-          cmds:        cmdSnapshot,
-          tiles:       tileSnapshot,
-          reinMarches: reinRef_.current    || [],
-          aiFaction:   factionRef_.current || null,
+          screen:        'game',
+          cmds:          cmdSnapshot,
+          tiles:         tileSnapshot,
+          reinMarches:   reinRef_.current    || [],
+          aiFaction:     factionRef_.current || null,
+          aiCmds:        aiCmdSnapshot,
+          aiTileKeys:    aiTileKeysObj,
+          aiFactionKeys: aiFactionKeysListRef_.current || [],
+          aiPool:        aiPoolRef_.current  || {},
+          CMD_MARCH_COOLDOWN_MS: 15000,
         },
       });
     }

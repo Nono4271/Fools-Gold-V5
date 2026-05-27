@@ -6,12 +6,8 @@
 import { useCallback } from "react";
 import { FACTION_TROOPS } from "../../shared/constants/troops.js";
 import { barracksCapacity, maxAvailLevel, upgCost, cmdCommand, rssRate } from "../../shared/constants/buildings.js";
-import { WIN_C, WIN_R } from "../../shared/constants/map.js";
-import { adj, bfsPath, effectiveMarchSpd, marchStepMs } from "../../shared/utils/pathfinding.js";
+import { bfsPath, effectiveMarchSpd, marchStepMs } from "../../shared/utils/pathfinding.js";
 import { getBranchMainSkill, getBranchSideSkills } from "../../shared/constants/skills.js";
-
-// Per-commander cooldown between marches (ms) — stagger so not all 50 move at once
-const CMD_MARCH_COOLDOWN_MS = 15000; // 15s between marches per commander
 
 export function useAI({
   screen,
@@ -23,7 +19,6 @@ export function useAI({
   aiBldgsMapRef,      // Map<fk, bldgsObj>
   aiPoolMapRef,       // Map<fk, number>
   aiTileKeysMapRef,   // Map<fk, Set<tileKey>>
-  aiLastMarchMapRef,  // Map<fk, Map<cmdUid, timestamp>>
   aiHqKeysRef,        // ref: { [fk]: hqTileKey }
   setCmds,            // setAiCmds
   setAiRssMap,        // (fk, updater) => void
@@ -57,88 +52,24 @@ const tickAiRss = useCallback(() => {
   }
 }, [aiFactionKeys, tilesRef, aiBldgsMapRef, aiTileKeysMapRef, setAiRssMap]);
 
-// ── March tick — called every 3s ─────────────────────────────────────────
-// Each idle AI commander with troops picks an adjacent non-owned tile and marches.
-// They spread outward from their current position, biased toward the win tile.
-const tickAiMarch = useCallback(() => {
-  if (!aiFactionKeys?.length) return;
-  const now      = Date.now();
-  const curCmds  = cmdsRef.current;
-  const curTiles = tilesRef.current;
-
+// ── March dispatch — called when worker sends aiMarchReady ───────────────────
+// Worker computed frontier + target. Main thread resolves BFS path and dispatches.
+const tickAiMarch = useCallback((dispatches) => {
+  if (!dispatches?.length) return;
+  const now = Date.now();
+  const curCmds = cmdsRef.current;
   const updates = [];
 
-  // Loop over ALL AI commanders, not just one per faction
-  const aiCmds = curCmds.filter(c => c.owner === "ai" && c.faction && aiFactionKeys.includes(c.faction));
-  const idleArmed = aiCmds.filter(c => !c.march && (c.troops || 0) > 0);
-  // Cap per tick to avoid main thread freeze — stagger across ticks via cooldown
-  const toProcess = idleArmed.slice(0, 20);
-  console.log(`[AI:march] total=${aiCmds.length} idleArmed=${idleArmed.length} processing=${toProcess.length}`);
-
-  // Precompute frontier (attackable neighbors) once per faction
-  const factionFrontier = new Map(); // fk → Set<tileKey>
-  for (const fk of aiFactionKeys) {
-    const tileKeys = aiTileKeysMapRef.current.get(fk) || new Set();
-    const frontier = new Set();
-    for (const ownedKey of tileKeys) {
-      const [oc, or_] = ownedKey.split(",").map(Number);
-      for (const k of adj(oc, or_)) {
-        if (!tileKeys.has(k) && curTiles[k]) frontier.add(k);
-      }
-    }
-    factionFrontier.set(fk, frontier);
-  }
-
-  for (const cmd of toProcess) {
-    const fk = cmd.faction;
-    const tileKeys  = aiTileKeysMapRef.current.get(fk) || new Set();
-    const lastMarch = aiLastMarchMapRef.current.get(fk) || new Map();
-
-    const lastMs = lastMarch.get(cmd.uid) || 0;
-    if (now - lastMs < CMD_MARCH_COOLDOWN_MS) { console.log(`[AI:march] ${cmd.uid} cooldown`); continue; }
-
-    const [cc, cr] = cmd.tk.split(",").map(Number);
-    const candidates = [...(factionFrontier.get(fk) || [])].filter(k => curTiles[k]);
-    if (!candidates.length) { console.log(`[AI:march] ${cmd.uid} no candidates`); continue; }
-
-    // Scoring: strongly prioritize the 3 HQ-adjacent resource tiles
-    // (pl=1 = 1/hr, pl>=10 = 10/hr+) so low-level commanders level up fast.
-    // After those are taken, bias toward win tile with jitter.
-    const hqKey = cmd.hqKey;
-    const [hc, hr] = hqKey ? hqKey.split(",").map(Number) : [cc, cr];
-
-    const scored = candidates.map(k => {
-      const t = curTiles[k];
-      const pl = t?.powerLevel ?? 0;
-      const [tc, tr] = k.split(",").map(Number);
-
-      // Strong bonus for adjacent resource tiles (pl 1 or 10+) near HQ
-      const distToHq = Math.abs(tc - hc) + Math.abs(tr - hr);
-      const isResourceTile = pl === 1 || pl >= 10;
-      const resourceBonus = (isResourceTile && distToHq <= 4) ? -200 : 0;
-
-      const distToWin = Math.abs(tc - WIN_C) + Math.abs(tr - WIN_R);
-      return { k, score: distToWin + resourceBonus + Math.random() * 30 };
-    });
-    scored.sort((a, b) => a.score - b.score);
-    const target = scored[0].k;
-
-    const path = bfsPath(cmd.tk, target);
-    if (!path || path.length < 2) continue;
-
+  dispatches.forEach(({ uid, destKey }) => {
+    const cmd = curCmds.find(c => c.uid === uid);
+    if (!cmd || cmd.march) return;
+    const path = bfsPath(cmd.tk, destKey);
+    if (!path || path.length < 2) return;
     const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
-    updates.push({
-      uid: cmd.uid,
-      march: { type: "attack", path, step: 0, dest: target, origin: cmd.tk, stepMs, lastStepTime: now },
-    });
-
-    const updatedLastMarch = new Map(lastMarch);
-    updatedLastMarch.set(cmd.uid, now);
-    aiLastMarchMapRef.current.set(fk, updatedLastMarch);
-  }
+    updates.push({ uid, march: { type:"attack", path, step:0, dest:destKey, origin:cmd.tk, stepMs, lastStepTime:now } });
+  });
 
   if (!updates.length) return;
-
   setCmds(p => {
     let changed = false;
     const next = p.map(c => {
@@ -149,7 +80,7 @@ const tickAiMarch = useCallback(() => {
     });
     return changed ? next : p;
   });
-}, [aiFactionKeys, cmdsRef, tilesRef, aiTileKeysMapRef, aiLastMarchMapRef, setCmds]);
+}, [cmdsRef, setCmds]);
 
 // ── Economy tick — called every 5s ───────────────────────────────────────
 // Per-faction: assign troops to idle commanders at HQ, train, upgrade buildings.
