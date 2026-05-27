@@ -305,6 +305,11 @@ function tickAiEcon() {
 
     // Troop assignment — one idle troopless commander at their HQ per tick
     const idleNoTroops = fkCmds.filter(c => !c.march && !(c.troops||0) && c.tk === (c.hqKey || hqKey));
+    if (fk === snapshot.aiFaction) {
+      const allIdle = fkCmds.filter(c => !c.march && !(c.troops||0));
+      self.postMessage({ type: 'aiMarchNoCandidate', uid: `econ:${fk}`, faction: fk,
+        reason: `econ tick — pool:${newPool} idleNoTroops:${idleNoTroops.length} allTroopless:${allIdle.length} hqKey:${hqKey} cmds:[${fkCmds.map(c=>`${c.uid.slice(-6)} tk:${c.tk} hqKey:${c.hqKey}`).join(', ')}]`, now: Date.now() });
+    }
     if (idleNoTroops.length && newPool > 0) {
       const cmd    = idleNoTroops[0];
       const cap    = _cmdCap(cmd.lvl || 5);
