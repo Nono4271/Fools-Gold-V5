@@ -186,17 +186,25 @@ function tickAiMarch() {
 
   const now = Date.now();
   const idleArmed = aiCmds.filter(c => !c.march && (c.troops || 0) > 0);
+  const idleNoTroops = aiCmds.filter(c => !c.march && !(c.troops || 0));
+  if (idleNoTroops.length) {
+    idleNoTroops.forEach(c => self.postMessage({ type: 'aiMarchNoCandidate', uid: c.uid, faction: c.faction, reason: 'no troops yet — waiting for econ tick', now }));
+  }
   if (!idleArmed.length) return;
 
   // Precompute frontier per faction
   const factionFrontier = {};
   for (const fk of aiFactionKeys) {
     const ownedKeys = aiTileKeys?.[fk] || [];
+    if (!ownedKeys.length) {
+      self.postMessage({ type: 'aiMarchNoCandidate', uid: `faction:${fk}`, faction: fk, reason: 'no owned tiles in snapshot — frontier is empty', now });
+    }
+    const ownedSet = new Set(ownedKeys);
     const frontier = new Set();
     for (const ownedKey of ownedKeys) {
       const [oc, or_] = ownedKey.split(',').map(Number);
       for (const k of adj(oc, or_)) {
-        if (!ownedKeys.includes(k)) frontier.add(k);
+        if (!ownedSet.has(k)) frontier.add(k);
       }
     }
     factionFrontier[fk] = [...frontier];
