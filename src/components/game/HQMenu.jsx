@@ -926,8 +926,8 @@ holyknights:   { n:"Holy Knights",          s:"✝️",  c:"#d4af37" },
 nightcreatures:{ n:"Creatures of the Night",s:"🌑",  c:"#a030c0" },
 };
 const ALIGN_FACTIONS = {
-humans:   ["pirates","wizards","holyknights"],
-creatures:["orcs","dragons","nightcreatures"],
+humans:   ["pirates","wizards","holyknights","coldborns"],
+creatures:["orcs","dragons","nightcreatures","ashen_dead"],
 };
 function getAlignment(fk) {
 return ALIGN_FACTIONS.humans.includes(fk) ? "humans" : "creatures";
