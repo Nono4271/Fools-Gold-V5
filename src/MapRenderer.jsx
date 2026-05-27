@@ -1552,7 +1552,9 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     const prev       = _hqStateCache.get(tileKey);
 
     const curPlayerName = owner === "player" ? playerName : null;
-    if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName) continue;
+    const ownerPlayerId = tile.ownerPlayerId || null;
+    const isCrew = !!(ownerPlayerId && crewPids?.has(ownerPlayerId));
+    if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName && prev.isCrew === isCrew) continue;
 
     for (let i = hqCont.children.length - 1; i >= 0; i--) {
       const child = hqCont.children[i];
@@ -1564,7 +1566,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     }
 
     hqCont.addChild(_buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids));
-    _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null });
+    _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew });
   }
 }
 
