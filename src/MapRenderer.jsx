@@ -78,13 +78,14 @@ function worldToKey(wx, wy, tiles) {
   }
 
   function inHQFootprint(wx, wy, pc, pr) {
-    // Center of 3x3 diamond: midpoint between N tip and S tip
-    const nC = isoXY(pc, pr-1); const sC = isoXY(pc, pr+1);
-    const eC = isoXY(pc+1, pr);
-    const midX = nC.cx;
-    const midY = (nC.cy - 4 + sC.cy - 4 + TH) / 2;
-    const halfW = eC.cx + TW/2 - midX;
-    const halfH = midY - (nC.cy - 4);
+    // F_HQ is center, top-left = pc-1,pr-1 matching existing border system
+    const tl = isoXY(pc-1, pr-1); const tr = isoXY(pc+1, pr-1);
+    const br = isoXY(pc+1, pr+1);
+    const elev = 4;
+    const midX = tl.cx;
+    const midY = (tl.cy - elev + br.cy - elev + TH) / 2;
+    const halfW = tr.cx + TW/2 - midX;
+    const halfH = midY - (tl.cy - elev);
     return Math.abs(wx - midX) / halfW + Math.abs(wy - midY) / halfH <= 1.0;
   }
 
@@ -596,17 +597,16 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (r < rMin || r > rMax) continue;
       const tile = tiles[`${c},${r}`];
       if (!tile || !tile.isHQ) continue;
-      const elev = 4;
+      const elev = 0;
       const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
-      // 3x3 footprint: center=(c,r), corners at (c,r-1),(c+1,r),(c,r+1),(c-1,r)
-      // N tip = top of (c,r-1), E tip = right of (c+1,r), S tip = bottom of (c,r+1), W tip = left of (c-1,r)
-      const nC = isoXY(c, r-1); const eC = isoXY(c+1, r);
-      const sC = isoXY(c, r+1); const wC = isoXY(c-1, r);
+      // F_HQ is center (c,r), top-left = (c-1,r-1) matching existing HQ border system
+      const tl = isoXY(c-1, r-1); const tr = isoXY(c+1, r-1);
+      const br = isoXY(c+1, r+1); const bl = isoXY(c-1, r+1);
       const HQ3 = [
-        nC.cx,           nC.cy - elev,            // N
-        eC.cx + TW/2,    eC.cy - elev + TH/2,     // E
-        sC.cx,           sC.cy - elev + TH,        // S
-        wC.cx - TW/2,    wC.cy - elev + TH/2,      // W
+        tl.cx,           tl.cy - elev,
+        tr.cx + TW/2,    tr.cy - elev + TH/2,
+        br.cx,           br.cy - elev + TH,
+        bl.cx - TW/2,    bl.cy - elev + TH/2,
       ];
       gfx.beginFill(baseColor); gfx.drawPolygon(HQ3); gfx.endFill();
       gfx.lineStyle(0);
@@ -1954,22 +1954,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // HQ: draw 3x3 diamond outline
-      if (tile.isHQ) {
-        const elev = 4;
-        const nC = isoXY(sc, sr-1); const eC = isoXY(sc+1, sr);
-        const sC = isoXY(sc, sr+1); const wC = isoXY(sc-1, sr);
-        const HQ3 = [
-          nC.cx,        nC.cy - elev,
-          eC.cx + TW/2, eC.cy - elev + TH/2,
-          sC.cx,        sC.cy - elev + TH,
-          wC.cx - TW/2, wC.cy - elev + TH/2,
-        ];
-        selGfx.lineStyle(3, 0xffffff, 0.95);
-        selGfx.drawPolygon(HQ3);
-        selGfx.lineStyle(0);
-        return;
-      }
+      // HQ: selection handled by existing HQ sprite system — skip here
+      if (tile.isHQ) return;
 
       // Skip keep parts and HQ parts (no individual selection)
       if (tile.isKeepPart || tile.isHQPart) return;
