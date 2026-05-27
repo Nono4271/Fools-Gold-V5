@@ -43,6 +43,10 @@
 let snapshot = null; // most recent snapshot from main thread
 let paused   = false;
 
+// Worker-authoritative march state: persists between snapshots so stale
+// snapshot step counts don't reset progress. Map of uid → { step, lastStepTime, arrived }
+const workerMarchState = new Map();
+
 // Interval handles
 let ids = {};
 
@@ -52,40 +56,52 @@ function clearAll() {
 }
 
 // ── March step: 100ms ───────────────────────────────────────────────────────
-// Move commanders along their march path one step at a time.
-// Returns the minimal diff so the main thread can do a targeted setCmds.
+// Worker maintains its own step/lastStepTime so stale snapshots don't reset progress.
 function tickMarch() {
   if (!snapshot) return;
   const { cmds } = snapshot;
   if (!cmds) return;
 
   const now = Date.now();
-  const updates = []; // { uid, tk, marchPatch }
+  const updates = [];
 
   for (const cmd of cmds) {
-    if (!cmd.march) continue;
+    if (!cmd.march) {
+      workerMarchState.delete(cmd.uid);
+      continue;
+    }
     const m = cmd.march;
     if (!m.path || m.path.length === 0) {
       updates.push({ uid: cmd.uid, clearMarch: true });
+      workerMarchState.delete(cmd.uid);
       continue;
     }
-    if (now - m.lastStepTime < m.stepMs) continue;
 
-    const nextStep = m.step + 1;
+    // Use worker-authoritative state; seed from snapshot only when march is new or path changed
+    let ws = workerMarchState.get(cmd.uid);
+    if (!ws || ws.pathLen !== m.path.length) {
+      ws = { step: m.step, lastStepTime: m.lastStepTime, pathLen: m.path.length, arrived: m.arrived || false };
+      workerMarchState.set(cmd.uid, ws);
+    }
+
+    if (ws.arrived) continue; // waiting for main thread to clear march
+    if (now - ws.lastStepTime < m.stepMs) continue;
+
+    const nextStep = ws.step + 1;
     if (nextStep >= m.path.length) {
-      // Arrived — let main thread handle arrival logic (battle, capture, etc.)
       const dest = m.path[m.path.length - 1];
+      ws.arrived = true;
+      ws.step = nextStep;
       if (m.type === 'attack') {
         updates.push({ uid: cmd.uid, tk: dest, marchPatch: { ...m, step: nextStep, arrived: true } });
       } else {
         updates.push({ uid: cmd.uid, tk: dest, clearMarch: true });
+        workerMarchState.delete(cmd.uid);
       }
     } else {
-      updates.push({
-        uid: cmd.uid,
-        tk: m.path[nextStep],
-        marchPatch: { ...m, step: nextStep, lastStepTime: now },
-      });
+      ws.step = nextStep;
+      ws.lastStepTime = now;
+      updates.push({ uid: cmd.uid, tk: m.path[nextStep], marchPatch: { ...m, step: nextStep, lastStepTime: now } });
     }
   }
 
