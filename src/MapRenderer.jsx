@@ -1527,6 +1527,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
   }
 
   let processedCount = 0;
+  let blueCount = 0, purpleCount = 0;
   for (const tileKey of _hqKeyIndex) {
     const tile = tiles[tileKey];
     if (!tile?.isHQ) { _hqKeyIndex.delete(tileKey); continue; }
@@ -1558,12 +1559,6 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     const ownerPlayerId = aiPlayerIdMap?.get(tileKey) || tile.ownerPlayerId || null;
     const isAiOwned = owner === "ai" || (owner !== "player" && owner !== null);
     const isCrew = !!(isAiOwned && ownerPlayerId && crewPids?.has(ownerPlayerId));
-    if (isAiOwned && tile.faction === playerFacKey && !isCrew) {
-      console.log(`[HQ Tint MISS] ${tileKey} owner:${owner} ownerPlayerId:${ownerPlayerId} inMap:${aiPlayerIdMap?.has(tileKey)} crewPidsSize:${crewPids?.size} hasPid:${crewPids?.has(ownerPlayerId)}`);
-    }
-    if (isAiOwned && tile.faction === playerFacKey && isCrew) {
-      console.log(`[HQ Tint HIT] ${tileKey} → BLUE`);
-    }
     if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName && prev.isCrew === isCrew) continue;
 
     for (let i = hqCont.children.length - 1; i >= 0; i--) {
@@ -1578,8 +1573,15 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     const tileWithPid = ownerPlayerId && !tile.ownerPlayerId ? { ...tile, ownerPlayerId } : tile;
     hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids));
     _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew });
+
+    // Count tint changes for summary log
+    if (isAiOwned && tile.faction === playerFacKey) {
+      if (isCrew) blueCount++; else purpleCount++;
+    }
   }
-  if (!vb) console.log(`[buildHQLayer] processed:${processedCount} of _hqKeyIndex:${_hqKeyIndex.size} (no-vb full rebuild). Sample ownerPlayerIds:`, [..._hqKeyIndex].slice(0,3).map(k => `${k}→${tiles[k]?.ownerPlayerId??'null'}`))
+  if (!vb) {
+    console.log(`[HQ Tint] rebuilt ${processedCount} HQs — blue(crew):${blueCount} purple(faction):${purpleCount} crewPidsSize:${crewPids?.size}`);
+  }
 }
 
 function drawMarchLines(gfx, cmds, reinMarches, tiles) {
