@@ -1416,8 +1416,18 @@ export default function RiseToWar() {
 
   const selAdjToPlayer = useMemo(() => {
     if (!selTile || selTile.owner==="player") return false;
-    return adj(selTile.c, selTile.r).some(ak => tiles[ak]?.owner==="player");
-  }, [selTile, tileVersion]);
+    return adj(selTile.c, selTile.r).some(ak => {
+      const t = tiles[ak];
+      if (!t) return false;
+      // Own tile
+      if (t.owner === "player") return true;
+      // Same-faction AI tile (purple)
+      if (t.owner === "ai" && t.faction === facKey) return true;
+      // Crew member tile (blue)
+      if (crewmatePlayerIds.has(t.ownerPlayerId)) return true;
+      return false;
+    });
+  }, [selTile, tileVersion, facKey, crewmatePlayerIds]);
 
   const cmdsAdjToSel = useMemo(() => {
     if (!selAdjToPlayer || !selTile) return [];
@@ -1449,8 +1459,10 @@ export default function RiseToWar() {
     const freshCmdTroops = normaliseTroopSlots(freshCmd).reduce((s,sl)=>s+(sl.troops||0),0) || freshCmd.troops || 0;
     if (!freshCmdTroops || freshCmdTroops < 1) { floaty("⚠ Assign troops first!", "#cc8030", freshCmd.tk); return; }
     const destTile = tilesMapRef.current[destKey];
-    const type = destTile?.owner==="player" ? "move" : "attack";
-    if (type==="move" && destTile?.owner!=="player") return;
+    const isCrewTile = crewmatePlayerIds.has(destTile?.ownerPlayerId);
+    const isCrewHQ   = isCrewTile && (destTile?.isHQ || destTile?.isHQPart);
+    const type = (destTile?.owner==="player" || isCrewTile) ? "move" : "attack";
+    if (type==="move" && destTile?.owner!=="player" && !isCrewTile) return;
     // Stamina check: moves cost 10, attacks cost 20
     const staminaCost = type === "attack" ? 20 : 10;
     const curStamina = freshCmd.stamina ?? 200;
@@ -1897,6 +1909,7 @@ export default function RiseToWar() {
         popupMode={popupMode} setPopupMode={setPopupMode}
         onEnterHQ={onEnterHQ}
         cmds={cmds} cmdsOnSel={cmdsOnSel} marchingToSel={marchingToSel} canAtk={canAtk}
+        crewmatePlayerIds={crewmatePlayerIds}
         barracksPool={barracksPool} editArmyCmd={editArmyCmd} setEditArmyCmd={setEditArmyCmd}
         sliderVals={sliderVals} setSliderVals={setSliderVals}
         deletingTiles={deletingTiles} deletingSecsLeft={deletingSecsLeft}
