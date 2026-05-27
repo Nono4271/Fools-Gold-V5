@@ -210,10 +210,10 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // Keep and keepPart tiles render as plain ground. Gate tiles render with their terrain.
       // P10–P13 single-tile structures are handled in second pass below.
       // Static keeps (5x5) and HQs (3x3) are handled in their own passes.
-      // isHQPart tiles render normally in main pass — fourth pass draws over them.
-      if ((isKeep && !isGate) || isKeepPart || isHQ) {
+      // isHQPart tiles are skipped here — buildHQLayer/_buildOneHQ draws the full 3x3 footprint.
+      if ((isKeep && !isGate) || isKeepPart || isHQ || isHQPart) {
         if ((tile.powerLevel ?? 0) >= 10) continue; // P10+ handled in second pass
-        continue; // keeps handled in third pass, HQ center in fourth pass
+        continue; // keeps handled in third pass, HQ tiles in buildHQLayer
       }
 
       // ── Gate tiles: crossing / tollbridge / tunnel — distinct visuals ──────
