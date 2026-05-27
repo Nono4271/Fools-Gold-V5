@@ -1568,7 +1568,6 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // Hit area matches the fourth pass fill geometry exactly (pc,pr = center)
   // HIT_POLY matches the selection outline and green border geometry exactly.
   // pc,pr is the top-left of the 3x3 (same as sc,sr in drawSelection).
-  const elev = 0;
   const HIT_POLY = [
     isoXY(pc,   pr  ).cx,           isoXY(pc,   pr  ).cy - elev,           // N
     isoXY(pc+2, pr  ).cx + TW/2,    isoXY(pc+2, pr  ).cy - elev + TH/2,   // E
