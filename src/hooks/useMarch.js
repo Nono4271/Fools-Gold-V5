@@ -32,7 +32,9 @@ function cmdSiegePower(cmd, boostedCmd) {
   const slots = cmdSlots(cmd);
   const bonus = boostedCmd?.gearBonuses?.armySiege || 0;
   if (slots.length > 0) return calcSiegePower(slots, null, bonus, FACTION_TROOPS);
-  return calcSiegePower(cmdTroops(cmd), cmd.troopBranch, bonus);
+  // AI commanders use cmd.troops directly (no slot system)
+  const troops = cmd.troops || 0;
+  return calcSiegePower(troops, cmd.troopBranch, bonus);
 }
 function cmdMarchSpd(cmd, boostedCmd) {
   const slots = cmdSlots(cmd);
@@ -685,8 +687,9 @@ arrivedAI.forEach(async cmd => {
   }
 
   const wallLvl = defTile.owner === "player" && defTile.isHQ ? (bldgs.walls||0) : 0;
-  const res = await runBattle(boostedCmd2, cmdTroops(cmd), defTile, wallLvl);
-  const newTroops = res.won ? Math.max(0, cmdTroops(cmd) - res.lost) : 0;
+  const aiTroops = cmd.troops || cmdTroops(cmd); // AI uses cmd.troops; player uses slots
+  const res = await runBattle(boostedCmd2, aiTroops, defTile, wallLvl);
+  const newTroops = res.won ? Math.max(0, aiTroops - res.lost) : 0;
   let tileCaptured = false;
 
   if (res.won) {
