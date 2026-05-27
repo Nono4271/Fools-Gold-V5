@@ -909,7 +909,7 @@ export default function RiseToWar() {
           setCrossingsState(crossings || []);
           setKeepMeta(keepMeta);
           setAiHqKeys(newAiHqKeys);
-          setAiFactionKeys(aiFactions);
+          setAiFactionKeys([...aiFactions, facKey]);
           setAiCmds(initialAiCmds);
           setAiCmdsVersion(v => v + 1);
           setAiFaction(primaryAiFk);
