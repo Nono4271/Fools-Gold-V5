@@ -1563,18 +1563,19 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     group.addChild(labelText);
   }
 
-  // ── Hit area — tight 9-tile diamond (pc,pr = center) ──
-  const TIGHT_HIT = [
-    isoXY(pc,   pr-1).cx,           isoXY(pc,   pr-1).cy - elev,           // N
-    isoXY(pc+1, pr  ).cx + TW/2,    isoXY(pc+1, pr  ).cy - elev + TH/2,   // E
-    isoXY(pc,   pr+1).cx,           isoXY(pc,   pr+1).cy - elev + TH,      // S
-    isoXY(pc-1, pr  ).cx - TW/2,    isoXY(pc-1, pr  ).cy - elev + TH/2,   // W
-  ];
+  // ── Hit area ──
   const hit = new PIXI.Graphics();
   hit.beginFill(0xffffff, 0.001);
-  hit.drawPolygon(TIGHT_HIT);
+  hit.drawPolygon(FOOTPRINT);
+  // Hit area matches the fourth pass fill geometry exactly (pc,pr = center)
+  const HIT_POLY = [
+    isoXY(pc,   pr-1).cx,           isoXY(pc,   pr-1).cy,
+    isoXY(pc+1, pr  ).cx + TW/2,    isoXY(pc+1, pr  ).cy + TH/2,
+    isoXY(pc,   pr+1).cx,           isoXY(pc,   pr+1).cy + TH,
+    isoXY(pc-1, pr  ).cx - TW/2,    isoXY(pc-1, pr  ).cy + TH/2,
+  ];
   hit.endFill();
-  hit.hitArea     = new PIXI.Polygon(TIGHT_HIT);
+  hit.hitArea     = new PIXI.Polygon(HIT_POLY);
   hit.interactive = true;
   hit.buttonMode  = true;
   hit.cursor      = "pointer";
