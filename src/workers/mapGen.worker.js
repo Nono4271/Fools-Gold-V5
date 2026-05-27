@@ -865,6 +865,7 @@ function randomSpawn(regionKey, usedKeys, flagArr, terrainArr, powerArr) {
       }
     }
     if (!ok) continue;
+    if (!hasValidResourceNeighbors(c, r, powerArr)) continue;
     candidates.splice(i, 1); // remove so it won't be picked again
     return k;
   }
@@ -1214,7 +1215,7 @@ self.onmessage = function(e) {
       if (dr!==0) for (let r=r1; r!==r2+dr; r+=dr) addRoadTile(c2,r);
       else addRoadTile(c2,r1);
     }
-    console.log(`[MapGen] Sample ROAD_SEGS_EARLY:`, JSON.stringify(ROAD_SEGS_EARLY.slice(0,10)));
+
   }
 
   // Gate and Keep constants (needed for border painting below)
@@ -1230,12 +1231,6 @@ self.onmessage = function(e) {
 
   // Use CROSSINGS to find borders, then locate actual positions in REGION_MAP
   const { impassable, gateA, gateB, pathTiles } = buildBordersFromCrossings(REGION_MAP, CROSSINGS);
-
-  console.log(`[MapGen] CROSSINGS count: ${CROSSINGS.length}`);
-  console.log(`[MapGen] Border tiles - impassable: ${impassable.length}, gateA: ${gateA.length}, gateB: ${gateB.length}, path: ${pathTiles.length}`);
-  if (CROSSINGS.length > 0) {
-    console.log(`[MapGen] Sample crossing:`, CROSSINGS[0]);
-  }
 
   // Paint impassable border tiles
   // Vertical borders (axis V) = river; horizontal borders (axis H) = rockymountain
@@ -1546,9 +1541,6 @@ self.onmessage = function(e) {
     }
   }
   
-  console.log(`[MapGen] Generated ${ROAD_SEGMENTS.length} road segments`);
-  console.log(`[MapGen] Regions with gates:`, Object.keys(gatesPerRegion).length);
-  console.log(`[MapGen] Sample dynamic segments:`, JSON.stringify(ROAD_SEGMENTS.slice(0,10)));
 
   // ── Rebuild ROAD_TILE_SET from actual dynamic segments ────────────────────
   ROAD_TILE_SET.clear();
@@ -1630,7 +1622,6 @@ self.onmessage = function(e) {
       [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
     }
     REGION_CANDIDATES[reg.key] = candidates;
-    console.log(`[MapGen] Region ${reg.key} (${reg.name}): ${candidates.length} HQ candidates`);
   }
 
   // Build per-faction region lists so we can spread 50 HQs across all home regions
@@ -1826,7 +1817,6 @@ self.onmessage = function(e) {
       stampP10(rc, rr, rpl); p10Placed++;
     }
 
-    console.log(`[MapGen] P10+ structures: ${p10Total} candidates, ${p10Placed} placed (${p10Relocated} relocated), ${p10Demoted} demoted`);
   }
 
   postMessage({ type:"progress", pct:98, label:"Finishing up..." });
