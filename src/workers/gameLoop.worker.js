@@ -181,34 +181,39 @@ function adj(c, r) {
 
 function tickAiMarch() {
   if (!snapshot?.aiFactionKeys?.length) return;
-  const { aiCmds, aiTileKeys, aiFactionKeys, tiles, CMD_MARCH_COOLDOWN_MS: COOLDOWN = 15000 } = snapshot;
-  if (!aiCmds?.length) return;
+  const { aiCmds, aiTileKeys, aiFaction, tiles, CMD_MARCH_COOLDOWN_MS: COOLDOWN = 15000 } = snapshot;
+  if (!aiCmds?.length || !aiFaction) return;
+
+  // Only process the single player-faction AI commander
+  const factionCmds = aiCmds.filter(c => c.faction === aiFaction);
+  if (!factionCmds.length) return;
 
   const now = Date.now();
-  const idleArmed = aiCmds.filter(c => !c.march && (c.troops || 0) > 0);
-  const idleNoTroops = aiCmds.filter(c => !c.march && !(c.troops || 0));
+  const idleArmed    = factionCmds.filter(c => !c.march && (c.troops || 0) > 0);
+  const idleNoTroops = factionCmds.filter(c => !c.march && !(c.troops || 0));
   if (idleNoTroops.length) {
     idleNoTroops.forEach(c => self.postMessage({ type: 'aiMarchNoCandidate', uid: c.uid, faction: c.faction, reason: 'no troops yet — waiting for econ tick', now }));
   }
   if (!idleArmed.length) return;
 
-  // Precompute frontier per faction
-  const factionFrontier = {};
-  for (const fk of aiFactionKeys) {
-    const ownedKeys = aiTileKeys?.[fk] || [];
-    if (!ownedKeys.length) {
-      self.postMessage({ type: 'aiMarchNoCandidate', uid: `faction:${fk}`, faction: fk, reason: 'no owned tiles in snapshot — frontier is empty', now });
-    }
-    const ownedSet = new Set(ownedKeys);
-    const frontier = new Set();
-    for (const ownedKey of ownedKeys) {
-      const [oc, or_] = ownedKey.split(',').map(Number);
-      for (const k of adj(oc, or_)) {
-        if (!ownedSet.has(k)) frontier.add(k);
-      }
-    }
-    factionFrontier[fk] = [...frontier];
+  // Build frontier from owned tiles, falling back to HQ key as seed
+  const ownedKeys = aiTileKeys?.[aiFaction] || [];
+  const seedKeys  = ownedKeys.length
+    ? ownedKeys
+    : idleArmed.filter(c => c.hqKey).map(c => c.hqKey);
+  if (!seedKeys.length) {
+    self.postMessage({ type: 'aiMarchNoCandidate', uid: `faction:${aiFaction}`, faction: aiFaction, reason: 'no owned tiles or HQ key in snapshot', now });
+    return;
   }
+  const ownedSet = new Set(seedKeys);
+  const frontier = new Set();
+  for (const ownedKey of seedKeys) {
+    const [oc, or_] = ownedKey.split(',').map(Number);
+    for (const k of adj(oc, or_)) {
+      if (!ownedSet.has(k)) frontier.add(k);
+    }
+  }
+  const frontierArr = [...frontier];
 
   const toProcess = idleArmed.slice(0, 20);
   const dispatches = [];
@@ -217,10 +222,7 @@ function tickAiMarch() {
     const lastMs = aiLastMarch[cmd.uid] || 0;
     if (now - lastMs < COOLDOWN) continue;
 
-    const candidates = (factionFrontier[cmd.faction] || []).filter(k => {
-      if (!tiles) return true; // no tile data, allow all
-      return true; // tile passability checked on main thread via bfsPath
-    });
+    const candidates = frontierArr;
     if (!candidates.length) {
       self.postMessage({ type: 'aiMarchNoCandidate', uid: cmd.uid, faction: cmd.faction, reason: 'no frontier tiles', now });
       continue;
