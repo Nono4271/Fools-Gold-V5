@@ -11,7 +11,7 @@ import { adj, bfsPath, effectiveMarchSpd, marchStepMs } from "../../shared/utils
 import { getBranchMainSkill, getBranchSideSkills } from "../../shared/constants/skills.js";
 
 // Per-commander cooldown between marches (ms) — stagger so not all 50 move at once
-const CMD_MARCH_COOLDOWN_MS = 5000;
+const CMD_MARCH_COOLDOWN_MS = 15000; // 15s between marches per commander
 
 export function useAI({
   screen,
@@ -71,9 +71,25 @@ const tickAiMarch = useCallback(() => {
   // Loop over ALL AI commanders, not just one per faction
   const aiCmds = curCmds.filter(c => c.owner === "ai" && c.faction && aiFactionKeys.includes(c.faction));
   const idleArmed = aiCmds.filter(c => !c.march && (c.troops || 0) > 0);
-  console.log(`[AI:march] total=${aiCmds.length} idleArmed=${idleArmed.length}`);
+  // Cap per tick to avoid main thread freeze — stagger across ticks via cooldown
+  const toProcess = idleArmed.slice(0, 20);
+  console.log(`[AI:march] total=${aiCmds.length} idleArmed=${idleArmed.length} processing=${toProcess.length}`);
 
-  for (const cmd of idleArmed) {
+  // Precompute frontier (attackable neighbors) once per faction
+  const factionFrontier = new Map(); // fk → Set<tileKey>
+  for (const fk of aiFactionKeys) {
+    const tileKeys = aiTileKeysMapRef.current.get(fk) || new Set();
+    const frontier = new Set();
+    for (const ownedKey of tileKeys) {
+      const [oc, or_] = ownedKey.split(",").map(Number);
+      for (const k of adj(oc, or_)) {
+        if (!tileKeys.has(k) && curTiles[k]) frontier.add(k);
+      }
+    }
+    factionFrontier.set(fk, frontier);
+  }
+
+  for (const cmd of toProcess) {
     const fk = cmd.faction;
     const tileKeys  = aiTileKeysMapRef.current.get(fk) || new Set();
     const lastMarch = aiLastMarchMapRef.current.get(fk) || new Map();
@@ -82,21 +98,7 @@ const tickAiMarch = useCallback(() => {
     if (now - lastMs < CMD_MARCH_COOLDOWN_MS) { console.log(`[AI:march] ${cmd.uid} cooldown`); continue; }
 
     const [cc, cr] = cmd.tk.split(",").map(Number);
-    const cmdTile = curTiles[cmd.tk];
-    let candidates;
-    if (cmdTile?.isHQ || cmdTile?.isHQPart) {
-      // Commander on HQ — scan adj to all owned tiles so HQ parts don't block
-      const adjToOwned = new Set();
-      for (const ownedKey of tileKeys) {
-        const [oc, or_] = ownedKey.split(",").map(Number);
-        for (const k of adj(oc, or_)) {
-          if (!tileKeys.has(k)) adjToOwned.add(k);
-        }
-      }
-      candidates = [...adjToOwned].filter(k => curTiles[k]);
-    } else {
-      candidates = adj(cc, cr).filter(k => !tileKeys.has(k) && curTiles[k]);
-    }
+    const candidates = [...(factionFrontier.get(fk) || [])].filter(k => curTiles[k]);
     if (!candidates.length) { console.log(`[AI:march] ${cmd.uid} no candidates`); continue; }
 
     // Scoring: strongly prioritize the 3 HQ-adjacent resource tiles

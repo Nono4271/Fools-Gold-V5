@@ -142,7 +142,10 @@ const hasPlayerFoothold = (destKey, originKey, tileMap) => {
 };
 const hasAiFoothold = (destKey, originKey, tileMap) => {
   const [dc, dr] = destKey.split(",").map(Number);
-  if (adj(dc, dr).some(k => tileMap[k]?.owner === "ai")) return true;
+  if (adj(dc, dr).some(k => {
+    const t = tileMap[k];
+    return t?.owner === "ai" || (t?.owner && t.owner !== "player" && t.owner !== null);
+  })) return true;
   if (gatePartners?.[originKey] === destKey) return true;
   return false;
 };
