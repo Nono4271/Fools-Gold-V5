@@ -59,7 +59,10 @@ const tickAiMarch = useCallback((dispatches) => {
     const cmd = curCmds.find(c => c.uid === uid);
     if (!cmd || cmd.march) return;
     const path = bfsPath(cmd.tk, destKey);
-    if (!path || path.length < 2) return;
+    if (!path || path.length < 2) {
+      console.log(`[AI March] ${cmd.uid} (${cmd.faction}) — no march: BFS found no path from ${cmd.tk} to ${destKey}`);
+      return;
+    }
     const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
     updates.push({ uid, march: { type:"attack", path, step:0, dest:destKey, origin:cmd.tk, stepMs, lastStepTime:now } });
   });
