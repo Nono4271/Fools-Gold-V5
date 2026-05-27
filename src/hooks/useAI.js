@@ -66,49 +66,58 @@ const tickAiMarch = useCallback(() => {
   const curCmds  = cmdsRef.current;
   const curTiles = tilesRef.current;
 
-  // Collect updates: array of { uid, march }
   const updates = [];
 
-  for (const fk of aiFactionKeys) {
+  // Loop over ALL AI commanders, not just one per faction
+  const aiCmds = curCmds.filter(c => c.owner === "ai" && c.faction && aiFactionKeys.includes(c.faction));
+  const idleArmed = aiCmds.filter(c => !c.march && (c.troops || 0) > 0);
+
+  for (const cmd of idleArmed) {
+    const fk = cmd.faction;
     const tileKeys  = aiTileKeysMapRef.current.get(fk) || new Set();
     const lastMarch = aiLastMarchMapRef.current.get(fk) || new Map();
-    const fkCmds    = curCmds.filter(c => c.owner === "ai" && c.faction === fk);
-    const idleArmed = fkCmds.filter(c => !c.march && (c.troops || 0) > 0);
 
-    for (const cmd of idleArmed) {
-      // Per-commander cooldown — stagger so 50 commanders don't march simultaneously
-      const lastMs = lastMarch.get(cmd.uid) || 0;
-      if (now - lastMs < CMD_MARCH_COOLDOWN_MS) continue;
+    const lastMs = lastMarch.get(cmd.uid) || 0;
+    if (now - lastMs < CMD_MARCH_COOLDOWN_MS) continue;
 
-      const [cc, cr] = cmd.tk.split(",").map(Number);
-      // Candidate tiles: adjacent + not already owned by this faction
-      const candidates = adj(cc, cr).filter(k => !tileKeys.has(k) && curTiles[k]);
-      if (!candidates.length) continue;
+    const [cc, cr] = cmd.tk.split(",").map(Number);
+    const candidates = adj(cc, cr).filter(k => !tileKeys.has(k) && curTiles[k]);
+    if (!candidates.length) continue;
 
-      // Pick target: prefer tiles closer to win tile, but add some variance
-      // so commanders don't all bottleneck on the same path
-      const scored = candidates.map(k => {
-        const [tc, tr] = k.split(",").map(Number);
-        const dist = Math.abs(tc - WIN_C) + Math.abs(tr - WIN_R);
-        // Add random jitter so commanders spread out
-        return { k, score: dist + Math.random() * 30 };
-      });
-      scored.sort((a, b) => a.score - b.score);
-      const target = scored[0].k;
+    // Scoring: strongly prioritize the 3 HQ-adjacent resource tiles
+    // (pl=1 = 1/hr, pl>=10 = 10/hr+) so low-level commanders level up fast.
+    // After those are taken, bias toward win tile with jitter.
+    const hqKey = cmd.hqKey;
+    const [hc, hr] = hqKey ? hqKey.split(",").map(Number) : [cc, cr];
 
-      const path = bfsPath(cmd.tk, target);
-      if (!path || path.length < 2) continue;
+    const scored = candidates.map(k => {
+      const t = curTiles[k];
+      const pl = t?.powerLevel ?? 0;
+      const [tc, tr] = k.split(",").map(Number);
 
-      const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
-      updates.push({
-        uid: cmd.uid,
-        march: { type: "attack", path, step: 0, dest: target, origin: cmd.tk, stepMs, lastStepTime: now },
-      });
-      lastMarch.set(cmd.uid, now);
-    }
+      // Strong bonus for adjacent resource tiles (pl 1 or 10+) near HQ
+      const distToHq = Math.abs(tc - hc) + Math.abs(tr - hr);
+      const isResourceTile = pl === 1 || pl >= 10;
+      const resourceBonus = (isResourceTile && distToHq <= 4) ? -200 : 0;
 
-    // Persist the updated last-march map for this faction
-    aiLastMarchMapRef.current.set(fk, lastMarch);
+      const distToWin = Math.abs(tc - WIN_C) + Math.abs(tr - WIN_R);
+      return { k, score: distToWin + resourceBonus + Math.random() * 30 };
+    });
+    scored.sort((a, b) => a.score - b.score);
+    const target = scored[0].k;
+
+    const path = bfsPath(cmd.tk, target);
+    if (!path || path.length < 2) continue;
+
+    const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
+    updates.push({
+      uid: cmd.uid,
+      march: { type: "attack", path, step: 0, dest: target, origin: cmd.tk, stepMs, lastStepTime: now },
+    });
+
+    const updatedLastMarch = new Map(lastMarch);
+    updatedLastMarch.set(cmd.uid, now);
+    aiLastMarchMapRef.current.set(fk, updatedLastMarch);
   }
 
   if (!updates.length) return;
@@ -140,36 +149,40 @@ const tickAiEcon = useCallback(() => {
     const hqKeyVal = hqKeys[fk];
     const hqKey    = Array.isArray(hqKeyVal) ? hqKeyVal[0] : hqKeyVal;
 
-    // Spend skill points for AI commanders
+    // Spend skill points for ALL commanders with unspent points this tick
     const cmdsWithPoints = fkCmds.filter(c => (c.unspentSkillPoints ?? 0) > 0);
     if (cmdsWithPoints.length) {
-      const cmd = cmdsWithPoints[0];
-      const sp  = cmd.skillPoints || {};
-      const MAX_SKILL_LVL = 5;
-      let skillToSpend = null;
-      outer: for (const pass of ["main", "side"]) {
-        for (let b = 0; b < 4; b++) {
-          const rawKeys = pass === "main"
-            ? [getBranchMainSkill(cmd.cls, b, cmd)]
-            : getBranchSideSkills(cmd.cls, b, cmd);
-          const keys = rawKeys.map(k => (typeof k === "object" && k !== null) ? k.key : k);
-          for (const key of keys) {
-            if (!key) continue;
-            if ((sp[key] ?? 0) < MAX_SKILL_LVL) { skillToSpend = key; break outer; }
+      const updates = [];
+      for (const cmd of cmdsWithPoints) {
+        const sp  = cmd.skillPoints || {};
+        const MAX_SKILL_LVL = 5;
+        let skillToSpend = null;
+        outer: for (const pass of ["main", "side"]) {
+          for (let b = 0; b < 4; b++) {
+            const rawKeys = pass === "main"
+              ? [getBranchMainSkill(cmd.cls, b, cmd)]
+              : getBranchSideSkills(cmd.cls, b, cmd);
+            const keys = rawKeys.map(k => (typeof k === "object" && k !== null) ? k.key : k);
+            for (const key of keys) {
+              if (!key) continue;
+              if ((sp[key] ?? 0) < MAX_SKILL_LVL) { skillToSpend = key; break outer; }
+            }
           }
         }
+        if (skillToSpend) updates.push({ uid: cmd.uid, skill: skillToSpend });
       }
-      if (skillToSpend) {
+      if (updates.length) {
         setCmds(p => p.map(c => {
-          if (c.uid !== cmd.uid) return c;
+          const upd = updates.find(u => u.uid === c.uid);
+          if (!upd) return c;
           return {
             ...c,
             unspentSkillPoints: (c.unspentSkillPoints ?? 1) - 1,
-            skillPoints: { ...(c.skillPoints || {}), [skillToSpend]: ((c.skillPoints?.[skillToSpend] ?? 0) + 1) },
+            skillPoints: { ...(c.skillPoints || {}), [upd.skill]: ((c.skillPoints?.[upd.skill] ?? 0) + 1) },
           };
         }));
-        continue; // one action per faction per tick
       }
+      // Fall through to troop assignment — don't skip it
     }
 
     // Assign troops to idle commanders at their own HQ with no troops
