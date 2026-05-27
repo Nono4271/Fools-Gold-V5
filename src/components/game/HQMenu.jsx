@@ -360,7 +360,7 @@ const BRANCH_LVL_BONUS = [
   const portraitSrc = troopPortraitPath(fKey, branch.key, tierIdx);
   const [portraitErr, setPortraitErr] = useState(false);
   return (
-  <div style={{ position:"absolute", inset:0, zIndex:10,
+  <div style={{ position:"fixed", inset:0, zIndex:9999,
   background:"linear-gradient(135deg,#08060e 0%,#0c0a12 50%,#06080e 100%)",
   display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
@@ -2433,26 +2433,32 @@ function BattleGroupsScreen({
       );
     }
     const tierColor = TIER_COLORS[Math.min(res.tierIdx, 2)];
-    const icon = res.brDef.dmgType === "magical" ? "✦"
-      : res.brDef.size === "small" ? "🗡"
-      : res.brDef.size === "large" ? "🪃" : "⚔";
     const count = sl.troops > 999
       ? `${(sl.troops / 1000).toFixed(1)}k`
       : (sl.troops || 0).toLocaleString();
+    const psrc = troopPortraitPath(sl.branch?.faction, sl.branch?.branch, res.tierIdx);
     return (
       <div style={{
         width: 34, height: 38, borderRadius: 3, flexShrink: 0,
         border: `1px solid ${tierColor}99`,
         background: "rgba(6,4,2,.9)",
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", gap: 0,
+        position: "relative", overflow: "hidden",
       }}>
-        <div style={{ fontSize: 13, lineHeight: 1 }}>{icon}</div>
-        <div style={{ fontSize: 6, fontWeight: 700, color: tierColor, fontFamily: P.ff, lineHeight: 1 }}>
-          {TIER_ROMAN[Math.min(res.tierIdx, 2)]}
-        </div>
-        <div style={{ fontSize: 5.5, fontWeight: 700, color: "#c8a060", fontFamily: P.ff, lineHeight: 1, marginTop: 1 }}>
-          {count}
+        {psrc && (
+          <img src={psrc} alt={res.tierData?.label ?? ""}
+            style={{ position:"absolute", inset:0, width:"100%", height:"100%",
+              objectFit:"cover", objectPosition:"top center", opacity:.85 }}
+            onError={e => { e.currentTarget.style.display="none"; }}
+          />
+        )}
+        <div style={{ position:"absolute", inset:0,
+          background:"linear-gradient(to top, rgba(4,2,1,.95) 0%, rgba(4,2,1,.2) 55%, transparent 100%)",
+          pointerEvents:"none" }} />
+        <div style={{ position:"absolute", bottom:1, left:0, right:0,
+          display:"flex", flexDirection:"column", alignItems:"center", gap:0 }}>
+          <div style={{ fontSize: 5.5, fontWeight: 700, color: "#c8a060", fontFamily: P.ff, lineHeight: 1 }}>
+            {count}
+          </div>
         </div>
       </div>
     );

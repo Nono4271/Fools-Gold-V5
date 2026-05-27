@@ -368,7 +368,7 @@ export default memo(function TilePopup({
 
           {/* Action buttons */}
           <div style={{display:"flex",gap:3,marginTop:4,flexWrap:"wrap"}}>
-            {selTile.owner!=="player" && canAtk && (() => {
+            {selTile.owner!=="player" && canAtk && !crewmatePlayerIds?.has(selTile.ownerPlayerId) && (() => {
               // Check if best available attacker has ≥20 stamina
               const candidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
               const hasStam = candidates.some(c => (c.stamina ?? 200) >= 20);
@@ -385,6 +385,26 @@ export default memo(function TilePopup({
                     fontSize:9,fontWeight:700,
                     cursor:hasStam?"pointer":"not-allowed",opacity:hasStam?1:.6}}>
                   ⚔ Attack · 20⚡ {!hasStam && <span style={{fontSize:7}}>low</span>}
+                </button>
+              );
+            })()}
+            {selTile.owner!=="player" && canAtk && crewmatePlayerIds?.has(selTile.ownerPlayerId) && (() => {
+              const candidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
+              const mover = candidates[0];
+              const hasStam = (mover?.stamina ?? 200) >= 10;
+              return (
+                <button className="btn"
+                  onClick={() => hasStam ? (setMvCmd(mover), setMode("selectMarchDest")) : null}
+                  title={hasStam ? "" : "Need 10⚡ stamina to move"}
+                  style={{flex:1,padding:"5px 3px",
+                    background: hasStam
+                      ? "linear-gradient(135deg,rgba(20,80,40,.6),rgba(10,60,30,.4))"
+                      : "rgba(20,40,20,.3)",
+                    border:`1px solid ${hasStam?"#2a8040":"#2a4a2a"}`,
+                    color:hasStam?"#80d090":"#507050",
+                    fontSize:9,fontWeight:700,
+                    cursor:hasStam?"pointer":"not-allowed",opacity:hasStam?1:.6}}>
+                  🚶 Move · 10⚡ {!hasStam && <span style={{fontSize:7}}>low</span>}
                 </button>
               );
             })()}

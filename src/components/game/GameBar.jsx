@@ -402,7 +402,15 @@ export default memo(function GameBar({
           <PortraitButton
             key={cmd.uid}
             cmd={cmd}
-            onClick={() => { setCmdScreenOpen(true); setCmdScreenUid(cmd.uid); }}
+            onClick={() => {
+              const [c, r] = (cmd.tk || "0,0").split(",").map(Number);
+              const { cx, cy } = isoXY(c, r);
+              const z = zoomRef.current;
+              const px = -cx * z + window.innerWidth / 2;
+              const py = -cy * z + window.innerHeight / 2;
+              panRef.current = { x: px, y: py };
+              mapRendererRef.current?.teleport(px, py);
+            }}
             active={false}
             badge={0}
           />
