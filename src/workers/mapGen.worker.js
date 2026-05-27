@@ -1227,6 +1227,7 @@ self.onmessage = function(e) {
       if (dr!==0) for (let r=r1; r!==r2+dr; r+=dr) addRoadTile(c2,r);
       else addRoadTile(c2,r1);
     }
+    console.log(`[MapGen] Sample ROAD_SEGS_EARLY:`, JSON.stringify(ROAD_SEGS_EARLY.slice(0,10)));
   }
 
   // Gate and Keep constants (needed for border painting below)
@@ -1623,6 +1624,8 @@ self.onmessage = function(e) {
   
   console.log(`[MapGen] Generated ${ROAD_SEGMENTS.length} road segments`);
   console.log(`[MapGen] Regions with gates:`, Object.keys(gatesPerRegion).length);
+  // Debug: log first 10 dynamic segments to compare with ROAD_SEGS_EARLY
+  console.log(`[MapGen] Sample dynamic segments:`, JSON.stringify(ROAD_SEGMENTS.slice(0,10)));
   
   // Stamp roads into the map
   const stampRoad = (c, r) => {
