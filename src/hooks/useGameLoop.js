@@ -27,6 +27,7 @@ export function useGameLoop({
   tiles,
   reinMarches,
   aiFaction,
+  playerFacKey,
   defeatedTilesRef,
   aiTileKeysMapRef,
   aiFactionKeys,
@@ -50,6 +51,7 @@ export function useGameLoop({
   const tilesRef_   = useRef(tiles);
   const reinRef_    = useRef(reinMarches);
   const factionRef_ = useRef(aiFaction);
+  const playerFacKeyRef_ = useRef(playerFacKey);
   const aiFactionKeysRef_     = useRef(null);
   const aiFactionKeysListRef_ = useRef([]);
   const aiPoolRef_  = useRef({});
@@ -60,7 +62,8 @@ export function useGameLoop({
   useEffect(() => { cmdsRef_.current    = cmds;        }, [cmds]);
   useEffect(() => { tilesRef_.current   = tiles;       }, [tiles]);
   useEffect(() => { reinRef_.current    = reinMarches; }, [reinMarches]);
-  useEffect(() => { factionRef_.current = aiFaction;   }, [aiFaction]);
+  useEffect(() => { factionRef_.current = aiFaction;       }, [aiFaction]);
+  useEffect(() => { playerFacKeyRef_.current = playerFacKey; }, [playerFacKey]);
   useEffect(() => {
     aiFactionKeysRef_.current = aiTileKeysMapRef;
     aiFactionKeysListRef_.current = aiFactionKeys || [];
@@ -196,7 +199,7 @@ export function useGameLoop({
 
       // Only serialize the player's faction tile keys — that's all we need for testing.
       // Serializing all 8 factions × thousands of tiles every 500ms blocks the main thread.
-      const playerFk = factionRef_.current;
+      const playerFk = playerFacKeyRef_.current;
       const aiTileKeysObj = {};
       if (playerFk && aiFactionKeysRef_.current?.current) {
         const keySet = aiFactionKeysRef_.current.current.get(playerFk);
@@ -225,7 +228,7 @@ export function useGameLoop({
           cmds:          cmdSnapshot,
           tiles:         tileSnapshot,
           reinMarches:   reinRef_.current    || [],
-          aiFaction:     factionRef_.current || null,
+          aiFaction:     playerFacKeyRef_.current || null,
           aiCmds:        aiCmdSnapshot,
           aiTileKeys:    aiTileKeysObj,
           aiFactionKeys: aiFactionKeysListRef_.current || [],
