@@ -1701,7 +1701,12 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
   // Keep crewmatePlayerIds in a ref for tile coloring
   const crewPidsRef = useRef(crewmatePlayerIds ?? new Set());
-  useEffect(() => { crewPidsRef.current = crewmatePlayerIds ?? new Set(); }, [crewmatePlayerIds]);
+  useEffect(() => {
+    crewPidsRef.current = crewmatePlayerIds ?? new Set();
+    // Force full redraw so tiles re-tint immediately
+    redrawRef.current?.redraw?.();
+    redrawRef.current?.redrawHQs?.();
+  }, [crewmatePlayerIds]);
 
   useImperativeHandle(ref, () => ({
     teleport(px, py) {

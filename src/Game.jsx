@@ -1039,12 +1039,12 @@ export default function RiseToWar() {
     if (!playerCrewId || !crews.length) return new Set();
     const myCrew = crews.find(c => c.id === playerCrewId);
     if (!myCrew) return new Set();
-    // Collect all AI player IDs whose faction is a crew member
-    const crewFactions = new Set(myCrew.members || []);
+    const members = new Set(myCrew.members || []);
     const ids = new Set();
     for (const [hqKey, playerId] of aiPlayerIdMapRef.current) {
+      // members may contain full AI player IDs ("ai_pirates_3") or faction keys ("pirates")
       const fk = playerId.split("_")[1]; // "ai_pirates_3" → "pirates"
-      if (crewFactions.has(fk)) ids.add(playerId);
+      if (members.has(playerId) || members.has(fk)) ids.add(playerId);
     }
     return ids;
   }, [playerCrewId, crews]);
