@@ -742,9 +742,9 @@ const BRANCH_LVL_BONUS = [
   background: branchOpen ? `${fDef.c}0d` : "rgba(255,255,255,.01)",
   display:"flex", flexDirection:"column", position:"relative",
   opacity: branchOpen ? 1 : 0.55 }}>
-  {/* lock overlay */}
+  {/* lock overlay — pointer-events:none so troop cards behind it remain clickable */}
   {!branchOpen && (
-  <div style={{ position:"absolute", inset:0, zIndex:3,
+  <div style={{ position:"absolute", inset:0, zIndex:3, pointerEvents:"none",
   display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
   background:"rgba(6,6,8,.6)", borderRadius:8 }}>
   <div style={{ fontSize:20, marginBottom:4 }}>🔒</div>
@@ -924,6 +924,8 @@ orcs:          { n:"Orcs",                  s:"⚔️",  c:"#6aa830" },
 dragons:       { n:"Dragons",               s:"🐉",  c:"#cc3030" },
 holyknights:   { n:"Holy Knights",          s:"✝️",  c:"#d4af37" },
 nightcreatures:{ n:"Creatures of the Night",s:"🌑",  c:"#a030c0" },
+coldborns:     { n:"Coldborns",             s:"❄️",  c:"#60b8d4" },
+ashen_dead:    { n:"Ashen Dead",            s:"💀",  c:"#6a6a8a" },
 };
 const ALIGN_FACTIONS = {
 humans:   ["pirates","wizards","holyknights","coldborns"],
@@ -987,10 +989,10 @@ return (
         && item.curLvl >= item.maxLvl && item.maxLvl < 10;
       return (
         <button key={item.id}
-          onClick={() => { if (!item.locked) { setLeftSel(item.id); setSelBuilding(null); } }}
-          disabled={item.locked}
+          onClick={() => { setLeftSel(item.id); setSelBuilding(null); }}
+          disabled={false}
           style={{ width:60, display:"flex", flexDirection:"column", alignItems:"center",
-            gap:3, padding:"10px 4px", borderRadius:8, cursor:item.locked?"default":"pointer",
+            gap:3, padding:"10px 4px", borderRadius:8, cursor:"pointer",
             background: isActive ? `${item.color}22` : "transparent",
             border: `1px solid ${isActive ? item.color+"66" : "transparent"}`,
             transition:"all .15s", position:"relative" }}>
