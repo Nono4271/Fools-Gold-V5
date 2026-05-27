@@ -759,6 +759,10 @@ export default function RiseToWar() {
         aiFactions.forEach(aiFk => {
           newAiHqKeys[aiFk] = spawnKeys[aiFk] || [];
         });
+        // Include player's faction AI HQs (indices 1-49, skipping index 0 = player's own HQ)
+        if (spawnKeys[facKey]?.length > 1) {
+          newAiHqKeys[facKey] = spawnKeys[facKey].slice(1);
+        }
 
         aiHqKeysRef.current = newAiHqKeys;
 
@@ -787,7 +791,7 @@ export default function RiseToWar() {
         const INIT_BLDGS_VAL = { hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 };
         // factionTileKeys was pre-built by the worker scanning ownerArr in one pass —
         // no O(1.4M) rawMap scan needed here. Convert arrays to Sets for O(1) lookup.
-        aiFactions.forEach(aiFk => {
+        Object.keys(newAiHqKeys).forEach(aiFk => {
           aiRssMapRef.current.set(aiFk, { stone:5000, wood:5000, ore:5000, gas:5000 });
           aiBldgsMapRef.current.set(aiFk, { ...INIT_BLDGS_VAL });
           aiPoolMapRef.current.set(aiFk, barracksCapacity(0));
@@ -801,7 +805,7 @@ export default function RiseToWar() {
         // Commanders are spawned lazily as HQs enter the viewport (see lazySpawnAiCmds).
         // The first HQ per faction gets commanders immediately so the AI is active at start.
         const AI_STARTERS = {}; // { [fk]: [soldierHDef, veteranHDef] }
-        for (const aiFk of aiFactions) {
+        for (const aiFk of Object.keys(newAiHqKeys)) {
           AI_STARTERS[aiFk] = [
             HDEFS.find(h => h.faction === aiFk && h.rarity === "soldier"),
             HDEFS.find(h => h.faction === aiFk && h.rarity === "veteran"),
@@ -816,7 +820,7 @@ export default function RiseToWar() {
         let globalAiIdx = 0;
         const initialAiCmds = [];
 
-        aiFactions.forEach(aiFk => {
+        Object.keys(newAiHqKeys).forEach(aiFk => {
           const hqArr = newAiHqKeys[aiFk] || [];
           if (!hqArr.length) return;
           const starters = AI_STARTERS[aiFk];
