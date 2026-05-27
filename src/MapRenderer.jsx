@@ -2504,10 +2504,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         }
       }
     };
-    el.addEventListener("touchstart",  onTS, { passive: false }); // non-passive: preventDefault blocks iOS pull-to-refresh & swipe-back
-    el.addEventListener("touchmove",   onTM, { passive: false }); // non-passive: prevents native scroll during pan
-    el.addEventListener("touchend",    onTE, { passive: true });   // passive: no preventDefault needed on touchend
-    el.addEventListener("touchcancel", onTE, { passive: true });   // passive: same
+    const touchTarget = app.view; // app.view sits on top of el — touches land here
+    touchTarget.addEventListener("touchstart",  onTS, { passive: false });
+    touchTarget.addEventListener("touchmove",   onTM, { passive: false });
+    touchTarget.addEventListener("touchend",    onTE, { passive: true });
+    touchTarget.addEventListener("touchcancel", onTE, { passive: true });
 
     // Returns true if the event started inside a React UI panel layered above
     // the Pixi canvas. We check composedPath() for any element that has a
@@ -2607,10 +2608,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       el.removeEventListener("mousemove",  onMM);
       el.removeEventListener("mouseup",    onMU);
       el.removeEventListener("mouseleave", onMU);
-      el.removeEventListener("touchstart",  onTS);
-      el.removeEventListener("touchmove",   onTM);
-      el.removeEventListener("touchend",    onTE);
-      el.removeEventListener("touchcancel", onTE);
+      touchTarget.removeEventListener("touchstart",  onTS);
+      touchTarget.removeEventListener("touchmove",   onTM);
+      touchTarget.removeEventListener("touchend",    onTE);
+      touchTarget.removeEventListener("touchcancel", onTE);
       app.destroy(true);
       appRef.current = null; worldRef.current = null;
     };
