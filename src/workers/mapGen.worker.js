@@ -188,6 +188,9 @@ REGION_LIST.forEach((r,i) => { REGION_KEY_TO_IDX[r.key] = i+1; });
 const REGION_IDX_TO_KEY = {};
 REGION_LIST.forEach((r,i) => { REGION_IDX_TO_KEY[i+1] = r.key; });
 
+// Pre-built per-region HQ candidate lists (populated during map gen at pct:96)
+const REGION_CANDIDATES = {};
+
 // Biome seeds scaled for 1400x1000
 // ── Terrain clusters ──────────────────────────────────────────────────────────
 // The map is divided into 16 macro-regions, each assigned a dominant biome.
@@ -842,46 +845,30 @@ function hasValidResourceNeighbors(c, r, powerArr) {
 }
 
 function randomSpawn(regionKey, usedKeys, flagArr, terrainArr, powerArr) {
-  const reg=REGION_LIST.find(r=>r.key===regionKey);
-  if (!reg) return null;
-  for (let attempt=0;attempt<200;attempt++) {
-    const c=reg.cx+Math.floor((Math.random()-0.5)*70);
-    const r=reg.cy+Math.floor((Math.random()-0.5)*70);
-    if (c<1||c>=COLS-2||r<1||r>=ROWS-2) continue; // 3x3 HQ needs 2-tile margin
-    const k=`${c},${r}`;
-    if (KEEP_FOOTPRINT_SET.has(k)||usedKeys.has(k)) continue;
-    
-    // SAFETY NET 2: Check HQ is not adjacent to another HQ (1-tile gap required)
+  const candidates = REGION_CANDIDATES[regionKey];
+  if (!candidates || candidates.length === 0) return null;
+  // Draw first unused, non-adjacent candidate
+  for (let i = 0; i < candidates.length; i++) {
+    const k = candidates[i];
+    if (usedKeys.has(k)) continue;
+    const [c, r] = k.split(",").map(Number);
     if (isAdjacentToHQ(c, r, usedKeys)) continue;
-    
-    // Also skip any dynamically placed P10-13 structure or its parts
+    // Re-check flags since HQs stamped earlier may have changed nearby tiles
     const fl = flagArr[r*COLS+c];
     if (fl & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) continue;
-    // Don't spawn HQ on a road tile
-    const t0 = terrainArr[r*COLS+c];
-    if (t0 === TERRAIN_ENC.road || t0 === TERRAIN_ENC.hellfire) continue;
-    // Ensure 3x3 HQ footprint cells are all clear and road-free
-    let footClear = true;
-    for (let dr = 0; dr < 3; dr++) {
-      for (let dc = 0; dc < 3; dc++) {
-        if (dc === 0 && dr === 0) continue; // top-left (already checked above)
+    let ok = true;
+    for (let dr = 0; dr < 3 && ok; dr++) {
+      for (let dc = 0; dc < 3 && ok; dc++) {
+        if (dc === 0 && dr === 0) continue;
         const ti = (r+dr)*COLS+(c+dc);
-        if (ti < 0 || ti >= flagArr.length) { footClear=false; break; }
-        const fl2 = flagArr[ti];
-        if (fl2 & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { footClear=false; break; }
-        const t1 = terrainArr[ti];
-        if (t1 === TERRAIN_ENC.road || t1 === TERRAIN_ENC.hellfire) { footClear=false; break; }
+        if (flagArr[ti] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { ok=false; }
       }
-      if (!footClear) break;
     }
-    if (!footClear) continue;
-    
-    // SAFETY NET 1: Check HQ has valid resource neighbors (only for spawn)
-    if (!hasValidResourceNeighbors(c, r, powerArr)) continue;
-    
+    if (!ok) continue;
+    candidates.splice(i, 1); // remove so it won't be picked again
     return k;
   }
-  return `${reg.cx+5},${reg.cy+5}`;
+  return null;
 }
 
 self.onmessage = function(e) {
@@ -1608,6 +1595,43 @@ self.onmessage = function(e) {
 }
 
   postMessage({ type:"progress", pct:96, label:"Finding spawn points..." });
+
+  // ── Pre-build candidate tile lists for the 24 HQ spawn regions only ─────────
+  const HQ_SPAWN_REGIONS = REGION_LIST.filter(r => r.factions && r.factions.length > 0);
+  for (const reg of HQ_SPAWN_REGIONS) {
+    const candidates = [];
+    const regID = REGION_KEY_TO_IDX[reg.key];
+    for (let idx = 0; idx < SIZE; idx++) {
+      if (REGION_MAP[idx] !== regID) continue;
+      const c = idx % COLS, r = Math.floor(idx / COLS);
+      if (c < 1 || c >= COLS-2 || r < 1 || r >= ROWS-2) continue;
+      if (KEEP_FOOTPRINT_SET.has(`${c},${r}`)) continue;
+      if (flagArr[idx] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) continue;
+      const t0 = terrainArr[idx];
+      if (t0 === TERRAIN_ENC.road || t0 === TERRAIN_ENC.hellfire || t0 === TERRAIN_ENC.river || t0 === TERRAIN_ENC.rockymountain) continue;
+      let ok = true;
+      for (let dr = 0; dr < 3 && ok; dr++) {
+        for (let dc = 0; dc < 3 && ok; dc++) {
+          if (dc === 0 && dr === 0) continue;
+          const ti = (r+dr)*COLS+(c+dc);
+          if (ti >= SIZE) { ok=false; break; }
+          if (flagArr[ti] & (F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER)) { ok=false; break; }
+          const t1 = terrainArr[ti];
+          if (t1 === TERRAIN_ENC.road || t1 === TERRAIN_ENC.hellfire || t1 === TERRAIN_ENC.river || t1 === TERRAIN_ENC.rockymountain) { ok=false; break; }
+        }
+      }
+      if (!ok) continue;
+      if (!hasValidResourceNeighbors(c, r, powerArr)) continue;
+      candidates.push(`${c},${r}`);
+    }
+    // Shuffle so placements are random
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+    REGION_CANDIDATES[reg.key] = candidates;
+    console.log(`[MapGen] Region ${reg.key} (${reg.name}): ${candidates.length} HQ candidates`);
+  }
 
   // Build per-faction region lists so we can spread 50 HQs across all home regions
   const FACTION_ALL_REGIONS = {};
