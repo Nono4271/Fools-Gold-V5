@@ -733,6 +733,24 @@ export default function RiseToWar() {
             }
           });
           setPlayerHqKey(playerSpawn);
+
+          // ── Diagnostic: log ownership/flags for the 5x5 area around the HQ center ──
+          // Center tile = hc+1, hr+1 (playerSpawn is top-left of 3x3)
+          const diagCx = hc + 1, diagCy = hr + 1;
+          console.log(`[HQ Diag] Player HQ center: ${diagCx},${diagCy} | top-left spawn: ${playerSpawn}`);
+          for (let dr = -2; dr <= 2; dr++) {
+            for (let dc = -2; dc <= 2; dc++) {
+              const tk = `${diagCx + dc},${diagCy + dr}`;
+              const t = rawMap[tk];
+              if (!t) { console.log(`  [${tk}] — NO TILE`); continue; }
+              const dist = Math.abs(dc) + Math.abs(dr);
+              const zone = (dc === 0 && dr === 0) ? 'CENTER'
+                : (Math.abs(dc) <= 1 && Math.abs(dr) <= 1) ? '3x3-part'
+                : 'neighbor';
+              console.log(`  [${tk}] zone:${zone} owner:${t.owner ?? 'none'} isHQ:${!!t.isHQ} isHQPart:${!!t.isHQPart} faction:${t.faction ?? '-'}`);
+            }
+          }
+          // ── End diagnostic ──
           const { cx, cy } = isoXY(hc, hr);
           const initZoom = 1.25;
           const px = -cx * initZoom + window.innerWidth / 2;
