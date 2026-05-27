@@ -1514,7 +1514,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
-function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids, vb, allHqKeys) {
+function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids, vb, allHqKeys, aiPlayerIdMap) {
   if (_hqKeyIndex.size === 0 || !vb) {
     if (!vb) _hqKeyIndex.clear();
     // Seed from patched tiles
@@ -1556,7 +1556,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     const prev       = _hqStateCache.get(tileKey);
 
     const curPlayerName = owner === "player" ? playerName : null;
-    const ownerPlayerId = tile.ownerPlayerId || null;
+    const ownerPlayerId = aiPlayerIdMap?.get(tileKey) || tile.ownerPlayerId || null;
     const isCrew = !!(ownerPlayerId && crewPids?.has(ownerPlayerId));
     if (owner === "ai" && tile.faction === playerFacKey) {
       console.log(`[HQ Tint] ${tileKey} ownerPlayerId:${ownerPlayerId} isCrew:${isCrew} crewPidsSize:${crewPids?.size} hasPid:${crewPids?.has(ownerPlayerId)}`);
@@ -1572,10 +1572,11 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
       }
     }
 
-    hqCont.addChild(_buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids));
+    const tileWithPid = ownerPlayerId && !tile.ownerPlayerId ? { ...tile, ownerPlayerId } : tile;
+    hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids));
     _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew });
   }
-  if (!vb) console.log(`[buildHQLayer] processed:${processedCount} of _hqKeyIndex:${_hqKeyIndex.size} (no-vb full rebuild)`);
+  if (!vb) console.log(`[buildHQLayer] processed:${processedCount} of _hqKeyIndex:${_hqKeyIndex.size} (no-vb full rebuild). Sample ownerPlayerIds:`, [..._hqKeyIndex].slice(0,3).map(k => `${k}→${tiles[k]?.ownerPlayerId??'null'}`))
 }
 
 function drawMarchLines(gfx, cmds, reinMarches, tiles) {
@@ -1661,7 +1662,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles) {
 /* ══════════════════════════════════════════════════════════════════════════
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap }, ref) {
 
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
@@ -1710,6 +1711,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   useEffect(() => { playerFacKeyRef.current = playerFacKey; }, [playerFacKey]);
   const allHqKeysRef = useRef(allHqKeys || []);
   useEffect(() => { allHqKeysRef.current = allHqKeys || []; }, [allHqKeys]);
+  const aiPlayerIdMapRef_ = useRef(aiPlayerIdMap || new Map());
+  useEffect(() => { aiPlayerIdMapRef_.current = aiPlayerIdMap || new Map(); }, [aiPlayerIdMap]);
 
   // Keep crewmatePlayerIds in a ref for tile coloring
   const crewPidsRef = useRef(crewmatePlayerIds ?? new Set());
@@ -2152,7 +2155,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current);
+      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current, aiPlayerIdMapRef_.current);
     }
 
     function redrawAllHQs() {
@@ -2164,7 +2167,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current);
+      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current, aiPlayerIdMapRef_.current);
     }
 
     redrawRef.current = {

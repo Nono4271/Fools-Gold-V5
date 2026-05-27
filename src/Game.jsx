@@ -1886,6 +1886,7 @@ export default function RiseToWar() {
         playerName={facName}
         crewmatePlayerIds={crewmatePlayerIds}
         allHqKeys={Object.values(aiHqKeysRef.current).flat().concat(playerHqKey ? [playerHqKey] : [])}
+        aiPlayerIdMap={aiPlayerIdMapRef.current}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
