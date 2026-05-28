@@ -173,7 +173,6 @@ export default function RiseToWar() {
   const [rss,    setRss]     = useState({ stone:200_000, wood:200_000, ore:200_000, gas:200_000 });
   const [gems,   setGems]    = useState(20000);
   const [crewOpen,      setCrewOpen]      = useState(false);
-  const [searchOpen,    setSearchOpen]    = useState(false);
   const [playerCrewId,  setPlayerCrewId]  = useState(null);
   const [pendingCrewId, setPendingCrewId] = useState(null);
   const [crews,         setCrews]         = useState([]);
@@ -1688,7 +1687,8 @@ export default function RiseToWar() {
 
     if (mode==="selectMarchDest" && mvCmd) {
       if (k===mvCmd.tk) { setMode("view"); setMvCmd(null); return; }
-      if (tile.owner!=="player") { floaty("⚠ Can only move to owned tiles", "#cc8030", k); return; }
+      const isCrewDest = crewmatePlayerIds.has(tile?.ownerPlayerId || aiPlayerIdMapRef.current.get(k));
+      if (tile.owner!=="player" && !isCrewDest) { floaty("⚠ Can only move to owned or crew tiles", "#cc8030", k); return; }
       startMarch(mvCmd, k);
       return;
     }
@@ -2011,36 +2011,6 @@ export default function RiseToWar() {
 
       <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} />
 
-      {/* HQ + Search buttons under minimap */}
-      {!worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
-        <div style={{ position:"fixed", top:112, left:6, zIndex:300, display:"flex", gap:6 }}>
-          <button onClick={centerOnHQ} style={{
-            width:49, height:49, borderRadius:"50%",
-            background:"radial-gradient(circle at 35% 30%, #2a1e08, #0e0a04)",
-            border:"1px solid rgba(200,160,64,.35)",
-            display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-            cursor:"pointer", padding:0, gap:1,
-            boxShadow:"0 0 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06)",
-            touchAction:"manipulation",
-          }}>
-            <span style={{fontSize:20, lineHeight:1}}>🏰</span>
-            <span style={{fontSize:6, color:"#c8a060", fontFamily:"'Cinzel',serif", letterSpacing:".04em"}}>HQ</span>
-          </button>
-          <button onClick={() => setSearchOpen(v => !v)} style={{
-            width:49, height:49, borderRadius:"50%",
-            background:"radial-gradient(circle at 35% 30%, #0a1828, #040c14)",
-            border:"1px solid rgba(80,140,200,.25)",
-            display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-            cursor:"pointer", padding:0, gap:1,
-            boxShadow:"0 0 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06)",
-            touchAction:"manipulation",
-          }}>
-            <span style={{fontSize:20, lineHeight:1}}>🔍</span>
-            <span style={{fontSize:6, color:"#80aacc", fontFamily:"'Cinzel',serif", letterSpacing:".04em"}}>SEARCH</span>
-          </button>
-        </div>
-      )}
-
       {/* Wizard's Tomes trigger — bottom-left below minimap */}
       {!tomesOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
         <button onClick={()=>setTomesOpen(true)} style={{
@@ -2178,7 +2148,6 @@ export default function RiseToWar() {
         mapRendererRef={mapRendererRef}
         voidTapReady={voidTapReady}
         crewOpen={crewOpen} setCrewOpen={setCrewOpen} playerCrewId={playerCrewId}
-        searchOpen={searchOpen} setSearchOpen={setSearchOpen}
       />
 
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
