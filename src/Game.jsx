@@ -985,7 +985,7 @@ export default function RiseToWar() {
       const el = document.createElement("div");
       el.id = "safe-area-debug";
       el.style.cssText = `position:fixed;top:0;left:0;right:0;background:red;color:white;font-size:16px;font-weight:bold;padding:6px 12px;z-index:99999;pointer-events:none;text-align:center`;
-      el.textContent = `--sat=${sat || "EMPTY"} | innerH=${window.innerHeight} | screenH=${screen.height}`;
+      el.textContent = `--sat=${sat || "EMPTY"} | innerH=${window.innerHeight}`;
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 15000);
     }
