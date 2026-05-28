@@ -181,6 +181,15 @@ export default function RiseToWar() {
   const [playerCmds, setPlayerCmds] = useState([]);
   const aiCmdsRef = useRef([]);
   const cmdsRef = useRef([]);
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById("root");
+    console.log("[BG] html:", getComputedStyle(html).backgroundColor);
+    console.log("[BG] body:", getComputedStyle(body).backgroundColor);
+    console.log("[BG] root:", getComputedStyle(root).backgroundColor);
+  }, []);
+
   useEffect(() => { cmdsRef.current = [...playerCmds, ...aiCmdsRef.current]; }, [playerCmds]);
 
   const setAiCmds = useCallback((updater) => {
