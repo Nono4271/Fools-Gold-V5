@@ -22,7 +22,7 @@ export default memo(function BottomPanel({
   };
 
   return (
-    <div className="panel" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:9000,maxHeight:"50vh",display:"flex",flexDirection:"column",borderRadius:"10px 10px 0 0",animation:"fadeUp .18s ease",boxShadow:"0 -6px 32px rgba(0,0,0,.95)"}}>
+    <div className="panel" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:9000,maxHeight:"50vh",display:"flex",flexDirection:"column",borderRadius:"10px 10px 0 0",animation:"fadeUp .18s ease",boxShadow:"0 -6px 32px rgba(0,0,0,.95)",paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>
 
       {/* Header */}
       <div style={{padding:"9px 14px",borderBottom:"1px solid #221e12",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0,background:"rgba(255,255,255,.025)"}}>

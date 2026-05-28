@@ -367,6 +367,7 @@ const BRANCH_LVL_BONUS = [
 
   {/* Top bar */}
   <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px",
+  paddingTop:"calc(var(--sat) + 10px)",
   background:"rgba(0,0,0,.5)", borderBottom:`1px solid ${fColor}33`, flexShrink:0 }}>
   <button onClick={onClose}
   style={{ padding:"8px 16px", borderRadius:4, background:`${fColor}22`,
@@ -3312,6 +3313,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
   {/* Title bar */}
   <div style={{ position:"relative", zIndex:5,
     padding:"18px 24px 14px",
+    paddingTop:"calc(var(--sat) + 18px)",
     borderBottom: isHub ? "2px solid #7a5028" : `1px solid ${P.border}`,
     display:"flex", alignItems:"center", justifyContent:"center",
     flexShrink:0,

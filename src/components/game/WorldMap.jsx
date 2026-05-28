@@ -343,7 +343,8 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
 
       {/* Top bar */}
       <div style={{
-        flexShrink: 0, height: 46,
+        flexShrink: 0, height: "calc(var(--sat) + 46px)",
+        paddingTop: "var(--sat)",
         background: "rgba(0,0,0,0.85)",
         borderBottom: "1px solid rgba(200,160,64,0.25)",
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -356,7 +357,7 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
           onTouchEnd={(e) => { e.preventDefault(); onClose(); }}
           style={{
             position: "absolute", left: 0, top: 0,
-            width: 60, height: 46,
+            width: 60, height: "calc(var(--sat) + 46px)",
             display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer",
             WebkitTapHighlightColor: "transparent",

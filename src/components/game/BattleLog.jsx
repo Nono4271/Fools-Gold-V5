@@ -93,7 +93,7 @@ function TroopPopup({ troopBranch, onClose }) {
     }}>
       <div style={{
         display:"flex", alignItems:"center", gap:12,
-        padding:"12px 16px", flexShrink:0,
+        padding:"12px 16px", paddingTop:"calc(var(--sat) + 12px)", flexShrink:0,
         background:"linear-gradient(180deg,#151008,#100c06)",
         borderBottom:"1px solid #2a1e08",
       }}>

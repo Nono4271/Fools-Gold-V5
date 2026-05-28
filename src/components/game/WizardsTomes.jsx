@@ -281,7 +281,7 @@ export default memo(function WizardsTomes({
       {/* Header */}
       <div style={{
         display:"flex", alignItems:"center", justifyContent:"space-between",
-        padding:"8px 14px", flexShrink:0,
+        padding:"8px 14px", paddingTop:"calc(var(--sat) + 8px)", flexShrink:0,
         background:"linear-gradient(180deg,#0c0c22,#080816)",
         borderBottom:"1px solid rgba(140,100,255,.25)",
       }}>

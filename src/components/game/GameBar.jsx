@@ -235,7 +235,7 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
 
   return (
     <div style={{
-      position:"fixed", top:38, left:0, bottom:0, width:280, zIndex:9500,
+      position:"fixed", top:"var(--hud-offset)", left:0, bottom:0, width:280, zIndex:9500,
       background:"rgba(5,7,11,.97)", borderRight:"1px solid #1a2030",
       boxShadow:"4px 0 32px rgba(0,0,0,.9)",
       display:"flex", flexDirection:"column",
