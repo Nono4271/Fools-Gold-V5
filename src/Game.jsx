@@ -1801,7 +1801,7 @@ export default function RiseToWar() {
   return (
     <div style={{
       width:"100vw", height:"100vh", position:"relative", overflow:"hidden",
-      background:"transparent", userSelect:"none",
+      background:"#0e1014", userSelect:"none",
       touchAction:"none",
       // Phone optimizations: eliminate tap delay and visual tap flash
       WebkitTapHighlightColor:"transparent",
@@ -2026,7 +2026,7 @@ export default function RiseToWar() {
 
       {/* HQ + Search buttons under minimap */}
       {!worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
-        <div style={{ position:"fixed", top:"calc(var(--sat) + 112px)", left:"var(--left-inset, 6px)", zIndex:300, display:"flex", gap:6 }}>
+        <div style={{ position:"fixed", top:"calc(var(--sat) + 140px)", left:"var(--left-inset, 6px)", zIndex:300, display:"flex", gap:6 }}>
           <button onClick={centerOnHQ} style={{
             width:49, height:49, borderRadius:"50%",
             background:"radial-gradient(circle at 35% 30%, #2a1e08, #0e0a04)",

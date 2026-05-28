@@ -1799,7 +1799,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     if (!el) return;
 
     const w = Math.max(200, el.clientWidth  || window.innerWidth);
-    const h = Math.max(200, el.clientHeight || (window.innerHeight - 38));
+    const h = Math.max(200, el.clientHeight || window.innerHeight);
     let app;
     try {
       app = new PIXI.Application({ width:w, height:h, backgroundColor:0x080c10,
