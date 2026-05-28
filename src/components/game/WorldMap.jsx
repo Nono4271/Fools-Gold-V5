@@ -483,7 +483,6 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
             const sz = 14 * iconMult;
             return (
               <g style={{ pointerEvents: "none" }}>
-                <circle cx={hc} cy={hr} r={sz * 1.3} fill="#22cc5522" stroke="#22cc55" strokeWidth={1.2}/>
                 {/* Castle body */}
                 <rect x={hc - sz * 0.45} y={hr - sz * 0.25} width={sz * 0.9} height={sz * 0.75} fill="#22cc55" stroke="#ffffff" strokeWidth={0.8} rx={1}/>
                 {/* Battlements */}
