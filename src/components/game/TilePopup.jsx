@@ -408,12 +408,11 @@ export default memo(function TilePopup({
             })()}
             {selTile.owner==="player" && (() => {
               const candidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
-              const mover = cmdsOnSel.filter(c=>!c.march&&(c.troops||0)>0)[0] || candidates[0];
-              if (!mover) return null;
-              const hasStam = (mover?.stamina ?? 200) >= 10;
+              if (!candidates.length) return null;
+              const hasStam = candidates.some(c => (c.stamina ?? 200) >= 10);
               return (
                 <button className="btn"
-                  onClick={() => { if (hasStam && mover) { startMarch(mover, selKey); setSelKey(null); setPopupPos(null); } }}
+                  onClick={() => hasStam ? (setAtkKey(selKey), setMode("pickMoveCmd"), setPick(null)) : null}
                   title={hasStam ? "" : "Need 10⚡ stamina to move"}
                   style={{flex:1,padding:"5px 3px",
                     background: hasStam ? "linear-gradient(135deg,rgba(20,80,40,.6),rgba(10,60,30,.4))" : "rgba(20,40,20,.3)",
