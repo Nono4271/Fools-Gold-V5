@@ -174,7 +174,7 @@ export default memo(function HUD({
             <stop offset="100%" stopColor="transparent"/>
           </linearGradient>
         </defs>
-        <polygon points={`${L_BOTTOM},52 ${L_TOP},0 ${R_TOP},0 ${R_BOTTOM},52`} fill="url(#hudGrad)"/>
+        <polygon points={`${L_BOTTOM},52 ${L_TOP},0 ${R_TOP},0 ${R_BOTTOM},52`} fill="transparent"/>
         <line x1={L_BOTTOM} y1="51.5" x2={R_BOTTOM} y2="51.5" stroke="url(#trimGrad)" strokeWidth="1"/>
         <line x1={L_BOTTOM} y1="52" x2={L_TOP} y2="0" stroke="#c8a04044" strokeWidth="1"/>
         <line x1={R_BOTTOM} y1="52" x2={R_TOP} y2="0" stroke="#c8a04044" strokeWidth="1"/>
