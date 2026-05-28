@@ -12,49 +12,39 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
-      // Detect safe area insets — env() can return 0 even on notched devices
-      // when running as a Safari home screen app. Use a probe element instead.
       (function() {
         function applyInsets() {
           var probe = document.createElement('div');
-          probe.style.cssText = [
-            'position:fixed', 'top:0', 'left:0',
-            'width:1px', 'height:env(safe-area-inset-top,0px)',
-            'pointer-events:none', 'visibility:hidden', 'z-index:-1'
-          ].join(';');
+          probe.style.cssText = 'position:fixed;top:0;left:0;width:env(safe-area-inset-left,0px);height:env(safe-area-inset-top,0px);pointer-events:none;visibility:hidden;z-index:-1';
           document.body.appendChild(probe);
-          var envTop = probe.getBoundingClientRect().height;
+          var rect = probe.getBoundingClientRect();
+          var envTop = rect.height;
+          var envLeft = rect.width;
           probe.remove();
 
-          // If env() returned 0, use screen dimensions to estimate
-          // iPhone with Dynamic Island / notch in portrait: screen.height > 800 and ratio > 2
-          var sat = envTop;
-          if (sat === 0) {
-            var w = window.screen.width, h = window.screen.height;
-            var long = Math.max(w, h), short = Math.min(w, h);
-            var ratio = long / short;
-            var isPortrait = window.innerHeight > window.innerWidth;
-            // Dynamic Island iPhones (12 and later): long side >= 844
-            if (long >= 844 && ratio > 1.9) {
-              sat = isPortrait ? 59 : 0;  // notch only affects portrait
-              var sal = isPortrait ? 0 : 59; // in landscape notch is on left
-            }
-          }
+          var w = window.screen.width, h = window.screen.height;
+          var long = Math.max(w, h), short = Math.min(w, h);
+          var isNotchPhone = long >= 812 && (long / short) > 1.9;
+          var isPortrait = window.innerHeight > window.innerWidth;
+
+          var sat = envTop  > 0 ? envTop  : (isNotchPhone && isPortrait  ? 59 : 0);
+          var sab = envTop  > 0 ? 21      : (isNotchPhone ? 21 : 0);
+          var sal = envLeft > 0 ? envLeft : (isNotchPhone && !isPortrait ? 59 : 0);
+          var sar = 0;
 
           var root = document.documentElement;
           root.style.setProperty('--sat', sat + 'px');
-          root.style.setProperty('--sab', (envTop > 0 ? 21 : (long >= 844 && ratio > 1.9 ? 21 : 0)) + 'px');
+          root.style.setProperty('--sab', sab + 'px');
+          root.style.setProperty('--sal', sal + 'px');
+          root.style.setProperty('--sar', sar + 'px');
           root.style.setProperty('--hud-offset', 'calc(' + sat + 'px + 52px)');
+          root.style.setProperty('--left-inset', 'calc(' + sal + 'px + 6px)');
         }
 
-        if (document.body) {
-          applyInsets();
-        } else {
-          document.addEventListener('DOMContentLoaded', applyInsets);
-        }
-        window.addEventListener('orientationchange', function() {
-          setTimeout(applyInsets, 300);
-        });
+        if (document.body) { applyInsets(); }
+        else { document.addEventListener('DOMContentLoaded', applyInsets); }
+        window.addEventListener('orientationchange', function() { setTimeout(applyInsets, 300); });
+        window.addEventListener('resize', applyInsets);
       })();
     </script>
   </head>
