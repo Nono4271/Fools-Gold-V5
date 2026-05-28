@@ -36,12 +36,18 @@ function panToVC(panSt, zoom) {
 // Minimap receives panRef/zoomRef (stable refs) instead of panSt/zoom state values.
 // redrawRef is a ref passed from Game — Minimap stores its draw function into it
 // so Game.onPanChange can call it directly without any setState or re-render.
-export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef, playerFacKey, crewmatePlayerIds }) {
+export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef, playerFacKey, crewmatePlayerIds, playerHqKey, aiHqKeys }) {
   const canvasRef = useRef(null);
   const tilesRef  = useRef(tiles);
   const pKeysRef  = useRef(pKeys);
+  const hqKeyRef  = useRef(playerHqKey);
+  const crewIdsRef = useRef(crewmatePlayerIds);
+  const aiHqKeysRef = useRef(aiHqKeys);
   useEffect(() => { tilesRef.current = tiles; }, [tiles]);
   useEffect(() => { pKeysRef.current = pKeys;  }, [pKeys]);
+  useEffect(() => { hqKeyRef.current = playerHqKey; }, [playerHqKey]);
+  useEffect(() => { crewIdsRef.current = crewmatePlayerIds; }, [crewmatePlayerIds]);
+  useEffect(() => { aiHqKeysRef.current = aiHqKeys; }, [aiHqKeys]);
 
   const drawMinimap = useCallback(() => {
     const canvas = canvasRef.current;
@@ -119,6 +125,58 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
 
     ctx.restore();
 
+    // ── Player HQ castle icon ──────────────────────────────────────────────
+    const hqKey = hqKeyRef.current;
+    if (hqKey) {
+      const [hc, hr] = hqKey.split(",").map(Number);
+      const dc = hc - vc, dr = hr - vr;
+      if (dc * dc + dr * dr <= VIEW_RADIUS * VIEW_RADIUS) {
+        const { x, y } = tileToMM(hc, hr, vc, vr);
+        ctx.save();
+        // Castle body
+        ctx.fillStyle = "#22cc55";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 0.7;
+        const sz = 5;
+        ctx.fillRect(x - sz * 0.5, y - sz * 0.3, sz, sz * 0.8);
+        ctx.strokeRect(x - sz * 0.5, y - sz * 0.3, sz, sz * 0.8);
+        // Battlements (3 merlons)
+        for (let m = 0; m < 3; m++) {
+          const mx = x - sz * 0.4 + m * (sz * 0.4);
+          ctx.fillRect(mx, y - sz * 0.65, sz * 0.25, sz * 0.35);
+          ctx.strokeRect(mx, y - sz * 0.65, sz * 0.25, sz * 0.35);
+        }
+        ctx.restore();
+      }
+    }
+
+    // ── Crewmate HQ blue dots ──────────────────────────────────────────────
+    const crewIds = crewIdsRef.current;
+    const aiHqMap = aiHqKeysRef.current;
+    if (crewIds?.size && aiHqMap) {
+      for (const [, hqArr] of Object.entries(aiHqMap)) {
+        const keys = Array.isArray(hqArr) ? hqArr : [hqArr];
+        for (const key of keys) {
+          const t = tilesRef.current[key];
+          const pid = t?.ownerPlayerId;
+          if (!pid || !crewIds.has(pid)) continue;
+          const [cc, cr] = key.split(",").map(Number);
+          const dc = cc - vc, dr = cr - vr;
+          if (dc * dc + dr * dr > VIEW_RADIUS * VIEW_RADIUS) continue;
+          const { x, y } = tileToMM(cc, cr, vc, vr);
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fillStyle = "#2299ff";
+          ctx.fill();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 0.7;
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+
     // Crosshair
     ctx.strokeStyle = "rgba(255,255,255,0.5)";
     ctx.lineWidth = 0.8;
@@ -141,7 +199,7 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
   }, [drawMinimap, redrawRef]);
 
   // Redraw when tiles or pKeys change (ownership changes etc.)
-  useEffect(() => { drawMinimap(); }, [tiles, pKeys, drawMinimap]);
+  useEffect(() => { drawMinimap(); }, [tiles, pKeys, crewmatePlayerIds, playerHqKey, drawMinimap]);
 
   return (
     <div style={{

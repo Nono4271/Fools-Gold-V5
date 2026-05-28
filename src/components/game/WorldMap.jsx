@@ -180,17 +180,30 @@ function centroid(pts) {
 }
 
 
-export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom, crossings, keepMeta }) {
+export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom, crossings, keepMeta, playerHqKey, crewmatePlayerIds, aiHqKeys }) {
   const [selected, setSelected] = useState(null);
   const [clickPos, setClickPos] = useState(null); // { x, y } in screen px
-  const [dotPos, setDotPos] = useState(() => panRef?.current || { x: 4, y: 4 });
 
+  // Viewport dot: convert pan → world pixel center → tile col/row → SVG coords
+  const [dotPos, setDotPos] = useState(null);
   useEffect(() => {
-    const id = setInterval(() => {
-      if (panRef?.current) setDotPos({ ...panRef.current });
-    }, 100);
+    function update() {
+      const pan = panRef?.current;
+      if (!pan) return;
+      const z = zoom || 1;
+      const worldCX = (-pan.x + window.innerWidth  / 2) / z;
+      const worldCY = (-pan.y + window.innerHeight / 2) / z;
+      // Inverse of isoXY: cx=(c-r)*TW/2 + ROWS*TW/2, cy=(c+r)*TH/2 + TOP_PAD
+      const u = worldCX - ROWS * TW / 2;
+      const v = worldCY - TOP_PAD;
+      const c = Math.max(0, Math.min(DW - 1, Math.round((u / (TW / 2) + v / (TH / 2)) / 2)));
+      const r = Math.max(0, Math.min(DH - 1, Math.round((v / (TH / 2) - u / (TW / 2)) / 2)));
+      setDotPos({ c, r });
+    }
+    update();
+    const id = setInterval(update, 100);
     return () => clearInterval(id);
-  }, [panRef]);
+  }, [panRef, zoom]);
 
   const [screenSize, setScreenSize] = useState(() => ({
     w: typeof window !== "undefined" ? window.innerWidth  : 390,
@@ -456,21 +469,50 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
             );
           })}
 
-          {/* ── Your current position dot ── */}
-          {dotPos && (() => {
-            const r = 3 * iconMult;
+          {/* ── Your current viewport dot ── */}
+          {dotPos && (
+            <g style={{ pointerEvents: "none" }}>
+              <circle cx={dotPos.c} cy={dotPos.r} r={7} fill="none" stroke="#ffffff" strokeWidth={1.5} strokeDasharray="3 2" opacity={0.6}/>
+              <circle cx={dotPos.c} cy={dotPos.r} r={3} fill="#ffffff" opacity={0.9}/>
+            </g>
+          )}
+
+          {/* ── Player HQ castle ── */}
+          {playerHqKey && (() => {
+            const [hc, hr] = playerHqKey.split(",").map(Number);
+            const sz = 14 * iconMult;
             return (
-              <circle
-                cx={dotPos.x * sx} cy={dotPos.y * sy}
-                r={r}
-                fill="#44aaff"
-                stroke="#fff"
-                strokeWidth={1}
-                filter="url(#wm-drop)"
-                style={{ pointerEvents: "none" }}
-              />
+              <g style={{ pointerEvents: "none" }}>
+                <circle cx={hc} cy={hr} r={sz * 1.3} fill="#22cc5522" stroke="#22cc55" strokeWidth={1.2}/>
+                {/* Castle body */}
+                <rect x={hc - sz * 0.45} y={hr - sz * 0.25} width={sz * 0.9} height={sz * 0.75} fill="#22cc55" stroke="#ffffff" strokeWidth={0.8} rx={1}/>
+                {/* Battlements */}
+                {[-0.3, 0, 0.3].map((o, i) => (
+                  <rect key={i} x={hc + o * sz - sz * 0.12} y={hr - sz * 0.6} width={sz * 0.22} height={sz * 0.38} fill="#22cc55" stroke="#ffffff" strokeWidth={0.8}/>
+                ))}
+                {/* Door */}
+                <rect x={hc - sz * 0.12} y={hr + sz * 0.1} width={sz * 0.24} height={sz * 0.4} fill="#082010" rx={1}/>
+              </g>
             );
           })()}
+
+          {/* ── Crewmate HQ blue dots ── */}
+          {crewmatePlayerIds?.size > 0 && aiHqKeys && Object.entries(aiHqKeys).flatMap(([, hqArr]) => {
+            const keys = Array.isArray(hqArr) ? hqArr : [hqArr];
+            return keys.map(key => {
+              const t = tiles[key];
+              const pid = t?.ownerPlayerId;
+              if (!pid || !crewmatePlayerIds.has(pid)) return null;
+              const [cc, cr] = key.split(",").map(Number);
+              const sz = 10 * iconMult;
+              return (
+                <g key={key} style={{ pointerEvents: "none" }}>
+                  <circle cx={cc} cy={cr} r={sz * 1.2} fill="#2299ff22" stroke="#2299ff" strokeWidth={1}/>
+                  <circle cx={cc} cy={cr} r={sz * 0.5} fill="#2299ff" opacity={0.9}/>
+                </g>
+              );
+            }).filter(Boolean);
+          })}
 
           {/* ── Crossing / Gate icons ── */}
           {gates.map(gate => {
