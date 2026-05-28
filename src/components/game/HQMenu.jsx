@@ -1,4 +1,5 @@
 import { useState, useEffect, memo, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel, troopPortraitPath } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
 import { BLDG, barracksCapacity, barracksCommandPool, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, trainingQueueCount, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, marketplaceRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown } from "../../../shared/constants/buildings.js";
@@ -866,7 +867,7 @@ const BRANCH_LVL_BONUS = [
   })}
 
   {/* Troop stat modal */}
-  {selTroop && (
+  {selTroop && createPortal(
   <TroopStatModal
   troop={selTroop}
   fColor={selTroop.fColor}
@@ -877,7 +878,7 @@ const BRANCH_LVL_BONUS = [
   setTroopSkillLevels={setTroopSkillLevels}
   mysticOrbs={mysticOrbs}
   setMysticOrbs={setMysticOrbs}
-  />
+  />, document.body
   )}
 
   </div>
