@@ -2017,7 +2017,7 @@ export default function RiseToWar() {
 
       {/* HQ + Search buttons under minimap */}
       {!worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
-        <div style={{ position:"fixed", top:112, left:6, zIndex:300, display:"flex", gap:6 }}>
+        <div style={{ position:"fixed", top:"calc(var(--sat) + 112px)", left:6, zIndex:300, display:"flex", gap:6 }}>
           <button onClick={centerOnHQ} style={{
             width:49, height:49, borderRadius:"50%",
             background:"radial-gradient(circle at 35% 30%, #2a1e08, #0e0a04)",
