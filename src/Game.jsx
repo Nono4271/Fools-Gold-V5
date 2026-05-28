@@ -1429,6 +1429,12 @@ export default function RiseToWar() {
     );
   }, [selAdjToPlayer, selTile, playerCmds]);
 
+  const cmdsForMove = useMemo(() =>
+    playerCmds.filter(cmd =>
+      cmd.owner === "player" && (normaliseTroopSlots(cmd).reduce((s,sl)=>s+(sl.troops||0),0) || cmd.troops || 0) > 0 && !cmd.march
+    ),
+  [playerCmds]);
+
   const canAtk = !!(selTile && selTile.owner!=="player" && selAdjToPlayer);
 
   const marchingToSel = useMemo(() =>
@@ -1912,6 +1918,7 @@ export default function RiseToWar() {
         setSelKey={setSelKey} setPopupPos={setPopupPos}
         setAtkKey={setAtkKey} setMode={setMode} setPick={setPick}
         setMvCmd={setMvCmd} setReinCmd={setReinCmd}
+        startMarch={startMarch}
         recallMarch={recallMarch} recallStationary={recallStationary}
         setBarracks={setBarracks} setCmds={setCmds}
         nowTick={nowTick}
@@ -1929,6 +1936,16 @@ export default function RiseToWar() {
       {mode==="pickAttackCmd" && (
         <CommanderPicker
           atkKey={atkKey} tiles={tiles} cmdsAdjToSel={cmdsAdjToSel}
+          pickCmd={pickCmd} setPick={setPick}
+          setMode={setMode} setAtkKey={setAtkKey}
+          setSelKey={setSelKey} setPopupPos={setPopupPos}
+          startMarch={startMarch}
+        />
+      )}
+
+      {mode==="pickMoveCmd" && (
+        <CommanderPicker
+          atkKey={atkKey} tiles={tiles} cmdsAdjToSel={cmdsForMove}
           pickCmd={pickCmd} setPick={setPick}
           setMode={setMode} setAtkKey={setAtkKey}
           setSelKey={setSelKey} setPopupPos={setPopupPos}
