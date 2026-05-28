@@ -593,8 +593,8 @@ const BRANCH_LVL_BONUS = [
   <span style={{ fontSize:9, fontFamily:P.ff, color:P.sub, fontWeight:700 }}>{cmdCost} CMD / unit</span>
   </div>
   </div>
-  </div>
 
+  </div>{/* end right panel */}
   </div>{/* end body */}
   </div>
   );
