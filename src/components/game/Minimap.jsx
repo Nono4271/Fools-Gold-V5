@@ -209,7 +209,8 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
       width: MM_SIZE, height: MM_SIZE,
       pointerEvents: "auto",
       cursor: "pointer",
-    }} onClick={() => onWorldMap && onWorldMap()}>
+      touchAction: "manipulation",
+    }} onPointerUp={(e) => { e.stopPropagation(); onWorldMap && onWorldMap(); }}>
       <canvas ref={canvasRef}
         style={{ width: MM_SIZE, height: MM_SIZE, borderRadius: "50%" }}
       />
