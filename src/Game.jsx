@@ -1184,9 +1184,15 @@ export default function RiseToWar() {
           changed = true;
           if (upd.clearMarch) {
             const tile = tilesMapRef.current?.[upd.tk];
-            const isCrewArrival = tile && tile.owner !== 'player' && crewmatePlayerIds.has(tile.ownerPlayerId || aiPlayerIdMapRef.current.get(upd.tk));
+            const pid = tile?.ownerPlayerId
+              || aiPlayerIdMapRef.current.get(upd.tk)
+              || (tile?.isHQPart ? (() => {
+                   const ck = adj(tile.c, tile.r).find(k => tilesMapRef.current[k]?.isHQ);
+                   return ck ? aiPlayerIdMapRef.current.get(ck) : null;
+                 })() : null);
+            const isCrewArrival = tile && tile.owner !== 'player' && crewmatePlayerIds.has(pid);
             if (isCrewArrival) {
-              console.log(`[Arrival] ${cmd.n} arrived at crewmate tile ${upd.tk} — isHQ:${!!tile.isHQ} isHQPart:${!!tile.isHQPart} owner:${tile.owner} ownerPlayerId:${tile.ownerPlayerId ?? 'none'} march.type:${cmd.march?.type}`);
+              console.log(`[Arrival] ${cmd.n} arrived at crewmate tile ${upd.tk} — isHQ:${!!tile.isHQ} isHQPart:${!!tile.isHQPart} owner:${tile.owner} pid:${pid} march.type:${cmd.march?.type}`);
             }
             return { ...cmd, tk: upd.tk, march: null };
           }
@@ -1457,18 +1463,18 @@ export default function RiseToWar() {
     // For HQPart tiles, ownerPlayerId is only on the primary tile — walk up via hqPrimaryKey
     const destOwnerPlayerId = destTile?.ownerPlayerId
       || (destTile?.isHQPart && destTile?.hqPrimaryKey ? tilesMapRef.current[destTile.hqPrimaryKey]?.ownerPlayerId : null)
-      || (destTile?.isHQPart ? adj(destTile.c, destTile.r)
-            .map(k => tilesMapRef.current[k]).find(t => t?.isHQ)?.ownerPlayerId
-            ?? aiPlayerIdMapRef.current.get(
-                 adj(destTile.c, destTile.r).find(k => tilesMapRef.current[k]?.isHQ) ?? ""
-               )
-          : null)
+      || (destTile?.isHQPart ? (() => {
+            const hqCenterKey = adj(destTile.c, destTile.r).find(k => tilesMapRef.current[k]?.isHQ);
+            return hqCenterKey ? aiPlayerIdMapRef.current.get(hqCenterKey) : null;
+          })() : null)
+      || (destTile?.isHQ ? aiPlayerIdMapRef.current.get(destKey) : null)
       || aiPlayerIdMapRef.current.get(destKey);
     const isCrewTile = crewmatePlayerIds.has(destOwnerPlayerId);
     const isCrewHQ   = isCrewTile && (destTile?.isHQ || destTile?.isHQPart);
     const type = (destTile?.owner==="player" || isCrewTile) ? "move" : "attack";
     if (type==="move" && destTile?.owner!=="player" && !isCrewTile) return;
-    console.log(`[March] cmd:${freshCmd.n} → ${destKey} type:${type} isCrewTile:${isCrewTile} isCrewHQ:${isCrewHQ} ownerPlayerId:${destOwnerPlayerId ?? 'none'}`);
+    const myCrew = crews.find(c => c.id === playerCrewId);
+    console.log(`[March] cmd:${freshCmd.n} → ${destKey} type:${type} isCrewTile:${isCrewTile} ownerPlayerId:${destOwnerPlayerId ?? 'none'} crewSize:${crewmatePlayerIds.size} members:${JSON.stringify(myCrew?.members ?? [])} aiMap:[${[...aiPlayerIdMapRef.current.values()].join(',')}]`);
     // Stamina check: moves cost 10, attacks cost 20
     const staminaCost = type === "attack" ? 20 : 10;
     const curStamina = freshCmd.stamina ?? 200;
@@ -1495,7 +1501,7 @@ export default function RiseToWar() {
         march:{ type, path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, lastStepTime:Date.now() }
       } : c));
     });
-  }, [floaty, gearInventory, findPath]);
+  }, [floaty, gearInventory, findPath, crewmatePlayerIds, crews, playerCrewId]);
 
   const recallMarch = useCallback((uid) => {
     setCmds(prev => {
