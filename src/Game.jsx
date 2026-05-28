@@ -849,9 +849,8 @@ export default function RiseToWar() {
               _tileStore[hqKey] = hqTile;
             }
 
-            // Only spawn commanders for the single closest HQ of the player's own faction.
-            // All other HQs (other factions, or further HQs of player's faction) get no commanders.
-            if (i === 0 && aiFk === facKey) {
+            // Spawn commanders for the 10 closest HQs of the player's own faction.
+            if (i < 10 && aiFk === facKey) {
               starters.forEach((h, si) => {
                 initialAiCmds.push({
                   ...h,
@@ -1183,17 +1182,6 @@ export default function RiseToWar() {
           if (!upd) return cmd;
           changed = true;
           if (upd.clearMarch) {
-            const tile = tilesMapRef.current?.[upd.tk];
-            const pid = tile?.ownerPlayerId
-              || aiPlayerIdMapRef.current.get(upd.tk)
-              || (tile?.isHQPart ? (() => {
-                   const ck = adj(tile.c, tile.r).find(k => tilesMapRef.current[k]?.isHQ);
-                   return ck ? aiPlayerIdMapRef.current.get(ck) : null;
-                 })() : null);
-            const isCrewArrival = tile && tile.owner !== 'player' && crewmatePlayerIds.has(pid);
-            if (isCrewArrival) {
-              console.log(`[Arrival] ${cmd.n} arrived at crewmate tile ${upd.tk} — isHQ:${!!tile.isHQ} isHQPart:${!!tile.isHQPart} owner:${tile.owner} pid:${pid} march.type:${cmd.march?.type}`);
-            }
             return { ...cmd, tk: upd.tk, march: null };
           }
           return { ...cmd, tk: upd.tk, march: upd.marchPatch };
@@ -1473,8 +1461,7 @@ export default function RiseToWar() {
     const isCrewHQ   = isCrewTile && (destTile?.isHQ || destTile?.isHQPart);
     const type = (destTile?.owner==="player" || isCrewTile) ? "move" : "attack";
     if (type==="move" && destTile?.owner!=="player" && !isCrewTile) return;
-    const myCrew = crews.find(c => c.id === playerCrewId);
-    console.log(`[March] cmd:${freshCmd.n} → ${destKey} type:${type} isCrewTile:${isCrewTile} ownerPlayerId:${destOwnerPlayerId ?? 'none'} crewSize:${crewmatePlayerIds.size} members:${JSON.stringify(myCrew?.members ?? [])} aiMap:[${[...aiPlayerIdMapRef.current.values()].join(',')}]`);
+
     // Stamina check: moves cost 10, attacks cost 20
     const staminaCost = type === "attack" ? 20 : 10;
     const curStamina = freshCmd.stamina ?? 200;
@@ -1501,7 +1488,7 @@ export default function RiseToWar() {
         march:{ type, path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, lastStepTime:Date.now() }
       } : c));
     });
-  }, [floaty, gearInventory, findPath, crewmatePlayerIds, crews, playerCrewId]);
+  }, [floaty, gearInventory, findPath, crewmatePlayerIds]);
 
   const recallMarch = useCallback((uid) => {
     setCmds(prev => {
