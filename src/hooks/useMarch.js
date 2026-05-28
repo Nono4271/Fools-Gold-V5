@@ -659,7 +659,6 @@ useEffect(() => {
 if (screen !== "game") return;
 const arrivedAI = cmds.filter(c => c.owner === "ai" && c.march?.arrived && c.march?.type === "attack");
 const marchingAI = cmds.filter(c => c.owner === "ai" && c.march && !c.march.arrived);
-if (marchingAI.length) console.log(`[AI March] ${marchingAI.length} marching, ${arrivedAI.length} arrived`);
 if (!arrivedAI.length) return;
 
 arrivedAI.forEach(async cmd => {
@@ -686,12 +685,10 @@ arrivedAI.forEach(async cmd => {
       const isFriendly = cmd.faction === facKey;
       patchTile(destKey, { owner:"ai", faction: cmd.faction, ownerPlayerId: cmd.ownerPlayerId || null, garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor((cmd.troops||0)*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
       floaty(isFriendly ? "🤝 Ally captured tile!" : "⚠ ENEMY CAPTURED TILE!", isFriendly ? "#2299ff" : "#dd3322", destKey);
-      console.log(`[AI Attack] ${cmd.n} (${cmd.faction}) → tile ${destKey} | result: WON (siege break) | tile captured: true`);
       if (destKey === WIN_KEY || isPlayerHQ) setWinner("ai");
       setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
     } else {
       patchTile(destKey, { siege:currentSiege-siegePower, resetAt:Date.now()+garrisonResetMs(defTile) });
-      console.log(`[AI Attack] ${cmd.n} (${cmd.faction}) → tile ${destKey} | result: SIEGE HIT (${siegePower}/${currentSiege}) | tile captured: false`);
       setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null, tk:originKey } : c));
     }
     return;
@@ -706,7 +703,6 @@ arrivedAI.forEach(async cmd => {
   if (res.won) {
     const siegePower = cmdSiegePower({ ...cmd, troops: newTroops }, boostedCmd2);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
-    console.log(`[AI Siege] ${cmd.n} troops:${aiTroops} survived:${newTroops} siegePower:${siegePower} vs siege:${currentSiege} — ${siegePower >= currentSiege ? 'CAPTURE' : 'HIT'}`);
     if (siegePower >= currentSiege) {
       tileCaptured = true;
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
@@ -734,7 +730,6 @@ arrivedAI.forEach(async cmd => {
     return { ...updated, ...applyXp(updated, res.xpGain, null) };
   }));
   setBLog(p => [`${res.won?"🔴":"✅"} ENEMY ${cmd.n} Lv${cmd.lvl||5} ${res.won?"captured":"repelled"} tile`, ...p].slice(0, 99));
-  console.log(`[AI Attack] ${cmd.n} (${cmd.faction}) → tile ${destKey} | result: ${res.won ? "WON" : "LOST"} | tile captured: ${tileCaptured}`);
 });
 
 }, [cmds, screen, tileVersion, bldgs.walls]);

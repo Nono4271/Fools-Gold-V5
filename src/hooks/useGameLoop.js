@@ -114,9 +114,7 @@ export function useGameLoop({
         case 'reinStep':     cb.onReinStep?.(e.data.updates, e.data.now);        break;
         case 'aiRssTick':    cb.onAiRssTick?.(e.data.now);                       break;
         case 'aiMarchReady': cb.onAiMarchReady?.(e.data.dispatches, e.data.now); break;
-        case 'aiMarchNoCandidate':
-          console.log(`[AI March] ${e.data.uid} (${e.data.faction}) — no march: ${e.data.reason}`);
-          break;
+        case 'aiMarchNoCandidate': break;
         case 'aiMarchCheck': cb.onAiMarchCheck?.(e.data.now);                    break;
         case 'aiEconReady':  cb.onAiEconReady?.(e.data.updates, e.data.now);     break;
         case 'aiEconTick':   cb.onAiEconTick?.(e.data.now);                      break;
