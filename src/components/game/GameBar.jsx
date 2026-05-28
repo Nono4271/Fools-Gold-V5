@@ -371,6 +371,7 @@ export default memo(function GameBar({
   voidTapReady,
   // Crew props
   crewOpen, setCrewOpen, playerCrewId,
+  searchOpen, setSearchOpen,
 }) {
   if (hidden) return null;
   // All player commanders (for left rail) — only those NOT at HQ
@@ -387,8 +388,6 @@ export default memo(function GameBar({
     setHqOpen(true);
     setHqTab(tab);
   };
-
-  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <>
@@ -454,14 +453,6 @@ export default memo(function GameBar({
           pointerEvents: "auto",
         }}>
           <ActionButton
-            icon="🏰"
-            label="HQ"
-            color="#c8a060"
-            accent="#8a6020"
-            badge={voidTapReady ? 1 : 0}
-            onClick={() => onCenterHQ && onCenterHQ()}
-          />
-          <ActionButton
             icon="🗺"
             label="Map"
             color="#aaccee"
@@ -490,21 +481,7 @@ export default memo(function GameBar({
             badge={0}
             onClick={() => setGearScreenOpen(true)}
           />
-          <ActionButton
-            icon="🔍"
-            label="Search"
-            color="#80aacc"
-            accent="#1a3a5c"
-            onClick={() => setSearchOpen(v => !v)}
-          />
           <ActionButton icon="⚓" label="Crew" color={playerCrewId ? "#40cc80" : "#80aacc"} accent={playerCrewId ? "#1a4a30" : "#1a3a5c"} onClick={() => setCrewOpen(v => !v)} />
-          <ActionButton
-            icon="⏱"
-            label="Perf"
-            color={showPerf ? "#66dd66" : "#4a4a4a"}
-            accent={showPerf ? "#1a4a1a" : "#2a2a2a"}
-            onClick={() => setShowPerf?.(v => !v)}
-          />
         </div>
       </div>
 

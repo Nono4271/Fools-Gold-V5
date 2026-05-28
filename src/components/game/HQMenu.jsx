@@ -463,32 +463,32 @@ const BRANCH_LVL_BONUS = [
   </div>
 
   {/* ── RIGHT: stats, skills, conscription ── */}
-  <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch",
-  padding:"14px 14px 20px" }}>
+  <div style={{ flex:1, overflow:"hidden",
+  padding:"8px 10px 8px", display:"flex", flexDirection:"column", gap:6 }}>
 
   {/* Stat grid */}
-  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:14 }}>
+  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, flexShrink:0 }}>
   {[
   { lbl:"DMG",   val:`${tier.dmgLo}–${tier.dmgHi}`,   col:dmgColor,  icon:"⚔️" },
   { lbl:"DEF",   val:tier.def,                         col:"#88aaff", icon:"🛡" },
   { lbl:"HP",    val:tier.hp,                          col:"#5dcc80", icon:"❤️" },
   { lbl:"SPD",   val:tier.spd,                         col:"#f0c040", icon:"🚶" },
   ].map(({ lbl, val, col, icon }) => (
-  <div key={lbl} style={{ padding:"10px 12px", borderRadius:8,
+  <div key={lbl} style={{ padding:"6px 10px", borderRadius:6,
   background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}` }}>
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:3 }}>
+  <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:2 }}>
   {icon} {lbl}
   </div>
-  <div style={{ fontSize:16, fontWeight:700, color:col, fontFamily:P.ff }}>{val}</div>
+  <div style={{ fontSize:13, fontWeight:700, color:col, fontFamily:P.ff }}>{val}</div>
   </div>
   ))}
   </div>
 
   {/* Skills */}
   {skills.length > 0 && (
-  <div style={{ marginBottom:14 }}>
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
-  marginBottom:8, textTransform:"uppercase" }}>Skills</div>
+  <div style={{ flexShrink:0 }}>
+  <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
+  marginBottom:4, textTransform:"uppercase" }}>Skills</div>
   {skills.map(skill => {
   const skillLvl = troopSkillLevels?.[skill.key] ?? 1;
   const isMax = skillLvl >= 10;
@@ -497,51 +497,48 @@ const BRANCH_LVL_BONUS = [
   const currentProc = Math.round(skillProcAtLevel(skill, skillLvl) * 100);
   const nextProc = !isMax ? Math.round(skillProcAtLevel(skill, skillLvl + 1) * 100) : null;
   return (
-  <div key={skill.key} style={{ padding:"10px 12px", background:"rgba(255,255,255,.02)",
-  border:`1px solid ${isMax ? fColor+"55" : P.border}`, borderRadius:8, marginBottom:6 }}>
-  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-  <span style={{ fontSize:18, lineHeight:1 }}>{skill.icon}</span>
+  <div key={skill.key} style={{ padding:"6px 10px", background:"rgba(255,255,255,.02)",
+  border:`1px solid ${isMax ? fColor+"55" : P.border}`, borderRadius:6, marginBottom:4 }}>
+  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+  <span style={{ fontSize:14, lineHeight:1 }}>{skill.icon}</span>
   <div style={{ flex:1 }}>
-  <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:fColor }}>{skill.name}</div>
-  <div style={{ fontSize:7, color:"#88aaff", fontFamily:P.ff, marginTop:1 }}>
+  <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700, color:fColor }}>{skill.name}</div>
+  <div style={{ fontSize:6, color:"#88aaff", fontFamily:P.ff, marginTop:1 }}>
   {TRIGGER_LABEL[skill.trigger] || skill.trigger} · {currentProc}% proc
   {nextProc !== null && <span style={{color:`${fColor}99`}}> → {nextProc}%</span>}
   </div>
   </div>
-  <div style={{ textAlign:"center", minWidth:36 }}>
-  <div style={{ fontFamily:P.ff, fontSize:9, fontWeight:700,
+  <div style={{ textAlign:"center", minWidth:32 }}>
+  <div style={{ fontFamily:P.ff, fontSize:8, fontWeight:700,
   color: isMax ? fColor : P.sub,
   background: isMax ? `${fColor}22` : "rgba(255,255,255,.04)",
   border:`1px solid ${isMax ? fColor+"55" : P.border}`,
-  borderRadius:4, padding:"2px 6px", lineHeight:1.4 }}>
+  borderRadius:4, padding:"2px 5px", lineHeight:1.4 }}>
   {isMax ? "MAX" : `Lv${skillLvl}`}
   </div>
-  {!isMax && <div style={{ fontSize:6, color:P.dim, marginTop:2 }}>/ 10</div>}
+  {!isMax && <div style={{ fontSize:5, color:P.dim, marginTop:1 }}>/ 10</div>}
   </div>
   </div>
-  <div style={{ display:"flex", gap:2, marginBottom:8 }}>
+  <div style={{ display:"flex", gap:2, marginBottom:4 }}>
   {Array.from({length:10}).map((_,i) => (
-  <div key={i} style={{ flex:1, height:3, borderRadius:2, minWidth:3,
+  <div key={i} style={{ flex:1, height:2, borderRadius:2, minWidth:3,
   background: i < skillLvl ? fColor : `${fColor}22` }}/>
   ))}
   </div>
-  <div style={{ fontSize:9, color:P.sub, fontFamily:P.ffb, lineHeight:1.65, marginBottom:8 }}>{skill.desc}</div>
+  <div style={{ fontSize:8, color:P.sub, fontFamily:P.ffb, lineHeight:1.5, marginBottom: isMax ? 0 : 4 }}>{skill.desc}</div>
   {!isMax && (
-  <div style={{ display:"flex", alignItems:"center", gap:8,
-  padding:"6px 8px", background:"rgba(0,0,0,.2)",
-  border:`1px solid ${P.border}`, borderRadius:6 }}>
+  <div style={{ display:"flex", alignItems:"center", gap:6,
+  padding:"4px 6px", background:"rgba(0,0,0,.2)",
+  border:`1px solid ${P.border}`, borderRadius:5 }}>
   <div style={{ flex:1 }}>
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, marginBottom:2 }}>UPGRADE COST</div>
-  <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-  <span style={{ fontSize:14 }}>🔮</span>
-  <span style={{ fontFamily:P.ff, fontSize:12, fontWeight:700,
+  <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, marginBottom:1 }}>UPGRADE COST</div>
+  <div style={{ display:"flex", alignItems:"center", gap:3 }}>
+  <span style={{ fontSize:12 }}>🔮</span>
+  <span style={{ fontFamily:P.ff, fontSize:10, fontWeight:700,
   color: canUpgrade ? "#cc88ff" : "#5a3a7a" }}>
   {orbCost.toLocaleString()}
   </span>
-  <span style={{ fontSize:7, color:P.dim }}>mystic orbs</span>
-  </div>
-  <div style={{ fontSize:7, color:`${fColor}77`, marginTop:2 }}>
-  Have: <span style={{color: canUpgrade ? "#cc88ff" : "#5a3a7a"}}>{(mysticOrbs??0).toLocaleString()}</span>
+  <span style={{ fontSize:6, color:P.dim }}>mystic orbs · Have: <span style={{color: canUpgrade ? "#cc88ff" : "#5a3a7a"}}>{(mysticOrbs??0).toLocaleString()}</span></span>
   </div>
   </div>
   <button
@@ -551,10 +548,8 @@ const BRANCH_LVL_BONUS = [
   setTroopSkillLevels(prev => ({ ...prev, [skill.key]: (prev[skill.key] ?? 1) + 1 }));
   setMysticOrbs(prev => prev - orbCost);
   }}
-  style={{ padding:"6px 14px", borderRadius:5, fontFamily:P.ff, fontSize:9, fontWeight:700,
-  background: canUpgrade
-  ? "linear-gradient(135deg, #9933cc44, #6611aa22)"
-  : "rgba(255,255,255,.02)",
+  style={{ padding:"4px 10px", borderRadius:5, fontFamily:P.ff, fontSize:8, fontWeight:700,
+  background: canUpgrade ? "linear-gradient(135deg, #9933cc44, #6611aa22)" : "rgba(255,255,255,.02)",
   border:`1px solid ${canUpgrade ? "#aa55ee" : "#2a1a3a"}`,
   color: canUpgrade ? "#cc88ff" : "#3a2a4a",
   cursor: canUpgrade ? "pointer" : "default",
@@ -570,40 +565,36 @@ const BRANCH_LVL_BONUS = [
   )}
 
   {/* Conscription */}
-  <div style={{ background:"rgba(255,255,255,.02)", border:`1px solid ${P.border}`,
-  borderRadius:8, padding:"10px 12px" }}>
-  <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
-  marginBottom:8, textTransform:"uppercase" }}>Conscription</div>
-  <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
+  <div style={{ flexShrink:0, background:"rgba(255,255,255,.02)", border:`1px solid ${P.border}`,
+  borderRadius:6, padding:"6px 10px" }}>
+  <div style={{ fontSize:6, color:P.dim, fontFamily:P.ff, letterSpacing:".1em",
+  marginBottom:5, textTransform:"uppercase" }}>Conscription</div>
+  <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:5 }}>
   {Object.entries(conscriptCost).map(([k, v]) => {
   const [icon, col] = RSS_COL[k] || ["", P.sub];
   return (
   <div key={k} style={{ display:"flex", alignItems:"center", gap:3,
   background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`,
-  borderRadius:5, padding:"4px 8px" }}>
-  <span style={{fontSize:11}}>{icon}</span>
-  <span style={{ fontSize:9, fontFamily:P.ff, color:col, fontWeight:700 }}>{v}</span>
+  borderRadius:4, padding:"3px 6px" }}>
+  <span style={{fontSize:10}}>{icon}</span>
+  <span style={{ fontSize:8, fontFamily:P.ff, color:col, fontWeight:700 }}>{v}</span>
   </div>
   );
   })}
   </div>
-  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-  <span style={{fontSize:9}}>⏱</span>
-  <span style={{ fontSize:10, fontFamily:P.ff, color:"#e8a840", fontWeight:700 }}>
-  {conscriptBase}s per unit
-  </span>
-  <span style={{ fontSize:7, color:P.dim }}>(base, scales with Barracks)</span>
+  <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+  <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+  <span style={{fontSize:8}}>⏱</span>
+  <span style={{ fontSize:9, fontFamily:P.ff, color:"#e8a840", fontWeight:700 }}>{conscriptBase}s / unit</span>
+  <span style={{ fontSize:6, color:P.dim }}>(base)</span>
   </div>
-  <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:6 }}>
-  <span style={{fontSize:9}}>⭐</span>
-  <span style={{ fontSize:10, fontFamily:P.ff, color:P.sub, fontWeight:700 }}>
-  {cmdCost} CMD / unit
-  </span>
-  <span style={{ fontSize:7, color:P.dim }}>(command cost)</span>
+  <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+  <span style={{fontSize:8}}>⭐</span>
+  <span style={{ fontSize:9, fontFamily:P.ff, color:P.sub, fontWeight:700 }}>{cmdCost} CMD / unit</span>
+  </div>
   </div>
   </div>
 
-  </div>{/* end right panel */}
   </div>{/* end body */}
   </div>
   );

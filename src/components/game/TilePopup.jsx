@@ -25,6 +25,7 @@ export default memo(function TilePopup({
   setAtkKey, setMode, setPick, setMvCmd, setReinCmd,
   recallMarch, recallStationary,
   setBarracks, setCmds, setTroopSlot,
+  startMarch,
   nowTick, playerHqKey, facKey,
 }) {
   if (!selKey || !selTile || !popupPos) return null;
@@ -390,11 +391,10 @@ export default memo(function TilePopup({
             })()}
             {selTile.owner!=="player" && canAtk && crewmatePlayerIds?.has(selTile.ownerPlayerId) && (() => {
               const candidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
-              const mover = candidates[0];
-              const hasStam = (mover?.stamina ?? 200) >= 10;
+              const hasStam = candidates.some(c => (c.stamina ?? 200) >= 10);
               return (
                 <button className="btn"
-                  onClick={() => hasStam ? (setMvCmd(mover), setMode("selectMarchDest")) : null}
+                  onClick={() => hasStam ? (setAtkKey(selKey), setMode("pickMoveCmd"), setPick(null)) : null}
                   title={hasStam ? "" : "Need 10⚡ stamina to move"}
                   style={{flex:1,padding:"5px 3px",
                     background: hasStam
@@ -413,7 +413,7 @@ export default memo(function TilePopup({
               const hasStam = (mover?.stamina ?? 200) >= 10;
               return (
                 <button className="btn"
-                  onClick={() => hasStam ? (setMvCmd(mover), setMode("selectMarchDest")) : null}
+                  onClick={() => { if (hasStam && mover) { startMarch(mover, selKey); setSelKey(null); setPopupPos(null); } }}
                   title={hasStam ? "" : "Need 10⚡ stamina to move"}
                   style={{flex:1,padding:"5px 3px",
                     background: hasStam
