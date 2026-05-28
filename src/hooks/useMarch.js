@@ -194,7 +194,7 @@ arrivedAttackers.forEach(async staleCmd => {
   const cmd = (liveCmd && cmdTroops(liveCmd) > cmdTroops(staleCmd)) ? liveCmd : staleCmd;
   const destKey = cmd.tk;
   const defTile = tiles[destKey];
-  if (!defTile || defTile.owner === "player") {
+  if (!defTile || defTile.owner === "player" || defTile.faction === facKey) {
     setCmds(p => p.map(c => c.uid === staleCmd.uid ? { ...c, march:null } : c));
     return;
   }
