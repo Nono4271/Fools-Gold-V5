@@ -389,6 +389,8 @@ self.onmessage = (e) => {
   switch (type) {
     case 'init':
       paused = false;
+      workerMarchState.clear();
+      Object.keys(aiLastMarch).forEach(k => delete aiLastMarch[k]);
       startAll();
       break;
 
