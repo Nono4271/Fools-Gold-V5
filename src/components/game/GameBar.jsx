@@ -454,13 +454,6 @@ export default memo(function GameBar({
           pointerEvents: "auto",
         }}>
           <ActionButton
-            icon="🗺"
-            label="Map"
-            color="#aaccee"
-            accent="#2a4a6c"
-            onClick={() => onWorldMap && onWorldMap()}
-          />
-          <ActionButton
             icon="🌀"
             label="Summon"
             color="#f0c040"

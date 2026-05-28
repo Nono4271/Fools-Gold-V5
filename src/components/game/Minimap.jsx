@@ -5,10 +5,10 @@ import { REGIONS } from "../../../shared/constants/regions.js";
 // Convert REGIONS object to REGION_LIST array for compatibility
 const REGION_LIST = Object.values(REGIONS);
 
-const MM_SIZE    = 104;
-const MM_RADIUS  = 48;
-const MM_CX      = 52;
-const MM_CY      = 52;
+const MM_SIZE    = 130;
+const MM_RADIUS  = 60;
+const MM_CX      = 65;
+const MM_CY      = 65;
 const VIEW_RADIUS = 80;
 
 function tileToMM(tc, tr, vc, vr) {
@@ -36,7 +36,7 @@ function panToVC(panSt, zoom) {
 // Minimap receives panRef/zoomRef (stable refs) instead of panSt/zoom state values.
 // redrawRef is a ref passed from Game — Minimap stores its draw function into it
 // so Game.onPanChange can call it directly without any setState or re-render.
-export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef, playerFacKey, crewmatePlayerIds, playerHqKey, aiHqKeys }) {
+export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef, playerFacKey, crewmatePlayerIds, playerHqKey, aiHqKeys, onWorldMap }) {
   const canvasRef = useRef(null);
   const tilesRef  = useRef(tiles);
   const pKeysRef  = useRef(pKeys);
@@ -205,10 +205,11 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
     <div style={{
       position: "fixed",
       top: "calc(var(--sat) + 6px)",
-      left: "var(--left-inset, 6px)", zIndex: 180,
+      left: 8, zIndex: 180,
       width: MM_SIZE, height: MM_SIZE,
-      pointerEvents: "none",
-    }}>
+      pointerEvents: "auto",
+      cursor: "pointer",
+    }} onClick={() => onWorldMap && onWorldMap()}>
       <canvas ref={canvasRef}
         style={{ width: MM_SIZE, height: MM_SIZE, borderRadius: "50%" }}
       />
