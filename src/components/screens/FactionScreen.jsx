@@ -304,8 +304,9 @@ export default function FactionScreen({
 
         {/* ── LEFT: faction grid ── fixed 270px */}
         <div style={{
-          width:270, flexShrink:0,
+          width:"calc(270px + var(--sal, 0px))", flexShrink:0,
           padding:"14px 14px 12px",
+          paddingLeft:"calc(var(--sal, 0px) + 14px)",
           display:"flex", flexDirection:"column",
           borderRight:"1px solid #1a1a2a",
           background:"rgba(0,0,0,0.25)",
