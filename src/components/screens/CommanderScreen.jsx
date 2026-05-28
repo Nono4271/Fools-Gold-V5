@@ -643,7 +643,6 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
       position: "fixed", inset: 0, zIndex: 9200,
       background: `radial-gradient(ellipse at 50% 0%, #03100f 0%, #020608 55%, #010204 100%)`,
       display: "flex", flexDirection: "column",
-      paddingLeft: "var(--sal, 0px)",
       animation: "fadeUp .2s ease",
       touchAction: "auto",
     }}>
@@ -2095,6 +2094,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
       position: "fixed", inset: 0, zIndex: 9200,
       background: "#080704",
       display: "flex", flexDirection: "column",
+      paddingLeft: "var(--sal, 0px)",
       height: "100dvh", overflow: "hidden",
       touchAction: "auto",
     }}>
@@ -2127,6 +2127,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
           borderRight: "1px solid #1e1508",
           background: "rgba(0,0,0,.3)",
           display: "flex", flexDirection: "column",
+          paddingLeft: "var(--sal, 0px)",
           touchAction: "pan-y",
         }}>
           {/* Back + filter buttons */}
