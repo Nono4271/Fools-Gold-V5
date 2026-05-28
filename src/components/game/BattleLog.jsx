@@ -345,6 +345,7 @@ function CommanderPopup({ b, side, onClose }) {
         zIndex:5011,
         background:"#0c0906",
         display:"flex", flexDirection:"column",
+        paddingLeft:"var(--sal, 0px)",
         overflow:"hidden",
       }}>
 
@@ -674,6 +675,7 @@ function BattleStatsPopup({ b, onClose, subPopup, setSubPopup, playerName }) {
         zIndex:5001,
         background:"#0c0904",
         display:"flex", flexDirection:"column",
+        paddingLeft:"var(--sal, 0px)",
         overflow:"hidden",
       }}>
 
@@ -1537,6 +1539,7 @@ export default memo(function BattleLog({ battles, bLog, onClose, playerName }) {
         border:"none",
         borderRadius:0,
         display:"flex", flexDirection:"column",
+        paddingLeft:"var(--sal, 0px)",
         boxShadow:"none",
         overflow:"hidden",
       }}>

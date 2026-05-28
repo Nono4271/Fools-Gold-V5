@@ -142,7 +142,7 @@ export default memo(function CrewPanel({ onClose, crews, playerCrewId, pendingCr
 
   return (
     <div style={{
-      position: "fixed", top: "var(--hud-offset)", left: "var(--sal, 0px)", bottom: 0, width: 300, zIndex: 9500,
+      position: "fixed", inset: 0, top: "var(--hud-offset)", left: "var(--sal, 0px)", zIndex: 9500,
       background: PANEL_BG, borderRight: `1px solid ${BORDER_COL}`,
       boxShadow: "4px 0 32px rgba(0,0,0,.9)",
       display: "flex", flexDirection: "column",
