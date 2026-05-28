@@ -368,10 +368,10 @@ const BRANCH_LVL_BONUS = [
   <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px",
   background:"rgba(0,0,0,.5)", borderBottom:`1px solid ${fColor}33`, flexShrink:0 }}>
   <button onClick={onClose}
-  style={{ padding:"4px 12px", borderRadius:4, background:"rgba(255,255,255,.06)",
-  border:`1px solid ${fColor}40`, color:"#8a7a60", fontSize:9,
-  fontFamily:P.ff, letterSpacing:".05em",
-  cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>{"<- Back to Quarters"}</button>
+  style={{ padding:"8px 16px", borderRadius:4, background:`${fColor}22`,
+  border:`1px solid ${fColor}88`, color:fColor, fontSize:13,
+  fontFamily:P.ff, letterSpacing:".05em", fontWeight:700,
+  cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>← Back to Quarters</button>
   <div style={{ fontFamily:P.ff, fontWeight:700, fontSize:13, color:P.text }}>
   {tier.label}
   </div>
@@ -3384,6 +3384,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
         )}
         {hqTab === "troops" && (
           <StrikeCraftScreen bldgs={bldgs} barracksPool={barracksPool}
+            troopCounts={troopCounts}
             trainingQueues={trainingQueues} setTrainingQueues={setTrainingQueues} canAfford={canAfford}
             queueTraining={queueTraining} rss={rss} cmds={cmds}
             unlockedBranches={unlockedBranches}
