@@ -5,7 +5,6 @@ import { CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
 import { barracksCapacity } from "../../shared/constants/buildings.js";
 import { adj, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
 import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/garrisonUtils.js";
-import { useBattle } from "./useBattle.js";
 import { calcSiegePower } from "../../shared/constants/map.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
@@ -126,9 +125,8 @@ facKey,
 troopSkillLevels,
 crewmatePlayerIds,
 aiPlayerIdMap,
+runBattle,
 }) {
-// Battle worker — runs simBattle off the main thread
-const { runBattle } = useBattle();
 
 // Server-sync helpers — no-op if server not connected yet
 const _emitCapture = (key, patch) => emitTileCapture?.(key, patch);
@@ -186,15 +184,14 @@ if (screen !== "game") return;
 const arrivedAttackers = cmds.filter(c => c.owner === "player" && c.march?.arrived && c.march?.type === "attack");
 if (!arrivedAttackers.length) return;
 
-(async () => {
-for (const staleCmd of arrivedAttackers) {
+arrivedAttackers.forEach(async staleCmd => {
   // staleCmd comes from cmds.filter() — cmds is the current state in this effect closure.
   // If reinforcement happened before this render, staleCmd already has updated troops.
   // Use it directly; also check cmdsRef for any same-tick updates not yet in cmds.
   const liveCmd = cmdsRef.current.find(c => c.uid === staleCmd.uid);
   const cmd = (liveCmd && cmdTroops(liveCmd) > cmdTroops(staleCmd)) ? liveCmd : staleCmd;
   const destKey = cmd.tk;
-  const defTile = (tilesRef.current ?? tiles)[destKey];
+  const defTile = tiles[destKey];
   if (!defTile || defTile.owner === "player" || defTile.faction === facKey) {
     setCmds(p => p.map(c => c.uid === staleCmd.uid ? { ...c, march:null } : c));
     return;
@@ -431,8 +428,8 @@ for (const staleCmd of arrivedAttackers) {
     return { ...updated, ...applyXp(updated, totalXp, floaty) };
   }));
   setBLog(p => [`✅ ${cmd.n} Lv${cmd.lvl||5} cleared all ${totalWaves} wave(s) ${tileCaptured?"captured":"siege dealt"}`, ...p].slice(0, 99));
-}
-})();
+});
+
 }, [cmds, screen, tileVersion]);
 
 // ── Draw rematch timer tick ───────────────────────────────────────────────────
@@ -442,7 +439,7 @@ for (const staleCmd of arrivedAttackers) {
 // then the NPC garrison if any/all commanders are beaten.
 useEffect(() => {
   if (screen !== "game") return;
-  const id = setInterval(async () => {
+  const id = setInterval(() => {
     const now = Date.now();
     // Read from ref — avoids depending on cmds state and restarting
     // the interval every time any march step fires a setCmds call.
@@ -451,7 +448,7 @@ useEffect(() => {
     );
     if (!drawCmds.length) return;
 
-    for (const cmd of drawCmds) {
+    drawCmds.forEach(async cmd => {
       const destKey   = cmd.drawTile;
       const originKey = cmd.drawOrigin || hqKey;
       const defTile   = tilesRef.current?.[destKey];
@@ -647,7 +644,7 @@ useEffect(() => {
         return { ...updated, ...applyXp(updated, totalXp, floaty) };
       }));
       setBLog(p => [`✅ ${cmd.n} ${tileCaptured?"captured":"siege dealt"} after rematch`, ...p].slice(0, 99));
-    }
+    });
   }, 1000);
   return () => clearInterval(id);
 // cmds intentionally omitted — we read cmdsRef.current inside the interval
@@ -662,10 +659,9 @@ const arrivedAI = cmds.filter(c => c.owner === "ai" && c.march?.arrived && c.mar
 const marchingAI = cmds.filter(c => c.owner === "ai" && c.march && !c.march.arrived);
 if (!arrivedAI.length) return;
 
-(async () => {
-for (const cmd of arrivedAI) {
+arrivedAI.forEach(async cmd => {
   const destKey = cmd.tk;
-  const defTile = (tilesRef.current ?? tiles)[destKey];
+  const defTile = tiles[destKey];
   if (!defTile || defTile.owner === "ai") {
     setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
     return;
@@ -732,7 +728,7 @@ for (const cmd of arrivedAI) {
     return { ...updated, ...applyXp(updated, res.xpGain, null) };
   }));
   setBLog(p => [`${res.won?"🔴":"✅"} ENEMY ${cmd.n} Lv${cmd.lvl||5} ${res.won?"captured":"repelled"} tile`, ...p].slice(0, 99));
-}
-})();
+});
+
 }, [cmds, screen, tileVersion, bldgs.walls]);
 }

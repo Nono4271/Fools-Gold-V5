@@ -5,7 +5,7 @@
 
 import { useCallback } from "react";
 import { rssRate } from "../../shared/constants/buildings.js";
-import { bfsPath, effectiveMarchSpd, marchStepMs } from "../../shared/utils/pathfinding.js";
+import { effectiveMarchSpd, marchStepMs } from "../../shared/utils/pathfinding.js";
 
 export function useAI({
   aiFactionKeys,
@@ -19,6 +19,7 @@ export function useAI({
   setAiRssMap,
   setAiBldgsMap,
   setAiPoolMap,
+  findPathBatch,
 }) {
 
 // ── Resource tick — called every 1s ──────────────────────────────────────
@@ -53,29 +54,45 @@ const tickAiMarch = useCallback((dispatches) => {
   if (!dispatches?.length) return;
   const now = Date.now();
   const curCmds = cmdsRef.current;
-  const updates = [];
 
-  dispatches.forEach(({ uid, destKey }) => {
+  // Filter to eligible commanders first
+  const eligible = dispatches.filter(({ uid }) => {
     const cmd = curCmds.find(c => c.uid === uid);
-    if (!cmd || cmd.march) return;
-    const path = bfsPath(cmd.tk, destKey);
-    if (!path || path.length < 2) return;
-    const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
-    updates.push({ uid, march: { type:"attack", path, step:0, dest:destKey, origin:cmd.tk, stepMs, lastStepTime:now } });
+    return cmd && !cmd.march;
+  });
+  if (!eligible.length) return;
+
+  // Batch all BFS requests through the worker (off main thread)
+  const requests = eligible.map(({ uid, destKey }) => {
+    const cmd = curCmds.find(c => c.uid === uid);
+    return { requestId: uid, from: cmd.tk, to: destKey, destKey };
   });
 
-  if (!updates.length) return;
-  setCmds(p => {
-    let changed = false;
-    const next = p.map(c => {
-      const upd = updates.find(u => u.uid === c.uid);
-      if (!upd) return c;
-      changed = true;
-      return { ...c, march: upd.march };
+  const destByUid = Object.fromEntries(eligible.map(({ uid, destKey }) => [uid, destKey]));
+
+  (findPathBatch || (() => Promise.resolve([])))(requests).then(results => {
+    const updates = [];
+    for (const { requestId: uid, path } of results) {
+      if (!path || path.length < 2) continue;
+      const cmd = cmdsRef.current.find(c => c.uid === uid);
+      if (!cmd || cmd.march) continue;
+      const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
+      const destKey = destByUid[uid];
+      updates.push({ uid, march: { type:"attack", path, step:0, dest:destKey, origin:cmd.tk, stepMs, lastStepTime:now } });
+    }
+    if (!updates.length) return;
+    setCmds(p => {
+      let changed = false;
+      const next = p.map(c => {
+        const upd = updates.find(u => u.uid === c.uid);
+        if (!upd) return c;
+        changed = true;
+        return { ...c, march: upd.march };
+      });
+      return changed ? next : p;
     });
-    return changed ? next : p;
   });
-}, [cmdsRef, setCmds]);
+}, [cmdsRef, setCmds, findPathBatch]);
 
 // ── Economy apply — called when worker sends aiEconReady ──────────────────
 // Worker computed all diffs. Main thread applies in one pass.
