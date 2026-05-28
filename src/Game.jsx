@@ -2012,7 +2012,7 @@ export default function RiseToWar() {
         />
       )}
 
-      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} />
+      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} playerHqKey={playerHqKey} aiHqKeys={aiHqKeys} />
 
       {/* HQ + Search buttons under minimap */}
       {!worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
@@ -2154,6 +2154,9 @@ export default function RiseToWar() {
           onTeleport={teleportTo}
           panRef={panRef}
           zoom={zoomState}
+          playerHqKey={playerHqKey}
+          crewmatePlayerIds={crewmatePlayerIds}
+          aiHqKeys={aiHqKeys}
         />
       )}
 
