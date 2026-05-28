@@ -2122,12 +2122,12 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
 
         {/* ── Col 1: back arrow + filter + scrollable roster (2-wide grid) ── */}
         <div style={{
-          width: "calc(152px + var(--sal, 0px))", flexShrink: 0,
+          width: "calc(152px + var(--sal, 0px) * 0.4)", flexShrink: 0,
           overflow: "hidden",
           borderRight: "1px solid #1e1508",
           background: "rgba(0,0,0,.3)",
           display: "flex", flexDirection: "column",
-          paddingLeft: "var(--sal, 0px)",
+          paddingLeft: "calc(var(--sal, 0px) * 0.4)",
           touchAction: "pan-y",
         }}>
           {/* Back + filter buttons */}
