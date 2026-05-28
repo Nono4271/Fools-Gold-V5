@@ -570,6 +570,33 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
     }
   }
 
+  // ── Holy Grail pass: draw isWin tile as a gold 5x5 keep structure ──────────
+  for (let d = dMin; d <= dMax + 4; d++) {
+    const cLo = Math.max(cMin, d - rMax);
+    const cHi = Math.min(cMax, d - rMin);
+    for (let c = cLo; c <= cHi; c++) {
+      const r = d - c;
+      if (r < rMin || r > rMax) continue;
+      const tile = tiles[`${c},${r}`];
+      if (!tile?.isWin) continue;
+      const { cx, cy } = isoXY(c, r);
+      const elev = 10;
+      const KEEP5 = [
+        cx,          cy - elev - TH * 2,
+        cx + TW*2.5, cy - elev + TH * 0.5,
+        cx,          cy - elev + TH * 3,
+        cx - TW*2.5, cy - elev + TH * 0.5,
+      ];
+      gfx.beginFill(0x2a2000); gfx.drawPolygon(KEEP5); gfx.endFill();
+      gfx.beginFill(0xf0c040, 0.45); gfx.drawPolygon(KEEP5); gfx.endFill();
+      gfx.lineStyle(2, 0xf0c040, 0.9); gfx.drawPolygon(KEEP5); gfx.lineStyle(0);
+      if (tile.owner) {
+        const ot = ownerTint(tile.owner, tile.faction, playerFacKey, crewPids, tile.ownerPlayerId) ?? 0xdc3c28;
+        gfx.lineStyle(2.5, ot, 1.0); gfx.drawPolygon(KEEP5); gfx.lineStyle(0);
+      }
+    }
+  }
+
   // ── Fourth pass: HQs are fully rendered by buildHQLayer/_buildOneHQ ─────────
   // No additional drawing needed here.
 }

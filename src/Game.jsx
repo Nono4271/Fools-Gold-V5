@@ -1975,7 +1975,7 @@ export default function RiseToWar() {
       <HQMenu
         hqOpen={hqOpen} setHqOpen={setHqOpen} hqTab={hqTab} setHqTab={setHqTab}
         cmds={cmds} setCmds={setCmds} tiles={tiles} rss={rss} setRss={setRss} gems={gems} pKeys={pKeys}
-        bldgs={bldgs} setBldgs={setBldgs} barracksPool={barracksPool} troopCounts={troopCounts} setTroopCounts={setTroopCounts}
+        bldgs={bldgs} setBldgs={setBldgs} barracksPool={barracksPool} setBarracks={setBarracks} troopCounts={troopCounts} setTroopCounts={setTroopCounts}
         woundedTroops={woundedTroops} woundedQueue={woundedQueue} trainingQueues={trainingQueues}
         trainSlider={trainSlider} setTrainSlider={setTrainSlider} setTrainingQueues={setTrainingQueues}
         upgQueue={upgQueue} sliderVals={sliderVals} setSliderVals={setSliderVals}
