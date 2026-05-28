@@ -353,6 +353,7 @@ export default function GachaScreen({
       {/* Top bar */}
       <div style={{
         padding: "10px 14px 0",
+        paddingTop: "calc(var(--sat) + 10px)",
         background: "linear-gradient(180deg,rgba(12,9,4,1),rgba(10,8,3,.97))",
         flexShrink: 0,
       }}>

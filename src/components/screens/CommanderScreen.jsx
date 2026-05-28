@@ -658,6 +658,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
       {/* Header */}
       <div style={{
         padding: "12px 16px 10px",
+        paddingTop: "calc(var(--sat) + 12px)",
         borderBottom: "1px solid #2a2010",
         background: `linear-gradient(180deg, ${fColor}0c, transparent)`,
         display: "flex", alignItems: "center", gap: 12, flexShrink: 0,

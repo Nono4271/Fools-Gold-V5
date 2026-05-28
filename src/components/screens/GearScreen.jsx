@@ -26,6 +26,7 @@ export default function GearScreen({ gearInventory, setGearInventory, cmds, setC
       <div style={{
         display: "flex", alignItems: "center", gap: 12,
         padding: "12px 16px",
+        paddingTop: "calc(var(--sat) + 12px)",
         background: "linear-gradient(180deg,rgba(20,15,5,1),rgba(10,8,3,.97))",
         borderBottom: "1px solid #2a1e08",
         flexShrink: 0, position: "relative",
