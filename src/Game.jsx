@@ -1049,7 +1049,7 @@ export default function RiseToWar() {
 
         for (const [hqKey, playerId] of aiPlayerIdMapRef.current) {
           if (inCrew.has(playerId)) continue;
-          const fk = playerId.replace(/^ai_/, "").replace(/_\d+$/, "");
+          const fk = playerId.split("_")[1];
 
           // Founders: create a new crew if they can afford it
           if (aiFoundersRef.current.has(playerId)) {
@@ -1100,6 +1100,7 @@ export default function RiseToWar() {
     aiRssMapRef, aiBldgsMapRef, aiPoolMapRef, aiTileKeysMapRef,
     setCmds: setAiCmds,
     setAiRssMap, setAiBldgsMap, setAiPoolMap,
+    findPathBatch,
   });
 
   useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue });
