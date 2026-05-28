@@ -981,11 +981,12 @@ export default function RiseToWar() {
     if (screen === "game" && tilesMapRef.current.__ready) {
       setMapReady(true);
       const sat = getComputedStyle(document.documentElement).getPropertyValue("--sat").trim();
+      const sal = getComputedStyle(document.documentElement).getPropertyValue("--sal").trim();
       setSatDebug(`--sat:${sat || "EMPTY"} h:${window.innerHeight}`);
       const el = document.createElement("div");
       el.id = "safe-area-debug";
       el.style.cssText = `position:fixed;top:0;left:0;right:0;background:red;color:white;font-size:16px;font-weight:bold;padding:6px 12px;z-index:99999;pointer-events:none;text-align:center`;
-      el.textContent = `--sat=${sat || "EMPTY"} | innerH=${window.innerHeight}`;
+      el.textContent = `--sat=${sat||"0"} --sal=${sal||"0"} | innerH=${window.innerHeight} W=${window.innerWidth}`;
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 15000);
     }
@@ -2026,7 +2027,7 @@ export default function RiseToWar() {
 
       {/* HQ + Search buttons under minimap */}
       {!worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
-        <div style={{ position:"fixed", top:"calc(var(--sat) + 112px)", left:6, zIndex:300, display:"flex", gap:6 }}>
+        <div style={{ position:"fixed", top:"calc(var(--sat) + 112px)", left:"var(--left-inset, 6px)", zIndex:300, display:"flex", gap:6 }}>
           <button onClick={centerOnHQ} style={{
             width:49, height:49, borderRadius:"50%",
             background:"radial-gradient(circle at 35% 30%, #2a1e08, #0e0a04)",
@@ -2057,7 +2058,7 @@ export default function RiseToWar() {
       {/* Wizard's Tomes trigger — bottom-left below minimap */}
       {!tomesOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
         <button onClick={()=>setTomesOpen(true)} style={{
-          position:"fixed", left:8, bottom:90, zIndex:300,
+          position:"fixed", left:"var(--left-inset, 8px)", bottom:90, zIndex:300,
           background:"radial-gradient(circle at 35% 30%, #1a1030, #08060e)",
           border:"1px solid rgba(200,160,64,.25)", borderRadius:"50%",
           width:52, height:52,
