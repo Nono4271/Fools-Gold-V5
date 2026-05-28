@@ -165,6 +165,7 @@ export default function RiseToWar() {
   }, []);
 
   const [mapReady, setMapReady] = useState(false);
+  const [satDebug, setSatDebug] = useState("");
   // Stable session ID — generated once per browser session
   const [sessionId] = useState(() => `fg-${Math.random().toString(36).slice(2,10)}`);
   const [loadPct,  setLoadPct]  = useState(0);
@@ -979,6 +980,14 @@ export default function RiseToWar() {
   useEffect(() => {
     if (screen === "game" && tilesMapRef.current.__ready) {
       setMapReady(true);
+      const sat = getComputedStyle(document.documentElement).getPropertyValue("--sat").trim();
+      setSatDebug(`--sat:${sat || "EMPTY"} h:${window.innerHeight}`);
+      const el = document.createElement("div");
+      el.id = "safe-area-debug";
+      el.style.cssText = `position:fixed;top:0;left:0;right:0;background:red;color:white;font-size:16px;font-weight:bold;padding:6px 12px;z-index:99999;pointer-events:none;text-align:center`;
+      el.textContent = `--sat=${sat || "EMPTY"} | innerH=${window.innerHeight} | screenH=${screen.height}`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 15000);
     }
   }, [tileVersion, screen]);
 
