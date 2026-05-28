@@ -2017,7 +2017,21 @@ export default function RiseToWar() {
         setMysticOrbs={setMysticOrbs}
       />
 
-      {winner && (
+      {[
+        { y: 80,  color: "red",    label: "80" },
+        { y: 110, color: "orange", label: "110" },
+        { y: 140, color: "yellow", label: "140" },
+        { y: 170, color: "green",  label: "170" },
+        { y: 200, color: "blue",   label: "200" },
+      ].map(({ y, color, label }) => (
+        <div key={y} style={{
+          position: "fixed", left: 73, top: y, zIndex: 99999,
+          width: 16, height: 16, borderRadius: "50%",
+          background: color, pointerEvents: "none",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 8, color: "#000", fontWeight: "bold",
+        }}>{label}</div>
+      ))}
         <WinScreen
           winner={winner} aiFaction={aiFaction}
           setWinner={setWinner} setTiles={setTiles} setCmds={setCmds}
