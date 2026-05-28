@@ -424,15 +424,15 @@ export default memo(function TilePopup({
                 </button>
               );
             })()}
-            {selTile.owner==="player" && cmdsOnSel.some(c=>(c.troopSlots?.length>0||c.troopBranch)&&!c.march) && barracksPool>0 && (
+            {(selTile.owner==="player" || cmdsOnSel.length>0) && cmdsOnSel.some(c=>(c.troopSlots?.length>0||c.troopBranch)&&!c.march) && barracksPool>0 && (
               <button className="btn" onClick={() => { setReinCmd(cmdsOnSel.find(c=>(c.troopSlots?.length>0||c.troopBranch)&&!c.march)); setMode("reinforce"); }}
                 style={{flex:1,padding:"5px 3px",background:"linear-gradient(135deg,rgba(20,40,120,.6),rgba(10,30,100,.4))",border:"1px solid #2a40cc",color:"#80a0ff",fontSize:9,fontWeight:700}}>🔄</button>
             )}
-            {selTile.owner==="player" && cmdsOnSel.some(c=>c.march) && (
+            {(selTile.owner==="player" || cmdsOnSel.length>0) && cmdsOnSel.some(c=>c.march) && (
               <button className="btn" onClick={() => cmdsOnSel.filter(c=>c.march).forEach(c=>recallMarch(c.uid))}
                 style={{flex:1,padding:"5px 3px",background:"linear-gradient(135deg,rgba(120,40,40,.5),rgba(100,20,20,.3))",border:"1px solid #cc4444",color:"#ff9090",fontSize:9,fontWeight:700}}>↩</button>
             )}
-            {selTile.owner==="player" && cmdsOnSel.some(c=>!c.march) && selKey !== (playerHqKey || `${HQP.player.c},${HQP.player.r}`) && (
+            {(selTile.owner==="player" || cmdsOnSel.length>0) && cmdsOnSel.some(c=>!c.march) && selKey !== (playerHqKey || `${HQP.player.c},${HQP.player.r}`) && (
               <button className="btn" onClick={() => {
                 const idle = cmdsOnSel.filter(c=>!c.march);
                 if (idle.length===1) { recallStationary(idle[0].uid); }
@@ -440,7 +440,7 @@ export default memo(function TilePopup({
               }}
                 style={{flex:1,padding:"5px 3px",background:"linear-gradient(135deg,rgba(100,60,20,.5),rgba(80,40,10,.3))",border:"1px solid #c89030",color:"#f0c040",fontSize:9,fontWeight:700}}>🏰</button>
             )}
-            {selTile.owner==="player" && cmdsOnSel.some(c=>(c.troopSlots?.length>0||c.troopBranch)&&!c.march) && (
+            {(selTile.owner==="player" || cmdsOnSel.length>0) && cmdsOnSel.some(c=>(c.troopSlots?.length>0||c.troopBranch)&&!c.march) && (
               <button className="btn" onClick={() => { setEditArmyCmd(cmdsOnSel.find(c=>(c.troopSlots?.length>0||c.troopBranch)&&!c.march)); setPopupMode("editArmy"); }}
                 style={{flex:"0 0 auto",padding:"5px 7px",background:"linear-gradient(135deg,rgba(60,50,20,.5),rgba(40,30,10,.3))",border:"1px solid #7a6a30",color:"#c0a840",fontSize:11,fontWeight:700}}>🔧</button>
             )}
