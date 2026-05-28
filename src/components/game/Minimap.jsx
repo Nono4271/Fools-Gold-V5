@@ -205,7 +205,7 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
     <div style={{
       position: "fixed",
       top: "calc(var(--sat) + 6px)",
-      left: 6, zIndex: 180,
+      left: "var(--left-inset, 6px)", zIndex: 180,
       width: MM_SIZE, height: MM_SIZE,
       pointerEvents: "none",
     }}>
