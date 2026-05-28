@@ -191,7 +191,7 @@ export default function RiseToWar() {
     setTimeout(() => {
       [
         { label: "BLACK-BAR", x: window.innerWidth * 0.08, y: 30 },
-        { label: "MINIMAP",   x: 65, y: 80 },
+        { label: "MINIMAP",   x: 73, y: 133 },
       ].forEach(({ label, x, y }) => {
         const elements = document.elementsFromPoint(x, y);
         elements.slice(0, 5).forEach((el, i) => {
