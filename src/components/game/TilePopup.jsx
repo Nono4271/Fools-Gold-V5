@@ -369,7 +369,7 @@ export default memo(function TilePopup({
 
           {/* Action buttons */}
           <div style={{display:"flex",gap:3,marginTop:4,flexWrap:"wrap"}}>
-            {selTile.owner!=="player" && canAtk && !crewmatePlayerIds?.has(selTile.ownerPlayerId) && (() => {
+            {selTile.owner!=="player" && canAtk && !crewmatePlayerIds?.has(selTile.ownerPlayerId) && selTile.faction !== facKey && (() => {
               // Check if best available attacker has ≥20 stamina
               const candidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
               const hasStam = candidates.some(c => (c.stamina ?? 200) >= 20);
