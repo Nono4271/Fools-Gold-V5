@@ -1579,7 +1579,6 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
       if (isCrew) blueCount++; else purpleCount++;
     }
   }
-  }
 }
 
 function drawMarchLines(gfx, cmds, reinMarches, tiles) {
