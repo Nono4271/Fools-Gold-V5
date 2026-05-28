@@ -504,12 +504,8 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
               const pid = t?.ownerPlayerId;
               if (!pid || !crewmatePlayerIds.has(pid)) return null;
               const [cc, cr] = key.split(",").map(Number);
-              const sz = 10 * iconMult;
               return (
-                <g key={key} style={{ pointerEvents: "none" }}>
-                  <circle cx={cc} cy={cr} r={sz * 1.2} fill="#2299ff22" stroke="#2299ff" strokeWidth={1}/>
-                  <circle cx={cc} cy={cr} r={sz * 0.5} fill="#2299ff" opacity={0.9}/>
-                </g>
+                <circle key={key} cx={cc} cy={cr} r={1.5} fill="#2299ff" style={{ pointerEvents: "none" }}/>
               );
             }).filter(Boolean);
           })}
