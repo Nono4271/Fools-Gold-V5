@@ -188,6 +188,17 @@ export default function RiseToWar() {
     console.log("[BG] html:", getComputedStyle(html).backgroundColor);
     console.log("[BG] body:", getComputedStyle(body).backgroundColor);
     console.log("[BG] root:", getComputedStyle(root).backgroundColor);
+    setTimeout(() => {
+      const x = window.innerWidth * 0.08;
+      const y = 30;
+      const el = document.elementFromPoint(x, y);
+      if (el) {
+        const st = getComputedStyle(el);
+        console.log("[SPOT] element:", el.tagName, el.className, el.id);
+        console.log("[SPOT] background:", st.backgroundColor);
+        console.log("[SPOT] zIndex:", st.zIndex);
+      }
+    }, 2000);
   }, []);
 
   useEffect(() => { cmdsRef.current = [...playerCmds, ...aiCmdsRef.current]; }, [playerCmds]);
@@ -1801,7 +1812,7 @@ export default function RiseToWar() {
   return (
     <div style={{
       width:"100vw", height:"100vh", position:"relative", overflow:"hidden",
-      background:"#0e1014", userSelect:"none",
+      background:"transparent", userSelect:"none",
       touchAction:"none",
       // Phone optimizations: eliminate tap delay and visual tap flash
       WebkitTapHighlightColor:"transparent",
@@ -2177,7 +2188,6 @@ export default function RiseToWar() {
         unseenBattles={unseenBattles}
         setHqOpen={setHqOpen} setHqTab={setHqTab}
         onCenterHQ={centerOnHQ}
-        onWorldMap={() => setWorldMapOpen(true)}
         setScreen={setScreen}
         setShowBattleLog={setShowBattleLog}
         setUnseenBattles={setUnseenBattles}
