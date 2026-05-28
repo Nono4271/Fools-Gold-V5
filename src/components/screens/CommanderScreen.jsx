@@ -643,6 +643,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
       position: "fixed", inset: 0, zIndex: 9200,
       background: `radial-gradient(ellipse at 50% 0%, #03100f 0%, #020608 55%, #010204 100%)`,
       display: "flex", flexDirection: "column",
+      paddingLeft: "var(--sal, 0px)",
       animation: "fadeUp .2s ease",
       touchAction: "auto",
     }}>

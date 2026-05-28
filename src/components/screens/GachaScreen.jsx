@@ -347,7 +347,8 @@ export default function GachaScreen({
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#0a0c10",
-      display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
+      display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden",
+      paddingLeft: "var(--sal, 0px)" }}>
       <style>{CSS}</style>
 
       {/* Top bar */}

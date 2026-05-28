@@ -17,6 +17,7 @@ export default function GearScreen({ gearInventory, setGearInventory, cmds, setC
       position: "fixed", inset: 0, zIndex: 9200,
       background: "#080704",
       display: "flex", flexDirection: "column",
+      paddingLeft: "var(--sal, 0px)",
       height: "100dvh",
       overflow: "hidden",
     }}>
