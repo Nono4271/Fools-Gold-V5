@@ -182,7 +182,7 @@ export default memo(function HUD({
 
       {/* ── Content ── */}
       <div style={{
-        position: "absolute", top: 0, left: 138, right: 0, bottom: 0,
+        position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingLeft: "20%", paddingRight: "17%",
         display: "flex", alignItems: "center", justifyContent: "flex-start",
