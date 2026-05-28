@@ -277,6 +277,7 @@ export default memo(function WizardsTomes({
     <div style={{
       position:"fixed", inset:0, zIndex:500, background:"#080818",
       display:"flex", flexDirection:"column", fontFamily:"'Cinzel',serif",
+      paddingLeft:"var(--sal, 0px)",
     }}>
       {/* Header */}
       <div style={{

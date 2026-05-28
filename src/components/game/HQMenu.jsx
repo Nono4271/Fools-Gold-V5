@@ -3285,6 +3285,7 @@ return (
 <div style={{ position:"fixed", inset:0, zIndex:400,
 background: isHub ? PARCHMENT_BG : P.bg,
 display:"flex", flexDirection:"column",
+paddingLeft:"var(--sal, 0px)",
 boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
 
   {/* Parchment texture overlay -- only on hub */}

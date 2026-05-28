@@ -333,6 +333,7 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
       position: "fixed", inset: 0, zIndex: 9999,
       background: "#080c10",
       display: "flex", flexDirection: "column",
+      paddingLeft: "var(--sal, 0px)",
       height: "100dvh",
       overflow: "hidden",
       fontFamily: "'Cinzel',serif",

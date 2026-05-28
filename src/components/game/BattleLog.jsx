@@ -89,6 +89,7 @@ function TroopPopup({ troopBranch, onClose }) {
       zIndex:5011,
       background:"#100c06",
       display:"flex", flexDirection:"column",
+      paddingLeft:"var(--sal, 0px)",
       overflow:"hidden",
     }}>
       <div style={{
