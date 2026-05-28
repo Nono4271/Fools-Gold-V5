@@ -742,19 +742,7 @@ export default function RiseToWar() {
           // ── Diagnostic: log ownership/flags for the 5x5 area around the HQ center ──
           // Center tile = hc+1, hr+1 (playerSpawn is top-left of 3x3)
           const diagCx = hc, diagCy = hr;
-          console.log(`[HQ Diag] Player HQ center: ${diagCx},${diagCy}`);
-          for (let dr = -2; dr <= 2; dr++) {
-            for (let dc = -2; dc <= 2; dc++) {
-              const tk = `${diagCx + dc},${diagCy + dr}`;
-              const t = rawMap[tk];
-              if (!t) { console.log(`  [${tk}] — NO TILE`); continue; }
-              const dist = Math.abs(dc) + Math.abs(dr);
-              const zone = (dc === 0 && dr === 0) ? 'CENTER'
-                : (Math.abs(dc) <= 1 && Math.abs(dr) <= 1) ? '3x3-part'
-                : 'neighbor';
-              console.log(`  [${tk}] zone:${zone} owner:${t.owner ?? 'none'} isHQ:${!!t.isHQ} isHQPart:${!!t.isHQPart} faction:${t.faction ?? '-'}`);
-            }
-          }
+
           // ── End diagnostic ──
           const { cx, cy } = isoXY(hc, hr);
           const initZoom = 1.25;
@@ -1029,7 +1017,7 @@ export default function RiseToWar() {
       // Faction key matching ("pirates") would turn ALL faction HQs blue instantly.
       if (members.has(playerId)) ids.add(playerId);
     }
-    console.log(`[crewPids] recomputed size:${ids.size} crew:${myCrew.name} members:${[...members].slice(0,3)}`);
+
     return ids;
   }, [playerCrewId, crews]);
 
@@ -1067,7 +1055,7 @@ export default function RiseToWar() {
           // Founders: create a new crew if they can afford it
           if (aiFoundersRef.current.has(playerId)) {
             const gems = aiGemsRef.current.get(playerId) ?? 0;
-            if (fk === facKey) console.log(`[CrewTicker] founder ${playerId} gems:${gems} inCrew:${inCrew.has(playerId)}`);
+
             if (gems >= CREW_COST) {
               const crewId   = `crew_ai_${playerId}_${Date.now()}`;
               const abbr     = fk.slice(0, 4).toUpperCase();
@@ -1090,7 +1078,7 @@ export default function RiseToWar() {
         }
 
         if (!newCrews.length && nextCrews === prevCrews) return prevCrews;
-        if (newCrews.length) console.log(`[Crew] ${newCrews.length} new crew(s) founded:`, newCrews.map(c => `${c.name} (${c.faction})`));
+
         return [...nextCrews, ...newCrews];
       });
     }, 30000);
@@ -1194,7 +1182,14 @@ export default function RiseToWar() {
           const upd = updates.find(u => u.uid === cmd.uid);
           if (!upd) return cmd;
           changed = true;
-          if (upd.clearMarch) return { ...cmd, tk: upd.tk, march: null };
+          if (upd.clearMarch) {
+            const tile = tilesMapRef.current?.[upd.tk];
+            const isCrewArrival = tile && tile.owner !== 'player' && crewmatePlayerIds.has(tile.ownerPlayerId || aiPlayerIdMapRef.current.get(upd.tk));
+            if (isCrewArrival) {
+              console.log(`[Arrival] ${cmd.n} arrived at crewmate tile ${upd.tk} — isHQ:${!!tile.isHQ} isHQPart:${!!tile.isHQPart} owner:${tile.owner} ownerPlayerId:${tile.ownerPlayerId ?? 'none'} march.type:${cmd.march?.type}`);
+            }
+            return { ...cmd, tk: upd.tk, march: null };
+          }
           return { ...cmd, tk: upd.tk, march: upd.marchPatch };
         });
         return changed ? next : prev;
@@ -1419,7 +1414,7 @@ export default function RiseToWar() {
       if (pid && crewmatePlayerIds.has(pid)) return true;
       return false;
     });
-    console.log(`[selAdj] key:${selKey} owner:${selTile.owner} faction:${selTile.faction} adjResult:${result}`, adj(selTile.c, selTile.r).map(ak => `${ak}:${tiles[ak]?.owner}/${tiles[ak]?.faction}`));
+
     return result;
   }, [selTile, tileVersion, facKey, crewmatePlayerIds]);
 
@@ -1462,11 +1457,18 @@ export default function RiseToWar() {
     // For HQPart tiles, ownerPlayerId is only on the primary tile — walk up via hqPrimaryKey
     const destOwnerPlayerId = destTile?.ownerPlayerId
       || (destTile?.isHQPart && destTile?.hqPrimaryKey ? tilesMapRef.current[destTile.hqPrimaryKey]?.ownerPlayerId : null)
+      || (destTile?.isHQPart ? adj(destTile.c, destTile.r)
+            .map(k => tilesMapRef.current[k]).find(t => t?.isHQ)?.ownerPlayerId
+            ?? aiPlayerIdMapRef.current.get(
+                 adj(destTile.c, destTile.r).find(k => tilesMapRef.current[k]?.isHQ) ?? ""
+               )
+          : null)
       || aiPlayerIdMapRef.current.get(destKey);
     const isCrewTile = crewmatePlayerIds.has(destOwnerPlayerId);
     const isCrewHQ   = isCrewTile && (destTile?.isHQ || destTile?.isHQPart);
     const type = (destTile?.owner==="player" || isCrewTile) ? "move" : "attack";
     if (type==="move" && destTile?.owner!=="player" && !isCrewTile) return;
+    console.log(`[March] cmd:${freshCmd.n} → ${destKey} type:${type} isCrewTile:${isCrewTile} isCrewHQ:${isCrewHQ} ownerPlayerId:${destOwnerPlayerId ?? 'none'}`);
     // Stamina check: moves cost 10, attacks cost 20
     const staminaCost = type === "attack" ? 20 : 10;
     const curStamina = freshCmd.stamina ?? 200;

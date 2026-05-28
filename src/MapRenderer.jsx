@@ -1579,8 +1579,6 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
       if (isCrew) blueCount++; else purpleCount++;
     }
   }
-  if (!vb) {
-    console.log(`[HQ Tint] rebuilt ${processedCount} HQs — blue(crew):${blueCount} purple(faction):${purpleCount} crewPidsSize:${crewPids?.size}`);
   }
 }
 
@@ -1730,7 +1728,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const crewPidsRef = useRef(crewmatePlayerIds ?? new Set());
   useEffect(() => {
     crewPidsRef.current = crewmatePlayerIds ?? new Set();
-    console.log('[crewPids] updated, size:', crewPidsRef.current.size, [...crewPidsRef.current].slice(0, 5));
     clearHQCache();
     redrawRef.current?.redraw?.();
     redrawRef.current?.redrawAllHQs?.();
@@ -2172,7 +2169,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     function redrawAllHQs() {
       if (!hqContRef.current) return;
-      console.log('[redrawAllHQs] called, allHqKeys:', allHqKeysRef.current?.length, 'crewPidsSize:', crewPidsRef.current?.size);
       buildHQLayer(hqContRef.current, tilesRef.current, selRef.current, (key, e) => {
         selRef.current = key;
         selGfx.clear();
