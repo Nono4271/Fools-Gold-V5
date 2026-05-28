@@ -11,6 +11,52 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Detect safe area insets — env() can return 0 even on notched devices
+      // when running as a Safari home screen app. Use a probe element instead.
+      (function() {
+        function applyInsets() {
+          var probe = document.createElement('div');
+          probe.style.cssText = [
+            'position:fixed', 'top:0', 'left:0',
+            'width:1px', 'height:env(safe-area-inset-top,0px)',
+            'pointer-events:none', 'visibility:hidden', 'z-index:-1'
+          ].join(';');
+          document.body.appendChild(probe);
+          var envTop = probe.getBoundingClientRect().height;
+          probe.remove();
+
+          // If env() returned 0, use screen dimensions to estimate
+          // iPhone with Dynamic Island / notch in portrait: screen.height > 800 and ratio > 2
+          var sat = envTop;
+          if (sat === 0) {
+            var w = window.screen.width, h = window.screen.height;
+            var long = Math.max(w, h), short = Math.min(w, h);
+            var ratio = long / short;
+            var isPortrait = window.innerHeight > window.innerWidth;
+            // Dynamic Island iPhones (12 and later): long side >= 844
+            if (long >= 844 && ratio > 1.9) {
+              sat = isPortrait ? 59 : 0;  // notch only affects portrait
+              var sal = isPortrait ? 0 : 59; // in landscape notch is on left
+            }
+          }
+
+          var root = document.documentElement;
+          root.style.setProperty('--sat', sat + 'px');
+          root.style.setProperty('--sab', (envTop > 0 ? 21 : (long >= 844 && ratio > 1.9 ? 21 : 0)) + 'px');
+          root.style.setProperty('--hud-offset', 'calc(' + sat + 'px + 52px)');
+        }
+
+        if (document.body) {
+          applyInsets();
+        } else {
+          document.addEventListener('DOMContentLoaded', applyInsets);
+        }
+        window.addEventListener('orientationchange', function() {
+          setTimeout(applyInsets, 300);
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
