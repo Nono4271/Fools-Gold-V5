@@ -7,7 +7,7 @@ import { isoXY, COLS, ROWS } from "../../../shared/constants/geometry.js";
 /* ─────────────────────────────────────────────────────────────────────────────
    GameBar — persistent bottom action bar + left commander portraits + right reports
    Reference layout:
-     LEFT  — vertical stack of commander portrait icons (fixed left side)
+     LEFT.  — vertical stack of commander portrait icons (fixed left side)
      BOTTOM — HQ | Summon | Commander tabs
      RIGHT  — battle report / notification icons (fixed right side)
 
