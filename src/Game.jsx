@@ -1801,7 +1801,7 @@ export default function RiseToWar() {
   return (
     <div style={{
       width:"100vw", height:"100vh", position:"relative", overflow:"hidden",
-      background:"#0e1014", userSelect:"none",
+      background:"transparent", userSelect:"none",
       touchAction:"none",
       // Phone optimizations: eliminate tap delay and visual tap flash
       WebkitTapHighlightColor:"transparent",
