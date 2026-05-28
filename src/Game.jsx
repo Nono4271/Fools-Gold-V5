@@ -189,22 +189,15 @@ export default function RiseToWar() {
     console.log("[BG] body:", getComputedStyle(body).backgroundColor);
     console.log("[BG] root:", getComputedStyle(root).backgroundColor);
     setTimeout(() => {
-      const samples = [
-        { label: "BLACK-BAR", x: window.innerWidth * 0.08, y: 30 },
-        { label: "MINIMAP",   x: 65, y: "calc(var(--sat, 0) + 65)" },
-      ];
       [
         { label: "BLACK-BAR", x: window.innerWidth * 0.08, y: 30 },
         { label: "MINIMAP",   x: 65, y: 80 },
       ].forEach(({ label, x, y }) => {
-        const el = document.elementFromPoint(x, y);
-        if (el) {
+        const elements = document.elementsFromPoint(x, y);
+        elements.slice(0, 5).forEach((el, i) => {
           const st = getComputedStyle(el);
-          console.log(`[SPOT:${label}] element:`, el.tagName, el.className, el.id);
-          console.log(`[SPOT:${label}] background:`, st.backgroundColor);
-          console.log(`[SPOT:${label}] zIndex:`, st.zIndex);
-          console.log(`[SPOT:${label}] pointerEvents:`, st.pointerEvents);
-        }
+          console.log(`[SPOT:${label}][${i}] ${el.tagName} class="${el.className}" id="${el.id}" bg=${st.backgroundColor} pe=${st.pointerEvents} z=${st.zIndex}`);
+        });
       });
     }, 2000);
   }, []);
