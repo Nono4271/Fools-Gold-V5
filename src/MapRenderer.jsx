@@ -2648,7 +2648,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     <div
       ref={containerRef}
       style={{
-        position:"absolute", inset:0, top:38,
+        position:"absolute", inset:0, top:0,
         userSelect:"none", touchAction:"none",
         background:"#080c10", overflow:"hidden",
         cursor:"grab",
