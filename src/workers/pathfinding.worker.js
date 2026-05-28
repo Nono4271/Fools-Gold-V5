@@ -15,8 +15,8 @@
 //   { type: 'pathResult',      requestId, path }       — null path = unreachable
 //   { type: 'pathResultBatch', results: [{requestId, path}] }
 
-const COLS = 1850;
-const ROWS = 1300;
+const COLS = 1845;
+const ROWS = 1305;
 const IMPASSABLE = new Set();
 
 function adj(c, r) {
@@ -31,17 +31,23 @@ function adj(c, r) {
 
 function bfsPath(fromKey, toKey) {
   if (fromKey === toKey) return [fromKey];
-  const queue    = [[fromKey, [fromKey]]];
-  const visited  = new Set([fromKey]);
-  while (queue.length) {
-    const [cur, path] = queue.shift();
+  const parent  = new Map();
+  const queue   = [fromKey];
+  parent.set(fromKey, null);
+  let head = 0;
+  while (head < queue.length) {
+    const cur = queue[head++];
     const [cc, cr] = cur.split(',').map(Number);
     for (const nk of adj(cc, cr)) {
-      if (visited.has(nk)) continue;
-      visited.add(nk);
-      const newPath = [...path, nk];
-      if (nk === toKey) return newPath;
-      queue.push([nk, newPath]);
+      if (parent.has(nk)) continue;
+      parent.set(nk, cur);
+      if (nk === toKey) {
+        const path = [];
+        let k = nk;
+        while (k !== null) { path.push(k); k = parent.get(k); }
+        return path.reverse();
+      }
+      queue.push(nk);
     }
   }
   return null;
