@@ -1697,9 +1697,9 @@ function drawMarchLines(gfx, cmds, reinMarches, tiles) {
   cmds.forEach(cmd => {
     if (!cmd.march || cmd.owner !== "player") return;
     const m = cmd.march;
-    drawPath(m.path.slice(m.step), 0x4488ff);
+    drawPath(m.path.slice(m.step), 0x22cc55); // green for player
   });
-  (reinMarches || []).forEach(rm => drawPath(rm.path.slice(rm.step), 0x88aaff));
+  (reinMarches || []).forEach(rm => drawPath(rm.path.slice(rm.step), 0x2299ff)); // blue for reinforcements
 }
 
 function drawCmdIcons(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlayerIdMap) {
@@ -1717,16 +1717,17 @@ function drawCmdIcons(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlay
     const sy = cy - elev;
     const playerG = tileCmds.filter(c => c.owner === "player");
     const allAiG  = tileCmds.filter(c => c.owner !== "player");
-    const friendlyG = allAiG.filter(c => {
-      if (c.faction === playerFacKey) return true;
+    const crewG = allAiG.filter(c => {
       const pid = c.ownerPlayerId || aiPlayerIdMap?.get(key);
       return pid && crewPids?.has(pid);
     });
-    const enemyG = allAiG.filter(c => !friendlyG.includes(c));
+    const factionG = allAiG.filter(c => c.faction === playerFacKey && !crewG.includes(c));
+    const enemyG = allAiG.filter(c => !crewG.includes(c) && !factionG.includes(c));
     const groups = [];
-    if (playerG.length)   groups.push({ cmds: playerG,   col: 0xf0dc3c });
-    if (friendlyG.length) groups.push({ cmds: friendlyG, col: 0x2299ff });
-    if (enemyG.length)    groups.push({ cmds: enemyG,    col: 0xdd3322 });
+    if (playerG.length)  groups.push({ cmds: playerG,  col: 0x22cc55 }); // green
+    if (crewG.length)    groups.push({ cmds: crewG,    col: 0x2299ff }); // blue
+    if (factionG.length) groups.push({ cmds: factionG, col: 0xaa44ff }); // purple
+    if (enemyG.length)   groups.push({ cmds: enemyG,   col: 0xdd3322 }); // red
     groups.forEach(({ cmds: grp, col }, gi) => {
       const ey = sy + TH * 0.72 - gi * 6;
       gfx.beginFill(col, 0.13); gfx.lineStyle(1.4, col, 1); gfx.drawEllipse(cx,ey,15,5); gfx.lineStyle(0); gfx.endFill();
