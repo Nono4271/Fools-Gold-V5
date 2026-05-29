@@ -6,7 +6,7 @@ import { MapRenderer, clearHQCache } from "./MapRenderer";
 import { CSS } from "./constants/css.js";
 import { getFactionAlignment } from "../shared/constants/factions.js";
 import { npcForPowerLevel, factionDefCmdForTile, HDEFS } from "../shared/constants/heroes.js";
-import { HQP, POWER_DEFS, SIEGE_BASE, hqSiegeValue } from "../shared/constants/map.js";
+import { HQP, POWER_DEFS, SIEGE_BASE, hqSiegeValue, FORT_LEVELS } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST } from "../shared/constants/troops.js";
 import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainingQueueCount, tierFromBranchLevel } from "../shared/constants/buildings.js";
 import { isoXY } from "../shared/constants/geometry.js";
@@ -20,6 +20,7 @@ import { useResources } from "./hooks/useResources.js";
 import { useAI } from "./hooks/useAI.js";
 import { useTraining } from "./hooks/useTraining.js";
 import { useMarch } from "./hooks/useMarch.js";
+import { useForts, isTileInRange, buildAnchors } from "./hooks/useForts.js";
 import { useUpgrades } from "./hooks/useUpgrades.js";
 import { useGameLoop } from "./hooks/useGameLoop.js";
 import { usePathfinding } from "./hooks/usePathfinding.js";
@@ -1108,7 +1109,7 @@ export default function RiseToWar() {
 
 
   // ── Server sync — authoritative tile state ──
-  const { emitTileCapture, emitTileSiege, connected: serverConnected } = useServerSync({
+  const { emitTileCapture, emitTileSiege, emitFortUpdate, connected: serverConnected } = useServerSync({
     screen,
     tiles,
     mapReady,
@@ -1148,6 +1149,29 @@ export default function RiseToWar() {
     return map;
   }, [crossingsState]);
 
+  const {
+    forts,
+    buildFort,
+    upgradeFort,
+    destroyFort,
+    stationAtFort,
+    unstationCmd,
+    damageFort,
+    getFortAtTile,
+    getStationedFort,
+    getAnchors,
+    loadForts,
+  } = useForts({ playerHqKey, cmds, setCmds, emitFortUpdate });
+
+  const fortsRef = useRef(forts);
+  useEffect(() => { fortsRef.current = forts; }, [forts]);
+
+  // Recall that also unstations from fort
+  const recallFromFort = useCallback((cmdUid, fortId) => {
+    unstationCmd(cmdUid);
+    recallStationary(cmdUid);
+  }, [unstationCmd]);
+
   useMarch({
     screen, tiles, tileVersion, bldgs,
     cmds: cmdsRef.current,
@@ -1165,6 +1189,12 @@ export default function RiseToWar() {
     runBattle,
     crewmatePlayerIds,
     aiPlayerIdMap: aiPlayerIdMapRef.current,
+    forts,
+    getAnchors,
+    stationAtFort,
+    unstationCmd,
+    damageFort,
+    emitFortUpdate,
   });
 
   useGameLoop({
@@ -1204,7 +1234,23 @@ export default function RiseToWar() {
           if (!upd) return cmd;
           changed = true;
           if (upd.clearMarch) {
-            return { ...cmd, tk: upd.tk, march: null };
+            const arrived = { ...cmd, tk: upd.tk, march: null };
+            // Reposition arrival — station at fort
+            if (cmd.march?.type === "reposition" && cmd.march?.destFortId) {
+              const fortId = cmd.march.destFortId;
+              // Call stationAtFort async after state settles
+              setTimeout(() => stationAtFort(cmd.uid, fortId), 0);
+              return { ...arrived, stationedFortId: fortId, stranded: false };
+            }
+            // Recall arrival at HQ — unstation from fort
+            if (cmd.march?.type === "recall" || cmd.march?.type === "move") {
+              const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
+              if (upd.tk === hqKey) {
+                setTimeout(() => unstationCmd(cmd.uid), 0);
+                return { ...arrived, stationedFortId: null, stranded: false };
+              }
+            }
+            return arrived;
           }
           return { ...cmd, tk: upd.tk, march: upd.marchPatch };
         });
@@ -1523,20 +1569,97 @@ export default function RiseToWar() {
     });
   }, []);
 
+  // ── Recall popup state (for commanders stationed at a fort) ─────────────────
+  const [recallPopup, setRecallPopup] = useState(null); // { uid, fortId, fortTileKey }
+
   const recallStationary = useCallback((uid) => {
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
     const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
     if (!cmd || cmd.march || cmd.tk===hqKey) return;
+
+    // If stationed at a fort, show popup asking where to recall
+    if (cmd.stationedFortId) {
+      const fort = fortsRef.current.find(f => f.id === cmd.stationedFortId);
+      if (fort) {
+        setRecallPopup({ uid, fortId: fort.id, fortTileKey: fort.tileKey, cmdName: cmd.n });
+        return;
+      }
+    }
+
+    // Direct recall to HQ (stranded or at HQ already covered above)
     const _rSlots = normaliseTroopSlots(cmd);
     const stepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
     findPath(cmd.tk, hqKey).then(path => {
       if (!path || path.length < 2) return;
       setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
         drawTimer:null, drawTile:null, drawOrigin:null,
-        march:{ type:"move", path, step:0, dest:hqKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() }
+        march:{ type:"recall", path, step:0, dest:hqKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() }
       } : c));
     });
+  }, [gearInventory, findPath, forts]);
+
+  // Recall back to stationed fort
+  const recallToFort = useCallback((uid, fortTileKey) => {
+    const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
+    if (!cmd || cmd.march) return;
+    const _rSlots = normaliseTroopSlots(cmd);
+    // Recall is faster than normal march — 0.65x stepMs
+    const baseStepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
+    const stepMs = Math.round(baseStepMs * 0.65);
+    findPath(cmd.tk, fortTileKey).then(path => {
+      if (!path || path.length < 2) return;
+      setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
+        drawTimer:null, drawTile:null, drawOrigin:null,
+        march:{ type:"recall", path, step:0, dest:fortTileKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() }
+      } : c));
+    });
+    setRecallPopup(null);
   }, [gearInventory, findPath]);
+
+  // Recall to HQ (dismissing fort station)
+  const recallToHQ = useCallback((uid) => {
+    const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
+    const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
+    if (!cmd || cmd.march) return;
+    unstationCmd(uid);
+    const _rSlots = normaliseTroopSlots(cmd);
+    const baseStepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
+    const stepMs = Math.round(baseStepMs * 0.65);
+    findPath(cmd.tk, hqKey).then(path => {
+      if (!path || path.length < 2) return;
+      setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
+        drawTimer:null, drawTile:null, drawOrigin:null,
+        march:{ type:"recall", path, step:0, dest:hqKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() }
+      } : c));
+    });
+    setRecallPopup(null);
+  }, [gearInventory, findPath, unstationCmd]);
+
+  // Reposition — march to a fort and become stationed there
+  const startReposition = useCallback((uid, fortTileKey, fortId) => {
+    const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
+    if (!cmd || cmd.march) return { ok: false, reason: "Commander is marching" };
+    if (cmd.stranded) return { ok: false, reason: "Commander is stranded — recall to HQ first" };
+    // Check fort capacity
+    const fort = getFortAtTile(fortTileKey);
+    if (!fort) return { ok: false, reason: "No fort at destination" };
+    const levelDef = FORT_LEVELS[fort.level - 1];
+    if (fort.stationedCmdUids.length >= levelDef.capacity && !fort.stationedCmdUids.includes(uid)) {
+      return { ok: false, reason: `Fort full (max ${levelDef.capacity})` };
+    }
+    const _rSlots = normaliseTroopSlots(cmd);
+    // Recall speed multiplier: 0.6x stepMs = faster
+    const baseStepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
+    const stepMs = baseStepMs; // reposition is normal speed
+    findPath(cmd.tk, fortTileKey).then(path => {
+      if (!path || path.length < 2) return;
+      setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
+        drawTimer:null, drawTile:null, drawOrigin:null,
+        march:{ type:"reposition", path, step:0, dest:fortTileKey, destFortId:fortId, origin:cmd.tk, stepMs, lastStepTime:Date.now() }
+      } : c));
+    });
+    return { ok: true };
+  }, [gearInventory, findPath, getFortAtTile]);
 
   const startReinforcement = useCallback((cmd, amount) => {
     if (!cmd || amount <= 0) return;
@@ -1920,6 +2043,7 @@ export default function RiseToWar() {
         crewmatePlayerIds={crewmatePlayerIds}
         allHqKeys={Object.values(aiHqKeysRef.current).flat().concat(playerHqKey ? [playerHqKey] : [])}
         aiPlayerIdMap={aiPlayerIdMapRef.current}
+        forts={forts}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
@@ -1950,6 +2074,11 @@ export default function RiseToWar() {
         nowTick={nowTick}
         playerHqKey={playerHqKey}
         facKey={facKey}
+        forts={forts}
+        buildFort={buildFort}
+        upgradeFort={upgradeFort}
+        getFortAtTile={getFortAtTile}
+        startReposition={startReposition}
       />
 
       {showBattleLog && (
@@ -2034,7 +2163,7 @@ export default function RiseToWar() {
         />
       )}
 
-      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} playerHqKey={playerHqKey} aiHqKeys={aiHqKeys} onWorldMap={() => setWorldMapOpen(true)} />
+      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} playerHqKey={playerHqKey} aiHqKeys={aiHqKeys} onWorldMap={() => setWorldMapOpen(true)} forts={forts} />
 
       {/* HQ + Search buttons under minimap */}
       {!worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
@@ -2124,6 +2253,44 @@ export default function RiseToWar() {
         />
       )}
 
+      {/* ── Recall Popup — stationed at fort ── */}
+      {recallPopup && (
+        <div style={{
+          position:"fixed", inset:0, zIndex:800,
+          background:"rgba(0,0,0,0.75)",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          pointerEvents:"auto",
+        }} onClick={() => setRecallPopup(null)}>
+          <div style={{
+            background:"rgba(8,10,16,.97)",
+            border:"1px solid #8a6020",
+            borderRadius:8,
+            padding:"16px 20px",
+            minWidth:220,
+            boxShadow:"0 8px 32px rgba(0,0,0,.9), 0 0 0 1px rgba(200,160,64,.15)",
+            animation:"fadeUp .15s ease",
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{fontFamily:"'Cinzel',serif", fontSize:11, color:"#c8a060", fontWeight:700, letterSpacing:".06em", marginBottom:12, textAlign:"center"}}>
+              ↩ RECALL — {recallPopup.cmdName}
+            </div>
+            <div style={{display:"flex", flexDirection:"column", gap:8}}>
+              <button onClick={() => recallToFort(recallPopup.uid, recallPopup.fortTileKey)}
+                style={{padding:"8px 12px", background:"linear-gradient(135deg,rgba(20,60,100,.7),rgba(10,40,80,.5))", border:"1px solid #2060a0", borderRadius:5, color:"#80c0f0", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, cursor:"pointer", letterSpacing:".05em"}}>
+                📍 Return to Fort
+              </button>
+              <button onClick={() => recallToHQ(recallPopup.uid)}
+                style={{padding:"8px 12px", background:"linear-gradient(135deg,rgba(80,50,10,.7),rgba(60,30,0,.5))", border:"1px solid #a07020", borderRadius:5, color:"#f0c060", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, cursor:"pointer", letterSpacing:".05em"}}>
+                🏰 Return to HQ
+              </button>
+              <button onClick={() => setRecallPopup(null)}
+                style={{padding:"5px 12px", background:"rgba(40,30,20,.5)", border:"1px solid #3a2a18", borderRadius:5, color:"#6a5a4a", fontFamily:"'Cinzel',serif", fontSize:9, cursor:"pointer"}}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {worldMapPrompt && (
         <div style={{
           position:"fixed", inset:0, zIndex:700,
@@ -2179,6 +2346,7 @@ export default function RiseToWar() {
           playerHqKey={playerHqKey}
           crewmatePlayerIds={crewmatePlayerIds}
           aiHqKeys={aiHqKeys}
+          forts={forts}
         />
       )}
 
@@ -2206,6 +2374,7 @@ export default function RiseToWar() {
         voidTapReady={voidTapReady}
         crewOpen={crewOpen} setCrewOpen={setCrewOpen} playerCrewId={playerCrewId}
         searchOpen={searchOpen} setSearchOpen={setSearchOpen}
+        forts={forts}
       />
 
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}

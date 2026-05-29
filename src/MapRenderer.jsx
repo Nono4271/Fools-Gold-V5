@@ -1338,9 +1338,74 @@ const HQ_SPRITES = {
   ai:            "hq_orcs.webp",
 };
 
+const FORT_SPRITES = {
+  1: "/forts/fort_l1.webp",
+  2: "/forts/fort_l2.webp",
+  3: "/forts/fort_l3.webp",
+  4: "/forts/fort_l4.webp",
+  5: "/forts/fort_l5.webp",
+};
+
 const _hqStateCache = new Map(); // tileKey → { faction, owner, isSelected }
 const _hqKeyIndex = new Set();
 export function clearHQCache() { _hqStateCache.clear(); _hqKeyIndex.clear(); }
+
+// ── Fort sprite layer ─────────────────────────────────────────────────────────
+const _fortSpriteMap = new Map(); // tileKey → PIXI.Sprite
+export function clearFortCache() { _fortSpriteMap.clear(); }
+
+function buildFortSprite(fort, PIXI, texCache, fortLayer) {
+  const tileKey = fort.tileKey;
+  if (_fortSpriteMap.has(tileKey)) return; // already rendered
+
+  const [fc, fr] = tileKey.split(",").map(Number);
+  const { cx, cy } = isoXY(fc, fr);
+  const spriteUrl = FORT_SPRITES[fort.level] || FORT_SPRITES[1];
+
+  const applySprite = (sp) => {
+    // Scale to fit roughly 1.5 tile widths, anchored at bottom-center
+    const w = TW * 1.5;
+    sp.width = w;
+    sp.height = w; // square sprite
+    sp.anchor.set(0.5, 0.85);
+    sp.x = cx;
+    sp.y = cy;
+    sp.zOrder = cy; // sort by y for correct overlap
+    sp.__fortLevel = fort.level;
+    _fortSpriteMap.set(tileKey, sp);
+    fortLayer.addChild(sp);
+  };
+
+  if (texCache[spriteUrl]) {
+    const sp = new PIXI.Sprite(texCache[spriteUrl]);
+    applySprite(sp);
+  } else {
+    PIXI.Texture.fromURL(spriteUrl).then(tex => {
+      texCache[spriteUrl] = tex;
+      if (!fortLayer.destroyed) {
+        const sp = new PIXI.Sprite(tex);
+        applySprite(sp);
+      }
+    }).catch(() => {
+      // Fort sprite not found — render a fallback diamond
+      const gfx = new PIXI.Graphics();
+      gfx.beginFill(0x8a6020, 0.8);
+      gfx.drawPolygon([cx, cy - TH/2, cx + TW/2, cy, cx, cy + TH/2, cx - TW/2, cy]);
+      gfx.endFill();
+      _fortSpriteMap.set(tileKey, gfx);
+      fortLayer.addChild(gfx);
+    });
+  }
+}
+
+function removeFortSprite(tileKey, fortLayer) {
+  const sp = _fortSpriteMap.get(tileKey);
+  if (sp) {
+    if (sp.parent) sp.parent.removeChild(sp);
+    sp.destroy?.();
+    _fortSpriteMap.delete(tileKey);
+  }
+}
 
 function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids) {
   const [pc, pr] = tileKey.split(",").map(Number);
@@ -1698,7 +1763,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlay
 /* ══════════════════════════════════════════════════════════════════════════
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap, forts }, ref) {
 
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
@@ -1712,6 +1777,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const cmdGfxRef      = useRef(null);
   const cmdTextContRef = useRef(null);
   const hqContRef      = useRef(null);
+  const fortContRef    = useRef(null);
 
   const lastBoundsRef  = useRef(null);
   const redrawRef      = useRef(null);
@@ -1749,6 +1815,30 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   useEffect(() => { allHqKeysRef.current = allHqKeys || []; }, [allHqKeys]);
   const aiPlayerIdMapRef_ = useRef(aiPlayerIdMap || new Map());
   useEffect(() => { aiPlayerIdMapRef_.current = aiPlayerIdMap || new Map(); }, [aiPlayerIdMap]);
+
+  // ── Fort layer sync ─────────────────────────────────────────────────────────
+  const fortsRef_ = useRef(forts || []);
+  useEffect(() => {
+    fortsRef_.current = forts || [];
+    const fortLayer = fortContRef.current;
+    if (!fortLayer) return;
+    const currentKeys = new Set((forts || []).map(f => f.tileKey));
+    // Remove sprites for destroyed forts
+    for (const [key] of _fortSpriteMap) {
+      if (!currentKeys.has(key)) removeFortSprite(key, fortLayer);
+    }
+    // Add/update sprites for forts
+    for (const fort of (forts || [])) {
+      const existing = _fortSpriteMap.get(fort.tileKey);
+      // If level changed, remove and re-add
+      if (existing && existing.__fortLevel !== fort.level) {
+        removeFortSprite(fort.tileKey, fortLayer);
+      }
+      if (!_fortSpriteMap.has(fort.tileKey)) {
+        buildFortSprite(fort, PIXI, _hqTexCache, fortLayer);
+      }
+    }
+  }, [forts]);
 
   // Keep crewmatePlayerIds in a ref for tile coloring
   const crewPidsRef = useRef(crewmatePlayerIds ?? new Set());
@@ -1887,6 +1977,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     world.addChild(hqCont);
     hqContRef.current = hqCont;
+
+    // Fort container — sits above tiles, below HQ
+    const fortCont = new PIXI.Container();
+    world.addChildAt(fortCont, world.children.indexOf(hqCont));
+    fortContRef.current = fortCont;
     const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
     const cmdGfx = new PIXI.Graphics(); world.addChild(cmdGfx); cmdGfxRef.current = cmdGfx;
