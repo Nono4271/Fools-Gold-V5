@@ -43,11 +43,18 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate }) {
 
     const id = `fort_${tileKey}_${Date.now()}`;
     const levelDef = FORT_LEVELS[0];
+
+    // Auto-station commanders already standing on this tile (up to capacity)
+    const cmdsOnTile = (cmds || []).filter(c =>
+      c.owner === "player" && c.tk === tileKey && !c.march && !c.stationedFortId
+    ).slice(0, levelDef.capacity);
+    const autoStationedUids = cmdsOnTile.map(c => c.uid);
+
     const newFort = {
       id,
       tileKey,
       level: 1,
-      stationedCmdUids: [],
+      stationedCmdUids: autoStationedUids,
       siege: levelDef.siege,
       siegeMax: levelDef.siege,
       resetAt: null,
@@ -55,9 +62,17 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate }) {
     };
 
     setForts(prev => [...prev, newFort]);
+
+    // Update commanders with stationedFortId
+    if (autoStationedUids.length > 0) {
+      setCmds(prev => prev.map(c =>
+        autoStationedUids.includes(c.uid) ? { ...c, stationedFortId: id, stranded: false } : c
+      ));
+    }
+
     emitFortUpdate?.({ action: "build", fort: newFort });
     return { ok: true, fort: newFort };
-  }, [emitFortUpdate]);
+  }, [emitFortUpdate, cmds, setCmds]);
 
   // ── Upgrade fort ────────────────────────────────────────────────────────────
   const upgradeFort = useCallback((fortId) => {
