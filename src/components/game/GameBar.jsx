@@ -396,9 +396,9 @@ export default memo(function GameBar({
     <>
       {/* ── LEFT RAIL: Commander portrait icons ── */}
       <div style={{
-        position: "fixed", left: "var(--left-inset, 8px)", top: "calc(var(--sat) + 155px)",
+        position: "fixed", left: "var(--left-inset, 8px)", bottom: "calc(var(--sab, 0px) + 89px)",
         zIndex: 300,
-        display: "flex", flexDirection: "column", gap: 5, alignItems: "center",
+        display: "flex", flexDirection: "column-reverse", gap: 5, alignItems: "center",
       }}>
         {playerCmds.length > 0 ? playerCmds.map(cmd => {
           const stationedFort = (forts || []).find(f => f.stationedCmdUids?.includes(cmd.uid));
