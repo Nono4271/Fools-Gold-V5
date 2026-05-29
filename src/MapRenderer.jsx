@@ -1364,10 +1364,10 @@ function buildFortSprite(fort, PIXI, texCache, fortLayer) {
 
   const applySprite = (sp) => {
     // 1x1 tile: diamond is TW wide. Scale sprite to fit.
-    const w = TW * 1.05;
+    const w = TW * 0.9;
     sp.width = w;
     sp.height = w;
-    sp.anchor.set(0.5, 0.75);
+    sp.anchor.set(0.5, 0.7);
     sp.x = cx;
     sp.y = cy;
     sp.zOrder = cy;
