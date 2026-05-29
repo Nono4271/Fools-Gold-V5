@@ -43,6 +43,7 @@ export default memo(function TilePopup({
   popupMode, setPopupMode,
   onEnterHQ,
   cmds, cmdsOnSel, marchingToSel, canAtk, crewmatePlayerIds,
+  startGuard, cancelGuard, guardedTiles,
   barracksPool, editArmyCmd, setEditArmyCmd,
   sliderVals, setSliderVals,
   deletingTiles, deletingSecsLeft, setDeletingTiles, setDeletingSecsLeft,
@@ -425,7 +426,7 @@ export default memo(function TilePopup({
     {(()=>{
       const cards=[];
       cmdsOnSel.forEach(cmd=>cards.push(
-        <CommanderCard key={cmd.uid} cmd={cmd} ownership="player" onCmdScreenOpen={onCmdScreenOpen} recallMarch={recallMarch} recallStationary={recallStationary} setReinCmd={setReinCmd} setMode={setMode} barracksPool={barracksPool} playerHqKey={playerHqKey}/>
+        <CommanderCard key={cmd.uid} cmd={cmd} ownership="player" onCmdScreenOpen={onCmdScreenOpen} recallMarch={recallMarch} recallStationary={recallStationary} setReinCmd={setReinCmd} setMode={setMode} barracksPool={barracksPool} playerHqKey={playerHqKey} startGuard={startGuard} cancelGuard={cancelGuard}/>
       ));
       if(ownership==="crew"||ownership==="ally"){
         cmds.filter(c=>c.owner!=="player"&&c.tk===selKey&&!c.march).forEach(cmd=>cards.push(
