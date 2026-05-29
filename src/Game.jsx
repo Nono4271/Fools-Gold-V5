@@ -2166,11 +2166,11 @@ export default function RiseToWar() {
 
       <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} playerHqKey={playerHqKey} aiHqKeys={aiHqKeys} onWorldMap={() => setWorldMapOpen(true)} forts={forts} />
 
-      {/* HQ + Search buttons under minimap */}
+      {/* HQ + Search buttons overlapping bottom of minimap */}
       {!worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
-        <div style={{ position:"fixed", top:"calc(var(--sat) + 140px)", left:"var(--left-inset, 6px)", zIndex:300, display:"flex", gap:6 }}>
+        <div style={{ position:"fixed", top:"calc(var(--sat) + 100px)", left:8, zIndex:300, display:"flex", gap:5, width:130, justifyContent:"center" }}>
           <button onClick={centerOnHQ} style={{
-            width:49, height:49, borderRadius:"50%",
+            width:44, height:44, borderRadius:"50%",
             background:"radial-gradient(circle at 35% 30%, #2a1e08, #0e0a04)",
             border:"1px solid rgba(200,160,64,.35)",
             display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
@@ -2178,11 +2178,11 @@ export default function RiseToWar() {
             boxShadow:"0 0 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06)",
             touchAction:"manipulation",
           }}>
-            <span style={{fontSize:20, lineHeight:1}}>🏰</span>
+            <span style={{fontSize:18, lineHeight:1}}>🏰</span>
             <span style={{fontSize:6, color:"#c8a060", fontFamily:"'Cinzel',serif", letterSpacing:".04em"}}>HQ</span>
           </button>
           <button onClick={() => setSearchOpen(v => !v)} style={{
-            width:49, height:49, borderRadius:"50%",
+            width:44, height:44, borderRadius:"50%",
             background:"radial-gradient(circle at 35% 30%, #0a1828, #040c14)",
             border:"1px solid rgba(80,140,200,.25)",
             display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
@@ -2190,7 +2190,7 @@ export default function RiseToWar() {
             boxShadow:"0 0 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06)",
             touchAction:"manipulation",
           }}>
-            <span style={{fontSize:20, lineHeight:1}}>🔍</span>
+            <span style={{fontSize:18, lineHeight:1}}>🔍</span>
             <span style={{fontSize:6, color:"#80aacc", fontFamily:"'Cinzel',serif", letterSpacing:".04em"}}>SEARCH</span>
           </button>
         </div>
