@@ -180,7 +180,7 @@ function centroid(pts) {
 }
 
 
-export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom, crossings, keepMeta, playerHqKey, crewmatePlayerIds, aiHqKeys }) {
+export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom, crossings, keepMeta, playerHqKey, crewmatePlayerIds, aiHqKeys, forts }) {
   const [selected, setSelected] = useState(null);
   const [clickPos, setClickPos] = useState(null); // { x, y } in screen px
 
@@ -496,6 +496,33 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
               </g>
             );
           })()}
+
+          {/* ── Range circles (HQ + forts) ── */}
+          {playerHqKey && (() => {
+            const [hc, hr] = playerHqKey.split(",").map(Number);
+            return (
+              <circle key="hq-range" cx={hc} cy={hr} r={100}
+                fill="none" stroke="rgba(240,192,64,.6)" strokeWidth={1.2}
+                strokeDasharray="4 3" style={{ pointerEvents: "none" }}/>
+            );
+          })()}
+          {(forts || []).map(fort => {
+            const [fc, fr] = fort.tileKey.split(",").map(Number);
+            return (
+              <g key={fort.id} style={{ pointerEvents: "none" }}>
+                <circle cx={fc} cy={fr} r={100}
+                  fill="none" stroke="rgba(100,180,255,.5)" strokeWidth={1}
+                  strokeDasharray="4 3"/>
+                {/* Fort icon dot */}
+                <rect x={fc - 3} y={fr - 3} width={6} height={6}
+                  fill="#60a0e0" stroke="#ffffff" strokeWidth={0.6} rx={1}/>
+                <text x={fc} y={fr - 5} textAnchor="middle"
+                  fontSize={4} fill="#80c0ff" fontFamily="Cinzel,serif">
+                  Lv{fort.level}
+                </text>
+              </g>
+            );
+          })}
 
           {/* ── Crewmate HQ blue dots ── */}
           {crewmatePlayerIds?.size > 0 && aiHqKeys && Object.entries(aiHqKeys).flatMap(([, hqArr]) => {

@@ -36,7 +36,7 @@ function panToVC(panSt, zoom) {
 // Minimap receives panRef/zoomRef (stable refs) instead of panSt/zoom state values.
 // redrawRef is a ref passed from Game — Minimap stores its draw function into it
 // so Game.onPanChange can call it directly without any setState or re-render.
-export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef, playerFacKey, crewmatePlayerIds, playerHqKey, aiHqKeys, onWorldMap }) {
+export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef, playerFacKey, crewmatePlayerIds, playerHqKey, aiHqKeys, onWorldMap, forts }) {
   const canvasRef = useRef(null);
   const tilesRef  = useRef(tiles);
   const pKeysRef  = useRef(pKeys);
@@ -125,6 +125,33 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
 
     ctx.restore();
 
+    // ── Range circles (HQ + forts) ─────────────────────────────────────────
+    const { vc: vc2, vr: vr2 } = panToVC(panRef.current, zoomRef.current);
+    const anchors = [];
+    if (hqKeyRef.current) {
+      const [hc, hr] = hqKeyRef.current.split(",").map(Number);
+      anchors.push({ c: hc, r: hr, type: "hq" });
+    }
+    for (const fort of (forts || [])) {
+      const [fc, fr] = fort.tileKey.split(",").map(Number);
+      anchors.push({ c: fc, r: fr, type: "fort" });
+    }
+    for (const anchor of anchors) {
+      const { x: ax, y: ay } = tileToMM(anchor.c, anchor.r, vc2, vr2);
+      // Convert 100 tile radius to minimap pixels
+      const { x: rx } = tileToMM(anchor.c + 100, anchor.r, vc2, vr2);
+      const radiusPx = Math.abs(rx - ax);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ax, ay, radiusPx, 0, Math.PI * 2);
+      ctx.strokeStyle = anchor.type === "hq" ? "rgba(240,192,64,.7)" : "rgba(100,180,255,.6)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
     // ── Player HQ castle icon ──────────────────────────────────────────────
     const hqKey = hqKeyRef.current;
     if (hqKey) {
@@ -199,7 +226,7 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
   }, [drawMinimap, redrawRef]);
 
   // Redraw when tiles or pKeys change (ownership changes etc.)
-  useEffect(() => { drawMinimap(); }, [tiles, pKeys, crewmatePlayerIds, playerHqKey, drawMinimap]);
+  useEffect(() => { drawMinimap(); }, [tiles, pKeys, crewmatePlayerIds, playerHqKey, forts, drawMinimap]);
 
   return (
     <div style={{

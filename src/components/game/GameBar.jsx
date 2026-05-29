@@ -373,6 +373,8 @@ export default memo(function GameBar({
   // Crew props
   crewOpen, setCrewOpen, playerCrewId,
   searchOpen, setSearchOpen,
+  // Fort props
+  forts,
 }) {
   if (hidden) return null;
   // All player commanders (for left rail) — only those NOT at HQ
@@ -398,23 +400,38 @@ export default memo(function GameBar({
         zIndex: 300,
         display: "flex", flexDirection: "column", gap: 8, alignItems: "center",
       }}>
-        {playerCmds.length > 0 ? playerCmds.map(cmd => (
-          <PortraitButton
-            key={cmd.uid}
-            cmd={cmd}
-            onClick={() => {
-              const [c, r] = (cmd.tk || "0,0").split(",").map(Number);
-              const { cx, cy } = isoXY(c, r);
-              const z = zoomRef.current;
-              const px = -cx * z + window.innerWidth / 2;
-              const py = -cy * z + window.innerHeight / 2;
-              panRef.current = { x: px, y: py };
-              mapRendererRef.current?.teleport(px, py);
-            }}
-            active={false}
-            badge={0}
-          />
-        )) : (
+        {playerCmds.length > 0 ? playerCmds.map(cmd => {
+          const stationedFort = (forts || []).find(f => f.stationedCmdUids?.includes(cmd.uid));
+          const isAtHQ = !cmd.stationedFortId && !cmd.stranded;
+          const badge = cmd.stranded ? "⚠" : stationedFort ? "📍" : isAtHQ ? "🏰" : null;
+          return (
+          <div key={cmd.uid} style={{ position: "relative" }}>
+            <PortraitButton
+              cmd={cmd}
+              onClick={() => {
+                const [c, r] = (cmd.tk || "0,0").split(",").map(Number);
+                const { cx, cy } = isoXY(c, r);
+                const z = zoomRef.current;
+                const px = -cx * z + window.innerWidth / 2;
+                const py = -cy * z + window.innerHeight / 2;
+                panRef.current = { x: px, y: py };
+                mapRendererRef.current?.teleport(px, py);
+              }}
+              active={false}
+              badge={0}
+            />
+            {badge && (
+              <div style={{
+                position: "absolute", bottom: 0, right: 0,
+                fontSize: 10, lineHeight: 1,
+                background: cmd.stranded ? "rgba(180,20,20,.9)" : "rgba(10,20,10,.85)",
+                borderRadius: "50%", padding: 2,
+                border: `1px solid ${cmd.stranded ? "#cc2020" : "#3a5a3a"}`,
+              }}>{badge}</div>
+            )}
+          </div>
+          );
+        }) : (
           <div style={{ width: 52, height: 52, borderRadius: "50%",
             background: "radial-gradient(circle, #0e0c08, #080603)",
             border: "1px dashed #1a1408", opacity: 0.2, flexShrink: 0 }} />

@@ -11,8 +11,9 @@ function tbInfo(tb) {
   return { label: `${b.label} · ${t.label}`, color: "#c8a060", size: b.size, dmgType: b.dmgType };
 }
 import { TERR } from "../../../shared/constants/terrain.js";
-import { RSS, POWER_DEFS, SIEGE_BASE, HQP, TC } from "../../../shared/constants/map.js";
+import { RSS, POWER_DEFS, SIEGE_BASE, HQP, TC, FORT_LEVELS } from "../../../shared/constants/map.js";
 import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
+import { isTileInRange, buildAnchors } from "../../../hooks/useForts.js";
 
 export default memo(function TilePopup({
   selKey, selTile, popupPos, popupMode, setPopupMode,
@@ -27,6 +28,8 @@ export default memo(function TilePopup({
   setBarracks, setCmds, setTroopSlot,
   startMarch,
   nowTick, playerHqKey, facKey,
+  // Fort props
+  forts, buildFort, upgradeFort, getFortAtTile, startReposition,
 }) {
   if (!selKey || !selTile || !popupPos) return null;
 
@@ -253,6 +256,55 @@ export default memo(function TilePopup({
             );
           })()}
 
+          {/* Fort info panel */}
+          {(() => {
+            const fort = getFortAtTile?.(selKey);
+            if (!fort) return null;
+            const levelDef = FORT_LEVELS[fort.level - 1];
+            const nextDef = fort.level < 5 ? FORT_LEVELS[fort.level] : null;
+            const siegePct = Math.round((fort.siege / fort.siegeMax) * 100);
+            const stationedCount = fort.stationedCmdUids?.length || 0;
+            return (
+              <div style={{marginBottom:4,padding:"4px 6px",background:"rgba(180,130,20,.08)",borderRadius:3,border:"1px solid rgba(180,130,20,.3)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                  <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:"#d4a030",fontWeight:700}}>🏯 FORT — LVL {fort.level}</span>
+                  <span style={{fontSize:7,color:"#a07828",fontFamily:"'Cinzel',serif"}}>{stationedCount}/{levelDef.capacity} stationed</span>
+                </div>
+                {/* Siege bar */}
+                <div style={{marginBottom:3}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:6,color:"#7a6a4a",marginBottom:1}}>
+                    <span>FORT SIEGE</span>
+                    <span style={{color:siegePct>66?"#3daa60":siegePct>33?"#d0a030":"#cc3030"}}>{fort.siege.toLocaleString()}/{fort.siegeMax.toLocaleString()}</span>
+                  </div>
+                  <div style={{height:3,background:"#181820",borderRadius:2,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${siegePct}%`,background:siegePct>66?"#3daa60":siegePct>33?"#d0a030":"#cc3030",borderRadius:2}}/>
+                  </div>
+                </div>
+                {/* Upgrade button */}
+                {nextDef && selTile.owner==="player" && (
+                  <button className="btn" onClick={() => upgradeFort?.(fort.id)}
+                    style={{width:"100%",padding:"3px 0",background:"linear-gradient(135deg,rgba(60,80,20,.5),rgba(40,60,10,.3))",border:"1px solid #6a8020",color:"#a0c040",fontSize:7,fontWeight:700,marginTop:2}}>
+                    ⬆ Upgrade to Lv{fort.level+1} ({nextDef.capacity} capacity, {(nextDef.siege/1000).toFixed(0)}K siege)
+                  </button>
+                )}
+                {/* Reposition button — for idle player commanders not at this fort */}
+                {selTile.owner==="player" && cmdsOnSel.length === 0 && (() => {
+                  const idleCmds = cmds.filter(c => c.owner==="player" && !c.march && c.tk !== selKey && !c.stranded);
+                  if (!idleCmds.length) return null;
+                  return (
+                    <button className="btn" onClick={() => {
+                      if (idleCmds.length === 1) startReposition?.(idleCmds[0].uid, selKey, fort.id);
+                      else setPopupMode("repositionPick");
+                    }}
+                      style={{width:"100%",padding:"3px 0",background:"linear-gradient(135deg,rgba(20,60,100,.5),rgba(10,40,80,.3))",border:"1px solid #2060a0",color:"#60a0e0",fontSize:7,fontWeight:700,marginTop:2}}>
+                      📍 Reposition Commander Here
+                    </button>
+                  );
+                })()}
+              </div>
+            );
+          })()}
+
           {/* Enemy garrison */}
           {selTile.owner !== "player" && (() => {
             const isAiOwned = selTile.owner==="ai";
@@ -410,17 +462,27 @@ export default memo(function TilePopup({
               const candidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
               if (!candidates.length) return null;
               const hasStam = candidates.some(c => (c.stamina ?? 200) >= 10);
+              // Range check — find the best candidate and check their station's range
+              const bestCmd = candidates.find(c => (c.stamina ?? 200) >= 10);
+              let inRange = true;
+              if (bestCmd && forts && playerHqKey) {
+                const stationedFort = bestCmd.stationedFortId ? forts.find(f => f.id === bestCmd.stationedFortId) : null;
+                const stationKey = stationedFort ? stationedFort.tileKey : playerHqKey;
+                const [sc, sr] = stationKey.split(",").map(Number);
+                inRange = isTileInRange(selKey, [{ c: sc, r: sr }]);
+              }
+              const canMove = hasStam && inRange;
               return (
                 <button className="btn"
-                  onClick={() => hasStam ? (setAtkKey(selKey), setMode("pickMoveCmd"), setPick(null)) : null}
-                  title={hasStam ? "" : "Need 10⚡ stamina to move"}
+                  onClick={() => canMove ? (setAtkKey(selKey), setMode("pickMoveCmd"), setPick(null)) : null}
+                  title={!hasStam ? "Need 10⚡ stamina to move" : !inRange ? "Outside range — reposition to a closer fort first" : ""}
                   style={{flex:1,padding:"5px 3px",
-                    background: hasStam ? "linear-gradient(135deg,rgba(20,80,40,.6),rgba(10,60,30,.4))" : "rgba(20,40,20,.3)",
-                    border:`1px solid ${hasStam?"#2a8040":"#2a4a2a"}`,
-                    color:hasStam?"#80d090":"#507050",
+                    background: canMove ? "linear-gradient(135deg,rgba(20,80,40,.6),rgba(10,60,30,.4))" : "rgba(20,40,20,.3)",
+                    border:`1px solid ${canMove?"#2a8040":"#2a4a2a"}`,
+                    color:canMove?"#80d090":"#507050",
                     fontSize:9,fontWeight:700,
-                    cursor:hasStam?"pointer":"not-allowed",opacity:hasStam?1:.6}}>
-                  🚶 Move · 10⚡ {!hasStam && <span style={{fontSize:7}}>low</span>}
+                    cursor:canMove?"pointer":"not-allowed",opacity:canMove?1:.6}}>
+                  🚶 Move · 10⚡ {!hasStam && <span style={{fontSize:7}}>low</span>}{hasStam && !inRange && <span style={{fontSize:7}}>out of range</span>}
                 </button>
               );
             })()}
@@ -450,6 +512,13 @@ export default memo(function TilePopup({
                 setDeletingSecsLeft(p=>({...p,[selKey]:15}));
               }}
                 style={{flex:"0 0 auto",padding:"5px 7px",background:"linear-gradient(135deg,rgba(120,10,10,.6),rgba(80,0,0,.4))",border:"1px solid #cc1010",color:"#ff6060",fontSize:11,fontWeight:700}}>✕</button>
+            )}
+            {/* Build Fort button — owned non-HQ tiles P9 or below */}
+            {selTile.owner==="player" && !selTile.isHQ && (selTile.powerLevel||1) <= 9 && !getFortAtTile?.(selKey) && (
+              <button className="btn" onClick={() => buildFort?.(selKey, selTile)}
+                style={{flex:1,padding:"5px 3px",background:"linear-gradient(135deg,rgba(80,50,10,.6),rgba(60,30,0,.4))",border:"1px solid #a07020",color:"#f0c060",fontSize:9,fontWeight:700}}>
+                🏯 Build Fort
+              </button>
             )}
           </div>
 
@@ -495,6 +564,31 @@ export default memo(function TilePopup({
             ))}
           </div>
         )}
+
+        {/* ── REPOSITION PICK ── */}
+        {popupMode==="repositionPick" && (() => {
+          const fort = getFortAtTile?.(selKey);
+          if (!fort) return null;
+          const idleCmds = cmds.filter(c => c.owner==="player" && !c.march && c.tk !== selKey && !c.stranded);
+          return (
+            <div>
+              <div style={{fontSize:7,color:"#8a7060",fontFamily:"'Cinzel',serif",letterSpacing:".06em",marginBottom:6}}>REPOSITION TO FORT LV{fort.level}</div>
+              {idleCmds.length === 0 ? (
+                <div style={{fontSize:8,color:"#5a4a3a",fontFamily:"'Crimson Pro',serif",fontStyle:"italic",textAlign:"center",padding:"10px 0"}}>No idle commanders</div>
+              ) : idleCmds.map(cmd => (
+                <div key={cmd.uid} onClick={() => { startReposition?.(cmd.uid, selKey, fort.id); setPopupMode("main"); }}
+                  style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,padding:"4px 6px",background:"rgba(32,96,160,.07)",border:"1px solid rgba(32,96,160,.25)",borderRadius:4,cursor:"pointer"}}>
+                  <span style={{fontSize:14}}>{cmd.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:"#80b0e0",fontWeight:700}}>{cmd.n}</div>
+                    <div style={{fontSize:7,color:"#4a7a8a"}}>Lv{cmd.lvl||5} · {(cmd.troops||0).toLocaleString()} troops</div>
+                  </div>
+                  <span style={{fontSize:9,color:"#60a0e0",flexShrink:0}}>📍</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* ── EDIT ARMY ── multi-slot editor (1-3 slots) */}
         {popupMode==="editArmy" && editArmyCmd && (() => {
