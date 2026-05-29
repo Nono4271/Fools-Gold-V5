@@ -22,7 +22,7 @@ export default memo(function CommanderPicker({
   const atkTile = tiles[atkKey];
 
   return (
-    <div style={{position:"fixed",top:38,left:0,bottom:0,width:280,zIndex:9500,background:"rgba(5,7,11,.97)",borderRight:"1px solid #3a2010",boxShadow:"4px 0 32px rgba(0,0,0,.9)",display:"flex",flexDirection:"column",animation:"slideInLeft .22s ease"}}>
+    <div style={{position:"fixed",top:"calc(var(--sat, 0px) + 38px)",left:"var(--sal, 0px)",bottom:"var(--sab, 0px)",width:280,zIndex:9500,background:"rgba(5,7,11,.97)",borderRight:"1px solid #3a2010",boxShadow:"4px 0 32px rgba(0,0,0,.9)",display:"flex",flexDirection:"column",animation:"slideInLeft .22s ease"}}>
 
       {/* Header */}
       <div style={{padding:"10px 12px",borderBottom:"1px solid #221e12",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0,background:"rgba(255,255,255,.025)"}}>

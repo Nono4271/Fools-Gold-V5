@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
+import { FACTION_TROOPS, COMMAND_COST } from "../../../shared/constants/troops.js";
 function tbInfo(tb) { if (!tb) return null; const f = FACTION_TROOPS[tb.faction]; const b = f?.branches.find(b => b.key === tb.branch); const t = b?.tiers[tb.tier ?? 0]; if (!b || !t) return null; return { label: `${b.label} 2014 ${t.label}`, color: "#c8a060" }; }
 import { HQP } from "../../../shared/constants/map.js";
 import { cmdCommand } from "../../../shared/constants/buildings.js";
@@ -43,10 +43,20 @@ export default memo(function BottomPanel({
         {mode==="reinforce" && reinCmd && (() => {
           const cap     = cmdCommand(reinCmd.lvl||5, bldgs.commandcenter||0, reinCmd.commandBonus??0);
           const cur     = reinCmd.troops||0;
+          // Convert current troops to command points to compare against cap
+          const slots   = reinCmd.troopSlots?.length ? reinCmd.troopSlots : (reinCmd.troopBranch ? [{ branch: reinCmd.troopBranch, troops: cur }] : []);
+          const curCmd  = slots.reduce((s, sl) => {
+            const b = sl.branch;
+            const faction = b?.faction; const brKey = b?.branch;
+            const brDef = faction && brKey ? FACTION_TROOPS[faction]?.branches.find(x => x.key === brKey) : null;
+            const size = brDef?.size ?? "small";
+            return s + (sl.troops||0) * (COMMAND_COST[size] ?? 0.01);
+          }, 0);
           // Fix: subtract troops already en route so displayed room is accurate
           const inTransit = (reinMarches||[]).filter(r => r.cmdUid === reinCmd.uid && !r.returning)
                               .reduce((s, r) => s + r.amount, 0);
-          const room    = Math.max(0, cap - cur - inTransit);
+          const inTransitCmd = inTransit * (COMMAND_COST["small"] ?? 0.01); // approximate; fine for display
+          const room    = Math.max(0, Math.floor((cap - curCmd - inTransitCmd) / (COMMAND_COST["small"] ?? 0.01)));
           const maxAdd  = Math.min(room, barracksPool);
           const sk      = `rein_${reinCmd.uid}`;
           const sv      = Math.min(sliderVals[sk]??0, maxAdd);

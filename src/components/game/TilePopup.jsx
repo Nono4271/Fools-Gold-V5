@@ -232,8 +232,12 @@ export default memo(function TilePopup({
   const sw = window.innerWidth, sh = window.innerHeight;
   const tileLeft = tileScreenX != null && tileScreenX < sw / 2;
   const CMD_W = 210;
-  const cmdX = tileLeft ? 12 : sw - CMD_W - 12;
-  const cmdY = Math.max(90, Math.min(sh - 320, (tileScreenY ?? sh / 2) - 100));
+  const satL = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--sal") || "0") || 0;
+  const satR = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--sar") || "0") || 0;
+  const satB = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--sab") || "0") || 0;
+  const cmdPad = 12;
+  const cmdX = tileLeft ? satL + cmdPad : sw - CMD_W - satR - cmdPad;
+  const cmdY = Math.max(90, Math.min(sh - 320 - satB, (tileScreenY ?? sh / 2) - 100));
 
   return (
     <>
