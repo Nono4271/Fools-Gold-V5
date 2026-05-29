@@ -48,6 +48,8 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
   useEffect(() => { hqKeyRef.current = playerHqKey; }, [playerHqKey]);
   useEffect(() => { crewIdsRef.current = crewmatePlayerIds; }, [crewmatePlayerIds]);
   useEffect(() => { aiHqKeysRef.current = aiHqKeys; }, [aiHqKeys]);
+  const fortsRef = useRef(forts || []);
+  useEffect(() => { fortsRef.current = forts || []; }, [forts]);
 
   const drawMinimap = useCallback(() => {
     const canvas = canvasRef.current;
@@ -131,7 +133,7 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
       const [hc, hr] = hqKeyRef.current.split(",").map(Number);
       anchors.push({ c: hc, r: hr, type: "hq" });
     }
-    for (const fort of (forts || [])) {
+    for (const fort of (fortsRef.current || [])) {
       const [fc, fr] = fort.tileKey.split(",").map(Number);
       anchors.push({ c: fc, r: fr, type: "fort" });
     }
