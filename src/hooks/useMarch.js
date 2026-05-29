@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { FACTION_TROOPS, FACTION_KEYS } from "../../shared/constants/troops.js";
-import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS, GATE_GARRISON_RESET_MS } from "../../shared/constants/map.js";
+import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS, GATE_GARRISON_RESET_MS, FORT_LEVELS } from "../../shared/constants/map.js";
 import { CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
 import { barracksCapacity } from "../../shared/constants/buildings.js";
 import { adj, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
