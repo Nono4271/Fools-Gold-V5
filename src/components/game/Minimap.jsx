@@ -123,9 +123,7 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
       }
     }
 
-    ctx.restore();
-
-    // ── Range circles (HQ + forts) ─────────────────────────────────────────
+    // ── Range circles (HQ + forts) — drawn inside clip ────────────────────
     const radiusPx = (100 / VIEW_RADIUS) * MM_RADIUS;
     const anchors = [];
     if (hqKeyRef.current) {
@@ -138,7 +136,6 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
     }
     for (const anchor of anchors) {
       const { x: ax, y: ay } = tileToMM(anchor.c, anchor.r, vc, vr);
-      ctx.save();
       ctx.beginPath();
       ctx.arc(ax, ay, radiusPx, 0, Math.PI * 2);
       ctx.strokeStyle = anchor.type === "hq" ? "rgba(240,192,64,.8)" : "rgba(100,180,255,.7)";
@@ -146,8 +143,9 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
       ctx.setLineDash([4, 3]);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.restore();
     }
+
+    ctx.restore();
 
     // ── Player HQ castle icon ──────────────────────────────────────────────
     const hqKey = hqKeyRef.current;
