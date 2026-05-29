@@ -1191,6 +1191,7 @@ export default function RiseToWar() {
     aiPlayerIdMap: aiPlayerIdMapRef.current,
     forts,
     getAnchors,
+    getFortAtTile,
     stationAtFort,
     unstationCmd,
     damageFort,
