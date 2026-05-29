@@ -2202,13 +2202,13 @@ export default function RiseToWar() {
           position:"fixed", left:8, bottom:"calc(var(--sab, 0px) + 6px)", zIndex:300,
           background:"radial-gradient(circle at 35% 30%, #1a1030, #08060e)",
           border:"1px solid rgba(200,160,64,.25)", borderRadius:"50%",
-          width:52, height:52,
+          width:75, height:75,
           display:"flex", alignItems:"center", justifyContent:"center",
           cursor:"pointer", padding:0,
           boxShadow:"0 0 14px rgba(80,40,120,.4), inset 0 1px 0 rgba(255,255,255,.06)",
           touchAction:"manipulation",
         }}>
-          <ScrollStackIcon size={38}/>
+          <ScrollStackIcon size={55}/>
         </button>
       )}
 
