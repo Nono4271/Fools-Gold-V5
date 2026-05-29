@@ -13,7 +13,7 @@ function tbInfo(tb) {
 import { TERR } from "../../../shared/constants/terrain.js";
 import { RSS, POWER_DEFS, SIEGE_BASE, HQP, TC, FORT_LEVELS } from "../../../shared/constants/map.js";
 import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
-import { isTileInRange, buildAnchors } from "../../../hooks/useForts.js";
+import { isTileInRange, buildAnchors } from "../../hooks/useForts.js";
 
 export default memo(function TilePopup({
   selKey, selTile, popupPos, popupMode, setPopupMode,
