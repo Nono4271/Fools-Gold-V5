@@ -50,7 +50,7 @@ function PortraitButton({ cmd, onClick, active, badge }) {
     >
       {/* Outer decorative ring */}
       <div style={{
-        width: 52, height: 52,
+        width: 42, height: 42,
         borderRadius: "50%",
         background: `conic-gradient(${rg.ring} 0deg, #2a1e0e 90deg, ${rg.ring} 180deg, #2a1e0e 270deg, ${rg.ring} 360deg)`,
         padding: 2,
@@ -396,9 +396,9 @@ export default memo(function GameBar({
     <>
       {/* ── LEFT RAIL: Commander portrait icons ── */}
       <div style={{
-        position: "fixed", left: "var(--left-inset, 8px)", top: "50%", transform: "translateY(-50%)",
+        position: "fixed", left: "var(--left-inset, 8px)", top: "calc(var(--sat) + 155px)",
         zIndex: 300,
-        display: "flex", flexDirection: "column", gap: 8, alignItems: "center",
+        display: "flex", flexDirection: "column", gap: 5, alignItems: "center",
       }}>
         {playerCmds.length > 0 ? playerCmds.map(cmd => {
           const stationedFort = (forts || []).find(f => f.stationedCmdUids?.includes(cmd.uid));

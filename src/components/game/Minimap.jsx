@@ -9,7 +9,7 @@ const MM_SIZE    = 130;
 const MM_RADIUS  = 60;
 const MM_CX      = 65;
 const MM_CY      = 65;
-const VIEW_RADIUS = 80;
+const VIEW_RADIUS = 125;
 
 function tileToMM(tc, tr, vc, vr) {
   return {
