@@ -433,6 +433,7 @@ export default memo(function TilePopup({
                 const [sc, sr] = stationKey.split(",").map(Number);
                 inRange = isTileInRange(selKey, [{ c: sc, r: sr }]);
               }
+                console.log("[RANGE ATK] selKey:", selKey, "stationKey:", stationKey.split(",").map(Number), "inRange:", inRange, "playerHqKey:", playerHqKey);
               const canAtkNow = hasStam && inRange;
               return (
                 <button className="btn"
