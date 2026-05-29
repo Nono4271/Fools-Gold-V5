@@ -327,7 +327,7 @@ export default memo(function TilePopup({
         {/* Action buttons */}
         <div style={{ padding:"8px 10px", display:"flex", flexDirection:"column", gap:5 }}>
           {/* Attack */}
-          {ownership==="enemy"&&canAtk&&(
+          {(ownership==="enemy"||isNeutral)&&canAtk&&(
             <button onClick={()=>canAtkNow?(setAtkKey(selKey),setMode("pickAttackCmd"),setPick(null)):null}
               style={{ width:"100%", padding:"9px 0", background:canAtkNow?"linear-gradient(160deg,#6a0808,#3a0404)":"rgba(60,20,20,.3)", border:`1px solid ${canAtkNow?"#cc2020":"#553030"}`, borderRadius:5, color:canAtkNow?"#ff8080":"#7a5050", fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, letterSpacing:".05em", cursor:canAtkNow?"pointer":"not-allowed", opacity:canAtkNow?1:.6 }}>
               ⚔ ATTACK · 20⚡{!hasAtkStam&&<span style={{ fontSize:8, marginLeft:5, opacity:.7 }}> low stamina</span>}{hasAtkStam&&!atkInRange&&<span style={{ fontSize:8, marginLeft:5, opacity:.7 }}> out of range</span>}
@@ -373,7 +373,7 @@ export default memo(function TilePopup({
           )}
           {/* Notes */}
           {ownership==="crew"&&<div style={{ fontSize:7, color:"#2299ff", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>🤝 Crew territory — you can move here freely</div>}
-          {ownership==="enemy"&&!canAtk&&!selTile.isWin&&<div style={{ fontSize:7, color:"#5a4a3a", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>Own an adjacent tile to attack</div>}
+          {(ownership==="enemy"||isNeutral)&&!canAtk&&!selTile.isWin&&<div style={{ fontSize:7, color:"#5a4a3a", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>Own an adjacent tile to attack</div>}
         </div>
       </div>
 
