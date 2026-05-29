@@ -1367,9 +1367,9 @@ function buildFortSprite(fort, PIXI, texCache, fortLayer) {
     const w = TW * 0.9;
     sp.width = w;
     sp.height = w;
-    sp.anchor.set(0.5, 0.7);
+    sp.anchor.set(0.5, 0.6);
     sp.x = cx;
-    sp.y = cy;
+    sp.y = cy + TH * 0.5; // shift to visual center of tile diamond
     sp.zOrder = cy;
     sp.__fortLevel = fort.level;
     _fortSpriteMap.set(tileKey, sp);
