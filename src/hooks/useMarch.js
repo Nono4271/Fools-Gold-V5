@@ -206,26 +206,6 @@ arrivedAttackers.forEach(async staleCmd => {
 
   const originKey = cmd.march?.origin || hqKey;
 
-  // ── Range check: commander must be attacking within their station's range ──
-  const anchors = getAnchors ? getAnchors() : [];
-  const stationedFortId = cmd.stationedFortId;
-  let stationAnchor = null;
-  if (stationedFortId && forts) {
-    const sf = forts.find(f => f.id === stationedFortId);
-    if (sf) { const [sc, sr] = sf.tileKey.split(",").map(Number); stationAnchor = { c: sc, r: sr }; }
-  } else {
-    // Stationed at HQ
-    if (playerHqKey) { const [sc, sr] = playerHqKey.split(",").map(Number); stationAnchor = { c: sc, r: sr }; }
-  }
-  if (stationAnchor) {
-    const inRng = isTileInRange(destKey, [stationAnchor]);
-    if (!inRng) {
-      floaty("⚠ Outside range — cannot attack", "#cc8030", destKey);
-      setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march: null, tk: originKey } : c));
-      return;
-    }
-  }
-
   if (!hasPlayerFoothold(destKey, originKey, tiles)) {
     const boostedCmd0 = applyGearToCmd(cmd, gearInventory);
     const stepMs = marchStepMs(cmdMarchSpd(cmd, boostedCmd0));
