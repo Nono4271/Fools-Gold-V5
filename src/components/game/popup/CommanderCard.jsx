@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { FACTION_TROOPS } from "../../../../shared/constants/troops.js";
 
 function tbInfo(tb) {
@@ -76,8 +76,9 @@ function EnemyCommanderCard({ cmd, isGarrison, totalWaves, defeatedWaves }) {
 function FriendlyCommanderCard({
   cmd, isPlayer, onCmdScreenOpen,
   recallMarch, recallStationary, setReinCmd, setMode, barracksPool,
-  playerHqKey,
+  playerHqKey, startGuard, cancelGuard,
 }) {
+  const [guardPrompt, setGuardPrompt] = useState(null); // "activate" | "cancel"
   const stam = cmd.stamina ?? 200;
   const stamPct = Math.max(0, Math.min(100, (stam / 200) * 100));
   const stamColor = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
@@ -162,15 +163,42 @@ function FriendlyCommanderCard({
                     title="Reinforce"
                     style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(20,60,160,.25)", border: "1px solid #2060cc", color: "#80a0ff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                 )}
-                {/* Guard — future feature */}
+                {/* Guard */}
                 <button
-                  title="Guard (coming soon)"
-                  style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(60,60,60,.2)", border: "1px solid #555", color: "#888", fontSize: 13, cursor: "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.5 }}>🛡</button>
+                  onClick={() => setGuardPrompt(cmd.isGuarding ? "cancel" : "activate")}
+                  title={cmd.isGuarding ? "Cancel Guard" : "Guard (10⚡)"}
+                  style={{ width: 30, height: 30, borderRadius: 6, background: cmd.isGuarding ? "rgba(240,200,40,.25)" : "rgba(40,80,160,.25)", border: `1px solid ${cmd.isGuarding ? "#c8a020" : "#4060cc"}`, color: cmd.isGuarding ? "#f0c040" : "#8090e0", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>🛡</button>
               </>
             )}
           </div>
         )}
       </div>
+      {/* Guard confirm modal */}
+      {guardPrompt && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.7)" }}
+          onClick={() => setGuardPrompt(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "rgba(8,12,20,.98)", border: "1px solid #3a4a6a", borderRadius: 10, padding: "18px 20px", width: 240, boxShadow: "0 8px 32px rgba(0,0,0,.9)" }}>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 11, color: "#c8d8f0", fontWeight: 700, marginBottom: 8 }}>
+              {guardPrompt === "activate" ? "🛡 Activate Guard?" : "🛡 Cancel Guard?"}
+            </div>
+            <div style={{ fontSize: 8, color: "#7a9a8a", marginBottom: 14, lineHeight: 1.5 }}>
+              {guardPrompt === "activate"
+                ? "This commander will defend all owned and crew tiles in a 3×3 area. Costs 10⚡."
+                : "Your commander will stop guarding the surrounding tiles. No stamina cost."}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setGuardPrompt(null)}
+                style={{ flex: 1, padding: "7px 0", background: "rgba(40,40,40,.6)", border: "1px solid #444", borderRadius: 5, color: "#aaa", fontFamily: "'Cinzel',serif", fontSize: 9, fontWeight: 700, cursor: "pointer" }}>
+                NO
+              </button>
+              <button onClick={() => { guardPrompt === "activate" ? startGuard?.(cmd.uid) : cancelGuard?.(cmd.uid); setGuardPrompt(null); }}
+                style={{ flex: 1, padding: "7px 0", background: guardPrompt === "activate" ? "rgba(40,80,180,.4)" : "rgba(180,60,40,.4)", border: `1px solid ${guardPrompt === "activate" ? "#4060cc" : "#cc4030"}`, borderRadius: 5, color: guardPrompt === "activate" ? "#90b0ff" : "#ff8070", fontFamily: "'Cinzel',serif", fontSize: 9, fontWeight: 700, cursor: "pointer" }}>
+                YES
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -180,6 +208,7 @@ export default memo(function CommanderCard({
   cmd, ownership, isGarrison, totalWaves, defeatedWaves,
   onCmdScreenOpen, recallMarch, recallStationary,
   setReinCmd, setMode, barracksPool, playerHqKey,
+  startGuard, cancelGuard,
 }) {
   if (!cmd) return null;
 
@@ -205,6 +234,8 @@ export default memo(function CommanderCard({
       setMode={setMode}
       barracksPool={barracksPool}
       playerHqKey={playerHqKey}
+      startGuard={startGuard}
+      cancelGuard={cancelGuard}
     />
   );
 });
