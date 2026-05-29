@@ -4,6 +4,7 @@ import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS
 import { CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
 import { barracksCapacity } from "../../shared/constants/buildings.js";
 import { adj, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
+import { isTileInRange } from "./useForts.js";
 import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/garrisonUtils.js";
 import { calcSiegePower } from "../../shared/constants/map.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
@@ -126,6 +127,12 @@ troopSkillLevels,
 crewmatePlayerIds,
 aiPlayerIdMap,
 runBattle,
+forts,
+getAnchors,
+stationAtFort,
+unstationCmd,
+damageFort,
+emitFortUpdate,
 }) {
 
 // Server-sync helpers — no-op if server not connected yet
@@ -198,6 +205,27 @@ arrivedAttackers.forEach(async staleCmd => {
   }
 
   const originKey = cmd.march?.origin || hqKey;
+
+  // ── Range check: commander must be attacking within their station's range ──
+  const anchors = getAnchors ? getAnchors() : [];
+  const stationedFortId = cmd.stationedFortId;
+  let stationAnchor = null;
+  if (stationedFortId && forts) {
+    const sf = forts.find(f => f.id === stationedFortId);
+    if (sf) { const [sc, sr] = sf.tileKey.split(",").map(Number); stationAnchor = { c: sc, r: sr }; }
+  } else {
+    // Stationed at HQ
+    if (playerHqKey) { const [sc, sr] = playerHqKey.split(",").map(Number); stationAnchor = { c: sc, r: sr }; }
+  }
+  if (stationAnchor) {
+    const inRng = isTileInRange(destKey, [stationAnchor]);
+    if (!inRng) {
+      floaty("⚠ Outside range — cannot attack", "#cc8030", destKey);
+      setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march: null, tk: originKey } : c));
+      return;
+    }
+  }
+
   if (!hasPlayerFoothold(destKey, originKey, tiles)) {
     const boostedCmd0 = applyGearToCmd(cmd, gearInventory);
     const stepMs = marchStepMs(cmdMarchSpd(cmd, boostedCmd0));
@@ -254,6 +282,67 @@ arrivedAttackers.forEach(async staleCmd => {
     }
     setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null, tk:siegeCaptured?destKey:originKey } : c));
     return;
+  }
+
+  // ── Fort combat: fight stationed commanders if attacking a fort tile ─────
+  if (forts && getFortAtTile) {
+    const fort = getFortAtTile(destKey);
+    if (fort) {
+      // Commanders physically AT the fort tile fight first
+      const fortDefenders = cmds.filter(c =>
+        c.owner === "player" ? false : // skip player cmds
+        fort.stationedCmdUids?.includes(c.uid) && c.tk === destKey && !c.march
+      );
+      // Also check player forts attacked by AI — handled in AI branch
+      // For player attacking enemy fort: fight stationed AI commanders
+      const aiDefenders = cmds.filter(c =>
+        c.owner === "ai" && fort.stationedCmdUids?.includes(c.uid) && c.tk === destKey && !c.march
+      );
+      if (aiDefenders.length > 0) {
+        // Fight each stationed commander sequentially
+        for (const defender of aiDefenders) {
+          const res = await runBattle(boostedCmd, cmdTroops(cmd), defTile, wallLvl);
+          if (res.report) {
+            const enriched = { ...res.report, timestamp: Date.now(), cmdCls: cmd.cls,
+              passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot, atkBaseStats };
+            setBattles(p => [enriched, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
+          }
+          if (!res.won && !res.isDraw) {
+            // Attacker lost — retreat
+            const stepMs2 = marchStepMs(cmdMarchSpd(cmd, boostedCmd));
+            const rp = bfsPath(destKey, hqKey);
+            setCmds(p => p.map(c => {
+              if (c.uid === cmd.uid) {
+                const survived = Math.max(0, Math.floor(cmdTroops(cmd) * (res.survivalRate ?? 0.5)));
+                return { ...c, troops: survived, march: rp?.length >= 2
+                  ? { type:"move", path:rp, step:0, dest:hqKey, origin:destKey, stepMs:stepMs2, lastStepTime:Date.now() }
+                  : null, tk: rp?.length >= 2 ? c.tk : hqKey };
+              }
+              return c;
+            }));
+            floaty("💀 Defeated by fort defenders!", "#cc3030", destKey);
+            return;
+          }
+          // Won — reduce attacker troops, continue to next defender
+          const survived = Math.max(1, Math.floor(cmdTroops(cmd) * (res.survivalRate ?? 0.8)));
+          setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, troops: survived } : c));
+        }
+        // All defenders beaten — now siege the fort structure itself
+        const fortSiege = fort.siege ?? FORT_LEVELS[fort.level - 1].siege;
+        const siegePower = cmdSiegePower(cmd, boostedCmd);
+        if (siegePower >= fortSiege) {
+          // Fort destroyed
+          floaty("🏯 Fort Destroyed!", "#f0c040", destKey);
+          // destroyFort is called via emitFortUpdate on server; locally signal it
+          emitFortUpdate?.({ action: "destroy", fortId: fort.id });
+        } else {
+          damageFort?.(fort.id, siegePower);
+          floaty(`🔨 Fort Siege ${fortSiege - siegePower}/${fort.siegeMax}`, "#d0a030", destKey);
+          setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null, tk:originKey } : c));
+          return;
+        }
+      }
+    }
   }
 
   // ── Live AI commander check (fight them first, then waves) ────────────────

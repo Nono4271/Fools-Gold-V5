@@ -124,6 +124,17 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId })
     });
   }, [safeSend, sessionId]);
 
+  /**
+   * Call when a fort is built, upgraded, destroyed, or sieged.
+   */
+  const emitFortUpdate = useCallback((payload) => {
+    safeSend({
+      type: 'FORT_UPDATE',
+      sessionId,
+      ...payload,
+    });
+  }, [safeSend, sessionId]);
+
   // ── Connection management ────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -236,5 +247,5 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId })
     console.log('[ServerSync] GAME_INIT sent — tiles:', Object.keys(tiles).length);
   }, [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { emitTileCapture, emitTileSiege, connected };
+  return { emitTileCapture, emitTileSiege, emitFortUpdate, connected };
 }
