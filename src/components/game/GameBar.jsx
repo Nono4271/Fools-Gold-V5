@@ -399,6 +399,7 @@ export default memo(function GameBar({
         position: "fixed", left: "var(--left-inset, 8px)", bottom: "calc(var(--sab, 0px) + 89px)",
         zIndex: 300,
         display: "flex", flexDirection: "column-reverse", gap: 5, alignItems: "center",
+        maxHeight: `${3 * 42 + 2 * 5}px`, overflowY: "auto", scrollbarWidth: "none",
       }}>
         {playerCmds.length > 0 ? playerCmds.map(cmd => {
           const stationedFort = (forts || []).find(f => f.stationedCmdUids?.includes(cmd.uid));
@@ -432,7 +433,7 @@ export default memo(function GameBar({
           </div>
           );
         }) : (
-          <div style={{ width: 52, height: 52, borderRadius: "50%",
+          <div style={{ width: 42, height: 42, borderRadius: "50%",
             background: "radial-gradient(circle, #0e0c08, #080603)",
             border: "1px dashed #1a1408", opacity: 0.2, flexShrink: 0 }} />
         )}
