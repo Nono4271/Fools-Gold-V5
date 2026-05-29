@@ -422,35 +422,60 @@ export default memo(function TilePopup({
           {/* Action buttons */}
           <div style={{display:"flex",gap:3,marginTop:4,flexWrap:"wrap"}}>
             {selTile.owner!=="player" && canAtk && !crewmatePlayerIds?.has(selTile.ownerPlayerId) && selTile.faction !== facKey && (() => {
-              // Check if best available attacker has ≥20 stamina
               const candidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
               const hasStam = candidates.some(c => (c.stamina ?? 200) >= 20);
+              // Range check — find best stamina candidate and check their station range
+              const bestCmd = candidates.find(c => (c.stamina ?? 200) >= 20);
+              let inRange = true;
+              if (bestCmd && forts && playerHqKey) {
+                const stationedFort = bestCmd.stationedFortId ? forts.find(f => f.id === bestCmd.stationedFortId) : null;
+                const stationKey = stationedFort ? stationedFort.tileKey : playerHqKey;
+                const [sc, sr] = stationKey.split(",").map(Number);
+                inRange = isTileInRange(selKey, [{ c: sc, r: sr }]);
+              }
+              const canAtkNow = hasStam && inRange;
               return (
                 <button className="btn"
-                  onClick={() => hasStam ? (setAtkKey(selKey), setMode("pickAttackCmd"), setPick(null)) : null}
-                  title={hasStam ? "" : "No commanders with enough stamina (need 20⚡)"}
+                  onClick={() => canAtkNow ? (setAtkKey(selKey), setMode("pickAttackCmd"), setPick(null)) : null}
+                  title={!hasStam ? "No commanders with enough stamina (need 20⚡)" : !inRange ? "Outside range — reposition to a closer fort first" : ""}
                   style={{flex:1,padding:"5px 3px",
-                    background: hasStam
+                    background: canAtkNow
                       ? "linear-gradient(135deg,rgba(140,20,20,.6),rgba(100,10,10,.4))"
                       : "rgba(60,20,20,.3)",
-                    border:`1px solid ${hasStam?"#cc2020":"#553030"}`,
-                    color:hasStam?"#f0a0a0":"#7a5050",
+                    border:`1px solid ${canAtkNow?"#cc2020":"#553030"}`,
+                    color:canAtkNow?"#f0a0a0":"#7a5050",
                     fontSize:9,fontWeight:700,
-                    cursor:hasStam?"pointer":"not-allowed",opacity:hasStam?1:.6}}>
-                  ⚔ Attack · 20⚡ {!hasStam && <span style={{fontSize:7}}>low</span>}
+                    cursor:canAtkNow?"pointer":"not-allowed",opacity:canAtkNow?1:.6}}>
+                  ⚔ Attack · 20⚡ {!hasStam && <span style={{fontSize:7}}>low</span>}{hasStam && !inRange && <span style={{fontSize:7}}>out of range</span>}
                 </button>
               );
             })()}
             {selTile.owner!=="player" && canAtk && crewmatePlayerIds?.has(selTile.ownerPlayerId) && (() => {
               const candidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
               const hasStam = candidates.some(c => (c.stamina ?? 200) >= 10);
+              const bestCmd = candidates.find(c => (c.stamina ?? 200) >= 10);
+              let inRange = true;
+              if (bestCmd && forts && playerHqKey) {
+                const stationedFort = bestCmd.stationedFortId ? forts.find(f => f.id === bestCmd.stationedFortId) : null;
+                const stationKey = stationedFort ? stationedFort.tileKey : playerHqKey;
+                const [sc, sr] = stationKey.split(",").map(Number);
+                inRange = isTileInRange(selKey, [{ c: sc, r: sr }]);
+              }
+              const canMoveNow = hasStam && inRange;
               return (
                 <button className="btn"
-                  onClick={() => hasStam ? (setAtkKey(selKey), setMode("pickMoveCmd"), setPick(null)) : null}
-                  title={hasStam ? "" : "Need 10⚡ stamina to move"}
+                  onClick={() => canMoveNow ? (setAtkKey(selKey), setMode("pickMoveCmd"), setPick(null)) : null}
+                  title={!hasStam ? "Need 10⚡ stamina to move" : !inRange ? "Outside range — reposition to a closer fort first" : ""}
                   style={{flex:1,padding:"5px 3px",
-                    background: hasStam ? "linear-gradient(135deg,rgba(20,80,40,.6),rgba(10,60,30,.4))" : "rgba(20,40,20,.3)",
-                    border:`1px solid ${hasStam?"#2a8040":"#2a4a2a"}`,
+                    background: canMoveNow ? "linear-gradient(135deg,rgba(20,80,40,.6),rgba(10,60,30,.4))" : "rgba(20,40,20,.3)",
+                    border:`1px solid ${canMoveNow?"#2a8040":"#2a4a2a"}`,
+                    color:canMoveNow?"#80d090":"#507050",
+                    fontSize:9,fontWeight:700,
+                    cursor:canMoveNow?"pointer":"not-allowed",opacity:canMoveNow?1:.6}}>
+                  🚶 Move · 10⚡ {!hasStam && <span style={{fontSize:7}}>low</span>}{hasStam && !inRange && <span style={{fontSize:7}}>out of range</span>}
+                </button>
+              );
+            })()}
                     color:hasStam?"#80d090":"#507050",
                     fontSize:9,fontWeight:700,
                     cursor:hasStam?"pointer":"not-allowed",opacity:hasStam?1:.6}}>

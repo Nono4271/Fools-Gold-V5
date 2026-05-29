@@ -126,7 +126,7 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
     ctx.restore();
 
     // ── Range circles (HQ + forts) ─────────────────────────────────────────
-    const { vc: vc2, vr: vr2 } = panToVC(panRef.current, zoomRef.current);
+    const radiusPx = (100 / VIEW_RADIUS) * MM_RADIUS;
     const anchors = [];
     if (hqKeyRef.current) {
       const [hc, hr] = hqKeyRef.current.split(",").map(Number);
@@ -137,15 +137,12 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
       anchors.push({ c: fc, r: fr, type: "fort" });
     }
     for (const anchor of anchors) {
-      const { x: ax, y: ay } = tileToMM(anchor.c, anchor.r, vc2, vr2);
-      // Convert 100 tile radius to minimap pixels
-      const { x: rx } = tileToMM(anchor.c + 100, anchor.r, vc2, vr2);
-      const radiusPx = Math.abs(rx - ax);
+      const { x: ax, y: ay } = tileToMM(anchor.c, anchor.r, vc, vr);
       ctx.save();
       ctx.beginPath();
       ctx.arc(ax, ay, radiusPx, 0, Math.PI * 2);
-      ctx.strokeStyle = anchor.type === "hq" ? "rgba(240,192,64,.7)" : "rgba(100,180,255,.6)";
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = anchor.type === "hq" ? "rgba(240,192,64,.8)" : "rgba(100,180,255,.7)";
+      ctx.lineWidth = 1.2;
       ctx.setLineDash([4, 3]);
       ctx.stroke();
       ctx.setLineDash([]);
