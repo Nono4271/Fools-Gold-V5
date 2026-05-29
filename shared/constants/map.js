@@ -114,3 +114,17 @@ export const TOMES_LEVEL_COST = [
   360000, 375000, 388000, 395000, 390000,
 ];
 export const TOMES_MAX_LEVEL = 125;
+
+// ── Fort constants ────────────────────────────────────────────────────────────
+export const FORT_RANGE_RADIUS = 100; // tiles
+
+export const FORT_LEVELS = [
+  { level: 1, capacity: 2, siege: 150000 },
+  { level: 2, capacity: 3, siege: 212500 },
+  { level: 3, capacity: 4, siege: 275000 },
+  { level: 4, capacity: 5, siege: 387500 },
+  { level: 5, capacity: 6, siege: 500000 },
+];
+
+export const FORT_MAX_LEVEL = 5;
+export const FORT_SIEGE_RESET_MS = 3600000; // 1 hr
