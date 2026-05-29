@@ -134,6 +134,8 @@ stationAtFort,
 unstationCmd,
 damageFort,
 emitFortUpdate,
+guardedTiles,
+setCmds,
 }) {
 
 // Server-sync helpers — no-op if server not connected yet
@@ -371,6 +373,39 @@ arrivedAttackers.forEach(async staleCmd => {
       ? { ...c, troops:troopsAfterAi, ...applySlotLosses(c, res.lost), ...applyXp(c, res.xpGain, floaty) }
       : c));
     // Fall through to wave loop with updated troops
+  }
+
+  // ── Guardian combat — fight guarding commanders before garrison ─────────
+  if (guardedTiles && guardedTiles.has(destKey)) {
+    const guardians = guardedTiles.get(destKey); // sorted most recent first
+    for (const guardian of guardians) {
+      if (!guardian.isGuarding) continue;
+      const gres = await runBattle(boostedCmd, cmdTroops(cmd), defTile, wallLvl);
+      if (gres.report) {
+        const enriched = { ...gres.report, timestamp: Date.now(), cmdCls: cmd.cls,
+          passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot, atkBaseStats };
+        setBattles(p => [enriched, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
+      }
+      if (!gres.won && !gres.isDraw) {
+        // Attacker defeated by guardian — retreat
+        const stepMs2 = marchStepMs(cmdMarchSpd(cmd, boostedCmd));
+        const rp = await findPath(destKey, hqKey);
+        setCmds?.(p => p.map(c => c.uid === cmd.uid ? { ...c,
+          march: rp && rp.length > 1
+            ? { type:"retreat", path:rp, step:0, dest:hqKey, origin:destKey, stepMs:stepMs2, lastStepTime:Date.now() }
+            : null,
+          tk: rp && rp.length > 1 ? c.tk : hqKey,
+        } : c));
+        floaty("💀 Repelled by guardian!", "#cc3030", destKey);
+        return;
+      }
+      // Won — guardian is defeated, remove their guard status
+      if (setCmds) {
+        setCmds(p => p.map(c => c.uid === guardian.uid ? { ...c, isGuarding: false, guardedAt: null } : c));
+      }
+      floaty(`⚔ Guardian defeated!`, "#d0a030", destKey);
+      // remainingTroops is declared below; track losses via a local var for now
+    }
   }
 
   // ── Multi-wave garrison loop ──────────────────────────────────────────────
