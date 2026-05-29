@@ -1363,13 +1363,13 @@ function buildFortSprite(fort, PIXI, texCache, fortLayer) {
   const spriteUrl = FORT_SPRITES[fort.level] || FORT_SPRITES[1];
 
   const applySprite = (sp) => {
-    // Size to fit 1x1 tile diamond — width = TW, height follows aspect ratio
-    const w = TW * 2.2;
+    // 1x1 tile: diamond is TW wide. Scale sprite to fit.
+    const w = TW * 1.2;
     sp.width = w;
     sp.height = w;
-    sp.anchor.set(0.5, 0.82);
+    sp.anchor.set(0.5, 0.78);
     sp.x = cx;
-    sp.y = cy + TH / 2; // shift to front of tile
+    sp.y = cy;
     sp.zOrder = cy;
     sp.__fortLevel = fort.level;
     _fortSpriteMap.set(tileKey, sp);
