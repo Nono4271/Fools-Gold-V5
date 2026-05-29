@@ -263,26 +263,26 @@ export default memo(function TilePopup({
 
         {/* Resource */}
         {selTile.rss&&(
-          <div style={{ padding:"5px 10px", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
+          <div style={{ padding:"8px 10px", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
             {selTile.powerLevel===1 ? (
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"4px 12px" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"6px 12px" }}>
                 {Object.entries(RSS).map(([key,r])=>(
-                  <div key={key} style={{ display:"flex", alignItems:"center", gap:5 }}>
-                    <span style={{ fontSize:13 }}>{r.icon}</span>
+                  <div key={key} style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span style={{ fontSize:16 }}>{r.icon}</span>
                     <div>
-                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:r.col, fontWeight:700 }}>{r.lbl}</div>
-                      <div style={{ fontSize:7, color:"#7a8a6a" }}>+50/hr</div>
+                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:r.col, fontWeight:700 }}>{r.lbl}</div>
+                      <div style={{ fontSize:8, color:"#7a8a6a" }}>+50/hr</div>
                     </div>
                   </div>
                 ))}
               </div>
             ):(
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                  <span style={{ fontSize:14 }}>{RSS[selTile.rss].icon}</span>
-                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:RSS[selTile.rss].col, fontWeight:700 }}>{RSS[selTile.rss].lbl}</span>
+                <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                  <span style={{ fontSize:18 }}>{RSS[selTile.rss].icon}</span>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:RSS[selTile.rss].col, fontWeight:700 }}>{RSS[selTile.rss].lbl}</span>
                 </div>
-                <span style={{ fontSize:8, color:"#7a8a6a" }}>+{({2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600}[selTile.powerLevel]??240)}/hr</span>
+                <span style={{ fontSize:10, color:"#7a8a6a" }}>+{({2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600}[selTile.powerLevel]??240)}/hr</span>
               </div>
             )}
           </div>
@@ -296,12 +296,12 @@ export default memo(function TilePopup({
           const barColor=pct>66?"#3daa60":pct>33?"#d0a030":"#cc3030";
           const resetSecs=selTile.resetAt?Math.max(0,Math.ceil((selTile.resetAt-Date.now())/1000)):null;
           return (
-            <div style={{ padding:"6px 10px", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#6a6a7a", letterSpacing:".04em" }}>🛡 SIEGE{defCount>0?` · WAVE ${defCount}/${totalW}`:""}</span>
-                <span style={{ fontSize:8, color:barColor, fontWeight:700 }}>{sv}/{sm}</span>
+            <div style={{ padding:"8px 10px", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#6a6a7a", letterSpacing:".04em" }}>🛡 SIEGE{defCount>0?` · WAVE ${defCount}/${totalW}`:""}</span>
+                <span style={{ fontSize:10, color:barColor, fontWeight:700 }}>{sv}/{sm}</span>
               </div>
-              <div style={{ height:5, background:"#0e1018", borderRadius:3, overflow:"hidden" }}>
+              <div style={{ height:7, background:"#0e1018", borderRadius:3, overflow:"hidden" }}>
                 <div style={{ height:"100%", width:`${pct}%`, background:barColor, borderRadius:3, transition:"width .3s" }}/>
               </div>
               {totalW>1&&<div style={{ display:"flex", gap:2, marginTop:3 }}>{Array.from({length:totalW}).map((_,i)=><div key={i} style={{ flex:1, height:3, borderRadius:1, background:i<defCount?"#f0c040":"#2a2020", border:i<defCount?"none":"1px solid #3a2a20" }}/>)}</div>}
@@ -384,32 +384,32 @@ export default memo(function TilePopup({
             style={{ position:"absolute", top:6, right:6, width:18, height:18, background:"rgba(120,10,10,.7)", border:"1px solid #cc1010", borderRadius:"50%", color:"#ff6060", fontSize:9, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1, zIndex:10 }}>✕</button>
         )}
         {/* Action buttons */}
-        <div style={{ padding:"8px 10px", display:"flex", flexDirection:"column", gap:5 }}>
+        <div style={{ padding:"6px 10px 8px", display:"flex", gap:5 }}>
           {/* Attack */}
           {(ownership==="enemy"||isNeutral)&&canAtk&&(
             <button onClick={()=>canAtkNow?(setAtkKey(selKey),setMode("pickAttackCmd"),setPick(null)):null}
-              style={{ width:"100%", padding:"9px 0", background:canAtkNow?"linear-gradient(160deg,#6a0808,#3a0404)":"rgba(60,20,20,.3)", border:`1px solid ${canAtkNow?"#cc2020":"#553030"}`, borderRadius:5, color:canAtkNow?"#ff8080":"#7a5050", fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, letterSpacing:".05em", cursor:canAtkNow?"pointer":"not-allowed", opacity:canAtkNow?1:.6 }}>
+              style={{ flex:1, padding:"6px 0", background:canAtkNow?"linear-gradient(160deg,#6a0808,#3a0404)":"rgba(60,20,20,.3)", border:`1px solid ${canAtkNow?"#cc2020":"#553030"}`, borderRadius:5, color:canAtkNow?"#ff8080":"#7a5050", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canAtkNow?"pointer":"not-allowed", opacity:canAtkNow?1:.6 }}>
               ATTACK
             </button>
           )}
           {/* Move — owned */}
           {ownership==="player"&&!isHqTile&&(
             <button onClick={()=>canMoveNow?(setAtkKey(selKey),setMode("pickMoveCmd"),setPick(null)):null}
-              style={{ width:"100%", padding:"9px 0", background:canMoveNow?"linear-gradient(160deg,#083a18,#041e0a)":"rgba(20,40,20,.3)", border:`1px solid ${canMoveNow?"#2a8040":"#2a4a2a"}`, borderRadius:5, color:canMoveNow?"#80d090":"#507050", fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, letterSpacing:".05em", cursor:canMoveNow?"pointer":"not-allowed", opacity:canMoveNow?1:.6 }}>
+              style={{ flex:1, padding:"6px 0", background:canMoveNow?"linear-gradient(160deg,#083a18,#041e0a)":"rgba(20,40,20,.3)", border:`1px solid ${canMoveNow?"#2a8040":"#2a4a2a"}`, borderRadius:5, color:canMoveNow?"#80d090":"#507050", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canMoveNow?"pointer":"not-allowed", opacity:canMoveNow?1:.6 }}>
               MOVE
             </button>
           )}
           {/* Move — crew */}
           {ownership==="crew"&&canAtk&&(
             <button onClick={()=>canMoveNow?(setAtkKey(selKey),setMode("pickMoveCmd"),setPick(null)):null}
-              style={{ width:"100%", padding:"9px 0", background:canMoveNow?"linear-gradient(160deg,#082038,#041020)":"rgba(20,30,50,.3)", border:`1px solid ${canMoveNow?"#2060a0":"#204060"}`, borderRadius:5, color:canMoveNow?"#60a0e0":"#405060", fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, letterSpacing:".05em", cursor:canMoveNow?"pointer":"not-allowed", opacity:canMoveNow?1:.6 }}>
+              style={{ flex:1, padding:"6px 0", background:canMoveNow?"linear-gradient(160deg,#082038,#041020)":"rgba(20,30,50,.3)", border:`1px solid ${canMoveNow?"#2060a0":"#204060"}`, borderRadius:5, color:canMoveNow?"#60a0e0":"#405060", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canMoveNow?"pointer":"not-allowed", opacity:canMoveNow?1:.6 }}>
               MOVE
             </button>
           )}
           {/* Build Fort */}
           {ownership==="player"&&!selTile.isHQ&&(selTile.powerLevel||1)<=9&&!fort&&(
             <button onClick={()=>buildFort?.(selKey,selTile)}
-              style={{ width:"100%", padding:"9px 0", background:"linear-gradient(160deg,#3a2808,#1e1004)", border:"1px solid #a07020", borderRadius:5, color:"#f0c060", fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, letterSpacing:".05em", cursor:"pointer" }}>
+              style={{ flex:1, padding:"6px 0", background:"linear-gradient(160deg,#3a2808,#1e1004)", border:"1px solid #a07020", borderRadius:5, color:"#f0c060", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:"pointer" }}>
               BUILD FORT
             </button>
           )}
