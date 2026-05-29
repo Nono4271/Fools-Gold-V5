@@ -2199,7 +2199,7 @@ export default function RiseToWar() {
       {/* Wizard's Tomes trigger — bottom-left below minimap */}
       {!tomesOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
         <button onClick={()=>setTomesOpen(true)} style={{
-          position:"fixed", left:"var(--left-inset, 8px)", bottom:90, zIndex:300,
+          position:"fixed", left:8, bottom:"calc(var(--sab, 0px) + 6px)", zIndex:300,
           background:"radial-gradient(circle at 35% 30%, #1a1030, #08060e)",
           border:"1px solid rgba(200,160,64,.25)", borderRadius:"50%",
           width:52, height:52,
