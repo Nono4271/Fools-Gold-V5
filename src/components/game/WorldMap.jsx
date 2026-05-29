@@ -511,7 +511,7 @@ export default memo(function WorldMap({ tiles, onClose, onTeleport, panRef, zoom
             return (
               <g key={fort.id} style={{ pointerEvents: "none" }}>
                 <circle cx={fc} cy={fr} r={100}
-                  fill="none" stroke="rgba(100,180,255,.5)" strokeWidth={1}
+                  fill="none" stroke="rgba(240,192,64,.6)" strokeWidth={1}
                   strokeDasharray="4 3"/>
                 {/* Fort icon dot */}
                 <rect x={fc - 3} y={fr - 3} width={6} height={6}

@@ -138,7 +138,7 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
       const { x: ax, y: ay } = tileToMM(anchor.c, anchor.r, vc, vr);
       ctx.beginPath();
       ctx.arc(ax, ay, radiusPx, 0, Math.PI * 2);
-      ctx.strokeStyle = anchor.type === "hq" ? "rgba(240,192,64,.8)" : "rgba(100,180,255,.7)";
+      ctx.strokeStyle = anchor.type === "hq" ? "rgba(240,192,64,.8)" : "rgba(240,192,64,.7)";
       ctx.lineWidth = 1.2;
       ctx.setLineDash([4, 3]);
       ctx.stroke();
