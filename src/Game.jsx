@@ -422,6 +422,8 @@ export default function RiseToWar() {
   const [mode,       setMode]      = useState("view");
   const [selKey,     setSelKey]    = useState(null);
   const [popupPos,   setPopupPos]  = useState(null);
+  const [tileScreenX, setTileScreenX] = useState(null);
+  const [tileScreenY, setTileScreenY] = useState(null);
   const [popupMode,  setPopupMode] = useState("main");
   const [editArmyCmd, setEditArmyCmd] = useState(null);
   const [atkKey,     setAtkKey]    = useState(null);
@@ -1502,7 +1504,7 @@ export default function RiseToWar() {
 
   const onEnterHQ = useCallback(() => {
     unstable_batchedUpdates(() => {
-      setHqOpen(true); setHqTab("hub"); setSelKey(null); setPopupPos(null);
+      setHqOpen(true); setHqTab("hub"); setSelKey(null); setPopupPos(null); setTileScreenX(null); setTileScreenY(null);
     });
   }, []);
 
@@ -1541,7 +1543,7 @@ export default function RiseToWar() {
     const boostedSpd = applyGearToCmd(freshCmd, gearInventory).spd || 60;
     const slots0 = normaliseTroopSlots(freshCmd);
     const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, slots0.length ? slots0.map(sl=>sl.branch) : freshCmd.troopBranch));
-    setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null);
+    setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null); setTileScreenX(null); setTileScreenY(null);
     perfLog(`march: from ${freshCmd.tk} → ${destKey}`);
     findPath(freshCmd.tk, destKey).then(path => {
       perfLog(`path: ${path?.length ?? 'NULL'} steps | impass sent earlier`);
@@ -1864,7 +1866,9 @@ export default function RiseToWar() {
       const py = Math.max(46, screenY - POPUP_H - 16);
       setTimeout(() => {
         unstable_batchedUpdates(() => {
-          setSelKey(k); setPopupPos({ x: px, y: py }); setPopupMode("hqEnter");
+          setSelKey(k); setPopupPos({ x: px, y: py });
+          setTileScreenX(screenX); setTileScreenY(screenY);
+          setPopupMode("hqEnter");
           setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
         });
       }, 0);
@@ -1888,7 +1892,9 @@ export default function RiseToWar() {
     setTimeout(() => {
       perfLog(`rAF:fire`);
       unstable_batchedUpdates(() => {
-        setSelKey(k); setPopupPos({ x:px, y:py }); setPopupMode("main"); setEditArmyCmd(null);
+        setSelKey(k); setPopupPos({ x:px, y:py });
+        setTileScreenX(screenX); setTileScreenY(screenY);
+        setPopupMode("main"); setEditArmyCmd(null);
         setMode("view"); setAtkKey(null); setPick(null); setMvCmd(null); setReinCmd(null);
       });
       perfLog(`setState:done`);
@@ -2057,7 +2063,8 @@ export default function RiseToWar() {
       ))}
 
       <TilePopup
-        selKey={selKey} selTile={selTile} popupPos={popupPos}
+        selKey={selKey} selTile={selTile}
+        tileScreenX={tileScreenX} tileScreenY={tileScreenY}
         popupMode={popupMode} setPopupMode={setPopupMode}
         onEnterHQ={onEnterHQ}
         cmds={cmds} cmdsOnSel={cmdsOnSel} marchingToSel={marchingToSel} canAtk={canAtk}
@@ -2066,7 +2073,7 @@ export default function RiseToWar() {
         sliderVals={sliderVals} setSliderVals={setSliderVals}
         deletingTiles={deletingTiles} deletingSecsLeft={deletingSecsLeft}
         setDeletingTiles={setDeletingTiles} setDeletingSecsLeft={setDeletingSecsLeft}
-        setSelKey={setSelKey} setPopupPos={setPopupPos}
+        setSelKey={setSelKey}
         setAtkKey={setAtkKey} setMode={setMode} setPick={setPick}
         setMvCmd={setMvCmd} setReinCmd={setReinCmd}
         startMarch={startMarch}
@@ -2074,12 +2081,14 @@ export default function RiseToWar() {
         setBarracks={setBarracks} setCmds={setCmds}
         nowTick={nowTick}
         playerHqKey={playerHqKey}
-        facKey={facKey}
+        facKey={facKey} facName={facName}
         forts={forts}
         buildFort={buildFort}
         upgradeFort={upgradeFort}
         getFortAtTile={getFortAtTile}
         startReposition={startReposition}
+        setCmdScreenOpen={setCmdScreenOpen}
+        setCmdScreenUid={setCmdScreenUid}
       />
 
       {showBattleLog && (
