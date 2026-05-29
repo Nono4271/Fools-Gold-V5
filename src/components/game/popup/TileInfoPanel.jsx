@@ -91,23 +91,34 @@ export default memo(function TileInfoPanel({
         )}
       </div>
 
-      {/* Resource row */}
+      {/* Resource row — P1 shows all 4, others show single */}
       {selTile.rss && (
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "5px 10px", borderBottom: "1px solid #1a1814",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: 14 }}>{RSS[selTile.rss].icon}</span>
-            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: RSS[selTile.rss].col, fontWeight: 700 }}>
-              {RSS[selTile.rss].lbl}
-            </span>
-          </div>
-          <span style={{ fontSize: 8, color: "#7a8a6a", fontFamily: "'Cinzel',serif" }}>
-            +{selTile.powerLevel === 1
-              ? "50/hr (all)"
-              : `${({ 2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600 }[selTile.powerLevel] ?? 240)}/hr`}
-          </span>
+        <div style={{ padding: "5px 10px", borderBottom: "1px solid #1a1814" }}>
+          {selTile.powerLevel === 1 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px" }}>
+              {Object.entries(RSS).map(([key, r]) => (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ fontSize: 13 }}>{r.icon}</span>
+                  <div>
+                    <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: r.col, fontWeight: 700 }}>{r.lbl}</div>
+                    <div style={{ fontSize: 7, color: "#7a8a6a", fontFamily: "'Cinzel',serif" }}>+50/hr</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 14 }}>{RSS[selTile.rss].icon}</span>
+                <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: RSS[selTile.rss].col, fontWeight: 700 }}>
+                  {RSS[selTile.rss].lbl}
+                </span>
+              </div>
+              <span style={{ fontSize: 8, color: "#7a8a6a", fontFamily: "'Cinzel',serif" }}>
+                +{({ 2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600 }[selTile.powerLevel] ?? 240)}/hr
+              </span>
+            </div>
+          )}
         </div>
       )}
 

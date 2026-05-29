@@ -16,21 +16,22 @@ function EnemyCommanderCard({ cmd, isGarrison, totalWaves, defeatedWaves }) {
     const wavesLeft = Math.max(0, (totalWaves ?? 1) - (defeatedWaves ?? 0));
     return (
       <div style={{
-        background: "rgba(180,20,20,.08)", border: "1px solid rgba(180,20,20,.3)",
+        background: "rgba(120,10,10,.55)", border: "1px solid rgba(220,40,40,.6)",
         borderRadius: 6, padding: "8px 10px",
+        boxShadow: "0 2px 12px rgba(0,0,0,.7)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{
             width: 36, height: 36, borderRadius: "50%",
-            background: "rgba(180,20,20,.2)", border: "1px solid rgba(180,20,20,.4)",
+            background: "rgba(200,30,30,.4)", border: "2px solid rgba(220,60,60,.7)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 18, color: "#cc4040",
+            fontSize: 18,
           }}>⚔</div>
           <div>
-            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#cc4040", fontWeight: 700 }}>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: "#ff7070", fontWeight: 700, letterSpacing: ".05em" }}>
               GARRISON
             </div>
-            <div style={{ fontSize: 8, color: "#8a5a5a", marginTop: 1 }}>
+            <div style={{ fontSize: 8, color: "#ffaaaa", marginTop: 2 }}>
               Lv{cmd?.lvl ?? "?"} · {wavesLeft}/{totalWaves ?? 1} waves remaining
             </div>
           </div>
