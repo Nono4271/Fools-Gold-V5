@@ -14,20 +14,25 @@ function usePopupPosition(tileScreenX, tileScreenY, popupW, popupH) {
   useEffect(() => {
     if (tileScreenX == null || tileScreenY == null) { setPos(null); return; }
     const sw = window.innerWidth, sh = window.innerHeight;
-    const padding = 12, hudH = 90;
+    const satTop    = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--sat")  || "0") || 0;
+    const sabBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--sab")  || "0") || 0;
+    const salLeft   = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--sal")  || "0") || 0;
+    const sarRight  = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--sar")  || "0") || 0;
+    const padding = 12;
+    const hudH = satTop + 90;
+    const padL = salLeft + padding;
+    const padR = sarRight + padding;
+    const padB = sabBottom + padding;
     const tileLeft = tileScreenX < sw / 2;
     const tileTop  = tileScreenY < sh / 2;
-    // Opposite horizontal side
     let x = tileLeft
-      ? sw - popupW - padding                  // tile left → popup far right
-      : padding;                               // tile right → popup far left
-    // Opposite vertical area
+      ? sw - popupW - padR
+      : padL;
     let y = tileTop
-      ? sh - popupH - padding                  // tile top → popup near bottom
-      : hudH;                                  // tile bottom → popup near top
-    // Clamp
-    x = Math.max(padding, Math.min(sw - popupW - padding, x));
-    y = Math.max(hudH, Math.min(sh - popupH - padding, y));
+      ? sh - popupH - padB
+      : hudH;
+    x = Math.max(padL, Math.min(sw - popupW - padR, x));
+    y = Math.max(hudH, Math.min(sh - popupH - padB, y));
     setPos({ x, y });
   }, [tileScreenX, tileScreenY, popupW, popupH]);
   return pos;
@@ -234,7 +239,7 @@ export default memo(function TilePopup({
     <div style={{ position:"fixed", left:pos.x, top:pos.y, width:POPUP_W, zIndex:500, pointerEvents:"auto", display:"flex", flexDirection:"column", gap:6, maxHeight:"80vh", overflowY:"auto", scrollbarWidth:"none", animation:"fadeUp .15s ease" }}>
 
       {/* Tile info card */}
-      <div style={{ background:"rgba(5,7,11,.97)", border:`1px solid ${borderColor}`, borderRadius:8, overflow:"hidden", boxShadow:"0 8px 32px rgba(0,0,0,.9)" }}>
+      <div style={{ position:"relative", background:"rgba(5,7,11,.97)", border:`1px solid ${borderColor}`, borderRadius:8, overflow:"hidden", boxShadow:"0 8px 32px rgba(0,0,0,.9)" }}>
 
         {/* Header */}
         <div style={{ padding:"8px 10px 6px", borderBottom:"1px solid rgba(255,255,255,.06)", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
@@ -373,52 +378,40 @@ export default memo(function TilePopup({
             </div>
           );
         })()}
+        {/* Delete X — small, top-right corner of popup */}
+        {ownership==="player"&&!selTile.isHQ&&!deletingTiles[selKey]&&(
+          <button onClick={()=>{ setDeletingTiles(p=>({...p,[selKey]:Date.now()})); setDeletingSecsLeft(p=>({...p,[selKey]:15})); }}
+            style={{ position:"absolute", top:6, right:6, width:18, height:18, background:"rgba(120,10,10,.7)", border:"1px solid #cc1010", borderRadius:"50%", color:"#ff6060", fontSize:9, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1, zIndex:10 }}>✕</button>
+        )}
         {/* Action buttons */}
         <div style={{ padding:"8px 10px", display:"flex", flexDirection:"column", gap:5 }}>
           {/* Attack */}
           {(ownership==="enemy"||isNeutral)&&canAtk&&(
             <button onClick={()=>canAtkNow?(setAtkKey(selKey),setMode("pickAttackCmd"),setPick(null)):null}
               style={{ width:"100%", padding:"9px 0", background:canAtkNow?"linear-gradient(160deg,#6a0808,#3a0404)":"rgba(60,20,20,.3)", border:`1px solid ${canAtkNow?"#cc2020":"#553030"}`, borderRadius:5, color:canAtkNow?"#ff8080":"#7a5050", fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, letterSpacing:".05em", cursor:canAtkNow?"pointer":"not-allowed", opacity:canAtkNow?1:.6 }}>
-              ⚔ ATTACK · 20⚡{!hasAtkStam&&<span style={{ fontSize:8, marginLeft:5, opacity:.7 }}> low stamina</span>}{hasAtkStam&&!atkInRange&&<span style={{ fontSize:8, marginLeft:5, opacity:.7 }}> out of range</span>}
+              ATTACK
             </button>
           )}
           {/* Move — owned */}
           {ownership==="player"&&!isHqTile&&(
             <button onClick={()=>canMoveNow?(setAtkKey(selKey),setMode("pickMoveCmd"),setPick(null)):null}
               style={{ width:"100%", padding:"9px 0", background:canMoveNow?"linear-gradient(160deg,#083a18,#041e0a)":"rgba(20,40,20,.3)", border:`1px solid ${canMoveNow?"#2a8040":"#2a4a2a"}`, borderRadius:5, color:canMoveNow?"#80d090":"#507050", fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, letterSpacing:".05em", cursor:canMoveNow?"pointer":"not-allowed", opacity:canMoveNow?1:.6 }}>
-              🚶 MOVE · 10⚡{!hasMvStam&&<span style={{ fontSize:8, marginLeft:5, opacity:.7 }}> low stamina</span>}{hasMvStam&&!mvInRange&&<span style={{ fontSize:8, marginLeft:5, opacity:.7 }}> out of range</span>}
+              MOVE
             </button>
           )}
           {/* Move — crew */}
           {ownership==="crew"&&canAtk&&(
             <button onClick={()=>canMoveNow?(setAtkKey(selKey),setMode("pickMoveCmd"),setPick(null)):null}
               style={{ width:"100%", padding:"9px 0", background:canMoveNow?"linear-gradient(160deg,#082038,#041020)":"rgba(20,30,50,.3)", border:`1px solid ${canMoveNow?"#2060a0":"#204060"}`, borderRadius:5, color:canMoveNow?"#60a0e0":"#405060", fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, letterSpacing:".05em", cursor:canMoveNow?"pointer":"not-allowed", opacity:canMoveNow?1:.6 }}>
-              🚶 MOVE · 10⚡
+              MOVE
             </button>
           )}
           {/* Build Fort */}
           {ownership==="player"&&!selTile.isHQ&&(selTile.powerLevel||1)<=9&&!fort&&(
             <button onClick={()=>buildFort?.(selKey,selTile)}
               style={{ width:"100%", padding:"9px 0", background:"linear-gradient(160deg,#3a2808,#1e1004)", border:"1px solid #a07020", borderRadius:5, color:"#f0c060", fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, letterSpacing:".05em", cursor:"pointer" }}>
-              🏯 BUILD FORT
+              BUILD FORT
             </button>
-          )}
-          {/* Secondary */}
-          {ownership==="player"&&(
-            <div style={{ display:"flex", gap:4 }}>
-              {idleCmdsOnSel.some(c=>c.troopSlots?.length>0||c.troopBranch)&&barracksPool>0&&(
-                <button onClick={()=>{ setReinCmd(idleCmdsOnSel.find(c=>c.troopSlots?.length>0||c.troopBranch)); setMode("reinforce"); }} style={{ flex:1, padding:"6px 0", background:"rgba(20,60,160,.2)", border:"1px solid #2060cc", borderRadius:4, color:"#80a0ff", fontFamily:"'Cinzel',serif", fontSize:8, fontWeight:700, cursor:"pointer" }}>🔄 Reinforce</button>
-              )}
-              {idleCmdsOnSel.some(c=>c.troopSlots?.length>0||c.troopBranch)&&(
-                <button onClick={()=>{ setEditArmyCmd(idleCmdsOnSel.find(c=>c.troopSlots?.length>0||c.troopBranch)); setPopupMode("editArmy"); }} style={{ flex:1, padding:"6px 0", background:"rgba(60,50,20,.3)", border:"1px solid #7a6a30", borderRadius:4, color:"#c0a840", fontFamily:"'Cinzel',serif", fontSize:8, fontWeight:700, cursor:"pointer" }}>🔧 Edit Army</button>
-              )}
-              {idleCmdsOnSel.length>0&&!isHqTile&&(
-                <button onClick={()=>{ if(idleCmdsOnSel.length===1){recallStationary(idleCmdsOnSel[0].uid);}else{setPopupMode("recallPick");} }} style={{ flex:1, padding:"6px 0", background:"rgba(180,120,20,.15)", border:"1px solid #c89030", borderRadius:4, color:"#f0c060", fontFamily:"'Cinzel',serif", fontSize:8, fontWeight:700, cursor:"pointer" }}>🏰 Recall</button>
-              )}
-              {!selTile.isHQ&&!deletingTiles[selKey]&&(
-                <button onClick={()=>{ setDeletingTiles(p=>({...p,[selKey]:Date.now()})); setDeletingSecsLeft(p=>({...p,[selKey]:15})); }} style={{ padding:"6px 10px", background:"rgba(120,10,10,.3)", border:"1px solid #cc1010", borderRadius:4, color:"#ff6060", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, cursor:"pointer" }}>✕</button>
-              )}
-            </div>
           )}
           {/* Notes */}
           {ownership==="crew"&&<div style={{ fontSize:7, color:"#2299ff", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>🤝 Crew territory — you can move here freely</div>}
@@ -441,7 +434,7 @@ export default memo(function TilePopup({
       }
       if(!cards.length) return null;
       return (
-        <div style={{ position:"fixed", left:cmdX, top:cmdY, width:CMD_W, zIndex:500, pointerEvents:"auto", display:"flex", flexDirection:"column", gap:6, maxHeight:"70vh", overflowY:"auto", scrollbarWidth:"none", animation:"fadeUp .15s ease" }}>
+        <div style={{ position:"fixed", left:cmdX, top:cmdY, width:CMD_W, zIndex:500, pointerEvents:"auto", display:"flex", flexDirection:"column", gap:6, maxHeight:"70vh", overflowY:"auto", scrollbarWidth:"none", animation:"fadeUp .15s ease", background:"rgba(5,7,11,.97)", border:"1px solid #2a3a2a", borderRadius:8, padding:6, boxShadow:"0 8px 32px rgba(0,0,0,.9)" }}>
           {cards}
         </div>
       );
