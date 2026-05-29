@@ -1764,7 +1764,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlay
 /* ══════════════════════════════════════════════════════════════════════════
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap, forts }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles }, ref) {
 
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
@@ -1775,6 +1775,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const propsFrontRef  = useRef(null);
   const propsBackRef   = useRef(null);
   const marchGfxRef    = useRef(null);
+  const guardGfxRef    = useRef(null);
   const cmdGfxRef      = useRef(null);
   const cmdTextContRef = useRef(null);
   const hqContRef      = useRef(null);
@@ -1984,6 +1985,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     world.addChildAt(fortCont, world.children.indexOf(hqCont));
     fortContRef.current = fortCont;
     const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
+    const guardGfx = new PIXI.Graphics(); world.addChild(guardGfx); guardGfxRef.current = guardGfx;
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
     const cmdGfx = new PIXI.Graphics(); world.addChild(cmdGfx); cmdGfxRef.current = cmdGfx;
     const cmdTextCont = new PIXI.Container(); world.addChild(cmdTextCont); cmdTextContRef.current = cmdTextCont;
@@ -2718,6 +2720,29 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     if (panEndTimer.current) { clearTimeout(panEndTimer.current); panEndTimer.current = null; }
     redrawRef.current?.redrawOverlays();
   }, [mode, mvCmd]);
+
+  // Redraw guard fence overlays when guardedTiles changes
+  useEffect(() => {
+    const gfx = guardGfxRef.current;
+    if (!gfx) return;
+    gfx.clear();
+    if (!guardedTiles || guardedTiles.size === 0) return;
+    for (const [key] of guardedTiles) {
+      const [sc, sr] = key.split(",").map(Number);
+      // Use same iso formula as rest of MapRenderer
+      const wx = (sc - sr) * (TW / 2) + (ROWS * TW / 2);
+      const wy = (sc + sr) * (TH / 2) + TOP_PAD;
+      const hw = TW / 2;
+      const hh = TH / 2;
+      const pts = [wx, wy - hh, wx + hw, wy, wx, wy + hh, wx - hw, wy];
+      gfx.lineStyle(2.5, 0xf0c040, 0.9);
+      gfx.drawPolygon(pts);
+      gfx.lineStyle(0);
+      gfx.beginFill(0xf0c040, 0.07);
+      gfx.drawPolygon(pts);
+      gfx.endFill();
+    }
+  }, [guardedTiles]);
 
   useEffect(() => {
     tilesRef.current = tiles;
