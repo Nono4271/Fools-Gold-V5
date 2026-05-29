@@ -69,7 +69,7 @@ export default memo(function TilePopup({
     return (
       <div style={{ position:"fixed", left:pos.x, top:pos.y, zIndex:500, pointerEvents:"auto" }}>
         <HQPopup
-          selTile={selTile} playerHqKey={playerHqKey} facName={facName}
+          selTile={selTile} playerHqKey={playerHqKey} facName={facName} facKey={facKey}
           cmds={cmds} recallStationary={recallStationary}
           onEnterHQ={() => { onEnterHQ(); setSelKey(null); setPopupMode("main"); }}
           popupMode={popupMode} setPopupMode={setPopupMode}
@@ -243,12 +243,28 @@ export default memo(function TilePopup({
 
         {/* Resource */}
         {selTile.rss&&(
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"5px 10px", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-              <span style={{ fontSize:14 }}>{RSS[selTile.rss].icon}</span>
-              <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:RSS[selTile.rss].col, fontWeight:700 }}>{RSS[selTile.rss].lbl}</span>
-            </div>
-            <span style={{ fontSize:8, color:"#7a8a6a" }}>+{selTile.powerLevel===1?"50/hr (all)":`${({2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600}[selTile.powerLevel]??240)}/hr`}</span>
+          <div style={{ padding:"5px 10px", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
+            {selTile.powerLevel===1 ? (
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"4px 12px" }}>
+                {Object.entries(RSS).map(([key,r])=>(
+                  <div key={key} style={{ display:"flex", alignItems:"center", gap:5 }}>
+                    <span style={{ fontSize:13 }}>{r.icon}</span>
+                    <div>
+                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:r.col, fontWeight:700 }}>{r.lbl}</div>
+                      <div style={{ fontSize:7, color:"#7a8a6a" }}>+50/hr</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ):(
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                  <span style={{ fontSize:14 }}>{RSS[selTile.rss].icon}</span>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:RSS[selTile.rss].col, fontWeight:700 }}>{RSS[selTile.rss].lbl}</span>
+                </div>
+                <span style={{ fontSize:8, color:"#7a8a6a" }}>+{({2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600}[selTile.powerLevel]??240)}/hr</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -324,6 +340,26 @@ export default memo(function TilePopup({
           </div>
         )}
 
+        {/* Garrison card — inside popup, above actions */}
+        {(ownership==="enemy"||isNeutral)&&(liveAiCmd||garrisonCmd)&&(()=>{
+          const ec=liveAiCmd||garrisonCmd;
+          const wavesLeft=Math.max(0,totalWaves-defeatedWaves);
+          return (
+            <div style={{ margin:"0 10px 6px", background:"rgba(120,10,10,.55)", border:"1px solid rgba(220,40,40,.6)", borderRadius:6, padding:"8px 10px", boxShadow:"0 2px 12px rgba(0,0,0,.7)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(200,30,30,.4)", border:"2px solid rgba(220,60,60,.7)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>⚔</div>
+                <div>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#ff7070", fontWeight:700, letterSpacing:".05em" }}>
+                    {liveAiCmd ? (liveAiCmd.n||"Enemy Commander") : "GARRISON"}
+                  </div>
+                  <div style={{ fontSize:8, color:"#ffaaaa", marginTop:2 }}>
+                    Lv{ec?.lvl??"?"} · {wavesLeft}/{totalWaves} waves remaining
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         {/* Action buttons */}
         <div style={{ padding:"8px 10px", display:"flex", flexDirection:"column", gap:5 }}>
           {/* Attack */}
@@ -387,10 +423,6 @@ export default memo(function TilePopup({
           cmds.filter(c=>c.owner!=="player"&&c.tk===selKey&&!c.march).forEach(cmd=>cards.push(
             <CommanderCard key={cmd.uid} cmd={cmd} ownership={ownership} onCmdScreenOpen={onCmdScreenOpen} playerHqKey={playerHqKey}/>
           ));
-        }
-        if(ownership==="enemy"||isNeutral){
-          const ec=liveAiCmd||garrisonCmd;
-          if(ec) cards.push(<CommanderCard key="enemy" cmd={ec} ownership="enemy" isGarrison={!liveAiCmd} totalWaves={totalWaves} defeatedWaves={defeatedWaves}/>);
         }
         if(!cards.length) return null;
         return <div style={{ display:"flex", flexDirection:"column", gap:5, maxHeight:300, overflowY:"auto", scrollbarWidth:"none" }}>{cards}</div>;
