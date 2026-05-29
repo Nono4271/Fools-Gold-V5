@@ -8,17 +8,24 @@ import CommanderCard from "./popup/CommanderCard.jsx";
 import FortPanel from "./popup/FortPanel.jsx";
 import HQPopup from "./popup/HQPopup.jsx";
 
-// Smart positioning hook
+// Smart positioning hook — places popup on the opposite side of screen from the tile
 function usePopupPosition(tileScreenX, tileScreenY, popupW, popupH) {
   const [pos, setPos] = useState(null);
   useEffect(() => {
     if (tileScreenX == null || tileScreenY == null) { setPos(null); return; }
     const sw = window.innerWidth, sh = window.innerHeight;
-    const padding = 8, hudH = 80;
+    const padding = 12, hudH = 90;
     const tileLeft = tileScreenX < sw / 2;
     const tileTop  = tileScreenY < sh / 2;
-    let x = tileLeft ? Math.min(sw - popupW - padding, tileScreenX + 60) : Math.max(padding, tileScreenX - popupW - 60);
-    let y = tileTop  ? Math.min(sh - popupH - padding, tileScreenY + 40) : Math.max(hudH, tileScreenY - popupH - 40);
+    // Opposite horizontal side
+    let x = tileLeft
+      ? sw - popupW - padding                  // tile left → popup far right
+      : padding;                               // tile right → popup far left
+    // Opposite vertical area
+    let y = tileTop
+      ? sh - popupH - padding                  // tile top → popup near bottom
+      : hudH;                                  // tile bottom → popup near top
+    // Clamp
     x = Math.max(padding, Math.min(sw - popupW - padding, x));
     y = Math.max(hudH, Math.min(sh - popupH - padding, y));
     setPos({ x, y });
@@ -215,7 +222,15 @@ export default memo(function TilePopup({
 
   const borderColor = ownership==="player"?"#3a6a3a":ownership==="crew"?"#204080":ownership==="ally"?"#602080":"#802020";
 
+  // Commander card goes on the OPPOSITE side from the tile info popup
+  const sw = window.innerWidth, sh = window.innerHeight;
+  const tileLeft = tileScreenX != null && tileScreenX < sw / 2;
+  const CMD_W = 210;
+  const cmdX = tileLeft ? 12 : sw - CMD_W - 12;
+  const cmdY = Math.max(90, Math.min(sh - 320, (tileScreenY ?? sh / 2) - 100));
+
   return (
+    <>
     <div style={{ position:"fixed", left:pos.x, top:pos.y, width:POPUP_W, zIndex:500, pointerEvents:"auto", display:"flex", flexDirection:"column", gap:6, maxHeight:"80vh", overflowY:"auto", scrollbarWidth:"none", animation:"fadeUp .15s ease" }}>
 
       {/* Tile info card */}
@@ -340,23 +355,21 @@ export default memo(function TilePopup({
           </div>
         )}
 
-        {/* Garrison card — inside popup, above actions */}
+        {/* Garrison row — compact, like siege bar */}
         {(ownership==="enemy"||isNeutral)&&(liveAiCmd||garrisonCmd)&&(()=>{
           const ec=liveAiCmd||garrisonCmd;
           const wavesLeft=Math.max(0,totalWaves-defeatedWaves);
           return (
-            <div style={{ margin:"0 10px 6px", background:"rgba(120,10,10,.55)", border:"1px solid rgba(220,40,40,.6)", borderRadius:6, padding:"8px 10px", boxShadow:"0 2px 12px rgba(0,0,0,.7)" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(200,30,30,.4)", border:"2px solid rgba(220,60,60,.7)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>⚔</div>
-                <div>
-                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#ff7070", fontWeight:700, letterSpacing:".05em" }}>
-                    {liveAiCmd ? (liveAiCmd.n||"Enemy Commander") : "GARRISON"}
-                  </div>
-                  <div style={{ fontSize:8, color:"#ffaaaa", marginTop:2 }}>
-                    Lv{ec?.lvl??"?"} · {wavesLeft}/{totalWaves} waves remaining
-                  </div>
-                </div>
+            <div style={{ padding:"5px 10px", borderBottom:"1px solid rgba(255,255,255,.04)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                <span style={{ fontSize:11 }}>⚔</span>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:"#cc4040", fontWeight:700, letterSpacing:".04em" }}>
+                  {liveAiCmd ? (liveAiCmd.n||"ENEMY") : "GARRISON"}
+                </span>
               </div>
+              <span style={{ fontSize:7, color:"#9a6060", fontFamily:"'Cinzel',serif" }}>
+                Lv{ec?.lvl??"?"} · {wavesLeft}/{totalWaves} waves
+              </span>
             </div>
           );
         })()}
@@ -413,20 +426,26 @@ export default memo(function TilePopup({
         </div>
       </div>
 
-      {/* Commander cards */}
-      {(()=>{
-        const cards=[];
-        cmdsOnSel.forEach(cmd=>cards.push(
-          <CommanderCard key={cmd.uid} cmd={cmd} ownership="player" onCmdScreenOpen={onCmdScreenOpen} recallMarch={recallMarch} recallStationary={recallStationary} setReinCmd={setReinCmd} setMode={setMode} barracksPool={barracksPool} playerHqKey={playerHqKey}/>
-        ));
-        if(ownership==="crew"||ownership==="ally"){
-          cmds.filter(c=>c.owner!=="player"&&c.tk===selKey&&!c.march).forEach(cmd=>cards.push(
-            <CommanderCard key={cmd.uid} cmd={cmd} ownership={ownership} onCmdScreenOpen={onCmdScreenOpen} playerHqKey={playerHqKey}/>
-          ));
-        }
-        if(!cards.length) return null;
-        return <div style={{ display:"flex", flexDirection:"column", gap:5, maxHeight:300, overflowY:"auto", scrollbarWidth:"none" }}>{cards}</div>;
-      })()}
     </div>
+
+    {/* Commander cards — fixed on OPPOSITE side from tile info popup */}
+    {(()=>{
+      const cards=[];
+      cmdsOnSel.forEach(cmd=>cards.push(
+        <CommanderCard key={cmd.uid} cmd={cmd} ownership="player" onCmdScreenOpen={onCmdScreenOpen} recallMarch={recallMarch} recallStationary={recallStationary} setReinCmd={setReinCmd} setMode={setMode} barracksPool={barracksPool} playerHqKey={playerHqKey}/>
+      ));
+      if(ownership==="crew"||ownership==="ally"){
+        cmds.filter(c=>c.owner!=="player"&&c.tk===selKey&&!c.march).forEach(cmd=>cards.push(
+          <CommanderCard key={cmd.uid} cmd={cmd} ownership={ownership} onCmdScreenOpen={onCmdScreenOpen} playerHqKey={playerHqKey}/>
+        ));
+      }
+      if(!cards.length) return null;
+      return (
+        <div style={{ position:"fixed", left:cmdX, top:cmdY, width:CMD_W, zIndex:500, pointerEvents:"auto", display:"flex", flexDirection:"column", gap:6, maxHeight:"70vh", overflowY:"auto", scrollbarWidth:"none", animation:"fadeUp .15s ease" }}>
+          {cards}
+        </div>
+      );
+    })()}
+    </>
   );
 });
