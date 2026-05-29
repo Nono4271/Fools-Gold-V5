@@ -476,13 +476,6 @@ export default memo(function TilePopup({
                 </button>
               );
             })()}
-                    color:hasStam?"#80d090":"#507050",
-                    fontSize:9,fontWeight:700,
-                    cursor:hasStam?"pointer":"not-allowed",opacity:hasStam?1:.6}}>
-                  🚶 Move · 10⚡ {!hasStam && <span style={{fontSize:7}}>low</span>}
-                </button>
-              );
-            })()}
             {selTile.owner==="player" && (() => {
               const candidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
               if (!candidates.length) return null;
