@@ -2030,17 +2030,26 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // HQ: draw only bottom ~70% of diamond (W→S→E), sprite covers the top
+      // HQ: use borderPts for correct size, draw bottom arc + 20% of side edges
       if (tile.isHQ) {
-        const { cx, cy } = isoXY(sc, sr);
-        const elev = 4;
-        const sy2 = cy - elev;
-        const mid = sy2 + TH / 2;
-        selGfx.lineStyle(2.5, 0xffffff, 0.9);
-        selGfx.moveTo(cx - TW/2, mid);
-        selGfx.lineTo(cx, sy2 + TH);
-        selGfx.lineTo(cx + TW/2, mid);
-        selGfx.lineStyle(0);
+        const hqGroup = hqContRef.current?.children?.find(g => g.__hqKey === key);
+        const pts = hqGroup?.__borderPts;
+        if (pts && pts.length >= 8) {
+          // pts = [Nx,Ny, Ex,Ey, Sx,Sy, Wx,Wy]
+          const [Nx,Ny, Ex,Ey, Sx,Sy, Wx,Wy] = pts;
+          const t = 0.2; // 20% of each top edge
+          // NW edge start (W side, 20% toward N)
+          const nwX = Wx + (Nx - Wx) * t, nwY = Wy + (Ny - Wy) * t;
+          // NE edge start (E side, 20% toward N)
+          const neX = Ex + (Nx - Ex) * t, neY = Ey + (Ny - Ey) * t;
+          selGfx.lineStyle(2.5, 0xffffff, 0.9);
+          selGfx.moveTo(nwX, nwY);
+          selGfx.lineTo(Wx, Wy);
+          selGfx.lineTo(Sx, Sy);
+          selGfx.lineTo(Ex, Ey);
+          selGfx.lineTo(neX, neY);
+          selGfx.lineStyle(0);
+        }
         return;
       }
 
