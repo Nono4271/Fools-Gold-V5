@@ -22,7 +22,7 @@ export default memo(function BottomPanel({
   };
 
   return (
-    <div className="panel" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:9000,maxHeight:"50vh",display:"flex",flexDirection:"column",borderRadius:"10px 10px 0 0",animation:"fadeUp .18s ease",boxShadow:"0 -6px 32px rgba(0,0,0,.95)",paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>
+    <div className="panel" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:9000,maxHeight:mode==="reinforce"?"75vh":"50vh",display:"flex",flexDirection:"column",borderRadius:"10px 10px 0 0",animation:"fadeUp .18s ease",boxShadow:"0 -6px 32px rgba(0,0,0,.95)",paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>
 
       {/* Header */}
       <div style={{padding:"9px 14px",borderBottom:"1px solid #221e12",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0,background:"rgba(255,255,255,.025)"}}>
@@ -37,7 +37,7 @@ export default memo(function BottomPanel({
           style={{background:"none",border:"1px solid #2a2a2a",color:"#555",fontSize:10,padding:"2px 10px"}}>✕</button>
       </div>
 
-      <div className="scr" style={{flex:1,overflowY:"auto",padding:"10px 14px"}}>
+      <div className="scr" style={{flex:1,overflowY:"auto",padding:"10px 14px",paddingBottom: mode==="reinforce" ? 70 : 10}}>
 
         {/* ── REINFORCE ── */}
         {mode==="reinforce" && reinCmd && (() => {
@@ -105,13 +105,15 @@ export default memo(function BottomPanel({
                         <div
                           style={{width:"100%",height:36,display:"flex",alignItems:"center",marginBottom:6,cursor:"pointer",touchAction:"none",userSelect:"none"}}
                           onPointerDown={e => {
+                            e.preventDefault();
                             e.currentTarget.setPointerCapture(e.pointerId);
                             const rect = e.currentTarget.getBoundingClientRect();
                             const p = Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
                             setSliderVals(v=>({...v,[sk]:Math.round(p*maxAdd)}));
                           }}
                           onPointerMove={e => {
-                            if (e.buttons===0 && e.pressure===0) return;
+                            e.preventDefault();
+                            if (!(e.buttons > 0 || e.pressure > 0)) return;
                             const rect = e.currentTarget.getBoundingClientRect();
                             const p = Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
                             setSliderVals(v=>({...v,[sk]:Math.round(p*maxAdd)}));
@@ -129,13 +131,7 @@ export default memo(function BottomPanel({
                       <span style={{color:"#5a6a8a"}}>Max: {maxAdd.toLocaleString()}</span>
                       <span>{maxAdd.toLocaleString()}</span>
                     </div>
-                    {sv > 0
-                      ? <button className="btn" onClick={() => startReinforcement(reinCmd, sv)}
-                          style={{width:"100%",padding:"10px",background:"linear-gradient(135deg,rgba(30,60,120,.5),rgba(30,60,120,.2))",border:"1px solid rgba(50,100,220,.5)",color:"#88aaff",fontSize:12,fontWeight:700}}>
-                          🚶 March {sv.toLocaleString()} reinforcements (~{estSecs}s)
-                        </button>
-                      : <div style={{fontSize:8,color:"#4a4a5a",fontFamily:"'Crimson Pro',serif",fontStyle:"italic",textAlign:"center"}}>Slide right to set reinforcement size</div>
-                    }
+                    {sv === 0 && <div style={{fontSize:8,color:"#4a4a5a",fontFamily:"'Crimson Pro',serif",fontStyle:"italic",textAlign:"center"}}>Slide right to set reinforcement size</div>}
                   </div>
                 ) : (
                   <div style={{padding:"8px 10px",background:"rgba(200,80,30,.08)",border:"1px solid rgba(200,80,30,.2)",borderRadius:4,fontSize:9,color:"#cc6030",fontFamily:"'Crimson Pro',serif"}}>
@@ -186,6 +182,22 @@ export default memo(function BottomPanel({
         )}
 
       </div>
+      {/* Sticky reinforce confirm button */}
+      {mode==="reinforce" && (() => {
+        const reinCmd2 = reinCmd;
+        if (!reinCmd2) return null;
+        const sk2 = `rein_${reinCmd2.uid}`;
+        const sv2 = sliderVals[sk2] ?? 0;
+        if (sv2 <= 0) return null;
+        return (
+          <div style={{padding:"10px 14px",paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 10px)",borderTop:"1px solid rgba(255,255,255,.06)",flexShrink:0}}>
+            <button onClick={() => startReinforcement(reinCmd2, sv2)}
+              style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,rgba(30,60,120,.7),rgba(30,60,120,.4))",border:"1px solid rgba(50,100,220,.6)",borderRadius:6,color:"#88aaff",fontSize:12,fontWeight:700,fontFamily:"'Cinzel',serif"}}>
+              🚶 March {sv2.toLocaleString()} reinforcements
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 });
