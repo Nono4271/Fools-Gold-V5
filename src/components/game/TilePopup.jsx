@@ -99,9 +99,17 @@ export default memo(function TilePopup({
     return isTileInRange(selKey, [{ c: sc, r: sr }]);
   }, [selKey, forts, playerHqKey]);
 
+  // ── All popup positions computed unconditionally (Rules of Hooks) ──────────
+  const posHq         = usePopupPosition(tileScreenX, tileScreenY, 200, 220);
+  const posRecall     = usePopupPosition(tileScreenX, tileScreenY, 200, 280);
+  const posReposition = usePopupPosition(tileScreenX, tileScreenY, 200, 280);
+  const posEditArmy   = usePopupPosition(tileScreenX, tileScreenY, 220, 380);
+  const POPUP_W = 270;
+  const posMain       = usePopupPosition(tileScreenX, tileScreenY, POPUP_W, 400);
+
   // HQ popup
   if (popupMode === "hqEnter" || popupMode === "hqSummon") {
-    const pos = usePopupPosition(tileScreenX, tileScreenY, 200, 220);
+    const pos = posHq;
     if (!pos) return null;
     return (
       <div style={{ position:"fixed", left:pos.x, top:pos.y, zIndex:500, pointerEvents:"auto" }}>
@@ -117,7 +125,7 @@ export default memo(function TilePopup({
 
   // Recall pick
   if (popupMode === "recallPick") {
-    const pos = usePopupPosition(tileScreenX, tileScreenY, 200, 280);
+    const pos = posRecall;
     if (!pos) return null;
     return (
       <div style={{ position:"fixed", left:pos.x, top:pos.y, zIndex:500, pointerEvents:"auto", width:200, background:"rgba(5,7,11,.97)", border:"1px solid #3a6a3a", borderRadius:8, overflow:"hidden", boxShadow:"0 8px 32px rgba(0,0,0,.9)" }}>
@@ -144,7 +152,7 @@ export default memo(function TilePopup({
 
   // Reposition pick
   if (popupMode === "repositionPick") {
-    const pos = usePopupPosition(tileScreenX, tileScreenY, 200, 280);
+    const pos = posReposition;
     if (!pos) return null;
     const idleCmds = cmds.filter(c => c.owner==="player" && !c.march && c.tk !== selKey && !c.stranded);
     return (
@@ -174,7 +182,7 @@ export default memo(function TilePopup({
 
   // Edit army
   if (popupMode === "editArmy" && editArmyCmd) {
-    const pos = usePopupPosition(tileScreenX, tileScreenY, 220, 380);
+    const pos = posEditArmy;
     if (!pos) return null;
     const cmd = editArmyCmd;
     const slots = cmd.troopSlots?.length > 0 ? cmd.troopSlots : (cmd.troopBranch ? [{ branch:cmd.troopBranch, troops:cmd.troops||0 }] : []);
@@ -225,8 +233,7 @@ export default memo(function TilePopup({
   }
 
   // ── Main popup ──────────────────────────────────────────────────────────────
-  const POPUP_W = 270;
-  const pos = usePopupPosition(tileScreenX, tileScreenY, POPUP_W, 400);
+  const pos = posMain;
   if (!pos) return null;
 
   const isAiOwned = selTile.owner === "ai";
