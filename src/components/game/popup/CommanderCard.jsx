@@ -1,4 +1,5 @@
 import { memo, useState } from "react";
+import { useGameContext } from "../../../GameContext.js";
 import { FACTION_TROOPS } from "../../../../shared/constants/troops.js";
 
 function tbInfo(tb) {
@@ -79,8 +80,9 @@ function FriendlyCommanderCard({
   playerHqKey, startGuard, cancelGuard,
 }) {
   const [guardPrompt, setGuardPrompt] = useState(null); // "activate" | "cancel"
-  const stam = cmd.stamina ?? 200;
-  const stamPct = Math.max(0, Math.min(100, (stam / 200) * 100));
+  const { staminaMax = 150 } = useGameContext();
+  const stam = cmd.stamina ?? staminaMax;
+  const stamPct = Math.max(0, Math.min(100, (stam / staminaMax) * 100));
   const stamColor = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
   const slots = cmd.troopSlots && cmd.troopSlots.length > 0
     ? cmd.troopSlots
