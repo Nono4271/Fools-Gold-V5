@@ -2695,6 +2695,7 @@ export default function RiseToWar() {
       )}
 
     </div>
+    </GameContext.Provider>
   );
 }
 
@@ -2749,6 +2750,5 @@ function PerfOverlay({ open, onToggle }) {
           <div style={{fontSize:8,color:"#555",marginTop:3}}>🔴&gt;100ms 🟡&gt;33ms 🟢fast</div>
         </div>
     </div>
-    </GameContext.Provider>
   );
 }
