@@ -1199,7 +1199,6 @@ export default function RiseToWar() {
     damageFort,
     emitFortUpdate,
     guardedTiles,
-    setCmds,
   });
 
   useGameLoop({
