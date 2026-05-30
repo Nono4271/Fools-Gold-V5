@@ -433,6 +433,7 @@ export default function RiseToWar() {
   const [reinMarches, setReinMarches] = useState([]);
   const reinMarchesRef = useRef([]);
   useEffect(() => { reinMarchesRef.current = reinMarches; }, [reinMarches]);
+  const _fortsRef = useRef([]); // populated after useForts
   const [sliderVals, setSliderVals] = useState({});
   const [floats,     setFloats]    = useState([]);
   const [winner,     setWinner]    = useState(null);
@@ -517,7 +518,7 @@ export default function RiseToWar() {
   const [showPerf,       setShowPerf]       = useState(false);
 
   // ── Hooks ──
-  useResources({ screen, tilesRef, setRss, bldgs, forts });
+  useResources({ screen, tilesRef, setRss, bldgs, fortsRef: _fortsRef });
 
   // ── Stamina regen: +20/hr = +1 per 3 minutes ─────────────────────────────
   useEffect(() => {
@@ -1166,7 +1167,8 @@ export default function RiseToWar() {
   } = useForts({ playerHqKey, cmds, setCmds, emitFortUpdate });
 
   const fortsRef = useRef(forts);
-  useEffect(() => { fortsRef.current = forts; }, [forts]);
+  useEffect(() => { fortsRef.current = forts; _fortsRef.current = forts; }, [forts]);
+  _fortsRef.current = forts; // sync immediately too
 
   // Recall that also unstations from fort
   const recallFromFort = useCallback((cmdUid, fortId) => {
