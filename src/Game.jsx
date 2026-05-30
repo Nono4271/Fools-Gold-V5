@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { XP_PER_COMMAND } from "./shared/constants/map.js";
+
 import { unstable_batchedUpdates } from "react-dom";
 import { MapRenderer, clearHQCache } from "./MapRenderer";
 
@@ -7,7 +7,7 @@ import { MapRenderer, clearHQCache } from "./MapRenderer";
 import { CSS } from "./constants/css.js";
 import { getFactionAlignment } from "../shared/constants/factions.js";
 import { npcForPowerLevel, factionDefCmdForTile, HDEFS } from "../shared/constants/heroes.js";
-import { HQP, POWER_DEFS, SIEGE_BASE, hqSiegeValue, FORT_LEVELS } from "../shared/constants/map.js";
+import { HQP, POWER_DEFS, SIEGE_BASE, hqSiegeValue, FORT_LEVELS, XP_PER_COMMAND } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST } from "../shared/constants/troops.js";
 import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainingQueueCount, tierFromBranchLevel } from "../shared/constants/buildings.js";
 import { isoXY } from "../shared/constants/geometry.js";
