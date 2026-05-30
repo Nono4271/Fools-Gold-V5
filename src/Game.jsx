@@ -517,7 +517,7 @@ export default function RiseToWar() {
   const [showPerf,       setShowPerf]       = useState(false);
 
   // ── Hooks ──
-  useResources({ screen, tilesRef, setRss, bldgs });
+  useResources({ screen, tilesRef, setRss, bldgs, fortsRef });
 
   // ── Stamina regen: +20/hr = +1 per 3 minutes ─────────────────────────────
   useEffect(() => {
