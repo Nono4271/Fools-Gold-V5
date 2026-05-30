@@ -135,7 +135,6 @@ unstationCmd,
 damageFort,
 emitFortUpdate,
 guardedTiles,
-setCmds,
 }) {
 
 // Server-sync helpers — no-op if server not connected yet
@@ -400,9 +399,7 @@ arrivedAttackers.forEach(async staleCmd => {
         return;
       }
       // Won — guardian is defeated, remove their guard status
-      if (setCmds) {
-        setCmds(p => p.map(c => c.uid === guardian.uid ? { ...c, isGuarding: false, guardedAt: null } : c));
-      }
+      setCmds(p => p.map(c => c.uid === guardian.uid ? { ...c, isGuarding: false, guardedAt: null } : c));
       floaty(`⚔ Guardian defeated!`, "#d0a030", destKey);
       // remainingTroops is declared below; track losses via a local var for now
     }
