@@ -1299,36 +1299,6 @@ export default function RiseToWar() {
         return changed ? next : prev;
       });
     },
-    onReinStep: (updates, now) => {
-      setReinMarches(prev => {
-        let next = [...prev];
-        const arrived = [];
-        updates.forEach(u => {
-          const idx = u.idx;
-          if (u.arrived) {
-            if (!u.returning) arrived.push(next[idx]);
-            next[idx] = null; // mark for removal
-          } else {
-            next[idx] = { ...next[idx], step: u.nextStep, lastStepTime: u.lastStepTime };
-          }
-        });
-        // Apply arrived reinforcements to commanders
-        arrived.forEach(rm => {
-          if (!rm) return;
-          setCmds(p => p.map(c => {
-            if (c.uid !== rm.cmdUid) return c;
-            const newTroops = (c.troops || 0) + rm.amount;
-            // Also update troopSlots if present
-            if (c.troopSlots?.length) {
-              const slots = c.troopSlots.map((sl, i) => i === 0 ? { ...sl, troops: (sl.troops||0) + rm.amount } : sl);
-              return { ...c, troops: newTroops, troopSlots: slots };
-            }
-            return { ...c, troops: newTroops };
-          }));
-        });
-        return next.filter(Boolean);
-      });
-    },
     onAiRssTick:    tickAiRss,
     onAiMarchCheck: tickAiMarch,  // now receives dispatches from worker
     onAiEconTick:   tickAiEcon,
@@ -1403,8 +1373,9 @@ export default function RiseToWar() {
             } else {
               setPlayerCmds(cmds => cmds.map(c => {
                 if (c.uid !== rm.cmdUid) return c;
-                const cap       = cmdCommand(c.lvl||5, bldgs.commandcenter||0, c.commandBonus??0);
-                const newTroops = Math.min(cap, (c.troops||0) + rm.amount);
+                const capCmd    = cmdCommand(c.lvl||5, bldgs.commandcenter||0, c.commandBonus??0);
+                const capTroops = Math.round(capCmd / 0.01); // convert cmd points → small troop equivalent
+                const newTroops = Math.min(capTroops, (c.troops||0) + rm.amount);
                 const overflow  = ((c.troops||0) + rm.amount) - newTroops;
                 if (overflow > 0) {
                   setTroopCounts(counts => {
@@ -2121,7 +2092,7 @@ export default function RiseToWar() {
         aiPlayerIdMap={aiPlayerIdMapRef.current}
         forts={forts}
         guardedTiles={guardedTiles}
-        guardedTileKeys={[...guardedTiles.keys()]}
+        guardedTileKeys={[...guardedTiles.keys()].sort().join(",")}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}

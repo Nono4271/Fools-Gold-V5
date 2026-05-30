@@ -2727,8 +2727,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const gfx = guardGfxRef.current;
       if (!gfx) return;
       gfx.clear();
-      if (!guardedTileKeys || guardedTileKeys.length === 0) return;
-      for (const key of guardedTileKeys) {
+      if (!guardedTileKeys) return;
+      const keys = guardedTileKeys ? guardedTileKeys.split(",").filter(k => k.includes(",") || k.length > 0).filter(k => /^\d+,\d+$/.test(k)) : [];
+      if (!keys.length) return;
+      for (const key of keys) {
         const [sc, sr] = key.split(",").map(Number);
         const wx = (sc - sr) * (TW / 2) + (ROWS * TW / 2);
         const wy = (sc + sr) * (TH / 2) + TOP_PAD;
