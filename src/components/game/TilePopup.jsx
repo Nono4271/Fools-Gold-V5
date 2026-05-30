@@ -201,7 +201,7 @@ export default memo(function TilePopup({
   }
 
   // ── Main popup ──────────────────────────────────────────────────────────────
-  const POPUP_W = 210;
+  const POPUP_W = 270;
   const pos = usePopupPosition(tileScreenX, tileScreenY, POPUP_W, 400);
   if (!pos) return null;
 
@@ -254,7 +254,7 @@ export default memo(function TilePopup({
             </div>
             <div style={{ fontSize:7, color:"#5a5a6a", marginTop:1 }}>
               {selTile.c},{selTile.r}
-              {fort ? <span style={{ marginLeft:5, color:"#d4a030", fontFamily:"'Cinzel',serif", fontWeight:700 }}>Fort Lv{fort.level}</span> : selTile.powerLevel&&!selTile.isHQ&&<span style={{ marginLeft:5, color:POWER_DEFS[selTile.powerLevel]?.color }}>⚡ {POWER_DEFS[selTile.powerLevel]?.label}</span>}
+              {fort ? <span style={{ marginLeft:5, color:"#d4a030", fontFamily:"'Cinzel',serif", fontWeight:700 }}>Fort Lv{fort.level} · {fort.stationedCmdUids?.length||0}/{[2,3,4,5,6][fort.level-1]??2} stationed</span> : selTile.powerLevel&&!selTile.isHQ&&<span style={{ marginLeft:5, color:POWER_DEFS[selTile.powerLevel]?.color }}>⚡ {POWER_DEFS[selTile.powerLevel]?.label}</span>}
             </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:5, flexShrink:0, marginLeft:6 }}>
