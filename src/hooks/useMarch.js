@@ -1,18 +1,16 @@
 import { useEffect, useRef } from "react";
-import { FACTION_TROOPS, FACTION_KEYS } from "../../shared/constants/troops.js";
-import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS, GATE_GARRISON_RESET_MS, FORT_LEVELS } from "../../shared/constants/map.js";
-import { CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
+import { FACTION_TROOPS, FACTION_KEYS, CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
+import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS, GATE_GARRISON_RESET_MS, FORT_LEVELS, calcSiegePower } from "../../shared/constants/map.js";
 import { barracksCapacity } from "../../shared/constants/buildings.js";
 import { adj, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
 import { isTileInRange } from "./useForts.js";
 import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/garrisonUtils.js";
-import { calcSiegePower } from "../../shared/constants/map.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
 import { getPassiveBonuses, getActiveSkills, MAIN_SKILLS } from "../../shared/constants/skills.js";
 
 // Per-class stat growth per level
-const CLASS_GROWTH = {
+export const CLASS_GROWTH = {
   attacker:   { atk: 1.5, foc: 0.2, spd: 0.6 },
   leader:     { atk: 0.8, foc: 0.8, spd: 0.8 },
   support:    { atk: 0.2, foc: 1.3, spd: 0.8 },
@@ -68,7 +66,7 @@ function garrisonResetMs(tile) {
   return 900000; // 15 min for regular tiles (SIEGE_RESET_MS)
 }
 
-function applyXp(cmd, xpGain, floaty) {
+export function applyXp(cmd, xpGain, floaty) {
 let newXp  = (cmd.xp  || 0) + xpGain;
 let newLvl = (cmd.lvl || 5);
 let levelsGained = 0;
@@ -119,6 +117,7 @@ screen, tiles, tileVersion, bldgs, cmds,
 setCmds, setAiCmds, setTiles, patchTile, setWounded, setBarracks,
 setBattles, setBLog, setWinner, setUnseenBattles,
 tilesRef, floaty, gearInventory,
+combatXpMult,
 playerHqKey, aiHqKeys,
 emitTileCapture, emitTileSiege,
 gatePartners,
@@ -348,7 +347,7 @@ arrivedAttackers.forEach(async staleCmd => {
         let u = { ...c, ...clearSlots(c), tk:originKey, march:null, drawTimer:null, drawTile:null, drawOrigin:null };
         if (rp?.length >= 2) u = { ...u, march:{ type:"move", path:rp, step:0, dest:hqKey, origin:originKey, stepMs:sm, lastStepTime:Date.now() } };
         else u = { ...u, tk:hqKey };
-        return { ...u, ...applyXp(u, res.xpGain, floaty) };
+        return { ...u, ...applyXp(u, Math.round(res.xpGain * (combatXpMult ?? 1)), floaty) };
       }));
       setBLog(p => [`❌ ${cmd.n} Lv${cmd.lvl||5} defeated — retreating · ${res.modLabel}`, ...p].slice(0, 99));
       return;
@@ -369,7 +368,7 @@ arrivedAttackers.forEach(async staleCmd => {
     if (wcAi > 0) { setWounded(w => w + wcAi); floaty(`🏥 +${wcAi} wounded`, "#88aaff", destKey); }
     floaty("⚔ Commander routed — garrison defends!", "#d0a030", destKey);
     setCmds(p => p.map(c => c.uid === cmd.uid
-      ? { ...c, troops:troopsAfterAi, ...applySlotLosses(c, res.lost), ...applyXp(c, res.xpGain, floaty) }
+      ? { ...c, troops:troopsAfterAi, ...applySlotLosses(c, res.lost), ...applyXp(c, Math.round(res.xpGain * (combatXpMult ?? 1)), floaty) }
       : c));
     // Fall through to wave loop with updated troops
   }
@@ -487,7 +486,7 @@ arrivedAttackers.forEach(async staleCmd => {
       let u = { ...c, ...clearSlots(c), tk:originKey, march:null, drawTimer:null, drawTile:null, drawOrigin:null };
       if (rp?.length >= 2) u = { ...u, march:{ type:"move", path:rp, step:0, dest:hqKey, origin:originKey, stepMs:sm, lastStepTime:Date.now() } };
       else u = { ...u, tk:hqKey };
-      return { ...u, ...applyXp(u, totalXp, floaty) };
+      return { ...u, ...applyXp(u, Math.round(totalXp * (combatXpMult ?? 1)), floaty) };
     }));
     return;
   }
@@ -498,7 +497,7 @@ arrivedAttackers.forEach(async staleCmd => {
       return { ...c, troops:remainingTroops, ...applySlotLosses(c, cmdTroops(cmd) - remainingTroops),
         tk:destKey, march:null,
         drawTimer:Date.now()+5*60*1000, drawOrigin:originKey, drawTile:destKey,
-        ...applyXp(c, totalXp, floaty) };
+        ...applyXp(c, Math.round(totalXp * (combatXpMult ?? 1)), floaty) };
     }));
     return;
   }
@@ -527,7 +526,7 @@ arrivedAttackers.forEach(async staleCmd => {
     if (c.uid !== cmd.uid) return c;
     const lostTotal = cmdTroops(c) - remainingTroops;
     const updated = { ...c, troops:remainingTroops, ...applySlotLosses(c, lostTotal), tk:finalTk, march:null };
-    return { ...updated, ...applyXp(updated, totalXp, floaty) };
+    return { ...updated, ...applyXp(updated, Math.round(totalXp * (combatXpMult ?? 1)), floaty) };
   }));
   setBLog(p => [`✅ ${cmd.n} Lv${cmd.lvl||5} cleared all ${totalWaves} wave(s) ${tileCaptured?"captured":"siege dealt"}`, ...p].slice(0, 99));
 });
@@ -708,7 +707,7 @@ useEffect(() => {
           if (retreatPath && retreatPath.length >= 2) {
             updated = { ...updated, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:originKey, stepMs, lastStepTime:Date.now() } };
           } else { updated = { ...updated, tk:hqKey }; }
-          return { ...updated, ...applyXp(updated, totalXp, floaty) };
+          return { ...updated, ...applyXp(updated, Math.round(totalXp * (combatXpMult ?? 1)), floaty) };
         }));
         return;
       }
@@ -717,7 +716,7 @@ useEffect(() => {
         // Another draw — stay on tile, reset timer
         setCmds(p => p.map(c => c.uid === cmd.uid
           ? { ...c, troops: remainingTroops, drawTimer: newDrawTimer,
-              ...applyXp(c, totalXp, floaty) }
+              ...applyXp(c, Math.round(totalXp * (combatXpMult ?? 1)), floaty) }
           : c));
         return;
       }
@@ -743,7 +742,7 @@ useEffect(() => {
         if (c.uid !== cmd.uid) return c;
         const updated = { ...c, troops:remainingTroops, tk:finalTk, march:null,
           drawTimer:null, drawTile:null, drawOrigin:null };
-        return { ...updated, ...applyXp(updated, totalXp, floaty) };
+        return { ...updated, ...applyXp(updated, Math.round(totalXp * (combatXpMult ?? 1)), floaty) };
       }));
       setBLog(p => [`✅ ${cmd.n} ${tileCaptured?"captured":"siege dealt"} after rematch`, ...p].slice(0, 99));
     });
@@ -833,7 +832,7 @@ arrivedAI.forEach(async cmd => {
       } else { updated = { ...updated, tk:getAiHqKey(cmd) }; }
     }
     // Bug 20 fix: use applyXp so AI commanders gain stat growth and Lv25 bonuses, same as player
-    return { ...updated, ...applyXp(updated, res.xpGain, null) };
+    return { ...updated, ...applyXp(updated, Math.round(res.xpGain * (combatXpMult ?? 1)), null) };
   }));
   setBLog(p => [`${res.won?"🔴":"✅"} ENEMY ${cmd.n} Lv${cmd.lvl||5} ${res.won?"captured":"repelled"} tile`, ...p].slice(0, 99));
 });

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { barracksCapacity, trainRate, trainingQueueCount } from "../../shared/constants/buildings.js";
 
-export function useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue }) {
+export function useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue, trainingSpeedMult = 1 }) {
 
   const bldgsRef        = useRef(bldgs);
   const woundedQueueRef = useRef(woundedQueue);
@@ -58,7 +58,7 @@ export function useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, 
       setTrainingQueues(queues => {
         if (!queues || queues.length === 0) return queues;
 
-        const rate       = trainRate(b.training || 0);
+        const rate       = trainRate(b.training || 0) * trainingSpeedMult;
         const perQueue   = Math.max(1, Math.floor(rate / queues.length));
         const cap        = barracksCapacity(b.barracks || 0);
 

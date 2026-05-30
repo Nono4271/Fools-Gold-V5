@@ -27,7 +27,7 @@ export function buildAnchors(playerHqKey, forts) {
   return anchors;
 }
 
-export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate }) {
+export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax = 10 }) {
   // forts: array of { id, tileKey, level, stationedCmdUids, siege, siegeMax, resetAt }
   const [forts, setForts] = useState([]);
   const fortsRef = useRef(forts);
@@ -40,6 +40,7 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate }) {
     if (tile.isHQ) return { ok: false, reason: "Cannot build on HQ" };
     if ((tile.powerLevel || 1) >= 10) return { ok: false, reason: "Cannot build on P10+ tiles" };
     if (fortsRef.current.some(f => f.tileKey === tileKey)) return { ok: false, reason: "Fort already exists here" };
+    if (fortsRef.current.length >= fortMax) return { ok: false, reason: `Fort limit reached (${fortMax})` };
 
     const id = `fort_${tileKey}_${Date.now()}`;
     const levelDef = FORT_LEVELS[0];
