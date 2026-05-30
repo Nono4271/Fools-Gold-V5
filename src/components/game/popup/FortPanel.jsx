@@ -13,11 +13,15 @@ export default memo(function FortPanel({
   const barColor = siegePct > 66 ? "#3daa60" : siegePct > 33 ? "#d0a030" : "#cc3030";
   const stationedCount = fort.stationedCmdUids?.length || 0;
 
-  // Build slot grid
-  const slots = Array.from({ length: levelDef.capacity }, (_, i) => ({
-    filled: i < stationedCount,
-    uid: fort.stationedCmdUids?.[i] ?? null,
-  }));
+  const MAX_SLOTS = 6;
+
+  // Always show all 6 slots; slots beyond levelDef.capacity are locked
+  const slots = Array.from({ length: MAX_SLOTS }, (_, i) => {
+    const unlocked = i < levelDef.capacity;
+    const uid = unlocked ? (fort.stationedCmdUids?.[i] ?? null) : null;
+    const cmd = uid ? (cmds || []).find(c => c.uid === uid) : null;
+    return { unlocked, uid, cmd };
+  });
 
   const idleCmds = (cmds || []).filter(c =>
     c.owner === "player" && !c.march && c.tk !== selKey && !c.stranded
@@ -37,22 +41,34 @@ export default memo(function FortPanel({
           🏯 FORT — LV{fort.level}
         </span>
         <span style={{ fontSize: 7, color: "#a07828", fontFamily: "'Cinzel',serif" }}>
-          {stationedCount}/{levelDef.capacity} stationed
+          {stationedCount}/{levelDef.capacity} stationed · Lv{fort.level}
         </span>
       </div>
 
-      {/* Commander capacity slot grid */}
+      {/* Commander capacity slot grid — always 6 slots */}
       <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
         {slots.map((slot, i) => (
           <div key={i} style={{
-            flex: 1, height: 32, borderRadius: 4,
-            background: slot.filled ? "rgba(240,192,64,.15)" : "rgba(30,24,16,.6)",
-            border: `1px solid ${slot.filled ? "rgba(240,192,64,.4)" : "rgba(80,60,20,.3)"}`,
+            flex: 1, aspectRatio: "1", borderRadius: 5,
+            background: !slot.unlocked
+              ? "rgba(20,16,10,.8)"
+              : slot.cmd
+                ? "rgba(240,192,64,.15)"
+                : "rgba(30,24,16,.5)",
+            border: `1px solid ${!slot.unlocked ? "rgba(50,40,20,.4)" : slot.cmd ? "rgba(240,192,64,.5)" : "rgba(100,80,30,.3)"}`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: slot.filled ? 16 : 12,
-            color: slot.filled ? "#f0c040" : "#3a2a10",
+            overflow: "hidden", position: "relative",
           }}>
-            {slot.filled ? "👤" : "🔒"}
+            {!slot.unlocked ? (
+              <span style={{ fontSize: 12, opacity: 0.4 }}>🔒</span>
+            ) : slot.cmd ? (
+              slot.cmd.bust
+                ? <img src={slot.cmd.bust} alt={slot.cmd.n}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : <span style={{ fontSize: 18 }}>{slot.cmd.icon ?? "👤"}</span>
+            ) : (
+              <span style={{ fontSize: 10, opacity: 0.25, color: "#c8a040" }}>+</span>
+            )}
           </div>
         ))}
       </div>
