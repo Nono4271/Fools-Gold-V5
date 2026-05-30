@@ -465,7 +465,7 @@ export default memo(function TilePopup({
 
         {/* Tactics drawer — inline confirm states */}
         {tacticsOpen&&ownership==="player"&&!selTile.isHQ&&(()=>{
-          // Quick Gather confirm
+          // Harvest Pulse confirm
           if (quickGatherConfirm) return (
             <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(4,8,4,.97)", border:"1px solid #44aa44", borderRadius:8, zIndex:20, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:12 }}>
               <div style={{ fontSize:18 }}>🌾</div>
