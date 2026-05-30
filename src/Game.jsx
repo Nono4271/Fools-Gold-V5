@@ -414,6 +414,12 @@ export default function RiseToWar() {
     tomesUnspentPoints, setTomesUnspentPoints,
   } = useTomes({ screen, powerPerHrRef });
 
+  // ── Tome node state — must be declared before tome-derived constants ──────
+  const [dragonEggs,      setDragonEggs]      = useState(20);
+  const [tomesNodeLevels, setTomesNodeLevels] = useState({});
+  const [longMarchReady,  setLongMarchReady]  = useState(false);
+  const [quickMarchReady, setQuickMarchReady] = useState(false);
+
   // ── Tome-derived constants ────────────────────────────────────────────────
   const tomeNodeLv = (id) => tomesNodeLevels[id] ?? 0;
   const tileCap        = 60 + tomeNodeLv("tl") * 15;          // Adventurer's Trek
@@ -462,10 +468,6 @@ export default function RiseToWar() {
   const [trainSlider,    setTrainSlider]   = useState(100);
 
   const [bLog,          setBLog]          = useState([]);
-  const [dragonEggs,      setDragonEggs]      = useState(20);
-  const [tomesNodeLevels, setTomesNodeLevels] = useState({});
-  const [longMarchReady,  setLongMarchReady]  = useState(false); // one-time use, consumed on march
-  const [quickMarchReady, setQuickMarchReady] = useState(false); // one-time use, consumed on march
   const [battles,       setBattles]       = useState([]);
   const [unseenBattles, setUnseenBattles] = useState(0);
   const [showBattleLog, setShowBattleLog] = useState(false);
