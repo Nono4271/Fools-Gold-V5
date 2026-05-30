@@ -266,8 +266,8 @@ export default memo(function TilePopup({
           </div>
         </div>
 
-        {/* Resource */}
-        {selTile.rss&&(
+        {/* Resource — hidden for fort tiles */}
+        {selTile.rss&&!fort&&(
           <div style={{ padding:"8px 10px", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
             {selTile.powerLevel===1 ? (
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"6px 12px" }}>
