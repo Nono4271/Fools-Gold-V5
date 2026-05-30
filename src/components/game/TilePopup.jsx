@@ -80,12 +80,7 @@ export default memo(function TilePopup({
   const [trainingOpen,       setTrainingOpen]       = useState(false);
   const [trainingCmdUid,     setTrainingCmdUid]     = useState(null);
   const [trainingTicks,      setTrainingTicks]      = useState(1);
-  if (!selKey || !selTile) return null;
-
-  const ownership = getTileOwnership(selTile, facKey, crewmatePlayerIds);
-  const fort = getFortAtTile?.(selKey);
-  const isHqTile = selKey === playerHqKey;
-
+  // ── All hooks must be called unconditionally (Rules of Hooks) ───────────────
   const onCmdScreenOpen = useCallback((uid) => {
     setCmdScreenUid?.(uid);
     setCmdScreenOpen?.(true);
@@ -99,13 +94,19 @@ export default memo(function TilePopup({
     return isTileInRange(selKey, [{ c: sc, r: sr }]);
   }, [selKey, forts, playerHqKey]);
 
-  // ── All popup positions computed unconditionally (Rules of Hooks) ──────────
+  const POPUP_W = 270;
   const posHq         = usePopupPosition(tileScreenX, tileScreenY, 200, 220);
   const posRecall     = usePopupPosition(tileScreenX, tileScreenY, 200, 280);
   const posReposition = usePopupPosition(tileScreenX, tileScreenY, 200, 280);
   const posEditArmy   = usePopupPosition(tileScreenX, tileScreenY, 220, 380);
-  const POPUP_W = 270;
   const posMain       = usePopupPosition(tileScreenX, tileScreenY, POPUP_W, 400);
+
+  // ── Early return AFTER all hooks ─────────────────────────────────────────
+  if (!selKey || !selTile) return null;
+
+  const ownership = getTileOwnership(selTile, facKey, crewmatePlayerIds);
+  const fort = getFortAtTile?.(selKey);
+  const isHqTile = selKey === playerHqKey;
 
   // HQ popup
   if (popupMode === "hqEnter" || popupMode === "hqSummon") {
