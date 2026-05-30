@@ -98,11 +98,32 @@ export default memo(function BottomPanel({
                       <span>SEND REINFORCEMENTS</span>
                       <span style={{color:sv>0?"#88aaff":"#4a5a7a"}}>{sv.toLocaleString()} troops{sv>0?` · ~${estSecs}s`:""}</span>
                     </div>
-                    <input type="range" min={0} max={maxAdd} value={sv}
-                      onChange={e => setSliderVals(v=>({...v,[sk]:+e.target.value}))}
-                      onInput={e => setSliderVals(v=>({...v,[sk]:+e.target.value}))}
-                      onTouchMove={e => { const t=e.touches[0]; const el=e.currentTarget; const rect=el.getBoundingClientRect(); const pct=Math.max(0,Math.min(1,(t.clientX-rect.left)/rect.width)); setSliderVals(v=>({...v,[sk]:Math.round(pct*maxAdd)})); }}
-                      style={{width:"100%",accentColor:"#3366cc",marginBottom:6,touchAction:"none"}}/>
+                    {/* Custom touch-friendly slider */}
+                    {(() => {
+                      const pct = maxAdd > 0 ? sv / maxAdd : 0;
+                      return (
+                        <div
+                          style={{width:"100%",height:36,display:"flex",alignItems:"center",marginBottom:6,cursor:"pointer",touchAction:"none",userSelect:"none"}}
+                          onPointerDown={e => {
+                            e.currentTarget.setPointerCapture(e.pointerId);
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const p = Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+                            setSliderVals(v=>({...v,[sk]:Math.round(p*maxAdd)}));
+                          }}
+                          onPointerMove={e => {
+                            if (e.buttons===0 && e.pressure===0) return;
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const p = Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+                            setSliderVals(v=>({...v,[sk]:Math.round(p*maxAdd)}));
+                          }}
+                        >
+                          <div style={{position:"relative",width:"100%",height:8,background:"rgba(255,255,255,.1)",borderRadius:4,overflow:"visible"}}>
+                            <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${pct*100}%`,background:"linear-gradient(90deg,#2050aa,#4080ff)",borderRadius:4,pointerEvents:"none"}}/>
+                            <div style={{position:"absolute",top:"50%",left:`${pct*100}%`,transform:"translate(-50%,-50%)",width:22,height:22,background:"#4080ff",border:"3px solid #fff",borderRadius:"50%",boxShadow:"0 2px 8px rgba(0,0,0,.5)",pointerEvents:"none"}}/>
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:7,color:"#4a4a5a",marginBottom:10}}>
                       <span>0</span>
                       <span style={{color:"#5a6a8a"}}>Max: {maxAdd.toLocaleString()}</span>
