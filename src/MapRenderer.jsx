@@ -1982,9 +1982,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     // Fort container — sits above tiles, below HQ
     const fortCont = new PIXI.Container();
+    const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
     world.addChildAt(fortCont, world.children.indexOf(hqCont));
     fortContRef.current = fortCont;
-    const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
     const guardGfx = new PIXI.Graphics(); world.addChild(guardGfx); guardGfxRef.current = guardGfx;
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
     const cmdGfx = new PIXI.Graphics(); world.addChild(cmdGfx); cmdGfxRef.current = cmdGfx;
