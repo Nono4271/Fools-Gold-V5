@@ -1982,9 +1982,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     // Fort container — sits above tiles, below HQ
     const fortCont = new PIXI.Container();
-    const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
     world.addChildAt(fortCont, world.children.indexOf(hqCont));
     fortContRef.current = fortCont;
+    const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
     const guardGfx = new PIXI.Graphics(); world.addChild(guardGfx); guardGfxRef.current = guardGfx;
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
     const cmdGfx = new PIXI.Graphics(); world.addChild(cmdGfx); cmdGfxRef.current = cmdGfx;
@@ -2030,16 +2030,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // HQ: use the exact same polygon as the colored border — guaranteed match.
+      // HQ: draw base diamond only (sprite renders above it)
       if (tile.isHQ) {
-        // Find the HQ group in hqCont and reuse its pre-computed border points
-        const hqGroup = hqContRef.current?.children?.find(g => g.__hqKey === key);
-        const pts = hqGroup?.__borderPts;
-        if (pts) {
-          selGfx.lineStyle(3, 0xffffff, 0.95);
-          selGfx.drawPolygon(pts);
-          selGfx.lineStyle(0);
-        }
+        const { cx, cy } = isoXY(sc, sr);
+        const elev = 4;
+        const sy2 = cy - elev;
+        const mid = sy2 + TH / 2;
+        selGfx.lineStyle(2.5, 0xffffff, 0.9);
+        selGfx.drawPolygon([cx, sy2, cx+TW/2, mid, cx, sy2+TH, cx-TW/2, mid]);
+        selGfx.lineStyle(0);
         return;
       }
 
@@ -2051,10 +2050,20 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
       const mid = sy2 + TH / 2;
-      const TOP = [cx, sy2, cx+TW/2, mid, cx, sy2+TH, cx-TW/2, mid];
-      selGfx.lineStyle(2.5, 0xffffff, 0.9);
-      selGfx.drawPolygon(TOP);
-      selGfx.lineStyle(0);
+      const hasFortOnTile = (forts || []).some(f => f.tileKey === key);
+      if (hasFortOnTile) {
+        // Fort tile: draw only bottom ~70% of diamond (W→S→E), sprite covers the top
+        selGfx.lineStyle(2.5, 0xffffff, 0.9);
+        selGfx.moveTo(cx - TW/2, mid);   // W
+        selGfx.lineTo(cx, sy2 + TH);     // S
+        selGfx.lineTo(cx + TW/2, mid);   // E
+        selGfx.lineStyle(0);
+      } else {
+        const TOP = [cx, sy2, cx+TW/2, mid, cx, sy2+TH, cx-TW/2, mid];
+        selGfx.lineStyle(2.5, 0xffffff, 0.9);
+        selGfx.drawPolygon(TOP);
+        selGfx.lineStyle(0);
+      }
     }
 
     function getViewBounds(buf = 4) {
