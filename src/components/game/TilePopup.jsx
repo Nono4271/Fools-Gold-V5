@@ -2,7 +2,6 @@ import { memo, useState, useCallback, useEffect } from "react";
 import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 import { RSS, POWER_DEFS, SIEGE_BASE, HQP, FORT_LEVELS } from "../../../shared/constants/map.js";
 import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
-import { FAC } from "../../../shared/constants/factions.js";
 import { isTileInRange } from "../../hooks/useForts.js";
 import { getTileOwnership } from "./popup/TileInfoPanel.jsx";
 import CommanderCard from "./popup/CommanderCard.jsx";
@@ -83,7 +82,7 @@ export default memo(function TilePopup({
     return (
       <div style={{ position:"fixed", left:pos.x, top:pos.y, zIndex:500, pointerEvents:"auto" }}>
         <HQPopup
-          selTile={selTile} playerHqKey={playerHqKey} facName={facName} facKey={facKey} facDisplayName={FAC[facKey]?.n}
+          selTile={selTile} playerHqKey={playerHqKey} facName={facName} facKey={facKey} facDisplayName={({player:"Your Faction",pirates:"Pirates",wizards:"Wizards",orcs:"Orcs",dragons:"Dragons",holyknights:"Holy Knights",nightcreatures:"Creatures of the Night",coldborns:"Coldborns",ashen_dead:"Ashen Dead"})[facKey]}
           cmds={cmds} recallStationary={recallStationary}
           onEnterHQ={() => { onEnterHQ(); setSelKey(null); setPopupMode("main"); }}
           popupMode={popupMode} setPopupMode={setPopupMode}
