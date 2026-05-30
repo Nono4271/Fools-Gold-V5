@@ -2030,15 +2030,22 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // HQ: draw base diamond only (sprite renders above it)
+      // HQ: use full border polygon so outline wraps the whole HQ (sprite draws on top)
       if (tile.isHQ) {
-        const { cx, cy } = isoXY(sc, sr);
-        const elev = 4;
-        const sy2 = cy - elev;
-        const mid = sy2 + TH / 2;
-        selGfx.lineStyle(2.5, 0xffffff, 0.9);
-        selGfx.drawPolygon([cx, sy2, cx+TW/2, mid, cx, sy2+TH, cx-TW/2, mid]);
-        selGfx.lineStyle(0);
+        const hqGroup = hqContRef.current?.children?.find(g => g.__hqKey === key);
+        const pts = hqGroup?.__borderPts;
+        if (pts) {
+          selGfx.lineStyle(3, 0xffffff, 0.95);
+          selGfx.drawPolygon(pts);
+          selGfx.lineStyle(0);
+        } else {
+          // Fallback if hqGroup not ready yet
+          const { cx, cy } = isoXY(sc, sr);
+          const elev = 4; const sy2 = cy - elev; const mid = sy2 + TH / 2;
+          selGfx.lineStyle(2.5, 0xffffff, 0.9);
+          selGfx.drawPolygon([cx, sy2, cx+TW/2, mid, cx, sy2+TH, cx-TW/2, mid]);
+          selGfx.lineStyle(0);
+        }
         return;
       }
 
@@ -2050,7 +2057,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const { cx, cy } = isoXY(sc, sr);
       const sy2 = cy - elev;
       const mid = sy2 + TH / 2;
-      const hasFortOnTile = (forts || []).some(f => f.tileKey === key);
+      const hasFortOnTile = _fortsSetRef.current.has(key);
       if (hasFortOnTile) {
         // Fort tile: draw only bottom ~70% of diamond (W→S→E), sprite covers the top
         selGfx.lineStyle(2.5, 0xffffff, 0.9);
@@ -2732,6 +2739,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
   // Guard fence sprites — one per guarded tile, using isoXY like forts
   const _guardSpriteMap = useRef(new Map());
+  const _fortsSetRef = useRef(new Set());
+  useEffect(() => {
+    _fortsSetRef.current = new Set((forts || []).map(f => f.tileKey));
+  }, [forts]);
+
   useEffect(() => {
     const world = worldRef.current;
     const gfx   = guardGfxRef.current;
