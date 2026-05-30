@@ -1174,6 +1174,44 @@ export default function RiseToWar() {
     recallStationary(cmdUid);
   }, [unstationCmd]);
 
+  // ── Guard feature ─────────────────────────────────────────────────────────
+  const startGuard = useCallback((uid) => {
+    const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
+    if (!cmd || cmd.march) return;
+    const cost = 10;
+    if ((cmd.stamina ?? 200) < cost) { floaty("⚡ Not enough stamina!", "#cc8030", cmd.tk); return; }
+    setCmds(p => p.map(c => c.uid===uid ? { ...c, isGuarding:true, guardedAt:Date.now(), stamina:Math.max(0,(c.stamina??200)-cost) } : c));
+  }, [floaty]);
+
+  const cancelGuard = useCallback((uid) => {
+    setCmds(p => p.map(c => c.uid===uid ? { ...c, isGuarding:false, guardedAt:null } : c));
+  }, []);
+
+  // Set of tile keys currently being guarded (player/crew tiles in 3x3 around each guarding cmd)
+  const guardedTiles = useMemo(() => {
+    const guarded = new Map();
+    for (const cmd of playerCmds) {
+      if (!cmd.isGuarding || cmd.march) continue;
+      const [cc, cr] = cmd.tk.split(",").map(Number);
+      for (let dr=-1; dr<=1; dr++) {
+        for (let dc=-1; dc<=1; dc++) {
+          const key = `${cc+dc},${cr+dr}`;
+          const tile = tiles[key];
+          if (!tile) continue;
+          const isOwned = tile.facKey === facKey;
+          const isCrew = tile.ownerPlayerId && crewmatePlayerIds.has(tile.ownerPlayerId);
+          if (!isOwned && !isCrew) continue;
+          if (!guarded.has(key)) guarded.set(key, []);
+          guarded.get(key).push(cmd);
+        }
+      }
+    }
+    for (const [k, arr] of guarded) {
+      arr.sort((a,b) => (b.guardedAt??0) - (a.guardedAt??0));
+    }
+    return guarded;
+  }, [playerCmds, tiles, facKey, crewmatePlayerIds]);
+
   useMarch({
     screen, tiles, tileVersion, bldgs,
     cmds: cmdsRef.current,
@@ -1575,45 +1613,6 @@ export default function RiseToWar() {
 
   // ── Recall popup state (for commanders stationed at a fort) ─────────────────
   const [recallPopup, setRecallPopup] = useState(null); // { uid, fortId, fortTileKey }
-
-  // ── Guard feature ─────────────────────────────────────────────────────────
-  const startGuard = useCallback((uid) => {
-    const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
-    if (!cmd || cmd.march) return;
-    const cost = 10;
-    if ((cmd.stamina ?? 200) < cost) { floaty("⚡ Not enough stamina!", "#cc8030", cmd.tk); return; }
-    setCmds(p => p.map(c => c.uid===uid ? { ...c, isGuarding:true, guardedAt:Date.now(), stamina:Math.max(0,(c.stamina??200)-cost) } : c));
-  }, [floaty]);
-
-  const cancelGuard = useCallback((uid) => {
-    setCmds(p => p.map(c => c.uid===uid ? { ...c, isGuarding:false, guardedAt:null } : c));
-  }, []);
-
-  // Set of tile keys currently being guarded (player/crew tiles in 3x3 around each guarding cmd)
-  const guardedTiles = useMemo(() => {
-    const guarded = new Map(); // tileKey -> [cmd, ...] sorted most recent first
-    for (const cmd of playerCmds) {
-      if (!cmd.isGuarding || cmd.march) continue;
-      const [cc, cr] = cmd.tk.split(",").map(Number);
-      for (let dr=-1; dr<=1; dr++) {
-        for (let dc=-1; dc<=1; dc++) {
-          const key = `${cc+dc},${cr+dr}`;
-          const tile = tiles[key];
-          if (!tile) continue;
-          const isOwned = tile.facKey === facKey;
-          const isCrew = tile.ownerPlayerId && crewmatePlayerIds.has(tile.ownerPlayerId);
-          if (!isOwned && !isCrew) continue;
-          if (!guarded.has(key)) guarded.set(key, []);
-          guarded.get(key).push(cmd);
-        }
-      }
-    }
-    // Sort each tile's guardians: most recent guardedAt first
-    for (const [k, arr] of guarded) {
-      arr.sort((a,b) => (b.guardedAt??0) - (a.guardedAt??0));
-    }
-    return guarded;
-  }, [playerCmds, tiles, facKey, crewmatePlayerIds]);
 
   const recallStationary = useCallback((uid) => {
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
