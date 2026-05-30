@@ -1,9 +1,8 @@
 import { memo } from "react";
 import { hqSiegeValue } from "../../../../shared/constants/map.js";
-import { FAC } from "../../../../shared/constants/factions.js";
 
 export default memo(function HQPopup({
-  selTile, playerHqKey, facName, facKey,
+  selTile, playerHqKey, facName, facKey, facDisplayName,
   cmds, recallStationary,
   onEnterHQ, popupMode, setPopupMode,
 }) {
@@ -106,7 +105,7 @@ export default memo(function HQPopup({
           <span style={{ fontSize: 16 }}>🏴‍☠️</span>
           <div>
             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#90c870", fontWeight: 700 }}>{facName}</div>
-            <div style={{ fontSize: 7, color: "#5a7a5a" }}>{FAC[facKey]?.n ?? facName}</div>
+            <div style={{ fontSize: 7, color: "#5a7a5a" }}>{facDisplayName ?? facName}</div>
           </div>
         </div>
       )}
