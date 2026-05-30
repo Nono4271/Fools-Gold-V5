@@ -56,7 +56,7 @@ export default memo(function BottomPanel({
           const inTransit = (reinMarches||[]).filter(r => r.cmdUid === reinCmd.uid && !r.returning)
                               .reduce((s, r) => s + r.amount, 0);
           const inTransitCmd = inTransit * (COMMAND_COST["small"] ?? 0.01); // approximate; fine for display
-          const room    = Math.max(0, Math.floor((cap - curCmd - inTransitCmd) / (COMMAND_COST["small"] ?? 0.01)));
+          const room    = Math.max(0, Math.round((cap - curCmd - inTransitCmd) / (COMMAND_COST["small"] ?? 0.01)));
           const maxAdd  = Math.min(room, barracksPool);
           const sk      = `rein_${reinCmd.uid}`;
           const sv      = Math.min(sliderVals[sk]??0, maxAdd);
@@ -100,7 +100,9 @@ export default memo(function BottomPanel({
                     </div>
                     <input type="range" min={0} max={maxAdd} value={sv}
                       onChange={e => setSliderVals(v=>({...v,[sk]:+e.target.value}))}
-                      style={{width:"100%",accentColor:"#3366cc",marginBottom:6}}/>
+                      onInput={e => setSliderVals(v=>({...v,[sk]:+e.target.value}))}
+                      onTouchMove={e => { const t=e.touches[0]; const el=e.currentTarget; const rect=el.getBoundingClientRect(); const pct=Math.max(0,Math.min(1,(t.clientX-rect.left)/rect.width)); setSliderVals(v=>({...v,[sk]:Math.round(pct*maxAdd)})); }}
+                      style={{width:"100%",accentColor:"#3366cc",marginBottom:6,touchAction:"none"}}/>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:7,color:"#4a4a5a",marginBottom:10}}>
                       <span>0</span>
                       <span style={{color:"#5a6a8a"}}>Max: {maxAdd.toLocaleString()}</span>

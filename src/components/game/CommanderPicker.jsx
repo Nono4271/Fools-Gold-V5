@@ -16,7 +16,7 @@ function tbInfo(tb) {
 
 export default memo(function CommanderPicker({
   atkKey, tiles, cmdsAdjToSel, pickCmd, setPick,
-  setMode, setAtkKey, setSelKey, setPopupPos, startMarch,
+  mode, setMode, setAtkKey, setSelKey, setPopupPos, startMarch,
 }) {
   if (!atkKey) return null;
   const atkTile = tiles[atkKey];
@@ -163,7 +163,7 @@ export default memo(function CommanderPicker({
             }
           }}
           style={{width:"100%",padding:"13px",background:pickCmd?"linear-gradient(135deg,#881010,#cc2020,#881010)":"rgba(255,255,255,.02)",border:pickCmd?"2px solid #e03030":"2px solid #1a1a1a",color:pickCmd?"#f0c040":"#2a2a2a",fontSize:14,fontWeight:700,letterSpacing:".1em",boxShadow:pickCmd?"0 0 16px rgba(200,30,30,.45)":"none",transition:"all .2s",borderRadius:5}}>
-          {pickCmd ? `⚔ MARCH! — ${pickCmd.n}  ·  20⚡` : "Select a commander"}
+          {pickCmd ? (mode==="pickAttackCmd" ? `⚔ ATTACK — ${pickCmd.n} · 20⚡` : `🚶 MOVE — ${pickCmd.n} · 10⚡`) : "Select a commander"}
         </button>
       </div>
     </div>
