@@ -386,10 +386,10 @@ arrivedAttackers.forEach(async staleCmd => {
         setBattles(p => [enriched, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
       }
       if (!gres.won && !gres.isDraw) {
-        // Attacker defeated by guardian — retreat
+        // Attacker defeated by guardian — retreat using bfsPath
         const stepMs2 = marchStepMs(cmdMarchSpd(cmd, boostedCmd));
-        const rp = await findPath(destKey, hqKey);
-        setCmds?.(p => p.map(c => c.uid === cmd.uid ? { ...c,
+        const rp = bfsPath(destKey, hqKey);
+        setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c,
           march: rp && rp.length > 1
             ? { type:"retreat", path:rp, step:0, dest:hqKey, origin:destKey, stepMs:stepMs2, lastStepTime:Date.now() }
             : null,
