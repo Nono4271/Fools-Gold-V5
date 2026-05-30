@@ -1,7 +1,6 @@
 import { memo, useState, useCallback, useEffect } from "react";
-import { XP_PER_COMMAND } from "../../shared/constants/map.js";
 import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
-import { RSS, POWER_DEFS, SIEGE_BASE, HQP, FORT_LEVELS } from "../../../shared/constants/map.js";
+import { RSS, POWER_DEFS, SIEGE_BASE, HQP, FORT_LEVELS, XP_PER_COMMAND } from "../../../shared/constants/map.js";
 import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
 import { isTileInRange } from "../../hooks/useForts.js";
 import { getTileOwnership } from "./popup/TileInfoPanel.jsx";
