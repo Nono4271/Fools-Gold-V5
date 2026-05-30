@@ -2728,7 +2728,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       if (!gfx) return;
       gfx.clear();
       if (!guardedTileKeys) return;
-      const keys = guardedTileKeys ? guardedTileKeys.split(",").filter(k => k.includes(",") || k.length > 0).filter(k => /^\d+,\d+$/.test(k)) : [];
+      const keys = guardedTileKeys ? guardedTileKeys.split("|").filter(k => k.length > 0) : [];
       if (!keys.length) return;
       for (const key of keys) {
         const [sc, sr] = key.split(",").map(Number);

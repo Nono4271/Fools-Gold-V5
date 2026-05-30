@@ -1198,7 +1198,7 @@ export default function RiseToWar() {
           const key = `${cc+dc},${cr+dr}`;
           const tile = tiles[key];
           if (!tile) continue;
-          const isOwned = tile.facKey === facKey;
+          const isOwned = tile.owner === "player";
           const isCrew = tile.ownerPlayerId && crewmatePlayerIds.has(tile.ownerPlayerId);
           if (!isOwned && !isCrew) continue;
           if (!guarded.has(key)) guarded.set(key, []);
@@ -2092,7 +2092,7 @@ export default function RiseToWar() {
         aiPlayerIdMap={aiPlayerIdMapRef.current}
         forts={forts}
         guardedTiles={guardedTiles}
-        guardedTileKeys={[...guardedTiles.keys()].sort().join(",")}
+        guardedTileKeys={[...guardedTiles.keys()].sort().join("|")}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
