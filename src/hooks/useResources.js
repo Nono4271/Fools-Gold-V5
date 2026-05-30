@@ -21,7 +21,7 @@ const TICKS_PER_HOUR  = 3600_000 / INTERVAL_MS; // 60
 // RSS building keys in order matching resources
 const RSS_BLDG_KEYS = { stone: "quarry", wood: "lumber", ore: "forge", gas: "refinery" };
 
-export function useResources({ screen, tilesRef, setRss, bldgs, fortsRef }) {
+export function useResources({ screen, tilesRef, setRss, bldgs, forts }) {
   const rssCache     = useRef(null);
   const lastTilesRef = useRef(null);
 
@@ -34,7 +34,7 @@ export function useResources({ screen, tilesRef, setRss, bldgs, fortsRef }) {
       if (t !== lastTilesRef.current) {
         lastTilesRef.current = t;
         const cache = [];
-        const fortSet = new Set((fortsRef?.current || []).map(f => f.tileKey));
+        const fortSet = new Set((forts || []).map(f => f.tileKey));
         for (const [key, tile] of Object.entries(t)) {
           if (tile.owner === "player" && tile.rss && !fortSet.has(key)) cache.push(tile);
         }
