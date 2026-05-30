@@ -151,6 +151,12 @@ function FriendlyCommanderCard({
               <button onClick={() => recallMarch?.(cmd.uid)}
                 title="Cancel March"
                 style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(180,60,60,.25)", border: "1px solid #cc4444", color: "#ff9090", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
+            ) : cmd.isGuarding ? (
+              // Guarding — only show the guard button to cancel
+              <button
+                onClick={() => setGuardPrompt("cancel")}
+                title="Cancel Guard"
+                style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(240,200,40,.25)", border: "1px solid #c8a020", color: "#f0c040", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>🛡</button>
             ) : (
               <>
                 {!isAtHQ && (
@@ -163,11 +169,11 @@ function FriendlyCommanderCard({
                     title="Reinforce"
                     style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(20,60,160,.25)", border: "1px solid #2060cc", color: "#80a0ff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                 )}
-                {/* Guard */}
+                {/* Guard — activate */}
                 <button
-                  onClick={() => setGuardPrompt(cmd.isGuarding ? "cancel" : "activate")}
-                  title={cmd.isGuarding ? "Cancel Guard" : "Guard (10⚡)"}
-                  style={{ width: 30, height: 30, borderRadius: 6, background: cmd.isGuarding ? "rgba(240,200,40,.25)" : "rgba(40,80,160,.25)", border: `1px solid ${cmd.isGuarding ? "#c8a020" : "#4060cc"}`, color: cmd.isGuarding ? "#f0c040" : "#8090e0", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>🛡</button>
+                  onClick={() => setGuardPrompt("activate")}
+                  title="Guard (10⚡)"
+                  style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(40,80,160,.25)", border: "1px solid #4060cc", color: "#8090e0", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>🛡</button>
               </>
             )}
           </div>
