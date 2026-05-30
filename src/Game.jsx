@@ -1198,6 +1198,7 @@ export default function RiseToWar() {
           const key = `${cc+dc},${cr+dr}`;
           const tile = tiles[key];
           if (!tile) continue;
+          if (tile.isHQ || tile.isHQPart) continue; // HQ not guardable
           const isOwned = tile.owner === "player";
           const isCrew = tile.ownerPlayerId && crewmatePlayerIds.has(tile.ownerPlayerId);
           if (!isOwned && !isCrew) continue;

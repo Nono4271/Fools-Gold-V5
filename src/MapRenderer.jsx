@@ -1369,7 +1369,7 @@ function buildFortSprite(fort, PIXI, texCache, fortLayer) {
     sp.height = w;
     sp.anchor.set(0.5, 0.6);
     sp.x = cx;
-    sp.y = cy + TH * 0.5; // shift to visual center of tile diamond
+    sp.y = cy + TH * 0.25; // shift to visual center of tile diamond
     sp.zOrder = cy;
     sp.__fortLevel = fort.level;
     _fortSpriteMap.set(tileKey, sp);
@@ -2721,32 +2721,61 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     redrawRef.current?.redrawOverlays();
   }, [mode, mvCmd]);
 
-  // Redraw guard fence overlays — use guardedTileKeys (new array each render) as dep
+  // Guard fence sprites — one per guarded tile, using isoXY like forts
+  const _guardSpriteMap = useRef(new Map());
   useEffect(() => {
-    function draw() {
-      const gfx = guardGfxRef.current;
-      if (!gfx) return;
-      gfx.clear();
-      if (!guardedTileKeys) return;
-      const keys = guardedTileKeys ? guardedTileKeys.split("|").filter(k => k.length > 0) : [];
-      if (!keys.length) return;
-      for (const key of keys) {
-        const [sc, sr] = key.split(",").map(Number);
-        const wx = (sc - sr) * (TW / 2) + (ROWS * TW / 2);
-        const wy = (sc + sr) * (TH / 2) + TOP_PAD;
-        const hw = TW / 2;
-        const hh = TH / 2;
-        const pts = [wx, wy - hh, wx + hw, wy, wx, wy + hh, wx - hw, wy];
-        gfx.lineStyle(2.5, 0xf0c040, 0.9);
-        gfx.drawPolygon(pts);
-        gfx.lineStyle(0);
-        gfx.beginFill(0xf0c040, 0.07);
-        gfx.drawPolygon(pts);
-        gfx.endFill();
-      }
+    const world = worldRef.current;
+    const gfx   = guardGfxRef.current;
+    if (!world || !gfx) return;
+
+    // Remove all old fence sprites
+    for (const sp of _guardSpriteMap.current.values()) {
+      if (!sp.destroyed) sp.destroy();
     }
-    // Draw immediately if PIXI ready, else retry after init
-    if (guardGfxRef.current) { draw(); } else { setTimeout(draw, 500); }
+    _guardSpriteMap.current.clear();
+    gfx.clear();
+
+    const keys = guardedTileKeys ? guardedTileKeys.split("|").filter(k => k.length > 0) : [];
+    if (!keys.length) return;
+
+    const FENCE_URL = "/props/guard_fence.webp";
+
+    const placeSprite = (tex, key) => {
+      const [sc, sr] = key.split(",").map(Number);
+      const { cx, cy } = isoXY(sc, sr);
+      const sp = new PIXI.Sprite(tex);
+      sp.width  = TW * 1.2;
+      sp.height = TW * 1.2;
+      sp.anchor.set(0.5, 0.85);
+      sp.x = cx;
+      sp.y = cy;
+      sp.zOrder = cy;
+      sp.alpha = 0.9;
+      world.addChild(sp);
+      _guardSpriteMap.current.set(key, sp);
+    };
+
+    if (_hqTexCache[FENCE_URL]) {
+      keys.forEach(k => placeSprite(_hqTexCache[FENCE_URL], k));
+    } else {
+      PIXI.Texture.fromURL(FENCE_URL).then(tex => {
+        _hqTexCache[FENCE_URL] = tex;
+        keys.forEach(k => { if (!world.destroyed) placeSprite(tex, k); });
+      }).catch(() => {
+        // Fallback: gold diamond outline
+        keys.forEach(k => {
+          const [sc, sr] = k.split(",").map(Number);
+          const { cx, cy } = isoXY(sc, sr);
+          const hw = TW / 2, hh = TH / 2;
+          gfx.lineStyle(2.5, 0xf0c040, 0.9);
+          gfx.drawPolygon([cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy]);
+          gfx.lineStyle(0);
+          gfx.beginFill(0xf0c040, 0.07);
+          gfx.drawPolygon([cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy]);
+          gfx.endFill();
+        });
+      });
+    }
   }, [guardedTileKeys]);
 
   useEffect(() => {
