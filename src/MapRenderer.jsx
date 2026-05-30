@@ -1764,7 +1764,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlay
 /* ══════════════════════════════════════════════════════════════════════════
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles, guardedTileKeys }, ref) {
 
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
@@ -2721,28 +2721,31 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     redrawRef.current?.redrawOverlays();
   }, [mode, mvCmd]);
 
-  // Redraw guard fence overlays when guardedTiles changes
+  // Redraw guard fence overlays — use guardedTileKeys (new array each render) as dep
   useEffect(() => {
-    const gfx = guardGfxRef.current;
-    if (!gfx) return;
-    gfx.clear();
-    if (!guardedTiles || guardedTiles.size === 0) return;
-    for (const [key] of guardedTiles) {
-      const [sc, sr] = key.split(",").map(Number);
-      // Use same iso formula as rest of MapRenderer
-      const wx = (sc - sr) * (TW / 2) + (ROWS * TW / 2);
-      const wy = (sc + sr) * (TH / 2) + TOP_PAD;
-      const hw = TW / 2;
-      const hh = TH / 2;
-      const pts = [wx, wy - hh, wx + hw, wy, wx, wy + hh, wx - hw, wy];
-      gfx.lineStyle(2.5, 0xf0c040, 0.9);
-      gfx.drawPolygon(pts);
-      gfx.lineStyle(0);
-      gfx.beginFill(0xf0c040, 0.07);
-      gfx.drawPolygon(pts);
-      gfx.endFill();
+    function draw() {
+      const gfx = guardGfxRef.current;
+      if (!gfx) return;
+      gfx.clear();
+      if (!guardedTileKeys || guardedTileKeys.length === 0) return;
+      for (const key of guardedTileKeys) {
+        const [sc, sr] = key.split(",").map(Number);
+        const wx = (sc - sr) * (TW / 2) + (ROWS * TW / 2);
+        const wy = (sc + sr) * (TH / 2) + TOP_PAD;
+        const hw = TW / 2;
+        const hh = TH / 2;
+        const pts = [wx, wy - hh, wx + hw, wy, wx, wy + hh, wx - hw, wy];
+        gfx.lineStyle(2.5, 0xf0c040, 0.9);
+        gfx.drawPolygon(pts);
+        gfx.lineStyle(0);
+        gfx.beginFill(0xf0c040, 0.07);
+        gfx.drawPolygon(pts);
+        gfx.endFill();
+      }
     }
-  }, [guardedTiles]);
+    // Draw immediately if PIXI ready, else retry after init
+    if (guardGfxRef.current) { draw(); } else { setTimeout(draw, 500); }
+  }, [guardedTileKeys]);
 
   useEffect(() => {
     tilesRef.current = tiles;

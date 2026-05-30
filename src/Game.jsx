@@ -1299,6 +1299,36 @@ export default function RiseToWar() {
         return changed ? next : prev;
       });
     },
+    onReinStep: (updates, now) => {
+      setReinMarches(prev => {
+        let next = [...prev];
+        const arrived = [];
+        updates.forEach(u => {
+          const idx = u.idx;
+          if (u.arrived) {
+            if (!u.returning) arrived.push(next[idx]);
+            next[idx] = null; // mark for removal
+          } else {
+            next[idx] = { ...next[idx], step: u.nextStep, lastStepTime: u.lastStepTime };
+          }
+        });
+        // Apply arrived reinforcements to commanders
+        arrived.forEach(rm => {
+          if (!rm) return;
+          setCmds(p => p.map(c => {
+            if (c.uid !== rm.cmdUid) return c;
+            const newTroops = (c.troops || 0) + rm.amount;
+            // Also update troopSlots if present
+            if (c.troopSlots?.length) {
+              const slots = c.troopSlots.map((sl, i) => i === 0 ? { ...sl, troops: (sl.troops||0) + rm.amount } : sl);
+              return { ...c, troops: newTroops, troopSlots: slots };
+            }
+            return { ...c, troops: newTroops };
+          }));
+        });
+        return next.filter(Boolean);
+      });
+    },
     onAiRssTick:    tickAiRss,
     onAiMarchCheck: tickAiMarch,  // now receives dispatches from worker
     onAiEconTick:   tickAiEcon,
@@ -2091,6 +2121,7 @@ export default function RiseToWar() {
         aiPlayerIdMap={aiPlayerIdMapRef.current}
         forts={forts}
         guardedTiles={guardedTiles}
+        guardedTileKeys={[...guardedTiles.keys()]}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
@@ -2141,7 +2172,7 @@ export default function RiseToWar() {
 
       {mode==="pickAttackCmd" && (
         <CommanderPicker
-          atkKey={atkKey} tiles={tiles} cmdsAdjToSel={cmdsAdjToSel}
+          mode={mode} atkKey={atkKey} tiles={tiles} cmdsAdjToSel={cmdsAdjToSel}
           pickCmd={pickCmd} setPick={setPick}
           setMode={setMode} setAtkKey={setAtkKey}
           setSelKey={setSelKey} setPopupPos={setPopupPos}
@@ -2151,7 +2182,7 @@ export default function RiseToWar() {
 
       {mode==="pickMoveCmd" && (
         <CommanderPicker
-          atkKey={atkKey} tiles={tiles} cmdsAdjToSel={cmdsForMove}
+          mode={mode} atkKey={atkKey} tiles={tiles} cmdsAdjToSel={cmdsForMove}
           pickCmd={pickCmd} setPick={setPick}
           setMode={setMode} setAtkKey={setAtkKey}
           setSelKey={setSelKey} setPopupPos={setPopupPos}
