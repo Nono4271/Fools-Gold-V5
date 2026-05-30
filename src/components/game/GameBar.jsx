@@ -468,7 +468,7 @@ export default memo(function GameBar({
           alignItems: "flex-end",
           justifyContent: "flex-end",
           padding: "0 0 10px 0",
-          gap: 11,
+          gap: 10,
           pointerEvents: "auto",
         }}>
           <ActionButton
