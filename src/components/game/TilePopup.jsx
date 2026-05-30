@@ -55,7 +55,31 @@ export default memo(function TilePopup({
   nowTick, playerHqKey, facKey, facName,
   forts, buildFort, upgradeFort, getFortAtTile, startReposition,
   setCmdScreenOpen, setCmdScreenUid,
+  onQuickGather,
+  hasQuickGather,
+  hasRecon,
+  onRecon,
+  hasGather,
+  onGather,
+  hasCmdTraining,
+  onAddBattleEntry,
+  dragonEggs,
+  staminaMax,
+  trainingXpMult,
+  upgQueue,
+  onExpedience,
+  hasLongMarch, onLongMarch, longMarchReady,
+  hasQuickMarch, onQuickMarch, quickMarchReady,
 }) {
+  const [quickGatherConfirm, setQuickGatherConfirm] = useState(false);
+  const [tacticsOpen,        setTacticsOpen]        = useState(false);
+  const [reconConfirm,       setReconConfirm]       = useState(false);
+  const [gatherOpen,         setGatherOpen]         = useState(false);
+  const [gatherTicks,        setGatherTicks]        = useState(1);
+  const [gatherCmdUid,       setGatherCmdUid]       = useState(null);
+  const [trainingOpen,       setTrainingOpen]       = useState(false);
+  const [trainingCmdUid,     setTrainingCmdUid]     = useState(null);
+  const [trainingTicks,      setTrainingTicks]      = useState(1);
   if (!selKey || !selTile) return null;
 
   const ownership = getTileOwnership(selTile, facKey, crewmatePlayerIds);
@@ -322,6 +346,45 @@ export default memo(function TilePopup({
           </div>
         )}
 
+        {/* Training indicator — commander locked on tile */}
+        {(cmdsOnSel||[]).filter(c=>c.training).map(cmd=>{
+          const elapsed = cmd.trainingStartMs ? Math.floor((Date.now()-cmd.trainingStartMs)/60000) : 0;
+          const ticksDone = Math.min(cmd.trainingTicks??1, Math.floor(elapsed/10));
+          const secsToNext = cmd.trainingStartMs ? Math.max(0, 600 - ((Date.now()-cmd.trainingStartMs)/1000 % 600)) : 0;
+          return (
+            <div key={cmd.uid} style={{ padding:"5px 10px", borderBottom:"1px solid rgba(255,255,255,.04)", background:"rgba(200,160,40,.07)" }}>
+              <div style={{ fontSize:7, color:"#c0a040", fontFamily:"'Cinzel',serif", letterSpacing:".05em", marginBottom:3 }}>🎓 PROVING GROUNDS</div>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <span style={{ fontSize:12 }}>{cmd.icon}</span>
+                <span style={{ fontSize:7, color:"#d0c060", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cmd.n}</span>
+                <span style={{ fontSize:7, color:"#a09040", flexShrink:0 }}>{ticksDone}/{cmd.trainingTicks??1} ticks · next in {Math.ceil(secsToNext)}s</span>
+                <button
+                  onClick={()=>{ if(window.confirm("Cancel training? Eggs spent and XP so far are NOT refunded.")){ setCmds(p=>p.map(c=>c.uid===cmd.uid?{...c,training:false}:c)); } }}
+                  style={{ padding:"1px 5px", fontSize:6, background:"rgba(180,60,20,.2)", border:"1px solid #aa4422", color:"#ff9060", flexShrink:0 }}>↩</button>
+              </div>
+            </div>
+          );
+        })}
+        {/* Gathering indicator — commander locked on tile */}
+        {(cmdsOnSel||[]).filter(c=>c.gathering).map(cmd=>{
+          const elapsed = cmd.gatherStartMs ? Math.floor((Date.now()-cmd.gatherStartMs)/60000) : 0;
+          const ticksDone = Math.min(cmd.gatherTicks??1, Math.floor(elapsed/10));
+          const secsToNext = cmd.gatherStartMs ? Math.max(0, 600 - ((Date.now()-cmd.gatherStartMs)/1000 % 600)) : 0;
+          return (
+            <div key={cmd.uid} style={{ padding:"5px 10px", borderBottom:"1px solid rgba(255,255,255,.04)", background:"rgba(160,80,20,.07)" }}>
+              <div style={{ fontSize:7, color:"#c08040", fontFamily:"'Cinzel',serif", letterSpacing:".05em", marginBottom:3 }}>⛏ HARVESTING</div>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <span style={{ fontSize:12 }}>{cmd.icon}</span>
+                <span style={{ fontSize:7, color:"#d0a060", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cmd.n}</span>
+                <span style={{ fontSize:7, color:"#a07840", flexShrink:0 }}>{ticksDone}/{cmd.gatherTicks??1} ticks · next in {Math.ceil(secsToNext)}s</span>
+                <button
+                  onClick={()=>{ if(window.confirm("Cancel gather? Eggs spent and RSS so far are NOT refunded.")){ setCmds(p=>p.map(c=>c.uid===cmd.uid?{...c,gathering:false}:c)); } }}
+                  style={{ padding:"1px 5px", fontSize:6, background:"rgba(180,60,20,.2)", border:"1px solid #aa4422", color:"#ff9060", flexShrink:0 }}>↩</button>
+              </div>
+            </div>
+          );
+        })}
+
         {/* En route */}
         {marchingToSel.length>0&&(
           <div style={{ padding:"5px 10px", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
@@ -383,11 +446,199 @@ export default memo(function TilePopup({
             </div>
           );
         })()}
+        {/* TACTICS button — top right of tile card, left of ✕ */}
+        {ownership==="player"&&!selTile.isHQ&&(
+          <button
+            onClick={()=>{ setTacticsOpen(o=>!o); setQuickGatherConfirm(false); setReconConfirm(false); setGatherOpen(false); setTrainingOpen(false); }}
+            style={{ position:"absolute", top:4, right:28, background:"rgba(80,50,160,.8)", border:"1px solid #7755cc", borderRadius:3, color:"#ccaaff", fontSize:7, fontFamily:"'Cinzel',serif", letterSpacing:".06em", padding:"3px 7px", cursor:"pointer", zIndex:10, whiteSpace:"nowrap" }}>
+            ⚔ TACTICS
+          </button>
+        )}
+
+        {/* Tactics drawer — inline confirm states */}
+        {tacticsOpen&&ownership==="player"&&!selTile.isHQ&&(()=>{
+          // Quick Gather confirm
+          if (quickGatherConfirm) return (
+            <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(4,8,4,.97)", border:"1px solid #44aa44", borderRadius:8, zIndex:20, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:12 }}>
+              <div style={{ fontSize:18 }}>🌾</div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#aaffaa" }}>Harvest Pulse</div>
+              <div style={{ fontSize:7, color:"#5a8a5a", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>Spend 3 Dragon Eggs to collect ~3hr+10% RSS instantly?</div>
+              <div style={{ display:"flex", gap:8, marginTop:4 }}>
+                <button onClick={()=>{ onQuickGather?.(selKey,selTile); setQuickGatherConfirm(false); setTacticsOpen(false); }} style={{ padding:"5px 14px", background:"rgba(40,120,40,.5)", border:"1px solid #44aa44", color:"#aaffaa", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:"pointer" }}>YES</button>
+                <button onClick={()=>setQuickGatherConfirm(false)} style={{ padding:"5px 14px", background:"rgba(80,20,20,.5)", border:"1px solid #aa4444", color:"#ffaaaa", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:"pointer" }}>BACK</button>
+              </div>
+            </div>
+          );
+
+          // Recon confirm
+          if (reconConfirm) return (
+            <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(4,6,12,.97)", border:"1px solid #4466cc", borderRadius:8, zIndex:20, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:12 }}>
+              <div style={{ fontSize:18 }}>🔭</div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#aaccff" }}>Recon</div>
+              <div style={{ fontSize:7, color:"#4a6a8a", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>Scout this tile's garrison — result added to Battle Log.</div>
+              <div style={{ display:"flex", gap:8, marginTop:4 }}>
+                <button onClick={()=>{ onRecon?.(selKey,selTile); setReconConfirm(false); setTacticsOpen(false); }} style={{ padding:"5px 14px", background:"rgba(20,60,160,.5)", border:"1px solid #4466cc", color:"#aaccff", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:"pointer" }}>SCOUT</button>
+                <button onClick={()=>setReconConfirm(false)} style={{ padding:"5px 14px", background:"rgba(80,20,20,.5)", border:"1px solid #aa4444", color:"#ffaaaa", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:"pointer" }}>BACK</button>
+              </div>
+            </div>
+          );
+
+          // Gather: pick commander + ticks
+          if (gatherOpen) {
+            const idleCmdsOnTile = (cmdsOnSel||[]).filter(c=>!c.march&&!c.gathering);
+            return (
+              <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(8,5,2,.97)", border:"1px solid #a07040", borderRadius:8, zIndex:20, display:"flex", flexDirection:"column", gap:6, padding:10, overflowY:"auto" }}>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#e0a060", textAlign:"center" }}>⛏ Gather</div>
+                <div style={{ fontSize:7, color:"#6a4a28", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>1 Dragon Egg per tick · 10 min/tick · 4× hourly RSS</div>
+                {/* Commander picker */}
+                <div style={{ fontSize:7, color:"#6a5a3a", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginTop:2 }}>SELECT COMMANDER</div>
+                {idleCmdsOnTile.length === 0 ? (
+                  <div style={{ fontSize:7, color:"#3a2a18", fontFamily:"'Crimson Pro',serif", fontStyle:"italic" }}>No idle commanders on this tile.</div>
+                ) : idleCmdsOnTile.map(cmd=>(
+                  <div key={cmd.uid} onClick={()=>setGatherCmdUid(uid=>uid===cmd.uid?null:cmd.uid)}
+                    style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 7px", borderRadius:4, cursor:"pointer",
+                      background: gatherCmdUid===cmd.uid ? "rgba(160,112,40,.25)" : "rgba(255,255,255,.03)",
+                      border:`1px solid ${gatherCmdUid===cmd.uid?"#c08040":"#2a1e10"}` }}>
+                    <span style={{ fontSize:14 }}>{cmd.icon}</span>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:"#d0a060" }}>{cmd.n}</div>
+                      <div style={{ fontSize:7, color:"#5a4a30" }}>Lv{cmd.lvl||1} · {(cmd.troops||0).toLocaleString()} troops</div>
+                    </div>
+                    {gatherCmdUid===cmd.uid&&<span style={{ fontSize:10, color:"#c08040" }}>✓</span>}
+                  </div>
+                ))}
+                {/* Tick selector */}
+                <div style={{ fontSize:7, color:"#6a5a3a", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginTop:4 }}>TICKS (1 egg each)</div>
+                <div style={{ display:"flex", alignItems:"center", gap:10, justifyContent:"center" }}>
+                  <button onClick={()=>setGatherTicks(t=>Math.max(1,t-1))} style={{ width:28, height:28, fontSize:16, background:"rgba(255,255,255,.05)", border:"1px solid #3a2e18", color:"#c0a060", borderRadius:4, cursor:"pointer" }}>−</button>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:16, color:"#e0c080", minWidth:24, textAlign:"center" }}>{gatherTicks}</span>
+                  <button onClick={()=>setGatherTicks(t=>Math.min(Math.min(10,dragonEggs??0),t+1))} style={{ width:28, height:28, fontSize:16, background:"rgba(255,255,255,.05)", border:"1px solid #3a2e18", color:"#c0a060", borderRadius:4, cursor:"pointer" }}>+</button>
+                </div>
+                <div style={{ fontSize:7, color:"#4a3828", textAlign:"center", fontFamily:"'Crimson Pro',serif" }}>
+                  {gatherTicks * 10} min total · costs {gatherTicks} 🥚 · {(dragonEggs??0)} available
+                </div>
+                <div style={{ display:"flex", gap:6, marginTop:4 }}>
+                  <button
+                    onClick={()=>{ if(gatherCmdUid){ onGather?.(selKey,selTile,gatherCmdUid,gatherTicks); setGatherOpen(false); setTacticsOpen(false); } }}
+                    disabled={!gatherCmdUid||(dragonEggs??0)<1}
+                    style={{ flex:1, padding:"6px 0", background:gatherCmdUid?"rgba(160,80,20,.4)":"rgba(40,30,20,.3)", border:`1px solid ${gatherCmdUid?"#c07030":"#2a1e10"}`, color:gatherCmdUid?"#e0a060":"#3a2a18", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:gatherCmdUid?"pointer":"not-allowed" }}>
+                    START
+                  </button>
+                  <button onClick={()=>setGatherOpen(false)} style={{ padding:"6px 12px", background:"rgba(80,20,20,.3)", border:"1px solid #aa4444", color:"#ff9090", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:"pointer" }}>BACK</button>
+                </div>
+              </div>
+            );
+          }
+
+          // Commander Training picker
+          if (trainingOpen) {
+            const idleCmdsOnTile = (cmdsOnSel||[]).filter(c=>!c.march&&!c.gathering&&!c.training);
+            const POWER_COMMAND = { 1:0.3,2:2.5,3:4,4:8,5:10,6:15,7:18,8:30,9:35,10:55,11:65,12:75,13:90 };
+            const tilePl = selTile?.powerLevel ?? 1;
+            const xpPerTick = Math.round((POWER_COMMAND[tilePl] ?? 0.3) * 850 * 0.25 * (trainingXpMult ?? 1));
+            return (
+              <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(6,4,16,.97)", border:"1px solid #c0a040", borderRadius:8, zIndex:20, display:"flex", flexDirection:"column", gap:6, padding:10, overflowY:"auto" }}>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#e0c060", textAlign:"center" }}>🎓 Proving Grounds</div>
+                <div style={{ fontSize:7, color:"#6a5a28", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>2 Eggs/tick · 10 min/tick · {xpPerTick.toLocaleString()} XP/tick (P{tilePl})</div>
+                <div style={{ fontSize:7, color:"#6a5a3a", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginTop:2 }}>SELECT COMMANDER</div>
+                {idleCmdsOnTile.length === 0 ? (
+                  <div style={{ fontSize:7, color:"#3a2a18", fontFamily:"'Crimson Pro',serif", fontStyle:"italic" }}>No idle commanders on this tile.</div>
+                ) : idleCmdsOnTile.map(cmd=>(
+                  <div key={cmd.uid} onClick={()=>setTrainingCmdUid(uid=>uid===cmd.uid?null:cmd.uid)}
+                    style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 7px", borderRadius:4, cursor:"pointer",
+                      background: trainingCmdUid===cmd.uid ? "rgba(200,160,40,.2)" : "rgba(255,255,255,.03)",
+                      border:`1px solid ${trainingCmdUid===cmd.uid?"#c0a040":"#2a1e10"}` }}>
+                    <span style={{ fontSize:14 }}>{cmd.icon}</span>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:"#d0c060" }}>{cmd.n}</div>
+                      <div style={{ fontSize:7, color:"#5a4a30" }}>Lv{cmd.lvl||1} · XP {cmd.xp||0}</div>
+                    </div>
+                    {trainingCmdUid===cmd.uid&&<span style={{ fontSize:10, color:"#c0a040" }}>✓</span>}
+                  </div>
+                ))}
+                <div style={{ fontSize:7, color:"#6a5a3a", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginTop:4 }}>TICKS (2 eggs each)</div>
+                <div style={{ display:"flex", alignItems:"center", gap:10, justifyContent:"center" }}>
+                  <button onClick={()=>setTrainingTicks(t=>Math.max(1,t-1))} style={{ width:28, height:28, fontSize:16, background:"rgba(255,255,255,.05)", border:"1px solid #3a2e18", color:"#c0a060", borderRadius:4, cursor:"pointer" }}>−</button>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:16, color:"#e0c080", minWidth:24, textAlign:"center" }}>{trainingTicks}</span>
+                  <button onClick={()=>setTrainingTicks(t=>Math.min(Math.min(15,Math.floor((dragonEggs??0)/2)),t+1))} style={{ width:28, height:28, fontSize:16, background:"rgba(255,255,255,.05)", border:"1px solid #3a2e18", color:"#c0a060", borderRadius:4, cursor:"pointer" }}>+</button>
+                </div>
+                <div style={{ fontSize:7, color:"#4a3828", textAlign:"center", fontFamily:"'Crimson Pro',serif" }}>
+                  {trainingTicks * 10} min · costs {trainingTicks * 2} 🥚 · {dragonEggs??0} available
+                </div>
+                <div style={{ display:"flex", gap:6, marginTop:4 }}>
+                  <button
+                    onClick={()=>{ if(trainingCmdUid&&(dragonEggs??0)>=2){ onGather?.(selKey,selTile,trainingCmdUid,trainingTicks,true); setTrainingOpen(false); setTacticsOpen(false); } }}
+                    disabled={!trainingCmdUid||(dragonEggs??0)<2}
+                    style={{ flex:1, padding:"6px 0", background:trainingCmdUid?"rgba(160,120,20,.4)":"rgba(40,30,20,.3)", border:`1px solid ${trainingCmdUid?"#c0a030":"#2a1e10"}`, color:trainingCmdUid?"#e0c060":"#3a2a18", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:trainingCmdUid?"pointer":"not-allowed" }}>
+                    START
+                  </button>
+                  <button onClick={()=>setTrainingOpen(false)} style={{ padding:"6px 12px", background:"rgba(80,20,20,.3)", border:"1px solid #aa4444", color:"#ff9090", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:"pointer" }}>BACK</button>
+                </div>
+              </div>
+            );
+          }
+
+          // Default: tactics list
+          const tactics = [
+            { id:"quickGather", icon:"🌾", label:"Harvest Pulse",        sub:"3 Dragon Eggs · instant 3hr+10% RSS", available:hasQuickGather&&!fort&&(selTile.powerLevel??0)>=2, action:()=>setQuickGatherConfirm(true) },
+            { id:"recon",       icon:"🔭", label:"Recon",               sub:"Free · scout garrison army",           available:hasRecon&&(isNeutral||(selTile.owner==="ai")),    action:()=>setReconConfirm(true)       },
+            { id:"gather",      icon:"⛏", label:"Deep Harvest",              sub:"1 Egg/tick · commander required",      available:hasGather&&!fort,                                  action:()=>{ setGatherTicks(1); setGatherCmdUid(null); setGatherOpen(true); } },
+            { id:"cmdTraining", icon:"🎓", label:"Proving Grounds",  sub:"2 Eggs/tick · up to 15 ticks",         available:hasCmdTraining&&!fort,                             action:()=>{ setTrainingTicks(1); setTrainingCmdUid(null); setTrainingOpen(true); } },
+            { id:"quickMarch",  icon:"💨", label:"Quick March",         sub:`5 Eggs · next march 50% faster${quickMarchReady?" · READY":""}`  , available:hasQuickMarch&&(dragonEggs??0)>=5&&!quickMarchReady, action:()=>{ onQuickMarch?.(); setTacticsOpen(false); } },
+            { id:"longMarch",   icon:"🗺", label:"Long March",          sub:`10 Eggs · ignore range next march${longMarchReady?" · READY":""}`  , available:hasLongMarch&&(dragonEggs??0)>=10&&!longMarchReady, action:()=>{ onLongMarch?.(); setTacticsOpen(false); } },
+          ];
+
+          return (
+            <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(6,4,14,.97)", border:"1px solid rgba(120,80,255,.3)", borderRadius:8, zIndex:20, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+              <div style={{ padding:"7px 10px", borderBottom:"1px solid rgba(120,80,255,.15)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#c0a8ff", letterSpacing:".08em" }}>⚔ TACTICS</span>
+                <button onClick={()=>setTacticsOpen(false)} style={{ background:"none", border:"none", color:"#6a4a8a", fontSize:13, cursor:"pointer", padding:0 }}>✕</button>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"6px 8px", display:"flex", flexDirection:"column", gap:5 }}>
+                {tactics.map(t=>(
+                  <div key={t.id} onClick={t.available?t.action:undefined}
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 9px", borderRadius:5, cursor:t.available?"pointer":"not-allowed",
+                      background: t.available?"rgba(120,80,255,.08)":"rgba(255,255,255,.02)",
+                      border:`1px solid ${t.available?"rgba(120,80,255,.3)":"rgba(255,255,255,.05)"}`,
+                      opacity: t.available?1:.45 }}>
+                    <span style={{ fontSize:16, flexShrink:0 }}>{t.icon}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:t.available?"#d0c0ff":"#3a2a50" }}>{t.label}</div>
+                      <div style={{ fontSize:7, color:"#4a3868", fontFamily:"'Crimson Pro',serif", fontStyle:"italic" }}>{t.sub}</div>
+                    </div>
+                    {t.available&&<span style={{ fontSize:10, color:"#9966ff" }}>›</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
         {/* Delete X — small, top-right corner of popup */}
         {ownership==="player"&&!selTile.isHQ&&!deletingTiles[selKey]&&(
           <button onClick={()=>{ setDeletingTiles(p=>({...p,[selKey]:Date.now()})); setDeletingSecsLeft(p=>({...p,[selKey]:15})); }}
             style={{ position:"absolute", top:6, right:6, width:18, height:18, background:"rgba(120,10,10,.7)", border:"1px solid #cc1010", borderRadius:"50%", color:"#ff6060", fontSize:9, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1, zIndex:10 }}>✕</button>
         )}
+        {/* Expedience button — show when any building has < 5 min remaining */}
+        {ownership==="player"&&isHqTile&&upgQueue&&(() => {
+          const eligible = Object.entries(upgQueue).find(([,v]) => v.endsAt - Date.now() < 300_000 && v.endsAt > Date.now());
+          if (!eligible) return null;
+          const [type, entry] = eligible;
+          const secsLeft = Math.ceil((entry.endsAt - Date.now()) / 1000);
+          return (
+            <div style={{ padding:"5px 10px", borderBottom:"1px solid rgba(255,255,255,.04)", background:"rgba(80,160,80,.06)" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#80d090", letterSpacing:".05em" }}>
+                  ⚡ {type.toUpperCase()} — {secsLeft}s left
+                </span>
+                <button
+                  onClick={()=>onExpedience?.(type)}
+                  style={{ padding:"2px 8px", background:"rgba(40,160,40,.3)", border:"1px solid #44aa44", color:"#aaffaa", fontFamily:"'Cinzel',serif", fontSize:7, borderRadius:3, cursor:"pointer" }}>
+                  FINISH NOW
+                </button>
+              </div>
+            </div>
+          );
+        })()}
         {/* Action buttons */}
         <div style={{ padding:"6px 10px 8px", display:"flex", gap:5 }}>
           {/* Attack */}
@@ -415,7 +666,7 @@ export default memo(function TilePopup({
           {ownership==="player"&&!selTile.isHQ&&(selTile.powerLevel||1)<=9&&!fort&&(
             <button onClick={()=>buildFort?.(selKey,selTile)}
               style={{ flex:1, padding:"6px 0", background:"linear-gradient(160deg,#3a2808,#1e1004)", border:"1px solid #a07020", borderRadius:5, color:"#f0c060", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:"pointer" }}>
-              BUILD FORT
+              BUILD FORT · 🥚×3
             </button>
           )}
           {/* Notes */}

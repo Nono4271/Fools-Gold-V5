@@ -82,42 +82,45 @@ const Y_MID_R = 240;   // right-branch mid (slightly lower for variety)
 const Y_LEAF  = 360;   // first leaf row
 const Y_LEAF2 = 480;   // second leaf row (deeper leaves)
 
+// Adventurer's Trek: min tome level required per skill level (index = skill level 0..10)
+const ADV_TREK_TOME_GATES = [0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90];
+
 const TREE_NODES = [
   // ── COL 1: GATHERING (Lv1) accent:#e07040 ──
-  { id:"tl",    col:0, x:C1x,      y:Y_ROOT,  r:R_ROOT, icon:"🥚", label:"Dragon Eggs",    accent:"#e07040", desc:"Begin passively regenerating Dragon Eggs over time.", prereqs:[], unlockLv:1 },
-  { id:"tl_t",  col:0, x:C1x-52,  y:Y_MID_L, r:R_MID,  icon:"⛏",  label:"Keen Gatherer",  accent:"#9898b0", desc:"+10% resource gathering rate from all tiles.",          prereqs:["tl"], unlockLv:1 },
-  { id:"tl_t1", col:0, x:C1x-68,  y:Y_LEAF,  r:R_LEAF, icon:"🪨",  label:"Stone Mastery",  accent:"#9898b0", desc:"+15% stone & wood production.",                         prereqs:["tl_t"], unlockLv:1 },
-  { id:"tl_b",  col:0, x:C1x+52,  y:Y_MID_R, r:R_MID,  icon:"⚔️",  label:"Battle Rite",   accent:"#ee6644", desc:"+3% troop attack for all armies.",                       prereqs:["tl"], unlockLv:1 },
-  { id:"tl_b1", col:0, x:C1x+22,  y:Y_LEAF,  r:R_LEAF, icon:"🛡",  label:"Iron Will",     accent:"#cc8844", desc:"+3% troop defence.",                                      prereqs:["tl_b"], unlockLv:1 },
-  { id:"tl_b2", col:0, x:C1x+72,  y:Y_LEAF2, r:R_LEAF, icon:"👑",  label:"Warlord's Pact",accent:"#f0c040", desc:"+5% attack & +5% defence.",                              prereqs:["tl_b"], unlockLv:1 },
+  { id:"tl",    col:0, x:C1x,      y:Y_ROOT,  r:R_ROOT, icon:"🗺",  label:"Adventurer's Trek", accent:"#e07040", desc:"+15 max owned tile capacity per level (max +150).", prereqs:[], unlockLv:1, maxLv:10, permanent:true  },
+  { id:"tl_t",  col:0, x:C1x-52,  y:Y_MID_L, r:R_MID,  icon:"🌾",  label:"Harvest Pulse",       accent:"#9898b0", desc:"[3 Dragon Eggs] Instantly harvest 3hr+10% RSS from an owned tile (P2–P13).", prereqs:["tl"], unlockLv:1, maxLv:1,  permanent:true  },
+  { id:"tl_t1", col:0, x:C1x-68,  y:Y_LEAF,  r:R_LEAF, icon:"💨",  label:"Fleet-Footed",           accent:"#9898b0", desc:"+2 SPD per level for all Commanders (max +20).",    prereqs:["tl_t"], unlockLv:1, maxLv:10, permanent:false },
+  { id:"tl_b",  col:0, x:C1x+52,  y:Y_MID_R, r:R_MID,  icon:"⚡",  label:"Expedience",          accent:"#ee6644", desc:"Finish any building with <5 min remaining instantly.", prereqs:["tl"], unlockLv:1, maxLv:1,  permanent:true  },
+  { id:"tl_b1", col:0, x:C1x+22,  y:Y_LEAF,  r:R_LEAF, icon:"🧠",  label:"Willpower",           accent:"#cc8844", desc:"+2 FOC per level for all Commanders (max +20).",     prereqs:["tl_b"], unlockLv:1, maxLv:10, permanent:false },
+  { id:"tl_b2", col:0, x:C1x+72,  y:Y_LEAF2, r:R_LEAF, icon:"⚔️",  label:"Crushing Force",           accent:"#f0c040", desc:"+2 ATK per level for all Commanders (max +20).",     prereqs:["tl_b"], unlockLv:1, maxLv:10, permanent:false },
 
-  // ── COL 2: MARCHING (Lv10) accent:#5588ff ──
-  // Root → Far Marcher (left mid), → Arcane Sight (right mid) → 4 leaves fan out from Arcane Sight
-  // tr_b4 hangs below tr_b3 (rightmost leaf chain)
-  { id:"tr",    col:1, x:C2x,      y:Y_ROOT,  r:R_ROOT, icon:"⚡",  label:"Swift March",    accent:"#5588ff", desc:"+5% march speed for all commanders.",                    prereqs:[], unlockLv:10 },
-  { id:"tr_t",  col:1, x:C2x-58,  y:Y_MID_L, r:R_MID,  icon:"🗺",  label:"Far Marcher",    accent:"#6688ee", desc:"+2 maximum march range.",                                prereqs:["tr"], unlockLv:10 },
-  { id:"tr_b",  col:1, x:C2x+30,  y:Y_MID_R, r:R_MID,  icon:"🔍",  label:"Arcane Sight",   accent:"#44ccee", desc:"Reveal enemy troop counts when scouting.",               prereqs:["tr"], unlockLv:10 },
-  { id:"tr_b1", col:1, x:C2x-30,  y:Y_LEAF,  r:R_LEAF, icon:"👁",  label:"All-Seeing",     accent:"#40ddcc", desc:"Fog of war radius +2 tiles.",                            prereqs:["tr_b"], unlockLv:10 },
-  { id:"tr_b2", col:1, x:C2x+10,  y:Y_LEAF,  r:R_LEAF, icon:"🔮",  label:"Omniscience",    accent:"#40aaff", desc:"No fog of war — full map awareness.",                    prereqs:["tr_b"], unlockLv:10 },
-  { id:"tr_b3", col:1, x:C2x+52,  y:Y_LEAF,  r:R_LEAF, icon:"⚔️",  label:"Twin Legions",   accent:"#5577ff", desc:"Unlock a 3rd simultaneous march.",                       prereqs:["tr_b"], unlockLv:10 },
-  { id:"tr_b4", col:1, x:C2x+90,  y:Y_LEAF,  r:R_LEAF, icon:"🌀",  label:"Void Attunement",accent:"#aa55ff", desc:"Void Tap cooldown reduced by 10%.",                      prereqs:["tr_b"], unlockLv:10 },
+  // ── COL 2: SCOUTING (Lv10) accent:#5588ff ──
+  // Root: Brood Keeper → Recon (left) + Deep Harvest (right) → 4 RSS masteries hang off Deep Harvest
+  { id:"tr",    col:1, x:C2x,      y:Y_ROOT,  r:R_ROOT, icon:"🥚",  label:"Brood Keeper",  accent:"#5588ff", desc:"+1 Dragon Egg max capacity per level (base 20, max 30).", prereqs:[], unlockLv:10, maxLv:10, permanent:true  },
+  { id:"tr_t",  col:1, x:C2x-58,  y:Y_MID_L, r:R_MID,  icon:"🔭",  label:"Recon",            accent:"#44ccee", desc:"Scout any unowned tile to reveal garrison commander, level, and troops.", prereqs:["tr"], unlockLv:10, maxLv:1, permanent:true  },
+  { id:"tr_b",  col:1, x:C2x+30,  y:Y_MID_R, r:R_MID,  icon:"⛏",  label:"Deep Harvest",           accent:"#e07040", desc:"[1 Egg/tick] Station a commander on an owned tile to harvest 4x hourly RSS per 10-min tick (max 15 ticks).", prereqs:["tr"], unlockLv:10, maxLv:1, permanent:true  },
+  { id:"tr_b1", col:1, x:C2x-30,  y:Y_LEAF,  r:R_LEAF, icon:"⚗",  label:"Alchemist's Eye",      accent:"#80b040", desc:"+1.5% gas production per level (max +15%).",             prereqs:["tr_b"], unlockLv:10, maxLv:10, permanent:false },
+  { id:"tr_b2", col:1, x:C2x+10,  y:Y_LEAF,  r:R_LEAF, icon:"🪵",  label:"Forester's Creed",     accent:"#a07840", desc:"+1.5% wood production per level (max +15%).",            prereqs:["tr_b"], unlockLv:10, maxLv:10, permanent:false },
+  { id:"tr_b3", col:1, x:C2x+52,  y:Y_LEAF,  r:R_LEAF, icon:"🪨",  label:"Stonecutter's Pact",    accent:"#9898b0", desc:"+1.5% stone production per level (max +15%).",           prereqs:["tr_b"], unlockLv:10, maxLv:10, permanent:false },
+  { id:"tr_b4", col:1, x:C2x+90,  y:Y_LEAF,  r:R_LEAF, icon:"⛏",  label:"Ironblood",      accent:"#4a90c0", desc:"+1.5% ore production per level (max +15%).",             prereqs:["tr_b"], unlockLv:10, maxLv:10, permanent:false },
 
-  // ── COL 3: DEFENSE (Lv30) accent:#44cc88 ──
-  { id:"bl",    col:2, x:C3x,      y:Y_ROOT,  r:R_ROOT, icon:"🛡",  label:"Fortify",        accent:"#44cc88", desc:"+500 HQ siege HP.",                                      prereqs:[], unlockLv:30 },
-  { id:"bl_t",  col:2, x:C3x-52,  y:Y_MID_L, r:R_MID,  icon:"🏰",  label:"Ancient Wards",  accent:"#c8b070", desc:"+1,000 HQ siege HP. Walls heal 10% faster.",            prereqs:["bl"], unlockLv:30 },
-  { id:"bl_b",  col:2, x:C3x+52,  y:Y_MID_R, r:R_MID,  icon:"⭐",  label:"Tactician",      accent:"#f0c040", desc:"Commanders gain +5% XP from all battles.",               prereqs:["bl"], unlockLv:30 },
-  { id:"bl_b1", col:2, x:C3x+20,  y:Y_LEAF,  r:R_LEAF, icon:"⚡",  label:"Siege Master",   accent:"#88cc44", desc:"+10% siege power for all marching armies.",               prereqs:["bl_b"], unlockLv:30 },
-  { id:"bl_b2", col:2, x:C3x+72,  y:Y_LEAF2, r:R_LEAF, icon:"📜",  label:"Elder's Rite",   accent:"#c8a040", desc:"All Wizard's Tomes effects increased by 15%.",           prereqs:["bl_b"], unlockLv:30 },
+  // ── COL 3: COMBAT (Lv30) accent:#44cc88 ──
+  { id:"bl",    col:2, x:C3x,      y:Y_ROOT,  r:R_ROOT, icon:"⚡",  label:"Easily Winded",      accent:"#44cc88", desc:"+5 max stamina per level. Base is 150, max restores to 200.", prereqs:[], unlockLv:30, maxLv:10, permanent:true  },
+  { id:"bl_t",  col:2, x:C3x-52,  y:Y_MID_L, r:R_MID,  icon:"⭐",  label:"Combat Hardened",     accent:"#c8b070", desc:"+1.5% XP gained from combat per level (max +15%).",            prereqs:["bl"], unlockLv:30, maxLv:10, permanent:false },
+  { id:"bl_b",  col:2, x:C3x+52,  y:Y_MID_R, r:R_MID,  icon:"🎓",  label:"Proving Grounds",  accent:"#f0c040", desc:"[2 Dragon Eggs/tick] Station a commander to train for XP. 10-min ticks.", prereqs:["bl"], unlockLv:30, maxLv:1, permanent:true  },
+  { id:"bl_b1", col:2, x:C3x+20,  y:Y_LEAF,  r:R_LEAF, icon:"📈",  label:"Drillmaster", accent:"#88cc44", desc:"+2% XP from Proving Grounds per level (max +20%).",           prereqs:["bl_b"], unlockLv:30, maxLv:10, permanent:false },
+  { id:"bl_b2", col:2, x:C3x+72,  y:Y_LEAF2, r:R_LEAF, icon:"💥",  label:"Spawn Slayer",           accent:"#c8a040", desc:"+3% damage vs spawn armies per level (max +30%). [Stub — mobs not yet implemented].", prereqs:["bl_b"], unlockLv:30, maxLv:10, permanent:false },
 
   // ── COL 4: ARCANE (Lv50) accent:#cc44ff ──
-  // Root → Abundance (left chain) → Forest (centre) → Egg Vault (right chain)
-  { id:"br",    col:3, x:C4x,      y:Y_ROOT,  r:R_ROOT, icon:"🌀",  label:"Void Mastery",   accent:"#cc44ff", desc:"+5,000 Mystic Orb capacity.",                            prereqs:[], unlockLv:50 },
-  { id:"br_t",  col:3, x:C4x-70,  y:Y_MID_L, r:R_MID,  icon:"✨",  label:"Abundance Rite", accent:"#d4af37", desc:"+10% all resource production.",                           prereqs:["br"], unlockLv:50 },
-  { id:"br_t1", col:3, x:C4x-70,  y:Y_LEAF,  r:R_LEAF, icon:"🌀",  label:"Void Channel",   accent:"#cc44ff", desc:"Void Tap cooldown reduced by additional 10%.",           prereqs:["br_t"], unlockLv:50 },
-  { id:"br_m",  col:3, x:C4x,      y:Y_MID_R, r:R_MID,  icon:"🪵",  label:"Forest Lore",    accent:"#a07840", desc:"+15% wood & ore production.",                            prereqs:["br"], unlockLv:50 },
-  { id:"faction",col:3,x:C4x,      y:Y_LEAF,  r:R_MID,  icon:"⚔️",  label:"Faction Mastery",accent:"#f0c040", desc:"Your faction's unique passive ability.",                 prereqs:["br_m"], unlockLv:50 },
-  { id:"br_b",  col:3, x:C4x+68,  y:Y_MID_L, r:R_MID,  icon:"🥚",  label:"Egg Vault I",    accent:"#e04060", desc:"+5 Dragon Egg capacity.",                                prereqs:["br"], unlockLv:50 },
-  { id:"br_b1", col:3, x:C4x+68,  y:Y_LEAF,  r:R_LEAF, icon:"🥚",  label:"Egg Vault II",   accent:"#e04060", desc:"+5 Dragon Egg capacity (total +10).",                    prereqs:["br_b"], unlockLv:50 },
+  // Root: Fortress Network → Long March (left) + Road Hardened (left leaf)
+  //                         → Quick March (right) → Faction (centre) → Relentless Drilling + Reins (right leaves)
+  { id:"br",    col:3, x:C4x,      y:Y_ROOT,  r:R_ROOT, icon:"🏰",  label:"Fortress Network",      accent:"#cc44ff", desc:"+1 max fort per level (base 10, max 20).",                        prereqs:[], unlockLv:50, maxLv:10, permanent:true  },
+  { id:"br_t",  col:3, x:C4x-70,  y:Y_MID_L, r:R_MID,  icon:"🗺",  label:"Long March",           accent:"#d4af37", desc:"[10 Dragon Eggs] March or attack any tile ignoring range (adjacency rules still apply). One use.", prereqs:["br"], unlockLv:50, maxLv:1, permanent:true  },
+  { id:"br_t1", col:3, x:C4x-70,  y:Y_LEAF,  r:R_LEAF, icon:"💨",  label:"Road Hardened",  accent:"#cc44ff", desc:"+1% march speed per level (max +10%).",                           prereqs:["br_t"], unlockLv:50, maxLv:10, permanent:false },
+  { id:"br_m",  col:3, x:C4x,      y:Y_MID_R, r:R_MID,  icon:"⚡",  label:"Quick March",          accent:"#a07840", desc:"[5 Dragon Eggs] Next march is 50% faster. One use.",               prereqs:["br"], unlockLv:50, maxLv:1, permanent:true  },
+  { id:"faction",col:3,x:C4x,      y:Y_LEAF,  r:R_MID,  icon:"⚔️",  label:"Faction Mastery",      accent:"#f0c040", desc:"Your faction's unique passive ability. [Stub — TBD]",             prereqs:["br_m"], unlockLv:50, maxLv:1, permanent:true  },
+  { id:"br_b",  col:3, x:C4x+68,  y:Y_MID_L, r:R_MID,  icon:"⚒",  label:"Relentless Drilling",       accent:"#e04060", desc:"+2% troop training speed per level (max +20%).",                  prereqs:["br"], unlockLv:50, maxLv:10, permanent:false },
+  { id:"br_b1", col:3, x:C4x+68,  y:Y_LEAF,  r:R_LEAF, icon:"🛡",  label:"Reins",                accent:"#e04060", desc:"+1.5% reinforce speed per level (max +15%).",                     prereqs:["br_b"], unlockLv:50, maxLv:10, permanent:false },
 ];
 
 const NODE_MAP = Object.fromEntries(TREE_NODES.map(n => [n.id, n]));
@@ -143,9 +146,9 @@ const EDGES = [
 // Column metadata
 const COL_META = [
   { label:"GATHERING", unlockLv:1,  accent:"#e07040", locked:"✦ LV 1" },
-  { label:"MARCHING",  unlockLv:10, accent:"#5588ff", locked:"🔒 LV 10" },
-  { label:"DEFENSE",   unlockLv:30, accent:"#44cc88", locked:"🔒 LV 30" },
-  { label:"ARCANE",    unlockLv:50, accent:"#cc44ff", locked:"🔒 LV 50" },
+  { label:"SCOUTING",  unlockLv:10, accent:"#5588ff", locked:"🔒 LV 10" },
+  { label:"COMBAT",    unlockLv:30, accent:"#44cc88", locked:"🔒 LV 30" },
+  { label:"COMMAND",   unlockLv:50, accent:"#cc44ff", locked:"🔒 LV 50" },
 ];
 
 // SVG dimensions
@@ -155,14 +158,15 @@ const SVG_H = 620;
 // Power panel: centred in SVG below the col dividers, compact strip at bottom
 const PP_Y = 545, PP_H = 70;
 
-function NodeShape({ node, unlocked, active, onClick, colAccent }) {
+function NodeShape({ node, unlocked, active, onClick, colAccent, level=0, maxLevel=1 }) {
   const ac = unlocked ? node.accent : colAccent + "55";
   const r  = node.r;
   const isRoot = r === R_ROOT;
+  const isMaxed = level >= maxLevel;
   return (
     <g style={{pointerEvents:"none"}} transform={`translate(${node.x},${node.y})`}>
       {/* glow ring when unlocked */}
-      {unlocked && <circle cx={0} cy={0} r={r+8} fill={node.accent} opacity=".12"/>}
+      {unlocked && <circle cx={0} cy={0} r={r+8} fill={node.accent} opacity={isMaxed ? ".2" : ".12"}/>}
       {/* active ring */}
       {active && <circle cx={0} cy={0} r={r+5} fill="none" stroke={node.accent} strokeWidth="1.5" opacity=".8"/>}
       {/* outer ring (root only) */}
@@ -183,6 +187,18 @@ function NodeShape({ node, unlocked, active, onClick, colAccent }) {
       }}>
         {unlocked ? node.icon : "🔒"}
       </text>
+      {/* level pips for multi-level nodes */}
+      {maxLevel > 1 && unlocked && (() => {
+        const pipCount = Math.min(maxLevel, 10);
+        const pipW = (r * 1.6) / pipCount;
+        const startX = -r * .8;
+        return Array.from({length: pipCount}).map((_, i) => (
+          <rect key={i}
+            x={startX + i * pipW + 1} y={r*.42}
+            width={pipW - 2} height={3} rx={1}
+            fill={i < level ? node.accent : `${node.accent}22`}/>
+        ));
+      })()}
       {/* label below */}
       <text x={0} y={r+13} textAnchor="middle" style={{
         fontSize: 7.5, fontFamily:"'Cinzel',serif",
@@ -201,10 +217,12 @@ export default memo(function WizardsTomes({
   powerPool = 0, setPowerPool,
   powerPerHr = 0,
   tomesUnspentPoints = 0, setTomesUnspentPoints,
+  onNodeLevelsChange,
 }) {
-  const [tab,      setTab]      = useState("knowledge");
-  const [unlocked, setUnlocked] = useState(new Set());
-  const [selected, setSelected] = useState(null);
+  const [tab,        setTab]        = useState("knowledge");
+  const [nodeLevels, setNodeLevels] = useState({});   // { [id]: currentLevel }
+  const [selected,   setSelected]   = useState(null);
+  const [lastReset,  setLastReset]  = useState(null); // placeholder for UTC daily reset
 
   const facDef = useMemo(() => PLAYABLE_FACTIONS.find(f => f.key === facKey), [facKey]);
 
@@ -255,19 +273,57 @@ export default memo(function WizardsTomes({
   // Whether a column is gated by tomes level
   const colOpen = (col) => tomesLevel >= COL_META[col].unlockLv;
 
-  // canUnlock: node prereqs met, have points, col open, not already unlocked
-  const canUnlock = node => {
-    if (unlocked.has(node.id)) return false;
-    if (tomesUnspentPoints <= 0) return false;
-    if (!colOpen(node.col)) return false;
-    return node.prereqs.every(p => unlocked.has(p));
+  // Helper: current level of a node (0 = not started)
+  const nodeLevel = id => nodeLevels[id] ?? 0;
+  const isUnlocked = id => nodeLevel(id) > 0;
+
+  // Adventurer's Trek special gate: tome level must meet threshold for next skill level
+  const advTrekCanUpgrade = () => {
+    const curLv = nodeLevel("tl");
+    if (curLv >= 10) return false;
+    return tomesLevel >= (ADV_TREK_TOME_GATES[curLv] ?? Infinity);
   };
 
-  const doUnlock = node => {
-    if (!canUnlock(node)) return;
-    setUnlocked(prev => new Set([...prev, node.id]));
+  // canUpgrade: prereqs met (≥1), col open, below maxLv, have points
+  const canUpgrade = node => {
+    const curLv = nodeLevel(node.id);
+    if (curLv >= (node.maxLv ?? 1)) return false;
+    if (tomesUnspentPoints <= 0) return false;
+    if (!colOpen(node.col)) return false;
+    if (node.id === "tl") return advTrekCanUpgrade();
+    return node.prereqs.every(p => isUnlocked(p));
+  };
+
+  const doUpgrade = node => {
+    if (!canUpgrade(node)) return;
+    setNodeLevels(prev => {
+      const next = { ...prev, [node.id]: (prev[node.id] ?? 0) + 1 };
+      onNodeLevelsChange?.(next);
+      return next;
+    });
     setTomesUnspentPoints(prev => Math.max(0, prev - 1));
     setSelected(node.id);
+  };
+
+  // Reset: refund all resettable node points, placeholder for UTC daily gate
+  const canReset = Object.entries(nodeLevels).some(([id, lv]) => {
+    const n = NODE_MAP[id];
+    return lv > 0 && n && !n.permanent;
+  });
+
+  const doReset = () => {
+    // TODO: enforce 0 UTC daily cooldown when multiplayer is live
+    let refund = 0;
+    const kept = {};
+    for (const [id, lv] of Object.entries(nodeLevels)) {
+      const n = NODE_MAP[id];
+      if (n?.permanent) { kept[id] = lv; }
+      else { refund += lv; }
+    }
+    setNodeLevels(kept);
+    onNodeLevelsChange?.(kept);
+    setTomesUnspentPoints(prev => prev + refund);
+    setLastReset(Date.now());
   };
 
   const selNode = selected ? getNode(selected) : null;
@@ -295,7 +351,7 @@ export default memo(function WizardsTomes({
               WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
             }}>A WIZARD'S ANCIENT KNOWLEDGE</div>
             <div style={{fontSize:7, color:"#4a3a70", letterSpacing:".12em"}}>
-              WIZARD'S TOMES · {unlocked.size} / {TREE_NODES.length} UNLOCKED
+              WIZARD'S TOMES · {Object.values(nodeLevels).filter(v=>v>0).length} / {TREE_NODES.length} UNLOCKED
               {tomesUnspentPoints > 0 && (
                 <span style={{color:"#ff8844", marginLeft:6}}>
                   · {tomesUnspentPoints} PT{tomesUnspentPoints !== 1 ? "S" : ""} TO SPEND
@@ -304,11 +360,20 @@ export default memo(function WizardsTomes({
             </div>
           </div>
         </div>
-        <button onClick={onClose} style={{
-          background:"none", border:"1px solid #331166", color:"#9966ff",
-          fontSize:16, cursor:"pointer", width:28, height:28, borderRadius:4,
-          display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"sans-serif",
-        }}>✕</button>
+        <div style={{display:"flex", alignItems:"center", gap:6}}>
+          {canReset && (
+            <button onClick={doReset} style={{
+              background:"rgba(255,100,40,.15)", border:"1px solid #aa4422", color:"#ff8855",
+              fontSize:8, cursor:"pointer", padding:"4px 8px", borderRadius:4,
+              fontFamily:"'Cinzel',serif", letterSpacing:".06em",
+            }}>↺ RESET</button>
+          )}
+          <button onClick={onClose} style={{
+            background:"none", border:"1px solid #331166", color:"#9966ff",
+            fontSize:16, cursor:"pointer", width:28, height:28, borderRadius:4,
+            display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"sans-serif",
+          }}>✕</button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -340,40 +405,52 @@ export default memo(function WizardsTomes({
                   background:`${selNode.accent}18`, border:`1.5px solid ${selNode.accent}44`,
                   display:"flex", alignItems:"center", justifyContent:"center", fontSize:16,
                 }}>
-                  {unlocked.has(selNode.id) ? selNode.icon : "🔒"}
+                  {isUnlocked(selNode.id) ? selNode.icon : "🔒"}
                 </div>
                 <div style={{flex:1, minWidth:0}}>
-                  <div style={{fontSize:10, color:"#e8e0ff", marginBottom:1}}>{selNode.label}</div>
+                  <div style={{fontSize:10, color:"#e8e0ff", marginBottom:1}}>
+                    {selNode.label}
+                    {(selNode.maxLv??1) > 1 && (
+                      <span style={{fontSize:8, color:"#9966ff", marginLeft:6}}>
+                        {nodeLevel(selNode.id)}/{selNode.maxLv}
+                      </span>
+                    )}
+                    {selNode.permanent && (
+                      <span style={{fontSize:7, color:"#c0a840", marginLeft:6, opacity:.7}}>PERMANENT</span>
+                    )}
+                  </div>
                   <div style={{
                     fontSize:8, color:"#7060aa", fontFamily:"'Crimson Pro',serif",
                     fontStyle:"italic", lineHeight:1.4,
                   }}>{selNode.desc}</div>
                 </div>
-                {unlocked.has(selNode.id) ? (
+                {nodeLevel(selNode.id) >= (selNode.maxLv ?? 1) ? (
                   <div style={{
                     fontSize:8, color:"#c0a8ff", padding:"3px 8px", flexShrink:0,
                     border:"1px solid rgba(150,100,255,.4)", borderRadius:3,
-                  }}>✓ ACTIVE</div>
+                  }}>✓ MAXED</div>
                 ) : (
                   <button
-                    onClick={() => doUnlock(selNode)}
-                    disabled={!canUnlock(selNode)}
+                    onClick={() => doUpgrade(selNode)}
+                    disabled={!canUpgrade(selNode)}
                     style={{
                       padding:"6px 12px", flexShrink:0,
-                      background: canUnlock(selNode) ? "rgba(120,60,255,.3)" : "rgba(255,255,255,.02)",
-                      border:`1.5px solid ${canUnlock(selNode) ? "#9966ff" : "#1a1440"}`,
-                      color: canUnlock(selNode) ? "#e8e0ff" : "#2a1866",
+                      background: canUpgrade(selNode) ? "rgba(120,60,255,.3)" : "rgba(255,255,255,.02)",
+                      border:`1.5px solid ${canUpgrade(selNode) ? "#9966ff" : "#1a1440"}`,
+                      color: canUpgrade(selNode) ? "#e8e0ff" : "#2a1866",
                       fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:".07em",
-                      borderRadius:4, cursor: canUnlock(selNode) ? "pointer" : "not-allowed",
+                      borderRadius:4, cursor: canUpgrade(selNode) ? "pointer" : "not-allowed",
                       WebkitTapHighlightColor:"transparent",
                     }}>
-                    {canUnlock(selNode)
-                      ? "✦ UNLOCK (1 pt)"
+                    {canUpgrade(selNode)
+                      ? (isUnlocked(selNode.id) ? "✦ UPGRADE (1 pt)" : "✦ UNLOCK (1 pt)")
                       : !colOpen(selNode.col)
                         ? `🔒 NEED LV ${COL_META[selNode.col].unlockLv}`
-                        : tomesUnspentPoints === 0
-                          ? "NO POINTS"
-                          : "LOCKED"}
+                        : selNode.id === "tl" && !advTrekCanUpgrade()
+                          ? `🔒 NEED TOMES LV ${ADV_TREK_TOME_GATES[nodeLevel("tl")] ?? "?"}`
+                          : tomesUnspentPoints === 0
+                            ? "NO POINTS"
+                            : "PREREQ NEEDED"}
                   </button>
                 )}
               </>
@@ -465,8 +542,8 @@ export default memo(function WizardsTomes({
                 const A = NODE_MAP[aid], B = getNode ? NODE_MAP[bid] : null;
                 const Bn = NODE_MAP[bid];
                 if (!A || !Bn) return null;
-                const lit  = unlocked.has(aid) && unlocked.has(bid);
-                const part = unlocked.has(aid) && !unlocked.has(bid);
+                const lit  = isUnlocked(aid) && isUnlocked(bid);
+                const part = isUnlocked(aid) && !isUnlocked(bid);
                 const col  = A.col;
                 const ac   = COL_META[col]?.accent ?? "#9966ff";
                 return (
@@ -484,14 +561,18 @@ export default memo(function WizardsTomes({
                 const n     = getNode(node.id);
                 const ac    = COL_META[node.col]?.accent ?? "#9966ff";
                 const colOk = colOpen(node.col);
+                const lvl   = nodeLevel(node.id);
+                const maxLv = node.maxLv ?? 1;
                 return (
                   <NodeShape
                     key={n.id}
                     node={n}
-                    unlocked={unlocked.has(n.id)}
+                    unlocked={lvl > 0}
                     active={selected === n.id}
                     colAccent={colOk ? ac : `${ac}44`}
                     onClick={() => setSelected(n.id)}
+                    level={lvl}
+                    maxLevel={maxLv}
                   />
                 );
               })}
@@ -638,23 +719,23 @@ export default memo(function WizardsTomes({
           <div style={{marginBottom:16}}>
             <div style={{display:"flex", justifyContent:"space-between", fontSize:8, color:"#5540aa", marginBottom:4}}>
               <span>MASTERY PROGRESS</span>
-              <span style={{color:"#c0a8ff"}}>{unlocked.size} / {TREE_NODES.length}</span>
+              <span style={{color:"#c0a8ff"}}>{Object.values(nodeLevels).filter(v=>v>0).length} / {TREE_NODES.length}</span>
             </div>
             <div style={{height:5, background:"rgba(255,255,255,.04)", borderRadius:2, overflow:"hidden"}}>
               <div style={{height:"100%", borderRadius:2,
-                width:`${(unlocked.size/TREE_NODES.length)*100}%`,
+                width:`${(Object.values(nodeLevels).filter(v=>v>0).length/TREE_NODES.length)*100}%`,
                 background:"linear-gradient(90deg,#330088,#9966ff)", transition:"width .4s ease"}}/>
             </div>
           </div>
 
           <div style={{fontSize:8, color:"#5540aa", letterSpacing:".12em", marginBottom:8}}>ACTIVE TOMES</div>
-          {unlocked.size === 0 ? (
+          {Object.values(nodeLevels).filter(v=>v>0).length === 0 ? (
             <div style={{fontSize:9, color:"#1e1408", fontFamily:"'Crimson Pro',serif", fontStyle:"italic"}}>
               No tomes unlocked yet. Study the Knowledge tree.
             </div>
           ) : (
             <div style={{display:"flex", flexDirection:"column", gap:5}}>
-              {TREE_NODES.filter(n => unlocked.has(n.id)).map(n => {
+              {TREE_NODES.filter(n => nodeLevel(n.id) > 0).map(n => {
                 const d = getNode(n.id);
                 return (
                   <div key={n.id} style={{
@@ -662,8 +743,12 @@ export default memo(function WizardsTomes({
                     background:`${n.accent}0c`, border:`1px solid ${n.accent}20`, borderRadius:4,
                   }}>
                     <span style={{fontSize:14, flexShrink:0}}>{d.icon}</span>
-                    <div>
-                      <div style={{fontSize:9, color:n.accent}}>{d.label}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:9, color:n.accent}}>
+                        {d.label}
+                        {(n.maxLv??1) > 1 && <span style={{fontSize:7, color:"#9966ff", marginLeft:5}}>{nodeLevel(n.id)}/{n.maxLv}</span>}
+                        {n.permanent && <span style={{fontSize:7, color:"#c0a840", marginLeft:5, opacity:.7}}>PERM</span>}
+                      </div>
                       <div style={{fontSize:8, color:"#4a3828", fontFamily:"'Crimson Pro',serif", fontStyle:"italic"}}>{n.desc}</div>
                     </div>
                   </div>

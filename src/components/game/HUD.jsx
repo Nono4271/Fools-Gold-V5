@@ -113,6 +113,7 @@ export default memo(function HUD({
   facName, facKey, pKeys, rss, gems, tiles,
   dragonEggs    = 20,
   dragonEggsCap = 20,
+  tileCap       = 60,
   mysticOrbs    = 1000,
   mysticOrbsCap = 10000,
   mysticOrbRegen = 0,
@@ -269,7 +270,7 @@ export default memo(function HUD({
               <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:2 }}>
                 <span style={{ fontSize:8 }}>⬛</span>
                 <span style={{ fontFamily:"'Cinzel',serif", fontSize:7, color:"#6a9060", whiteSpace:"nowrap" }}>
-                  {tileCount}/60
+                  {tileCount}/{tileCap}
                 </span>
               </div>
             </div>

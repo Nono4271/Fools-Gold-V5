@@ -22,6 +22,7 @@ function timeAgo(ts) {
 }
 
 function outcomeOf(b) {
+  if (b.type === "recon") return { text:"RECON", color:"#44ccee" };
   if (b.won && b.defTroopsEnd === 0) return { text:"VICTORY", color:"#3daa60" };
   if (!b.won && b.atkTroopsEnd === 0) return { text:"DEFEAT",  color:"#cc3030" };
   return { text:"DRAW", color:"#d0a030" };
@@ -918,7 +919,9 @@ function BattleListItem({ b, selected, onClick }) {
         display:"flex", alignItems:"center", justifyContent:"center",
         position:"relative",
       }}>
-        {b.atkBust ? (
+        {b.type === "recon" ? (
+          <span style={{ fontSize:18 }}>{b.defCmdIcon || "🔭"}</span>
+        ) : b.atkBust ? (
           <img src={b.atkBust} alt={b.atkName}
             style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top center" }} />
         ) : (
@@ -938,7 +941,7 @@ function BattleListItem({ b, selected, onClick }) {
           fontSize:7, color:"#9a8060", fontFamily:"'Cinzel',serif",
           overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:1,
         }}>
-          {b.tileName ?? "—"}
+          {b.type === "recon" ? `${b.defCmdName ?? "Garrison"} · P${b.powerLevel ?? "?"}` : (b.tileName ?? "—")}
         </div>
         <div style={{ fontSize:6, color:"#3a3028" }}>{timeAgo(b.timestamp)}</div>
       </div>
@@ -1079,6 +1082,52 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
       color:"#2a2020", fontFamily:"'Cinzel',serif", fontSize:9, fontStyle:"italic",
     }}>
       Select a battle on the left
+    </div>
+  );
+
+  // ── Recon entry — show defender only ──
+  if (b.type === "recon") return (
+    <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", background:"#0a0810" }}>
+      <div style={{ padding:"10px 14px", borderBottom:"1px solid #1a1520", background:"rgba(0,68,100,.15)" }}>
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#44ccee", letterSpacing:".08em", marginBottom:2 }}>🔭 RECON REPORT</div>
+        <div style={{ fontSize:8, color:"#3a5a6a" }}>{b.tileName} · P{b.powerLevel ?? "?"} · {timeAgo(b.timestamp)}</div>
+      </div>
+      <div style={{ flex:1, overflowY:"auto", padding:"12px 14px" }}>
+        {/* Defender commander */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", marginBottom:10,
+          background:"rgba(40,20,20,.4)", border:"1px solid #3a2020", borderRadius:6 }}>
+          <span style={{ fontSize:28 }}>{b.defCmdIcon ?? "⚔"}</span>
+          <div>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#e08080" }}>{b.defCmdName ?? "Garrison"}</div>
+            <div style={{ fontSize:8, color:"#6a4040" }}>Lv{b.defLvl ?? "?"} · {b.defCmdCls ?? "garrison"}</div>
+          </div>
+        </div>
+        {/* Defender troops */}
+        {b.defTroopBranch && (() => {
+          const resolved = resolveTroopBranch(b.defTroopBranch);
+          if (!resolved) return null;
+          const { branchDef: br, tierData: td } = resolved;
+          return (
+            <div style={{ padding:"8px 10px", background:"rgba(255,255,255,.02)", border:"1px solid #2a1a1a", borderRadius:5, marginBottom:8 }}>
+              <div style={{ fontSize:8, color:"#6a4040", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:4 }}>GARRISON TROOPS</div>
+              <div style={{ fontSize:9, color:"#c08080" }}>{br.label} — {td?.label ?? "?"}</div>
+              <div style={{ fontSize:8, color:"#5a3a3a", marginTop:2 }}>{b.defTroopsStart?.toLocaleString() ?? "?"} troops</div>
+            </div>
+          );
+        })()}
+        {/* Defender stats if available */}
+        {b.defCmdStats && (
+          <div style={{ padding:"8px 10px", background:"rgba(255,255,255,.02)", border:"1px solid #2a1a1a", borderRadius:5 }}>
+            <div style={{ fontSize:8, color:"#6a4040", fontFamily:"'Cinzel',serif", letterSpacing:".06em", marginBottom:6 }}>COMMANDER STATS</div>
+            {[["ATK","⚔",b.defCmdStats.atk,"#e08050"],["FOC","✦",b.defCmdStats.foc,"#50d090"],["SPD","💨",b.defCmdStats.spd,"#d0a030"]].map(([lbl,ico,val,col])=>(
+              <div key={lbl} style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontSize:8, color:"#5a4040" }}>{ico} {lbl}</span>
+                <span style={{ fontSize:9, color:col, fontWeight:700 }}>{val ?? "?"}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -1273,6 +1322,30 @@ function DetailedLog({ b }) {
     <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%",
       color:"#2a2020", fontFamily:"'Cinzel',serif", fontSize:9, fontStyle:"italic" }}>
       Select a battle on the left
+    </div>
+  );
+
+  // Recon entries have no attacker data — render a simple defender summary
+  if (b.type === "recon") return (
+    <div style={{ padding:"14px" }}>
+      <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:"#44ccee", marginBottom:6 }}>🔭 Recon — {b.tileName}</div>
+      <div style={{ fontSize:8, color:"#3a5a6a", marginBottom:12 }}>P{b.powerLevel ?? "?"} · {timeAgo(b.timestamp)}</div>
+      <div style={{ padding:"10px 12px", background:"rgba(40,20,20,.4)", border:"1px solid #3a2020", borderRadius:6, marginBottom:8 }}>
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#e08080", marginBottom:2 }}>
+          {b.defCmdIcon ?? "⚔"} {b.defCmdName ?? "Garrison"} · Lv{b.defLvl ?? "?"}
+        </div>
+        <div style={{ fontSize:8, color:"#6a4040" }}>{b.defCmdCls ?? "garrison"}</div>
+      </div>
+      {b.defTroopBranch && (() => {
+        const r = resolveTroopBranch(b.defTroopBranch);
+        if (!r) return null;
+        return (
+          <div style={{ padding:"8px 12px", background:"rgba(255,255,255,.02)", border:"1px solid #2a1a1a", borderRadius:5 }}>
+            <div style={{ fontSize:8, color:"#5a3a3a" }}>{r.branchDef.label} — {r.tierData?.label ?? "?"}</div>
+            <div style={{ fontSize:8, color:"#4a3030", marginTop:2 }}>{(b.defTroopsStart ?? 0).toLocaleString()} troops</div>
+          </div>
+        );
+      })()}
     </div>
   );
 
@@ -1652,6 +1725,7 @@ export default memo(function BattleLog({ battles, bLog, onClose, playerName }) {
             }}>
               {battles.map((b, i) => {
                 const oc = outcomeOf(b);
+                const isRecon = b.type === "recon";
                 return (
                   <div key={i} onClick={() => setSelected(i)} style={{
                     padding:"7px 8px", marginBottom:4, cursor:"pointer", borderRadius:4,
@@ -1661,7 +1735,7 @@ export default memo(function BattleLog({ battles, bLog, onClose, playerName }) {
                   }}>
                     <div style={{ fontSize:8, color:"#9a8060", fontFamily:"'Cinzel',serif",
                       overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:1 }}>
-                      {b.atkIcon} {b.atkName}
+                      {isRecon ? `🔭 ${b.defCmdName ?? "Garrison"}` : `${b.atkIcon} ${b.atkName}`}
                     </div>
                     <div style={{ fontSize:7, color:oc.color, marginBottom:1 }}>{oc.text}</div>
                     <div style={{ fontSize:6, color:"#3a3028" }}>{timeAgo(b.timestamp)}</div>
