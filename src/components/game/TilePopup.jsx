@@ -254,7 +254,7 @@ export default memo(function TilePopup({
             </div>
             <div style={{ fontSize:7, color:"#5a5a6a", marginTop:1 }}>
               {selTile.c},{selTile.r}
-              {selTile.powerLevel&&!selTile.isHQ&&<span style={{ marginLeft:5, color:POWER_DEFS[selTile.powerLevel]?.color }}>⚡ {POWER_DEFS[selTile.powerLevel]?.label}</span>}
+              {fort ? <span style={{ marginLeft:5, color:"#d4a030", fontFamily:"'Cinzel',serif", fontWeight:700 }}>Fort Lv{fort.level}</span> : selTile.powerLevel&&!selTile.isHQ&&<span style={{ marginLeft:5, color:POWER_DEFS[selTile.powerLevel]?.color }}>⚡ {POWER_DEFS[selTile.powerLevel]?.label}</span>}
             </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:5, flexShrink:0, marginLeft:6 }}>
@@ -293,8 +293,8 @@ export default memo(function TilePopup({
           </div>
         )}
 
-        {/* Siege bar */}
-        {!selTile.isHQ&&(()=>{
+        {/* Siege bar — removed for fort tiles */}
+        {!selTile.isHQ&&!fort&&(()=>{
           const sv=selTile.siege??SIEGE_BASE, sm=selTile.siegeMax??SIEGE_BASE;
           const pct=Math.round((sv/sm)*100);
           const totalW=selTile.garrisonWaves??1, defCount=selTile.defeatedWaves?.length??0;
@@ -397,8 +397,8 @@ export default memo(function TilePopup({
               ATTACK
             </button>
           )}
-          {/* Move — owned */}
-          {ownership==="player"&&!isHqTile&&(
+          {/* Move — owned, hidden for fort tiles */}
+          {ownership==="player"&&!isHqTile&&!fort&&(
             <button onClick={()=>canMoveNow?(setAtkKey(selKey),setMode("pickMoveCmd"),setPick(null)):null}
               style={{ flex:1, padding:"6px 0", background:canMoveNow?"linear-gradient(160deg,#083a18,#041e0a)":"rgba(20,40,20,.3)", border:`1px solid ${canMoveNow?"#2a8040":"#2a4a2a"}`, borderRadius:5, color:canMoveNow?"#80d090":"#507050", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canMoveNow?"pointer":"not-allowed", opacity:canMoveNow?1:.6 }}>
               MOVE
