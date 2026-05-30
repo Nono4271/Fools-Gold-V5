@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useGameContext } from "../../GameContext.js";
 import { applyGearToCmd } from "../../../shared/utils/gearStats.js";
 import { CSS } from "../../constants/css.js";
 import {
@@ -607,6 +608,7 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
   }
 
   // ── Selected node state for info panel ───────────────────────────────────
+  const { staminaMax = 150 } = useGameContext();
   const [selectedNode, setSelectedNode] = useState(null);
   // selectedNode: { skillDef, isMain, skillKey, mainKeyForBranch, gateLocked, nodeX, nodeY }
 
@@ -1211,16 +1213,16 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
 
       {/* ── Stamina ── */}
       {(() => {
-        const stam = cmd.stamina ?? 200;
+        const stam = cmd.stamina ?? staminaMax;
         const sc = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
         return (
           <div style={{ padding: "4px 14px", borderBottom: "1px solid #161210" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
               <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: "#8a7a60", letterSpacing: ".08em" }}>⚡ STAMINA</div>
-              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: sc, fontWeight: 700 }}>{Math.floor(stam)} / 200</div>
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: sc, fontWeight: 700 }}>{Math.floor(stam)} / {staminaMax}</div>
             </div>
             <div style={{ height: 4, background: "rgba(0,0,0,.5)", borderRadius: 3, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(stam / 200) * 100}%`, background: sc, borderRadius: 3, transition: "width .3s" }}/>
+              <div style={{ height: "100%", width: `${(stam / staminaMax) * 100}%`, background: sc, borderRadius: 3, transition: "width .3s" }}/>
             </div>
           </div>
         );
