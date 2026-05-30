@@ -31,20 +31,10 @@ export default memo(function FortPanel({
     <div style={{
       background: "rgba(180,130,20,.06)",
       border: "1px solid rgba(180,130,20,.25)",
-      borderRadius: 6, padding: "8px 10px",
+      borderRadius: 6, padding: "10px 12px",
     }}>
-      {/* Fort header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: "#d4a030", fontWeight: 700 }}>
-          🏯 FORT — LV{fort.level}
-        </span>
-        <span style={{ fontSize: 7, color: "#a07828", fontFamily: "'Cinzel',serif" }}>
-          {stationedCount}/{levelDef.capacity} stationed
-        </span>
-      </div>
-
       {/* Commander slot grid — always 6, large squares with bust images */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 5, marginBottom: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 6, marginBottom: 10 }}>
         {slots.map((slot, i) => (
           <div key={i} style={{
             aspectRatio: "1", borderRadius: 6,
