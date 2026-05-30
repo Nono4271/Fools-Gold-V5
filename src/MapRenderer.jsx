@@ -2030,22 +2030,17 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
 
-      // HQ: use full border polygon so outline wraps the whole HQ (sprite draws on top)
+      // HQ: draw only bottom ~70% of diamond (W→S→E), sprite covers the top
       if (tile.isHQ) {
-        const hqGroup = hqContRef.current?.children?.find(g => g.__hqKey === key);
-        const pts = hqGroup?.__borderPts;
-        if (pts) {
-          selGfx.lineStyle(3, 0xffffff, 0.95);
-          selGfx.drawPolygon(pts);
-          selGfx.lineStyle(0);
-        } else {
-          // Fallback if hqGroup not ready yet
-          const { cx, cy } = isoXY(sc, sr);
-          const elev = 4; const sy2 = cy - elev; const mid = sy2 + TH / 2;
-          selGfx.lineStyle(2.5, 0xffffff, 0.9);
-          selGfx.drawPolygon([cx, sy2, cx+TW/2, mid, cx, sy2+TH, cx-TW/2, mid]);
-          selGfx.lineStyle(0);
-        }
+        const { cx, cy } = isoXY(sc, sr);
+        const elev = 4;
+        const sy2 = cy - elev;
+        const mid = sy2 + TH / 2;
+        selGfx.lineStyle(2.5, 0xffffff, 0.9);
+        selGfx.moveTo(cx - TW/2, mid);
+        selGfx.lineTo(cx, sy2 + TH);
+        selGfx.lineTo(cx + TW/2, mid);
+        selGfx.lineStyle(0);
         return;
       }
 
