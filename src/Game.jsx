@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { XP_PER_COMMAND } from "./shared/constants/map.js";
 import { unstable_batchedUpdates } from "react-dom";
 import { MapRenderer, clearHQCache } from "./MapRenderer";
 
@@ -22,6 +23,7 @@ import { useAI } from "./hooks/useAI.js";
 import { useTraining } from "./hooks/useTraining.js";
 import { useMarch, applyXp } from "./hooks/useMarch.js";
 import { useForts, isTileInRange, buildAnchors } from "./hooks/useForts.js";
+import { GameContext } from "./GameContext.js";
 import { useUpgrades } from "./hooks/useUpgrades.js";
 import { useGameLoop } from "./hooks/useGameLoop.js";
 import { usePathfinding } from "./hooks/usePathfinding.js";
@@ -255,7 +257,8 @@ export default function RiseToWar() {
     dailyHalfUsed, setDailyHalfUsed,
     isFreeAvailable, isHalfAvailable,
     pullCost, pull,
-  } = useGacha({ playerAlignment, gems, setGems, playerHqRef, setCmds, setColl, floatyRef });
+  } = useGacha({
+    staminaMax, playerAlignment, gems, setGems, playerHqRef, setCmds, setColl, floatyRef });
 
   const [bldgs,  setBldgs]   = useState({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, storage:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0, voidtap:0 });
   const [upgQueue, setUpgQueue] = useState({});
@@ -602,7 +605,7 @@ export default function RiseToWar() {
         const newTicks = ticksDue - ticksDone;
         const tilePl   = tilesMapRef.current?.[cmd.gatherTileKey]?.powerLevel ?? 1;
         const budget   = POWER_COMMAND[tilePl] ?? 0.3;
-        const xpPerTick = Math.round(budget * 850 * 0.25);
+        const xpPerTick = Math.round(budget * (XP_PER_COMMAND[2] ?? 850) * 0.25);
         const xpGain   = Math.round(xpPerTick * trainingXpMult * newTicks);
         setDragonEggs(e => Math.max(0, e - newTicks * 2));
         const nextDone = ticksDone + newTicks;
@@ -2196,6 +2199,7 @@ export default function RiseToWar() {
 
   // ── Game screen ──
   return (
+    <GameContext.Provider value={{ staminaMax }}>
     <div style={{
       width:"100vw", height:"100vh", position:"relative", overflow:"hidden",
       background:"transparent", userSelect:"none",
@@ -2745,5 +2749,6 @@ function PerfOverlay({ open, onToggle }) {
           <div style={{fontSize:8,color:"#555",marginTop:3}}>🔴&gt;100ms 🟡&gt;33ms 🟢fast</div>
         </div>
     </div>
+    </GameContext.Provider>
   );
 }
