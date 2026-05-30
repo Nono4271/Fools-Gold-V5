@@ -2037,7 +2037,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         if (pts && pts.length >= 8) {
           // pts = [Nx,Ny, Ex,Ey, Sx,Sy, Wx,Wy]
           const [Nx,Ny, Ex,Ey, Sx,Sy, Wx,Wy] = pts;
-          const t = 0.2; // 20% of each top edge
+          const t = 0.3; // 30% of each top edge
           // NW edge start (W side, 20% toward N)
           const nwX = Wx + (Nx - Wx) * t, nwY = Wy + (Ny - Wy) * t;
           // NE edge start (E side, 20% toward N)
