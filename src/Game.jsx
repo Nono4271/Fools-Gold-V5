@@ -13,13 +13,14 @@ import { isoXY } from "../shared/constants/geometry.js";
 
 // Utils
 import { adj, effectiveMarchSpd, marchStepMs, setImpassableTiles, normaliseTroopSlots } from "../shared/utils/pathfinding.js";
+import { garrisonDefCmd } from "../shared/utils/garrisonUtils.js";
 import { applyGearToCmd } from "../shared/utils/gearStats.js";
 
 // Hooks
 import { useResources } from "./hooks/useResources.js";
 import { useAI } from "./hooks/useAI.js";
 import { useTraining } from "./hooks/useTraining.js";
-import { useMarch } from "./hooks/useMarch.js";
+import { useMarch, applyXp } from "./hooks/useMarch.js";
 import { useForts, isTileInRange, buildAnchors } from "./hooks/useForts.js";
 import { useUpgrades } from "./hooks/useUpgrades.js";
 import { useGameLoop } from "./hooks/useGameLoop.js";
@@ -93,6 +94,8 @@ export default function RiseToWar() {
   const powerPerHrRef = useRef(0);
   const [powerPerHr, setPowerPerHr] = useState(0);
 
+  const tileCapRef = useRef(60); // kept in sync with tileCap — used inside patchTile callback
+
   const patchTile = useCallback((key, patch) => {
     const t = tilesMapRef.current[key];
     if (!t) return;
@@ -121,7 +124,8 @@ export default function RiseToWar() {
     }
     if ('owner' in patch && patch.owner !== t.owner) {
       const newSet = new Set(pKeysRef.current);
-      if (patch.owner === "player") newSet.add(key);
+      if (patch.owner === "player" && newSet.size < tileCapRef.current) newSet.add(key);
+      else if (patch.owner === "player") return; // tile cap reached — block capture
       else newSet.delete(key);
       pKeysRef.current = newSet;
       setPKeys(newSet);
@@ -409,12 +413,59 @@ export default function RiseToWar() {
     powerPool,          setPowerPool,
     tomesUnspentPoints, setTomesUnspentPoints,
   } = useTomes({ screen, powerPerHrRef });
+
+  // ── Tome-derived constants ────────────────────────────────────────────────
+  const tomeNodeLv = (id) => tomesNodeLevels[id] ?? 0;
+  const tileCap        = 60 + tomeNodeLv("tl") * 15;          // Adventurer's Trek
+  tileCapRef.current   = tileCap; // keep ref in sync for patchTile callback
+  const dragonEggsCap  = 20 + tomeNodeLv("tr");               // Unlimited Eggs (max 30)
+  const tomeSpdBonus   = tomeNodeLv("tl_t1") * 2;             // Speedster
+  const tomeFocBonus   = tomeNodeLv("tl_b1") * 2;             // Willpower
+  const tomeAtkBonus   = tomeNodeLv("tl_b2") * 2;             // Overpower
+  const rssBonus = {                                           // RSS Mastery nodes
+    gas:   tomeNodeLv("tr_b1") * 0.015,
+    wood:  tomeNodeLv("tr_b2") * 0.015,
+    stone: tomeNodeLv("tr_b3") * 0.015,
+    ore:   tomeNodeLv("tr_b4") * 0.015,
+  };
+  const hasQuickGather = tomeNodeLv("tl_t") >= 1;
+  const hasRecon       = tomeNodeLv("tr_t") >= 1;
+  const hasGather      = tomeNodeLv("tr_b") >= 1;
+  const hasCmdTraining = tomeNodeLv("bl_b") >= 1;
+  // Col 3 — Combat
+  const staminaMax     = 150 + tomeNodeLv("bl")    * 5;   // Easily Winded: base 150, +5/lv → 200
+  const combatXpMult   = 1   + tomeNodeLv("bl_t")  * 0.015; // Combat Hardened: +1.5%/lv
+  const trainingXpMult = 1   + tomeNodeLv("bl_b1") * 0.02;  // Training Specialist: +2%/lv
+  // PVE Power — stubbed until mobs are implemented
+  // const pvePowerBonus = tomeNodeLv("bl_b2") * 0.03;  // TODO: wire when mobs built
+  // Col 4 — Command
+  const fortMax            = 10 + tomeNodeLv("br");                  // Numerous Forts
+  const hasLongMarch       = tomeNodeLv("br_t")   >= 1;             // Long March tactic
+  const marchSpeedMult     = 1  - tomeNodeLv("br_t1") * 0.01;       // Marching Efficiency (reduces stepMs)
+  const hasQuickMarch      = tomeNodeLv("br_m")   >= 1;             // Quick March tactic
+  const trainingSpeedMult  = 1  + tomeNodeLv("br_b")  * 0.02;       // Troop Training
+  const reinSpeedMult      = 1  - tomeNodeLv("br_b1") * 0.015;      // Reins (reduces stepMs)
+
+  // Apply gear + tome stat bonuses to a commander
+  const applyAllBonuses = (cmd, inv) => {
+    const g = applyGearToCmd(cmd, inv);
+    return {
+      ...g,
+      atk: g.atk + tomeAtkBonus,
+      foc: g.foc + tomeFocBonus,
+      spd: g.spd + tomeSpdBonus,
+    };
+  };
   const [woundedTroops,  setWounded]       = useState(0);
   const [woundedQueue,   setWoundedQueue]  = useState(0);
   const [trainingQueues, setTrainingQueues] = useState([]);  // array of { id, branchKey, remaining, total }
   const [trainSlider,    setTrainSlider]   = useState(100);
 
   const [bLog,          setBLog]          = useState([]);
+  const [dragonEggs,      setDragonEggs]      = useState(20);
+  const [tomesNodeLevels, setTomesNodeLevels] = useState({});
+  const [longMarchReady,  setLongMarchReady]  = useState(false); // one-time use, consumed on march
+  const [quickMarchReady, setQuickMarchReady] = useState(false); // one-time use, consumed on march
   const [battles,       setBattles]       = useState([]);
   const [unseenBattles, setUnseenBattles] = useState(0);
   const [showBattleLog, setShowBattleLog] = useState(false);
@@ -518,12 +569,83 @@ export default function RiseToWar() {
   const [showPerf,       setShowPerf]       = useState(false);
 
   // ── Hooks ──
-  useResources({ screen, tilesRef, setRss, bldgs, fortsRef: _fortsRef });
+  useResources({ screen, tilesRef, setRss, bldgs, fortsRef: _fortsRef, rssBonus });
+
+  // ── Dragon Egg regen — refills full cap in 24 hrs regardless of cap size ──
+  useEffect(() => {
+    if (screen !== "game") return;
+    const id = setInterval(() => {
+      setDragonEggs(e => {
+        const cap = 20 + (tomesNodeLevels["tr"] ?? 0);
+        if (e >= cap) return e;
+        const regenPerTick = cap / (24 * 60); // fills in 24hr, tick every 1 min
+        return Math.min(cap, e + regenPerTick);
+      });
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [screen, tomesNodeLevels]);
+
+  // ── Training tick — deduct 2 eggs every 10 min, credit XP, stop at max ticks ──
+  useEffect(() => {
+    if (screen !== "game") return;
+    // XP per tick = 25% of tile's command_budget × 850 (tier2 XP rate)
+    const POWER_COMMAND = { 1:0.3,2:2.5,3:4,4:8,5:10,6:15,7:18,8:30,9:35,10:55,11:65,12:75,13:90 };
+    const id = setInterval(() => {
+      setCmds(prev => prev.map(cmd => {
+        if (!cmd.training) return cmd;
+        const elapsed  = Date.now() - (cmd.trainingStartMs ?? Date.now());
+        const ticksDue = Math.min(cmd.trainingTicks ?? 1, Math.floor(elapsed / 600_000));
+        const ticksDone = cmd.trainingTicksDone ?? 0;
+        if (ticksDue <= ticksDone) return cmd;
+        const newTicks = ticksDue - ticksDone;
+        const tilePl   = tilesMapRef.current?.[cmd.gatherTileKey]?.powerLevel ?? 1;
+        const budget   = POWER_COMMAND[tilePl] ?? 0.3;
+        const xpPerTick = Math.round(budget * 850 * 0.25);
+        const xpGain   = Math.round(xpPerTick * trainingXpMult * newTicks);
+        setDragonEggs(e => Math.max(0, e - newTicks * 2));
+        const nextDone = ticksDone + newTicks;
+        const finished = nextDone >= (cmd.trainingTicks ?? 1);
+        // Apply full applyXp logic — handles level-ups, stat growth, skill points
+        const xpResult = applyXp(cmd, xpGain, (msg, color, tk) => floaty(msg, color, tk));
+        return { ...cmd, ...xpResult, trainingTicksDone: nextDone, training: !finished };
+      }));
+    }, 10_000);
+    return () => clearInterval(id);
+  }, [screen, setCmds, setDragonEggs, trainingXpMult]);
+
+  // ── Gather tick — deduct 1 egg every 10 min, credit 4x RSS, stop at max ticks ──
+  useEffect(() => {
+    if (screen !== "game") return;
+    const RATE_BY_PL = { 2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600 };
+    const id = setInterval(() => {
+      setCmds(prev => prev.map(cmd => {
+        if (!cmd.gathering || !cmd.gatherTileKey) return cmd;
+        const tile = tilesMapRef.current?.[cmd.gatherTileKey];
+        if (!tile) return { ...cmd, gathering: false };
+        const elapsed = Date.now() - (cmd.gatherStartMs ?? Date.now());
+        const ticksDue = Math.min(cmd.gatherTicks ?? 1, Math.floor(elapsed / 600_000));
+        const ticksDone = cmd.gatherTicksDone ?? 0;
+        if (ticksDue <= ticksDone) return cmd; // not time yet
+        const newTicks = ticksDue - ticksDone;
+        const pl = tile.powerLevel ?? 2;
+        const ratePerHr = RATE_BY_PL[pl] ?? 240;
+        const rssGain = Math.floor(ratePerHr * 4 * newTicks); // 4x per tick-hour
+        if (tile.rss) {
+          setRss(p => ({ ...p, [tile.rss]: p[tile.rss] + rssGain }));
+        }
+        setDragonEggs(e => Math.max(0, e - newTicks));
+        const nextDone = ticksDone + newTicks;
+        const finished = nextDone >= (cmd.gatherTicks ?? 1);
+        return { ...cmd, gatherTicksDone: nextDone, gathering: !finished };
+      }));
+    }, 10_000); // check every 10s, acts at 10-min boundaries
+    return () => clearInterval(id);
+  }, [screen, setCmds, setRss, setDragonEggs]);
 
   // ── Stamina regen: +20/hr = +1 per 3 minutes ─────────────────────────────
   useEffect(() => {
     if (screen !== "game") return;
-    const STAMINA_MAX   = 200;
+    const STAMINA_MAX   = staminaMax;
     const REGEN_PER_HR  = 20;
     const INTERVAL_MS   = 3 * 60 * 1000; // 3 minutes = 1 regen tick
     const REGEN_PER_TICK = REGEN_PER_HR / (60 / 3); // = 1 per tick
@@ -1128,7 +1250,7 @@ export default function RiseToWar() {
     findPathBatch,
   });
 
-  useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue });
+  useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue, trainingSpeedMult });
 
   useUpgrades({ screen, setUpgQueue, setBldgs, setBarracks });
 
@@ -1164,7 +1286,14 @@ export default function RiseToWar() {
     getStationedFort,
     getAnchors,
     loadForts,
-  } = useForts({ playerHqKey, cmds, setCmds, emitFortUpdate });
+  } = useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax });
+
+  // Wrap buildFort to deduct 3 dragon eggs
+  const buildFortWithCost = useCallback((tileKey, tile) => {
+    if ((dragonEggs ?? 0) < 3) { floaty("⚡ Need 3 Dragon Eggs to build a fort!", "#cc4040", tileKey); return; }
+    const result = buildFort(tileKey, tile);
+    if (result?.ok !== false) setDragonEggs(e => Math.max(0, e - 3));
+  }, [buildFort, dragonEggs, floaty]);
 
   const fortsRef = useRef(forts);
   useEffect(() => { fortsRef.current = forts; _fortsRef.current = forts; }, [forts]);
@@ -1181,8 +1310,8 @@ export default function RiseToWar() {
     const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
     if (!cmd || cmd.march) return;
     const cost = 10;
-    if ((cmd.stamina ?? 200) < cost) { floaty("⚡ Not enough stamina!", "#cc8030", cmd.tk); return; }
-    setCmds(p => p.map(c => c.uid===uid ? { ...c, isGuarding:true, guardedAt:Date.now(), stamina:Math.max(0,(c.stamina??200)-cost) } : c));
+    if ((cmd.stamina ?? staminaMax) < cost) { floaty("⚡ Not enough stamina!", "#cc8030", cmd.tk); return; }
+    setCmds(p => p.map(c => c.uid===uid ? { ...c, isGuarding:true, guardedAt:Date.now(), stamina:Math.max(0,(c.stamina??staminaMax)-cost) } : c));
   }, [floaty]);
 
   const cancelGuard = useCallback((uid) => {
@@ -1223,6 +1352,7 @@ export default function RiseToWar() {
     setTiles, patchTile, setWounded, setBarracks,
     setBattles, setBLog, setWinner, setUnseenBattles,
     tilesRef, floaty, gearInventory,
+    combatXpMult,
     playerHqKey: playerHqKey || playerHqRef.current || `${HQP.player.c},${HQP.player.r}`,
     aiHqKeys,
     emitTileCapture, emitTileSiege,
@@ -1466,7 +1596,7 @@ export default function RiseToWar() {
               if (!expired.includes(cmd.tk) || cmd.tk === hqKey) return cmd;
               if (cmd.march) return cmd;
               const retreatPath = pathByUid[cmd.uid];
-              const stepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, null));
+              const stepMs = marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, null));
               if (retreatPath && retreatPath.length >= 2) {
                 return { ...cmd, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() } };
               }
@@ -1539,7 +1669,7 @@ export default function RiseToWar() {
     ),
   [playerCmds]);
 
-  const canAtk = !!(selTile && selTile.owner!=="player" && selAdjToPlayer);
+  const canAtk = !!(selTile && selTile.owner!=="player" && (selAdjToPlayer || longMarchReady));
 
   const marchingToSel = useMemo(() =>
     selKey ? playerCmds.filter(c => c.march?.dest===selKey) : [],
@@ -1578,14 +1708,18 @@ export default function RiseToWar() {
 
     // Stamina check: moves cost 10, attacks cost 20
     const staminaCost = type === "attack" ? 20 : 10;
-    const curStamina = freshCmd.stamina ?? 200;
+    const curStamina = freshCmd.stamina ?? staminaMax;
     if (curStamina < staminaCost) {
-      floaty(`⚡ Not enough stamina! (${curStamina}/200)`, "#cc8030", freshCmd.tk);
+      floaty(`⚡ Not enough stamina! (${curStamina}/${staminaMax})`, "#cc8030", freshCmd.tk);
       return;
     }
-    const boostedSpd = applyGearToCmd(freshCmd, gearInventory).spd || 60;
+    const boostedSpd = applyAllBonuses(freshCmd, gearInventory).spd || 60;
     const slots0 = normaliseTroopSlots(freshCmd);
-    const stepMs = marchStepMs(effectiveMarchSpd(boostedSpd, slots0.length ? slots0.map(sl=>sl.branch) : freshCmd.troopBranch));
+    const baseStepMs = marchStepMs(effectiveMarchSpd(boostedSpd, slots0.length ? slots0.map(sl=>sl.branch) : freshCmd.troopBranch));
+    const quickBonus = quickMarchReady ? 0.5 : 1;
+    const stepMs = Math.max(50, Math.round(baseStepMs * marchSpeedMult * quickBonus));
+    if (quickMarchReady) setQuickMarchReady(false);
+    if (longMarchReady) setLongMarchReady(false);
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null); setTileScreenX(null); setTileScreenY(null);
     perfLog(`march: from ${freshCmd.tk} → ${destKey}`);
     findPath(freshCmd.tk, destKey).then(path => {
@@ -1598,7 +1732,7 @@ export default function RiseToWar() {
       // Deduct stamina immediately on march dispatch
       setCmds(p => p.map(c => c.uid===freshCmd.uid ? {
         ...c,
-        stamina: Math.max(0, (c.stamina ?? 200) - staminaCost),
+        stamina: Math.max(0, (c.stamina ?? staminaMax) - staminaCost),
         march:{ type, path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, lastStepTime:Date.now() }
       } : c));
     });
@@ -1634,7 +1768,7 @@ export default function RiseToWar() {
 
     // Direct recall to HQ (stranded or at HQ already covered above)
     const _rSlots = normaliseTroopSlots(cmd);
-    const stepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
+    const stepMs = marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
     findPath(cmd.tk, hqKey).then(path => {
       if (!path || path.length < 2) return;
       setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
@@ -1650,7 +1784,7 @@ export default function RiseToWar() {
     if (!cmd || cmd.march) return;
     const _rSlots = normaliseTroopSlots(cmd);
     // Recall is faster than normal march — 0.65x stepMs
-    const baseStepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
+    const baseStepMs = marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
     const stepMs = Math.round(baseStepMs * 0.65);
     findPath(cmd.tk, fortTileKey).then(path => {
       if (!path || path.length < 2) return;
@@ -1669,7 +1803,7 @@ export default function RiseToWar() {
     if (!cmd || cmd.march) return;
     unstationCmd(uid);
     const _rSlots = normaliseTroopSlots(cmd);
-    const baseStepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
+    const baseStepMs = marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
     const stepMs = Math.round(baseStepMs * 0.65);
     findPath(cmd.tk, hqKey).then(path => {
       if (!path || path.length < 2) return;
@@ -1695,7 +1829,7 @@ export default function RiseToWar() {
     }
     const _rSlots = normaliseTroopSlots(cmd);
     // Recall speed multiplier: 0.6x stepMs = faster
-    const baseStepMs = marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
+    const baseStepMs = marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : cmd.troopBranch));
     const stepMs = baseStepMs; // reposition is normal speed
     findPath(cmd.tk, fortTileKey).then(path => {
       if (!path || path.length < 2) return;
@@ -1711,7 +1845,7 @@ export default function RiseToWar() {
     if (!cmd || amount <= 0) return;
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
     const _rSlots2 = normaliseTroopSlots(cmd);
-    const stepMs = Math.max(100, Math.floor(marchStepMs(effectiveMarchSpd(applyGearToCmd(cmd, gearInventory).spd||60, _rSlots2.length ? _rSlots2.map(sl=>sl.branch) : cmd.troopBranch))/2));
+    const stepMs = Math.max(50, Math.floor(marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots2.length ? _rSlots2.map(sl=>sl.branch) : cmd.troopBranch)) * reinSpeedMult / 2));
     setMode("view"); setReinCmd(null);
     setSliderVals(v => ({ ...v, [`rein_${cmd.uid}`]:undefined }));
     findPath(hqKey, cmd.tk).then(path => {
@@ -1733,6 +1867,82 @@ export default function RiseToWar() {
   }, [gearInventory, findPath]);
 
   const canAfford = useCallback(c => Object.entries(c).every(([k,v]) => (rss[k]||0)>=v), [rss]);
+
+  // ── Tactic handlers ───────────────────────────────────────────────────────
+  const onQuickGather = useCallback((tileKey, tile) => {
+    if (dragonEggs < 3) return;
+    const pl = tile?.powerLevel ?? 0;
+    if (pl < 2 || !tile?.rss) return;
+    // Rate from useResources RATE_BY_PL
+    const RATE_BY_PL = { 2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600 };
+    const rate = RATE_BY_PL[pl] ?? 240;
+    const amount = Math.floor(rate * 3 * 1.1);
+    setDragonEggs(e => Math.max(0, e - 3));
+    setRss(p => ({ ...p, [tile.rss]: p[tile.rss] + amount }));
+  }, [dragonEggs, setRss]);
+
+  const onRecon = useCallback((tileKey, tile) => {
+    // garrisonDefCmd already imported from garrisonUtils
+    const garrison = garrisonDefCmd(tile, facKey);
+    const entry = {
+      type: "recon",
+      timestamp: Date.now(),
+      tileKey,
+      tileName: tile.regionName ?? tileKey,
+      powerLevel: tile.powerLevel ?? 1,
+      defCmdName:  garrison?.n     ?? "Garrison",
+      defCmdIcon:  garrison?.icon  ?? "⚔",
+      defLvl:      garrison?.lvl   ?? 1,
+      defCmdCls:   garrison?.cmdCls ?? null,
+      defCmdStats: garrison?.stats  ?? null,
+      defSkillsSnapshot: garrison?.skills ?? [],
+      defTroopBranch: garrison?.troopBranch ?? null,
+      defTroopsStart: garrison?.troops ?? 0,
+      defTroopsEnd:   garrison?.troops ?? 0,
+      defBust: null,
+      atkName: null, atkIcon: null, won: null,
+    };
+    setBattles(prev => [entry, ...prev]);
+  }, [facKey, setBattles]);
+
+  const onGather = useCallback((tileKey, tile, cmdUid, ticks, isTraining = false) => {
+    const eggCost = isTraining ? 2 : 1;
+    if ((dragonEggs ?? 0) < eggCost) return;
+    setCmds(prev => prev.map(c => c.uid === cmdUid ? {
+      ...c,
+      gathering:        !isTraining,
+      training:         isTraining,
+      gatherTileKey:    tileKey,
+      gatherTicks:      ticks,
+      gatherTicksDone:  0,
+      gatherStartMs:    Date.now(),
+      trainingTicks:    isTraining ? ticks : undefined,
+      trainingStartMs:  isTraining ? Date.now() : undefined,
+      trainingTicksDone: isTraining ? 0 : undefined,
+    } : c));
+  }, [dragonEggs, setCmds]);
+
+  const onLongMarch = useCallback(() => {
+    if (!hasLongMarch || (dragonEggs ?? 0) < 10) return;
+    setDragonEggs(e => Math.max(0, e - 10));
+    setLongMarchReady(true);
+  }, [hasLongMarch, dragonEggs]);
+
+  const onQuickMarch = useCallback(() => {
+    if (!hasQuickMarch || (dragonEggs ?? 0) < 5) return;
+    setDragonEggs(e => Math.max(0, e - 5));
+    setQuickMarchReady(true);
+  }, [hasQuickMarch, dragonEggs]);
+
+  const onExpedience = useCallback((buildingType) => {
+    setUpgQueue(q => {
+      const entry = q[buildingType];
+      if (!entry) return q;
+      const remaining = entry.endsAt - Date.now();
+      if (remaining > 5 * 60 * 1000) return q; // > 5 min, not eligible
+      return { ...q, [buildingType]: { ...entry, endsAt: Date.now() } };
+    });
+  }, [setUpgQueue]);
 
   // queueTraining(branchKey, amount)
   // branchKey: "faction:branch:tier" e.g. "pirates:swashbucklers:0"
@@ -2062,7 +2272,8 @@ export default function RiseToWar() {
       )}
 
       <HUD facName={facName} facKey={facKey} pKeys={pKeys} rss={rss} gems={gems} tiles={tiles}
-        mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap} voidTapReady={voidTapReady} />
+        mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap} voidTapReady={voidTapReady}
+        dragonEggs={dragonEggs} dragonEggsCap={dragonEggsCap} tileCap={tileCap} />
 
       {/* Server connection indicator */}
       <div style={{
@@ -2129,12 +2340,21 @@ export default function RiseToWar() {
         playerHqKey={playerHqKey}
         facKey={facKey} facName={facName}
         forts={forts}
-        buildFort={buildFort}
+        buildFort={buildFortWithCost}
         upgradeFort={upgradeFort}
         getFortAtTile={getFortAtTile}
         startReposition={startReposition}
         setCmdScreenOpen={setCmdScreenOpen}
         setCmdScreenUid={setCmdScreenUid}
+        hasQuickGather={hasQuickGather} onQuickGather={onQuickGather}
+        hasRecon={hasRecon}           onRecon={onRecon}
+        hasGather={hasGather}         onGather={onGather}
+        hasCmdTraining={hasCmdTraining}
+        dragonEggs={dragonEggs}
+        upgQueue={upgQueue}           onExpedience={onExpedience}
+        staminaMax={staminaMax}       trainingXpMult={trainingXpMult}
+        hasLongMarch={hasLongMarch}   onLongMarch={onLongMarch}   longMarchReady={longMarchReady}
+        hasQuickMarch={hasQuickMarch} onQuickMarch={onQuickMarch} quickMarchReady={quickMarchReady}
       />
 
       {showBattleLog && (
@@ -2279,6 +2499,7 @@ export default function RiseToWar() {
           powerPerHr={powerPerHr}
           tomesUnspentPoints={tomesUnspentPoints}
           setTomesUnspentPoints={setTomesUnspentPoints}
+          onNodeLevelsChange={setTomesNodeLevels}
         />
       )}
 
