@@ -34,7 +34,7 @@ export default memo(function FortPanel({
       borderRadius: 6, padding: "8px 10px",
     }}>
       {/* Fort header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: "#d4a030", fontWeight: 700 }}>
           🏯 FORT — LV{fort.level}
         </span>
@@ -43,31 +43,31 @@ export default memo(function FortPanel({
         </span>
       </div>
 
-      {/* Commander slot grid — always 6, bigger squares */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 4, marginBottom: 8 }}>
+      {/* Commander slot grid — always 6, large squares with bust images */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 5, marginBottom: 8 }}>
         {slots.map((slot, i) => (
           <div key={i} style={{
-            aspectRatio: "1", borderRadius: 5,
+            aspectRatio: "1", borderRadius: 6,
             background: !slot.unlocked ? "rgba(20,16,10,.8)" : slot.cmd ? "rgba(240,192,64,.15)" : "rgba(30,24,16,.5)",
             border: `1px solid ${!slot.unlocked ? "rgba(50,40,20,.4)" : slot.cmd ? "rgba(240,192,64,.5)" : "rgba(100,80,30,.3)"}`,
             display: "flex", alignItems: "center", justifyContent: "center",
             overflow: "hidden",
           }}>
             {!slot.unlocked ? (
-              <span style={{ fontSize: 11, opacity: 0.35 }}>🔒</span>
+              <span style={{ fontSize: 13, opacity: 0.35 }}>🔒</span>
             ) : slot.cmd ? (
               slot.cmd.bust
                 ? <img src={slot.cmd.bust} alt={slot.cmd.n} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                : <span style={{ fontSize: 20 }}>{slot.cmd.icon ?? "👤"}</span>
+                : <span style={{ fontSize: 22 }}>{slot.cmd.icon ?? "👤"}</span>
             ) : (
-              <span style={{ fontSize: 14, opacity: 0.2, color: "#c8a040" }}>+</span>
+              <span style={{ fontSize: 16, opacity: 0.2, color: "#c8a040" }}>+</span>
             )}
           </div>
         ))}
       </div>
 
       {/* Fort siege bar */}
-      <div style={{ marginBottom: 7 }}>
+      <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
           <span style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: "#6a5a3a", letterSpacing: ".05em" }}>🛡 FORT SIEGE</span>
           <span style={{ fontSize: 7, color: barColor, fontWeight: 700, fontFamily: "'Cinzel',serif" }}>
@@ -79,16 +79,16 @@ export default memo(function FortPanel({
         </div>
       </div>
 
-      {/* Upgrade + Station — side by side */}
+      {/* Upgrade + Move — primary action row at bottom */}
       {selTile?.owner === "player" && (
         <div style={{ display: "flex", gap: 5 }}>
           {nextDef && (
             <button onClick={() => upgradeFort?.(fort.id)} style={{
-              flex: 1, padding: "6px 0",
+              flex: 1, padding: "8px 0",
               background: "linear-gradient(135deg,rgba(60,80,20,.5),rgba(40,60,10,.3))",
               border: "1px solid #6a8020", color: "#a0c040",
-              fontFamily: "'Cinzel',serif", fontSize: 9, fontWeight: 700,
-              borderRadius: 4, cursor: "pointer",
+              fontFamily: "'Cinzel',serif", fontSize: 10, fontWeight: 700,
+              borderRadius: 5, cursor: "pointer",
             }}>⬆ UPGRADE</button>
           )}
           {idleCmds.length > 0 && stationedCount < levelDef.capacity && (
@@ -96,11 +96,11 @@ export default memo(function FortPanel({
               if (idleCmds.length === 1) startReposition?.(idleCmds[0].uid, selKey, fort.id);
               else setPopupMode?.("repositionPick");
             }} style={{
-              flex: 1, padding: "6px 0",
-              background: "linear-gradient(135deg,rgba(20,60,100,.5),rgba(10,40,80,.3))",
-              border: "1px solid #2060a0", color: "#60a0e0",
-              fontFamily: "'Cinzel',serif", fontSize: 9, fontWeight: 700,
-              borderRadius: 4, cursor: "pointer",
+              flex: 1, padding: "8px 0",
+              background: "linear-gradient(160deg,#083a18,#041e0a)",
+              border: "1px solid #2a8040", color: "#80d090",
+              fontFamily: "'Cinzel',serif", fontSize: 10, fontWeight: 700,
+              borderRadius: 5, cursor: "pointer",
             }}>📍 MOVE</button>
           )}
         </div>
