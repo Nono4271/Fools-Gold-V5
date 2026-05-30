@@ -1,4 +1,5 @@
 import { memo, useState, useCallback, useEffect } from "react";
+import { XP_PER_COMMAND } from "../../shared/constants/map.js";
 import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 import { RSS, POWER_DEFS, SIEGE_BASE, HQP, FORT_LEVELS } from "../../../shared/constants/map.js";
 import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
@@ -245,12 +246,12 @@ export default memo(function TilePopup({
   const defeatedWaves = selTile.defeatedWaves?.length ?? 0;
 
   const attackCandidates = cmds.filter(c => c.owner==="player" && !c.march && (c.troops||0)>0);
-  const bestAtkCmd = attackCandidates.find(c => (c.stamina??200)>=20);
+  const bestAtkCmd = attackCandidates.find(c => (c.stamina??(staminaMax??150))>=20);
   const hasAtkStam = !!bestAtkCmd;
   const atkInRange = checkRange(bestAtkCmd);
   const canAtkNow = hasAtkStam && atkInRange && canAtk;
 
-  const bestMvCmd = attackCandidates.find(c => (c.stamina??200)>=10);
+  const bestMvCmd = attackCandidates.find(c => (c.stamina??(staminaMax??150))>=10);
   const hasMvStam = !!bestMvCmd;
   const mvInRange = checkRange(bestMvCmd);
   const canMoveNow = hasMvStam && mvInRange;
@@ -543,7 +544,7 @@ export default memo(function TilePopup({
             const idleCmdsOnTile = (cmdsOnSel||[]).filter(c=>!c.march&&!c.gathering&&!c.training);
             const POWER_COMMAND = { 1:0.3,2:2.5,3:4,4:8,5:10,6:15,7:18,8:30,9:35,10:55,11:65,12:75,13:90 };
             const tilePl = selTile?.powerLevel ?? 1;
-            const xpPerTick = Math.round((POWER_COMMAND[tilePl] ?? 0.3) * 850 * 0.25 * (trainingXpMult ?? 1));
+            const xpPerTick = Math.round((POWER_COMMAND[tilePl] ?? 0.3) * (XP_PER_COMMAND[2] ?? 850) * 0.25 * (trainingXpMult ?? 1));
             return (
               <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(6,4,16,.97)", border:"1px solid #c0a040", borderRadius:8, zIndex:20, display:"flex", flexDirection:"column", gap:6, padding:10, overflowY:"auto" }}>
                 <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#e0c060", textAlign:"center" }}>🎓 Proving Grounds</div>

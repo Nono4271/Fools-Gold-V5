@@ -1,4 +1,5 @@
 import { useState, useEffect, memo, useMemo } from "react";
+import { useGameContext } from "../../GameContext.js";
 import { createPortal } from "react-dom";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel, troopPortraitPath } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
@@ -1904,7 +1905,7 @@ function ManageShipScreen({
   }
 
   const rarColor = RC(cmd.rarity);
-  const stam     = cmd.stamina ?? 200;
+  const stam     = cmd.stamina ?? staminaMax;
   const stamColor = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -2532,7 +2533,7 @@ function BattleGroupsScreen({
     const fillColor = fillPct >= 100 ? "#cc3030" : fillPct >= 75 ? "#d0a030" : "#3daa60";
     const rarColor  = RC(cmd.rarity);
 
-    const stam      = cmd.stamina ?? 200;
+    const stam      = cmd.stamina ?? staminaMax;
     const stamColor = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
 
     // padded 3 slots
@@ -2658,7 +2659,7 @@ function BattleGroupsScreen({
 
     // padded 3 slots
     const slots = [0, 1, 2].map(i => cmd.troopSlots?.[i] ?? null);
-    const stam   = cmd.stamina ?? 200;
+    const stam   = cmd.stamina ?? staminaMax;
     const stamColor = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
 
     if (editOpen && isAtHQ) {
@@ -2736,7 +2737,7 @@ function BattleGroupsScreen({
               </div>
               {/* Stamina */}
               <div style={{ marginLeft: "auto", fontSize: 7, color: stamColor, fontFamily: P.ff, flexShrink: 0 }}>
-                ⚡ {Math.floor(stam)}/{cmd.maxStamina ?? 200}
+                ⚡ {Math.floor(stam)}/{staminaMax}
               </div>
             </div>
             <div style={{ fontSize: 7, color: P.sub, fontFamily: P.ff, marginTop: 2 }}>
@@ -3273,6 +3274,7 @@ mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady,
 lastVoidTap, voidTapCooldown, doVoidTap,
 troopSkillLevels, setTroopSkillLevels, setMysticOrbs,
 }) {
+  const { staminaMax = 150 } = useGameContext();
 if (!hqOpen) return null;
 
 const isHub = hqTab === "hub";
