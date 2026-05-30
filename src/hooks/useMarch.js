@@ -767,8 +767,9 @@ arrivedAI.forEach(async cmd => {
   // Skip if tile is friendly — same owner faction or crewmate player
   const defOwnerPid = defTile?.ownerPlayerId || aiPlayerIdMap?.get(destKey);
   const isFriendlyTile = !defTile
-    || defTile.owner === "ai" && defTile.faction === cmd.faction
-    || (defOwnerPid && crewmatePlayerIds?.has(defOwnerPid));
+    || defTile.owner === "player"                              // never attack player tiles
+    || defTile.owner === "ai" && defTile.faction === cmd.faction  // same AI faction
+    || (defOwnerPid && crewmatePlayerIds?.has(defOwnerPid));   // crewmate
   if (isFriendlyTile) {
     setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
     return;
