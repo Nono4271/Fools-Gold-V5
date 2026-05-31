@@ -11,7 +11,7 @@ import { HQP } from "../../shared/constants/map.js";
 
 const todayUTC = () => new Date().toISOString().slice(0, 10);
 
-export function useGacha({ staminaMax = 150, playerAlignment, gems, setGems, playerHqRef, setCmds, setColl, floatyRef }) {
+export function useGacha({ staminaMaxRef, playerAlignment, gems, setGems, playerHqRef, setCmds, setColl, floatyRef }) {
   const [pityCounters,      setPityCounters]      = useState({ soldier:0, veteran:0, champion:0 });
   const [gearInventory,     setGearInventory]     = useState(() => {
     // Starter gear — one of each slot/rarity combination
@@ -126,7 +126,7 @@ export function useGacha({ staminaMax = 150, playerAlignment, gems, setGems, pla
           if (!existing) {
             nx.push({ ...h, uid:h.uid, troops:0, troopSlots:[], troopBranch:null, tk:hqk, owner:"player",
               lvl:5, xp:0, respectPoints:0, respectLevel:0, skillPoints:{}, unspentSkillPoints:5,
-              stamina:staminaMax ?? 150, gear:{ helmet:null, armor:null, bracers:null, accessory:null } });
+              stamina:staminaMaxRef?.current ?? 150, gear:{ helmet:null, armor:null, bracers:null, accessory:null } });
           } else {
             const points = existing.respectLevel >= RESPECT_MAX
               ? RESPECT_OVERFLOW_POINTS
