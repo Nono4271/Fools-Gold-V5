@@ -423,7 +423,8 @@ export default function RiseToWar() {
   // ── Tome node state — must be declared before tome-derived constants ──────
   const [dragonEggs,      setDragonEggs]      = useState(20);
   const [spawns,          setSpawns]          = useState({}); // { [tileKey]: SpawnState }
-  const spawnWorkerRef    = useRef(null);
+  const spawnWorkerRef        = useRef(null);
+  const eligibleSpawnKeysRef = useRef([]);
   const [tomesNodeLevels, setTomesNodeLevels] = useState({});
   const [longMarchReady,  setLongMarchReady]  = useState(false);
   const [quickMarchReady, setQuickMarchReady] = useState(false);
@@ -596,10 +597,10 @@ export default function RiseToWar() {
     return () => clearInterval(id);
   }, [screen, tomesNodeLevels]);
 
-  // ── Spawn worker — init when map is ready ─────────────────────────────────
+  // ── Spawn worker — init after map is ready ──────────────────────────────
   useEffect(() => {
-    if (screen !== "game") return;
-    if (spawnWorkerRef.current) return; // already running
+    if (screen !== "game" || !mapReady) return;
+    if (spawnWorkerRef.current) return;
 
     const worker = new Worker(
       new URL("./workers/spawn.worker.js", import.meta.url),
@@ -613,10 +614,10 @@ export default function RiseToWar() {
 
     spawnWorkerRef.current = worker;
 
-    // Send tiles to worker for placement
-    worker.postMessage({ type: "init", tiles: tilesRef.current ?? {} });
+    // Pass pre-built eligible keys — avoids Proxy enumeration
+    worker.postMessage({ type: "init", eligibleKeys: eligibleSpawnKeysRef.current });
 
-    // Tick every 30s to check respawns
+    // Tick every 30s for respawns
     const tickId = setInterval(() => worker.postMessage({ type: "tick" }), 30_000);
 
     return () => {
@@ -624,7 +625,7 @@ export default function RiseToWar() {
       worker.terminate();
       spawnWorkerRef.current = null;
     };
-  }, [screen]);
+  }, [screen, mapReady]);
 
   // ── Training tick — deduct 2 eggs every 10 min, credit XP, stop at max ticks ──
   useEffect(() => {
@@ -1092,6 +1093,23 @@ export default function RiseToWar() {
         // block above (setPlayerHqKey). patchTile maintains pKeysRef incrementally
         // from here on. powerPerHrRef starts at 0 (player has no ring tiles yet).
         pKeysRef.current = new Set();
+
+        // Build eligible spawn keys from typed arrays — avoids Proxy enumeration issue
+        const eligibleSpawnKeys = [];
+        for (let r2 = 0; r2 < R; r2++) {
+          for (let c2 = 0; c2 < C; c2++) {
+            const idx2 = r2 * C + c2;
+            const flags2 = flagArr[idx2];
+            const isHQ2 = !!(flags2 & F_HQ);
+            const isHQPart2 = !!(flags2 & F_HQPART);
+            const pl2 = powerArr[idx2];
+            const owner2 = OWNER_DEC[ownerArr[idx2]];
+            if (!owner2 && !isHQ2 && !isHQPart2 && pl2 >= 3 && pl2 <= 10) {
+              eligibleSpawnKeys.push(`${c2},${r2}`);
+            }
+          }
+        }
+        eligibleSpawnKeysRef.current = eligibleSpawnKeys;
 
         rawMap.__ready = true;
         setImpassableTiles(impassKeys || []);
@@ -2779,6 +2797,9 @@ export default function RiseToWar() {
         crewOpen={crewOpen} setCrewOpen={setCrewOpen} playerCrewId={playerCrewId}
         searchOpen={searchOpen} setSearchOpen={setSearchOpen}
         forts={forts}
+        spawns={spawns}
+        spawnWorkerRef={spawnWorkerRef}
+        eligibleSpawnKeysRef={eligibleSpawnKeysRef}
       />
 
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
