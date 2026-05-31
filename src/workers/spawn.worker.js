@@ -77,6 +77,7 @@ const spawns = new Map();
 
 // ── Placement using pre-built eligible key list ───────────────────────────────
 function placeSpawns(eligibleKeys) {
+  console.log('[SPAWN WORKER] placeSpawns called with', eligibleKeys?.length, 'keys');
   if (!eligibleKeys?.length) return;
   const rng = seededRng(eligibleKeys.length * 7919);
   const shuffled = [...eligibleKeys].sort(() => rng() - 0.5);
@@ -163,7 +164,8 @@ self.onmessage = ({ data }) => {
     case 'init': {
       spawns.clear();
       placeSpawns(data.eligibleKeys ?? []);
-      self.postMessage({ type: 'spawns', spawns: Object.fromEntries(spawns) });
+      console.log('[SPAWN WORKER] Sending', spawns.size, 'spawns');
+  self.postMessage({ type: 'spawns', spawns: Object.fromEntries(spawns) });
       break;
     }
 
