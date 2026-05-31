@@ -2032,6 +2032,8 @@ export default function RiseToWar() {
           atkTroopsEnd:  res.atkTroopsEnd ?? cmd.troops,
           won:           res.won,
           xpGain:        res.won ? spawn.xpReward : 0,
+          orbReward:     res.won ? spawn.orbReward : 0,
+          rssRewards:    res.won ? rollSpawnRssRewards(spawn.level) : [],
         }, ...prev]);
       },
     });
