@@ -608,13 +608,32 @@ export default function RiseToWar() {
     );
 
     worker.onmessage = ({ data }) => {
-      if (data.type === "spawns")   setSpawns(data.spawns ?? {});
+      if (data.type === "spawns") {
+        const spawnMap = data.spawns ?? {};
+        const keys = Object.keys(spawnMap);
+        console.log('[SPAWN] Received', keys.length, 'spawns');
+        if (keys.length > 0) {
+          const hqKey = playerHqRef.current || '0,0';
+          const [hc, hr] = hqKey.split(',').map(Number);
+          const closest = keys
+            .filter(k => !spawnMap[k].defeated)
+            .map(k => {
+              const [c,r] = k.split(',').map(Number);
+              return { k, dist: Math.round(Math.sqrt((c-hc)**2+(r-hr)**2)), lvl: spawnMap[k].level };
+            })
+            .sort((a,b) => a.dist - b.dist)
+            .slice(0, 5);
+          console.log('[SPAWN] 5 closest active:', closest.map(s => `${s.k} (Lv${s.lvl}, dist ${s.dist})`).join(' | '));
+        }
+        setSpawns(spawnMap);
+      }
       if (data.type === "respawned") setSpawns(prev => ({ ...prev, [data.spawnKey]: data.spawn }));
     };
 
     spawnWorkerRef.current = worker;
 
     // Pass pre-built eligible keys — avoids Proxy enumeration
+    console.log('[SPAWN] Worker init, sending', eligibleSpawnKeysRef.current.length, 'eligible keys');
     worker.postMessage({ type: "init", eligibleKeys: eligibleSpawnKeysRef.current });
 
     // Tick every 30s for respawns
@@ -1110,6 +1129,7 @@ export default function RiseToWar() {
           }
         }
         eligibleSpawnKeysRef.current = eligibleSpawnKeys;
+        console.log('[SPAWN] Eligible keys built:', eligibleSpawnKeys.length);
 
         rawMap.__ready = true;
         setImpassableTiles(impassKeys || []);
