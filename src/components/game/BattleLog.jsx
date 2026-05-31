@@ -23,6 +23,9 @@ function timeAgo(ts) {
 
 function outcomeOf(b) {
   if (b.type === "recon") return { text:"RECON", color:"#44ccee" };
+  if (b.type === "sweep") return b.won
+    ? { text:"SWEEP WIN",  color:"#88cc44" }
+    : { text:"SWEEP LOSS", color:"#cc4444" };
   if (b.won && b.defTroopsEnd === 0) return { text:"VICTORY", color:"#3daa60" };
   if (!b.won && b.atkTroopsEnd === 0) return { text:"DEFEAT",  color:"#cc3030" };
   return { text:"DRAW", color:"#d0a030" };
@@ -921,6 +924,8 @@ function BattleListItem({ b, selected, onClick }) {
       }}>
         {b.type === "recon" ? (
           <span style={{ fontSize:18 }}>{b.defCmdIcon || "🔭"}</span>
+        ) : b.type === "sweep" ? (
+          <span style={{ fontSize:18 }}>💀</span>
         ) : b.atkBust ? (
           <img src={b.atkBust} alt={b.atkName}
             style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top center" }} />
@@ -941,7 +946,7 @@ function BattleListItem({ b, selected, onClick }) {
           fontSize:7, color:"#9a8060", fontFamily:"'Cinzel',serif",
           overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:1,
         }}>
-          {b.type === "recon" ? `${b.defCmdName ?? "Garrison"} · P${b.powerLevel ?? "?"}` : (b.tileName ?? "—")}
+          {b.type === "recon" ? `${b.defCmdName ?? "Garrison"} · P${b.powerLevel ?? "?"}` : b.type === "sweep" ? `${b.spawnName ?? "Spawn"} · Lv${b.spawnLevel ?? "?"}` : (b.tileName ?? "—")}
         </div>
         <div style={{ fontSize:6, color:"#3a3028" }}>{timeAgo(b.timestamp)}</div>
       </div>
@@ -1082,6 +1087,75 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
       color:"#2a2020", fontFamily:"'Cinzel',serif", fontSize:9, fontStyle:"italic",
     }}>
       Select a battle on the left
+    </div>
+  );
+
+  // ── Sweep entry — spawn battle ──
+  if (b.type === "sweep") return (
+    <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", background:"#0a0810" }}>
+      <div style={{ padding:"10px 14px", borderBottom:"1px solid #1a1520",
+        background: b.won ? "rgba(40,80,20,.2)" : "rgba(80,20,20,.2)" }}>
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:10,
+          color: b.won ? "#88cc44" : "#cc4444", letterSpacing:".08em", marginBottom:2 }}>
+          {b.won ? "⚡ SWEEP — VICTORY" : "⚡ SWEEP — DEFEAT"}
+        </div>
+        <div style={{ fontSize:8, color:"#3a5a3a" }}>{b.spawnName} · Lv{b.spawnLevel} · {timeAgo(b.timestamp)}</div>
+      </div>
+
+      <div style={{ flex:1, overflowY:"auto", padding:"12px 14px", display:"flex", flexDirection:"column", gap:8 }}>
+        {/* Attacker */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px",
+          background:"rgba(20,40,20,.4)", border:"1px solid #2a4020", borderRadius:6 }}>
+          <span style={{ fontSize:24 }}>{b.atkIcon ?? "⚔"}</span>
+          <div>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#88cc44" }}>{b.atkName ?? "Commander"}</div>
+            <div style={{ fontSize:8, color:"#4a6a3a" }}>
+              {b.atkTroopsStart?.toLocaleString()} → {b.atkTroopsEnd?.toLocaleString()} troops
+            </div>
+          </div>
+        </div>
+
+        {/* Spawn defender */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px",
+          background:"rgba(40,20,20,.4)", border:"1px solid #3a2020", borderRadius:6 }}>
+          <span style={{ fontSize:24 }}>{b.defCmdIcon ?? "💀"}</span>
+          <div>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#cc6644" }}>{b.defCmdName ?? "Spawn"}</div>
+            <div style={{ fontSize:8, color:"#6a3a3a" }}>Lv{b.defLvl ?? "?"} · {b.defTroopsStart?.toLocaleString()} troops</div>
+          </div>
+        </div>
+
+        {/* Rewards — only show on win */}
+        {b.won && (
+          <div style={{ padding:"8px 10px", background:"rgba(255,255,255,.03)",
+            border:"1px solid #2a3a20", borderRadius:5 }}>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:"#6a8a50",
+              letterSpacing:".06em", marginBottom:6 }}>REWARDS</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+              {b.xpGain > 0 && (
+                <div style={{ display:"flex", justifyContent:"space-between" }}>
+                  <span style={{ fontSize:8, color:"#5a6a40" }}>⭐ XP</span>
+                  <span style={{ fontSize:9, color:"#c0a040", fontWeight:700 }}>+{b.xpGain?.toLocaleString()}</span>
+                </div>
+              )}
+              {b.orbReward > 0 && (
+                <div style={{ display:"flex", justifyContent:"space-between" }}>
+                  <span style={{ fontSize:8, color:"#5a6a40" }}>🌀 Mystic Orbs</span>
+                  <span style={{ fontSize:9, color:"#9966ff", fontWeight:700 }}>+{b.orbReward}</span>
+                </div>
+              )}
+              {(b.rssRewards ?? []).map(({ rss, amount }) => (
+                <div key={rss} style={{ display:"flex", justifyContent:"space-between" }}>
+                  <span style={{ fontSize:8, color:"#5a6a40" }}>
+                    {rss === "gas" ? "⚗" : rss === "wood" ? "🪵" : rss === "stone" ? "🪨" : "🌾"} {rss.charAt(0).toUpperCase()+rss.slice(1)}
+                  </span>
+                  <span style={{ fontSize:9, color:"#80aa60", fontWeight:700 }}>+{amount?.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 
