@@ -24,6 +24,7 @@ import { useTraining } from "./hooks/useTraining.js";
 import { useMarch, applyXp } from "./hooks/useMarch.js";
 import { useForts, isTileInRange, buildAnchors } from "./hooks/useForts.js";
 import { GameContext } from "./GameContext.js";
+import { generateSpawnCommander, spawnTilePortraitPath, rollSpawnRssRewards, rollRareDrop, canSweepSpawn, spawnDisplayName, spawnAccentColor, SPAWN_RESPAWN_MS } from "./utils/spawnUtils.js";
 import { useUpgrades } from "./hooks/useUpgrades.js";
 import { useGameLoop } from "./hooks/useGameLoop.js";
 import { usePathfinding } from "./hooks/usePathfinding.js";
@@ -421,6 +422,8 @@ export default function RiseToWar() {
 
   // ── Tome node state — must be declared before tome-derived constants ──────
   const [dragonEggs,      setDragonEggs]      = useState(20);
+  const [spawns,          setSpawns]          = useState({}); // { [tileKey]: SpawnState }
+  const spawnWorkerRef    = useRef(null);
   const [tomesNodeLevels, setTomesNodeLevels] = useState({});
   const [longMarchReady,  setLongMarchReady]  = useState(false);
   const [quickMarchReady, setQuickMarchReady] = useState(false);
@@ -592,6 +595,36 @@ export default function RiseToWar() {
     }, 60_000);
     return () => clearInterval(id);
   }, [screen, tomesNodeLevels]);
+
+  // ── Spawn worker — init when map is ready ─────────────────────────────────
+  useEffect(() => {
+    if (screen !== "game") return;
+    if (spawnWorkerRef.current) return; // already running
+
+    const worker = new Worker(
+      new URL("./workers/spawn.worker.js", import.meta.url),
+      { type: "module" }
+    );
+
+    worker.onmessage = ({ data }) => {
+      if (data.type === "spawns")   setSpawns(data.spawns ?? {});
+      if (data.type === "respawned") setSpawns(prev => ({ ...prev, [data.spawnKey]: data.spawn }));
+    };
+
+    spawnWorkerRef.current = worker;
+
+    // Send tiles to worker for placement
+    worker.postMessage({ type: "init", tiles: tilesRef.current ?? {} });
+
+    // Tick every 30s to check respawns
+    const tickId = setInterval(() => worker.postMessage({ type: "tick" }), 30_000);
+
+    return () => {
+      clearInterval(tickId);
+      worker.terminate();
+      spawnWorkerRef.current = null;
+    };
+  }, [screen]);
 
   // ── Training tick — deduct 2 eggs every 10 min, credit XP, stop at max ticks ──
   useEffect(() => {
@@ -1930,6 +1963,87 @@ export default function RiseToWar() {
     } : c));
   }, [dragonEggs, setCmds]);
 
+  const onSweep = useCallback((spawnKey, cmd) => {
+    const spawn = spawns[spawnKey];
+    if (!spawn || spawn.defeated) return;
+    if (!cmd || (cmd.stamina ?? staminaMax) < 10) return;
+
+    // Deduct stamina
+    setCmds(prev => prev.map(c => c.uid === cmd.uid
+      ? { ...c, stamina: Math.max(0, (c.stamina ?? staminaMax) - 10) }
+      : c
+    ));
+
+    // Generate spawn commander
+    const spawnCmd = generateSpawnCommander(spawn.level, facKey, hashSpawnId(spawnKey));
+
+    // Run battle
+    runBattle({
+      atkCmd:    cmd,
+      defCmd:    spawnCmd,
+      destKey:   spawnKey,
+      originKey: cmd.tk,
+      isSpawn:   true,
+      onResult: (res) => {
+        if (res.won) {
+          // Mark spawn defeated
+          spawnWorkerRef.current?.postMessage({ type: "defeated", spawnKey });
+
+          // Credit XP to commander
+          setCmds(prev => prev.map(c => {
+            if (c.uid !== cmd.uid) return c;
+            return { ...c, ...applyXp(c, spawn.xpReward, floaty) };
+          }));
+
+          // Credit mystic orbs
+          setMysticOrbs(prev => Math.min(mysticOrbsCap, prev + spawn.orbReward));
+
+          // Credit RSS rewards
+          const rssRewards = rollSpawnRssRewards(spawn.level);
+          setRss(prev => {
+            const next = { ...prev };
+            rssRewards.forEach(({ rss, amount }) => {
+              next[rss] = (next[rss] ?? 0) + amount;
+            });
+            return next;
+          });
+
+          // Rare drop — TODO: add to inventory when item system built
+          const rareDrop = rollRareDrop(spawn.level);
+          if (rareDrop) floaty(`✨ ${rareDrop.label}!`, "#e0c040", cmd.tk);
+        }
+
+        // Add to battle log
+        setBattles(prev => [{
+          type:          "sweep",
+          timestamp:     Date.now(),
+          spawnKey,
+          spawnLevel:    spawn.level,
+          spawnName:     spawnDisplayName(spawn.level),
+          atkName:       cmd.n,
+          atkIcon:       cmd.icon,
+          defCmdName:    spawnCmd.n,
+          defCmdIcon:    spawnCmd.icon,
+          defLvl:        spawnCmd.lvl,
+          defTroopBranch:spawnCmd.troopBranch,
+          defTroopsStart:spawnCmd.troops * 3,
+          defTroopsEnd:  res.won ? 0 : spawnCmd.troops * 3,
+          atkTroopsStart:cmd.troops,
+          atkTroopsEnd:  res.atkTroopsEnd ?? cmd.troops,
+          won:           res.won,
+          xpGain:        res.won ? spawn.xpReward : 0,
+        }, ...prev]);
+      },
+    });
+  }, [spawns, facKey, staminaMax, setCmds, setMysticOrbs, mysticOrbsCap, setRss, setBattles, runBattle, floaty]);
+
+  // Simple hash for spawn ID
+  const hashSpawnId = (key) => {
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  };
+
   const onLongMarch = useCallback(() => {
     if (!hasLongMarch || (dragonEggs ?? 0) < 10) return;
     setDragonEggs(e => Math.max(0, e - 10));
@@ -2316,6 +2430,7 @@ export default function RiseToWar() {
         forts={forts}
         guardedTiles={guardedTiles}
         guardedTileKeys={[...guardedTiles.keys()].sort().join("|")}
+        spawns={spawns}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
@@ -2364,6 +2479,7 @@ export default function RiseToWar() {
         staminaMax={staminaMax}       trainingXpMult={trainingXpMult}
         hasLongMarch={hasLongMarch}   onLongMarch={onLongMarch}   longMarchReady={longMarchReady}
         hasQuickMarch={hasQuickMarch} onQuickMarch={onQuickMarch} quickMarchReady={quickMarchReady}
+        spawns={spawns} onSweep={onSweep}
       />
 
       {showBattleLog && (
