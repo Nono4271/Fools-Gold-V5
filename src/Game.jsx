@@ -245,6 +245,8 @@ export default function RiseToWar() {
   const floatyRef = useRef(null);
   // playerHqRef must be declared before useGacha since it's passed into it.
   const playerHqRef = useRef(null);
+  // staminaMaxRef — updated after tome constants derived, read by useGacha when spawning commanders
+  const staminaMaxRef = useRef(150);
 
   // ── Gacha / gear / pull — owned by useGacha ───────────────────────────────
   const {
@@ -258,7 +260,7 @@ export default function RiseToWar() {
     isFreeAvailable, isHalfAvailable,
     pullCost, pull,
   } = useGacha({
-    staminaMax, playerAlignment, gems, setGems, playerHqRef, setCmds, setColl, floatyRef });
+    staminaMaxRef, playerAlignment, gems, setGems, playerHqRef, setCmds, setColl, floatyRef });
 
   const [bldgs,  setBldgs]   = useState({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, storage:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0, voidtap:0 });
   const [upgQueue, setUpgQueue] = useState({});
@@ -443,6 +445,7 @@ export default function RiseToWar() {
   const hasCmdTraining = tomeNodeLv("bl_b") >= 1;
   // Col 3 — Combat
   const staminaMax     = 150 + tomeNodeLv("bl")    * 5;   // Easily Winded: base 150, +5/lv → 200
+  staminaMaxRef.current = staminaMax; // keep ref in sync for useGacha
   const combatXpMult   = 1   + tomeNodeLv("bl_t")  * 0.015; // Combat Hardened: +1.5%/lv
   const trainingXpMult = 1   + tomeNodeLv("bl_b1") * 0.02;  // Training Specialist: +2%/lv
   // PVE Power — stubbed until mobs are implemented
