@@ -70,6 +70,7 @@ export default memo(function TilePopup({
   onExpedience,
   hasLongMarch, onLongMarch, longMarchReady,
   hasQuickMarch, onQuickMarch, quickMarchReady,
+  spawns, onSweep,
 }) {
   const [quickGatherConfirm, setQuickGatherConfirm] = useState(false);
   const [tacticsOpen,        setTacticsOpen]        = useState(false);
@@ -80,6 +81,9 @@ export default memo(function TilePopup({
   const [trainingOpen,       setTrainingOpen]       = useState(false);
   const [trainingCmdUid,     setTrainingCmdUid]     = useState(null);
   const [trainingTicks,      setTrainingTicks]      = useState(1);
+  // Check if selected tile has a spawn
+  const tileSpawn = selKey ? (spawns?.[selKey] ?? null) : null;
+
   // ── All hooks must be called unconditionally (Rules of Hooks) ───────────────
   const onCmdScreenOpen = useCallback((uid) => {
     setCmdScreenUid?.(uid);
@@ -625,6 +629,34 @@ export default memo(function TilePopup({
         {ownership==="player"&&!selTile.isHQ&&!deletingTiles[selKey]&&(
           <button onClick={()=>{ setDeletingTiles(p=>({...p,[selKey]:Date.now()})); setDeletingSecsLeft(p=>({...p,[selKey]:15})); }}
             style={{ position:"absolute", top:6, right:6, width:18, height:18, background:"rgba(120,10,10,.7)", border:"1px solid #cc1010", borderRadius:"50%", color:"#ff6060", fontSize:9, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1, zIndex:10 }}>✕</button>
+        )}
+        {/* Sweep button — show when tile has an active spawn */}
+        {tileSpawn && !tileSpawn.defeated && (
+          <div style={{ padding:"8px 10px", borderBottom:"1px solid rgba(255,255,255,.04)", background:"rgba(160,40,40,.06)" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:"#cc4040", letterSpacing:".05em" }}>
+                  💀 {spawnDisplayName?.(tileSpawn.level) ?? "Spawn"} · Lv.{tileSpawn.level}
+                </div>
+                <div style={{ fontSize:7, color:"#5a2a2a" }}>XP ~{tileSpawn.xpReward?.toLocaleString()} · {tileSpawn.orbReward} orbs</div>
+              </div>
+              <button
+                onClick={() => {
+                  const idleCmd = (cmdsOnSel||[]).find(c => !c.march && !c.gathering && !c.training && (c.stamina ?? 150) >= 10);
+                  if (idleCmd) onSweep?.(selKey, idleCmd);
+                }}
+                style={{ padding:"5px 12px", background:"rgba(160,40,40,.3)", border:"1px solid #cc4040", color:"#ff9090", fontFamily:"'Cinzel',serif", fontSize:8, borderRadius:4, cursor:"pointer" }}>
+                ⚡ SWEEP
+              </button>
+            </div>
+          </div>
+        )}
+        {tileSpawn?.defeated && (
+          <div style={{ padding:"6px 10px", borderBottom:"1px solid rgba(255,255,255,.04)", background:"rgba(40,20,20,.04)" }}>
+            <div style={{ fontSize:7, color:"#4a2a2a", fontFamily:"'Cinzel',serif" }}>
+              💀 Spawn defeated — respawning in {Math.ceil(((tileSpawn.respawnAt ?? Date.now()) - Date.now()) / 60000)}m
+            </div>
+          </div>
         )}
         {/* Expedience button — show when any building has < 5 min remaining */}
         {ownership==="player"&&isHqTile&&upgQueue&&(() => {
