@@ -74,6 +74,11 @@ export default memo(function TilePopup({
   hasQuickMarch, onQuickMarch, quickMarchReady,
   spawns, onSweep,
   protectedTiles,
+  onPerformRelocation,
+  lastRelocateAt,
+  relocationTokens,
+  allHqKeys,
+  isValidRelocPad,
 }) {
   const [quickGatherConfirm, setQuickGatherConfirm] = useState(false);
   const [tacticsOpen,        setTacticsOpen]        = useState(false);
@@ -84,8 +89,16 @@ export default memo(function TilePopup({
   const [trainingOpen,       setTrainingOpen]       = useState(false);
   const [trainingCmdUid,     setTrainingCmdUid]     = useState(null);
   const [trainingTicks,      setTrainingTicks]      = useState(1);
+  const [relocConfirm,       setRelocConfirm]       = useState(false);
+
   // Check if selected tile has a spawn
   const tileSpawn = selKey ? (spawns?.[selKey] ?? null) : null;
+
+  // Relocation cooldown display
+  const RELOC_COOLDOWN_MS = 72 * 60 * 60 * 1000;
+  const relocCooldownLeft = lastRelocateAt ? Math.max(0, RELOC_COOLDOWN_MS - (Date.now() - lastRelocateAt)) : 0;
+  const relocOnCooldown   = relocCooldownLeft > 0;
+  const relocHoursLeft    = Math.ceil(relocCooldownLeft / 3_600_000);
 
   // Protection countdown
   const [protectSecsLeft, setProtectSecsLeft] = useState(0);
@@ -713,7 +726,44 @@ export default memo(function TilePopup({
           );
         })()}
         {/* Action buttons */}
-        <div style={{ padding:"6px 10px 8px", display:"flex", gap:5 }}>
+        <div style={{ padding:"6px 10px 8px", display:"flex", gap:5, flexDirection:"column" }}>
+          {/* Relocate HQ button — shown when tile is a valid 3x3 pad center */}
+          {isValidRelocPad && ownership === "player" && !selTile.isHQ && onPerformRelocation && (
+            relocConfirm ? (
+              <div style={{ padding:"8px 10px", background:"rgba(200,160,40,.1)", border:"1px solid #c8a04050", borderRadius:6 }}>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#f0c040", marginBottom:6, textAlign:"center" }}>
+                  🏰 Relocate HQ here?
+                </div>
+                {relocOnCooldown && (
+                  <div style={{ fontSize:7, color:"#cc6030", fontFamily:"'Cinzel',serif", marginBottom:4, textAlign:"center" }}>
+                    ⏳ On cooldown — {relocHoursLeft}h remaining
+                  </div>
+                )}
+                {!relocationTokens && (
+                  <div style={{ fontSize:7, color:"#cc6030", fontFamily:"'Cinzel',serif", marginBottom:4, textAlign:"center" }}>
+                    ⚠ No Relocation Tokens
+                  </div>
+                )}
+                <div style={{ display:"flex", gap:5 }}>
+                  <button onClick={() => { onPerformRelocation(selKey); setRelocConfirm(false); }}
+                    disabled={relocOnCooldown || !relocationTokens}
+                    style={{ flex:1, padding:"6px 0", background: (relocOnCooldown || !relocationTokens) ? "rgba(255,255,255,.03)" : "linear-gradient(160deg,#6a5010,#3a2e08)", border:`1px solid ${(relocOnCooldown || !relocationTokens) ? "#2a2010" : "#c8a040"}`, borderRadius:4, color: (relocOnCooldown || !relocationTokens) ? "#3a2a10" : "#f0c040", fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, cursor:(relocOnCooldown || !relocationTokens) ? "not-allowed" : "pointer" }}>
+                    YES — USE TOKEN ({relocationTokens ?? 0})
+                  </button>
+                  <button onClick={() => setRelocConfirm(false)}
+                    style={{ padding:"6px 12px", background:"rgba(255,255,255,.04)", border:"1px solid #2a2010", borderRadius:4, color:"#6a5a3a", fontFamily:"'Cinzel',serif", fontSize:9, cursor:"pointer" }}>
+                    NO
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setRelocConfirm(true)}
+                style={{ width:"100%", padding:"7px 0", background:"linear-gradient(160deg,rgba(100,80,20,.3),rgba(60,50,10,.2))", border:"1px solid #c8a04050", borderRadius:5, color:"#c8a060", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:"pointer" }}>
+                🏰 RELOCATE HQ HERE
+              </button>
+            )
+          )}
+          <div style={{ display:"flex", gap:5 }}>
           {/* Attack */}
           {(ownership==="enemy"||isNeutral)&&canAtk&&(
             <button onClick={()=>canAtkNow?(setAtkKey(selKey),setMode("pickAttackCmd"),setPick(null)):null}
@@ -745,6 +795,7 @@ export default memo(function TilePopup({
           {/* Notes */}
           {ownership==="crew"&&<div style={{ fontSize:7, color:"#2299ff", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>🤝 Crew territory — you can move here freely</div>}
           {(ownership==="enemy"||isNeutral)&&!canAtk&&!selTile.isWin&&<div style={{ fontSize:7, color:"#5a4a3a", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>Own an adjacent tile to attack</div>}
+          </div>{/* end inner flex */}
         </div>
       </div>
 
