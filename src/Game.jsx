@@ -6,6 +6,7 @@ import { MapRenderer, clearHQCache } from "./MapRenderer";
 // Constants
 import { CSS } from "./constants/css.js";
 import { getFactionAlignment } from "../shared/constants/factions.js";
+import { CONSUMABLE_DEFS } from "../shared/constants/consumables.js";
 import { npcForPowerLevel, factionDefCmdForTile, HDEFS } from "../shared/constants/heroes.js";
 import { HQP, POWER_DEFS, SIEGE_BASE, hqSiegeValue, FORT_LEVELS, XP_PER_COMMAND } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST } from "../shared/constants/troops.js";
@@ -442,11 +443,16 @@ export default function RiseToWar() {
   const tomeFocBonus   = tomeNodeLv("tl_b1") * 2;             // Willpower
   const tomeAtkBonus   = tomeNodeLv("tl_b2") * 2;             // Overpower
   const rssBonus = {                                           // RSS Mastery nodes
-    food: tomeNodeLv("tr_b1") * 0.015,
+    food:  tomeNodeLv("tr_b1") * 0.015,
     wood:  tomeNodeLv("tr_b2") * 0.015,
     stone: tomeNodeLv("tr_b3") * 0.015,
-    gas: tomeNodeLv("tr_b4") * 0.015,
+    gas:   tomeNodeLv("tr_b4") * 0.015,
   };
+  // Merge active resource speed-up boosts
+  const now_ = Date.now();
+  for (const [rssType, endsAt] of Object.entries(rssSpeedUps)) {
+    if (endsAt > now_) rssBonus[rssType] = (rssBonus[rssType] ?? 0) + 0.30;
+  }
   const hasQuickGather = tomeNodeLv("tl_t") >= 1;
   const hasRecon       = tomeNodeLv("tr_t") >= 1;
   const hasGather      = tomeNodeLv("tr_b") >= 1;
@@ -478,6 +484,7 @@ export default function RiseToWar() {
   };
   const [woundedTroops,  setWounded]       = useState(0);
   const [woundedQueue,   setWoundedQueue]  = useState(0);
+  const [healQueue,      setHealQueue]     = useState([]); // [{ id, branchKey, remaining, total }]
   const [trainingQueues, setTrainingQueues] = useState([]);  // array of { id, branchKey, remaining, total }
   const [trainSlider,    setTrainSlider]   = useState(100);
 
@@ -584,6 +591,9 @@ export default function RiseToWar() {
   const [cmdScreenUid,   setCmdScreenUid]   = useState(null);
   const [gearScreenOpen, setGearScreenOpen] = useState(false);
   const [showPerf,       setShowPerf]       = useState(false);
+  const [consumables,    setConsumables]    = useState([]); // [{ instanceId, typeId, quantity }]
+  // Active resource speed-ups: { rssType: endsAt } — merged into rssBonus each tick
+  const [rssSpeedUps,   setRssSpeedUps]    = useState({});
 
   // ── Hooks ──
   useResources({ screen, tilesRef, setRss, bldgs, fortsRef: _fortsRef, rssBonus });
@@ -1373,7 +1383,7 @@ export default function RiseToWar() {
     findPathBatch,
   });
 
-  useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue, trainingSpeedMult });
+  useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue, trainingSpeedMult, healQueue, setHealQueue });
 
   useUpgrades({ screen, setUpgQueue, setBldgs, setBarracks });
 
@@ -2174,6 +2184,90 @@ export default function RiseToWar() {
     });
   }, [setUpgQueue]);
 
+  // ── Use a consumable ────────────────────────────────────────────────────────
+  const useConsumable = useCallback((typeId) => {
+    const def = CONSUMABLE_DEFS[typeId];
+    if (!def) return;
+
+    // Decrement quantity; remove entry if qty hits 0
+    setConsumables(prev => {
+      const entry = prev.find(c => c.typeId === typeId);
+      if (!entry || entry.quantity <= 0) return prev;
+      if (entry.quantity === 1) return prev.filter(c => c.typeId !== typeId);
+      return prev.map(c => c.typeId === typeId ? { ...c, quantity: c.quantity - 1 } : c);
+    });
+
+    if (def.applies === "universal" || def.applies === "building") {
+      // Apply to all active building upgrades
+      setUpgQueue(q => {
+        const next = { ...q };
+        for (const key of Object.keys(next)) {
+          const entry = next[key];
+          if (entry && entry.endsAt > Date.now()) {
+            next[key] = { ...entry, endsAt: Math.max(Date.now(), entry.endsAt - def.durationMs) };
+          }
+        }
+        return next;
+      });
+    }
+
+    if (def.applies === "universal" || def.applies === "healing") {
+      // Reduce all active heal queue entries by durationMs worth of healing
+      setHealQueue(prev => {
+        if (!prev?.length) return prev;
+        const b = { training: 0 }; // fallback — actual bldgs not in scope here
+        // Approximate troops healed: healRate * (durationMs/1000)
+        // Use a reasonable rate estimate of 2/s minimum
+        const estimatedRate = 2;
+        const troopsToHeal  = Math.floor(estimatedRate * def.durationMs / 1000);
+        let remaining = troopsToHeal;
+        return prev.map(q => {
+          if (remaining <= 0) return q;
+          const reduce = Math.min(q.remaining, remaining);
+          remaining -= reduce;
+          return q.remaining - reduce <= 0 ? null : { ...q, remaining: q.remaining - reduce };
+        }).filter(Boolean);
+      });
+      floaty(`💉 ${def.label} applied!`, "#88aaff",
+        playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
+    }
+
+    if (def.applies === "rss") {
+      // Add/extend boost for this rss type
+      setRssSpeedUps(prev => ({
+        ...prev,
+        [def.rssType]: Math.max(Date.now(), prev[def.rssType] ?? 0) + def.durationMs,
+      }));
+      floaty(`${def.icon} ${def.label} active for ${def.durationLabel}!`, "#80b040",
+        playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
+    }
+
+    if (def.applies === "medallion") {
+      // 1 medallion = 1 pull — trigger pull(1) directly if available
+      // The pull function handles all reward logic; medallion bypasses gem cost
+      floaty("🥇 Medallion used!", "#f0c040",
+        playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
+      // pull is called by GachaScreen; here we just consume and the gacha screen
+      // reads medallion count from consumables to offer the option
+    }
+
+    if (def.applies === "relocation") {
+      floaty("🧭 Relocation coming soon!", "#a855f7",
+        playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
+      // Restore the consumable since it wasn't actually used
+      setConsumables(prev => {
+        const entry = prev.find(c => c.typeId === typeId);
+        if (entry) return prev.map(c => c.typeId === typeId ? { ...c, quantity: c.quantity + 1 } : c);
+        return [...prev, { instanceId: `cons_restore_${Date.now()}`, typeId, quantity: 1 }];
+      });
+    }
+
+    if (def.applies === "building" || def.applies === "universal") {
+      floaty(`🔨 ${def.label} applied!`, "#c8a060",
+        playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
+    }
+  }, [setConsumables, setUpgQueue, setRssSpeedUps, setHealQueue, floaty, playerHqRef]);
+
   // queueTraining(branchKey, amount)
   // branchKey: "faction:branch:tier" e.g. "pirates:swashbucklers:0"
   // Multiple queues allowed (even same branchKey). Max slots = trainingQueueCount(training lvl).
@@ -2408,6 +2502,17 @@ export default function RiseToWar() {
       pityCounters={pityCounters}
       isFreeAvailable={isFreeAvailable}
       isHalfAvailable={isHalfAvailable}
+      medallionCount={(consumables ?? []).find(c => c.typeId === "medallion")?.quantity ?? 0}
+      onUseMedallion={() => {
+        // Consume 1 medallion then pull
+        setConsumables(prev => {
+          const entry = prev.find(c => c.typeId === "medallion");
+          if (!entry || entry.quantity <= 0) return prev;
+          if (entry.quantity === 1) return prev.filter(c => c.typeId !== "medallion");
+          return prev.map(c => c.typeId === "medallion" ? { ...c, quantity: c.quantity - 1 } : c);
+        });
+        pull(1); // free pull — pull() handles rewards, medallion bypasses gem cost by calling directly
+      }}
       playerAlignment={playerAlignment} setScreen={setScreen}
       onOpenCommander={(uid, heroId) => {
         // uid: owned commander uid (or null for unowned), heroId: HDEFS id
@@ -2641,6 +2746,8 @@ export default function RiseToWar() {
         cmds={cmds} setCmds={setCmds} tiles={tiles} rss={rss} setRss={setRss} gems={gems} pKeys={pKeys}
         bldgs={bldgs} setBldgs={setBldgs} barracksPool={barracksPool} setBarracks={setBarracks} troopCounts={troopCounts} setTroopCounts={setTroopCounts}
         woundedTroops={woundedTroops} woundedQueue={woundedQueue} trainingQueues={trainingQueues}
+        healQueue={healQueue} setHealQueue={setHealQueue}
+        setWounded={setWounded} setWoundedQueue={setWoundedQueue}
         trainSlider={trainSlider} setTrainSlider={setTrainSlider} setTrainingQueues={setTrainingQueues}
         upgQueue={upgQueue} sliderVals={sliderVals} setSliderVals={setSliderVals}
         bLog={bLog} upgrade={upgrade} canAfford={canAfford}
@@ -2757,6 +2864,8 @@ export default function RiseToWar() {
           setCmds={setCmds}
           playerAlignment={playerAlignment}
           respectSchematics={respectSchematics}
+          consumables={consumables}
+          onUseConsumable={useConsumable}
           onClose={() => setGearScreenOpen(false)}
         />
       )}
