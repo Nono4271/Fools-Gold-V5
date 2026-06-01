@@ -261,12 +261,24 @@ export default memo(function WizardsTomes({
   const getNode = id => {
     const n = NODE_MAP[id];
     if (!n) return null;
-    if (id === "faction") return {
-      ...n,
-      icon:  facDef?.s  ?? "⚔️",
-      label: `${facDef?.n ?? "Faction"} Mastery`,
-      desc:  `${facDef?.n ?? "Your faction"}'s unique passive ability.`,
-    };
+    if (id === "faction") {
+      const FACTION_MASTERY_DESC = {
+        pirates:        "10% faster reinforcements.",
+        orcs:           "+10% siege damage dealt.",
+        coldborns:      "10% faster healing tent recovery.",
+        dragons:        "10% faster building & upgrade times.",
+        wizards:        "+10% mystic orbs per Void Tap.",
+        nightcreatures: "10% faster march speed.",
+        holyknights:    "10% faster conscription time.",
+        ashen_dead:     "10% cheaper conscription cost.",
+      };
+      return {
+        ...n,
+        icon:  facDef?.s  ?? "⚔️",
+        label: `${facDef?.n ?? "Faction"} Mastery`,
+        desc:  FACTION_MASTERY_DESC[facKey] ?? "Your faction's unique passive ability.",
+      };
+    }
     return n;
   };
 
@@ -351,7 +363,7 @@ export default memo(function WizardsTomes({
               WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
             }}>A WIZARD'S ANCIENT KNOWLEDGE</div>
             <div style={{fontSize:7, color:"#4a3a70", letterSpacing:".12em"}}>
-              WIZARD'S TOMES · {Object.values(nodeLevels).filter(v=>v>0).length} / {TREE_NODES.length} UNLOCKED
+              WIZARD'S TOMES · {Object.values(nodeLevels).reduce((s,v)=>s+v,0)} / 179 UPGRADES
               {tomesUnspentPoints > 0 && (
                 <span style={{color:"#ff8844", marginLeft:6}}>
                   · {tomesUnspentPoints} PT{tomesUnspentPoints !== 1 ? "S" : ""} TO SPEND
@@ -719,11 +731,11 @@ export default memo(function WizardsTomes({
           <div style={{marginBottom:16}}>
             <div style={{display:"flex", justifyContent:"space-between", fontSize:8, color:"#5540aa", marginBottom:4}}>
               <span>MASTERY PROGRESS</span>
-              <span style={{color:"#c0a8ff"}}>{Object.values(nodeLevels).filter(v=>v>0).length} / {TREE_NODES.length}</span>
+              <span style={{color:"#c0a8ff"}}>{Object.values(nodeLevels).reduce((s,v)=>s+v,0)} / 179</span>
             </div>
             <div style={{height:5, background:"rgba(255,255,255,.04)", borderRadius:2, overflow:"hidden"}}>
               <div style={{height:"100%", borderRadius:2,
-                width:`${(Object.values(nodeLevels).filter(v=>v>0).length/TREE_NODES.length)*100}%`,
+                width:`${Math.min(100,(Object.values(nodeLevels).reduce((s,v)=>s+v,0)/179)*100)}%`,
                 background:"linear-gradient(90deg,#330088,#9966ff)", transition:"width .4s ease"}}/>
             </div>
           </div>

@@ -288,7 +288,7 @@ const isGated  = !isAbsMax && lvl >= avail;
 const cost     = (!isAbsMax && !isGated) ? upgCost(bKey, lvl) : null;
 const ok       = cost && canAfford(cost);
 const inProg   = upgQueue[bKey];
-const nd       = cost ? upgDuration(bKey, lvl+1) : 0;
+const nd       = cost ? Math.round(upgDuration(bKey, lvl+1) * facMasteryBuildMult) : 0;
 const mm = Math.floor(nd/60000), ss = Math.floor((nd%60000)/1000);
 
 return (
@@ -350,8 +350,8 @@ const BRANCH_LVL_BONUS = [
   const dmgColor = branch.dmgType === "magical" ? "#a855f7" : "#e08050";
   const roman = ["I","II","III"];
   const skills = getTierSkills(branch, tierIdx);
-  const conscriptCost = { wood:1, gas:1, food:2 };
-  const conscriptBase = [30, 60, 120][tierIdx];
+  const conscriptCost = { wood: Math.round(1*facMasteryConscriptCost*10)/10, gas: Math.round(1*facMasteryConscriptCost*10)/10, food: Math.round(2*facMasteryConscriptCost*10)/10 };
+  const conscriptBase = Math.round([30, 60, 120][tierIdx] * facMasteryConscriptTime);
   const TRIGGER_LABEL = {
   round_start: "Round Start", on_hit: "On Hit",
   on_hit_received: "On Hit Taken", on_kill: "On Kill", passive: "Passive",
@@ -3271,6 +3271,8 @@ quarterLevels, setQuarterLevels,
 mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady,
 lastVoidTap, voidTapCooldown, doVoidTap,
 troopSkillLevels, setTroopSkillLevels, setMysticOrbs,
+facMasteryBuildMult = 1, facMasteryHealMult = 1,
+facMasteryConscriptTime = 1, facMasteryConscriptCost = 1, facMasterySiegeMult = 1,
 }) {
   const { staminaMax = 150 } = useGameContext();
 if (!hqOpen) return null;
