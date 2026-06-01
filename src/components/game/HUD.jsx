@@ -8,7 +8,7 @@ import { PLAYABLE_FACTIONS } from "../../../shared/constants/factions.js";
   Trapezoid bar: left slant angles right going up, right slant mirrors it
   (wider at bottom), leaving ~16% clear on each side for minimap / buttons.
 
-  ROW 1:  [stone][wood][ore][gas] | [FG] | [🥚 eggs][🔮 orbs][💎 gems][⚙]
+  ROW 1:  [stone][wood][gas][food] | [FG] | [🥚 eggs][🔮 orbs][💎 gems][⚙]
   ROW 2:  [💍 power/hr — just left of FG]  [⬛ tiles — just right of FG]
 
   Dragon Eggs  — capacity/24 = regen/hr.  Default 20/20 → 0.83/hr
@@ -142,7 +142,7 @@ export default memo(function HUD({
     }
     return n;
   }, [tiles, pKeys]);
-  const rssRate   = { stone: 200, wood: 200, ore: 200, gas: 2400 }; // TODO: wire
+  const rssRate   = { stone: 200, wood: 200, gas: 200, food: 2400 }; // TODO: wire
 
   // Dragon Egg regen: capacity fills in 24 hrs regardless of cap size
   const eggRegen = (dragonEggsCap / 24).toFixed(2).replace(/\.?0+$/, "");

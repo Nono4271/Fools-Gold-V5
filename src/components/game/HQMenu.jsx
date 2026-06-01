@@ -217,15 +217,13 @@ display:"grid", gridTemplateColumns:"1fr 1fr", gridTemplateRows:"1fr 1fr 1fr", g
 
 const QUARTER_UPGRADE_COST = (lvl) => ({
 stone: Math.round(200 * Math.pow(2.0, lvl)),
-wood:  Math.round(150 * Math.pow(2.0, lvl)),
-ore:   Math.round(100 * Math.pow(2.0, lvl)),
+wood:  Math.round(100 * Math.pow(2.0, lvl)),
 gas:   Math.round(50  * Math.pow(2.0, lvl)),
 });
 
 const BRANCH_UPGRADE_COST = (lvl) => ({
 stone: Math.round(120 * Math.pow(1.8, lvl)),
-wood:  Math.round(80  * Math.pow(1.8, lvl)),
-ore:   Math.round(60  * Math.pow(1.8, lvl)),
+wood:  Math.round(60  * Math.pow(1.8, lvl)),
 gas:   Math.round(30  * Math.pow(1.8, lvl)),
 });
 
@@ -290,7 +288,7 @@ const isGated  = !isAbsMax && lvl >= avail;
 const cost     = (!isAbsMax && !isGated) ? upgCost(bKey, lvl) : null;
 const ok       = cost && canAfford(cost);
 const inProg   = upgQueue[bKey];
-const nd       = cost ? Math.round(upgDuration(bKey, lvl+1) * facMasteryBuildMult) : 0;
+const nd       = cost ? upgDuration(bKey, lvl+1) : 0;
 const mm = Math.floor(nd/60000), ss = Math.floor((nd%60000)/1000);
 
 return (
@@ -352,13 +350,13 @@ const BRANCH_LVL_BONUS = [
   const dmgColor = branch.dmgType === "magical" ? "#a855f7" : "#e08050";
   const roman = ["I","II","III"];
   const skills = getTierSkills(branch, tierIdx);
-  const conscriptCost = { stone: Math.round(2 * facMasteryConscriptCost * 10) / 10, wood: Math.round(2 * facMasteryConscriptCost * 10) / 10, ore: Math.round(1 * facMasteryConscriptCost * 10) / 10, gas: Math.round(0.5 * facMasteryConscriptCost * 10) / 10 };
-  const conscriptBase = Math.round([30, 60, 120][tierIdx] * facMasteryConscriptTime);
+  const conscriptCost = { wood:1, gas:1, food:2 };
+  const conscriptBase = [30, 60, 120][tierIdx];
   const TRIGGER_LABEL = {
   round_start: "Round Start", on_hit: "On Hit",
   on_hit_received: "On Hit Taken", on_kill: "On Kill", passive: "Passive",
   };
-  const RSS_COL = { stone:["🪨","#aaaaaa"], wood:["🪵","#c8903a"], ore:["⚙️","#88aaff"], gas:["⛽","#5dcc80"] };
+  const RSS_COL = { stone:["🪨","#aaaaaa"], wood:["🪵","#c8903a"], gas:  ["⚗","#4a90c0"],  food: ["🌾","#80b040"] };
   const portraitSrc = troopPortraitPath(fKey, branch.key, tierIdx);
   const [portraitErr, setPortraitErr] = useState(false);
   return (
@@ -1092,7 +1090,7 @@ return (
 //  COMMAND CENTER (Overview)
 // -----------------------------------------------------------------------------
 function CommandCenterScreen({ cmds, pKeys, rss, gems, bldgs, bLog, tiles }) {
-const rssToBuilding = { stone:"quarry", wood:"lumber", ore:"forge", gas:"refinery" };
+const rssToBuilding = { stone:"quarry", wood:"lumber", gas: "forge", food: "refinery" };
 const totalTroops   = cmds.filter(c=>c.owner==="player").reduce((s,c)=>s+(c.troopSlots?.length>0?c.troopSlots.reduce((a,sl)=>a+(sl.troops||0),0):(c.troops||0)),0);
 return (
 <div>
@@ -1398,7 +1396,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
     : Math.max(1, Math.min(maxBatch, room));
   const sv = Math.min(sliderVal, maxAmount);
 
-  const trainCost = isScrap ? null : { stone:sv*2, wood:sv*2, ore:sv, gas:Math.floor(sv*0.5) };
+  const trainCost = isScrap ? null : { wood:sv, gas:sv, food:sv*2 };
   const timeSecs  = isScrap ? 0 : Math.ceil(sv / rate);
 
   function fmtTime(s) {
@@ -3273,8 +3271,6 @@ quarterLevels, setQuarterLevels,
 mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady,
 lastVoidTap, voidTapCooldown, doVoidTap,
 troopSkillLevels, setTroopSkillLevels, setMysticOrbs,
-facMasteryBuildMult = 1, facMasteryHealMult = 1,
-facMasteryConscriptTime = 1, facMasteryConscriptCost = 1, facMasterySiegeMult = 1,
 }) {
   const { staminaMax = 150 } = useGameContext();
 if (!hqOpen) return null;

@@ -99,10 +99,10 @@ const TREE_NODES = [
   { id:"tr",    col:1, x:C2x,      y:Y_ROOT,  r:R_ROOT, icon:"🥚",  label:"Brood Keeper",  accent:"#5588ff", desc:"+1 Dragon Egg max capacity per level (base 20, max 30).", prereqs:[], unlockLv:10, maxLv:10, permanent:true  },
   { id:"tr_t",  col:1, x:C2x-58,  y:Y_MID_L, r:R_MID,  icon:"🔭",  label:"Recon",            accent:"#44ccee", desc:"Scout any unowned tile to reveal garrison commander, level, and troops.", prereqs:["tr"], unlockLv:10, maxLv:1, permanent:true  },
   { id:"tr_b",  col:1, x:C2x+30,  y:Y_MID_R, r:R_MID,  icon:"⛏",  label:"Deep Harvest",           accent:"#e07040", desc:"[1 Egg/tick] Station a commander on an owned tile to harvest 4x hourly RSS per 10-min tick (max 15 ticks).", prereqs:["tr"], unlockLv:10, maxLv:1, permanent:true  },
-  { id:"tr_b1", col:1, x:C2x-30,  y:Y_LEAF,  r:R_LEAF, icon:"⚗",  label:"Alchemist's Eye",      accent:"#80b040", desc:"+1.5% gas production per level (max +15%).",             prereqs:["tr_b"], unlockLv:10, maxLv:10, permanent:false },
+  { id:"tr_b1", col:1, x:C2x-30,  y:Y_LEAF,  r:R_LEAF, icon:"⚗",  label:"Alchemist's Eye",      accent:"#80b040", desc:"+1.5% food production per level (max +15%).",             prereqs:["tr_b"], unlockLv:10, maxLv:10, permanent:false },
   { id:"tr_b2", col:1, x:C2x+10,  y:Y_LEAF,  r:R_LEAF, icon:"🪵",  label:"Forester's Creed",     accent:"#a07840", desc:"+1.5% wood production per level (max +15%).",            prereqs:["tr_b"], unlockLv:10, maxLv:10, permanent:false },
   { id:"tr_b3", col:1, x:C2x+52,  y:Y_LEAF,  r:R_LEAF, icon:"🪨",  label:"Stonecutter's Pact",    accent:"#9898b0", desc:"+1.5% stone production per level (max +15%).",           prereqs:["tr_b"], unlockLv:10, maxLv:10, permanent:false },
-  { id:"tr_b4", col:1, x:C2x+90,  y:Y_LEAF,  r:R_LEAF, icon:"⛏",  label:"Ironblood",      accent:"#4a90c0", desc:"+1.5% ore production per level (max +15%).",             prereqs:["tr_b"], unlockLv:10, maxLv:10, permanent:false },
+  { id:"tr_b4", col:1, x:C2x+90,  y:Y_LEAF,  r:R_LEAF, icon:"⚗",  label:"Ironblood",      accent:"#4a90c0", desc:"+1.5% gas production per level (max +15%).",             prereqs:["tr_b"], unlockLv:10, maxLv:10, permanent:false },
 
   // ── COL 3: COMBAT (Lv30) accent:#44cc88 ──
   { id:"bl",    col:2, x:C3x,      y:Y_ROOT,  r:R_ROOT, icon:"⚡",  label:"Easily Winded",      accent:"#44cc88", desc:"+5 max stamina per level. Base is 150, max restores to 200.", prereqs:[], unlockLv:30, maxLv:10, permanent:true  },
@@ -261,24 +261,12 @@ export default memo(function WizardsTomes({
   const getNode = id => {
     const n = NODE_MAP[id];
     if (!n) return null;
-    if (id === "faction") {
-      const FACTION_MASTERY_DESC = {
-        pirates:       "10% faster reinforcements.",
-        orcs:          "+10% siege damage dealt.",
-        coldborns:     "10% faster healing tent recovery.",
-        dragons:       "10% faster building & upgrade times.",
-        wizards:       "+10% mystic orbs per Void Tap.",
-        nightcreatures:"10% faster march speed.",
-        holyknights:   "10% faster conscription time.",
-        ashen_dead:    "10% cheaper conscription cost.",
-      };
-      return {
-        ...n,
-        icon:  facDef?.s  ?? "⚔️",
-        label: `${facDef?.n ?? "Faction"} Mastery`,
-        desc:  FACTION_MASTERY_DESC[facKey] ?? "Your faction's unique passive ability.",
-      };
-    }
+    if (id === "faction") return {
+      ...n,
+      icon:  facDef?.s  ?? "⚔️",
+      label: `${facDef?.n ?? "Faction"} Mastery`,
+      desc:  `${facDef?.n ?? "Your faction"}'s unique passive ability.`,
+    };
     return n;
   };
 
@@ -363,7 +351,7 @@ export default memo(function WizardsTomes({
               WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
             }}>A WIZARD'S ANCIENT KNOWLEDGE</div>
             <div style={{fontSize:7, color:"#4a3a70", letterSpacing:".12em"}}>
-              WIZARD'S TOMES · {Object.values(nodeLevels).reduce((s,v)=>s+v,0)} / 179 UPGRADES
+              WIZARD'S TOMES · {Object.values(nodeLevels).filter(v=>v>0).length} / {TREE_NODES.length} UNLOCKED
               {tomesUnspentPoints > 0 && (
                 <span style={{color:"#ff8844", marginLeft:6}}>
                   · {tomesUnspentPoints} PT{tomesUnspentPoints !== 1 ? "S" : ""} TO SPEND
@@ -731,11 +719,11 @@ export default memo(function WizardsTomes({
           <div style={{marginBottom:16}}>
             <div style={{display:"flex", justifyContent:"space-between", fontSize:8, color:"#5540aa", marginBottom:4}}>
               <span>MASTERY PROGRESS</span>
-              <span style={{color:"#c0a8ff"}}>{Object.values(nodeLevels).reduce((s,v)=>s+v,0)} / 179</span>
+              <span style={{color:"#c0a8ff"}}>{Object.values(nodeLevels).filter(v=>v>0).length} / {TREE_NODES.length}</span>
             </div>
             <div style={{height:5, background:"rgba(255,255,255,.04)", borderRadius:2, overflow:"hidden"}}>
               <div style={{height:"100%", borderRadius:2,
-                width:`${Math.min(100,(Object.values(nodeLevels).reduce((s,v)=>s+v,0)/179)*100)}%`,
+                width:`${(Object.values(nodeLevels).filter(v=>v>0).length/TREE_NODES.length)*100}%`,
                 background:"linear-gradient(90deg,#330088,#9966ff)", transition:"width .4s ease"}}/>
             </div>
           </div>

@@ -32,7 +32,7 @@ export default memo(function WinScreen({ winner, aiFaction, setWinner, setTiles,
           setTroopCounts({});
           setWounded(0);
           setWoundedQueue(0);
-          if (setRss)              setRss({ stone:300, wood:300, ore:300, gas:300 });
+          if (setRss)              setRss({ stone:300, wood:300, gas: 300, food: 300 });
           if (setReinMarches)      setReinMarches([]);
           if (setTrainingQueues)   setTrainingQueues([]);
           if (setBLog)             setBLog([]);
@@ -42,7 +42,7 @@ export default memo(function WinScreen({ winner, aiFaction, setWinner, setTiles,
           if (setDeletingSecsLeft) setDeletingSecsLeft({});
           if (setPlayerHqKey)      setPlayerHqKey(null);
           if (setAiHqKeys)         setAiHqKeys({});
-          setAiRss({stone:300,wood:300,ore:300,gas:300});
+          setAiRss({stone:300,wood:300,gas: 300,food: 300});
           setAiBldgs({hq:1,quarry:0,lumber:0,forge:0,refinery:0,barracks:0,training:0,commandcenter:0,healingtent:0,walls:0});
           setAiBarracksPool(barracksCapacity(0));
           aiLastActionRef.current = 0;

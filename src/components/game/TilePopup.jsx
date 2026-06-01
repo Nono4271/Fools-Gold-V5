@@ -3,7 +3,6 @@ import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 import { RSS, POWER_DEFS, SIEGE_BASE, HQP, FORT_LEVELS, XP_PER_COMMAND } from "../../../shared/constants/map.js";
 import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
 import { isTileInRange } from "../../hooks/useForts.js";
-import { spawnDisplayName } from "../../utils/spawnUtils.js";
 import { getTileOwnership } from "./popup/TileInfoPanel.jsx";
 import CommanderCard from "./popup/CommanderCard.jsx";
 import FortPanel from "./popup/FortPanel.jsx";
@@ -72,6 +71,7 @@ export default memo(function TilePopup({
   hasLongMarch, onLongMarch, longMarchReady,
   hasQuickMarch, onQuickMarch, quickMarchReady,
   spawns, onSweep,
+  protectedTiles,
 }) {
   const [quickGatherConfirm, setQuickGatherConfirm] = useState(false);
   const [tacticsOpen,        setTacticsOpen]        = useState(false);
@@ -84,6 +84,21 @@ export default memo(function TilePopup({
   const [trainingTicks,      setTrainingTicks]      = useState(1);
   // Check if selected tile has a spawn
   const tileSpawn = selKey ? (spawns?.[selKey] ?? null) : null;
+
+  // Protection countdown
+  const [protectSecsLeft, setProtectSecsLeft] = useState(0);
+  const tileProtectedUntil = selKey ? (protectedTiles?.[selKey] ?? 0) : 0;
+  useEffect(() => {
+    if (!tileProtectedUntil || Date.now() >= tileProtectedUntil) { setProtectSecsLeft(0); return; }
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((tileProtectedUntil - Date.now()) / 1000));
+      setProtectSecsLeft(left);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [tileProtectedUntil]);
+  const isProtected = protectSecsLeft > 0;
 
   // ── All hooks must be called unconditionally (Rules of Hooks) ───────────────
   const onCmdScreenOpen = useCallback((uid) => {
@@ -630,6 +645,21 @@ export default memo(function TilePopup({
         {ownership==="player"&&!selTile.isHQ&&!deletingTiles[selKey]&&(
           <button onClick={()=>{ setDeletingTiles(p=>({...p,[selKey]:Date.now()})); setDeletingSecsLeft(p=>({...p,[selKey]:15})); }}
             style={{ position:"absolute", top:6, right:6, width:18, height:18, background:"rgba(120,10,10,.7)", border:"1px solid #cc1010", borderRadius:"50%", color:"#ff6060", fontSize:9, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1, zIndex:10 }}>✕</button>
+        )}
+        {/* Protection badge — show during 3 min protection window */}
+        {isProtected && (
+          <div style={{ padding:"5px 10px", borderBottom:"1px solid rgba(68,136,255,.15)",
+            background:"rgba(20,40,100,.2)", display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ fontSize:14 }}>🛡</span>
+            <div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:"#88aaff", letterSpacing:".06em" }}>
+                PROTECTED
+              </div>
+              <div style={{ fontSize:9, color:"#4466cc", fontFamily:"monospace" }}>
+                {Math.floor(protectSecsLeft/60)}:{String(protectSecsLeft%60).padStart(2,"0")}
+              </div>
+            </div>
+          </div>
         )}
         {/* Sweep button — show when tile has an active spawn */}
         {tileSpawn && !tileSpawn.defeated && (

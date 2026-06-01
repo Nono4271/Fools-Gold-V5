@@ -1147,7 +1147,7 @@ function SimpleSummaryPanel({ b, onOpen, playerName }) {
               {(b.rssRewards ?? []).map(({ rss, amount }) => (
                 <div key={rss} style={{ display:"flex", justifyContent:"space-between" }}>
                   <span style={{ fontSize:8, color:"#5a6a40" }}>
-                    {rss === "gas" ? "⚗" : rss === "wood" ? "🪵" : rss === "stone" ? "🪨" : "🌾"} {rss.charAt(0).toUpperCase()+rss.slice(1)}
+                    {rss === "food" ? "⚗" : rss === "wood" ? "🪵" : rss === "stone" ? "🪨" : "🌾"} {rss.charAt(0).toUpperCase()+rss.slice(1)}
                   </span>
                   <span style={{ fontSize:9, color:"#80aa60", fontWeight:700 }}>+{amount?.toLocaleString()}</span>
                 </div>
