@@ -1764,7 +1764,7 @@ function drawCmdIcons(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlay
 /* ══════════════════════════════════════════════════════════════════════════
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles, guardedTileKeys, spawns }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles, guardedTileKeys, spawns, protectedTileKeys }, ref) {
 
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
@@ -1776,6 +1776,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const propsBackRef   = useRef(null);
   const marchGfxRef    = useRef(null);
   const guardGfxRef    = useRef(null);
+  const protectGfxRef  = useRef(null);
   const spawnGfxRef    = useRef(null);
   const _spawnSpriteMap = useRef(new Map());
   const cmdGfxRef      = useRef(null);
@@ -1988,6 +1989,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     fortContRef.current = fortCont;
     const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
     const guardGfx = new PIXI.Graphics(); world.addChild(guardGfx); guardGfxRef.current = guardGfx;
+    const protectGfx = new PIXI.Graphics(); world.addChild(protectGfx); protectGfxRef.current = protectGfx;
     const spawnGfx = new PIXI.Graphics(); world.addChild(spawnGfx); spawnGfxRef.current = spawnGfx;
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
     const cmdGfx = new PIXI.Graphics(); world.addChild(cmdGfx); cmdGfxRef.current = cmdGfx;
@@ -2765,68 +2767,97 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const [sc, sr] = key.split(",").map(Number);
       const { cx, cy } = isoXY(sc, sr);
 
-      // Tile surface centre — matches prop rendering
-      const tileY = cy - 4 + TH * 0.5;
-
-      // Fix 2: glow diamond centred on tile face
+      // Draw glow ring on tile for active spawns
       if (!spawn.defeated) {
         const color = spawn.level <= 12 ? 0x70aa60
                     : spawn.level <= 25 ? 0xd07030
                     : 0xcc4040;
         const hw = TW / 2, hh = TH / 2;
-        const pts = [cx, tileY - hh, cx + hw, tileY, cx, tileY + hh, cx - hw, tileY];
-        gfx.lineStyle(2, color, 0.7);
-        gfx.beginFill(color, 0.08);
+        const pts = [cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy];
+        gfx.lineStyle(2, color, 0.6);
+        gfx.beginFill(color, 0.06);
         gfx.drawPolygon(pts);
         gfx.endFill();
       }
 
+      // Render 2-4 small portrait sprites clustered on tile
       if (!spawn.defeated) {
-        const ref = spawn.slot1TroopRef;
+        // Portrait from slot 1 troop branch — e.g. /troops/orcs_grunts_t1_portrait.webp
         const tierIdx = spawn.level <= 12 ? 0 : spawn.level <= 25 ? 1 : 2;
-
-        // Fix 1: use /spawns/ sprite, fall back to portrait
-        const spriteUrl  = ref?.faction && ref?.branch
-          ? `/spawns/${ref.faction}_${ref.branch}_t${(ref.tier ?? tierIdx) + 1}.webp`
-          : null;
+        const ref = spawn.slot1TroopRef;
         const portraitUrl = ref?.faction && ref?.branch
           ? `/troops/${ref.faction}_${ref.branch}_t${(ref.tier ?? tierIdx) + 1}_portrait.webp`
-          : null;
+          : `/troops/spawn_t${tierIdx + 1}_portrait.webp`; // fallback placeholder
 
-        // Fix 3 + size: figures centred on tile, 20% smaller than before (TW*0.30 vs TW*0.38)
-        const figW = TW * 0.30;
-        const figH = figW * 1.6;
         const clusterOffsets = tierIdx >= 1
-          ? [[-figW * 0.55, 0], [figW * 0.55, 0], [0, -figH * 0.35]]
-          : [[-figW * 0.45, 0], [figW * 0.45, 0]];
+          ? [[-10, 4], [8, 2], [-2, -6], [10, -8]]  // 4 figures for T2/T3
+          : [[-8, 2], [8, 2]];                         // 2 figures for T1
 
-        const placeSprites = (tex) => {
-          if (!tex || world.destroyed) return;
-          clusterOffsets.forEach(([ox, oy], i) => {
-            const sp = new PIXI.Sprite(tex);
-            const scale = 1 - i * 0.08;
-            sp.width  = figW * scale;
-            sp.height = figH * scale;
-            sp.anchor.set(0.5, 1);
-            sp.x = cx + ox;
-            sp.y = tileY + oy;
-            world.addChild(sp);
-            _spawnSpriteMap.current.set(`${key}_${i}`, sp);
+        const loadSprite = (url, offsets) => {
+          const loader = PIXI.Texture.fromURL(url).catch(() => null);
+          loader.then(tex => {
+            if (!tex || world.destroyed) return;
+            offsets.forEach(([ox, oy], i) => {
+              const sp = new PIXI.Sprite(tex);
+              const scale = 0.28 - i * 0.02;
+              sp.width  = TW * scale;
+              sp.height = TW * scale * 1.4;
+              sp.anchor.set(0.5, 1);
+              sp.x = cx + ox;
+              sp.y = cy + TH * 0.35 + oy;
+              sp.zOrder = cy + TH * 0.35 + oy;
+              world.addChild(sp);
+              const mapKey = `${key}_${i}`;
+              _spawnSpriteMap.current.set(mapKey, sp);
+            });
           });
         };
 
-        if (spriteUrl) {
-          PIXI.Texture.fromURL(spriteUrl)
-            .then(tex => placeSprites(tex))
-            .catch(() => {
-              if (portraitUrl) PIXI.Texture.fromURL(portraitUrl).then(tex => placeSprites(tex)).catch(() => {});
-            });
-        } else if (portraitUrl) {
-          PIXI.Texture.fromURL(portraitUrl).then(tex => placeSprites(tex)).catch(() => {});
+        if (_hqTex[portraitUrl]) {
+          clusterOffsets.forEach(([ox, oy], i) => {
+            const sp = new PIXI.Sprite(_hqTex[portraitUrl]);
+            const scale = 0.28 - i * 0.02;
+            sp.width  = TW * scale;
+            sp.height = TW * scale * 1.4;
+            sp.anchor.set(0.5, 1);
+            sp.x = cx + ox;
+            sp.y = cy + TH * 0.35 + oy;
+            world.addChild(sp);
+            _spawnSpriteMap.current.set(`${key}_${i}`, sp);
+          });
+        } else {
+          loadSprite(portraitUrl, clusterOffsets);
         }
       }
     }
   }, [spawns]);
+
+  // Protection glow — blue shield glow on recently captured tiles
+  useEffect(() => {
+    const gfx = protectGfxRef.current;
+    if (!gfx) return;
+    gfx.clear();
+    if (!protectedTileKeys) return;
+    const keys = protectedTileKeys.split("|").filter(k => k.length > 0);
+    for (const key of keys) {
+      const comma = key.indexOf(",");
+      const c = +key.slice(0, comma), r = +key.slice(comma + 1);
+      const { cx, cy } = isoXY(c, r);
+      const hw = TW / 2, hh = TH / 2;
+      const pts = [cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy];
+      gfx.lineStyle(2.5, 0x4488ff, 0.8);
+      gfx.beginFill(0x2255cc, 0.10);
+      gfx.drawPolygon(pts);
+      gfx.endFill();
+      // Inner pulse ring
+      gfx.lineStyle(1, 0x88bbff, 0.4);
+      gfx.beginFill(0, 0);
+      const inner = [cx, cy - hh*0.65, cx + hw*0.65, cy, cx, cy + hh*0.65, cx - hw*0.65, cy];
+      gfx.drawPolygon(inner);
+      gfx.endFill();
+      gfx.lineStyle(0);
+    }
+  }, [protectedTileKeys]);
 
   // Guard glow — glowing outline on guarded tile + owned/crewmate tiles in 3x3 around it
   const _guardSpriteMap = useRef(new Map()); // kept for cleanup compat, unused

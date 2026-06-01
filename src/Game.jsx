@@ -178,7 +178,7 @@ export default function RiseToWar() {
   const [loadPct,  setLoadPct]  = useState(0);
   const [loadLabel,setLoadLabel]= useState("Generating world...");
   const [playerHqKey, setPlayerHqKey] = useState(null);
-  const [rss,    setRss]     = useState({ stone:200_000, wood:200_000, ore:200_000, gas:200_000 });
+  const [rss,    setRss]     = useState({ stone:200_000, wood:200_000, gas: 200_000, food: 200_000 });
   const [gems,   setGems]    = useState(20000);
   const [crewOpen,      setCrewOpen]      = useState(false);
   const [searchOpen,    setSearchOpen]    = useState(false);
@@ -277,7 +277,7 @@ export default function RiseToWar() {
   const [aiHqKeys, setAiHqKeys] = useState({});
 
   const tilesRef   = tilesMapRef;
-  const aiRssRef   = useRef({ stone:300, wood:300, ore:300, gas:300 });
+  const aiRssRef   = useRef({ stone:300, wood:300, gas: 300, food: 300 });
   // setAiRss: writes directly to ref, no setState → no re-render during gameplay.
   // Accepts both plain objects and updater functions (same API as useState setter).
   const setAiRss = useCallback((updater) => {
@@ -307,7 +307,7 @@ export default function RiseToWar() {
 
   // Updater helpers — write to map ref, no setState
   const setAiRssMap = useCallback((fk, updater) => {
-    const cur = aiRssMapRef.current.get(fk) || { stone:300, wood:300, ore:300, gas:300 };
+    const cur = aiRssMapRef.current.get(fk) || { stone:300, wood:300, gas: 300, food: 300 };
     aiRssMapRef.current.set(fk, typeof updater === "function" ? updater(cur) : updater);
   }, []);
   const setAiBldgsMap = useCallback((fk, updater) => {
@@ -410,7 +410,7 @@ export default function RiseToWar() {
     lastVoidTap, setLastVoidTap,
     mysticOrbsCap, voidTapLvl, voidTapCooldown, voidTapReady,
     doVoidTap,
-  } = useVoidTap({ bldgs, quarterLevels, facMasteryOrbMult });
+  } = useVoidTap({ bldgs, quarterLevels });
 
   // ── Wizard's Tomes — owned by useTomes ───────────────────────────────────
   const {
@@ -423,6 +423,7 @@ export default function RiseToWar() {
   // ── Tome node state — must be declared before tome-derived constants ──────
   const [dragonEggs,      setDragonEggs]      = useState(20);
   const [spawns,          setSpawns]          = useState({}); // { [tileKey]: SpawnState }
+  const [protectedTiles,  setProtectedTiles]  = useState({}); // { [tileKey]: protectedUntil ms }
   const spawnWorkerRef        = useRef(null);
   const eligibleSpawnKeysRef = useRef([]);
   const [tomesNodeLevels, setTomesNodeLevels] = useState({});
@@ -438,10 +439,10 @@ export default function RiseToWar() {
   const tomeFocBonus   = tomeNodeLv("tl_b1") * 2;             // Willpower
   const tomeAtkBonus   = tomeNodeLv("tl_b2") * 2;             // Overpower
   const rssBonus = {                                           // RSS Mastery nodes
-    gas:   tomeNodeLv("tr_b1") * 0.015,
+    food: tomeNodeLv("tr_b1") * 0.015,
     wood:  tomeNodeLv("tr_b2") * 0.015,
     stone: tomeNodeLv("tr_b3") * 0.015,
-    ore:   tomeNodeLv("tr_b4") * 0.015,
+    gas: tomeNodeLv("tr_b4") * 0.015,
   };
   const hasQuickGather = tomeNodeLv("tl_t") >= 1;
   const hasRecon       = tomeNodeLv("tr_t") >= 1;
@@ -461,17 +462,6 @@ export default function RiseToWar() {
   const hasQuickMarch      = tomeNodeLv("br_m")   >= 1;             // Quick March tactic
   const trainingSpeedMult  = 1  + tomeNodeLv("br_b")  * 0.02;       // Troop Training
   const reinSpeedMult      = 1  - tomeNodeLv("br_b1") * 0.015;      // Reins (reduces stepMs)
-
-  // ── Faction Mastery (node: "faction", maxLv:1) ────────────────────────────
-  const factionMasteryOn        = tomeNodeLv("faction") >= 1;
-  const facMasteryReinMult      = factionMasteryOn && facKey === "pirates"       ? 0.90 : 1.0; // -10% rein stepMs
-  const facMasterySiegeMult     = factionMasteryOn && facKey === "orcs"          ? 1.10 : 1.0; // +10% siege dmg dealt
-  const facMasteryHealMult      = factionMasteryOn && facKey === "coldborns"     ? 0.90 : 1.0; // -10% heal tent time
-  const facMasteryBuildMult     = factionMasteryOn && facKey === "dragons"       ? 0.90 : 1.0; // -10% build/upgrade time
-  const facMasteryOrbMult       = factionMasteryOn && facKey === "wizards"       ? 1.10 : 1.0; // +10% void tap orbs
-  const facMasteryMarchMult     = factionMasteryOn && facKey === "nightcreatures" ? 0.90 : 1.0; // -10% march stepMs
-  const facMasteryConscriptTime = factionMasteryOn && facKey === "holyknights"   ? 0.90 : 1.0; // -10% conscript time
-  const facMasteryConscriptCost = factionMasteryOn && facKey === "ashen_dead"    ? 0.90 : 1.0; // -10% conscript cost
 
   // Apply gear + tome stat bonuses to a commander
   const applyAllBonuses = (cmd, inv) => {
@@ -607,6 +597,27 @@ export default function RiseToWar() {
     }, 60_000);
     return () => clearInterval(id);
   }, [screen, tomesNodeLevels]);
+
+  // ── Tile protection ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = Date.now();
+      setProtectedTiles(prev => {
+        const next = {};
+        let changed = false;
+        for (const [k, until] of Object.entries(prev)) {
+          if (until > now) next[k] = until;
+          else changed = true;
+        }
+        return changed ? next : prev;
+      });
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  const registerProtection = useCallback((tileKey) => {
+    setProtectedTiles(prev => ({ ...prev, [tileKey]: Date.now() + 3 * 60 * 1000 }));
+  }, []);
 
   // ── Spawn worker — init after map is ready ──────────────────────────────
   useEffect(() => {
@@ -996,7 +1007,7 @@ export default function RiseToWar() {
         // factionTileKeys was pre-built by the worker scanning ownerArr in one pass —
         // no O(1.4M) rawMap scan needed here. Convert arrays to Sets for O(1) lookup.
         Object.keys(newAiHqKeys).forEach(aiFk => {
-          aiRssMapRef.current.set(aiFk, { stone:5000, wood:5000, ore:5000, gas:5000 });
+          aiRssMapRef.current.set(aiFk, { stone:5000, wood:5000, gas: 5000, food: 5000 });
           aiBldgsMapRef.current.set(aiFk, { ...INIT_BLDGS_VAL });
           aiPoolMapRef.current.set(aiFk, barracksCapacity(0));
           aiTileKeysMapRef.current.set(aiFk, new Set(factionTileKeys?.[aiFk] || []));
@@ -1432,7 +1443,7 @@ export default function RiseToWar() {
     runBattle,
     crewmatePlayerIds,
     aiPlayerIdMap: aiPlayerIdMapRef.current,
-    facMasterySiegeMult,
+    registerProtection,
     forts,
     getAnchors,
     getFortAtTile,
@@ -1777,6 +1788,14 @@ export default function RiseToWar() {
     const type = (destTile?.owner==="player" || isCrewTile) ? "move" : "attack";
     if (type==="move" && destTile?.owner!=="player" && !isCrewTile) return;
 
+    // Protection check — block attack if tile is in protection window
+    if (type === "attack" && destTile?.protectedUntil && Date.now() < destTile.protectedUntil) {
+      const secsLeft = Math.ceil((destTile.protectedUntil - Date.now()) / 1000);
+      const m = Math.floor(secsLeft / 60), s = secsLeft % 60;
+      floaty(`🛡 Protected — ${m}:${String(s).padStart(2,"0")} remaining`, "#4488ff", destKey);
+      return;
+    }
+
     // Stamina check: moves cost 10, attacks cost 20
     const staminaCost = type === "attack" ? 20 : 10;
     const curStamina = freshCmd.stamina ?? staminaMax;
@@ -1788,7 +1807,7 @@ export default function RiseToWar() {
     const slots0 = normaliseTroopSlots(freshCmd);
     const baseStepMs = marchStepMs(effectiveMarchSpd(boostedSpd, slots0.length ? slots0.map(sl=>sl.branch) : freshCmd.troopBranch));
     const quickBonus = quickMarchReady ? 0.5 : 1;
-    const stepMs = Math.max(50, Math.round(baseStepMs * marchSpeedMult * facMasteryMarchMult * quickBonus));
+    const stepMs = Math.max(50, Math.round(baseStepMs * marchSpeedMult * quickBonus));
     if (quickMarchReady) setQuickMarchReady(false);
     if (longMarchReady) setLongMarchReady(false);
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null); setTileScreenX(null); setTileScreenY(null);
@@ -1916,7 +1935,7 @@ export default function RiseToWar() {
     if (!cmd || amount <= 0) return;
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
     const _rSlots2 = normaliseTroopSlots(cmd);
-    const stepMs = Math.max(50, Math.floor(marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots2.length ? _rSlots2.map(sl=>sl.branch) : cmd.troopBranch)) * reinSpeedMult * facMasteryReinMult / 2));
+    const stepMs = Math.max(50, Math.floor(marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots2.length ? _rSlots2.map(sl=>sl.branch) : cmd.troopBranch)) * reinSpeedMult / 2));
     setMode("view"); setReinCmd(null);
     setSliderVals(v => ({ ...v, [`rein_${cmd.uid}`]:undefined }));
     findPath(hqKey, cmd.tk).then(path => {
@@ -2106,9 +2125,9 @@ export default function RiseToWar() {
     if (trainingQueues.length >= maxQueues) return;  // all slots full
     const cap = barracksCapacity(bldgs.barracks || 0);
     if (barracksPool + amount > cap) return;
-    const cost = { stone:amount*2, wood:amount*2, ore:amount, gas:Math.floor(amount*0.5) };
+    const cost = { stone:amount*2, wood:amount*2, gas: amount, food: Math.floor(amount*0.5) };
     if (!canAfford(cost)) return;
-    setRss(p => ({ stone:p.stone-cost.stone, wood:p.wood-cost.wood, ore:p.ore-cost.ore, gas:p.gas-cost.gas }));
+    setRss(p => ({ stone:p.stone-cost.stone, wood:p.wood-cost.wood, gas: p.ore-cost.ore, food: p.gas-cost.gas }));
     const newQueue = { id: `q_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, branchKey, remaining: amount, total: amount };
     setTrainingQueues(prev => [...prev, newQueue]);
   }, [canAfford, bldgs.barracks, bldgs.training, barracksPool, trainingQueues]);
@@ -2463,6 +2482,7 @@ export default function RiseToWar() {
         guardedTiles={guardedTiles}
         guardedTileKeys={[...guardedTiles.keys()].sort().join("|")}
         spawns={spawns}
+        protectedTileKeys={Object.entries(protectedTiles).filter(([,u])=>Date.now()<u).map(([k])=>k).join("|")}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}
@@ -2512,6 +2532,7 @@ export default function RiseToWar() {
         hasLongMarch={hasLongMarch}   onLongMarch={onLongMarch}   longMarchReady={longMarchReady}
         hasQuickMarch={hasQuickMarch} onQuickMarch={onQuickMarch} quickMarchReady={quickMarchReady}
         spawns={spawns} onSweep={onSweep}
+        protectedTiles={protectedTiles}
       />
 
       {showBattleLog && (
@@ -2577,11 +2598,6 @@ export default function RiseToWar() {
         doVoidTap={doVoidTap}
         troopSkillLevels={troopSkillLevels} setTroopSkillLevels={setTroopSkillLevels}
         setMysticOrbs={setMysticOrbs}
-        facMasteryBuildMult={facMasteryBuildMult}
-        facMasteryHealMult={facMasteryHealMult}
-        facMasteryConscriptTime={facMasteryConscriptTime}
-        facMasteryConscriptCost={facMasteryConscriptCost}
-        facMasterySiegeMult={facMasterySiegeMult}
       />
 
       {winner && (
