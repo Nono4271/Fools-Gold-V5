@@ -658,7 +658,7 @@ export default memo(function TilePopup({
         })()}
         {/* Delete X — small, top-right corner of popup */}
         {ownership==="player"&&!selTile.isHQ&&!deletingTiles[selKey]&&(
-          <button onClick={()=>{ setDeletingTiles(p=>({...p,[selKey]:Date.now()})); setDeletingSecsLeft(p=>({...p,[selKey]:15})); }}
+          <button onClick={()=>{ setDeletingTiles(p=>({...p,[selKey]:Date.now()})); setDeletingSecsLeft(p=>({...p,[selKey]:300})); }}
             style={{ position:"absolute", top:6, right:6, width:18, height:18, background:"rgba(120,10,10,.7)", border:"1px solid #cc1010", borderRadius:"50%", color:"#ff6060", fontSize:9, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1, zIndex:10 }}>✕</button>
         )}
         {/* Protection badge — show during 3 min protection window */}
