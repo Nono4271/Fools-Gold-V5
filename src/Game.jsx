@@ -617,10 +617,7 @@ export default function RiseToWar() {
           const [hc, hr] = hqKey.split(',').map(Number);
           const closest = keys
             .filter(k => !spawnMap[k].defeated)
-            .map(k => {
-              const [c,r] = k.split(',').map(Number);
-              return { k, dist: Math.round(Math.sqrt((c-hc)**2+(r-hr)**2)), lvl: spawnMap[k].level };
-            })
+            .map(k => { const [c,r] = k.split(',').map(Number); return { k, dist: Math.round(Math.sqrt((c-hc)**2+(r-hr)**2)), lvl: spawnMap[k].level }; })
             .sort((a,b) => a.dist - b.dist)
             .slice(0, 5);
           console.log('[SPAWN] 5 closest active:', closest.map(s => `${s.k} (Lv${s.lvl}, dist ${s.dist})`).join(' | '));
@@ -1114,17 +1111,19 @@ export default function RiseToWar() {
         pKeysRef.current = new Set();
 
         // Build eligible spawn keys from typed arrays — avoids Proxy enumeration issue
+        // Format: "c,r|regionKey" so worker can place 100 per region
         const eligibleSpawnKeys = [];
         for (let r2 = 0; r2 < R; r2++) {
           for (let c2 = 0; c2 < C; c2++) {
             const idx2 = r2 * C + c2;
             const flags2 = flagArr[idx2];
-            const isHQ2 = !!(flags2 & F_HQ);
+            const isHQ2    = !!(flags2 & F_HQ);
             const isHQPart2 = !!(flags2 & F_HQPART);
-            const pl2 = powerArr[idx2];
+            const pl2    = powerArr[idx2];
             const owner2 = OWNER_DEC[ownerArr[idx2]];
             if (!owner2 && !isHQ2 && !isHQPart2 && pl2 >= 3 && pl2 <= 10) {
-              eligibleSpawnKeys.push(`${c2},${r2}`);
+              const regKey = regionByIdx[regionArr[idx2]]?.key ?? 'unknown';
+              eligibleSpawnKeys.push(`${c2},${r2}|${regKey}`);
             }
           }
         }
