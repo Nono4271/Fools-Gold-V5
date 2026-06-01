@@ -624,7 +624,7 @@ export default function RiseToWar() {
     try {
       const proxy = tilesRef.current;
       if (!proxy?.__ready) return;
-      const playerPow = { id:"player", name: playerName || "You", faction: facKey, power: 0 };
+      const playerPow = { id:"player", name: facName || "You", faction: facKey, power: 0 };
       const aiPow = {};
       const patchedKeys = Object.keys(proxy).filter(k => k !== "__ready" && proxy[k]?.owner);
       for (const key of patchedKeys) {
@@ -644,7 +644,7 @@ export default function RiseToWar() {
         .sort((a,b) => b.power - a.power).slice(0, 100);
       setPlayerEntries(all);
     } catch(e) { console.warn("Leaderboard compute error:", e); }
-  }, [leaderboardOpen, playerName, facKey]);
+  }, [leaderboardOpen, facName, facKey]);
 
   const registerProtection = useCallback((tileKey) => {
     setProtectedTiles(prev => ({ ...prev, [tileKey]: Date.now() + 3 * 60 * 1000 }));
