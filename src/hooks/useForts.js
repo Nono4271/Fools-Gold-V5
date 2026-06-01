@@ -51,6 +51,7 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
     ).slice(0, levelDef.capacity);
     const autoStationedUids = cmdsOnTile.map(c => c.uid);
 
+    const buildMs = levelDef.buildMs ?? 7200000;
     const newFort = {
       id,
       tileKey,
@@ -60,6 +61,8 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
       siegeMax: levelDef.siege,
       resetAt: null,
       builtAt: Date.now(),
+      isBuilding: true,
+      completesAt: Date.now() + buildMs,
     };
 
     setForts(prev => [...prev, newFort]);
@@ -82,11 +85,12 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
       if (f.level >= FORT_MAX_LEVEL) return f;
       const nextLevel = f.level + 1;
       const levelDef = FORT_LEVELS[nextLevel - 1];
+      const upgradeMs = levelDef.upgradeMs ?? 4500000;
       const upgraded = {
         ...f,
-        level: nextLevel,
-        siegeMax: levelDef.siege,
-        siege: Math.min(f.siege, levelDef.siege),
+        isUpgrading: true,
+        completesAt: Date.now() + upgradeMs,
+        pendingLevel: nextLevel,
       };
       emitFortUpdate?.({ action: "upgrade", fort: upgraded });
       return upgraded;
@@ -200,6 +204,39 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
   // ── Load forts from server sync ──────────────────────────────────────────────
   const loadForts = useCallback((serverForts) => {
     if (Array.isArray(serverForts)) setForts(serverForts);
+  }, []);
+
+  // ── Complete build/upgrade when timer expires ────────────────────────────────
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = Date.now();
+      setForts(prev => {
+        let changed = false;
+        const next = prev.map(f => {
+          if (f.completesAt && now >= f.completesAt) {
+            changed = true;
+            if (f.isBuilding) {
+              return { ...f, isBuilding: false, completesAt: null };
+            }
+            if (f.isUpgrading && f.pendingLevel) {
+              const levelDef = FORT_LEVELS[f.pendingLevel - 1];
+              return {
+                ...f,
+                level: f.pendingLevel,
+                pendingLevel: null,
+                isUpgrading: false,
+                completesAt: null,
+                siegeMax: levelDef.siege,
+                siege: Math.min(f.siege, levelDef.siege),
+              };
+            }
+          }
+          return f;
+        });
+        return changed ? next : prev;
+      });
+    }, 5000);
+    return () => clearInterval(id);
   }, []);
 
   return {
