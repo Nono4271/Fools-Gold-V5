@@ -3,6 +3,7 @@ import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 import { RSS, POWER_DEFS, SIEGE_BASE, HQP, FORT_LEVELS, XP_PER_COMMAND } from "../../../shared/constants/map.js";
 import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
 import { isTileInRange } from "../../hooks/useForts.js";
+import { spawnDisplayName } from "../../utils/spawnUtils.js";
 import { getTileOwnership } from "./popup/TileInfoPanel.jsx";
 import CommanderCard from "./popup/CommanderCard.jsx";
 import FortPanel from "./popup/FortPanel.jsx";
