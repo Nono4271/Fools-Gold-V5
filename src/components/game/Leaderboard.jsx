@@ -134,7 +134,6 @@ function WarBoard() {
       </div>
       <div style={{ fontSize:8, color:P.sub, textAlign:"center", maxWidth:200, lineHeight:1.7 }}>
         PvP season rankings coming soon. Earn war points by capturing territory, defeating enemies, and completing season objectives.
-      </div>
     </div>
   );
 }
@@ -152,15 +151,16 @@ export default function Leaderboard({ onClose, playerEntries, crews, playerCrewI
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:9800,
-      background:"rgba(0,0,0,.85)", display:"flex", alignItems:"center", justifyContent:"center",
+      background:P.bg,
+      paddingTop:"var(--sat, 0px)",
+      paddingLeft:"var(--sal, 0px)",
+      paddingRight:"var(--sar, 0px)",
+      paddingBottom:"var(--sab, 0px)",
+      display:"flex", flexDirection:"column",
       pointerEvents:"auto",
     }}>
       <div style={{
-        width:"min(480px, 96vw)", height:"min(680px, 92vh)",
-        background:P.bg, border:`1px solid ${P.border}`,
-        borderRadius:10, display:"flex", flexDirection:"column",
-        boxShadow:"0 24px 80px rgba(0,0,0,.9)",
-        overflow:"hidden",
+        flex:1, display:"flex", flexDirection:"column", overflow:"hidden",
       }}>
         {/* Header */}
         <div style={{ padding:"12px 16px", borderBottom:`1px solid ${P.border}`,
