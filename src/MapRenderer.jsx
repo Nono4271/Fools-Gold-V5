@@ -1751,6 +1751,95 @@ function drawCmdIcons(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlay
   }
 }
 
+// Lerp version: positions marching commanders smoothly between tiles.
+// lerpState: Map uid → { fromX, fromY, toX, toY, startTime, stepMs }
+// Uses the snapped-to-tile position for stationary commanders.
+function drawCmdIconsLerp(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlayerIdMap, lerpState) {
+  gfx.clear();
+  if (textCont) {
+    const toDestroy = [...textCont.children];
+    toDestroy.forEach(c => { textCont.removeChild(c); c.destroy(); });
+  }
+  const now = Date.now();
+
+  // Build position map: uid → { px, py } (interpolated pixel position)
+  const cmdPos = new Map();
+  for (const cmd of cmds) {
+    if (!cmd.tk) continue;
+    const lerp = lerpState.get(cmd.uid);
+    if (lerp && cmd.march) {
+      const t = Math.min(1, (now - lerp.startTime) / lerp.stepMs);
+      // ease-in-out cubic
+      const e = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+      cmdPos.set(cmd.uid, { px: lerp.fromX + (lerp.toX - lerp.fromX) * e, py: lerp.fromY + (lerp.toY - lerp.fromY) * e });
+    } else {
+      const tile = tiles[cmd.tk];
+      if (!tile) continue;
+      const { cx, cy } = isoXY(tile.c, tile.r);
+      const elev = tile.isWin ? 10 : 4;
+      cmdPos.set(cmd.uid, { px: cx, py: cy - elev });
+    }
+  }
+
+  // Group commanders by their current tile key for shadow ellipses, then draw icons at lerp pos
+  const byTile = buildCByTile(cmds);
+  for (const [key, tileCmds] of Object.entries(byTile)) {
+    const tile = tiles[key];
+    if (!tile) continue;
+    const { cx, cy } = isoXY(tile.c, tile.r);
+    const elev = tile.isWin ? 10 : 4;
+    const sy = cy - elev;
+    const playerG = tileCmds.filter(c => c.owner === "player");
+    const allAiG  = tileCmds.filter(c => c.owner !== "player");
+    const crewG = allAiG.filter(c => {
+      const pid = c.ownerPlayerId || aiPlayerIdMap?.get(key);
+      return pid && crewPids?.has(pid);
+    });
+    const factionG = allAiG.filter(c => c.faction === playerFacKey && !crewG.includes(c));
+    const enemyG = allAiG.filter(c => !crewG.includes(c) && !factionG.includes(c));
+    const groups = [];
+    if (playerG.length)  groups.push({ cmds: playerG,  col: 0x22cc55 });
+    if (crewG.length)    groups.push({ cmds: crewG,    col: 0x2299ff });
+    if (factionG.length) groups.push({ cmds: factionG, col: 0xaa44ff });
+    if (enemyG.length)   groups.push({ cmds: enemyG,   col: 0xdd3322 });
+    groups.forEach(({ cmds: grp, col }, gi) => {
+      const ey = sy + TH * 0.72 - gi * 6;
+      // Shadow ellipse stays on the tile
+      gfx.beginFill(col, 0.13); gfx.lineStyle(1.4, col, 1); gfx.drawEllipse(cx, ey, 15, 5); gfx.lineStyle(0); gfx.endFill();
+      const visible = grp.slice(0, 3);
+      const spacing = visible.length > 1 ? 14 : 0;
+      visible.forEach((cmd, i) => {
+        const pos = cmdPos.get(cmd.uid);
+        if (!pos) return;
+        const dx = (i - (visible.length-1)/2) * spacing;
+        const ipx = pos.px + dx;
+        const ipy = pos.py + TH * 0.72 - gi * 6 - 11;
+        gfx.beginFill(0x000000, 0.45); gfx.drawCircle(ipx+1, ipy+1, 9); gfx.endFill();
+        gfx.beginFill(col, 0.9);       gfx.drawCircle(ipx,   ipy,   9); gfx.endFill();
+        gfx.beginFill(0x000000, 0.55); gfx.drawCircle(ipx,   ipy,   7); gfx.endFill();
+        if (textCont) {
+          if (cmd.bust) {
+            const tex = PIXI.Texture.from(cmd.bust);
+            const sprite = new PIXI.Sprite(tex);
+            sprite.width = 14; sprite.height = 14;
+            sprite.anchor.set(0.5, 0.5); sprite.x = ipx; sprite.y = ipy;
+            const mask = new PIXI.Graphics();
+            mask.beginFill(0xffffff); mask.drawCircle(ipx, ipy, 7); mask.endFill();
+            sprite.mask = mask;
+            textCont.addChild(mask);
+            textCont.addChild(sprite);
+          } else if (cmd.icon) {
+            const txt = new PIXI.Text(cmd.icon, { fontSize: 10, align: "center" });
+            txt.anchor.set(0.5, 0.5); txt.x = ipx; txt.y = ipy;
+            textCont.addChild(txt);
+          }
+        }
+      });
+      if (grp.length > 3) { gfx.beginFill(col, 0.7); gfx.drawCircle(cx+14, ey-8, 5); gfx.endFill(); }
+    });
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    MAP RENDERER COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
@@ -1777,6 +1866,14 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const lastBoundsRef  = useRef(null);
   const redrawRef      = useRef(null);
   const cByTileRef     = useRef({});
+  // uid → { fromX, fromY, toX, toY, startTime, stepMs } for smooth lerp animation
+  const cmdLerpRef     = useRef(new Map());
+  // Worker-computed frame positions: uid → { px, py }
+  const marchPosRef    = useRef(new Map());
+  // Persistent PIXI display objects for commander icons: uid → { circle, shadow, sprite/text, mask }
+  const cmdSpriteRef   = useRef(new Map());
+  // march.worker.js instance
+  const marchWorkerRef = useRef(null);
 
   // Use the refs passed from Game directly — no prop-to-ref sync needed,
   // and no reactive prop changes that would re-render MapRenderer.
@@ -1979,7 +2076,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     fortContRef.current = fortCont;
     const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
     const guardGfx = new PIXI.Graphics(); world.addChild(guardGfx); guardGfxRef.current = guardGfx;
-    const protectGfx = new PIXI.Graphics(); world.addChild(protectGfx); protectGfxRef.current = protectGfx;
+    const protectGfx = new PIXI.Container(); world.addChild(protectGfx); protectGfxRef.current = protectGfx;
     const spawnGfx = new PIXI.Graphics(); world.addChild(spawnGfx); spawnGfxRef.current = spawnGfx;
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
     const cmdGfx = new PIXI.Graphics(); world.addChild(cmdGfx); cmdGfxRef.current = cmdGfx;
@@ -2434,6 +2531,130 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     };
 
     app.ticker.add(hellfireFn);
+
+    // ── March animation worker ────────────────────────────────────────────────
+    // march.worker.js computes interpolated positions off the main thread.
+    // Main thread ticker only moves existing PIXI objects — no recreate per frame.
+    const marchWorker = new Worker(
+      new URL('../workers/march.worker.js', import.meta.url)
+    );
+    marchWorkerRef.current = marchWorker;
+
+    marchWorker.onmessage = ({ data }) => {
+      if (data.type !== 'frame') return;
+      // Update marchPosRef with latest interpolated positions
+      for (const { uid, px, py } of data.positions) {
+        marchPosRef.current.set(uid, { px, py });
+      }
+    };
+    marchWorker.postMessage({ type: 'start' });
+
+    // ── March animation ticker ────────────────────────────────────────────────
+    // Moves persistent commander PIXI objects to worker-computed positions.
+    // Sprites are created/destroyed only when commander list changes — not per frame.
+    const marchAnimFn = () => {
+      const cmds_ = cmdsRef.current;
+      if (!cmds_ || !cmdGfxRef.current) return;
+      const marchingCmds = cmds_.filter(c => c.march);
+      if (!marchingCmds.length) return;
+
+      const gfx      = cmdGfxRef.current;
+      const textCont = cmdTextContRef.current;
+      const tiles_   = tilesRef.current;
+      const spriteMap = cmdSpriteRef.current;
+      const posMap    = marchPosRef.current;
+      const crewPids_ = crewPidsRef.current;
+      const facKey_   = playerFacKeyRef.current;
+      const aidMap_   = aiPlayerIdMapRef_.current;
+
+      gfx.clear();
+
+      // Ensure persistent sprites exist for all visible commanders
+      const allCmds = cmds_;
+      for (const cmd of allCmds) {
+        if (!cmd.tk) continue;
+        if (!spriteMap.has(cmd.uid)) {
+          // Determine color
+          let col = 0xdd3322;
+          if (cmd.owner === 'player') col = 0x22cc55;
+          else if (crewPids_?.has(cmd.ownerPlayerId)) col = 0x2299ff;
+          else if (cmd.faction === facKey_) col = 0xaa44ff;
+          const entry = { col };
+          if (textCont) {
+            if (cmd.bust) {
+              const tex = PIXI.Texture.from(cmd.bust);
+              const sprite = new PIXI.Sprite(tex);
+              sprite.width = 14; sprite.height = 14;
+              sprite.anchor.set(0.5, 0.5);
+              const mask = new PIXI.Graphics();
+              sprite.mask = mask;
+              textCont.addChild(mask);
+              textCont.addChild(sprite);
+              entry.sprite = sprite; entry.mask = mask;
+            } else if (cmd.icon) {
+              const txt = new PIXI.Text(cmd.icon, { fontSize: 10, align: 'center' });
+              txt.anchor.set(0.5, 0.5);
+              textCont.addChild(txt);
+              entry.text = txt;
+            }
+          }
+          spriteMap.set(cmd.uid, entry);
+        }
+      }
+
+      // Remove sprites for commanders no longer in list
+      const activeUids = new Set(allCmds.map(c => c.uid));
+      for (const [uid, entry] of spriteMap) {
+        if (!activeUids.has(uid)) {
+          if (entry.sprite) { entry.sprite.destroy(); entry.mask?.destroy(); }
+          if (entry.text)   { entry.text.destroy(); }
+          spriteMap.delete(uid);
+        }
+      }
+
+      // Draw all commanders using worker positions for marching, tile center for static
+      const byTile = cByTileRef.current;
+      for (const [key, tileCmds] of Object.entries(byTile)) {
+        const tile = tiles_[key];
+        if (!tile) continue;
+        const { cx, cy } = isoXY(tile.c, tile.r);
+        const elev = tile.isWin ? 10 : 4;
+        const sy = cy - elev;
+        const playerG  = tileCmds.filter(c => c.owner === 'player');
+        const allAiG   = tileCmds.filter(c => c.owner !== 'player');
+        const crewG    = allAiG.filter(c => { const pid = c.ownerPlayerId || aidMap_?.get(key); return pid && crewPids_?.has(pid); });
+        const factionG = allAiG.filter(c => c.faction === facKey_ && !crewG.includes(c));
+        const enemyG   = allAiG.filter(c => !crewG.includes(c) && !factionG.includes(c));
+        const groups = [];
+        if (playerG.length)  groups.push({ cmds: playerG,  col: 0x22cc55 });
+        if (crewG.length)    groups.push({ cmds: crewG,    col: 0x2299ff });
+        if (factionG.length) groups.push({ cmds: factionG, col: 0xaa44ff });
+        if (enemyG.length)   groups.push({ cmds: enemyG,   col: 0xdd3322 });
+        groups.forEach(({ cmds: grp, col }, gi) => {
+          const ey = sy + TH * 0.72 - gi * 6;
+          gfx.beginFill(col, 0.13); gfx.lineStyle(1.4, col, 1); gfx.drawEllipse(cx, ey, 15, 5); gfx.lineStyle(0); gfx.endFill();
+          const visible = grp.slice(0, 3);
+          const spacing = visible.length > 1 ? 14 : 0;
+          visible.forEach((cmd, i) => {
+            const workerPos = cmd.march ? posMap.get(cmd.uid) : null;
+            const basePx = workerPos ? workerPos.px : cx;
+            const basePy = workerPos ? workerPos.py : sy;
+            const dx  = (i - (visible.length - 1) / 2) * spacing;
+            const ipx = basePx + dx;
+            const ipy = basePy + TH * 0.72 - gi * 6 - 11;
+            gfx.beginFill(0x000000, 0.45); gfx.drawCircle(ipx+1, ipy+1, 9); gfx.endFill();
+            gfx.beginFill(col, 0.9);       gfx.drawCircle(ipx,   ipy,   9); gfx.endFill();
+            gfx.beginFill(0x000000, 0.55); gfx.drawCircle(ipx,   ipy,   7); gfx.endFill();
+            const entry = spriteMap.get(cmd.uid);
+            if (entry?.sprite) { entry.sprite.x = ipx; entry.sprite.y = ipy; entry.mask.clear(); entry.mask.beginFill(0xffffff); entry.mask.drawCircle(ipx, ipy, 7); entry.mask.endFill(); }
+            else if (entry?.text) { entry.text.x = ipx; entry.text.y = ipy; }
+          });
+          if (grp.length > 3) { gfx.beginFill(col, 0.7); gfx.drawCircle(cx+14, ey-8, 5); gfx.endFill(); }
+        });
+      }
+    };
+    app.ticker.add(marchAnimFn);
+
     app.ticker.start();
 
     // checkAndStartHellfire kept as no-op for backward compat with tiles useEffect
@@ -2697,6 +2918,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     return () => {
       if (hellfireFn) app.ticker.remove(hellfireFn);
+      if (marchAnimFn) app.ticker.remove(marchAnimFn);
+      marchWorkerRef.current?.postMessage({ type: 'stop' });
+      marchWorkerRef.current?.terminate();
+      marchWorkerRef.current = null;
+      // Destroy persistent commander sprites
+      for (const entry of cmdSpriteRef.current.values()) {
+        entry.sprite?.destroy(); entry.mask?.destroy(); entry.text?.destroy();
+      }
+      cmdSpriteRef.current.clear();
       cancelIdle();
       cancelPropsIdle();
       _iosTmpGfx?.destroy(); _iosTmpGfx = null;
@@ -2808,30 +3038,27 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     }
   }, [spawns]);
 
-  // Protection glow — blue shield glow on recently captured tiles
+  // Protection — shield icon on recently captured tiles (no glow)
   useEffect(() => {
-    const gfx = protectGfxRef.current;
-    if (!gfx) return;
-    gfx.clear();
+    const cont = protectGfxRef.current;
+    if (!cont) return;
+    // Clear previous icons
+    [...cont.children].forEach(c => { cont.removeChild(c); c.destroy(); });
     if (!protectedTileKeys) return;
     const keys = protectedTileKeys.split("|").filter(k => k.length > 0);
     for (const key of keys) {
       const comma = key.indexOf(",");
       const c = +key.slice(0, comma), r = +key.slice(comma + 1);
+      const tile = tilesRef.current[key];
       const { cx, cy } = isoXY(c, r);
-      const hw = TW / 2, hh = TH / 2;
-      const pts = [cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy];
-      gfx.lineStyle(2.5, 0x4488ff, 0.8);
-      gfx.beginFill(0x2255cc, 0.10);
-      gfx.drawPolygon(pts);
-      gfx.endFill();
-      // Inner pulse ring
-      gfx.lineStyle(1, 0x88bbff, 0.4);
-      gfx.beginFill(0, 0);
-      const inner = [cx, cy - hh*0.65, cx + hw*0.65, cy, cx, cy + hh*0.65, cx - hw*0.65, cy];
-      gfx.drawPolygon(inner);
-      gfx.endFill();
-      gfx.lineStyle(0);
+      const elev = tile?.isWin ? 10 : 4;
+      const sy = cy - elev;
+      // Position shield just above the top vertex of the tile diamond
+      const txt = new PIXI.Text("🛡", { fontSize: 14, align: "center" });
+      txt.anchor.set(0.5, 1.0);
+      txt.x = cx;
+      txt.y = sy - 2;
+      cont.addChild(txt);
     }
   }, [protectedTileKeys]);
 
@@ -2932,9 +3159,46 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   }, [tiles]);
 
   useEffect(() => {
+    const prevCmds = cmdsRef.current;
+    const tiles_   = tilesRef.current;
+    const worker   = marchWorkerRef.current;
+
+    // Send transition messages to worker for commanders that just stepped to a new tile
+    cmds.forEach(cmd => {
+      if (!cmd.march || !cmd.tk) return;
+      const prev = prevCmds.find(c => c.uid === cmd.uid);
+      if (!prev || prev.tk === cmd.tk) return;
+      const fromTile = tiles_[prev.tk];
+      const toTile   = tiles_[cmd.tk];
+      if (!fromTile || !toTile) return;
+      const { cx: fx, cy: fy } = isoXY(fromTile.c, fromTile.r);
+      const { cx: tx, cy: ty } = isoXY(toTile.c,   toTile.r);
+      const fElev = fromTile.isWin ? 10 : 4;
+      const tElev = toTile.isWin   ? 10 : 4;
+      worker?.postMessage({
+        type: 'transition', uid: cmd.uid,
+        fromX: fx, fromY: fy - fElev,
+        toX:   tx, toY:   ty - tElev,
+        startTime: Date.now(),
+        stepMs: cmd.march.stepMs || 3000,
+      });
+    });
+
+    // Remove stopped marchers from worker
+    const marchingUids = new Set(cmds.filter(c => c.march).map(c => c.uid));
+    prevCmds.forEach(prev => {
+      if (prev.march && !marchingUids.has(prev.uid)) {
+        worker?.postMessage({ type: 'remove', uid: prev.uid });
+        marchPosRef.current.delete(prev.uid);
+      }
+    });
+
     cmdsRef.current = cmds;
-    cByTileRef.current = buildCByTile(cmds); // rebuild cache once on change, not on every draw
-    redrawRef.current?.redrawOverlays();
+    cByTileRef.current = buildCByTile(cmds);
+    // Static redraw when nobody is marching (ticker handles the marching case)
+    if (!cmds.some(c => c.march)) {
+      redrawRef.current?.redrawOverlays();
+    }
   }, [cmds]);
 
   return (

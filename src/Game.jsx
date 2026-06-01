@@ -494,6 +494,7 @@ export default function RiseToWar() {
   const [popupMode,  setPopupMode] = useState("main");
   const [editArmyCmd, setEditArmyCmd] = useState(null);
   const [atkKey,     setAtkKey]    = useState(null);
+  const [cmdPathLengths, setCmdPathLengths] = useState(new Map()); // uid → tile count
   const [mvCmd,      setMvCmd]     = useState(null);
   const [pickCmd,    setPick]      = useState(null);
   const [reinCmd,    setReinCmd]   = useState(null);
@@ -1794,6 +1795,21 @@ export default function RiseToWar() {
 
   const canAtk = !!(selTile && selTile.owner!=="player" && (selAdjToPlayer || longMarchReady));
 
+  // Batch-compute path lengths from each commander to atkKey via pathfinding worker
+  useEffect(() => {
+    if (!atkKey) { setCmdPathLengths(new Map()); return; }
+    const cmds = mode === "pickAttackCmd" ? cmdsAdjToSel : cmdsForMove;
+    if (!cmds.length) { setCmdPathLengths(new Map()); return; }
+    const requests = cmds.map(cmd => ({ requestId: cmd.uid, from: cmd.tk, to: atkKey }));
+    findPathBatch(requests).then(results => {
+      const map = new Map();
+      for (const { requestId, path } of results) {
+        map.set(requestId, path ? path.length - 1 : null);
+      }
+      setCmdPathLengths(map);
+    });
+  }, [atkKey, cmdsAdjToSel, cmdsForMove, mode, findPathBatch]);
+
   const marchingToSel = useMemo(() =>
     selKey ? playerCmds.filter(c => c.march?.dest===selKey) : [],
   [selKey, playerCmds]);
@@ -2590,6 +2606,7 @@ export default function RiseToWar() {
           setMode={setMode} setAtkKey={setAtkKey}
           setSelKey={setSelKey} setPopupPos={setPopupPos}
           startMarch={startMarch}
+          cmdPathLengths={cmdPathLengths}
         />
       )}
 
@@ -2600,6 +2617,7 @@ export default function RiseToWar() {
           setMode={setMode} setAtkKey={setAtkKey}
           setSelKey={setSelKey} setPopupPos={setPopupPos}
           startMarch={startMarch}
+          cmdPathLengths={cmdPathLengths}
         />
       )}
 
