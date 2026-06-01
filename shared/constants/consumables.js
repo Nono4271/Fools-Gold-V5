@@ -104,8 +104,8 @@ for (const rss of RSS_TYPES) {
 DEFS["relocation"] = {
   id: "relocation", applies: "relocation",
   label: "Relocation Token",
-  desc: "Moves your HQ to a new location on the map. (Feature coming soon.)",
-  icon: "🧭", rarity: "purple", durationMs: null, durationLabel: null,
+  desc: "Move your HQ to a valid 3×3 pad in a player-owned region. Cannot relocate again for 72 hours.",
+  icon: "🏰", rarity: "purple", durationMs: null, durationLabel: null,
 };
 
 // Medallion (non-premium gacha currency)
