@@ -330,6 +330,7 @@ export default function GachaScreen({
   pullResults, pullKey, coll, gearInventory, respectSchematics,
   cmds, setCmds, onSchematicUsed,
   pityCounters, isFreeAvailable, isHalfAvailable, playerAlignment, setScreen, onOpenCommander,
+  medallionCount = 0, onUseMedallion,
 }) {
   const aln = ALIGNMENT[playerAlignment];
   const [activeTab, setActiveTab] = useState("summon"); // "summon" | "gear" | "collection"
@@ -489,6 +490,27 @@ export default function GachaScreen({
                       <div style={{ fontSize: 7, color: "#5a4a6a", marginTop: 1 }}>Daily discount</div>
                     )}
                   </button>
+
+                  {medallionCount > 0 && (
+                    <button className="btn" onClick={onUseMedallion}
+                      style={{
+                        flex: 1, padding: "clamp(8px,2vh,14px) 8px",
+                        background: "linear-gradient(135deg,rgba(200,160,40,.25),rgba(200,160,40,.08))",
+                        border: "1px solid #c8a04066",
+                        color: "#f0c040",
+                        textAlign: "center", fontSize: 12, position: "relative",
+                      }}>
+                      <div style={{
+                        position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)",
+                        fontSize: 7, color: "#c8a040", fontFamily: "'Cinzel',serif",
+                        background: "#0a0c10", padding: "1px 6px",
+                        border: "1px solid #c8a04040", borderRadius: 8, whiteSpace: "nowrap",
+                      }}>×{medallionCount} LEFT</div>
+                      <div style={{ fontSize: 14, marginBottom: 2 }}>🥇</div>
+                      <div style={{ fontWeight: 700, fontSize: 11 }}>x1 Summon</div>
+                      <div style={{ fontSize: 8, color: "#c8a060", marginTop: 2 }}>Medallion</div>
+                    </button>
+                  )}
 
                   <button className="btn" onClick={() => { pull(10); }} disabled={gems < 4000}
                     style={{

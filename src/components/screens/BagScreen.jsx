@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CSS } from "../../constants/css.js";
 import { GEAR_RARITY, GEAR_SLOTS, STAT_BASE, STRENGTHEN_COST, canStrengthen, strengthen, canRefine, refine } from "../../../shared/constants/gear.js";
 import { ALIGNMENT } from "../../../shared/constants/heroes.js";
+import { CONSUMABLE_DEFS, CONSUMABLE_GROUPS, CONS_RARITY } from "../../../shared/constants/consumables.js";
 
 const RARITY_ORDER     = { legendary: 0, epic: 1, rare: 2, common: 3 };
 const CMD_RARITY_ORDER = { champion: 0, veteran: 1, soldier: 2 };
@@ -549,25 +550,174 @@ function SchematicsTab({ schematics }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSUMABLES TAB
 // ═══════════════════════════════════════════════════════════════════════════════
-function ConsumablesTab() {
+function ConsumableCard({ def, quantity, selected, onClick }) {
+  const rar = CONS_RARITY[def.rarity];
   return (
+    <button onClick={onClick} style={{
+      background: selected ? `${rar.color}20` : "rgba(255,255,255,.03)",
+      border: `2px solid ${selected ? rar.color : rar.color + "28"}`,
+      borderRadius: 8, padding: "8px 6px",
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+      cursor: "pointer", touchAction: "manipulation",
+      boxShadow: selected ? `0 0 12px ${rar.color}40` : "none",
+      transition: "all .15s", position: "relative",
+      opacity: quantity === 0 ? 0.4 : 1,
+    }}>
+      {/* Quantity badge */}
+      <div style={{
+        position: "absolute", top: 3, right: 3,
+        minWidth: 16, height: 16, borderRadius: 8,
+        background: `${rar.color}30`, border: `1px solid ${rar.color}50`,
+        fontSize: 7, color: rar.color, fontFamily: "'Cinzel',serif", fontWeight: 700,
+        display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px",
+      }}>×{quantity}</div>
+      <div style={{ fontSize: 22 }}>{def.icon}</div>
+      <div style={{
+        fontFamily: "'Cinzel',serif", fontSize: 7, color: "#e0d0c0",
+        textAlign: "center", lineHeight: 1.3,
+        overflow: "hidden", textOverflow: "ellipsis",
+        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+        maxWidth: "100%", padding: "0 2px",
+      }}>{def.label}</div>
+      <div style={{ fontSize: 6, color: rar.color, fontFamily: "'Cinzel',serif" }}>{rar.label}</div>
+    </button>
+  );
+}
+
+function ConsumableDetailPanel({ def, quantity, onUse }) {
+  if (!def) return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: 8,
+      color: "#3a2a10", fontFamily: "'Cinzel',serif", fontSize: 9, padding: 16, textAlign: "center" }}>
+      <div style={{ fontSize: 28, opacity: 0.3 }}>🎒</div>
+      Select an item
+    </div>
+  );
+
+  const rar = CONS_RARITY[def.rarity];
+  const canUse = quantity > 0 && def.applies !== "relocation";
+
+  return (
+    <div style={{ padding: "8px", display: "flex", flexDirection: "column", gap: 6, height: "100%", boxSizing: "border-box" }}>
+      {/* Header */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+        padding: "6px 0", borderBottom: `1px solid ${rar.color}30`, flexShrink: 0 }}>
+        <div style={{ fontSize: 26 }}>{def.icon}</div>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: "#e0d0c0",
+          textAlign: "center", lineHeight: 1.3 }}>{def.label}</div>
+        <div style={{ padding: "1px 6px", borderRadius: 4, background: `${rar.color}18`,
+          border: `1px solid ${rar.color}40`, fontSize: 6, color: rar.color, fontFamily: "'Cinzel',serif" }}>
+          {rar.label}
+        </div>
+      </div>
+
+      {/* Info rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "4px 7px", background: "rgba(255,255,255,.03)", border: "1px solid #1e1810", borderRadius: 4 }}>
+          <span style={{ fontSize: 7, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>Owned</span>
+          <span style={{ fontSize: 7, color: "#c8a060", fontFamily: "'Cinzel',serif", fontWeight: 700 }}>×{quantity}</span>
+        </div>
+        {def.durationLabel && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "4px 7px", background: "rgba(255,255,255,.03)", border: "1px solid #1e1810", borderRadius: 4 }}>
+            <span style={{ fontSize: 7, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>Duration</span>
+            <span style={{ fontSize: 7, color: rar.color, fontFamily: "'Cinzel',serif", fontWeight: 700 }}>{def.durationLabel}</span>
+          </div>
+        )}
+        {def.applies === "rss" && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "4px 7px", background: "rgba(255,255,255,.03)", border: "1px solid #1e1810", borderRadius: 4 }}>
+            <span style={{ fontSize: 7, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>Effect</span>
+            <span style={{ fontSize: 7, color: "#80b040", fontFamily: "'Cinzel',serif", fontWeight: 700 }}>+30% Production</span>
+          </div>
+        )}
+
+        {/* Description */}
+        <div style={{ padding: "6px 7px", background: "rgba(255,255,255,.02)", border: "1px solid #1e1810",
+          borderRadius: 4, fontFamily: "'Crimson Pro',serif", fontSize: 8, color: "#6a5a3a",
+          fontStyle: "italic", lineHeight: 1.5 }}>
+          {def.desc}
+        </div>
+
+        {/* Use button */}
+        <button
+          onClick={() => canUse && onUse(def.id)}
+          disabled={!canUse}
+          style={{
+            width: "100%", padding: "7px 0", marginTop: 4,
+            background: canUse ? `${rar.color}20` : "rgba(255,255,255,.02)",
+            border: `1px solid ${canUse ? rar.color + "60" : "#1e1810"}`,
+            color: canUse ? rar.color : "#2a2a2a",
+            fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: ".04em",
+            borderRadius: 5, cursor: canUse ? "pointer" : "not-allowed",
+            touchAction: "manipulation",
+          }}>
+          {def.applies === "relocation" ? "🧭 Coming Soon" : `Use ${def.icon}`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ConsumablesTab({ consumables, onUseConsumable }) {
+  const [selectedId, setSelectedId] = useState(null);
+
+  // Build a flat list of all defined consumables with quantities (even 0)
+  // Only show types the player has at least 1 of
+  const qtyMap = {};
+  for (const c of (consumables ?? [])) {
+    qtyMap[c.typeId] = (qtyMap[c.typeId] ?? 0) + c.quantity;
+  }
+
+  // Build display list: only types with qty > 0, ordered by group then duration
+  const items = CONSUMABLE_GROUPS.flatMap(group =>
+    group.ids
+      .filter(id => (qtyMap[id] ?? 0) > 0)
+      .map(id => ({ def: CONSUMABLE_DEFS[id], quantity: qtyMap[id] ?? 0 }))
+  );
+
+  const selectedDef = selectedId ? CONSUMABLE_DEFS[selectedId] : null;
+  const selectedQty = selectedId ? (qtyMap[selectedId] ?? 0) : 0;
+
+  if (!items.length) return (
     <SplitLayout detail={
       <div style={{ height: "100%", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", gap: 8,
         color: "#3a2a10", fontFamily: "'Cinzel',serif", fontSize: 9, padding: 16, textAlign: "center" }}>
         <div style={{ fontSize: 28, opacity: 0.3 }}>🧪</div>
-        Coming soon
+        No items
       </div>
     }>
       <div style={{ gridColumn: "1/-1", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", gap: 12, padding: 30,
         color: "#4a3a20", fontFamily: "'Cinzel',serif" }}>
         <div style={{ fontSize: 36, opacity: 0.3 }}>🧪</div>
-        <div style={{ fontSize: 10, letterSpacing: ".05em" }}>COMING SOON</div>
+        <div style={{ fontSize: 10, letterSpacing: ".05em" }}>NO CONSUMABLES</div>
         <div style={{ fontSize: 8, color: "#2a1e10", textAlign: "center", maxWidth: 180 }}>
-          Consumable items will appear here once available
+          Speed ups, boosts, and tokens will appear here
         </div>
       </div>
+    </SplitLayout>
+  );
+
+  return (
+    <SplitLayout detail={
+      <ConsumableDetailPanel
+        def={selectedDef}
+        quantity={selectedQty}
+        onUse={(id) => { onUseConsumable?.(id); }}
+      />
+    }>
+      {items.map(({ def, quantity }) => (
+        <ConsumableCard
+          key={def.id}
+          def={def}
+          quantity={quantity}
+          selected={selectedId === def.id}
+          onClick={() => setSelectedId(selectedId === def.id ? null : def.id)}
+        />
+      ))}
     </SplitLayout>
   );
 }
@@ -580,6 +730,8 @@ export default function BagScreen({
   cmds, setCmds,
   playerAlignment,
   respectSchematics,
+  consumables,
+  onUseConsumable,
   onClose,
 }) {
   const [tab, setTab] = useState("gear");
@@ -622,7 +774,8 @@ export default function BagScreen({
         }}>🎒 Bag</div>
         <div style={{ marginLeft: "auto", fontFamily: "'Cinzel',serif", fontSize: 8, color: "#4a3a20" }}>
           {tab === "gear" ? `${gearInventory?.length ?? 0} pieces` :
-           tab === "schematics" ? `${respectSchematics?.length ?? 0} schematics` : ""}
+           tab === "schematics" ? `${respectSchematics?.length ?? 0} schematics` :
+           tab === "consumables" ? `${(consumables ?? []).reduce((s, c) => s + c.quantity, 0)} items` : ""}
         </div>
       </div>
 
@@ -644,7 +797,7 @@ export default function BagScreen({
         />
       )}
       {tab === "schematics" && <SchematicsTab schematics={respectSchematics} />}
-      {tab === "consumables" && <ConsumablesTab />}
+      {tab === "consumables" && <ConsumablesTab consumables={consumables} onUseConsumable={onUseConsumable} />}
     </div>
   );
 }
