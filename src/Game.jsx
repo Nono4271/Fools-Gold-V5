@@ -423,9 +423,10 @@ export default function RiseToWar() {
 
   // ── Tome node state — must be declared before tome-derived constants ──────
   const [dragonEggs,      setDragonEggs]      = useState(20);
-  const [spawns,          setSpawns]          = useState({});
-  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [spawns,          setSpawns]          = useState({}); // { [tileKey]: SpawnState }
   const [protectedTiles,  setProtectedTiles]  = useState({}); // { [tileKey]: protectedUntil ms }
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [playerEntries,   setPlayerEntries]   = useState([]);
   const spawnWorkerRef        = useRef(null);
   const eligibleSpawnKeysRef = useRef([]);
   const [tomesNodeLevels, setTomesNodeLevels] = useState({});
@@ -616,6 +617,34 @@ export default function RiseToWar() {
     }, 5000);
     return () => clearInterval(id);
   }, []);
+
+  // Compute leaderboard entries safely — only iterates patched (owned) tiles
+  useEffect(() => {
+    if (!leaderboardOpen) return;
+    try {
+      const proxy = tilesRef.current;
+      if (!proxy?.__ready) return;
+      const playerPow = { id:"player", name: playerName || "You", faction: facKey, power: 0 };
+      const aiPow = {};
+      const patchedKeys = Object.keys(proxy).filter(k => k !== "__ready" && proxy[k]?.owner);
+      for (const key of patchedKeys) {
+        const tile = proxy[key];
+        if (!tile?.owner) continue;
+        const pl = tile.powerLevel || 1;
+        const pwr = pl * 10;
+        if (tile.owner === "player") {
+          playerPow.power += pwr;
+        } else if (tile.owner === "ai" && tile.faction) {
+          const fk = tile.faction;
+          if (!aiPow[fk]) aiPow[fk] = { id:fk, name:fk.charAt(0).toUpperCase()+fk.slice(1).replace(/_/g," "), faction:fk, power:0 };
+          aiPow[fk].power += pwr;
+        }
+      }
+      const all = [playerPow, ...Object.values(aiPow)]
+        .sort((a,b) => b.power - a.power).slice(0, 100);
+      setPlayerEntries(all);
+    } catch(e) { console.warn("Leaderboard compute error:", e); }
+  }, [leaderboardOpen, playerName, facKey]);
 
   const registerProtection = useCallback((tileKey) => {
     setProtectedTiles(prev => ({ ...prev, [tileKey]: Date.now() + 3 * 60 * 1000 }));
@@ -2612,9 +2641,7 @@ export default function RiseToWar() {
       {leaderboardOpen && (
         <Leaderboard
           onClose={() => setLeaderboardOpen(false)}
-          playerName={playerName}
-          facKey={facKey}
-          tiles={tilesRef.current}
+          playerEntries={playerEntries}
           crews={[]}
           playerCrewId={null}
         />
