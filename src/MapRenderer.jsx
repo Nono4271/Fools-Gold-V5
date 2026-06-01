@@ -2765,67 +2765,70 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const [sc, sr] = key.split(",").map(Number);
       const { cx, cy } = isoXY(sc, sr);
 
-      // Draw glow ring on tile for active spawns
+      // Tile surface centre — matches prop rendering: cx, cy - 4 + TH*0.5
+      const tileY = cy - 4 + TH * 0.5;
+
+      // Bug 2 fix: glow ring drawn on tile face using correct tile-surface coords
       if (!spawn.defeated) {
         const color = spawn.level <= 12 ? 0x70aa60
                     : spawn.level <= 25 ? 0xd07030
                     : 0xcc4040;
         const hw = TW / 2, hh = TH / 2;
-        const pts = [cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy];
-        gfx.lineStyle(2, color, 0.6);
-        gfx.beginFill(color, 0.06);
+        // Diamond centred on tile face centre (cx, tileY)
+        const pts = [cx, tileY - hh, cx + hw, tileY, cx, tileY + hh, cx - hw, tileY];
+        gfx.lineStyle(2, color, 0.7);
+        gfx.beginFill(color, 0.08);
         gfx.drawPolygon(pts);
         gfx.endFill();
       }
 
-      // Render 2-4 small portrait sprites clustered on tile
+      // Bug 1 + 3 fix: use spawn sprite from /spawns/ folder, centred on tile
       if (!spawn.defeated) {
-        // Portrait from slot 1 troop branch — e.g. /troops/orcs_grunts_t1_portrait.webp
-        const tierIdx = spawn.level <= 12 ? 0 : spawn.level <= 25 ? 1 : 2;
         const ref = spawn.slot1TroopRef;
+        const tierIdx = spawn.level <= 12 ? 0 : spawn.level <= 25 ? 1 : 2;
+
+        // Bug 1: prefer isometric sprite from /spawns/, fall back to portrait
+        const spriteUrl = ref?.faction && ref?.branch
+          ? `/spawns/${ref.faction}_${ref.branch}_t${(ref.tier ?? tierIdx) + 1}.webp`
+          : null;
         const portraitUrl = ref?.faction && ref?.branch
           ? `/troops/${ref.faction}_${ref.branch}_t${(ref.tier ?? tierIdx) + 1}_portrait.webp`
-          : `/troops/spawn_t${tierIdx + 1}_portrait.webp`; // fallback placeholder
+          : null;
 
+        // Bug 3 fix: 2 figures side by side, centred on tile face
+        // Offsets relative to tile centre — left and right of centre
+        const figW   = TW * 0.38;
+        const figH   = figW * 1.6;
         const clusterOffsets = tierIdx >= 1
-          ? [[-10, 4], [8, 2], [-2, -6], [10, -8]]  // 4 figures for T2/T3
-          : [[-8, 2], [8, 2]];                         // 2 figures for T1
+          ? [[-figW * 0.55, 0], [figW * 0.55, 0], [0, -figH * 0.35]]  // T2/T3: 3 figures
+          : [[-figW * 0.45, 0], [figW * 0.45, 0]];                      // T1: 2 figures
 
-        const loadSprite = (url, offsets) => {
-          const loader = PIXI.Texture.fromURL(url).catch(() => null);
-          loader.then(tex => {
-            if (!tex || world.destroyed) return;
-            offsets.forEach(([ox, oy], i) => {
-              const sp = new PIXI.Sprite(tex);
-              const scale = 0.28 - i * 0.02;
-              sp.width  = TW * scale;
-              sp.height = TW * scale * 1.4;
-              sp.anchor.set(0.5, 1);
-              sp.x = cx + ox;
-              sp.y = cy + TH * 0.35 + oy;
-              sp.zOrder = cy + TH * 0.35 + oy;
-              world.addChild(sp);
-              const mapKey = `${key}_${i}`;
-              _spawnSpriteMap.current.set(mapKey, sp);
-            });
-          });
-        };
-
-        if (_hqTex[portraitUrl]) {
+        const placeSprites = (tex) => {
+          if (!tex || world.destroyed) return;
           clusterOffsets.forEach(([ox, oy], i) => {
-            const sp = new PIXI.Sprite(_hqTex[portraitUrl]);
-            const scale = 0.28 - i * 0.02;
-            sp.width  = TW * scale;
-            sp.height = TW * scale * 1.4;
-            sp.anchor.set(0.5, 1);
+            const sp   = new PIXI.Sprite(tex);
+            const scale = 1 - i * 0.08; // back figures slightly smaller
+            sp.width  = figW * scale;
+            sp.height = figH * scale;
+            sp.anchor.set(0.5, 1);      // anchor bottom-centre
             sp.x = cx + ox;
-            sp.y = cy + TH * 0.35 + oy;
+            sp.y = tileY + oy;          // Bug 3: centred on tile face, not offset corner
             world.addChild(sp);
             _spawnSpriteMap.current.set(`${key}_${i}`, sp);
           });
-        } else {
-          loadSprite(portraitUrl, clusterOffsets);
-        }
+        };
+
+        // Try isometric sprite first, fall back to portrait
+        const tryLoad = (primary, fallback) => {
+          PIXI.Texture.fromURL(primary)
+            .then(tex => placeSprites(tex))
+            .catch(() => {
+              if (fallback) PIXI.Texture.fromURL(fallback).then(tex => placeSprites(tex)).catch(() => {});
+            });
+        };
+
+        if (spriteUrl) tryLoad(spriteUrl, portraitUrl);
+        else if (portraitUrl) PIXI.Texture.fromURL(portraitUrl).then(tex => placeSprites(tex)).catch(() => {});
       }
     }
   }, [spawns]);
