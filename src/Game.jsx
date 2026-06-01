@@ -1808,9 +1808,11 @@ export default function RiseToWar() {
       const t = tiles[ak];
       if (!t) return false;
       if (t.owner === "player") return true;
-      if (t.faction === facKey) return true; // same faction regardless of owner format
+      // Blue: crewmate-owned — counts for adjacency
       const pid = t.ownerPlayerId || aiPlayerIdMapRef.current.get(ak);
       if (pid && crewmatePlayerIds.has(pid)) return true;
+      // Orange keeps/gates AND purple regular faction tiles — all count for attack adjacency
+      if (t.faction === facKey) return true;
       return false;
     });
 
