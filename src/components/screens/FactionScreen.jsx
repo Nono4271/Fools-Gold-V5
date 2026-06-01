@@ -149,7 +149,7 @@ export default function FactionScreen({
 
     setFacKey(f.key);
     // setFacName(f.n); // Don't overwrite player name
-    setAiRss({stone:300,wood:300,ore:300,gas:300});
+    setAiRss({stone:300,wood:300,gas: 300,food: 300});
     setAiBldgs({hq:1,quarry:0,lumber:0,forge:0,refinery:0,barracks:0,training:0,commandcenter:0,healingtent:0,walls:0});
     setAiBarracksPool(barracksCapacity(0));
     aiLastActionRef.current = 0;
