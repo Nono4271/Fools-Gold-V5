@@ -85,7 +85,8 @@ function tickMarch() {
     }
 
     if (ws.arrived) continue; // waiting for main thread to clear march
-    if (now - ws.lastStepTime < m.stepMs) continue;
+    const isFinalStep = (ws.step + 1) >= m.path.length;
+    if (!isFinalStep && now - ws.lastStepTime < m.stepMs) continue;
 
     const nextStep = ws.step + 1;
     if (nextStep >= m.path.length) {
