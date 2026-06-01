@@ -595,7 +595,7 @@ function ConsumableDetailPanel({ def, quantity, onUse }) {
   );
 
   const rar = CONS_RARITY[def.rarity];
-  const canUse = quantity > 0 && def.applies !== "relocation";
+  const canUse = quantity > 0 && def.applies !== "relocation" && def.applies !== "medallion";
 
   return (
     <div style={{ padding: "8px", display: "flex", flexDirection: "column", gap: 6, height: "100%", boxSizing: "border-box" }}>
@@ -653,7 +653,7 @@ function ConsumableDetailPanel({ def, quantity, onUse }) {
             borderRadius: 5, cursor: canUse ? "pointer" : "not-allowed",
             touchAction: "manipulation",
           }}>
-          {def.applies === "relocation" ? "🧭 Coming Soon" : `Use ${def.icon}`}
+          {def.applies === "relocation" ? "🏰 Use via Map — select a 3×3 tile" : `Use ${def.icon}`}
         </button>
       </div>
     </div>
