@@ -30,19 +30,19 @@ const tickAiRss = useCallback(() => {
     const bldgs   = aiBldgsMapRef.current.get(fk) || {};
     const tileKeys = aiTileKeysMapRef.current.get(fk) || new Set();
     setAiRssMap(fk, p => {
-      const n = { stone: p.stone + 5, wood: p.wood + 5, ore: p.ore + 5, gas: p.gas + 5 };
+      const n = { stone: p.stone + 5, wood: p.wood + 5, gas: p.ore + 5, food: p.gas + 5 };
       for (const k of tileKeys) {
         const t = tiles[k];
         if (t?.rss) {
-          const b = t.rss === "stone" ? "quarry" : t.rss === "wood" ? "lumber" : t.rss === "ore" ? "forge" : "refinery";
+          const b = t.rss === "stone" ? "quarry" : t.rss === "wood" ? "lumber" : t.rss === "gas" ? "forge" : "refinery";
           n[t.rss] += rssRate(bldgs[b] || 0);
         }
       }
       return {
         stone: Math.min(9990000, n.stone),
         wood:  Math.min(9990000, n.wood),
-        ore:   Math.min(9990000, n.ore),
-        gas:   Math.min(9990000, n.gas),
+        gas: Math.min(9990000, n.ore),
+        food: Math.min(9990000, n.gas),
       };
     });
   }

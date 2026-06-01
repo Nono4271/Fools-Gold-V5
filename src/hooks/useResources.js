@@ -19,7 +19,7 @@ const INTERVAL_MS     = 60_000;
 const TICKS_PER_HOUR  = 3600_000 / INTERVAL_MS; // 60
 
 // RSS building keys in order matching resources
-const RSS_BLDG_KEYS = { stone: "quarry", wood: "lumber", ore: "forge", gas: "refinery" };
+const RSS_BLDG_KEYS = { stone: "quarry", wood: "lumber", gas: "forge", food: "refinery" };
 
 export function useResources({ screen, tilesRef, setRss, bldgs, fortsRef, rssBonus }) {
   const rssCache     = useRef(null);
@@ -49,8 +49,8 @@ export function useResources({ screen, tilesRef, setRss, bldgs, fortsRef, rssBon
         const gain = {
           stone: basePerTick,
           wood:  basePerTick,
-          ore:   basePerTick,
-          gas:   basePerTick,
+          gas: basePerTick,
+          food: basePerTick,
         };
 
         // Building production (quarry, lumber, forge, refinery)
@@ -85,8 +85,8 @@ export function useResources({ screen, tilesRef, setRss, bldgs, fortsRef, rssBon
         const next = {
           stone: Math.min(cap, p.stone + gain.stone),
           wood:  Math.min(cap, p.wood  + gain.wood),
-          ore:   Math.min(cap, p.ore   + gain.ore),
-          gas:   Math.min(cap, p.gas   + gain.gas),
+          gas: Math.min(cap, p.ore   + gain.ore),
+          food: Math.min(cap, p.gas   + gain.gas),
         };
 
         // Skip re-render if nothing changed (no income / all capped)
