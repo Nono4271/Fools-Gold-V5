@@ -443,6 +443,7 @@ export default function RiseToWar() {
   const tomeSpdBonus   = tomeNodeLv("tl_t1") * 2;             // Speedster
   const tomeFocBonus   = tomeNodeLv("tl_b1") * 2;             // Willpower
   const tomeAtkBonus   = tomeNodeLv("tl_b2") * 2;             // Overpower
+  const [rssSpeedUps, setRssSpeedUps] = useState({}); // active rss boosts — must be before rssBonus
   const rssBonus = {                                           // RSS Mastery nodes
     food:  tomeNodeLv("tr_b1") * 0.015,
     wood:  tomeNodeLv("tr_b2") * 0.015,
@@ -595,8 +596,6 @@ export default function RiseToWar() {
   const [consumables,    setConsumables]    = useState([
     { instanceId: "reloc_start_1", typeId: "relocation", quantity: 2 },
   ]); // [{ instanceId, typeId, quantity }]
-  // Active resource speed-ups: { rssType: endsAt } — merged into rssBonus each tick
-  const [rssSpeedUps,   setRssSpeedUps]    = useState({});
   const [lastRelocateAt, setLastRelocateAt] = useState(null); // timestamp ms
 
   // ── Hooks ──
