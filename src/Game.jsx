@@ -54,7 +54,7 @@ import GameBar from "./components/game/GameBar.jsx";
 import Leaderboard from "./components/game/Leaderboard.jsx";
 import CrewPanel from "./components/game/CrewPanel.jsx";
 import CommanderScreen from "./components/screens/CommanderScreen.jsx";
-import GearScreen from "./components/screens/GearScreen.jsx";
+import BagScreen from "./components/screens/BagScreen.jsx";
 
 export default function RiseToWar() {
   // ── Screens ──
@@ -2750,12 +2750,13 @@ export default function RiseToWar() {
       )}
 
       {gearScreenOpen && (
-        <GearScreen
+        <BagScreen
           gearInventory={gearInventory}
           setGearInventory={setGearInventory}
           cmds={cmds}
           setCmds={setCmds}
           playerAlignment={playerAlignment}
+          respectSchematics={respectSchematics}
           onClose={() => setGearScreenOpen(false)}
         />
       )}
