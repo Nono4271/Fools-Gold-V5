@@ -3,7 +3,7 @@ import { useGameContext } from "../../GameContext.js";
 import { createPortal } from "react-dom";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel, troopPortraitPath } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
-import { BLDG, barracksCapacity, barracksCommandPool, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, maxTrainBatch, trainingQueueCount, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, marketplaceRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown } from "../../../shared/constants/buildings.js";
+import { BLDG, barracksCapacity, barracksCommandPool, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, trainBatchSecs, maxTrainBatch, trainingQueueCount, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, marketplaceRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
 const SC = RC;
 
@@ -288,7 +288,7 @@ const isGated  = !isAbsMax && lvl >= avail;
 const cost     = (!isAbsMax && !isGated) ? upgCost(bKey, lvl) : null;
 const ok       = cost && canAfford(cost);
 const inProg   = upgQueue[bKey];
-const nd       = cost ? Math.round(upgDuration(bKey, lvl+1) * facMasteryBuildMult) : 0;
+const nd       = cost ? upgDuration(bKey, lvl+1) : 0;
 const mm = Math.floor(nd/60000), ss = Math.floor((nd%60000)/1000);
 
 return (
@@ -350,8 +350,8 @@ const BRANCH_LVL_BONUS = [
   const dmgColor = branch.dmgType === "magical" ? "#a855f7" : "#e08050";
   const roman = ["I","II","III"];
   const skills = getTierSkills(branch, tierIdx);
-  const conscriptCost = { wood: Math.round(1*facMasteryConscriptCost*10)/10, gas: Math.round(1*facMasteryConscriptCost*10)/10, food: Math.round(2*facMasteryConscriptCost*10)/10 };
-  const conscriptBase = Math.round([30, 60, 120][tierIdx] * facMasteryConscriptTime);
+  const conscriptCost = { wood:1, gas:1, food:2 };
+  const conscriptBase = [30, 60, 120][tierIdx];
   const TRIGGER_LABEL = {
   round_start: "Round Start", on_hit: "On Hit",
   on_hit_received: "On Hit Taken", on_kill: "On Kill", passive: "Passive",
@@ -1376,7 +1376,7 @@ function TrainingListScreen({ bldgs, barracksPool, troopCards, trainingQueues, r
 }
 
 // ── Screen 2: Train / Scrap queue builder ──────────────────────────────────────
-function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQueues, setTrainingQueues,
+function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQueues, setTrainingQueues, trainingSpeedMult,
   canAfford, queueTraining, rss, discardTroops, onBack }) {
 
   const isScrap   = mode === "scrap";
@@ -1391,13 +1391,29 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
 
   const card = troopCards.find(t => t.key === selected) || troopCards[0];
 
-  const maxAmount = isScrap
-    ? Math.max(1, card?.poolCount || 0)
-    : Math.max(1, Math.min(maxBatch, room));
-  const sv = Math.min(sliderVal, maxAmount);
+  // Command size by tier: T1=small(100/cmd), T2=medium(50/cmd), T3=large(4/cmd)
+  const tierIdx2  = card?.tier?.tierIdx ?? 0;
+  const cmdStep   = [CMD_SIZE.small, CMD_SIZE.medium, CMD_SIZE.large][Math.min(2, tierIdx2)];
+  const cmdLabel  = ["small", "medium", "large"][Math.min(2, tierIdx2)];
 
+  const rawMax  = isScrap
+    ? Math.max(cmdStep, card?.poolCount || 0)
+    : Math.max(cmdStep, Math.min(maxBatch, room));
+  // Snap maxAmount to nearest command boundary, then allow exact remainder for cases A/B/C
+  const maxAmount = rawMax;
+  // Snap slider value to nearest command step, unless it's the exact remainder at the top
+  const snapVal = (v) => {
+    if (v <= 0) return 0;
+    const snapped = Math.round(v / cmdStep) * cmdStep;
+    // Allow the raw remainder if it fits within 1 step of maxAmount
+    if (Math.abs(v - maxAmount) < cmdStep && v === maxAmount) return maxAmount;
+    return Math.min(snapped, maxAmount);
+  };
+  const sv = Math.min(snapVal(sliderVal), maxAmount);
+
+  const numCmds   = sv > 0 ? Math.max(1, Math.round(sv / cmdStep)) : 0;
   const trainCost = isScrap ? null : { wood:sv, gas:sv, food:sv*2 };
-  const timeSecs  = isScrap ? 0 : Math.ceil(sv / rate);
+  const timeSecs  = isScrap ? 0 : trainBatchSecs(tierIdx2, sv, cmdLabel, trainingSpeedMult);
 
   function fmtTime(s) {
     if (s < 60)   return `${s}s`;
@@ -1538,9 +1554,9 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
               </div>
 
               {/* Slider */}
-              <input type="range" min={0} max={Math.max(1,maxAmount)} value={sv}
-                onChange={e => setSliderVal(+e.target.value)}
-                onInput={e => setSliderVal(+e.target.value)}
+              <input type="range" min={0} max={Math.max(cmdStep,maxAmount)} step={cmdStep} value={sv}
+                onChange={e => { const v=+e.target.value; setSliderVal(v===maxAmount?v:Math.round(v/cmdStep)*cmdStep); }}
+                onInput={e => { const v=+e.target.value; setSliderVal(v===maxAmount?v:Math.round(v/cmdStep)*cmdStep); }}
                 style={{ width:"100%", accentColor:isScrap?"#cc3030":"#c8903a",
                   marginBottom:7, cursor:"pointer" }}/>
 
@@ -1582,7 +1598,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
                      : "—")
                   : isScrap
                     ? `Scrap ${sv.toLocaleString()} troops`
-                    : `Queue ${sv.toLocaleString()} troops (${fmtTime(timeSecs)})`}
+                    : `Queue ${numCmds} ${cmdLabel} cmd${numCmds!==1?"s":""} · ${sv.toLocaleString()} troops · ${fmtTime(timeSecs)}`}
               </button>
             </div>
           )}
@@ -1678,7 +1694,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
 
 // ── Root two-screen wrapper ────────────────────────────────────────────────────
 function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, setTrainingQueues,
-  canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches }) {
+  canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches, trainingSpeedMult }) {
 
   const [subScreen, setSubScreen] = useState("list"); // "list" | "train" | "scrap"
   const troopCards = useTroopCards({ unlockedBranches, troopCounts, cmds });
@@ -1701,6 +1717,7 @@ function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, s
       setTrainingQueues={setTrainingQueues}
       canAfford={canAfford} queueTraining={queueTraining}
       rss={rss} discardTroops={discardTroops}
+      trainingSpeedMult={trainingSpeedMult}
       onBack={() => setSubScreen("list")}/>
   );
 }
@@ -3271,8 +3288,6 @@ quarterLevels, setQuarterLevels,
 mysticOrbs, mysticOrbsCap, voidTapLvl, voidTapReady,
 lastVoidTap, voidTapCooldown, doVoidTap,
 troopSkillLevels, setTroopSkillLevels, setMysticOrbs,
-facMasteryBuildMult = 1, facMasteryHealMult = 1,
-facMasteryConscriptTime = 1, facMasteryConscriptCost = 1, facMasterySiegeMult = 1,
 }) {
   const { staminaMax = 150 } = useGameContext();
 if (!hqOpen) return null;
@@ -3394,6 +3409,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             trainingQueues={trainingQueues} setTrainingQueues={setTrainingQueues} canAfford={canAfford}
             queueTraining={queueTraining} rss={rss} cmds={cmds}
             unlockedBranches={unlockedBranches}
+            trainingSpeedMult={trainingSpeedMult}
             discardTroops={(bKey, n) => {
               setBarracks(p => Math.max(0, p - n));
               if (bKey) setTroopCounts(prev => ({ ...prev, [bKey]: Math.max(0, (prev[bKey]||0) - n) }));

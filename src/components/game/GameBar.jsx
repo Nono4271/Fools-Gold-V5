@@ -472,6 +472,7 @@ export default memo(function GameBar({
   setCmdScreenOpen, setCmdScreenUid,
   setGearScreenOpen, gearInventoryCount,
   playerHqKey,
+  setLeaderboardOpen,
   hidden,
   showPerf, setShowPerf,
   spawns, spawnWorkerRef, eligibleSpawnKeysRef,
@@ -600,6 +601,7 @@ export default memo(function GameBar({
             badge={0}
             onClick={() => setGearScreenOpen(true)}
           />
+          <ActionButton icon="🏆" label="Ranks" color="#c8a060" accent="#4a3010" onClick={() => setLeaderboardOpen(true)} />
           <ActionButton icon="⚓" label="Crew" color={playerCrewId ? "#40cc80" : "#80aacc"} accent={playerCrewId ? "#1a4a30" : "#1a3a5c"} onClick={() => setCrewOpen(v => !v)} />
         </div>
       </div>
