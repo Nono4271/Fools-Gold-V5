@@ -410,7 +410,7 @@ export default function RiseToWar() {
     lastVoidTap, setLastVoidTap,
     mysticOrbsCap, voidTapLvl, voidTapCooldown, voidTapReady,
     doVoidTap,
-  } = useVoidTap({ bldgs, quarterLevels });
+  } = useVoidTap({ bldgs, quarterLevels, facMasteryOrbMult });
 
   // ── Wizard's Tomes — owned by useTomes ───────────────────────────────────
   const {
@@ -461,6 +461,17 @@ export default function RiseToWar() {
   const hasQuickMarch      = tomeNodeLv("br_m")   >= 1;             // Quick March tactic
   const trainingSpeedMult  = 1  + tomeNodeLv("br_b")  * 0.02;       // Troop Training
   const reinSpeedMult      = 1  - tomeNodeLv("br_b1") * 0.015;      // Reins (reduces stepMs)
+
+  // ── Faction Mastery (node: "faction", maxLv:1) ────────────────────────────
+  const factionMasteryOn        = tomeNodeLv("faction") >= 1;
+  const facMasteryReinMult      = factionMasteryOn && facKey === "pirates"       ? 0.90 : 1.0; // -10% rein stepMs
+  const facMasterySiegeMult     = factionMasteryOn && facKey === "orcs"          ? 1.10 : 1.0; // +10% siege dmg dealt
+  const facMasteryHealMult      = factionMasteryOn && facKey === "coldborns"     ? 0.90 : 1.0; // -10% heal tent time
+  const facMasteryBuildMult     = factionMasteryOn && facKey === "dragons"       ? 0.90 : 1.0; // -10% build/upgrade time
+  const facMasteryOrbMult       = factionMasteryOn && facKey === "wizards"       ? 1.10 : 1.0; // +10% void tap orbs
+  const facMasteryMarchMult     = factionMasteryOn && facKey === "nightcreatures" ? 0.90 : 1.0; // -10% march stepMs
+  const facMasteryConscriptTime = factionMasteryOn && facKey === "holyknights"   ? 0.90 : 1.0; // -10% conscript time
+  const facMasteryConscriptCost = factionMasteryOn && facKey === "ashen_dead"    ? 0.90 : 1.0; // -10% conscript cost
 
   // Apply gear + tome stat bonuses to a commander
   const applyAllBonuses = (cmd, inv) => {
@@ -1100,17 +1111,12 @@ export default function RiseToWar() {
           for (let c2 = 0; c2 < C; c2++) {
             const idx2 = r2 * C + c2;
             const flags2 = flagArr[idx2];
-            const isHQ2      = !!(flags2 & F_HQ);
-            const isHQPart2  = !!(flags2 & F_HQPART);
-            const isKeep2    = !!(flags2 & F_KEEP);
-            const isKeepPart2= !!(flags2 & F_KEEPPART);
-            const isGate2    = !!(flags2 & F_GATE);
-            const isBorder2  = !!(flags2 & F_BORDER);
-            const pl2    = powerArr[idx2];
+            const isHQ2 = !!(flags2 & F_HQ);
+            const isHQPart2 = !!(flags2 & F_HQPART);
+            const pl2 = powerArr[idx2];
             const owner2 = OWNER_DEC[ownerArr[idx2]];
-            if (!owner2 && !isHQ2 && !isHQPart2 && !isKeep2 && !isKeepPart2 && !isGate2 && !isBorder2 && pl2 >= 3 && pl2 <= 10) {
-              const regKey = regionByIdx[regionArr[idx2]]?.key ?? 'unknown';
-              eligibleSpawnKeys.push(`${c2},${r2}|${regKey}`);
+            if (!owner2 && !isHQ2 && !isHQPart2 && pl2 >= 3 && pl2 <= 10) {
+              eligibleSpawnKeys.push(`${c2},${r2}`);
             }
           }
         }
@@ -1426,6 +1432,7 @@ export default function RiseToWar() {
     runBattle,
     crewmatePlayerIds,
     aiPlayerIdMap: aiPlayerIdMapRef.current,
+    facMasterySiegeMult,
     forts,
     getAnchors,
     getFortAtTile,
@@ -1781,7 +1788,7 @@ export default function RiseToWar() {
     const slots0 = normaliseTroopSlots(freshCmd);
     const baseStepMs = marchStepMs(effectiveMarchSpd(boostedSpd, slots0.length ? slots0.map(sl=>sl.branch) : freshCmd.troopBranch));
     const quickBonus = quickMarchReady ? 0.5 : 1;
-    const stepMs = Math.max(50, Math.round(baseStepMs * marchSpeedMult * quickBonus));
+    const stepMs = Math.max(50, Math.round(baseStepMs * marchSpeedMult * facMasteryMarchMult * quickBonus));
     if (quickMarchReady) setQuickMarchReady(false);
     if (longMarchReady) setLongMarchReady(false);
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null); setTileScreenX(null); setTileScreenY(null);
@@ -1909,7 +1916,7 @@ export default function RiseToWar() {
     if (!cmd || amount <= 0) return;
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
     const _rSlots2 = normaliseTroopSlots(cmd);
-    const stepMs = Math.max(50, Math.floor(marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots2.length ? _rSlots2.map(sl=>sl.branch) : cmd.troopBranch)) * reinSpeedMult / 2));
+    const stepMs = Math.max(50, Math.floor(marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots2.length ? _rSlots2.map(sl=>sl.branch) : cmd.troopBranch)) * reinSpeedMult * facMasteryReinMult / 2));
     setMode("view"); setReinCmd(null);
     setSliderVals(v => ({ ...v, [`rein_${cmd.uid}`]:undefined }));
     findPath(hqKey, cmd.tk).then(path => {
@@ -2570,6 +2577,11 @@ export default function RiseToWar() {
         doVoidTap={doVoidTap}
         troopSkillLevels={troopSkillLevels} setTroopSkillLevels={setTroopSkillLevels}
         setMysticOrbs={setMysticOrbs}
+        facMasteryBuildMult={facMasteryBuildMult}
+        facMasteryHealMult={facMasteryHealMult}
+        facMasteryConscriptTime={facMasteryConscriptTime}
+        facMasteryConscriptCost={facMasteryConscriptCost}
+        facMasterySiegeMult={facMasterySiegeMult}
       />
 
       {winner && (
