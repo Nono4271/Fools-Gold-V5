@@ -7,6 +7,7 @@ import { MapRenderer, clearHQCache } from "./MapRenderer";
 import { CSS } from "./constants/css.js";
 import { getFactionAlignment } from "../shared/constants/factions.js";
 import { CONSUMABLE_DEFS } from "../shared/constants/consumables.js";
+import { validateRelocationPad, findForcedRelocationPad, hq3x3Keys } from "../shared/utils/relocation.js";
 import { npcForPowerLevel, factionDefCmdForTile, HDEFS } from "../shared/constants/heroes.js";
 import { HQP, POWER_DEFS, SIEGE_BASE, hqSiegeValue, FORT_LEVELS, XP_PER_COMMAND } from "../shared/constants/map.js";
 import { FACTION_TROOPS, COMMAND_COST } from "../shared/constants/troops.js";
@@ -591,9 +592,12 @@ export default function RiseToWar() {
   const [cmdScreenUid,   setCmdScreenUid]   = useState(null);
   const [gearScreenOpen, setGearScreenOpen] = useState(false);
   const [showPerf,       setShowPerf]       = useState(false);
-  const [consumables,    setConsumables]    = useState([]); // [{ instanceId, typeId, quantity }]
+  const [consumables,    setConsumables]    = useState([
+    { instanceId: "reloc_start_1", typeId: "relocation", quantity: 2 },
+  ]); // [{ instanceId, typeId, quantity }]
   // Active resource speed-ups: { rssType: endsAt } — merged into rssBonus each tick
   const [rssSpeedUps,   setRssSpeedUps]    = useState({});
+  const [lastRelocateAt, setLastRelocateAt] = useState(null); // timestamp ms
 
   // ── Hooks ──
   useResources({ screen, tilesRef, setRss, bldgs, fortsRef: _fortsRef, rssBonus });
@@ -1504,6 +1508,7 @@ export default function RiseToWar() {
     damageFort,
     emitFortUpdate,
     guardedTiles,
+    onForcedRelocate,
   });
 
   useGameLoop({
@@ -2268,6 +2273,106 @@ export default function RiseToWar() {
     }
   }, [setConsumables, setUpgQueue, setRssSpeedUps, setHealQueue, floaty, playerHqRef]);
 
+  // ── HQ Relocation ───────────────────────────────────────────────────────────
+  // Applies a relocation: patches old HQ tiles back to plain, patches new 3x3 as HQ.
+  const applyHqMove = useCallback((newCenterKey) => {
+    const [nc, nr] = newCenterKey.split(",").map(Number);
+    const newKeys  = new Set(hq3x3Keys(nc, nr));
+
+    // Delete old HQ tiles instantly — revert to neutral unowned plain tiles
+    const oldCenter = playerHqRef.current;
+    if (oldCenter) {
+      const [oc, or_] = oldCenter.split(",").map(Number);
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const k = `${oc+dc},${or_+dr}`;
+          if (!newKeys.has(k)) {
+            patchTile(k, {
+              isHQ: false, isHQPart: false,
+              owner: null, faction: null,
+              garrison: 0, garrisonTroops: 0,
+              siege: 50, siegeMax: 50,
+              defeatedWaves: [], resetAt: null,
+              defCmd: null, hasAiCommander: false,
+            });
+          }
+        }
+      }
+    }
+
+    // Stamp new HQ — center gets isHQ, surrounding 8 get isHQPart
+    for (const k of newKeys) {
+      const isCenter = k === newCenterKey;
+      const existing = tiles[k];
+      patchTile(k, {
+        isHQ:     isCenter,
+        isHQPart: !isCenter,
+        owner:    "player",
+        faction:  facKey,
+        garrison: 0,
+        siege:    existing?.siegeMax ?? 300,
+        siegeMax: existing?.siegeMax ?? 300,
+        defeatedWaves: [],
+        resetAt:  null,
+        defCmd:   null,
+        hasAiCommander: false,
+      });
+    }
+
+    setPlayerHqKey(newCenterKey);
+  }, [playerHqRef, patchTile, facKey, tiles, setPlayerHqKey]);
+
+  // Planned relocation — costs 1 token, 72hr cooldown, all commanders must be at HQ
+  const performRelocation = useCallback((newCenterKey) => {
+    const allHqKeysList = Object.values(aiHqKeys).flat().concat(playerHqKey ? [playerHqKey] : []);
+    const result = validateRelocationPad(newCenterKey, tiles, allHqKeysList, playerHqKey);
+    if (!result.valid) { floaty(`⚠ ${result.reason}`, "#cc6030", newCenterKey); return; }
+
+    // Check cooldown
+    const COOLDOWN_MS = 72 * 60 * 60 * 1000;
+    if (lastRelocateAt && Date.now() - lastRelocateAt < COOLDOWN_MS) {
+      const hoursLeft = Math.ceil((COOLDOWN_MS - (Date.now() - lastRelocateAt)) / 3_600_000);
+      floaty(`⏳ Cannot relocate for ${hoursLeft}h`, "#cc6030", newCenterKey);
+      return;
+    }
+
+    // All commanders must be at HQ (not marching)
+    const marchingCmds = cmds.filter(c => c.owner === "player" && c.march);
+    if (marchingCmds.length > 0) {
+      floaty("⚠ Recall all commanders before relocating", "#cc6030", newCenterKey);
+      return;
+    }
+
+    // Deduct 1 relocation token
+    const tokenEntry = consumables.find(c => c.typeId === "relocation");
+    if (!tokenEntry || tokenEntry.quantity <= 0) {
+      floaty("⚠ No Relocation Tokens", "#cc6030", newCenterKey);
+      return;
+    }
+    setConsumables(prev => {
+      const entry = prev.find(c => c.typeId === "relocation");
+      if (!entry) return prev;
+      if (entry.quantity === 1) return prev.filter(c => c.typeId !== "relocation");
+      return prev.map(c => c.typeId === "relocation" ? { ...c, quantity: c.quantity - 1 } : c);
+    });
+
+    applyHqMove(newCenterKey);
+    setLastRelocateAt(Date.now());
+    floaty("🏰 HQ Relocated!", "#f0c040", newCenterKey);
+  }, [tiles, aiHqKeys, playerHqKey, lastRelocateAt, cmds, consumables, setConsumables, applyHqMove, floaty]);
+
+  // Forced relocation — triggered when player HQ is captured (no token cost, no cooldown)
+  const onForcedRelocate = useCallback(() => {
+    const allHqKeysList = Object.values(aiHqKeys).flat().concat(playerHqKey ? [playerHqKey] : []);
+    const newCenter = findForcedRelocationPad(tiles, allHqKeysList, playerHqKey, facKey);
+    if (!newCenter) {
+      setWinner("ai");
+      return;
+    }
+    applyHqMove(newCenter);
+    floaty("🏰 HQ Forced Relocation!", "#cc4444", newCenter);
+  }, [tiles, aiHqKeys, playerHqKey, facKey, applyHqMove, setWinner, floaty]);
+
   // queueTraining(branchKey, amount)
   // branchKey: "faction:branch:tier" e.g. "pirates:swashbucklers:0"
   // Multiple queues allowed (even same branchKey). Max slots = trainingQueueCount(training lvl).
@@ -2695,6 +2800,13 @@ export default function RiseToWar() {
         hasQuickMarch={hasQuickMarch} onQuickMarch={onQuickMarch} quickMarchReady={quickMarchReady}
         spawns={spawns} onSweep={onSweep}
         protectedTiles={protectedTiles}
+        onPerformRelocation={performRelocation}
+        lastRelocateAt={lastRelocateAt}
+        relocationTokens={(consumables ?? []).find(c => c.typeId === "relocation")?.quantity ?? 0}
+        allHqKeys={Object.values(aiHqKeys).flat().concat(playerHqKey ? [playerHqKey] : [])}
+        isValidRelocPad={selKey && selTile?.owner === "player" && !selTile?.isHQ && !selTile?.isHQPart
+          ? validateRelocationPad(selKey, tiles, Object.values(aiHqKeys).flat().concat(playerHqKey ? [playerHqKey] : []), playerHqKey).valid
+          : false}
       />
 
       {showBattleLog && (
