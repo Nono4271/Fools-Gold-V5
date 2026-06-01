@@ -32,32 +32,9 @@ function PowerBar({ value, max }) {
 }
 
 // ── Player Leaderboard ────────────────────────────────────────────────────────
-function PlayerBoard({ playerName, facKey, tiles, allHqKeys, aiPlayerIdMap }) {
-  // Calculate power/hr from owned tiles for player + AI factions
-  const entries = useMemo(() => {
-    if (!tiles) return [];
-    const playerPower = { id:"player", name: playerName || "You", faction: facKey, power: 0 };
-    const aiPower = {}; // factionKey → { id, name, faction, power }
-
-    for (const tile of Object.values(tiles)) {
-      if (!tile?.owner) continue;
-      const pl = tile.powerLevel || 1;
-      const pwr = pl * 10; // power/hr proxy: powerLevel * 10
-      if (tile.owner === "player") {
-        playerPower.power += pwr;
-      } else if (tile.owner === "ai" && tile.faction) {
-        const fk = tile.faction;
-        if (!aiPower[fk]) aiPower[fk] = { id: fk, name: fk.charAt(0).toUpperCase()+fk.slice(1).replace(/_/g," "), faction: fk, power: 0 };
-        aiPower[fk].power += pwr;
-      }
-    }
-
-    const all = [playerPower, ...Object.values(aiPower)]
-      .sort((a,b) => b.power - a.power)
-      .slice(0, 100);
-    return all;
-  }, [tiles, playerName, facKey]);
-
+// entries: pre-computed array of { id, name, faction, power } passed from Game.jsx
+// (avoids iterating the Proxy tile map which can crash)
+function PlayerBoard({ entries = [] }) {
   const max = entries[0]?.power || 1;
 
   return (
@@ -169,8 +146,7 @@ const TABS = [
   { id:"war",    label:"WAR"    },
 ];
 
-export default function Leaderboard({ onClose, playerName, facKey, tiles, allHqKeys,
-  aiPlayerIdMap, crews, playerCrewId }) {
+export default function Leaderboard({ onClose, playerEntries, crews, playerCrewId }) {
   const [tab, setTab] = useState("player");
 
   return (
@@ -221,8 +197,7 @@ export default function Leaderboard({ onClose, playerName, facKey, tiles, allHqK
         </div>
 
         {/* Content */}
-        {tab === "player" && <PlayerBoard playerName={playerName} facKey={facKey}
-          tiles={tiles} allHqKeys={allHqKeys} aiPlayerIdMap={aiPlayerIdMap} />}
+        {tab === "player" && <PlayerBoard entries={playerEntries} />}
         {tab === "crew"   && <CrewBoard crews={crews} playerCrewId={playerCrewId} />}
         {tab === "war"    && <WarBoard />}
       </div>
