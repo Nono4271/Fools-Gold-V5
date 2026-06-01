@@ -8,7 +8,7 @@
 import { useState, useCallback } from "react";
 import { voidTapCapacity, voidTapCooldownMs, voidTapYield } from "../../shared/constants/buildings.js";
 
-export function useVoidTap({ bldgs, quarterLevels }) {
+export function useVoidTap({ bldgs, quarterLevels, facMasteryOrbMult = 1 }) {
   const [mysticOrbs,  setMysticOrbs]  = useState(0);
   const [lastVoidTap, setLastVoidTap] = useState(null);
 
@@ -21,7 +21,7 @@ export function useVoidTap({ bldgs, quarterLevels }) {
 
   const doVoidTap = useCallback(() => {
     if (!voidTapReady) return;
-    const gain = voidTapYield(quarterLevels);
+    const gain = Math.round(voidTapYield(quarterLevels) * facMasteryOrbMult);
     setMysticOrbs(prev => Math.min(mysticOrbsCap, prev + gain));
     setLastVoidTap(Date.now());
   }, [voidTapReady, quarterLevels, mysticOrbsCap]);

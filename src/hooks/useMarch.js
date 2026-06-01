@@ -26,13 +26,13 @@ function cmdTroops(cmd) {
 function cmdSlots(cmd) {
   return normaliseTroopSlots(cmd);
 }
-function cmdSiegePower(cmd, boostedCmd) {
+function cmdSiegePower(cmd, boostedCmd, siegeMult = 1) {
   const slots = cmdSlots(cmd);
   const bonus = boostedCmd?.gearBonuses?.armySiege || 0;
-  if (slots.length > 0) return calcSiegePower(slots, null, bonus, FACTION_TROOPS);
-  // AI commanders use cmd.troops directly (no slot system)
-  const troops = cmd.troops || 0;
-  return calcSiegePower(troops, cmd.troopBranch, bonus);
+  const base = slots.length > 0
+    ? calcSiegePower(slots, null, bonus, FACTION_TROOPS)
+    : calcSiegePower(cmd.troops || 0, cmd.troopBranch, bonus);
+  return Math.round(base * siegeMult);
 }
 function cmdMarchSpd(cmd, boostedCmd) {
   const slots = cmdSlots(cmd);
@@ -134,6 +134,7 @@ unstationCmd,
 damageFort,
 emitFortUpdate,
 guardedTiles,
+facMasterySiegeMult = 1,
 }) {
 
 // Server-sync helpers — no-op if server not connected yet
@@ -247,7 +248,7 @@ arrivedAttackers.forEach(async staleCmd => {
   // ── All-garrison-defeated: siege only ────────────────────────────────────
   const allWavesDefeated = (defTile.defeatedWaves?.length ?? 0) >= garrisonWaveCount(defTile);
   if (allWavesDefeated) {
-    const siegePower = cmdSiegePower(cmd, boostedCmd);
+    const siegePower = cmdSiegePower(cmd, boostedCmd, facMasterySiegeMult);
     const currentSiege = defTile.siege ?? SIEGE_BASE;
     let siegeCaptured = false;
     if (siegePower >= currentSiege) {
@@ -310,7 +311,7 @@ arrivedAttackers.forEach(async staleCmd => {
         }
         // All defenders beaten — now siege the fort structure itself
         const fortSiege = fort.siege ?? FORT_LEVELS[fort.level - 1].siege;
-        const siegePower = cmdSiegePower(cmd, boostedCmd);
+        const siegePower = cmdSiegePower(cmd, boostedCmd, facMasterySiegeMult);
         if (siegePower >= fortSiege) {
           // Fort destroyed
           floaty("🏯 Fort Destroyed!", "#f0c040", destKey);
@@ -504,7 +505,7 @@ arrivedAttackers.forEach(async staleCmd => {
 
   // All waves cleared — siege phase
   const siegePower   = cmdSiegePower({ ...cmd, troops:remainingTroops,
-    troopSlots: cmd.troopSlots ? applySlotLosses(cmd, cmdTroops(cmd)-remainingTroops).troopSlots : undefined }, boostedCmd);
+    troopSlots: cmd.troopSlots ? applySlotLosses(cmd, cmdTroops(cmd)-remainingTroops).troopSlots : undefined }, boostedCmd, facMasterySiegeMult);
   const currentSiege = defTile.siege ?? SIEGE_BASE;
   let tileCaptured = false;
 
@@ -722,7 +723,7 @@ useEffect(() => {
       }
 
       // Player won all fights — attempt siege/capture
-      const siegePower   = cmdSiegePower({ ...cmd, troops: remainingTroops }, boostedCmd);
+      const siegePower   = cmdSiegePower({ ...cmd, troops: remainingTroops }, boostedCmd, facMasterySiegeMult);
       const currentSiege = defTile.siege ?? SIEGE_BASE;
       if (siegePower >= currentSiege) {
         tileCaptured = true;
