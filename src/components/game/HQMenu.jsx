@@ -2164,8 +2164,9 @@ function ManageShipScreen({
               </div>
               <input type="range"
                 min={0} max={Math.max(1, maxSlider)} value={svClamped}
-                onChange={e => handleSliderChange(+e.target.value)}
-                onInput={e => handleSliderChange(+e.target.value)}
+                step={CMD_SIZE.small}
+                onChange={e => { const v=+e.target.value; handleSliderChange(v===maxSlider?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
+                onInput={e => { const v=+e.target.value; handleSliderChange(v===maxSlider?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
                 style={{ width: "100%", accentColor: tierColor, touchAction: "none" }}
               />
               <div style={{
@@ -3028,7 +3029,9 @@ HEAL RATE
       </div>
       {wounded > 0 && tentLvl > 0 && (<>
         <input type="range" min={0} max={Math.max(1,maxHeal)} value={sv}
-          onChange={e => setHealAmt(+e.target.value)} onInput={e => setHealAmt(+e.target.value)}
+          step={CMD_SIZE.small}
+          onChange={e => { const v=+e.target.value; setHealAmt(v===maxHeal?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
+          onInput={e => { const v=+e.target.value; setHealAmt(v===maxHeal?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
           style={{ width:"100%", accentColor:"#88aaff", marginBottom:8 }}/>
         <button className="btn" onClick={() => setHealAmt(maxHeal)}
           style={{ width:"100%", marginBottom:5, padding:"6px",

@@ -18,6 +18,7 @@ function tbInfo(tb) {
 export default memo(function CommanderPicker({
   atkKey, tiles, cmdsAdjToSel, pickCmd, setPick,
   mode, setMode, setAtkKey, setSelKey, setPopupPos, startMarch,
+  cmdPathLengths,
 }) {
   if (!atkKey) return null;
   const { staminaMax = 150 } = useGameContext();
@@ -102,9 +103,12 @@ export default memo(function CommanderPicker({
                 return Math.round(Math.min(99,Math.max(1,100/(1+Math.pow(Math.max(0.00001,defPow/atkPow),3.5)))));
               })();
 
-              const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
-              const etaS   = Math.ceil(stepMs / 1000);
-              const etaStr = etaS < 60 ? `${etaS}s` : `${Math.floor(etaS/60)}m ${etaS%60}s`;
+              const stepMs   = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
+              const tiles_   = cmdPathLengths?.get(cmd.uid) ?? null;
+              const totalS   = tiles_ != null ? Math.ceil(tiles_ * stepMs / 1000) : null;
+              const etaStr   = totalS == null ? "? march"
+                : totalS < 60 ? `~${totalS}s march`
+                : `~${Math.floor(totalS/60)}m ${totalS%60}s march`;
 
               return (
                 <button key={cmd.uid} onClick={() => setPick(picked?null:cmd)}
@@ -143,7 +147,7 @@ export default memo(function CommanderPicker({
                       );
                     })()}
                     <div style={{marginTop:4,fontSize:7,color:"#4488ff",fontFamily:"'Cinzel',serif",letterSpacing:".05em"}}>
-                      🚶 {etaStr} march
+                      🚶 {etaStr}
                     </div>
                   </div>
                   {picked && <div style={{fontSize:10,color:"#3daa60",flexShrink:0}}>✓</div>}
