@@ -51,6 +51,7 @@ import WinScreen from "./components/game/WinScreen.jsx";
 import Minimap from "./components/game/Minimap.jsx";
 import WizardsTomes, { ScrollStackIcon } from "./components/game/WizardsTomes.jsx";
 import GameBar from "./components/game/GameBar.jsx";
+import Leaderboard from "./components/game/Leaderboard.jsx";
 import CrewPanel from "./components/game/CrewPanel.jsx";
 import CommanderScreen from "./components/screens/CommanderScreen.jsx";
 import GearScreen from "./components/screens/GearScreen.jsx";
@@ -410,7 +411,7 @@ export default function RiseToWar() {
     lastVoidTap, setLastVoidTap,
     mysticOrbsCap, voidTapLvl, voidTapCooldown, voidTapReady,
     doVoidTap,
-  } = useVoidTap({ bldgs, quarterLevels, facMasteryOrbMult });
+  } = useVoidTap({ bldgs, quarterLevels });
 
   // ── Wizard's Tomes — owned by useTomes ───────────────────────────────────
   const {
@@ -422,7 +423,8 @@ export default function RiseToWar() {
 
   // ── Tome node state — must be declared before tome-derived constants ──────
   const [dragonEggs,      setDragonEggs]      = useState(20);
-  const [spawns,          setSpawns]          = useState({}); // { [tileKey]: SpawnState }
+  const [spawns,          setSpawns]          = useState({});
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [protectedTiles,  setProtectedTiles]  = useState({}); // { [tileKey]: protectedUntil ms }
   const spawnWorkerRef        = useRef(null);
   const eligibleSpawnKeysRef = useRef([]);
@@ -462,17 +464,6 @@ export default function RiseToWar() {
   const hasQuickMarch      = tomeNodeLv("br_m")   >= 1;             // Quick March tactic
   const trainingSpeedMult  = 1  + tomeNodeLv("br_b")  * 0.02;       // Troop Training
   const reinSpeedMult      = 1  - tomeNodeLv("br_b1") * 0.015;      // Reins (reduces stepMs)
-
-  // ── Faction Mastery ───────────────────────────────────────────────────────
-  const factionMasteryOn        = tomeNodeLv("faction") >= 1;
-  const facMasteryReinMult      = factionMasteryOn && facKey === "pirates"        ? 0.90 : 1.0;
-  const facMasterySiegeMult     = factionMasteryOn && facKey === "orcs"           ? 1.10 : 1.0;
-  const facMasteryHealMult      = factionMasteryOn && facKey === "coldborns"      ? 0.90 : 1.0;
-  const facMasteryBuildMult     = factionMasteryOn && facKey === "dragons"        ? 0.90 : 1.0;
-  const facMasteryOrbMult       = factionMasteryOn && facKey === "wizards"        ? 1.10 : 1.0;
-  const facMasteryMarchMult     = factionMasteryOn && facKey === "nightcreatures" ? 0.90 : 1.0;
-  const facMasteryConscriptTime = factionMasteryOn && facKey === "holyknights"    ? 0.90 : 1.0;
-  const facMasteryConscriptCost = factionMasteryOn && facKey === "ashen_dead"     ? 0.90 : 1.0;
 
   // Apply gear + tome stat bonuses to a commander
   const applyAllBonuses = (cmd, inv) => {
@@ -1461,7 +1452,6 @@ export default function RiseToWar() {
     runBattle,
     crewmatePlayerIds,
     aiPlayerIdMap: aiPlayerIdMapRef.current,
-    facMasterySiegeMult,
     registerProtection,
     forts,
     getAnchors,
@@ -1954,7 +1944,7 @@ export default function RiseToWar() {
     if (!cmd || amount <= 0) return;
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
     const _rSlots2 = normaliseTroopSlots(cmd);
-    const stepMs = Math.max(50, Math.floor(marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots2.length ? _rSlots2.map(sl=>sl.branch) : cmd.troopBranch)) * reinSpeedMult * facMasteryReinMult / 2));
+    const stepMs = Math.max(50, Math.floor(marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots2.length ? _rSlots2.map(sl=>sl.branch) : cmd.troopBranch)) * reinSpeedMult / 2));
     setMode("view"); setReinCmd(null);
     setSliderVals(v => ({ ...v, [`rein_${cmd.uid}`]:undefined }));
     findPath(hqKey, cmd.tk).then(path => {
@@ -2617,12 +2607,18 @@ export default function RiseToWar() {
         doVoidTap={doVoidTap}
         troopSkillLevels={troopSkillLevels} setTroopSkillLevels={setTroopSkillLevels}
         setMysticOrbs={setMysticOrbs}
-        facMasteryBuildMult={facMasteryBuildMult}
-        facMasteryHealMult={facMasteryHealMult}
-        facMasteryConscriptTime={facMasteryConscriptTime}
-        facMasteryConscriptCost={facMasteryConscriptCost}
-        facMasterySiegeMult={facMasterySiegeMult}
       />
+
+      {leaderboardOpen && (
+        <Leaderboard
+          onClose={() => setLeaderboardOpen(false)}
+          playerName={playerName}
+          facKey={facKey}
+          tiles={tilesRef.current}
+          crews={[]}
+          playerCrewId={null}
+        />
+      )}
 
       {winner && (
         <WinScreen
@@ -2843,6 +2839,7 @@ export default function RiseToWar() {
         setCmdScreenUid={setCmdScreenUid}
         setGearScreenOpen={setGearScreenOpen}
         gearInventoryCount={gearInventory.length}
+        setLeaderboardOpen={setLeaderboardOpen}
         playerHqKey={playerHqKey}
         hidden={worldMapOpen || hqOpen || cmdScreenOpen || gearScreenOpen || showBattleLog || tomesOpen}
         showPerf={showPerf}
