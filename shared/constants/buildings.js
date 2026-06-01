@@ -54,7 +54,38 @@ return batches[batches.length - 1];
 }
 
 export function trainRate(lvl) {
-return Math.round(1 + lvl * 4.9);
+  // troops delivered per second — used for the real-time tick
+  // Base Lv1=2/s, Lv10=6/s — moderate so queues feel meaningful
+  return Math.max(1, Math.round(1.5 + lvl * 0.45));
+}
+
+// Training time per command. A command = 100 small / 50 medium / 4 large units.
+// TRAIN_SECS[tier][size]: [small, medium, large] seconds per command
+// T1 small=60s (1min), T3 large=330s (5.5min), others interpolate.
+const TRAIN_SECS = [
+  [60,  120, 180],  // T1: 1m, 2m, 3m
+  [90,  180, 270],  // T2: 1.5m, 3m, 4.5m
+  [132, 216, 330],  // T3: 2.2m, 3.6m, 5.5m
+];
+// Command sizes: small=100 troops, medium=50 troops, large=4 troops
+export const CMD_SIZE = { small: 100, medium: 50, large: 4 };
+export function cmdSizeLabel(sv) {
+  // How many commands is sv troops, and which size bracket
+  if (sv % CMD_SIZE.large === 0 && sv <= CMD_SIZE.large * 4)  return "large";
+  if (sv % CMD_SIZE.medium === 0 && sv <= CMD_SIZE.medium * 4) return "medium";
+  return "small";
+}
+// trainBatchSecs(tierIdx, sv, sizeLabel, speedMult)
+// sizeLabel: "small" | "medium" | "large" — determines command size
+// sv = total troops queued; cmdCount = sv / CMD_SIZE[sizeLabel]
+export function trainBatchSecs(tierIdx, sv, sizeLabel, speedMult = 1) {
+  const t = Math.min(2, Math.max(0, tierIdx || 0));
+  const lbl = (sizeLabel === "large" || sizeLabel === "medium") ? sizeLabel : "small";
+  const size = lbl === "large" ? 2 : lbl === "medium" ? 1 : 0;
+  const cmdUnits = CMD_SIZE[lbl];
+  const cmdCount = Math.max(1, Math.round(sv / cmdUnits));
+  const secsPerCmd = TRAIN_SECS[t][size];
+  return Math.max(30, Math.round(cmdCount * secsPerCmd / (speedMult || 1)));
 }
 
 export function rssRate(lvl) {

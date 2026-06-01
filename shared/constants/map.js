@@ -119,11 +119,11 @@ export const TOMES_MAX_LEVEL = 125;
 export const FORT_RANGE_RADIUS = 100; // tiles
 
 export const FORT_LEVELS = [
-  { level: 1, capacity: 2, siege: 150000 },
-  { level: 2, capacity: 3, siege: 212500 },
-  { level: 3, capacity: 4, siege: 275000 },
-  { level: 4, capacity: 5, siege: 387500 },
-  { level: 5, capacity: 6, siege: 500000 },
+  { level: 1, capacity: 2, siege: 150000, buildMs:  7200000 },  // build: 2hr
+  { level: 2, capacity: 3, siege: 212500, upgradeMs: 4500000 }, // upgrade to L2: 75min
+  { level: 3, capacity: 4, siege: 275000, upgradeMs: 4500000 }, // upgrade to L3: 75min
+  { level: 4, capacity: 5, siege: 387500, upgradeMs: 6300000 }, // upgrade to L4: 105min
+  { level: 5, capacity: 6, siege: 500000, upgradeMs: 9000000 }, // upgrade to L5: 150min
 ];
 
 export const FORT_MAX_LEVEL = 5;
