@@ -265,11 +265,11 @@ function tickAiMarch() {
 
 // ── Inlined building helpers (no imports in worker) ──────────────────────────
 const BLDG_COST = {
-  hq:{stone:800,wood:600,ore:400,gas:300},quarry:{stone:50,wood:30,ore:10,gas:0},
-  lumber:{stone:30,wood:50,ore:10,gas:0},forge:{stone:40,wood:20,ore:0,gas:0},
-  refinery:{stone:60,wood:40,ore:30,gas:0},barracks:{stone:80,wood:80,ore:40,gas:20},
-  training:{stone:60,wood:60,ore:30,gas:10},commandcenter:{stone:150,wood:120,ore:80,gas:60},
-  healingtent:{stone:60,wood:80,ore:60,gas:0},walls:{stone:100,wood:60,ore:0,gas:0},
+  hq:{stone:800,wood:400,gas:200},quarry:{stone:50,wood:30,gas:10},
+  lumber:{stone:60,wood:20,gas:10},forge:{stone:50,wood:20,gas:0},
+  refinery:{stone:70,wood:40,gas:20},barracks:{stone:100,wood:60,gas:30},
+  training:{stone:80,wood:50,gas:20},commandcenter:{stone:180,wood:100,gas:60},
+  healingtent:{stone:80,wood:60,gas:40},walls:{stone:120,wood:60,gas:0},
 };
 const BLDG_MAX = {hq:10,quarry:20,lumber:20,forge:20,refinery:20,barracks:10,training:10,commandcenter:10,healingtent:10,walls:10};
 const RSS_BLDGS = new Set(["quarry","lumber","forge","refinery","storage"]);
@@ -306,7 +306,7 @@ function tickAiEcon() {
 
   for (const fk of aiFactionKeys) {
     const curPool  = aiPool?.[fk]  ?? _barrCap(0);
-    const curRss   = { ...(aiRss?.[fk]  || { stone:5000, wood:5000, ore:5000, gas:5000 }) };
+    const curRss   = { ...(aiRss?.[fk]  || { stone:5000, wood:5000, gas: 5000, food: 5000 }) };
     const curBldgs = { ...(aiBldgs?.[fk] || { hq:1, barracks:0, commandcenter:0 }) };
     const hqKeyVal = aiHqKeys?.[fk];
     const hqKey    = Array.isArray(hqKeyVal) ? hqKeyVal[0] : hqKeyVal;
@@ -339,7 +339,7 @@ function tickAiEcon() {
     const barrCap = _barrCap(curBldgs.barracks || 0);
     if (newPool < barrCap) {
       const trainAmt = Math.min(500, barrCap - newPool);
-      const cost = { stone:trainAmt*2, wood:trainAmt*2, ore:trainAmt, gas:Math.floor(trainAmt*0.5) };
+      const cost = { wood:trainAmt, gas:trainAmt, food:trainAmt*2 };
       if (Object.entries(cost).every(([k,v]) => newRss[k] >= v)) {
         Object.entries(cost).forEach(([k,v]) => newRss[k] -= v);
         newPool = Math.min(barrCap, newPool + trainAmt);

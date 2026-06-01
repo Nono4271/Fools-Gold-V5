@@ -9,7 +9,7 @@ const COLS = 1845, ROWS = 1305;
 const SIZE = COLS * ROWS;
 const SIEGE_BASE = 50;
 
-const RKEYS      = ["stone","wood","ore","gas"];
+const RKEYS      = ["stone","wood","gas","food"];
 const TROOP_KEYS = ["infantry","mage","spearmen","horsemen"];
 
 const POWER_DEFS = {
@@ -74,8 +74,8 @@ function rollPowerLevel(c, r) {
 
 const TERRAIN_ENC = { grass:0, forest:1, mountain:2, desert:3, river:4, ravine:5, rockymountain:6, road:7, hellfire:8 };
 const TERRAIN_DEC = ["grass","forest","mountain","desert","river","ravine","rockymountain","road","hellfire"];
-const RSS_ENC     = { stone:1, wood:2, ore:3, gas:4 };
-const RSS_DEC     = [null,"stone","wood","ore","gas"];
+const RSS_ENC     = { stone:1, wood:2, gas: 3, food: 4 };
+const RSS_DEC     = [null,"stone","wood","gas","food"];
 const TROOP_ENC   = { infantry:1, mage:2, spearmen:3, horsemen:4 };
 const TROOP_DEC   = [null,"infantry","mage","spearmen","horsemen"];
 const OWNER_ENC   = { player:1, ai:2, pirates:3, orcs:4, wizards:5, dragons:6, holyknights:7, nightcreatures:8, coldborns:9, ashen_dead:10 };
@@ -907,31 +907,31 @@ self.onmessage = function(e) {
 
       // RSS pool per power level:
       // P1 (1/hr)   — all 4 resources (shown as "all" in UI, no individual props)
-      // P2 (10/hr)  — ore, gas only
+      // P2 (10/hr)  — gas, food only
       // P3 (15/hr)  — wood, stone only
-      // P4 (30/hr)  — ore, gas only
+      // P4 (30/hr)  — gas, food only
       // P5 (40/hr)  — wood, stone only
-      // P6 (60/hr)  — ore, gas only
+      // P6 (60/hr)  — gas, food only
       // P7 (90/hr)  — wood, stone only
-      // P8 (130/hr) — ore, gas only
+      // P8 (130/hr) — gas, food only
       // P9 (150/hr) — wood, stone only
       // P10-P13     — all 4 resources
       const RSS_POOL = {
-        1:  ["stone","wood","ore","gas"],
-        2:  ["ore","gas"],
+        1:  ["stone","wood","gas","food"],
+        2:  ["gas","food"],
         3:  ["wood","stone"],
-        4:  ["ore","gas"],
+        4:  ["gas","food"],
         5:  ["wood","stone"],
-        6:  ["ore","gas"],
+        6:  ["gas","food"],
         7:  ["wood","stone"],
-        8:  ["ore","gas"],
+        8:  ["gas","food"],
         9:  ["wood","stone"],
-        10: ["stone","wood","ore","gas"],
-        11: ["stone","wood","ore","gas"],
-        12: ["stone","wood","ore","gas"],
-        13: ["stone","wood","ore","gas"],
+        10: ["stone","wood","gas","food"],
+        11: ["stone","wood","gas","food"],
+        12: ["stone","wood","gas","food"],
+        13: ["stone","wood","gas","food"],
       };
-      const pool   = RSS_POOL[pl] || ["stone","wood","ore","gas"];
+      const pool   = RSS_POOL[pl] || ["stone","wood","gas","food"];
       const rssKey = pool[Math.floor(Math.random() * pool.length)];
 
       terrainArr[idx]  = TERRAIN_ENC[TERRAIN_NAMES[TERRAIN_MAP[idx]]] ?? 0;
