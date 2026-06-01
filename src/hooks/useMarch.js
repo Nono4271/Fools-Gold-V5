@@ -136,6 +136,7 @@ emitFortUpdate,
 guardedTiles,
 facMasterySiegeMult = 1,
 registerProtection,
+onForcedRelocate,
 }) {
 
 // Server-sync helpers — no-op if server not connected yet
@@ -797,7 +798,8 @@ arrivedAI.forEach(async cmd => {
       const isFriendly = cmd.faction === facKey;
       patchTile(destKey, { owner:"ai", faction: cmd.faction, ownerPlayerId: cmd.ownerPlayerId || null, garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor((cmd.troops||0)*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
       floaty(isFriendly ? "🤝 Ally captured tile!" : "⚠ ENEMY CAPTURED TILE!", isFriendly ? "#2299ff" : "#dd3322", destKey);
-      if (destKey === WIN_KEY || isPlayerHQ) setWinner("ai");
+      if (destKey === WIN_KEY) setWinner("ai");
+      else if (isPlayerHQ) { if (onForcedRelocate) onForcedRelocate(); else setWinner("ai"); }
       setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
     } else {
       patchTile(destKey, { siege:currentSiege-siegePower, resetAt:Date.now()+garrisonResetMs(defTile) });
@@ -821,7 +823,8 @@ arrivedAI.forEach(async cmd => {
       const isFriendly = cmd.faction === facKey;
       patchTile(destKey, { owner:"ai", faction: cmd.faction, ownerPlayerId: cmd.ownerPlayerId || null, garrison:0, siege:300, siegeMax:300, defeatedWaves:[], resetAt:null, hasAiCommander:true, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor(newTroops*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
       floaty(isFriendly ? "🤝 Ally captured tile!" : "⚠ ENEMY CAPTURED TILE!", isFriendly ? "#2299ff" : "#dd3322", destKey);
-      if (destKey === WIN_KEY || isPlayerHQ) setWinner("ai");
+      if (destKey === WIN_KEY) setWinner("ai");
+      else if (isPlayerHQ) { if (onForcedRelocate) onForcedRelocate(); else setWinner("ai"); }
     } else {
       patchTile(destKey, { siege:currentSiege-siegePower, defeatedWaves: defTile.defeatedWaves ?? [], resetAt:Date.now()+garrisonResetMs(defTile) });
     }
