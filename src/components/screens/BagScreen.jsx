@@ -33,9 +33,9 @@ function SplitLayout({ children, detail }) {
       <div style={{
         width: "38%", flexShrink: 0,
         borderLeft: "1px solid #2a1e08",
-        overflowY: "auto",
+        overflow: "hidden",
         background: "rgba(0,0,0,.25)",
-        touchAction: "pan-y", overscrollBehavior: "contain",
+        display: "flex", flexDirection: "column",
       }}>
         {detail}
       </div>
@@ -170,34 +170,34 @@ function GearDetailPanel({ piece, inventory, cmds, setCmds, setInventory, player
 
   const ROW = ({ label, value, gold }) => (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: "4px 0", borderBottom: "1px solid #1a1408" }}>
-      <span style={{ fontSize: 8, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>{label}</span>
-      <span style={{ fontSize: 8, color: gold ? "#f0c040" : r.color, fontFamily: "'Cinzel',serif", fontWeight: 700 }}>{value}</span>
+      padding: "3px 0", borderBottom: "1px solid #1a1408" }}>
+      <span style={{ fontSize: 7, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>{label}</span>
+      <span style={{ fontSize: 7, color: gold ? "#f0c040" : r.color, fontFamily: "'Cinzel',serif", fontWeight: 700 }}>{value}</span>
     </div>
   );
 
   return (
-    <div style={{ padding: "10px 10px 40px", display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ padding: "8px 8px", display: "flex", flexDirection: "column", gap: 6, height: "100%", boxSizing: "border-box" }}>
       {/* Header */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
-        padding: "10px 0", borderBottom: `1px solid ${r.color}30` }}>
-        <div style={{ fontSize: 32 }}>{piece.icon}</div>
-        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#e0d0c0", textAlign: "center", lineHeight: 1.4 }}>{piece.n}</div>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
-          <span style={{ padding: "1px 5px", borderRadius: 3, background: `${r.color}18`,
-            border: `1px solid ${r.color}40`, fontSize: 7, color: r.color, fontFamily: "'Cinzel',serif" }}>{r.n}</span>
-          <span style={{ padding: "1px 5px", borderRadius: 3, background: "rgba(255,255,255,.03)",
-            border: "1px solid #2a2010", fontSize: 7, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+        padding: "6px 0", borderBottom: `1px solid ${r.color}30`, flexShrink: 0 }}>
+        <div style={{ fontSize: 24 }}>{piece.icon}</div>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: "#e0d0c0", textAlign: "center", lineHeight: 1.3 }}>{piece.n}</div>
+        <div style={{ display: "flex", gap: 3, flexWrap: "wrap", justifyContent: "center" }}>
+          <span style={{ padding: "1px 4px", borderRadius: 3, background: `${r.color}18`,
+            border: `1px solid ${r.color}40`, fontSize: 6, color: r.color, fontFamily: "'Cinzel',serif" }}>{r.n}</span>
+          <span style={{ padding: "1px 4px", borderRadius: 3, background: "rgba(255,255,255,.03)",
+            border: "1px solid #2a2010", fontSize: 6, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>
             {slot?.icon} {slot?.n}
           </span>
         </div>
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          <StarRow count={piece.stars} />
-          {piece.goldStars > 0 && <><span style={{ color: "#3a3020", fontSize: 8 }}>·</span><StarRow count={piece.goldStars} gold /></>}
+        <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+          <StarRow count={piece.stars} size={7} />
+          {piece.goldStars > 0 && <><span style={{ color: "#3a3020", fontSize: 7 }}>·</span><StarRow count={piece.goldStars} gold size={7} /></>}
         </div>
         {piece.equippedBy && (
-          <div style={{ fontSize: 7, color: "#cc6060", fontFamily: "'Cinzel',serif" }}>
-            Equipped: {cmds?.find(c => c.uid === piece.equippedBy)?.n ?? "Unknown"}
+          <div style={{ fontSize: 6, color: "#cc6060", fontFamily: "'Cinzel',serif" }}>
+            Eq: {cmds?.find(c => c.uid === piece.equippedBy)?.n ?? "Unknown"}
           </div>
         )}
       </div>
@@ -214,28 +214,28 @@ function GearDetailPanel({ piece, inventory, cmds, setCmds, setInventory, player
       </div>
 
       {/* Equip / Unequip */}
-      <div style={{ background: "rgba(255,255,255,.02)", border: "1px solid #1e1810", borderRadius: 6, overflow: "hidden" }}>
-        <div style={{ padding: "5px 8px", borderBottom: "1px solid #1a1508",
-          fontFamily: "'Cinzel',serif", fontSize: 7, color: "#6a5a3a", letterSpacing: ".06em" }}>EQUIP</div>
-        <div style={{ padding: 8 }}>
+      <div style={{ background: "rgba(255,255,255,.02)", border: "1px solid #1e1810", borderRadius: 5, overflow: "hidden", flexShrink: 0 }}>
+        <div style={{ padding: "3px 7px", borderBottom: "1px solid #1a1508",
+          fontFamily: "'Cinzel',serif", fontSize: 6, color: "#6a5a3a", letterSpacing: ".06em" }}>EQUIP</div>
+        <div style={{ padding: 6 }}>
           {piece.equippedBy ? (
             <button onClick={handleUnequip} style={{
-              width: "100%", padding: "6px 0",
+              width: "100%", padding: "5px 0",
               background: "rgba(180,60,60,.12)", border: "1px solid rgba(180,60,60,.35)",
-              color: "#cc6060", fontFamily: "'Cinzel',serif", fontSize: 8,
+              color: "#cc6060", fontFamily: "'Cinzel',serif", fontSize: 7,
               borderRadius: 4, cursor: "pointer", touchAction: "manipulation",
             }}>↩ Unequip</button>
           ) : equipTarget ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               {eligibleCmds.map(cmd => (
                 <button key={cmd.uid} onClick={() => handleEquip(cmd.uid)} style={{
-                  padding: "5px 8px", textAlign: "left",
+                  padding: "4px 6px", textAlign: "left",
                   background: "rgba(40,100,60,.1)", border: "1px solid rgba(40,140,80,.3)",
-                  color: "#80d090", fontFamily: "'Cinzel',serif", fontSize: 8,
+                  color: "#80d090", fontFamily: "'Cinzel',serif", fontSize: 7,
                   borderRadius: 4, cursor: "pointer", touchAction: "manipulation",
-                  display: "flex", alignItems: "center", gap: 6,
+                  display: "flex", alignItems: "center", gap: 5,
                 }}>
-                  <span style={{ fontSize: 14 }}>{cmd.icon}</span>
+                  <span style={{ fontSize: 12 }}>{cmd.icon}</span>
                   <div>
                     <div>{cmd.n}</div>
                     <div style={{ fontSize: 6, color: "#3a5a3a", marginTop: 1 }}>
@@ -245,18 +245,18 @@ function GearDetailPanel({ piece, inventory, cmds, setCmds, setInventory, player
                 </button>
               ))}
               <button onClick={() => setEquipTarget(null)} style={{
-                padding: "4px 8px", background: "none", border: "1px solid #1e1810",
-                color: "#4a3a28", fontFamily: "'Cinzel',serif", fontSize: 7,
+                padding: "3px 6px", background: "none", border: "1px solid #1e1810",
+                color: "#4a3a28", fontFamily: "'Cinzel',serif", fontSize: 6,
                 borderRadius: 4, cursor: "pointer", touchAction: "manipulation",
               }}>Cancel</button>
             </div>
           ) : eligibleCmds.length === 0 ? (
-            <div style={{ fontSize: 7, color: "#3a3020", fontFamily: "'Crimson Pro',serif", fontStyle: "italic" }}>No eligible commanders</div>
+            <div style={{ fontSize: 6, color: "#3a3020", fontFamily: "'Crimson Pro',serif", fontStyle: "italic" }}>No eligible commanders</div>
           ) : (
             <button onClick={() => setEquipTarget(true)} style={{
-              width: "100%", padding: "6px 0",
+              width: "100%", padding: "5px 0",
               background: "rgba(40,100,60,.12)", border: "1px solid rgba(40,140,80,.35)",
-              color: "#3daa60", fontFamily: "'Cinzel',serif", fontSize: 8,
+              color: "#3daa60", fontFamily: "'Cinzel',serif", fontSize: 7,
               borderRadius: 4, cursor: "pointer", touchAction: "manipulation",
             }}>⚔ Equip</button>
           )}
@@ -264,24 +264,24 @@ function GearDetailPanel({ piece, inventory, cmds, setCmds, setInventory, player
       </div>
 
       {/* Strengthen */}
-      <div style={{ background: "rgba(255,255,255,.02)", border: "1px solid #1e1810", borderRadius: 6, overflow: "hidden" }}>
-        <div style={{ padding: "5px 8px", borderBottom: "1px solid #1a1508",
-          fontFamily: "'Cinzel',serif", fontSize: 7, color: "#6a5a3a", letterSpacing: ".06em" }}>
+      <div style={{ background: "rgba(255,255,255,.02)", border: "1px solid #1e1810", borderRadius: 5, overflow: "hidden", flexShrink: 0 }}>
+        <div style={{ padding: "3px 7px", borderBottom: "1px solid #1a1508",
+          fontFamily: "'Cinzel',serif", fontSize: 6, color: "#6a5a3a", letterSpacing: ".06em" }}>
           STRENGTHEN ({piece.stars}/5★)
         </div>
-        <div style={{ padding: 8 }}>
+        <div style={{ padding: 6 }}>
           {piece.stars >= 5
-            ? <div style={{ fontSize: 7, color: "#f0c040", fontFamily: "'Cinzel',serif" }}>⭐ Max stars</div>
+            ? <div style={{ fontSize: 6, color: "#f0c040", fontFamily: "'Cinzel',serif" }}>⭐ Max stars</div>
             : <>
-                <div style={{ fontSize: 7, color: "#5a4a3a", fontFamily: "'Crimson Pro',serif", marginBottom: 5 }}>
+                <div style={{ fontSize: 6, color: "#5a4a3a", fontFamily: "'Crimson Pro',serif", marginBottom: 4 }}>
                   Cost: {strCost} × {r.n} · Have: {sameRarityCount}
                 </div>
                 <button onClick={handleStrengthen} disabled={!canStr} style={{
-                  width: "100%", padding: "6px 0",
+                  width: "100%", padding: "5px 0",
                   background: canStr ? `${r.color}18` : "rgba(255,255,255,.02)",
                   border: `1px solid ${canStr ? r.color + "45" : "#1e1810"}`,
                   color: canStr ? r.color : "#2a2a2a",
-                  fontFamily: "'Cinzel',serif", fontSize: 8,
+                  fontFamily: "'Cinzel',serif", fontSize: 7,
                   borderRadius: 4, cursor: canStr ? "pointer" : "not-allowed", touchAction: "manipulation",
                 }}>★ → {piece.stars + 1} stars</button>
               </>
@@ -290,16 +290,16 @@ function GearDetailPanel({ piece, inventory, cmds, setCmds, setInventory, player
       </div>
 
       {/* Refine */}
-      <div style={{ background: "rgba(255,255,255,.02)", border: "1px solid #1e1810", borderRadius: 6, overflow: "hidden" }}>
-        <div style={{ padding: "5px 8px", borderBottom: "1px solid #1a1508",
-          fontFamily: "'Cinzel',serif", fontSize: 7, color: "#6a5a3a", letterSpacing: ".06em" }}>
+      <div style={{ background: "rgba(255,255,255,.02)", border: "1px solid #1e1810", borderRadius: 5, overflow: "hidden", flexShrink: 0 }}>
+        <div style={{ padding: "3px 7px", borderBottom: "1px solid #1a1508",
+          fontFamily: "'Cinzel',serif", fontSize: 6, color: "#6a5a3a", letterSpacing: ".06em" }}>
           REFINE ({piece.goldStars}/{piece.secStats?.length ?? 0}✦)
         </div>
-        <div style={{ padding: 8 }}>
+        <div style={{ padding: 6 }}>
           {piece.goldStars >= (piece.secStats?.length ?? 0)
-            ? <div style={{ fontSize: 7, color: "#f0c040", fontFamily: "'Cinzel',serif" }}>✦ All refined</div>
+            ? <div style={{ fontSize: 6, color: "#f0c040", fontFamily: "'Cinzel',serif" }}>✦ All refined</div>
             : <>
-                <div style={{ fontSize: 7, color: "#5a4a3a", fontFamily: "'Crimson Pro',serif", marginBottom: 5 }}>
+                <div style={{ fontSize: 6, color: "#5a4a3a", fontFamily: "'Crimson Pro',serif", marginBottom: 4 }}>
                   Cost: 1 duplicate · Have: {dupeCount}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -313,11 +313,11 @@ function GearDetailPanel({ piece, inventory, cmds, setCmds, setInventory, player
                         })
                         .map(g => g.instanceId === piece.instanceId ? refine(g, i) : g);
                     })} disabled={!canRef} style={{
-                      padding: "4px 8px", textAlign: "left",
+                      padding: "3px 7px", textAlign: "left",
                       background: canRef ? "rgba(240,192,64,.08)" : "rgba(255,255,255,.015)",
                       border: `1px solid ${canRef ? "rgba(240,192,64,.3)" : "#1a1a1a"}`,
                       color: canRef ? "#f0c040" : "#2a2a2a",
-                      fontFamily: "'Cinzel',serif", fontSize: 7,
+                      fontFamily: "'Cinzel',serif", fontSize: 6,
                       borderRadius: 3, cursor: canRef ? "pointer" : "not-allowed", touchAction: "manipulation",
                     }}>✦ {STAT_BASE[s.key]?.label} +{s.value}</button>
                   ))}
@@ -466,43 +466,37 @@ function SchematicDetailPanel({ entry }) {
     : `${sc.commanderName} Schematic`;
 
   return (
-    <div style={{ padding: "12px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ padding: "8px 8px", display: "flex", flexDirection: "column", gap: 6, height: "100%", boxSizing: "border-box" }}>
       {/* Header */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-        padding: "10px 0", borderBottom: `1px solid ${col}30` }}>
-        <div style={{ fontSize: 32 }}>{sc.icon ?? "📜"}</div>
-        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#e0d0c0", textAlign: "center" }}>{name}</div>
-        <div style={{ padding: "2px 8px", borderRadius: 4, background: `${col}18`,
-          border: `1px solid ${col}40`, fontSize: 7, color: col, fontFamily: "'Cinzel',serif" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+        padding: "6px 0", borderBottom: `1px solid ${col}30`, flexShrink: 0 }}>
+        <div style={{ fontSize: 24 }}>{sc.icon ?? "📜"}</div>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: "#e0d0c0", textAlign: "center", lineHeight: 1.3 }}>{name}</div>
+        <div style={{ padding: "1px 6px", borderRadius: 4, background: `${col}18`,
+          border: `1px solid ${col}40`, fontSize: 6, color: col, fontFamily: "'Cinzel',serif" }}>
           {sc.rarity.charAt(0).toUpperCase() + sc.rarity.slice(1)}
         </div>
       </div>
 
       {/* Details */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 8px",
-          background: "rgba(255,255,255,.03)", border: "1px solid #1e1810", borderRadius: 5 }}>
-          <span style={{ fontSize: 8, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>Respect Points</span>
-          <span style={{ fontSize: 9, color: col, fontFamily: "'Cinzel',serif", fontWeight: 700 }}>+{sc.points}</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 8px",
-          background: "rgba(255,255,255,.03)", border: "1px solid #1e1810", borderRadius: 5 }}>
-          <span style={{ fontSize: 8, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>In Inventory</span>
-          <span style={{ fontSize: 9, color: "#c8a060", fontFamily: "'Cinzel',serif", fontWeight: 700 }}>×{count}</span>
-        </div>
-        {sc.commanderName && (
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 8px",
-            background: "rgba(255,255,255,.03)", border: "1px solid #1e1810", borderRadius: 5 }}>
-            <span style={{ fontSize: 8, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>Commander</span>
-            <span style={{ fontSize: 8, color: "#e0d0c0", fontFamily: "'Cinzel',serif" }}>{sc.commanderName}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+        {[
+          ["Respect Pts", `+${sc.points}`, col],
+          ["In Inventory", `×${count}`, "#c8a060"],
+          ...(sc.commanderName ? [["Commander", sc.commanderName, "#e0d0c0"]] : []),
+        ].map(([label, value, color]) => (
+          <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "4px 7px", background: "rgba(255,255,255,.03)", border: "1px solid #1e1810", borderRadius: 4 }}>
+            <span style={{ fontSize: 7, color: "#6a5a3a", fontFamily: "'Cinzel',serif" }}>{label}</span>
+            <span style={{ fontSize: 7, color: color, fontFamily: "'Cinzel',serif", fontWeight: 700 }}>{value}</span>
           </div>
-        )}
-        <div style={{ padding: "8px", background: "rgba(255,255,255,.02)", border: "1px solid #1e1810",
-          borderRadius: 5, fontFamily: "'Crimson Pro',serif", fontSize: 9, color: "#6a5a3a",
+        ))}
+        <div style={{ padding: "6px 7px", background: "rgba(255,255,255,.02)", border: "1px solid #1e1810",
+          borderRadius: 4, fontFamily: "'Crimson Pro',serif", fontSize: 8, color: "#6a5a3a",
           fontStyle: "italic", lineHeight: 1.5 }}>
           {sc.isGeneric
-            ? `Applies to any ${sc.rarity} commander. Use from the Commander screen to grant respect points.`
-            : `Specific to ${sc.commanderName}. Use from the Commander screen to grant respect points.`}
+            ? `Any ${sc.rarity} commander. Apply from the Commander screen.`
+            : `Specific to ${sc.commanderName}. Apply from the Commander screen.`}
         </div>
       </div>
     </div>
