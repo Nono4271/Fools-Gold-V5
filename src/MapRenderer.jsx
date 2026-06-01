@@ -142,16 +142,15 @@ function buildCByTile(cmds) {
    enemy     → red    0xdc3c28
    ────────────────────────────────────────────────────────────────────────── */
 function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
-  if (owner === "player") return 0x22cc55; // Bright green
+  if (owner === "player") return 0x22cc55; // green — player owned
   if (!owner) return null;
-  // Normalize: faction-string owners (e.g. "pirates") count as "ai" for tint purposes
   const isAiOwned = owner === "ai" || (owner !== "player" && owner !== null);
-  // Blue: AI tile owned by a crewmate
+  // Blue: crewmate-owned tile
   const isCrew = isAiOwned && ownerPlayerId && crewPids?.has(ownerPlayerId);
   if (isCrew) return 0x2299ff;
-  // Purple: same faction, not crew
-  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xaa44ff;
-  return 0xdc3c28;
+  // Orange: same faction (keeps, gates, AI ally tiles)
+  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xe87830;
+  return 0xdc3c28; // red: enemy
 }
 
 /* ─── Pre-compute per-tile base color (fixed-size flat array) ────────────────
@@ -2536,8 +2535,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     // march.worker.js computes interpolated positions off the main thread.
     // Main thread ticker only moves existing PIXI objects — no recreate per frame.
     const marchWorker = new Worker(
-      new URL('./workers/march.worker.js', import.meta.url),
-      { type: 'module' }
+      new URL('../workers/march.worker.js', import.meta.url)
     );
     marchWorkerRef.current = marchWorker;
 

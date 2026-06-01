@@ -1432,6 +1432,28 @@ export default function RiseToWar() {
     if (result?.ok !== false) setDragonEggs(e => Math.max(0, e - 3));
   }, [buildFort, dragonEggs, floaty]);
 
+  // Demolish — remove fort, tile stays player-owned
+  const demolishFort = useCallback((fortId) => {
+    destroyFort(fortId);
+    floaty("🔨 Fort demolished", "#c8a060", null);
+  }, [destroyFort, floaty]);
+
+  // Abandon — remove fort AND release tile back to neutral
+  const abandonFort = useCallback((fortId) => {
+    const fort = forts.find(f => f.id === fortId);
+    destroyFort(fortId);
+    if (fort?.tileKey) {
+      patchTile(fort.tileKey, {
+        owner: null, faction: null, ownerPlayerId: null,
+        garrison: 0, garrisonTroops: 0,
+        siege: 50, siegeMax: 50,
+        defeatedWaves: [], resetAt: null,
+        defCmd: null, hasAiCommander: false,
+      });
+    }
+    floaty("🚪 Fort abandoned", "#8a8a8a", null);
+  }, [destroyFort, forts, patchTile, floaty]);
+
   const fortsRef = useRef(forts);
   useEffect(() => { fortsRef.current = forts; _fortsRef.current = forts; }, [forts]);
   _fortsRef.current = forts; // sync immediately too
@@ -2787,6 +2809,8 @@ export default function RiseToWar() {
         upgradeFort={upgradeFort}
         getFortAtTile={getFortAtTile}
         startReposition={startReposition}
+        demolishFort={demolishFort}
+        abandonFort={abandonFort}
         setCmdScreenOpen={setCmdScreenOpen}
         setCmdScreenUid={setCmdScreenUid}
         hasQuickGather={hasQuickGather} onQuickGather={onQuickGather}
