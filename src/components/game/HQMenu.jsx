@@ -2911,149 +2911,162 @@ function BattleGroupsScreen({
 // -----------------------------------------------------------------------------
 //  HEALING TENT
 // -----------------------------------------------------------------------------
-function RepairBayScreen({ bldgs, woundedTroops, woundedQueue, bLog }) {
-const [tab,        setTab]        = useState("wounded");
-const [autoHeal,   setAutoHeal]   = useState(false);
-const [healAmt,    setHealAmt]    = useState(0);
-const tentLvl = bldgs.healingtent||0;
-const tentCap = tentLvl * 200;
-const rate    = tentLvl * 5;
-const wounded = woundedTroops || 0;
-const maxHeal = tentCap ? Math.min(wounded, tentCap) : wounded;
-const sv      = Math.min(healAmt, maxHeal);
+function RepairBayScreen({ bldgs, woundedTroops, woundedQueue, bLog, healQueue, setHealQueue, rss, setRss, canAfford, unlockedBranches, troopCounts, barracksPool }) {
+const [tab,     setTab]     = useState("wounded");
+const [healAmt, setHealAmt] = useState(0);
+const tentLvl  = bldgs.healingtent || 0;
+const tentCap  = tentLvl * 200;
+const healRate = Math.max(1, Math.floor(trainRate(bldgs.training || 0) * 0.40));
+const wounded  = woundedTroops || 0;
+const maxHeal  = tentCap ? Math.min(wounded, tentCap) : wounded;
+const sv       = Math.min(healAmt, maxHeal);
+
+// Food cost: 40% of training food cost (training = amount*0.5 food → heal = amount*0.2 food)
+const healFoodCost = Math.ceil(sv * 0.2);
+const canHeal = sv > 0 && (rss?.food ?? 0) >= healFoodCost && tentLvl > 0;
+
+// ETA: how long to heal sv troops at current heal rate
+const healEtaSecs = healRate > 0 ? Math.ceil(sv / healRate) : null;
+const fmtTime = (s) => s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m ${s%60}s` : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+
+const confirmHeal = () => {
+  if (!canHeal) return;
+  const cost = { food: healFoodCost };
+  if (!canAfford(cost)) return;
+  setRss(p => ({ ...p, food: p.food - healFoodCost }));
+  // Add to heal queue — branchKey null means "generic wounded pool"
+  const newQ = { id: `h_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, branchKey: null, remaining: sv, total: sv };
+  setHealQueue(prev => [...(prev || []), newQ]);
+  setHealAmt(0);
+};
 
 return (
 <div>
 {/* Capacity row */}
 <div style={{ display:"flex", gap:8, marginBottom:10 }}>
-<div style={{ flex:1, padding:"8px 12px", background:"rgba(255,255,255,.03)",
-border:`1px solid ${P.border}`, borderRadius:6 }}>
-<div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:4 }}>
-HEALING TENT Lv{tentLvl}
-</div>
-<div style={{ fontSize:9, color:"#88aaff", fontFamily:P.ff, fontWeight:700, marginBottom:3 }}>
-{wounded.toLocaleString()} / {Math.max(wounded,tentCap).toLocaleString()}
-</div>
-<div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
-<div style={{ height:"100%",
-width:`${tentCap?Math.min(100,Math.round(wounded/tentCap*100)):0}%`,
-background:"linear-gradient(90deg,#3366cc,#88aaff)", borderRadius:2 }}/>
-</div>
-</div>
-<div style={{ flex:1, padding:"8px 12px", background:"rgba(255,255,255,.03)",
-border:`1px solid ${P.border}`, borderRadius:6 }}>
-<div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:4 }}>
-HEAL RATE
-</div>
-<div style={{ fontSize:14, color:"#5dcc80", fontFamily:P.ff, fontWeight:700 }}>
-{rate.toLocaleString()}<span style={{ fontSize:8, color:P.dim }}>/sec</span>
-</div>
-<div style={{ fontSize:6, color:P.dim, marginTop:2 }}>auto-recovering</div>
-</div>
+  <div style={{ flex:1, padding:"8px 12px", background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:6 }}>
+    <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:4 }}>HEALING TENT Lv{tentLvl}</div>
+    <div style={{ fontSize:9, color:"#88aaff", fontFamily:P.ff, fontWeight:700, marginBottom:3 }}>
+      {wounded.toLocaleString()} / {Math.max(wounded, tentCap).toLocaleString()}
+    </div>
+    <div style={{ height:4, background:"#181820", borderRadius:2, overflow:"hidden" }}>
+      <div style={{ height:"100%", width:`${tentCap ? Math.min(100, Math.round(wounded/tentCap*100)) : 0}%`, background:"linear-gradient(90deg,#3366cc,#88aaff)", borderRadius:2 }}/>
+    </div>
+  </div>
+  <div style={{ flex:1, padding:"8px 12px", background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:6 }}>
+    <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:4 }}>HEAL RATE</div>
+    <div style={{ fontSize:14, color:"#5dcc80", fontFamily:P.ff, fontWeight:700 }}>
+      {healRate.toLocaleString()}<span style={{ fontSize:8, color:P.dim }}>/sec</span>
+    </div>
+    <div style={{ fontSize:6, color:P.dim, marginTop:2 }}>40% of training speed</div>
+  </div>
 </div>
 
-  {/* Tabs */}
-  <div style={{ display:"flex", marginBottom:10, borderBottom:`1px solid ${P.border}` }}>
-    {[["wounded","Wounded"],["queue","Healing Queue"]].map(([t,lbl]) => (
-      <button key={t} className="btn" onClick={() => setTab(t)}
-        style={{ flex:1, padding:"8px", fontFamily:P.ff, fontSize:9, fontWeight:700,
-          letterSpacing:".06em", textTransform:"uppercase",
-          background:tab===t?"rgba(136,170,255,.1)":"transparent",
-          border:"none", borderBottom:tab===t?"2px solid #88aaff":"2px solid transparent",
-          color:tab===t?"#88aaff":P.dim, marginBottom:-1, borderRadius:0 }}>
-        {lbl}
-      </button>
+{/* Tabs */}
+<div style={{ display:"flex", marginBottom:10, borderBottom:`1px solid ${P.border}` }}>
+  {[["wounded","Wounded"],["queue","Heal Queue"]].map(([t,lbl]) => (
+    <button key={t} className="btn" onClick={() => setTab(t)}
+      style={{ flex:1, padding:"8px", fontFamily:P.ff, fontSize:9, fontWeight:700,
+        letterSpacing:".06em", textTransform:"uppercase",
+        background:tab===t?"rgba(136,170,255,.1)":"transparent",
+        border:"none", borderBottom:tab===t?"2px solid #88aaff":"2px solid transparent",
+        color:tab===t?"#88aaff":P.dim, marginBottom:-1, borderRadius:0 }}>
+      {lbl}{tab !== t && t === "queue" && (healQueue?.length > 0) ? ` (${healQueue.length})` : ""}
+    </button>
+  ))}
+</div>
+
+<div style={{ display:"flex", gap:10 }}>
+  {/* Left: content */}
+  <div style={{ flex:1 }}>
+    {tab === "wounded" && (wounded === 0 ? (
+      <div style={{ fontSize:8, color:"#3a3040", fontFamily:P.ffb, fontStyle:"italic", textAlign:"center", padding:"20px 0" }}>
+        No wounded troops at the moment.
+      </div>
+    ) : (
+      <div style={{ padding:"10px 12px", background:"rgba(50,100,180,.07)", border:"1px solid rgba(80,140,220,.2)", borderRadius:6 }}>
+        <div style={{ fontFamily:P.ff, fontSize:11, color:"#88aaff", fontWeight:700, marginBottom:4 }}>
+          ⛺ {wounded.toLocaleString()} Wounded
+        </div>
+        <div style={{ fontSize:8, color:"#6a7a9a", fontFamily:P.ffb, lineHeight:1.7 }}>
+          30% of battle casualties recover here. Queue them for healing below.
+        </div>
+      </div>
     ))}
+    {tab === "queue" && (
+      !healQueue?.length ? (
+        <div style={{ fontSize:8, color:"#3a3040", fontFamily:P.ffb, fontStyle:"italic", textAlign:"center", padding:"20px 0" }}>
+          Heal queue is empty.
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+          {healQueue.map(q => {
+            const pct = Math.round((1 - q.remaining / q.total) * 100);
+            const etaS = healRate > 0 ? Math.ceil(q.remaining / healRate) : "?";
+            return (
+              <div key={q.id} style={{ padding:"8px 10px", background:"rgba(50,100,180,.07)", border:"1px solid rgba(80,140,220,.2)", borderRadius:6 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ fontSize:9, color:"#88aaff", fontFamily:P.ff, fontWeight:700 }}>
+                    💉 {q.remaining.toLocaleString()} / {q.total.toLocaleString()}
+                  </span>
+                  <span style={{ fontSize:7, color:P.dim, fontFamily:P.ff }}>~{typeof etaS === "number" ? fmtTime(etaS) : etaS}</span>
+                </div>
+                <div style={{ height:3, background:"#181820", borderRadius:2, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width:`${pct}%`, background:"linear-gradient(90deg,#3366cc,#5dcc80)", borderRadius:2 }}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )
+    )}
+    {tentLvl < 1 && (
+      <div style={{ marginTop:8, fontSize:8, color:"#cc6030", fontFamily:P.ff }}>
+        ⚠ Build a Healing Tent to recover wounded troops.
+      </div>
+    )}
   </div>
 
-  <div style={{ display:"flex", gap:10 }}>
-    {/* Left: content area */}
-    <div style={{ flex:1 }}>
-      {tab === "wounded" && (wounded === 0 ? (
-        <div style={{ fontSize:8, color:"#3a3040", fontFamily:P.ffb, fontStyle:"italic",
-          textAlign:"center", padding:"20px 0" }}>
-          No wounded troops at the moment.
-        </div>
-      ) : (
-        <div style={{ padding:"10px 12px", background:"rgba(50,100,180,.07)",
-          border:"1px solid rgba(80,140,220,.2)", borderRadius:6 }}>
-          <div style={{ fontFamily:P.ff, fontSize:11, color:"#88aaff", fontWeight:700, marginBottom:4 }}>
-            ⛺ {wounded.toLocaleString()} Wounded
-          </div>
-          <div style={{ fontSize:8, color:"#6a7a9a", fontFamily:P.ffb, lineHeight:1.7 }}>
-            Healing at <strong style={{color:"#88aaff"}}>{rate}/sec</strong> -- returning to barracks.<br/>
-            30% of battle casualties recover here automatically.
-          </div>
-        </div>
-      ))}
-      {tab === "queue" && (woundedQueue > 0 ? (
-        <div style={{ padding:"10px 12px", background:"rgba(200,160,64,.06)",
-          border:"1px solid rgba(200,160,64,.2)", borderRadius:6 }}>
-          <div style={{ fontFamily:P.ff, fontSize:11, color:P.gold, fontWeight:700, marginBottom:4 }}>
-            ⏳ {woundedQueue.toLocaleString()} Queued
-          </div>
-          <div style={{ fontSize:8, color:P.sub }}>
-            Waiting for barracks capacity to accept healed troops.
-          </div>
-        </div>
-      ) : (
-        <div style={{ fontSize:8, color:"#3a3040", fontFamily:P.ffb, fontStyle:"italic",
-          textAlign:"center", padding:"20px 0" }}>
-          Healing queue is empty.
-        </div>
-      ))}
-      {tentLvl < 1 && (
-        <div style={{ marginTop:8, fontSize:8, color:"#cc6030", fontFamily:P.ff }}>
-          ⚠ Build a Healing Tent in Architecture → Buildings to recover wounded troops.
+  {/* Right: heal panel */}
+  <div style={{ width:128, flexShrink:0, padding:"10px 12px", background:"rgba(255,255,255,.02)", border:`1px solid ${P.border}`, borderRadius:8 }}>
+    <div style={{ textAlign:"center", marginBottom:8 }}>
+      <div style={{ fontSize:26, fontWeight:700, color:wounded>0?"#88aaff":"#2a2a3a", fontFamily:P.ff }}>{wounded.toLocaleString()}</div>
+      <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em" }}>WOUNDED</div>
+    </div>
+    {wounded > 0 && tentLvl > 0 && (<>
+      <input type="range" min={0} max={Math.max(1,maxHeal)} value={sv}
+        step={CMD_SIZE.small}
+        onChange={e => { const v=+e.target.value; setHealAmt(v===maxHeal?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
+        onInput={e => { const v=+e.target.value; setHealAmt(v===maxHeal?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
+        style={{ width:"100%", accentColor:"#88aaff", marginBottom:6 }}/>
+      <button className="btn" onClick={() => setHealAmt(maxHeal)}
+        style={{ width:"100%", marginBottom:4, padding:"5px",
+          background:"rgba(255,255,255,.05)", border:`1px solid ${P.border}`,
+          color:P.sub, fontSize:8, fontFamily:P.ff, fontWeight:700, borderRadius:4 }}>
+        MAX
+      </button>
+      {sv > 0 && (
+        <div style={{ marginBottom:6, padding:"5px 6px", background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:4 }}>
+          <div style={{ fontSize:7, color:"#80b040", fontFamily:P.ff }}>🌾 {healFoodCost.toLocaleString()} food</div>
+          {healEtaSecs && <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, marginTop:2 }}>⏱ ~{fmtTime(healEtaSecs)}</div>}
+          {(rss?.food ?? 0) < healFoodCost && <div style={{ fontSize:6, color:"#cc3030", fontFamily:P.ff, marginTop:2 }}>Not enough food</div>}
         </div>
       )}
-    </div>
-
-    {/* Right: auto-heal panel */}
-    <div style={{ width:128, flexShrink:0, padding:"10px 12px",
-      background:"rgba(255,255,255,.02)", border:`1px solid ${P.border}`, borderRadius:8 }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-        <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em" }}>AUTO HEAL</div>
-        <button className="btn" onClick={() => setAutoHeal(a=>!a)}
-          style={{ padding:"2px 8px", fontSize:8, fontWeight:700,
-            background:autoHeal?"rgba(50,150,80,.3)":"rgba(200,50,50,.2)",
-            border:`1px solid ${autoHeal?"#3daa60":"#cc4444"}`,
-            color:autoHeal?"#5dcc80":"#cc5050", borderRadius:12 }}>
-          {autoHeal?"ON":"OFF"}
-        </button>
-      </div>
-      <div style={{ textAlign:"center", marginBottom:10 }}>
-        <div style={{ fontSize:26, fontWeight:700,
-          color:wounded>0?"#88aaff":"#2a2a3a", fontFamily:P.ff }}>{wounded.toLocaleString()}</div>
-        <div style={{ fontSize:7, color:P.dim, fontFamily:P.ff, letterSpacing:".08em" }}>WOUNDED</div>
-      </div>
-      {wounded > 0 && tentLvl > 0 && (<>
-        <input type="range" min={0} max={Math.max(1,maxHeal)} value={sv}
-          step={CMD_SIZE.small}
-          onChange={e => { const v=+e.target.value; setHealAmt(v===maxHeal?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
-          onInput={e => { const v=+e.target.value; setHealAmt(v===maxHeal?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
-          style={{ width:"100%", accentColor:"#88aaff", marginBottom:8 }}/>
-        <button className="btn" onClick={() => setHealAmt(maxHeal)}
-          style={{ width:"100%", marginBottom:5, padding:"6px",
-            background:"rgba(255,255,255,.05)", border:`1px solid ${P.border}`,
-            color:P.sub, fontSize:8, fontFamily:P.ff, fontWeight:700, borderRadius:4 }}>
-          MAX
-        </button>
-        <button className="btn" disabled={sv===0}
-          style={{ width:"100%", padding:"6px",
-            background:sv>0?"linear-gradient(135deg,rgba(60,120,220,.4),rgba(60,120,220,.2))":"rgba(255,255,255,.02)",
-            border:`1px solid ${sv>0?"rgba(80,140,255,.5)":"#181818"}`,
-            color:sv>0?"#88aaff":"#2a2a3a",
-            fontSize:8, fontFamily:P.ff, fontWeight:700, borderRadius:4 }}>
-          CONFIRM
-        </button>
-      </>)}
-    </div>
+      <button className="btn" disabled={!canHeal} onClick={confirmHeal}
+        style={{ width:"100%", padding:"6px",
+          background:canHeal?"linear-gradient(135deg,rgba(60,120,220,.4),rgba(60,120,220,.2))":"rgba(255,255,255,.02)",
+          border:`1px solid ${canHeal?"rgba(80,140,255,.5)":"#181818"}`,
+          color:canHeal?"#88aaff":"#2a2a3a",
+          fontSize:8, fontFamily:P.ff, fontWeight:700, borderRadius:4 }}>
+        CONFIRM
+      </button>
+    </>)}
   </div>
 </div>
-
+</div>
 );
 }
+
 
 // -----------------------------------------------------------------------------
 //  MARKETPLACE
@@ -3284,6 +3297,7 @@ hqOpen, setHqOpen, hqTab, setHqTab,
 cmds, setCmds, tiles, rss, setRss, gems, pKeys,
 bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
 trainingQueues, setTrainingQueues, trainSlider, setTrainSlider,
+healQueue, setHealQueue, setWounded, setWoundedQueue,
 upgQueue, sliderVals, setSliderVals, bLog,
 upgrade, canAfford, assignTroops, returnTroops, queueTraining, troopCounts, setTroopCounts, setTroopSlot,
 recallMarch, setScreen, gearInventory, playerHqKey,
@@ -3430,7 +3444,12 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
         )}
         {hqTab === "repairbay" && (
           <RepairBayScreen bldgs={bldgs} woundedTroops={woundedTroops}
-            woundedQueue={woundedQueue} bLog={bLog}/>
+            woundedQueue={woundedQueue} bLog={bLog}
+            healQueue={healQueue} setHealQueue={setHealQueue}
+            rss={rss} setRss={setRss} canAfford={canAfford}
+            unlockedBranches={unlockedBranches} troopCounts={troopCounts}
+            barracksPool={barracksPool}
+          />
         )}
         {hqTab === "marketplace" && (
           <MarketplaceScreen rss={rss} setRss={setRss}
