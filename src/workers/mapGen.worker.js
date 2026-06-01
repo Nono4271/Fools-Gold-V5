@@ -796,51 +796,33 @@ function isAdjacentToHQ(c, r, usedKeys) {
 
 // Check if HQ location has sufficient resource neighbors for spawn
 // Requires: at least 2 tiles with 1/hr (power level 1) and 1 tile with 10/hr+ (power level 10+)
-// Only checks 12 adjacent tiles (no corners, no HQ tiles)
-function hasValidResourceNeighbors(c, r, powerArr) {
+// Only counts tiles that are actual playable tiles — not borders, keeps, gates, or HQ parts
+// Also skips 2x2/double tiles (F_WIN flag or keepPart variants) to avoid counting inaccessible interiors
+function hasValidResourceNeighbors(c, r, powerArr, flagArr) {
   let count1hr = 0;
   let count10hrPlus = 0;
-  
+  const BAD_FLAGS = F_KEEP | F_KEEPPART | F_HQ | F_HQPART | F_GATE | F_BORDER;
+
+  function checkTile(tc, tr) {
+    if (tc < 0 || tr < 0 || tc >= COLS || tr >= ROWS) return;
+    const idx = tr * COLS + tc;
+    if (idx < 0 || idx >= SIZE) return;
+    // Skip any tile that isn't a plain playable tile
+    if (flagArr[idx] & BAD_FLAGS) return;
+    const pl = powerArr[idx];
+    if (pl === 1) count1hr++;
+    if (pl >= 10) count10hrPlus++;
+  }
+
   // Top edge: (c, r-1), (c+1, r-1), (c+2, r-1)
-  for (let dc = 0; dc <= 2; dc++) {
-    const idx = (r-1)*COLS+(c+dc);
-    if (idx >= 0 && idx < SIZE) {
-      const pl = powerArr[idx];
-      if (pl === 1) count1hr++;
-      if (pl >= 10) count10hrPlus++;
-    }
-  }
-  
+  for (let dc = 0; dc <= 2; dc++) checkTile(c + dc, r - 1);
   // Bottom edge: (c, r+3), (c+1, r+3), (c+2, r+3)
-  for (let dc = 0; dc <= 2; dc++) {
-    const idx = (r+3)*COLS+(c+dc);
-    if (idx >= 0 && idx < SIZE) {
-      const pl = powerArr[idx];
-      if (pl === 1) count1hr++;
-      if (pl >= 10) count10hrPlus++;
-    }
-  }
-  
+  for (let dc = 0; dc <= 2; dc++) checkTile(c + dc, r + 3);
   // Left edge: (c-1, r), (c-1, r+1), (c-1, r+2)
-  for (let dr = 0; dr <= 2; dr++) {
-    const idx = (r+dr)*COLS+(c-1);
-    if (idx >= 0 && idx < SIZE) {
-      const pl = powerArr[idx];
-      if (pl === 1) count1hr++;
-      if (pl >= 10) count10hrPlus++;
-    }
-  }
-  
+  for (let dr = 0; dr <= 2; dr++) checkTile(c - 1, r + dr);
   // Right edge: (c+3, r), (c+3, r+1), (c+3, r+2)
-  for (let dr = 0; dr <= 2; dr++) {
-    const idx = (r+dr)*COLS+(c+3);
-    if (idx >= 0 && idx < SIZE) {
-      const pl = powerArr[idx];
-      if (pl === 1) count1hr++;
-      if (pl >= 10) count10hrPlus++;
-    }
-  }
-  
+  for (let dr = 0; dr <= 2; dr++) checkTile(c + 3, r + dr);
+
   return count1hr >= 2 && count10hrPlus >= 1;
 }
 
@@ -867,7 +849,7 @@ function randomSpawn(regionKey, usedKeys, flagArr, terrainArr, powerArr) {
       }
     }
     if (!ok) continue;
-    if (!hasValidResourceNeighbors(c, r, powerArr)) continue;
+    if (!hasValidResourceNeighbors(c, r, powerArr, flagArr)) continue;
     candidates.splice(i, 1); // remove so it won't be picked again
     return k;
   }
@@ -1615,7 +1597,7 @@ self.onmessage = function(e) {
         }
       }
       if (!ok) continue;
-      if (!hasValidResourceNeighbors(c, r, powerArr)) continue;
+      if (!hasValidResourceNeighbors(c, r, powerArr, flagArr)) continue;
       candidates.push(`${c},${r}`);
     }
     // Shuffle so placements are random
