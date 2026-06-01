@@ -1116,22 +1116,29 @@ export default function RiseToWar() {
         // from here on. powerPerHrRef starts at 0 (player has no ring tiles yet).
         pKeysRef.current = new Set();
 
-        // Build eligible spawn keys from typed arrays — avoids Proxy enumeration issue
+        // Build eligible spawn keys — excludes gates, borders, keeps, HQ, owned tiles
+        // Format: "c,r|regionKey" so worker can place 100 per region
         const eligibleSpawnKeys = [];
         for (let r2 = 0; r2 < R; r2++) {
           for (let c2 = 0; c2 < C; c2++) {
             const idx2 = r2 * C + c2;
-            const flags2 = flagArr[idx2];
-            const isHQ2 = !!(flags2 & F_HQ);
+            const flags2    = flagArr[idx2];
+            const isHQ2     = !!(flags2 & F_HQ);
             const isHQPart2 = !!(flags2 & F_HQPART);
-            const pl2 = powerArr[idx2];
+            const isKeep2   = !!(flags2 & F_KEEP);
+            const isKeepPart2 = !!(flags2 & F_KEEPPART);
+            const isGate2   = !!(flags2 & F_GATE);
+            const isBorder2 = !!(flags2 & F_BORDER);
+            const pl2    = powerArr[idx2];
             const owner2 = OWNER_DEC[ownerArr[idx2]];
-            if (!owner2 && !isHQ2 && !isHQPart2 && pl2 >= 3 && pl2 <= 10) {
-              eligibleSpawnKeys.push(`${c2},${r2}`);
+            if (!owner2 && !isHQ2 && !isHQPart2 && !isKeep2 && !isKeepPart2 && !isGate2 && !isBorder2 && pl2 >= 3 && pl2 <= 10) {
+              const regKey = regionByIdx[regionArr[idx2]]?.key ?? 'unknown';
+              eligibleSpawnKeys.push(`${c2},${r2}|${regKey}`);
             }
           }
         }
         eligibleSpawnKeysRef.current = eligibleSpawnKeys;
+        console.log('[SPAWN] Eligible keys built:', eligibleSpawnKeys.length);
 
         rawMap.__ready = true;
         setImpassableTiles(impassKeys || []);

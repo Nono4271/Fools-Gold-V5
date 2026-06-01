@@ -944,7 +944,7 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
       }
     }
 
-  } else if (rss === "ore") {
+  } else if (rss === "gas") {
     if (pl >= 22) {
       // ── P12/P13: Mine shaft ───────────────────────────────────────────────
       const tierScale = pl >= 25 ? 3.5 : 2.8;
@@ -1231,6 +1231,154 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
         const px = cx + Math.sin(tp*3.5)*s*0.04;
         const rr = s*sm*0.025 + tp*s*sm*0.065;
         gfx.beginFill(0x78be28, (1-tp)*0.38); gfx.drawCircle(px, py, rr); gfx.endFill();
+      }
+    }
+  } else if (rss === "food") {
+    // ── Food prop: Withered Wheat (P2–P9), Plague Storehouse (P10–P11), Cursed Granary (P12–P13)
+    if (pl >= 22) {
+      // P12/P13: Cursed Granary — 2 or 3 conical silos
+      const tierScale = pl >= 25 ? 3.5 : 2.8;
+      const sc = TH * 0.45 / 88 * tierScale;
+      const numSilos = pl >= 25 ? 3 : 2;
+      gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(cx, base, 62*sc, 13*sc); gfx.endFill();
+      // Dead crop scatter
+      [[-28*sc,-2*sc],[24*sc,-3*sc],[-10*sc,-1*sc]].forEach(([ox,oy]) => {
+        const sx=cx+ox, sy2=base+oy;
+        gfx.beginFill(0x1a1810); gfx.drawEllipse(sx, sy2-5*sc, 1.5*sc, 3.5*sc); gfx.endFill();
+        gfx.beginFill(0x3a2808); gfx.drawEllipse(sx+3*sc, sy2-4*sc, 1.5*sc, 3*sc); gfx.endFill();
+      });
+      const siloData = numSilos === 2
+        ? [{ ox:-17*sc, h:70*sc, w:13*sc }, { ox:17*sc, h:76*sc, w:13*sc }]
+        : [{ ox:-30*sc, h:60*sc, w:11*sc }, { ox:0, h:78*sc, w:14*sc }, { ox:28*sc, h:62*sc, w:11*sc }];
+      siloData.forEach(({ ox, h, w }) => {
+        const sx = cx + ox;
+        gfx.beginFill(0x0e0c08);
+        gfx.drawPolygon([sx-w-4*sc, base, sx-w-2*sc, base-h, sx-w+1*sc, base-h, sx-w, base]);
+        gfx.endFill();
+        gfx.beginFill(0x28241a); gfx.drawRect(sx-w, base-h, w*2, h); gfx.endFill();
+        gfx.beginFill(0x38342a);
+        gfx.drawPolygon([sx-w, base-h, sx+w, base-h, sx+w+4*sc, base-h-5*sc, sx-w+4*sc, base-h-5*sc]);
+        gfx.endFill();
+        const roofH = 24*sc;
+        gfx.beginFill(0x1e1608);
+        gfx.drawPolygon([sx-w-2*sc, base-h, sx, base-h-roofH, sx+w+2*sc, base-h]);
+        gfx.endFill();
+        gfx.beginFill(0x100c04);
+        gfx.drawPolygon([sx, base-h-roofH, sx+w+2*sc, base-h, sx+w, base-h]);
+        gfx.endFill();
+      });
+      // Bone meal sacks
+      [cx-32*sc, cx+26*sc].forEach(bx => {
+        gfx.beginFill(0x1a1610); gfx.drawEllipse(bx, base-4*sc, 10*sc, 4*sc); gfx.endFill();
+        gfx.beginFill(0x38341e); gfx.drawEllipse(bx, base-9*sc, 9*sc, 5.5*sc); gfx.endFill();
+        gfx.beginFill(0x48432a); gfx.drawEllipse(bx, base-14*sc, 7.5*sc, 4.5*sc); gfx.endFill();
+      });
+      if (pl >= 25) {
+        gfx.beginFill(0xa07810, 0.10); gfx.drawEllipse(cx, base-22*sc, 20*sc, 10*sc); gfx.endFill();
+      }
+    } else if (pl >= 16) {
+      // P10/P11: Plague Storehouse
+      const tierScale = pl >= 19 ? 2.2 : 1.7;
+      const sc = TH * 0.45 / 88 * tierScale;
+      const hasAnnex = pl >= 19;
+      gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(cx, base, 58*sc, 12*sc); gfx.endFill();
+      // Dead crop scatter
+      for (let i = 0; i < 5; i++) {
+        const ang = (i/5)*Math.PI*2;
+        const sx=cx+Math.cos(ang)*34*sc, sy2=base+Math.sin(ang)*7*sc;
+        gfx.beginFill(0x1a0c04); gfx.drawEllipse(sx, sy2-6*sc, 1.5*sc, 3*sc); gfx.endFill();
+      }
+      // Storehouse body
+      const bldgW=28*sc, bldgH=36*sc, bldgX=cx-bldgW;
+      gfx.beginFill(0x0e0c08);
+      gfx.drawPolygon([bldgX-4*sc, base, bldgX-2*sc, base-bldgH, bldgX+1*sc, base-bldgH, bldgX-1*sc, base]);
+      gfx.endFill();
+      gfx.beginFill(0x22201a); gfx.drawRect(bldgX, base-bldgH, bldgW*2, bldgH); gfx.endFill();
+      gfx.beginFill(0x302e24);
+      gfx.drawPolygon([bldgX, base-bldgH, bldgX+bldgW*2, base-bldgH, bldgX+bldgW*2+5*sc, base-bldgH-5*sc, bldgX+5*sc, base-bldgH-5*sc]);
+      gfx.endFill();
+      const roofH=16*sc;
+      gfx.beginFill(0x1c1508);
+      gfx.drawPolygon([bldgX-2*sc, base-bldgH, bldgX+bldgW-4*sc, base-bldgH-roofH, bldgX+bldgW*2+2*sc, base-bldgH]);
+      gfx.endFill();
+      // Barred windows with green glow
+      [[bldgX+bldgW*0.35, base-bldgH*0.55],[bldgX+bldgW*1.4, base-bldgH*0.55]].forEach(([wx,wy]) => {
+        gfx.beginFill(0x080604); gfx.drawRect(wx-5*sc, wy-5*sc, 10*sc, 10*sc); gfx.endFill();
+        gfx.beginFill(0x204a10, 0.35); gfx.drawRect(wx-5*sc, wy-5*sc, 10*sc, 10*sc); gfx.endFill();
+      });
+      // Door with plague mark
+      gfx.beginFill(0x1a1408); gfx.drawRect(cx+bldgW-6*sc, base-16*sc, 12*sc, 14*sc); gfx.endFill();
+      gfx.beginFill(0xd04010, 0.8); gfx.drawCircle(cx+bldgW, base-9*sc, 3.5*sc); gfx.endFill();
+      gfx.beginFill(0x080604); gfx.drawCircle(cx+bldgW, base-9*sc, 2*sc); gfx.endFill();
+      // Diseased sacks
+      [[-22*sc,0],[-28*sc,-6*sc]].forEach(([ox,oy]) => {
+        gfx.beginFill(0x282210); gfx.drawEllipse(cx+ox, base+oy, 9*sc, 5.5*sc); gfx.endFill();
+        gfx.beginFill(0x383020); gfx.drawEllipse(cx+ox, base+oy-4*sc, 7.5*sc, 4.5*sc); gfx.endFill();
+        gfx.beginFill(0x204810, 0.6); gfx.drawCircle(cx+ox-3*sc, base+oy-3*sc, 2*sc); gfx.endFill();
+      });
+      // Smoke vent
+      const ventX=bldgX+bldgW*0.9, ventY=base-bldgH-roofH*0.6;
+      gfx.beginFill(0x1a1408); gfx.drawRect(ventX-3*sc, ventY-10*sc, 6*sc, 12*sc); gfx.endFill();
+      for (let v=0; v<5; v++) {
+        const vp=v/4, vy=ventY-12*sc-vp*18*sc, vx=ventX+Math.sin(vp*4)*3*sc;
+        gfx.beginFill(0x2a3818, (1-vp)*0.4); gfx.drawCircle(vx, vy, (2.5+vp*4)*sc); gfx.endFill();
+      }
+      if (hasAnnex) {
+        const ax=bldgX+bldgW*2, aw=16*sc, ah=24*sc;
+        gfx.beginFill(0x1e1c14); gfx.drawRect(ax, base-ah, aw, ah); gfx.endFill();
+        gfx.beginFill(0x28261c);
+        gfx.drawPolygon([ax, base-ah, ax+aw, base-ah, ax+aw+3*sc, base-ah-4*sc, ax+3*sc, base-ah-4*sc]);
+        gfx.endFill();
+        gfx.beginFill(0x080604); gfx.drawRect(ax+4*sc, base-ah*0.55, 8*sc, 8*sc); gfx.endFill();
+        gfx.beginFill(0x204a10, 0.3); gfx.drawRect(ax+4*sc, base-ah*0.55, 8*sc, 8*sc); gfx.endFill();
+      }
+    } else {
+      // P2–P9: Withered wheat stalks
+      const h = s * 0.95 * sizeMult;
+      const spread = s * 0.45 * sizeMult;
+      const count = pl <= 2 ? 3 : pl <= 4 ? 5 : pl <= 6 ? 8 : 12;
+      gfx.beginFill(0x000000, 0.22);
+      gfx.drawEllipse(cx, base, spread * 1.1, s * sizeMult * 0.10);
+      gfx.endFill();
+      for (let i = 0; i < count; i++) {
+        const frac = count > 1 ? i / (count - 1) : 0.5;
+        const ox = (frac - 0.5) * spread * 2;
+        const lean = ox * 0.35;
+        const stalkH = h * (0.72 + rnd() * 0.32);
+        const stalkX = cx + ox;
+        const dark = pl >= 7 ? 0x3a2810 : 0x4a3810;
+        const lite  = pl >= 7 ? 0x5a3e14 : 0x6a5018;
+        gfx.beginFill(dark);
+        gfx.drawPolygon([stalkX, base, stalkX+lean-s*0.012, base-stalkH, stalkX+lean, base-stalkH, stalkX+s*0.016, base]);
+        gfx.endFill();
+        gfx.beginFill(lite);
+        gfx.drawPolygon([stalkX+s*0.016, base, stalkX+lean, base-stalkH, stalkX+lean+s*0.010, base-stalkH, stalkX+s*0.024, base]);
+        gfx.endFill();
+        // Wheat head
+        const hx=stalkX+lean, hy=base-stalkH;
+        const headDroop=s*sizeMult*0.14;
+        const headAngle=0.3+(frac-0.5)*0.4;
+        const podColor=pl>=7?0x5a4010:0xa08828;
+        const podLite=pl>=7?0x7a5818:0xc8a830;
+        gfx.beginFill(dark);
+        gfx.drawPolygon([hx, hy, hx+Math.sin(headAngle)*headDroop*0.5, hy+headDroop*0.5, hx+Math.sin(headAngle)*headDroop, hy+headDroop]);
+        gfx.endFill();
+        for (let k=0; k<3; k++) {
+          const kf=k/2;
+          const kx=hx+Math.sin(headAngle)*headDroop*kf, ky=hy+headDroop*kf;
+          gfx.beginFill(podColor); gfx.drawEllipse(kx, ky, s*sizeMult*0.042, s*sizeMult*0.026); gfx.endFill();
+          if (k<2) { gfx.beginFill(podLite, 0.7); gfx.drawEllipse(kx-s*0.006, ky-s*0.007, s*sizeMult*0.022, s*sizeMult*0.014); gfx.endFill(); }
+        }
+        if (pl>=6 && i%3===0) {
+          gfx.beginFill(0x1a0c04);
+          gfx.drawPolygon([stalkX+s*0.01, base, stalkX+lean*0.6+s*0.01, base-stalkH*0.5, stalkX+lean*0.6+s*0.018, base-stalkH*0.5, stalkX+s*0.02, base]);
+          gfx.endFill();
+        }
+      }
+      if (pl>=7) {
+        gfx.beginFill(0x0e0800, 0.28);
+        gfx.drawEllipse(cx, base, spread*0.6, s*sizeMult*0.05);
+        gfx.endFill();
       }
     }
   }
@@ -2761,72 +2909,58 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     if (!spawns || !Object.keys(spawns).length) return;
 
-    const _hqTex = _hqTexCache;
-
     for (const [key, spawn] of Object.entries(spawns)) {
       const [sc, sr] = key.split(",").map(Number);
       const { cx, cy } = isoXY(sc, sr);
+      const tileY = cy - 4 + TH * 0.5; // tile surface centre
 
-      // Draw glow ring on tile for active spawns
+      // Glow diamond centred on tile face
       if (!spawn.defeated) {
         const color = spawn.level <= 12 ? 0x70aa60
                     : spawn.level <= 25 ? 0xd07030
                     : 0xcc4040;
         const hw = TW / 2, hh = TH / 2;
-        const pts = [cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy];
-        gfx.lineStyle(2, color, 0.6);
-        gfx.beginFill(color, 0.06);
+        const pts = [cx, tileY - hh, cx + hw, tileY, cx, tileY + hh, cx - hw, tileY];
+        gfx.lineStyle(2, color, 0.7);
+        gfx.beginFill(color, 0.08);
         gfx.drawPolygon(pts);
         gfx.endFill();
       }
 
-      // Render 2-4 small portrait sprites clustered on tile
       if (!spawn.defeated) {
-        // Portrait from slot 1 troop branch — e.g. /troops/orcs_grunts_t1_portrait.webp
-        const tierIdx = spawn.level <= 12 ? 0 : spawn.level <= 25 ? 1 : 2;
         const ref = spawn.slot1TroopRef;
+        const tierIdx = spawn.level <= 12 ? 0 : spawn.level <= 25 ? 1 : 2;
+        const spriteUrl = ref?.faction && ref?.branch
+          ? `/spawns/${ref.faction}_${ref.branch}_t${(ref.tier ?? tierIdx) + 1}.webp`
+          : null;
         const portraitUrl = ref?.faction && ref?.branch
           ? `/troops/${ref.faction}_${ref.branch}_t${(ref.tier ?? tierIdx) + 1}_portrait.webp`
-          : `/troops/spawn_t${tierIdx + 1}_portrait.webp`; // fallback placeholder
-
+          : null;
+        const figW = TW * 0.30;
+        const figH = figW * 1.6;
         const clusterOffsets = tierIdx >= 1
-          ? [[-10, 4], [8, 2], [-2, -6], [10, -8]]  // 4 figures for T2/T3
-          : [[-8, 2], [8, 2]];                         // 2 figures for T1
-
-        const loadSprite = (url, offsets) => {
-          const loader = PIXI.Texture.fromURL(url).catch(() => null);
-          loader.then(tex => {
-            if (!tex || world.destroyed) return;
-            offsets.forEach(([ox, oy], i) => {
-              const sp = new PIXI.Sprite(tex);
-              const scale = 0.28 - i * 0.02;
-              sp.width  = TW * scale;
-              sp.height = TW * scale * 1.4;
-              sp.anchor.set(0.5, 1);
-              sp.x = cx + ox;
-              sp.y = cy + TH * 0.35 + oy;
-              sp.zOrder = cy + TH * 0.35 + oy;
-              world.addChild(sp);
-              const mapKey = `${key}_${i}`;
-              _spawnSpriteMap.current.set(mapKey, sp);
-            });
-          });
-        };
-
-        if (_hqTex[portraitUrl]) {
+          ? [[-figW * 0.55, 0], [figW * 0.55, 0], [0, -figH * 0.35]]
+          : [[-figW * 0.45, 0], [figW * 0.45, 0]];
+        const placeSprites = (tex) => {
+          if (!tex || world.destroyed) return;
           clusterOffsets.forEach(([ox, oy], i) => {
-            const sp = new PIXI.Sprite(_hqTex[portraitUrl]);
-            const scale = 0.28 - i * 0.02;
-            sp.width  = TW * scale;
-            sp.height = TW * scale * 1.4;
+            const sp = new PIXI.Sprite(tex);
+            const scale = 1 - i * 0.08;
+            sp.width  = figW * scale;
+            sp.height = figH * scale;
             sp.anchor.set(0.5, 1);
             sp.x = cx + ox;
-            sp.y = cy + TH * 0.35 + oy;
+            sp.y = tileY + oy;
             world.addChild(sp);
             _spawnSpriteMap.current.set(`${key}_${i}`, sp);
           });
-        } else {
-          loadSprite(portraitUrl, clusterOffsets);
+        };
+        if (spriteUrl) {
+          PIXI.Texture.fromURL(spriteUrl)
+            .then(tex => placeSprites(tex))
+            .catch(() => { if (portraitUrl) PIXI.Texture.fromURL(portraitUrl).then(tex => placeSprites(tex)).catch(() => {}); });
+        } else if (portraitUrl) {
+          PIXI.Texture.fromURL(portraitUrl).then(tex => placeSprites(tex)).catch(() => {});
         }
       }
     }
