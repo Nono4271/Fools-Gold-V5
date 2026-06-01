@@ -630,6 +630,9 @@ export default function RiseToWar() {
       for (const key of patchedKeys) {
         const tile = proxy[key];
         if (!tile?.owner) continue;
+        // Exclude non-resource tiles from power calculation
+        if (tile.isHQ || tile.isHQPart || tile.isKeep || tile.isKeepPart ||
+            tile.isGate || tile.isBorder || tile.isFort) continue;
         const pl = tile.powerLevel || 1;
         const pwr = pl * 10;
         if (tile.owner === "player") {
