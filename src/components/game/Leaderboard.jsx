@@ -134,6 +134,7 @@ function WarBoard() {
       </div>
       <div style={{ fontSize:8, color:P.sub, textAlign:"center", maxWidth:200, lineHeight:1.7 }}>
         PvP season rankings coming soon. Earn war points by capturing territory, defeating enemies, and completing season objectives.
+      </div>
     </div>
   );
 }
