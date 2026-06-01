@@ -55,7 +55,7 @@ export default memo(function TilePopup({
   setBarracks, setCmds, setTroopSlot,
   startMarch,
   nowTick, playerHqKey, facKey, facName,
-  forts, buildFort, upgradeFort, getFortAtTile, startReposition,
+  forts, buildFort, upgradeFort, getFortAtTile, startReposition, demolishFort, abandonFort,
   setCmdScreenOpen, setCmdScreenUid,
   onQuickGather,
   hasQuickGather,
@@ -293,7 +293,7 @@ export default memo(function TilePopup({
   const idleCmdsOnSel = cmdsOnSel.filter(c => !c.march);
   const marchingCmdsOnSel = cmdsOnSel.filter(c => c.march);
 
-  const borderColor = ownership==="player"?"#3a6a3a":ownership==="crew"?"#204080":ownership==="ally"?"#602080":"#802020";
+  const borderColor = ownership==="player"?"#3a6a3a":ownership==="crew"?"#204080":ownership==="faction"?"#804010":ownership==="ally"?"#602080":"#802020";
 
   // Commander card goes on the OPPOSITE side from the tile info popup
   const sw = window.innerWidth, sh = window.innerHeight;
@@ -316,7 +316,7 @@ export default memo(function TilePopup({
         {/* Header */}
         <div style={{ padding:"8px 10px 6px", borderBottom:"1px solid rgba(255,255,255,.06)", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, color:ownership==="player"?"#c8f0c8":ownership==="crew"?"#80c0ff":ownership==="ally"?"#c080ff":ownership==="enemy"?"#ff8080":"#c8a060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, color:ownership==="player"?"#c8f0c8":ownership==="crew"?"#80c0ff":ownership==="faction"?"#e87830":ownership==="ally"?"#c080ff":ownership==="enemy"?"#ff8080":"#c8a060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {selTile.isWin?"⚜ The Holy Grail":selTile.isGate&&selTile.crossingType==="crossing"?`🌊 ${selTile.keepName||"River Crossing"}`:selTile.isGate&&selTile.crossingType==="tunnel"?`⛰ ${selTile.keepName||"Tunnel Gate"}`:selTile.isKeep?`🏰 ${selTile.keepName||selTile.regionName+" Keep"}`:selTile.isRuin?"🏚 Ruin":selTile.regionName||"Tile"}
             </div>
             <div style={{ fontSize:7, color:"#5a5a6a", marginTop:1 }}>
@@ -326,8 +326,8 @@ export default memo(function TilePopup({
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:5, flexShrink:0, marginLeft:6 }}>
             {ownership!=="player"&&ownership!=="neutral"&&(
-              <div style={{ fontSize:7, fontFamily:"'Cinzel',serif", fontWeight:700, letterSpacing:".05em", padding:"2px 6px", borderRadius:4, background:ownership==="crew"?"rgba(20,80,200,.25)":ownership==="ally"?"rgba(120,20,200,.25)":"rgba(200,20,20,.25)", border:`1px solid ${ownership==="crew"?"#2060cc":ownership==="ally"?"#8020cc":"#cc2020"}`, color:ownership==="crew"?"#60a0ff":ownership==="ally"?"#c060ff":"#ff6060" }}>
-                {ownership==="crew"?"CREW":ownership==="ally"?"ALLY":"ENEMY"}
+              <div style={{ fontSize:7, fontFamily:"'Cinzel',serif", fontWeight:700, letterSpacing:".05em", padding:"2px 6px", borderRadius:4, background:ownership==="crew"?"rgba(20,80,200,.25)":ownership==="faction"?"rgba(200,110,20,.25)":ownership==="ally"?"rgba(120,20,200,.25)":"rgba(200,20,20,.25)", border:`1px solid ${ownership==="crew"?"#2060cc":ownership==="faction"?"#c06010":ownership==="ally"?"#8020cc":"#cc2020"}`, color:ownership==="crew"?"#60a0ff":ownership==="faction"?"#e87830":ownership==="ally"?"#c060ff":"#ff6060" }}>
+                {ownership==="crew"?"CREW":ownership==="faction"?"FACTION":ownership==="ally"?"ALLY":"ENEMY"}
               </div>
             )}
           </div>
@@ -385,7 +385,7 @@ export default memo(function TilePopup({
         {/* Fort panel */}
         {fort&&ownership==="player"&&(
           <div style={{ padding:"6px 10px", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
-            <FortPanel fort={fort} selTile={selTile} selKey={selKey} cmds={cmds} upgradeFort={upgradeFort} startReposition={startReposition} setPopupMode={setPopupMode}/>
+            <FortPanel fort={fort} selTile={selTile} selKey={selKey} cmds={cmds} upgradeFort={upgradeFort} startReposition={startReposition} setPopupMode={setPopupMode} demolishFort={demolishFort} abandonFort={abandonFort}/>
           </div>
         )}
 
@@ -779,7 +779,7 @@ export default memo(function TilePopup({
             </button>
           )}
           {/* Move — crew */}
-          {ownership==="crew"&&canAtk&&(
+          {(ownership==="crew"||ownership==="faction")&&canAtk&&(
             <button onClick={()=>canMoveNow?(setAtkKey(selKey),setMode("pickMoveCmd"),setPick(null)):null}
               style={{ flex:1, padding:"6px 0", background:canMoveNow?"linear-gradient(160deg,#082038,#041020)":"rgba(20,30,50,.3)", border:`1px solid ${canMoveNow?"#2060a0":"#204060"}`, borderRadius:5, color:canMoveNow?"#60a0e0":"#405060", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canMoveNow?"pointer":"not-allowed", opacity:canMoveNow?1:.6 }}>
               MOVE
@@ -793,7 +793,7 @@ export default memo(function TilePopup({
             </button>
           )}
           {/* Notes */}
-          {ownership==="crew"&&<div style={{ fontSize:7, color:"#2299ff", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>🤝 Crew territory — you can move here freely</div>}
+          {(ownership==="crew"||ownership==="faction")&&<div style={{ fontSize:7, color:ownership==="faction"?"#e87830":"#2299ff", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>{ownership==="faction"?"🟠 Faction territory — you can move here freely":"🤝 Crew territory — you can move here freely"}</div>}
           {(ownership==="enemy"||isNeutral)&&!canAtk&&!selTile.isWin&&<div style={{ fontSize:7, color:"#5a4a3a", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>Own an adjacent tile to attack</div>}
           </div>{/* end inner flex */}
         </div>
@@ -807,7 +807,7 @@ export default memo(function TilePopup({
       cmdsOnSel.forEach(cmd=>cards.push(
         <CommanderCard key={cmd.uid} cmd={cmd} ownership="player" onCmdScreenOpen={onCmdScreenOpen} recallMarch={recallMarch} recallStationary={recallStationary} setReinCmd={setReinCmd} setMode={setMode} barracksPool={barracksPool} playerHqKey={playerHqKey} startGuard={startGuard} cancelGuard={cancelGuard}/>
       ));
-      if(ownership==="crew"||ownership==="ally"){
+      if(ownership==="crew"||ownership==="ally"||ownership==="faction"){
         cmds.filter(c=>c.owner!=="player"&&c.tk===selKey&&!c.march).forEach(cmd=>cards.push(
           <CommanderCard key={cmd.uid} cmd={cmd} ownership={ownership} onCmdScreenOpen={onCmdScreenOpen} playerHqKey={playerHqKey}/>
         ));
