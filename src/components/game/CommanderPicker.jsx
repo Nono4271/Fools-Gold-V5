@@ -138,7 +138,7 @@ export default memo(function CommanderPicker({
                       const pct  = Math.max(0, Math.min(100, (stam / staminaMax) * 100));
                       return (
                         <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
-                          <span style={{fontSize:7,color:sc,fontFamily:"'Cinzel',serif",flexShrink:0}}>⚡{Math.floor(stam)}/staminaMax</span>
+                          <span style={{fontSize:7,color:sc,fontFamily:"'Cinzel',serif",flexShrink:0}}>⚡{Math.floor(stam)}/{staminaMax}</span>
                           <div style={{flex:1,height:3,background:"#181820",borderRadius:2,overflow:"hidden"}}>
                             <div style={{height:"100%",width:`${pct}%`,background:sc,borderRadius:2}}/>
                           </div>
