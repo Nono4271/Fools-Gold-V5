@@ -89,5 +89,8 @@ export function effectiveMarchSpd(cmdSpd, troopBranchOrSlots, armySpdBonus = 0) 
 }
 
 export function marchStepMs(effSpd) {
-  return Math.max(200, 1400 - (effSpd || 60) * 10);
+  const s = effSpd || 60;
+  if (s >= 90) return Math.round(Math.max(3000, 4000 - (s - 90) * (1000 / 48)));  // fast: 3-4s
+  if (s >= 65) return Math.round(Math.max(7000, 8000 - (s - 65) * (1000 / 24)));  // medium: 7-8s
+  return Math.round(Math.max(11000, 12000 - (s - 40) * (1000 / 24)));              // slow: 11-12s
 }
