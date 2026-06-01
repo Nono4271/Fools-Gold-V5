@@ -100,7 +100,7 @@ export default memo(function FortPanel({
       </div>
 
       {/* Upgrade + Move — primary action row at bottom */}
-      {selTile?.owner === "player" && (
+      {selTile?.owner === "player" && (<>
         <div style={{ display: "flex", gap: 5 }}>
           {nextDef && (
             <button onClick={() => upgradeFort?.(fort.id)} style={{
@@ -150,7 +150,7 @@ export default memo(function FortPanel({
             </button>
           </div>
         )}
-      )}
+      </>)}
     </div>
   );
 });
