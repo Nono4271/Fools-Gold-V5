@@ -1754,7 +1754,7 @@ const TIER_ROMAN_MS  = ["I", "II", "III"];
 
 function ManageShipScreen({
   cmd, setTroopSlot, returnTroops, troopCounts, bldgs,
-  unlockedBranches, onBack,
+  unlockedBranches, staminaMax, onBack,
 }) {
   const ub = unlockedBranches || {};
 
@@ -2356,7 +2356,7 @@ function ManageShipScreen({
 function BattleGroupsScreen({
   cmds, setCmds, bldgs, barracksPool, troopCounts,
   sliderVals, setSliderVals, setTroopSlot, returnTroops,
-  playerHqKey, unlockedBranches,
+  playerHqKey, unlockedBranches, staminaMax,
 }) {
   const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
 
@@ -2686,6 +2686,7 @@ function BattleGroupsScreen({
           troopCounts={troopCounts}
           bldgs={bldgs}
           unlockedBranches={unlockedBranches}
+          staminaMax={staminaMax}
           onBack={() => setEditOpen(false)}
         />
       );
@@ -3421,7 +3422,8 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             troopCounts={troopCounts} setTroopSlot={setTroopSlot}
             sliderVals={sliderVals} setSliderVals={setSliderVals}
             assignTroops={assignTroops} returnTroops={returnTroops}
-            playerHqKey={playerHqKey} unlockedBranches={unlockedBranches}/>
+            playerHqKey={playerHqKey} unlockedBranches={unlockedBranches}
+            staminaMax={staminaMax}/>
         )}
         {hqTab === "repairbay" && (
           <RepairBayScreen bldgs={bldgs} woundedTroops={woundedTroops}
