@@ -594,8 +594,8 @@ export default memo(function GameBar({
             onClick={() => setCmdScreenOpen(true)}
           />
           <ActionButton
-            icon="🛡"
-            label="Gear"
+            icon="🎒"
+            label="Bag"
             color="#e0b850"
             accent="#7a5010"
             badge={0}
