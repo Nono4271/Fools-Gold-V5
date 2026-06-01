@@ -249,6 +249,7 @@ export default function RiseToWar() {
   const floatyRef = useRef(null);
   // playerHqRef must be declared before useGacha since it's passed into it.
   const playerHqRef = useRef(null);
+  const onForcedRelocateRef = useRef(null);
   // staminaMaxRef — updated after tome constants derived, read by useGacha when spawning commanders
   const staminaMaxRef = useRef(150);
 
@@ -1529,7 +1530,7 @@ export default function RiseToWar() {
     damageFort,
     emitFortUpdate,
     guardedTiles,
-    onForcedRelocate,
+    onForcedRelocate: (...args) => onForcedRelocateRef.current?.(...args),
   });
 
   useGameLoop({
@@ -2393,6 +2394,7 @@ export default function RiseToWar() {
     applyHqMove(newCenter);
     floaty("🏰 HQ Forced Relocation!", "#cc4444", newCenter);
   }, [tiles, aiHqKeys, playerHqKey, facKey, applyHqMove, setWinner, floaty]);
+  onForcedRelocateRef.current = onForcedRelocate;
 
   // queueTraining(branchKey, amount)
   // branchKey: "faction:branch:tier" e.g. "pirates:swashbucklers:0"
