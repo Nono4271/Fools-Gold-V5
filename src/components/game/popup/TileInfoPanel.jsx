@@ -4,10 +4,11 @@ import { TERR } from "../../../../shared/constants/terrain.js";
 
 // Ownership badge config
 const BADGES = {
-  player: null, // no badge for own tiles
-  crew:   { label: "CREW",  bg: "rgba(20,80,200,.25)",  border: "#2060cc", color: "#60a0ff" },
-  ally:   { label: "ALLY",  bg: "rgba(120,20,200,.25)", border: "#8020cc", color: "#c060ff" },
-  enemy:  { label: "ENEMY", bg: "rgba(200,20,20,.25)",  border: "#cc2020", color: "#ff6060" },
+  player:  null,
+  crew:    { label: "CREW",    bg: "rgba(20,80,200,.25)",   border: "#2060cc", color: "#60a0ff" },
+  faction: { label: "FACTION", bg: "rgba(200,110,20,.25)",  border: "#c06010", color: "#e87830" },
+  ally:    { label: "ALLY",    bg: "rgba(120,20,200,.25)",  border: "#8020cc", color: "#c060ff" },
+  enemy:   { label: "ENEMY",   bg: "rgba(200,20,20,.25)",   border: "#cc2020", color: "#ff6060" },
 };
 
 export function getTileOwnership(selTile, facKey, crewmatePlayerIds) {
@@ -16,7 +17,8 @@ export function getTileOwnership(selTile, facKey, crewmatePlayerIds) {
   if (!selTile.owner && !selTile.ownerPlayerId) return "neutral";
   const pid = selTile.ownerPlayerId;
   if (pid && crewmatePlayerIds?.has(pid)) return "crew";
-  if (selTile.faction === facKey) return "ally";
+  // Same faction keeps, gates, AI tiles — orange "faction" ownership
+  if (selTile.faction === facKey || selTile.homeFaction === facKey) return "faction";
   return "enemy";
 }
 
@@ -40,6 +42,7 @@ export default memo(function TileInfoPanel({
 
   const borderColor = ownership === "player" ? "#3a6a3a"
     : ownership === "crew" ? "#204080"
+    : ownership === "faction" ? "#804010"
     : ownership === "ally" ? "#602080"
     : ownership === "enemy" ? "#802020"
     : "#2a2418";
@@ -63,6 +66,7 @@ export default memo(function TileInfoPanel({
             fontFamily: "'Cinzel',serif", fontSize: 11, fontWeight: 700,
             color: ownership === "player" ? "#c8f0c8"
               : ownership === "crew" ? "#80c0ff"
+              : ownership === "faction" ? "#e87830"
               : ownership === "ally" ? "#c080ff"
               : ownership === "enemy" ? "#ff8080"
               : "#c8a060",

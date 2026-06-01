@@ -1,10 +1,40 @@
-import { memo } from "react";
+import { memo, useState, useEffect, useRef } from "react";
 import { FORT_LEVELS } from "../../../../shared/constants/map.js";
 
 export default memo(function FortPanel({
   fort, selTile, selKey, cmds,
-  upgradeFort, startReposition, setPopupMode,
+  upgradeFort, startReposition, setPopupMode, demolishFort, abandonFort,
 }) {
+  const [deleteMode, setDeleteMode] = useState(null); // null | "demolish" | "abandon"
+  const [countdown, setCountdown]   = useState(0);
+  const timerRef = useRef(null);
+
+  function startDelete(mode) {
+    const secs = mode === "demolish" ? 30 * 60 : 45 * 60;
+    setDeleteMode(mode);
+    setCountdown(secs);
+    timerRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          if (mode === "demolish") demolishFort?.(fort.id);
+          else abandonFort?.(fort.id);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
+  function cancelDelete() {
+    clearInterval(timerRef.current);
+    setDeleteMode(null);
+    setCountdown(0);
+  }
+
+  useEffect(() => () => clearInterval(timerRef.current), []);
+
+  const fmtCountdown = (s) => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
   if (!fort) return null;
 
   const levelDef = FORT_LEVELS[fort.level - 1];
@@ -94,6 +124,32 @@ export default memo(function FortPanel({
             }}>📍 MOVE</button>
           )}
         </div>
+
+        {/* Delete section */}
+        {deleteMode ? (
+          <div style={{ marginTop: 8, padding: "10px", background: "rgba(160,20,20,.1)", border: "1px solid #cc202050", borderRadius: 5 }}>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: "#ff8080", marginBottom: 4, textAlign: "center" }}>
+              {deleteMode === "demolish" ? "🔨 DEMOLISHING..." : "🚪 ABANDONING..."} {fmtCountdown(countdown)}
+            </div>
+            <div style={{ fontSize: 7, color: "#8a6a6a", fontFamily: "'Crimson Pro',serif", fontStyle: "italic", marginBottom: 6, textAlign: "center" }}>
+              {deleteMode === "demolish"
+                ? "Fort removed. Tile stays player-owned."
+                : "Fort removed. Tile released back to neutral."}
+            </div>
+            <button onClick={cancelDelete} style={{ width: "100%", padding: "6px 0", background: "rgba(255,255,255,.05)", border: "1px solid #3a2a2a", color: "#8a6a6a", fontFamily: "'Cinzel',serif", fontSize: 9, borderRadius: 4, cursor: "pointer" }}>
+              ✕ CANCEL
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginTop: 8, display: "flex", gap: 5 }}>
+            <button onClick={() => startDelete("demolish")} style={{ flex: 1, padding: "6px 0", background: "rgba(100,40,10,.3)", border: "1px solid #804020", color: "#cc8040", fontFamily: "'Cinzel',serif", fontSize: 9, fontWeight: 700, borderRadius: 4, cursor: "pointer", lineHeight: 1.4 }}>
+              🔨 DEMOLISH<br/><span style={{ fontSize: 7, fontWeight: 400, opacity: .7 }}>30 min — keeps tile</span>
+            </button>
+            <button onClick={() => startDelete("abandon")} style={{ flex: 1, padding: "6px 0", background: "rgba(120,20,20,.3)", border: "1px solid #cc2020", color: "#ff8080", fontFamily: "'Cinzel',serif", fontSize: 9, fontWeight: 700, borderRadius: 4, cursor: "pointer", lineHeight: 1.4 }}>
+              🚪 ABANDON<br/><span style={{ fontSize: 7, fontWeight: 400, opacity: .7 }}>45 min — loses tile</span>
+            </button>
+          </div>
+        )}
       )}
     </div>
   );
