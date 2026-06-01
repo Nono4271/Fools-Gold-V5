@@ -201,16 +201,22 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
   const [mobResults, setMobResults] = useState(null);
   const [searched, setSearched] = useState(false);
 
-  // Centre of current view — used for radius search
+  // Centre of current view — correct isoXY inverse
   const getViewCentre = useCallback(() => {
-    const pan = panRef.current, zoom = zoomRef.current;
-    const wx = (-pan.x + window.innerWidth  / 2) / zoom;
-    const wy = (-pan.y + window.innerHeight / 2) / zoom;
-    // iso → tile: c = (wx/TW*2 + wy/TH*2)/2 - ROWS/2 etc
-    // Simplified using isoXY inverse
-    const cc = Math.round((wx / (TW/2) + wy / (TH/2)) / 2 - ROWS / 2 + ROWS / 2);
-    const cr = Math.round((wy / (TH/2) - wx / (TW/2)) / 2);
-    return { cc: Math.max(0, cc), cr: Math.max(0, cr) };
+    const pan  = panRef.current  ?? { x: 0, y: 0 };
+    const zoom = zoomRef.current ?? 1;
+    // Screen centre → world coords
+    const wx = (window.innerWidth  / 2 - pan.x) / zoom;
+    const wy = (window.innerHeight / 2 - pan.y) / zoom;
+    // Exact inverse of isoXY:
+    //   cx = (c - r) * TW/2 + ROWS * TW/2
+    //   cy = (c + r) * TH/2 + TOP_PAD
+    const _TW = 80, _TH = 53, _TOP_PAD = 60;
+    const cmr = (wx - ROWS * _TW / 2) / (_TW / 2); // c - r
+    const cpr = (wy - _TOP_PAD)       / (_TH / 2); // c + r
+    const cc = Math.round((cmr + cpr) / 2);
+    const cr = Math.round((cpr - cmr) / 2);
+    return { cc: Math.max(0, Math.min(COLS - 1, cc)), cr: Math.max(0, Math.min(ROWS - 1, cr)) };
   }, [panRef]);
 
   const togglePl = (pl) => setSelected(prev => {
