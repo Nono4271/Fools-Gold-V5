@@ -2793,16 +2793,16 @@ function followupStats(sources) {
 function calcTroopDmg(branchDef, tierData, enemyDef, defDownPct, command, terrMult, dmgModSum, ignoreDef, extraMult, followupSources, totalRounds) {
   if (!tierData) return 0;
   const dmgType    = branchDef?.dmgType ?? "physical";
-  const atk        = (tierData.dmgLo + tierData.dmgHi) / 2; // use midpoint as ATK
+  const atk        = tierData.dmgLo + Math.random() * (tierData.dmgHi - tierData.dmgLo);
   const size       = branchDef?.size ?? "small";
   const upc        = size === "large" ? 4 : size === "medium" ? 50 : 100;
   const effUnits   = effectiveUnits(command, upc);
   const dc         = damageCoeff(dmgModSum || 0);
   const effectiveDef = (ignoreDef || dmgType === "magical") ? 0 : enemyDef * (1 - (defDownPct || 0));
-  const defMult    = 1 + defReduction(effectiveDef); // e.g. 1 + (-0.375) = 0.625
+  const defMult    = 1 + defReduction(effectiveDef);
   const { eligibleRounds, chance } = followupStats(followupSources || []);
-  const followupTerm = totalRounds * eligibleRounds * chance;
-  const raw = dc * atk * effUnits * (1 + followupTerm);
+  const followupTerm = eligibleRounds * chance;
+  const raw = dc * atk * effUnits * (totalRounds + followupTerm);
   return Math.max(1, Math.round(raw * terrMult * (extraMult || 1) * defMult));
 }
 
