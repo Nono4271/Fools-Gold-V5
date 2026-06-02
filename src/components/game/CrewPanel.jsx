@@ -245,6 +245,28 @@ export default memo(function CrewPanel({ onClose, crews, playerCrewId, pendingCr
                 </div>
               </div>
 
+              {/* Crew Help — stub; full UI coming with crew menu redesign */}
+              <div style={{
+                background: "rgba(200,160,96,.06)", border: "1px solid #c8a06030",
+                borderRadius: 6, padding: "10px 12px",
+              }}>
+                <div style={{ ...TEXT_XS, color: "#8a6a30", letterSpacing: ".06em", marginBottom: 6 }}>
+                  CREW HELP
+                </div>
+                <div style={{ ...TEXT_XS, color: "#5a4a30", marginBottom: 8, lineHeight: 1.5 }}>
+                  Help a crew member speed up their current building upgrade.
+                </div>
+                <button style={{
+                  ...BTN_RESET,
+                  width: "100%", padding: "8px 0",
+                  borderRadius: 4,
+                  background: "rgba(200,160,64,.15)", border: "1px solid #c8a04040",
+                  color: GOLD, ...TEXT_XS, cursor: "pointer",
+                }}>
+                  🤝 Help a Member
+                </button>
+              </div>
+
               {/* Member list */}
               <div style={{ ...TEXT_XS, color: "#4a5a6a", letterSpacing: ".06em" }}>
                 MEMBERS ({myCrew.members.length})

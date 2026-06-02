@@ -3,7 +3,7 @@ import { useGameContext } from "../../GameContext.js";
 import { createPortal } from "react-dom";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel, troopPortraitPath } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
-import { BLDG, barracksCapacity, barracksCommandPool, maxAvailLevel, upgCost, upgDuration, cmdCommand, trainRate, trainBatchSecs, maxTrainBatch, trainingQueueCount, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, marketplaceRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown } from "../../../shared/constants/buildings.js";
+import { BLDG, barracksCapacity, barracksCommandPool, maxAvailLevel, upgCost, upgDuration, upgCostQuarter, upgDurationQuarter, upgCostBranch, upgDurationBranch, hqUpgradeBlocker, barracksUpgradeBlocker, trainingUpgradeBlocker, cmdCommand, trainRate, trainBatchSecs, maxTrainBatch, trainingQueueCount, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, marketplaceRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown, crewHallStats, crewHelpAmount, hqSiegeHP, wallsSiegeHP, SHAKY_ALLIANCE_BONUS } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
 const SC = RC;
 
@@ -215,17 +215,8 @@ display:"grid", gridTemplateColumns:"1fr 1fr", gridTemplateRows:"1fr 1fr 1fr", g
 //  ARCHITECTURE -- full-screen left-nav layout
 // -----------------------------------------------------------------------------
 
-const QUARTER_UPGRADE_COST = (lvl) => ({
-stone: Math.round(200 * Math.pow(2.0, lvl)),
-wood:  Math.round(100 * Math.pow(2.0, lvl)),
-gas:   Math.round(50  * Math.pow(2.0, lvl)),
-});
-
-const BRANCH_UPGRADE_COST = (lvl) => ({
-stone: Math.round(120 * Math.pow(1.8, lvl)),
-wood:  Math.round(60  * Math.pow(1.8, lvl)),
-gas:   Math.round(30  * Math.pow(1.8, lvl)),
-});
+const QUARTER_UPGRADE_COST = (lvl) => upgCostQuarter(lvl) || { stone:0, wood:0, gas:0 };
+const BRANCH_UPGRADE_COST  = (lvl) => upgCostBranch(lvl)  || { stone:0, wood:0, gas:0 };
 
 function LevelBar({ lvl, max, color }) {
 return (
@@ -285,7 +276,26 @@ const lvl   = bldgs[bKey]||0;
 const avail = maxAvailLevel(bKey, bldgs.hq||1);
 const isAbsMax = lvl >= def.max;
 const isGated  = !isAbsMax && lvl >= avail;
-const cost     = (!isAbsMax && !isGated) ? upgCost(bKey, lvl) : null;
+
+// Reverse gate blocker (only for buildings that have one)
+let reverseBlocker = null;
+if (!isAbsMax && !isGated) {
+  const targetLvl = lvl + 1;
+  if (bKey === "hq") {
+    reverseBlocker = hqUpgradeBlocker(targetLvl, {
+      barracks: bldgs.barracks||0,
+      training: bldgs.training||0,
+      commandcenter: bldgs.commandcenter||0,
+      q1Lvl: bldgs.quarters?.[0]||0,
+    });
+  } else if (bKey === "barracks") {
+    reverseBlocker = barracksUpgradeBlocker(targetLvl, { training: bldgs.training||0 });
+  } else if (bKey === "training") {
+    reverseBlocker = trainingUpgradeBlocker(targetLvl, { barracks: bldgs.barracks||0, commandcenter: bldgs.commandcenter||0 });
+  }
+}
+
+const cost     = (!isAbsMax && !isGated && !reverseBlocker) ? upgCost(bKey, lvl) : null;
 const ok       = cost && canAfford(cost);
 const inProg   = upgQueue[bKey];
 const nd       = cost ? upgDuration(bKey, lvl+1) : 0;
@@ -302,11 +312,15 @@ return (
 </div>
 </div>
 <div style={{ fontSize:11, color:P.sub, fontFamily:P.ffb, marginBottom:16, lineHeight:1.6 }}>{def.desc}</div>
-{bKey==="barracks" && <div style={{ fontSize:10, color:"#6a8aaa", marginBottom:12 }}>Troops: {barracksCapacity(lvl).toLocaleString()} · Command pool: {barracksCommandPool(lvl)} → <span style={{color:"#aac4d8"}}>{barracksCommandPool(Math.min(lvl+1,10))}</span></div>}
-{bKey==="marketplace" && <div style={{ fontSize:10, color:"#aa7a40", marginBottom:12 }}>Trade rate: {Math.round(marketplaceRate(lvl)*100)}% → <span style={{color:"#c8a060"}}>{Math.round(marketplaceRate(Math.min(lvl+1,10))*100)}%</span> at Lv{Math.min(lvl+1,10)}</div>}
-{bKey==="training" && <div style={{ fontSize:10, color:"#8aaa6a", marginBottom:12 }}>Queues: {trainingQueueCount(lvl)} → <span style={{color:"#aad48a"}}>{trainingQueueCount(Math.min(lvl+1,10))}</span> at Lv{Math.min(lvl+1,10)}</div>}
-{bKey==="storage" && <div style={{ fontSize:10, color:"#6aaa8a", marginBottom:12 }}>Max Resources: {storageMax(lvl).toLocaleString()} → <span style={{color:"#aad4b8"}}>{storageMax(Math.min(lvl+1,20)).toLocaleString()}</span> at Lv{Math.min(lvl+1,20)}</div>}
+{bKey==="hq"          && <div style={{ fontSize:10, color:"#aa8040", marginBottom:12 }}>Siege HP: {(hqSiegeHP(lvl) + wallsSiegeHP(bldgs.walls||0)).toLocaleString()}</div>}
+{bKey==="barracks"    && <div style={{ fontSize:10, color:"#6a8aaa", marginBottom:12 }}>Troops: {barracksCapacity(lvl).toLocaleString()} · Command pool: {barracksCommandPool(lvl)} → <span style={{color:"#aac4d8"}}>{barracksCommandPool(Math.min(lvl+1,20))}</span></div>}
+{bKey==="marketplace" && <div style={{ fontSize:10, color:"#aa7a40", marginBottom:12 }}>Trade rate: {Math.round(marketplaceRate(lvl)*100)}% → <span style={{color:"#c8a060"}}>{Math.round(marketplaceRate(Math.min(lvl+1,5))*100)}%</span> at Lv{Math.min(lvl+1,5)}</div>}
+{bKey==="training"    && <div style={{ fontSize:10, color:"#8aaa6a", marginBottom:12 }}>Queues: {trainingQueueCount(lvl)} → <span style={{color:"#aad48a"}}>{trainingQueueCount(Math.min(lvl+1,20))}</span> at Lv{Math.min(lvl+1,20)}</div>}
+{bKey==="storage"     && <div style={{ fontSize:10, color:"#6aaa8a", marginBottom:12 }}>Max Resources: {storageMax(lvl).toLocaleString()} → <span style={{color:"#aad4b8"}}>{storageMax(Math.min(lvl+1,20)).toLocaleString()}</span> at Lv{Math.min(lvl+1,20)}</div>}
+{bKey==="crewhall"    && lvl > 0 && (() => { const s = crewHallStats(lvl); return <div style={{ fontSize:10, color:"#7aaad8", marginBottom:12 }}>Helps/queue: {s.maxHelps} · Per help: max({(s.pct*100).toFixed(1)}%, {Math.round(s.flatMs/60000)}min)</div>; })()}
+{bKey==="shakyalliance" && lvl > 0 && <div style={{ fontSize:10, color:"#aa70cc", marginBottom:12 }}>+{SHAKY_ALLIANCE_BONUS.command} Command · +{SHAKY_ALLIANCE_BONUS.hiringQueues} Hiring Queue</div>}
 {isGated && <div style={{ fontSize:9, color:"#8a6020", fontFamily:P.ffb, fontStyle:"italic", marginBottom:12 }}>🔒 Upgrade HQ to Lv{avail+1} to unlock next level</div>}
+{reverseBlocker && <div style={{ fontSize:9, color:"#cc6020", fontFamily:P.ffb, fontStyle:"italic", marginBottom:12 }}>🔒 {reverseBlocker}</div>}
 {cost && (
 <div style={{ padding:"12px 14px", background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:6, marginBottom:12 }}>
 <div style={{ fontSize:9, color:P.dim, fontFamily:P.ff, letterSpacing:".08em", marginBottom:8 }}>UPGRADE TO Lv{lvl+1}</div>
@@ -908,7 +922,7 @@ function InfrastructureScreen({ bldgs, setBldgs, rss, setRss, canAfford, upgrade
 const [leftSel, setLeftSel]     = useState("buildings");
 const [selBuilding, setSelBuilding] = useState(null);
 
-const BLDG_KEYS = ["hq","walls","quarry","lumber","forge","refinery","storage","barracks","training","commandcenter","healingtent","voidtap"];
+const BLDG_KEYS = ["hq","walls","quarry","lumber","forge","refinery","storage","barracks","training","commandcenter","healingtent","voidtap","marketplace","crewhall","shakyalliance"];
 
 const primaryFaction = facKey || "pirates";
 const myAlign        = getAlignment(primaryFaction);
