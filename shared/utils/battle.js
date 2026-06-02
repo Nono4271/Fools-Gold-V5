@@ -2720,24 +2720,130 @@ if (durationTroopAtkMult > 1) rs.troopAtkMult *= durationTroopAtkMult;
 if (durationTroopDefMult > 1) rs.troopDefMult *= durationTroopDefMult;
 }
 
-// ── Core troop damage calc ────────────────────────────────────────────────────
-// Fix 3: Attacker troop damage scales off totalArmyCommand (total command capacity of the army)
-// rather than commander level. NPC/defender troops still use lvlMult for balanced scaling.
-// totalArmyCommand = attackerTroops x COMMAND_COST[size]; normalised so 500 cmd = 1.0 baseline.
-function calcTroopDmg(branchDef, tierData, troopDef, defMult, count, lvlMult, terrMult, atkMult, ignoreDef, isAtk, extraMult, round, troopBranch, armyAtkMult, armyFocMult, totalArmyCommand) {
-if (!tierData) return 0;
-const dmgType = branchDef?.dmgType ?? "physical";
-const roll    = tierData.dmgLo + Math.random() * (tierData.dmgHi - tierData.dmgLo);
-// Fix 2: resistance divisor = 60 (was 80) so higher DEF troops have a bigger damage gap
-const resist  = dmgType === "magical" || ignoreDef
-? 1.0
-: Math.max(0, 1 - (troopDef * defMult) / ((troopDef * defMult) + 60));
-const armyMult   = isAtk ? (dmgType === "magical" ? (armyFocMult||1) : (armyAtkMult||1)) : 1;
-const scaleMult  = (isAtk && totalArmyCommand != null)
-? Math.sqrt(Math.max(1, totalArmyCommand) / 500)
-: lvlMult;
-const raw        = Math.max(1, Math.ceil(count)) * roll * scaleMult * terrMult * armyMult * (atkMult||1) * (extraMult||1);
-return Math.max(1, Math.round(raw * resist));
+// ══════════════════════════════════════════════════════════════════════════════
+// ── Core battle formulas (adapted from Theo Harkes / FireHeart)  ─────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Army Command Factor: 25 × Command ÷ (75 + Command)
+function armyCommandFactor(command) {
+  return 25 * command / (75 + command);
+}
+
+// Effective Command: Command × 50 ÷ 3 ÷ (75 + Command)
+function effectiveCommand(command) {
+  return command * 50 / 3 / (75 + command);
+}
+
+// Effective Units: EffectiveCommand × UnitsPerCommand
+// unitsPerCommand: small=100, medium=50, large=4
+function effectiveUnits(command, unitsPerCommand) {
+  return effectiveCommand(command) * unitsPerCommand;
+}
+
+// Damage Coefficient: max(0.10, 1 + sum of relevant damage modifiers)
+// modifiers: positive values increase damage, negative reduce it
+function damageCoeff(modifierSum) {
+  return Math.max(0.10, 1 + modifierSum);
+}
+
+// Physical Defence Reduction: -0.9 × Defence ÷ (120 + Defence)
+// Returns a multiplier (e.g. -0.375 for def=100, meaning damage × 0.625)
+function defReduction(def) {
+  if (!def || def <= 0) return 0;
+  return -0.9 * def / (120 + def);
+}
+
+// Recovery Coefficient: 1 + sum of recovery modifiers
+function recoveryCoeff(modifierSum) {
+  return Math.max(0, 1 + modifierSum);
+}
+
+// Scaling skill bonus per 100 Might/Focus by rarity
+// soldier: 3–5%, veteran: 6–8%, champion: 9–11%
+// Uses commander id hash for consistent per-commander variation within range
+function scalingBonus(rarity, stat, cmdId) {
+  const seed = (cmdId || 0) * 2654435761 >>> 0;
+  const frac = (seed % 100) / 100; // 0.0–0.99 stable per commander
+  let lo, hi;
+  if (rarity === "champion") { lo = 0.09; hi = 0.11; }
+  else if (rarity === "veteran") { lo = 0.06; hi = 0.08; }
+  else { lo = 0.03; hi = 0.05; } // soldier / default
+  const pctPer100 = lo + frac * (hi - lo);
+  return (stat / 100) * pctPer100;
+}
+
+// Heal decay table: index = rounds ago damage was dealt
+// Same round = index 0 (95%), 1 round ago = index 1 (82.7%), etc.
+const HEAL_DECAY = [0.950, 0.827, 0.719, 0.626, 0.544, 0.473, 0.412, 0.358, 0.312, 0.271];
+
+// Weighted average follow-up chance from multiple sources
+// sources: [{ chance, eligibleRounds }, ...]
+function followupStats(sources) {
+  if (!sources || sources.length === 0) return { eligibleRounds: 0, chance: 0 };
+  const totalRounds = sources.reduce((s, src) => s + (src.eligibleRounds || 0), 0);
+  if (totalRounds === 0) return { eligibleRounds: 0, chance: 0 };
+  const weightedChance = sources.reduce((s, src) => s + (src.chance || 0) * (src.eligibleRounds || 0), 0) / totalRounds;
+  return { eligibleRounds: totalRounds, chance: weightedChance };
+}
+
+// ── Unit damage (troops) ──────────────────────────────────────────────────────
+// Formula: DamageCoeff × ATK × EffectiveUnits × (totalRounds × followupEligibleRounds × followupChance)
+// ATK for troops = their base dmg stat from tierData
+// Defence reduction applied as multiplier
+function calcTroopDmg(branchDef, tierData, enemyDef, defDownPct, command, terrMult, dmgModSum, ignoreDef, extraMult, followupSources, totalRounds) {
+  if (!tierData) return 0;
+  const dmgType    = branchDef?.dmgType ?? "physical";
+  const atk        = (tierData.dmgLo + tierData.dmgHi) / 2; // use midpoint as ATK
+  const size       = branchDef?.size ?? "small";
+  const upc        = size === "large" ? 4 : size === "medium" ? 50 : 100;
+  const effUnits   = effectiveUnits(command, upc);
+  const dc         = damageCoeff(dmgModSum || 0);
+  const effectiveDef = (ignoreDef || dmgType === "magical") ? 0 : enemyDef * (1 - (defDownPct || 0));
+  const defMult    = 1 + defReduction(effectiveDef); // e.g. 1 + (-0.375) = 0.625
+  const { eligibleRounds, chance } = followupStats(followupSources || []);
+  const followupTerm = totalRounds * eligibleRounds * chance;
+  const raw = dc * atk * effUnits * (1 + followupTerm);
+  return Math.max(1, Math.round(raw * terrMult * (extraMult || 1) * defMult));
+}
+
+// ── Commander normal attack ───────────────────────────────────────────────────
+// Formula: DamageCoeff × Might × (4 + ArmyCommandFactor)
+// Follow-up: both hits calculated then summed (handled at call site)
+function calcCmdNormalDmg(might, command, dmgModSum) {
+  const dc  = damageCoeff(dmgModSum || 0);
+  const acf = armyCommandFactor(command);
+  return Math.max(1, Math.round(dc * might * (4 + acf)));
+}
+
+// ── Physical skill damage ─────────────────────────────────────────────────────
+// Formula: DamageCoeff × AttackCoeff × Might × (2 + ArmyCommandFactor)
+// attackCoeff = skill% ÷ 100; scalingBonus added to attackCoeff for scaling skills
+function calcCmdPhysicalSkillDmg(might, command, attackCoeff, dmgModSum) {
+  const dc  = damageCoeff(dmgModSum || 0);
+  const acf = armyCommandFactor(command);
+  return Math.max(1, Math.round(dc * attackCoeff * might * (2 + acf)));
+}
+
+// ── Elemental / focus skill damage ────────────────────────────────────────────
+// Formula: DamageCoeff × (2 × Focus + AttackCoeff × 100 × ArmyCommandFactor)
+function calcCmdFocusSkillDmg(focus, command, attackCoeff, dmgModSum) {
+  const dc  = damageCoeff(dmgModSum || 0);
+  const acf = armyCommandFactor(command);
+  return Math.max(1, Math.round(dc * (2 * focus + attackCoeff * 100 * acf)));
+}
+
+// ── Commander heal ────────────────────────────────────────────────────────────
+// Formula: RecoveryCoeff × HealCoeff × 300 × ArmyCommandFactor
+// healCoeff = heal% in coefficient form (200% → 2.0)
+// Capped by heal decay against totalDamageTaken pool
+function calcCmdHeal(command, healCoeff, recoveryModSum, totalDamageTaken, currentRound, damageRound) {
+  const rc      = recoveryCoeff(recoveryModSum || 0);
+  const acf     = armyCommandFactor(command);
+  const raw     = rc * healCoeff * 300 * acf;
+  // Decay cap: index = how many rounds ago damage was dealt
+  const ago     = Math.max(0, Math.min(9, currentRound - (damageRound || currentRound)));
+  const decayCap = totalDamageTaken * (HEAL_DECAY[ago] ?? HEAL_DECAY[9]);
+  return Math.min(raw, decayCap);
 }
 
 // ── Main simulation ───────────────────────────────────────────────────────────
@@ -2857,34 +2963,6 @@ const totalArmyCommand = atkSlotResolved.length > 0
       return (sz === "large" ? 25 : sz === "medium" ? 2 : 1) * totalAtkTroops;
     })();
 
-// Scale commander damage so it contributes ~65% of total output vs troops' ~35%.
-// Derived from: cmdDmg = (65/35) × troopDmg, where troopDmg ≈ troops × avgTierDmg/round.
-const avgAtkTroopDmg  = atkTierData ? (atkTierData.dmgLo + atkTierData.dmgHi) / 2 : 50;
-const troopDmgEstimate = totalAtkTroops * avgAtkTroopDmg;
-// Fix 1: Commander damage uses both atk and foc — physical dmg scales off atk, magical/focus off foc.
-// Scale factor is derived from the combined stat so both matter regardless of dmgType.
-const cmdAtkStat      = cmd.atk || 150;
-const cmdFocStat      = cmd.foc || 0;
-const combinedCmdStat = cmdAtkStat + cmdFocStat * 0.5; // foc is secondary unless troop does focus dmg
-const CMD_ATK_SCALE   = Math.max(8, troopDmgEstimate * (65 / 35) / Math.max(combinedCmdStat, 1));
-// Class bonuses — unlock at Lv20 (must be declared before attackerPhysMult uses them)
-const cmdRespectLevel = cmd.respectLevel ?? cmd.lvl ?? 5;
-const bastionActive   = (cmd.cls === "balanced")   && (cmdRespectLevel >= 20); // balanced gets bastion
-const attackerBonus   = (cmd.cls === "attacker")   && (cmdRespectLevel >= 20); // +10% physical cmd dmg
-const strategistBonus = (cmd.cls === "strategist") && (cmdRespectLevel >= 20); // +10% focus/elemental cmd dmg
-const bastionHpMult = bastionActive ? 2 : 1;
-
-const atkCmdAtkBase   = cmdAtkStat * CMD_ATK_SCALE * passives.cmdAtkMult;
-const atkCmdFocBase   = cmdFocStat * CMD_ATK_SCALE * passives.cmdAtkMult;
-const attackerPhysMult  = attackerBonus   ? 1.10 : 1.0;
-const strategistFocMult = strategistBonus ? 1.10 : 1.0;
-const atkCmdAtk         = atkCmdAtkBase * attackerPhysMult;  // physical cmd dmg
-const atkCmdFoc         = atkCmdFocBase * strategistFocMult; // focus/elemental cmd dmg
-const atkCmdSpd     = cmd.spd || 60;
-const defCmdAtkStat   = dc ? (dc.atk || 80) : 80;
-const defCmdFocStat   = dc ? (dc.foc || 0) : 0;
-const defCmdAtk     = (defCmdAtkStat + defCmdFocStat * 0.5) * CMD_ATK_SCALE;
-
 let atkTroopHp     = totalAtkTroops * atkTroopHpPer * bastionHpMult;
 let defTroopHp     = defTroops      * defTroopHpPer;
 const atkHpMax     = atkTroopHp;
@@ -2903,9 +2981,30 @@ let blockHealRounds= 0;
 let prevRoundVenomDmg = 0; // venom delayed focus damage carries over round to round
 let bleedDmgPerRound  = 0; // bleed physical damage per round
 let bleedRoundsActive = 0; // rounds of bleed remaining
+// Heal decay tracking
+let totalDamageTakenPool = 0; // running total of HP lost — used for skill heal decay cap
+let damageFirstTakenRound = 1; // round when most recent damage pool started accumulating
 
-const atkLvlMult = Math.pow(1.20, atkLvl - 5);
-const defLvlMult = Math.pow(1.20, Math.max(0, defLvl - 2));
+const cmdAtkStat = cmd.atk || 150;
+const cmdFocStat = cmd.foc || 0;
+const atkCmdSpd  = cmd.spd || 60;
+const defCmdSpd2 = dc ? (dc.spd || 40) : 40;
+
+// Scaling attack bonus for this commander (consistent per cmd, varies by rarity)
+const cmdScalingBonus = scalingBonus(cmd.rarity || "soldier", cmdAtkStat + cmdFocStat * 0.5, cmd.id || 0);
+
+// Class bonuses — unlock at Lv20
+const cmdRespectLevel = cmd.respectLevel ?? cmd.lvl ?? 5;
+const bastionActive   = (cmd.cls === "balanced")   && (cmdRespectLevel >= 20);
+const attackerBonus   = (cmd.cls === "attacker")   && (cmdRespectLevel >= 20);
+const strategistBonus = (cmd.cls === "strategist") && (cmdRespectLevel >= 20);
+const bastionHpMult   = bastionActive ? 2 : 1;
+
+// Defender cmd stats for its normal attack formula
+const defCmdMight = dc ? (dc.atk || 80) : 80;
+const defCmdFoc   = dc ? (dc.foc || 0)  : 0;
+const defCommand  = dc ? (dc.commandBudget || dc.troops || 30) : 30;
+const atkCommand  = totalArmyCommand;
 
 const report = {
 atkName:cmd.n, atkIcon:cmd.icon||"⚔", atkLvl,
@@ -2989,6 +3088,8 @@ const bastionDefMult = (bastionActive && round <= 2) ? 2 : 1;
 const rs = {
   cmdMult:1, cmdHits:1, critChance:passives.critChance,
   cmdPctDmg:0, lifesteal:0, healPct:passives.healPerRound,
+  skillHealCoeff:0,          // coefficient for skill heals (subject to decay cap)
+  recoveryModSum:0,          // sum of recovery modifiers for skill heals
   blockHeal:0, enemyNullified:false,
   troopAtkMult:passives.troopAtkMult, troopDefMult:passives.troopDefMult,
   dmgReduce:passives.dmgReduce, troopDmgReduce:0,
@@ -3011,7 +3112,7 @@ const rs = {
   enemySilenced:false,       // Siren Song: enemy commander skill delayed 1 round
   venomApplied:false,        // Assassin's Blade: venom on target (SPD -20%, delayed focus dmg)
   skillDmgBonus:0,           // Thrill of the Hunt: % bonus to all active skill damage
-  followupChance:0,          // Did You Want More: chance for follow-up normal attack (rounds 1-5)
+  followupSources:[],        // [{ chance, eligibleRounds }] — sources of follow-up attacks
   pendingVenomDmg:0,         // carry-over venom focus damage to apply next round
   allyDmgBonus:0,            // A Countess's Seduction: allied DMG up
   enemyDmgDown:0,            // A Countess's Seduction: enemy DMG down
@@ -3421,10 +3522,9 @@ if (blockHealRounds > 0) blockHealRounds--;
 const gi = Math.min(0.90, rs.garrisonIgnore);
 const roundTerrBonus = 1 + fort*(1-gi) / 100;
 
-// Heal
+// Passive heal (Healing Tent + passive heal skills) — uses simple healPct, no decay
 if (rs.healPct > 0 && totalAtkLostHp > 0 && !healBlocked) {
   const restored   = Math.min(totalAtkLostHp, Math.round(totalAtkLostHp * rs.healPct));
-  // Distribute healed HP across slots proportionally by their max HP
   let healLeft = restored;
   for (let si = 0; si < atkSlotHp.length && healLeft > 0; si++) {
     const sl = atkSlotResolved[si];
@@ -3433,10 +3533,33 @@ if (rs.healPct > 0 && totalAtkLostHp > 0 && !healBlocked) {
     atkSlotHp[si] = Math.min(slMax, atkSlotHp[si] + portion);
     healLeft -= portion;
   }
-  atkTroopHp     = Math.min(atkHpMax, atkTroopHp + restored - healLeft);
-  totalAtkLostHp = Math.max(0, totalAtkLostHp - (restored - healLeft));
-  const troopsBack = Math.round((restored - healLeft) / atkTroopHpPer);
-  if (troopsBack > 0) roundLog.actions.push({ actor:cmd.n, action:`💚 ${troopsBack} troops restored`, dmg:-troopsBack, isSkill:true, isHeal:true, troopsBack, atkRemaining:Math.round(atkTroopHp/atkTroopHpPer) });
+  const actualRestored = restored - healLeft;
+  atkTroopHp     = Math.min(atkHpMax, atkTroopHp + actualRestored);
+  totalAtkLostHp = Math.max(0, totalAtkLostHp - actualRestored);
+  const troopsBack = Math.round(actualRestored / atkTroopHpPer);
+  if (troopsBack > 0) roundLog.actions.push({ actor:cmd.n, action:`💚 ${troopsBack} troops restored (passive)`, dmg:-troopsBack, isSkill:true, isHeal:true, troopsBack, atkRemaining:Math.round(atkTroopHp/atkTroopHpPer) });
+}
+
+// Skill heal — uses commander heal formula with decay cap
+if (rs.skillHealCoeff > 0 && !healBlocked) {
+  const healAmt = calcCmdHeal(atkCommand, rs.skillHealCoeff, rs.recoveryModSum || 0, totalDamageTakenPool, round, damageFirstTakenRound);
+  const capped  = Math.min(totalAtkLostHp, Math.max(0, Math.round(healAmt)));
+  if (capped > 0) {
+    let healLeft2 = capped;
+    for (let si = 0; si < atkSlotHp.length && healLeft2 > 0; si++) {
+      const sl = atkSlotResolved[si];
+      const slMax = sl.troops * sl.hpPer * bastionHpMult;
+      const portion = Math.min(healLeft2, Math.max(0, slMax - atkSlotHp[si]));
+      atkSlotHp[si] = Math.min(slMax, atkSlotHp[si] + portion);
+      healLeft2 -= portion;
+    }
+    const actualSkillHeal = capped - healLeft2;
+    atkTroopHp = Math.min(atkHpMax, atkTroopHp + actualSkillHeal);
+    totalAtkLostHp = Math.max(0, totalAtkLostHp - actualSkillHeal);
+    totalDamageTakenPool = Math.max(0, totalDamageTakenPool - actualSkillHeal);
+    const troopsBack2 = Math.round(actualSkillHeal / atkTroopHpPer);
+    if (troopsBack2 > 0) roundLog.actions.push({ actor:cmd.n, action:`💚 ${troopsBack2} troops healed (skill)`, dmg:-troopsBack2, isSkill:true, isHeal:true, troopsBack:troopsBack2, atkRemaining:Math.round(atkTroopHp/atkTroopHpPer) });
+  }
 }
 
 // % HP nuke
@@ -3461,27 +3584,52 @@ for (const ent of order) {
   // ── Attacker commander ────────────────────────────────────────────────
   if (ent.id === "atkCmd") {
     if (defTroopHp <= 0) continue;
-    for (let h = 0; h < rs.cmdHits; h++) {
-      const isCrit       = Math.random() < rs.critChance;
-      // Focus commanders (magical dmgType troops) bypass physical defense and use foc stat
-      const troopDmgType = atkBranchDef?.dmgType ?? "physical";
-      const usesFoc      = troopDmgType === "magical" || (cmdFocStat > cmdAtkStat);
-      const effectiveDef = defTroopDef * (1 - (rs.enemyDefDown || 0));
-      const red          = usesFoc ? 1.0 : Math.max(0, 1 - effectiveDef/(effectiveDef+60));
-      const cmdDmgBase   = usesFoc ? atkCmdFoc : atkCmdAtk;
-      const raw          = cmdDmgBase * rs.cmdMult * (isCrit?1.5:1.0) * (0.85+Math.random()*0.30) * (usesFoc ? armyFocMult : armyAtkMult);
-      const dmg          = Math.max(1, Math.round(raw * red));
-      const prevDef      = defTroopHp;
-      if (rs.lifesteal > 0 && !healBlocked) {
-        const gain = Math.round(dmg * rs.lifesteal);
-        atkTroopHp     = Math.min(atkHpMax, atkTroopHp + gain);
-        totalAtkLostHp = Math.max(0, totalAtkLostHp - gain);
-        const t = Math.round(gain / atkTroopHpPer);
-        if (t > 0) roundLog.actions.push({ actor:cmd.n, action:`🧛 Lifesteal +${t} troops`, dmg:-t, isSkill:true, isHeal:true });
-      }
-      defTroopHp = Math.max(0, defTroopHp - dmg);
-      roundLog.actions.push({ actor:cmd.n, action:`${cmd.n} strikes${isCrit?" (CRIT!)":""}`, dmg, defKilled:Math.max(0,Math.round((prevDef-defTroopHp)/defTroopHpPer)), defRemaining:Math.max(0,Math.round(defTroopHp/defTroopHpPer)), isPlayer:true });
+    // Build damage modifier sum from rs state
+    const physModSum = (rs.cmdMult - 1)
+      + (attackerBonus ? 0.10 : 0)
+      + cmdScalingBonus
+      + (rs.enemyDmgTakenUp || 0)
+      - (rs.enemyAtkReduce || 0);
+    const focModSum  = (rs.cmdMult - 1)
+      + (strategistBonus ? 0.10 : 0)
+      + cmdScalingBonus
+      + (rs.enemyDmgTakenUp || 0)
+      - (rs.enemyAtkReduce || 0);
+    const troopDmgType = atkBranchDef?.dmgType ?? "physical";
+    const usesFoc      = troopDmgType === "magical" || (cmdFocStat > cmdAtkStat);
+
+    // Primary hit
+    const hit1 = usesFoc
+      ? calcCmdFocusSkillDmg(cmdFocStat, atkCommand, 1.0 + (rs.focusDmgBonus||0), focModSum)
+      : calcCmdNormalDmg(cmdAtkStat, atkCommand, physModSum);
+
+    // Follow-up hit — calculated separately then summed
+    const { eligibleRounds: fuRounds, chance: fuChance } = followupStats(rs.followupSources || []);
+    const followupExpected = round * fuRounds * fuChance; // expected follow-up contribution
+    const hit2 = followupExpected > 0
+      ? (usesFoc
+          ? calcCmdFocusSkillDmg(cmdFocStat, atkCommand, 1.0 + (rs.focusDmgBonus||0), focModSum)
+          : calcCmdNormalDmg(cmdAtkStat, atkCommand, physModSum))
+      : 0;
+
+    // Apply defence reduction to each hit
+    const effectiveDef = defTroopDef * (1 - (rs.enemyDefDown || 0));
+    const defMult      = usesFoc ? 1.0 : Math.max(0, 1 + defReduction(effectiveDef));
+    const isCrit       = Math.random() < (rs.critChance || 0);
+    const critMult     = isCrit ? 1.5 : 1.0;
+    const totalDmg     = Math.max(1, Math.round((hit1 + hit2 * followupExpected) * defMult * critMult));
+
+    if (rs.lifesteal > 0 && !healBlocked) {
+      const gain = Math.round(totalDmg * rs.lifesteal);
+      atkTroopHp     = Math.min(atkHpMax, atkTroopHp + gain);
+      totalAtkLostHp = Math.max(0, totalAtkLostHp - gain);
+      totalDamageTakenPool = Math.max(0, totalDamageTakenPool - gain);
+      const t = Math.round(gain / atkTroopHpPer);
+      if (t > 0) roundLog.actions.push({ actor:cmd.n, action:`🧛 Lifesteal +${t} troops`, dmg:-t, isSkill:true, isHeal:true });
     }
+    const prevDef  = defTroopHp;
+    defTroopHp = Math.max(0, defTroopHp - totalDmg);
+    roundLog.actions.push({ actor:cmd.n, action:`${cmd.n} strikes${isCrit?" (CRIT!)":""}${hit2>0?" + follow-up":""}`, dmg:totalDmg, defKilled:Math.max(0,Math.round((prevDef-defTroopHp)/defTroopHpPer)), defRemaining:Math.max(0,Math.round(defTroopHp/defTroopHpPer)), isPlayer:true });
 
   // ── Attacker slot ─────────────────────────────────────────────────────
   } else if (ent.id?.startsWith("atkSlot_")) {
@@ -3492,14 +3640,25 @@ for (const ent of order) {
     // on_hit troop skills from this slot — pass primary defTroopBranch for immunity
     procTroopSkills(sl.skills, "on_hit", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null);
 
-    const count    = Math.ceil(atkSlotHp[slotIdx] / sl.hpPer);
-    const defDown  = 1 - (rs.enemyDefDown || 0);
-    const hits     = rs.troopDoubleAtk ? 2 : 1;
+    const count     = Math.ceil(atkSlotHp[slotIdx] / sl.hpPer);
     const slotLabel = sl.branchDef?.label || `Slot ${slotIdx+1}`;
+    const hits      = rs.troopDoubleAtk ? 2 : 1;
 
     for (let hi = 0; hi < hits; hi++) {
       if (defTroopHp <= 0) break;
-      let dmg = calcTroopDmg(sl.branchDef, sl.tierData, defTroopDef, defDown, count, atkLvlMult, 1, rs.troopAtkMult, false, true, mod, round, sl.branch, armyAtkMult, armyFocMult, totalArmyCommand);
+      const troopDmgModSum = (rs.troopAtkMult - 1) + (rs.enemyDmgTakenUp || 0) - (rs.enemyAtkReduce || 0);
+      const effectiveDefDown = rs.enemyDefDown || 0;
+      let dmg = calcTroopDmg(
+        sl.branchDef, sl.tierData,
+        defTroopDef, effectiveDefDown,
+        atkCommand,
+        roundTerrBonus,
+        troopDmgModSum,
+        false,
+        mod,
+        rs.followupSources || [],
+        round
+      );
       if (rs.troopBonusDmgMult > 0) {
         const bonus = Math.round(dmg * rs.troopBonusDmgMult);
         dmg += bonus;
@@ -3524,9 +3683,17 @@ for (const ent of order) {
 
     // Counter attack — use primary def slot for counter stats
     if (rs.troopCounterAtk && defTroopHp > 0) {
-      const cCount = Math.ceil(defTroopHp / defTroopHpPer);
-      const cDmg   = calcTroopDmg(_defBranchDef, _defTierData, sl.def, bastionDefMult * rs.troopDefMult, cCount, defLvlMult, roundTerrBonus, 1, false, false, defMod, round, primaryDefSlot?.branch ?? dc?.troopBranch, 1, 1);
-      const cFinal = Math.max(1, Math.round(cDmg * 0.50 * (1 - rs.enemyDmgReduce) * (1 - rs.dmgReduce)));
+      const cDmg = calcTroopDmg(
+        _defBranchDef, _defTierData,
+        atkTroopDef, 0,
+        defCommand,
+        roundTerrBonus,
+        -(rs.enemyDmgReduce || 0) - (rs.dmgReduce || 0),
+        false,
+        defMod,
+        [], round
+      );
+      const cFinal = Math.max(1, Math.round(cDmg * 0.50));
       const prevSlotHp = atkSlotHp[slotIdx];
       atkSlotHp[slotIdx] = Math.max(0, atkSlotHp[slotIdx] - cFinal);
       const hpLost = prevSlotHp - atkSlotHp[slotIdx];
@@ -3552,10 +3719,10 @@ for (const ent of order) {
       rs.enemyConfused--;
       if (Math.random() < 0.5) {
         // Confused — attacks own troops
-        const atkRes2  = defTroopDef * bastionDefMult;
-        const red2     = Math.max(0, 1 - atkRes2/(atkRes2+60));
-        const raw2     = defCmdAtk * (0.85+Math.random()*0.30) * 0.8;
-        const selfDmg  = Math.max(1, Math.round(raw2 * red2));
+        const selfDmg = Math.max(1, Math.round(
+          calcCmdNormalDmg(defCmdMight, defCommand, 0) * 0.8
+          * Math.max(0, 1 + defReduction(defTroopDef * bastionDefMult))
+        ));
         const prevDef  = defTroopHp;
         // distribute self-damage across def slots
         let sdLeft = selfDmg;
@@ -3573,15 +3740,18 @@ for (const ent of order) {
     }
     if (Math.random() < rs.enemyMissChance) { roundLog.actions.push({ actor:"Enemy Cmd", action:"Enemy commander missed!", dmg:0 }); continue; }
     if (rs.invisibleUnits > 0 && Math.random() < 0.30) { roundLog.actions.push({ actor:"Enemy Cmd", action:"🌑 Attack evaded — target invisible!", dmg:0 }); continue; }
-    const atkRes3  = atkTroopDef * bastionDefMult * rs.troopDefMult;
-    const red3     = Math.max(0, 1 - atkRes3/(atkRes3+60));
-    const eMod     = (1 - rs.enemyAtkReduce) * (1 - rs.enemyDmgReduce) * (1 - rs.dmgReduce);
-    const raw3     = defCmdAtk * roundTerrBonus * (0.85+Math.random()*0.30) * eMod * defMod;
-    const dmg      = Math.max(1, Math.round(raw3 * red3));
+    const eMod     = (1 - (rs.enemyAtkReduce||0)) * (1 - (rs.enemyDmgReduce||0)) * (1 - (rs.dmgReduce||0));
+    const defPhysModSum = -(1 - eMod); // convert multiplier to modifier sum
+    const defDmg = calcCmdNormalDmg(defCmdMight, defCommand, defPhysModSum);
+    const defAtkDefMult = Math.max(0, 1 + defReduction(atkTroopDef * (rs.troopDefMult||1) * bastionDefMult));
+    const dmg    = Math.max(1, Math.round(defDmg * defAtkDefMult * roundTerrBonus));
     const prevAtk  = atkTroopHp;
     atkTroopHp     = Math.max(0, atkTroopHp - dmg);
-    totalAtkLostHp += (prevAtk - atkTroopHp);
-    roundLog.actions.push({ actor:"Enemy Cmd", action:`${report.defCmdIcon} Enemy commander strikes`, dmg, atkKilled:Math.max(0,Math.round((prevAtk-atkTroopHp)/atkTroopHpPer)), atkRemaining:Math.max(0,Math.round(atkTroopHp/atkTroopHpPer)), isPlayer:false });
+    const hpLost   = prevAtk - atkTroopHp;
+    totalAtkLostHp += hpLost;
+    totalDamageTakenPool += hpLost;
+    damageFirstTakenRound = round;
+    roundLog.actions.push({ actor:"Enemy Cmd", action:`${report.defCmdIcon} Enemy commander strikes`, dmg, atkKilled:Math.max(0,Math.round(hpLost/atkTroopHpPer)), atkRemaining:Math.max(0,Math.round(atkTroopHp/atkTroopHpPer)), isPlayer:false });
 
   // ── Defender slot ─────────────────────────────────────────────────────
   } else if (ent.id?.startsWith("defSlot_")) {
@@ -3607,12 +3777,12 @@ for (const ent of order) {
     // on_hit troop skills — this def slot targeting attacker
     procTroopSkills(dsl.skills, "on_hit", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null);
 
-    const rangedReduce = (dsl.branchDef?.role === "ranged" && rs.rangedDmgReduce > 0) ? (1 - rs.rangedDmgReduce) : 1;
-    const eMod2     = (1 - rs.enemyDmgReduce) * (1 - rs.troopDmgReduce) * (1 - rs.dmgReduce) * rangedReduce;
-    const dCount    = Math.ceil(defSlotHp[dSlotIdx] / dsl.hpPer);
+    const rangedReduce = (dsl.branchDef?.role === "ranged" && rs.rangedDmgReduce > 0) ? rs.rangedDmgReduce : 0;
+    const defSlotModSum = -(rs.enemyDmgReduce||0) - (rs.troopDmgReduce||0) - (rs.dmgReduce||0) - rangedReduce;
     const dSlotMod  = troopSizeModifier(dsl.branchDef?.size ?? null, atkSize);
-    const dmgD      = Math.max(1, Math.round(
-      calcTroopDmg(dsl.branchDef, dsl.tierData, atkTroopDef, bastionDefMult * rs.troopDefMult, dCount, defLvlMult, roundTerrBonus, 1, false, false, dSlotMod, round, dsl.branch, 1, 1) * eMod2
+    const dCount    = Math.ceil(defSlotHp[dSlotIdx] / dsl.hpPer);
+    const dmgD = Math.max(1, Math.round(
+      calcTroopDmg(dsl.branchDef, dsl.tierData, atkTroopDef * (rs.troopDefMult||1) * bastionDefMult, 0, defCommand, roundTerrBonus, defSlotModSum, false, dSlotMod, [], round)
     ));
     // Distribute this slot's damage proportionally across alive atk slots
     const prevAtkTotal2 = atkTroopHp;
@@ -3628,8 +3798,11 @@ for (const ent of order) {
       }
     }
     const newAtkTotalHp2 = atkSlotHp.reduce((s,h)=>s+h,0);
+    const hpLostD = prevAtkTotal2 - newAtkTotalHp2;
     atkTroopHp     = newAtkTotalHp2;
-    totalAtkLostHp += (prevAtkTotal2 - newAtkTotalHp2);
+    totalAtkLostHp += hpLostD;
+    totalDamageTakenPool += hpLostD;
+    damageFirstTakenRound = round;
 
     // on_hit_received — attacker's primary slot reacts
     procTroopSkills(atkSlotResolved[0]?.skills ?? atkTroopSkills, "on_hit_received", atkSkillLevels, rs, roundLog, "Troops", dsl.branch ?? null);
