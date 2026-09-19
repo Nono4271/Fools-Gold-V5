@@ -49,6 +49,19 @@
     </script>
   </head>
   <body>
+    <!-- TEMP DEBUG CONSOLE — remove once we're done chasing the freeze/crash bug.
+         Visit the site with ?debug on the end of the URL to show it, e.g.
+         https://your-preview-url.pages.dev/?debug
+         Tap the little floating circle to open the console panel and see
+         real JS errors/logs on-device, no computer needed. -->
+    <script>
+      if (location.search.indexOf('debug') !== -1) {
+        var erudaScript = document.createElement('script');
+        erudaScript.src = 'https://cdn.jsdelivr.net/npm/eruda';
+        document.body.appendChild(erudaScript);
+        erudaScript.onload = function () { window.eruda && window.eruda.init(); };
+      }
+    </script>
     <div id="root"></div>
     <div id="portal-root" style="position:fixed;inset:0;pointer-events:none;z-index:9000;"></div>
     <script type="module" src="/src/main.tsx"></script>
