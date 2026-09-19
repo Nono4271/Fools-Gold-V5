@@ -93,6 +93,50 @@ eruda console, and screenshot whatever `[PAN_DEBUG]` lines appear (or
 don't — their absence is also informative) plus any Gacha/Commander crash
 error. That will tell us which theory is right instead of guessing further.
 
+### Update: root cause found for the Commander-screen crash (pan-stuck theory disproved)
+Console logs captured via the `?debug` eruda console (see instrumentation
+above) showed:
+- `isPanning` toggling true/false normally on every drag, with no stuck
+  state and no `isUITarget` blocks logged anywhere. **The stuck-ref theory
+  is disproved** — panning itself isn't the bug.
+- `[ServerSync] Disconnected — reconnecting in 30000 ms` firing on a 30s
+  cadence — this is expected right now since there's no real multiplayer
+  server running yet, not a bug. Coincidentally similar cadence to the
+  reported "30s freeze," but not the actual cause (confirmed with the
+  project owner).
+- The actual crash:
+  ```
+  ReferenceError: Can't find variable: staminaMax
+  TypeError: null is not an object (evaluating 'this._texture.off')
+  ```
+
+**Root cause (fixed):** `CommanderDetail` in `src/components/screens/CommanderScreen.jsx`
+renders a Stamina block that references `staminaMax` directly, but the
+component never pulls it from context or props — it's simply undefined in
+that scope, so React throws the moment this component renders. This is
+the component rendered for a selected commander's full detail view, which
+explains the **Commander screen crash**.
+
+**Fix:** added `const { staminaMax = 150 } = useGameContext();` at the top
+of `CommanderDetail` (the `useGameContext` import already existed in this
+file — it's used by another component in the same file).
+
+**Still open:**
+- The **Gacha screen crash is a separate, still-uncaptured bug** —
+  `GachaScreen.jsx` never renders `CommanderDetail` and doesn't reference
+  `staminaMax` at all, so this fix does not touch it. Needs its own
+  `?debug` repro: trigger the Gacha crash specifically (without also
+  opening Commander) and grab whatever error eruda shows.
+- The secondary `TypeError: null is not an object (evaluating
+  'this._texture.off')` is a PixiJS-level error — likely fallout from the
+  `staminaMax` crash aborting a render mid-way and leaving a texture
+  cleanup path in a bad state, but not confirmed. Worth re-checking once
+  the Gacha crash is also fixed, in case it stops happening on its own.
+- The `?debug` pan instrumentation in `MapRenderer.jsx`/`index.html` can
+  stay in for now since it's harmless (gated behind the URL flag) and may
+  still be useful for the Gacha repro — remove once both crashes are
+  confirmed fixed.
+
 ### Known open items (not fixed yet)
 - Confirm the crew-mutation fix actually resolves the freeze/crash — needs
   in-game retest since diagnosis was from static code reading (no console
