@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo } from "react";
 import * as PIXI from "pixi.js";
+import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
 
 /* ─── Tile geometry ──────────────────────────────────────────────────────── */
@@ -1376,6 +1377,7 @@ function buildFortSprite(fort, PIXI, texCache, fortLayer) {
         applySprite(sp);
       }
     }).catch(() => {
+      if (fortLayer.destroyed) return;
       // Fort sprite not found — render a fallback diamond
       const gfx = new PIXI.Graphics();
       gfx.beginFill(0x8a6020, 0.8);
@@ -1521,8 +1523,9 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
     PIXI.Texture.fromURL(spriteUrl).then(tex => {
       texCache[spriteUrl] = tex;
+      if (group.destroyed) return;
       if (placeholderGfx.parent) placeholderGfx.parent.removeChild(placeholderGfx);
-      placeholderGfx.destroy();
+      if (!placeholderGfx.destroyed) placeholderGfx.destroy();
       if (!group.destroyed) {
         const sp = new PIXI.Sprite(tex);
         applySprite(sp);
@@ -1696,157 +1699,6 @@ function drawMarchLines(gfx, cmds, reinMarches, tiles) {
   (reinMarches || []).forEach(rm => drawPath(rm.path.slice(rm.step), 0x2299ff)); // blue for reinforcements
 }
 
-function drawCmdIcons(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlayerIdMap) {
-  gfx.clear();
-  if (textCont) {
-    const toDestroy = [...textCont.children];
-    toDestroy.forEach(c => { textCont.removeChild(c); c.destroy(); });
-  }
-  const byTile = buildCByTile(cmds);
-  for (const [key, tileCmds] of Object.entries(byTile)) {
-    const tile = tiles[key];
-    if (!tile) continue;
-    const { cx, cy } = isoXY(tile.c, tile.r);
-    const elev = tile.isWin ? 10 : 4;
-    const sy = cy - elev;
-    const playerG = tileCmds.filter(c => c.owner === "player");
-    const allAiG  = tileCmds.filter(c => c.owner !== "player");
-    const crewG = allAiG.filter(c => {
-      const pid = c.ownerPlayerId || aiPlayerIdMap?.get(key);
-      return pid && crewPids?.has(pid);
-    });
-    const factionG = allAiG.filter(c => c.faction === playerFacKey && !crewG.includes(c));
-    const enemyG = allAiG.filter(c => !crewG.includes(c) && !factionG.includes(c));
-    const groups = [];
-    if (playerG.length)  groups.push({ cmds: playerG,  col: 0x22cc55 }); // green
-    if (crewG.length)    groups.push({ cmds: crewG,    col: 0x2299ff }); // blue
-    if (factionG.length) groups.push({ cmds: factionG, col: 0xaa44ff }); // purple
-    if (enemyG.length)   groups.push({ cmds: enemyG,   col: 0xdd3322 }); // red
-    groups.forEach(({ cmds: grp, col }, gi) => {
-      const ey = sy + TH * 0.72 - gi * 6;
-      gfx.beginFill(col, 0.13); gfx.lineStyle(1.4, col, 1); gfx.drawEllipse(cx,ey,15,5); gfx.lineStyle(0); gfx.endFill();
-      const visible = grp.slice(0, 3);
-      const spacing = visible.length > 1 ? 14 : 0;
-      visible.forEach((cmd, i) => {
-        const dx = (i - (visible.length-1)/2) * spacing;
-        gfx.beginFill(0x000000,0.45); gfx.drawCircle(cx+dx+1,ey-10,9); gfx.endFill();
-        gfx.beginFill(col,0.9);       gfx.drawCircle(cx+dx,  ey-11,9); gfx.endFill();
-        gfx.beginFill(0x000000,0.55); gfx.drawCircle(cx+dx,  ey-11,7); gfx.endFill();
-        if (textCont) {
-          if (cmd.bust) {
-            const tex = PIXI.Texture.from(cmd.bust);
-            const sprite = new PIXI.Sprite(tex);
-            sprite.width = 14; sprite.height = 14;
-            sprite.anchor.set(0.5, 0.5); sprite.x = cx+dx; sprite.y = ey-11;
-            const mask = new PIXI.Graphics();
-            mask.beginFill(0xffffff); mask.drawCircle(cx+dx, ey-11, 7); mask.endFill();
-            sprite.mask = mask;
-            textCont.addChild(mask);
-            textCont.addChild(sprite);
-          } else if (cmd.icon) {
-            const txt = new PIXI.Text(cmd.icon, { fontSize: 10, align: "center" });
-            txt.anchor.set(0.5, 0.5); txt.x = cx+dx; txt.y = ey-11;
-            textCont.addChild(txt);
-          }
-        }
-      });
-      if (grp.length > 3) { gfx.beginFill(col,0.7); gfx.drawCircle(cx+14,ey-8,5); gfx.endFill(); }
-    });
-  }
-}
-
-// Lerp version: positions marching commanders smoothly between tiles.
-// lerpState: Map uid → { fromX, fromY, toX, toY, startTime, stepMs }
-// Uses the snapped-to-tile position for stationary commanders.
-function drawCmdIconsLerp(gfx, textCont, cmds, tiles, crewPids, playerFacKey, aiPlayerIdMap, lerpState) {
-  gfx.clear();
-  if (textCont) {
-    const toDestroy = [...textCont.children];
-    toDestroy.forEach(c => { textCont.removeChild(c); c.destroy(); });
-  }
-  const now = Date.now();
-
-  // Build position map: uid → { px, py } (interpolated pixel position)
-  const cmdPos = new Map();
-  for (const cmd of cmds) {
-    if (!cmd.tk) continue;
-    const lerp = lerpState.get(cmd.uid);
-    if (lerp && cmd.march) {
-      const t = Math.min(1, (now - lerp.startTime) / lerp.stepMs);
-      // ease-in-out cubic
-      const e = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
-      cmdPos.set(cmd.uid, { px: lerp.fromX + (lerp.toX - lerp.fromX) * e, py: lerp.fromY + (lerp.toY - lerp.fromY) * e });
-    } else {
-      const tile = tiles[cmd.tk];
-      if (!tile) continue;
-      const { cx, cy } = isoXY(tile.c, tile.r);
-      const elev = tile.isWin ? 10 : 4;
-      cmdPos.set(cmd.uid, { px: cx, py: cy - elev });
-    }
-  }
-
-  // Group commanders by their current tile key for shadow ellipses, then draw icons at lerp pos
-  const byTile = buildCByTile(cmds);
-  for (const [key, tileCmds] of Object.entries(byTile)) {
-    const tile = tiles[key];
-    if (!tile) continue;
-    const { cx, cy } = isoXY(tile.c, tile.r);
-    const elev = tile.isWin ? 10 : 4;
-    const sy = cy - elev;
-    const playerG = tileCmds.filter(c => c.owner === "player");
-    const allAiG  = tileCmds.filter(c => c.owner !== "player");
-    const crewG = allAiG.filter(c => {
-      const pid = c.ownerPlayerId || aiPlayerIdMap?.get(key);
-      return pid && crewPids?.has(pid);
-    });
-    const factionG = allAiG.filter(c => c.faction === playerFacKey && !crewG.includes(c));
-    const enemyG = allAiG.filter(c => !crewG.includes(c) && !factionG.includes(c));
-    const groups = [];
-    if (playerG.length)  groups.push({ cmds: playerG,  col: 0x22cc55 });
-    if (crewG.length)    groups.push({ cmds: crewG,    col: 0x2299ff });
-    if (factionG.length) groups.push({ cmds: factionG, col: 0xaa44ff });
-    if (enemyG.length)   groups.push({ cmds: enemyG,   col: 0xdd3322 });
-    groups.forEach(({ cmds: grp, col }, gi) => {
-      const ey = sy + TH * 0.72 - gi * 6;
-      // Shadow ellipse stays on the tile
-      gfx.beginFill(col, 0.13); gfx.lineStyle(1.4, col, 1); gfx.drawEllipse(cx, ey, 15, 5); gfx.lineStyle(0); gfx.endFill();
-      const visible = grp.slice(0, 3);
-      const spacing = visible.length > 1 ? 14 : 0;
-      visible.forEach((cmd, i) => {
-        const pos = cmdPos.get(cmd.uid);
-        if (!pos) return;
-        const dx = (i - (visible.length-1)/2) * spacing;
-        const ipx = pos.px + dx;
-        const ipy = pos.py + TH * 0.72 - gi * 6 - 11;
-        gfx.beginFill(0x000000, 0.45); gfx.drawCircle(ipx+1, ipy+1, 9); gfx.endFill();
-        gfx.beginFill(col, 0.9);       gfx.drawCircle(ipx,   ipy,   9); gfx.endFill();
-        gfx.beginFill(0x000000, 0.55); gfx.drawCircle(ipx,   ipy,   7); gfx.endFill();
-        if (textCont) {
-          if (cmd.bust) {
-            const tex = PIXI.Texture.from(cmd.bust);
-            const sprite = new PIXI.Sprite(tex);
-            sprite.width = 14; sprite.height = 14;
-            sprite.anchor.set(0.5, 0.5); sprite.x = ipx; sprite.y = ipy;
-            const mask = new PIXI.Graphics();
-            mask.beginFill(0xffffff); mask.drawCircle(ipx, ipy, 7); mask.endFill();
-            sprite.mask = mask;
-            textCont.addChild(mask);
-            textCont.addChild(sprite);
-          } else if (cmd.icon) {
-            const txt = new PIXI.Text(cmd.icon, { fontSize: 10, align: "center" });
-            txt.anchor.set(0.5, 0.5); txt.x = ipx; txt.y = ipy;
-            textCont.addChild(txt);
-          }
-        }
-      });
-      if (grp.length > 3) { gfx.beginFill(col, 0.7); gfx.drawCircle(cx+14, ey-8, 5); gfx.endFill(); }
-    });
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════════════
-   MAP RENDERER COMPONENT
-══════════════════════════════════════════════════════════════════════════ */
 export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles, guardedTileKeys, spawns, protectedTileKeys }, ref) {
 
   const containerRef   = useRef(null);
@@ -2010,6 +1862,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     app.view.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%";
     el.appendChild(app.view);
     appRef.current = app;
+    clearHQCache();
+    clearFortCache();
 
     // Detect iOS early — needed for both props-sprite setup and phase-2 skip.
     // iOS 16+ has requestIdleCallback so we can't use its presence as a proxy.
@@ -2397,9 +2251,19 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       redrawHQs();
     }
 
+    function renderCommanderIcons() {
+      drawCommanderIcons({
+        PIXI, gfx: cmdGfxRef.current, textCont: cmdTextContRef.current,
+        cmds: cmdsRef.current, tiles: tilesRef.current, byTile: cByTileRef.current,
+        spriteMap: cmdSpriteRef.current, posMap: marchPosRef.current,
+        crewPids: crewPidsRef.current, facKey: playerFacKeyRef.current,
+        aiPlayerIdMap: aiPlayerIdMapRef_.current, isoXY, TH,
+      });
+    }
+
     function redrawOverlays() {
       drawMarchLines(marchGfxRef.current, cmdsRef.current, reinRef.current, tilesRef.current);
-      drawCmdIcons(cmdGfxRef.current, cmdTextContRef.current, cmdsRef.current, tilesRef.current, crewPidsRef.current, playerFacKeyRef.current, aiPlayerIdMapRef_.current);
+      renderCommanderIcons();
     }
 
     function redrawHQs() {
@@ -2564,105 +2428,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     // Moves persistent commander PIXI objects to worker-computed positions.
     // Sprites are created/destroyed only when commander list changes — not per frame.
     const marchAnimFn = () => {
-      const cmds_ = cmdsRef.current;
-      if (!cmds_ || !cmdGfxRef.current) return;
-      const marchingCmds = cmds_.filter(c => c.march);
-      if (!marchingCmds.length) return;
-
-      const gfx      = cmdGfxRef.current;
-      const textCont = cmdTextContRef.current;
-      const tiles_   = tilesRef.current;
-      const spriteMap = cmdSpriteRef.current;
-      const posMap    = marchPosRef.current;
-      const crewPids_ = crewPidsRef.current;
-      const facKey_   = playerFacKeyRef.current;
-      const aidMap_   = aiPlayerIdMapRef_.current;
-
-      gfx.clear();
-
-      // Ensure persistent sprites exist for all visible commanders
-      const allCmds = cmds_;
-      for (const cmd of allCmds) {
-        if (!cmd.tk) continue;
-        if (!spriteMap.has(cmd.uid)) {
-          // Determine color
-          let col = 0xdd3322;
-          if (cmd.owner === 'player') col = 0x22cc55;
-          else if (crewPids_?.has(cmd.ownerPlayerId)) col = 0x2299ff;
-          else if (cmd.faction === facKey_) col = 0xaa44ff;
-          const entry = { col };
-          if (textCont) {
-            if (cmd.bust) {
-              const tex = PIXI.Texture.from(cmd.bust);
-              const sprite = new PIXI.Sprite(tex);
-              sprite.width = 14; sprite.height = 14;
-              sprite.anchor.set(0.5, 0.5);
-              const mask = new PIXI.Graphics();
-              sprite.mask = mask;
-              textCont.addChild(mask);
-              textCont.addChild(sprite);
-              entry.sprite = sprite; entry.mask = mask;
-            } else if (cmd.icon) {
-              const txt = new PIXI.Text(cmd.icon, { fontSize: 10, align: 'center' });
-              txt.anchor.set(0.5, 0.5);
-              textCont.addChild(txt);
-              entry.text = txt;
-            }
-          }
-          spriteMap.set(cmd.uid, entry);
-        }
-      }
-
-      // Remove sprites for commanders no longer in list
-      const activeUids = new Set(allCmds.map(c => c.uid));
-      for (const [uid, entry] of spriteMap) {
-        if (!activeUids.has(uid)) {
-          if (entry.sprite) { entry.sprite.destroy(); entry.mask?.destroy(); }
-          if (entry.text)   { entry.text.destroy(); }
-          spriteMap.delete(uid);
-        }
-      }
-
-      // Draw all commanders using worker positions for marching, tile center for static
-      const byTile = cByTileRef.current;
-      for (const [key, tileCmds] of Object.entries(byTile)) {
-        const tile = tiles_[key];
-        if (!tile) continue;
-        const { cx, cy } = isoXY(tile.c, tile.r);
-        const elev = tile.isWin ? 10 : 4;
-        const sy = cy - elev;
-        const playerG  = tileCmds.filter(c => c.owner === 'player');
-        const allAiG   = tileCmds.filter(c => c.owner !== 'player');
-        const crewG    = allAiG.filter(c => { const pid = c.ownerPlayerId || aidMap_?.get(key); return pid && crewPids_?.has(pid); });
-        const factionG = allAiG.filter(c => c.faction === facKey_ && !crewG.includes(c));
-        const enemyG   = allAiG.filter(c => !crewG.includes(c) && !factionG.includes(c));
-        const groups = [];
-        if (playerG.length)  groups.push({ cmds: playerG,  col: 0x22cc55 });
-        if (crewG.length)    groups.push({ cmds: crewG,    col: 0x2299ff });
-        if (factionG.length) groups.push({ cmds: factionG, col: 0xaa44ff });
-        if (enemyG.length)   groups.push({ cmds: enemyG,   col: 0xdd3322 });
-        groups.forEach(({ cmds: grp, col }, gi) => {
-          const ey = sy + TH * 0.72 - gi * 6;
-          gfx.beginFill(col, 0.13); gfx.lineStyle(1.4, col, 1); gfx.drawEllipse(cx, ey, 15, 5); gfx.lineStyle(0); gfx.endFill();
-          const visible = grp.slice(0, 3);
-          const spacing = visible.length > 1 ? 14 : 0;
-          visible.forEach((cmd, i) => {
-            const workerPos = cmd.march ? posMap.get(cmd.uid) : null;
-            const basePx = workerPos ? workerPos.px : cx;
-            const basePy = workerPos ? workerPos.py : sy;
-            const dx  = (i - (visible.length - 1) / 2) * spacing;
-            const ipx = basePx + dx;
-            const ipy = basePy + TH * 0.72 - gi * 6 - 11;
-            gfx.beginFill(0x000000, 0.45); gfx.drawCircle(ipx+1, ipy+1, 9); gfx.endFill();
-            gfx.beginFill(col, 0.9);       gfx.drawCircle(ipx,   ipy,   9); gfx.endFill();
-            gfx.beginFill(0x000000, 0.55); gfx.drawCircle(ipx,   ipy,   7); gfx.endFill();
-            const entry = spriteMap.get(cmd.uid);
-            if (entry?.sprite) { entry.sprite.x = ipx; entry.sprite.y = ipy; entry.mask.clear(); entry.mask.beginFill(0xffffff); entry.mask.drawCircle(ipx, ipy, 7); entry.mask.endFill(); }
-            else if (entry?.text) { entry.text.x = ipx; entry.text.y = ipy; }
-          });
-          if (grp.length > 3) { gfx.beginFill(col, 0.7); gfx.drawCircle(cx+14, ey-8, 5); gfx.endFill(); }
-        });
-      }
+      if (cmdsRef.current?.some(cmd => cmd.march)) renderCommanderIcons();
     };
     app.ticker.add(marchAnimFn);
 
@@ -2958,11 +2724,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       marchWorkerRef.current?.postMessage({ type: 'stop' });
       marchWorkerRef.current?.terminate();
       marchWorkerRef.current = null;
-      // Destroy persistent commander sprites
-      for (const entry of cmdSpriteRef.current.values()) {
-        entry.sprite?.destroy(); entry.mask?.destroy(); entry.text?.destroy();
-      }
-      cmdSpriteRef.current.clear();
+      redrawRef.current = null;
+      if (panEndTimer.current) clearTimeout(panEndTimer.current);
+      if (panNotifyTimer.current) clearTimeout(panNotifyTimer.current);
+      panEndTimer.current = null;
+      panNotifyTimer.current = null;
+      clearCommanderIcons(cmdSpriteRef.current);
+      marchPosRef.current.clear();
+      clearHQCache();
+      clearFortCache();
       cancelIdle();
       cancelPropsIdle();
       _iosTmpGfx?.destroy(); _iosTmpGfx = null;
@@ -2982,7 +2752,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       touchTarget.removeEventListener("touchend",    safeTE);
       touchTarget.removeEventListener("touchcancel", safeTE);
       if (panHeartbeatId) clearInterval(panHeartbeatId);
-      app.destroy(true);
+      app.destroy(true, { children: true });
       appRef.current = null; worldRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
