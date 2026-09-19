@@ -1583,7 +1583,12 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   hit.buttonMode  = true;
   hit.cursor      = "pointer";
   hit.on("pointerdown", (e) => {
-    if (isPanningRef?.current) return;
+    if (isPanningRef?.current) {
+      if (typeof location !== "undefined" && location.search.indexOf("debug") !== -1) {
+        console.warn("[PAN_DEBUG] HQ click blocked — isPanning stuck true", tileKey, Date.now());
+      }
+      return;
+    }
     e.stopPropagation();
     onHQClick(tileKey, e.data?.originalEvent || e);
   });
@@ -1973,6 +1978,13 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const isPanning      = useRef(false);
   const panEndTimer    = useRef(null);
   const panNotifyTimer = useRef(null);
+
+  // TEMP DEBUG — pan-freeze investigation. Active only with ?debug in the URL.
+  // Logs isUITarget hits (with the blocking element) and isPanning stuck/reset
+  // transitions, plus a heartbeat every 3s showing isPanning's current value
+  // even with no touch — that alone tells us if it's stuck without a repro.
+  const PAN_DEBUG = typeof location !== "undefined" && location.search.indexOf("debug") !== -1;
+
 
   /* ── INIT PIXI ── */
   useEffect(() => {
@@ -2734,6 +2746,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         const dy = e.touches[0].clientY - tDragFrom.current.y;
         if (Math.abs(dx)+Math.abs(dy) > 8) {
           tDidDrag.current = true;
+          if (PAN_DEBUG && !isPanning.current) console.log("[PAN_DEBUG] isPanning -> true", Date.now());
           isPanning.current = true;
         }
         tDragFrom.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -2784,6 +2797,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           }
         }
         const wasDrag = tDidDrag.current; // capture before reset
+        if (PAN_DEBUG && isPanning.current) console.log("[PAN_DEBUG] isPanning -> false (touchend)", Date.now());
         isPanning.current = false;
         tDidDrag.current = false;
         // Clear any in-flight throttle timers
@@ -2828,10 +2842,27 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       }
     };
     const touchTarget = app.view; // app.view sits on top of el — touches land here
-    touchTarget.addEventListener("touchstart",  onTS, { passive: false });
-    touchTarget.addEventListener("touchmove",   onTM, { passive: false });
-    touchTarget.addEventListener("touchend",    onTE, { passive: true });
-    touchTarget.addEventListener("touchcancel", onTE, { passive: true });
+
+    // TEMP DEBUG wrappers — catch any exception thrown inside the touch
+    // handlers (which would otherwise silently strand isPanning.current at
+    // true forever, since nothing resets it after the throw) and log it.
+    const safeTS = e => { try { onTS(e); } catch (err) { if (PAN_DEBUG) console.error("[PAN_DEBUG] onTS threw:", err); } };
+    const safeTM = e => { try { onTM(e); } catch (err) { if (PAN_DEBUG) console.error("[PAN_DEBUG] onTM threw:", err); isPanning.current = false; } };
+    const safeTE = e => { try { onTE(e); } catch (err) { if (PAN_DEBUG) console.error("[PAN_DEBUG] onTE threw:", err); isPanning.current = false; tDidDrag.current = false; } };
+
+    touchTarget.addEventListener("touchstart",  safeTS, { passive: false });
+    touchTarget.addEventListener("touchmove",   safeTM, { passive: false });
+    touchTarget.addEventListener("touchend",    safeTE, { passive: true });
+    touchTarget.addEventListener("touchcancel", safeTE, { passive: true });
+
+    // TEMP DEBUG heartbeat — logs isPanning's value every 3s with no touch
+    // required, so a stuck-true state shows up on its own once it happens.
+    let panHeartbeatId = null;
+    if (PAN_DEBUG) {
+      panHeartbeatId = setInterval(() => {
+        console.log("[PAN_DEBUG] heartbeat — isPanning:", isPanning.current, "tDidDrag:", tDidDrag.current, Date.now());
+      }, 3000);
+    }
 
     // Returns true if the event started inside a React UI panel layered above
     // the Pixi canvas. We check composedPath() for any element that has a
@@ -2840,9 +2871,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const path = e.composedPath ? e.composedPath() : [];
       for (const node of path) {
         if (node === el) break; // reached canvas container — stop
-        if (node.dataset?.uiPanel) return true;
+        if (node.dataset?.uiPanel) {
+          if (PAN_DEBUG) console.warn("[PAN_DEBUG] isUITarget blocked by data-uiPanel node:", node);
+          return true;
+        }
         const z = node.style?.zIndex ? parseInt(node.style.zIndex, 10) : 0;
-        if (z >= 100) return true;
+        if (z >= 100) {
+          if (PAN_DEBUG) console.warn("[PAN_DEBUG] isUITarget blocked by z-index node:", node, "z=", z);
+          return true;
+        }
       }
       return false;
     };
@@ -2940,10 +2977,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       el.removeEventListener("mousemove",  onMM);
       el.removeEventListener("mouseup",    onMU);
       el.removeEventListener("mouseleave", onMU);
-      touchTarget.removeEventListener("touchstart",  onTS);
-      touchTarget.removeEventListener("touchmove",   onTM);
-      touchTarget.removeEventListener("touchend",    onTE);
-      touchTarget.removeEventListener("touchcancel", onTE);
+      touchTarget.removeEventListener("touchstart",  safeTS);
+      touchTarget.removeEventListener("touchmove",   safeTM);
+      touchTarget.removeEventListener("touchend",    safeTE);
+      touchTarget.removeEventListener("touchcancel", safeTE);
+      if (panHeartbeatId) clearInterval(panHeartbeatId);
       app.destroy(true);
       appRef.current = null; worldRef.current = null;
     };
