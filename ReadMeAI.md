@@ -8,6 +8,15 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-19 — Codex (Sol Light)
+
+### Fix: commander icon crash after march update
+- **File:** `src/MapRenderer.jsx`.
+- Fixed `ReferenceError: Can't find variable: renderCommanderIcons` by calling the renderer through the map's existing shared redraw reference.
+- The WebSocket offline warning is separate from this visual crash.
+
+---
+
 ## 2026-09-19 — Codex (Sol Medium)
 
 ### Fix: missing march route and stop-start commander movement

@@ -2292,6 +2292,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     redrawRef.current = {
       redraw,
       redrawOverlays,
+      renderCommanderIcons,
       redrawHQs,
       redrawAllHQs,
       markPropsDirty,
@@ -3001,7 +3002,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     // Route lines must update when a march begins, steps, or ends.
     if (marchGfxRef.current) drawMarchLines(marchGfxRef.current, cmds, reinRef.current, tilesRef.current);
     // The ticker owns moving icons while marching; otherwise draw them once.
-    if (!cmds.some(c => c.march)) renderCommanderIcons();
+    if (!cmds.some(c => c.march)) redrawRef.current?.renderCommanderIcons?.();
   }, [cmds]);
 
   return (
