@@ -5,7 +5,6 @@
 
 import { FACTION_TROOPS }       from "../../shared/constants/troops.js";
 import { getFactionAlignment }  from "../../shared/constants/factions.js";
-import { garrisonCmdNames }     from "../../shared/utils/garrisonUtils.js";
 
 // ── Spawn level config (from Rise to War reference table) ────────────────────
 export const SPAWN_LEVELS = [6, 10, 12, 15, 20, 25, 30, 35, 40];

@@ -1,9 +1,11 @@
+import {trainingQuote,trainingSecondsLeft} from "../../../shared/utils/training.js";
+import {healingFoodCost,healingRate} from "../../../shared/utils/armyEconomy.js";
 import { useState, useEffect, memo, useMemo } from "react";
 import { useGameContext } from "../../GameContext.js";
 import { createPortal } from "react-dom";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel, troopPortraitPath } from "../../../shared/constants/troops.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
-import { BLDG, barracksCapacity, barracksCommandPool, maxAvailLevel, upgCost, upgDuration, upgCostQuarter, upgDurationQuarter, upgCostBranch, upgDurationBranch, hqUpgradeBlocker, barracksUpgradeBlocker, trainingUpgradeBlocker, cmdCommand, trainRate, trainBatchSecs, maxTrainBatch, trainingQueueCount, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, marketplaceRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown, crewHallStats, crewHelpAmount, hqSiegeHP, wallsSiegeHP, SHAKY_ALLIANCE_BONUS } from "../../../shared/constants/buildings.js";
+import { BLDG, barracksCapacity, barracksCommandPool, maxAvailLevel, upgCost, upgDuration, upgCostQuarter, upgDurationQuarter, upgCostBranch, upgDurationBranch, hqUpgradeBlocker, barracksUpgradeBlocker, trainingUpgradeBlocker, cmdCommand, trainRate, CMD_SIZE, maxTrainBatch, trainingQueueCount, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, marketplaceRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown, crewHallStats, crewHelpAmount, hqSiegeHP, wallsSiegeHP, SHAKY_ALLIANCE_BONUS } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
 const SC = RC;
 
@@ -1201,7 +1203,7 @@ function BarracksBar({ bldgs, pool }) {
           borderRadius:3, transition:"width .3s" }}/>
       </div>
       <div style={{ fontSize:7, color:P.dim, marginTop:4, fontFamily:P.ff }}>
-        {room.toLocaleString()} space available · {rate.toLocaleString()}/s train rate
+        {room.toLocaleString()} space available · delivered per command
       </div>
     </div>
   );
@@ -1259,7 +1261,7 @@ function TrainingListScreen({ bldgs, barracksPool, troopCards, trainingQueues, r
           ⚔ TRAINING
         </div>
         <div style={{ fontFamily:P.ff, fontSize:8, color:P.dim }}>
-          {activeQ}/{maxQ} queues active · {rate}/s
+          {activeQ}/{maxQ} queues active · delivered per command
         </div>
       </div>
 
@@ -1272,7 +1274,7 @@ function TrainingListScreen({ bldgs, barracksPool, troopCards, trainingQueues, r
         <div style={{ padding:"0 10px 8px", display:"flex", flexDirection:"column", gap:4 }}>
           {trainingQueues.map((q, idx) => {
             const qPct     = Math.round(((q.total - q.remaining) / q.total) * 100);
-            const secsLeft = Math.ceil(q.remaining / rate);
+            const secsLeft = trainingSecondsLeft(q);
             const parts    = q.branchKey?.split(":") || [];
             const label    = parts[1] ? `${parts[1]} T${parseInt(parts[2]||0)+1}` : q.branchKey;
             return (
@@ -1398,36 +1400,22 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
   const maxQueues = trainingQueueCount(bldgs.training||0);
   const maxBatch  = maxTrainBatch(bldgs.training||0);
   const cap       = barracksCapacity(bldgs.barracks||0);
-  const room      = cap - barracksPool;
+  const room      = Math.max(0,cap-barracksPool-(trainingQueues||[]).reduce((sum,q)=>sum+q.remaining,0));
 
   const [selected,  setSelected]  = useState(troopCards[0]?.key || null);
   const [sliderVal, setSliderVal] = useState(0);
 
   const card = troopCards.find(t => t.key === selected) || troopCards[0];
 
-  // Command size by tier: T1=small(100/cmd), T2=medium(50/cmd), T3=large(4/cmd)
-  const tierIdx2  = card?.tier?.tierIdx ?? 0;
-  const cmdStep   = [CMD_SIZE.small, CMD_SIZE.medium, CMD_SIZE.large][Math.min(2, tierIdx2)];
-  const cmdLabel  = ["small", "medium", "large"][Math.min(2, tierIdx2)];
-
-  const rawMax  = isScrap
-    ? Math.max(cmdStep, card?.poolCount || 0)
-    : Math.max(cmdStep, Math.min(maxBatch, room));
-  // Snap maxAmount to nearest command boundary, then allow exact remainder for cases A/B/C
-  const maxAmount = rawMax;
-  // Snap slider value to nearest command step, unless it's the exact remainder at the top
-  const snapVal = (v) => {
-    if (v <= 0) return 0;
-    const snapped = Math.round(v / cmdStep) * cmdStep;
-    // Allow the raw remainder if it fits within 1 step of maxAmount
-    if (Math.abs(v - maxAmount) < cmdStep && v === maxAmount) return maxAmount;
-    return Math.min(snapped, maxAmount);
-  };
-  const sv = Math.min(snapVal(sliderVal), maxAmount);
-
-  const numCmds   = sv > 0 ? Math.max(1, Math.round(sv / cmdStep)) : 0;
-  const trainCost = isScrap ? null : { wood:sv, gas:sv, food:sv*2 };
-  const timeSecs  = isScrap ? 0 : trainBatchSecs(tierIdx2, sv, cmdLabel, trainingSpeedMult);
+  const cmdLabel = card?.branch?.size || "small";
+  const cmdStep = isScrap ? 1 : CMD_SIZE[cmdLabel];
+  const maxAmount = isScrap ? (card?.poolCount || 0) : Math.max(0,Math.floor(Math.min(maxBatch,room)/cmdStep)*cmdStep);
+  const snapVal = value => Math.min(maxAmount,Math.max(0,Math.floor(value/cmdStep)*cmdStep));
+  const sv = snapVal(sliderVal);
+  const numCmds = sv / CMD_SIZE[cmdLabel];
+  const quote = isScrap ? null : trainingQuote(card?.bKey,sv,trainingSpeedMult);
+  const trainCost = quote?.cost ?? null;
+  const timeSecs = quote?.totalSeconds || 0;
 
   function fmtTime(s) {
     if (s < 60)   return `${s}s`;
@@ -1456,7 +1444,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
     if (i < maxQueues) return activeQueues[i] || null;
     return "locked";
   });
-  const lockLevels = [null, null, 10, 20];
+  const lockLevels = [null, 5, 11, 16];
 
   const fColor = card ? (FACTION_META[card.fKey]?.c || "#888") : "#888";
 
@@ -1578,7 +1566,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
               {!isScrap && sv > 0 && trainCost && (
                 <div style={{ fontSize:7.5, marginBottom:5, display:"flex", flexWrap:"wrap", gap:4,
                   alignItems:"center" }}>
-                  {Object.entries(trainCost).map(([k,v]) => (
+                  {Object.entries(trainCost).filter(([,v])=>v>0).map(([k,v]) => (
                     <RssPill key={k} rssKey={k} amount={v} rss={rss} small/>
                   ))}
                   <span style={{ fontSize:7, color:"#88aacc", fontFamily:P.ff }}>⏱ {fmtTime(timeSecs)}</span>
@@ -1641,7 +1629,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
                 const tier  = brDef?.tiers?.[parseInt(parts[2]||0)];
                 return tier?.label || parts[1] || q.branchKey;
               })() : null;
-              const qSecs = q ? Math.ceil(q.remaining / rate) : 0;
+              const qSecs = q ? trainingSecondsLeft(q) : 0;
               const qPct  = q ? Math.round(((q.total-q.remaining)/q.total)*100) : 0;
 
               return (
@@ -2925,37 +2913,36 @@ function BattleGroupsScreen({
 // -----------------------------------------------------------------------------
 //  HEALING TENT
 // -----------------------------------------------------------------------------
-function RepairBayScreen({ bldgs, woundedTroops, woundedQueue, bLog, healQueue, setHealQueue, rss, setRss, canAfford, unlockedBranches, troopCounts, barracksPool }) {
+function RepairBayScreen({ bldgs, woundedTroops, woundedQueue, bLog, healQueue, queueHealing, autoHeal, setAutoHeal, rss, canAfford, unlockedBranches, troopCounts, barracksPool }) {
 const [tab,     setTab]     = useState("wounded");
 const [healAmt, setHealAmt] = useState(0);
 const tentLvl  = bldgs.healingtent || 0;
 const tentCap  = tentLvl * 200;
-const healRate = Math.max(1, Math.floor(trainRate(bldgs.training || 0) * 0.40));
+const healRate = healingRate(bldgs);
 const wounded  = woundedTroops || 0;
-const maxHeal  = tentCap ? Math.min(wounded, tentCap) : wounded;
+const maxHeal = Math.min(wounded,Math.max(0,tentCap-(healQueue||[]).reduce((sum,q)=>sum+q.remaining,0)));
 const sv       = Math.min(healAmt, maxHeal);
 
-// Food cost: 40% of training food cost (training = amount*0.5 food → heal = amount*0.2 food)
-const healFoodCost = Math.ceil(sv * 0.2);
+// Manual and automatic healing share the existing food price.
+const healFoodCost = healingFoodCost(sv);
 const canHeal = sv > 0 && (rss?.food ?? 0) >= healFoodCost && tentLvl > 0;
 
 // ETA: how long to heal sv troops at current heal rate
-const healEtaSecs = healRate > 0 ? Math.ceil(sv / healRate) : null;
+const healEtaSecs = healRate > 0 ? Math.ceil(sv / Math.max(1,Math.floor(healRate/((healQueue?.length||0)+1)))) : null;
 const fmtTime = (s) => s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m ${s%60}s` : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
 
 const confirmHeal = () => {
   if (!canHeal) return;
-  const cost = { food: healFoodCost };
-  if (!canAfford(cost)) return;
-  setRss(p => ({ ...p, food: p.food - healFoodCost }));
-  // Add to heal queue — branchKey null means "generic wounded pool"
-  const newQ = { id: `h_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, branchKey: null, remaining: sv, total: sv };
-  setHealQueue(prev => [...(prev || []), newQ]);
+  queueHealing(sv);
   setHealAmt(0);
 };
 
 return (
 <div>
+<label style={{display:"flex",alignItems:"center",gap:10,minHeight:44,marginBottom:10}}>
+  <input type="checkbox" role="switch" aria-label="Automatic healing" checked={!!autoHeal} onChange={e=>setAutoHeal(e.target.checked)} style={{width:24,height:24}} />
+  <span>Automatic healing — uses food at the manual healing price</span>
+</label>
 {/* Capacity row */}
 <div style={{ display:"flex", gap:8, marginBottom:10 }}>
   <div style={{ flex:1, padding:"8px 12px", background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:6 }}>
@@ -2972,7 +2959,7 @@ return (
     <div style={{ fontSize:14, color:"#5dcc80", fontFamily:P.ff, fontWeight:700 }}>
       {healRate.toLocaleString()}<span style={{ fontSize:8, color:P.dim }}>/sec</span>
     </div>
-    <div style={{ fontSize:6, color:P.dim, marginTop:2 }}>40% of training speed</div>
+    <div style={{ fontSize:6, color:P.dim, marginTop:2 }}>Troops per second; shared by active batches</div>
   </div>
 </div>
 
@@ -3016,7 +3003,7 @@ return (
         <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
           {healQueue.map(q => {
             const pct = Math.round((1 - q.remaining / q.total) * 100);
-            const etaS = healRate > 0 ? Math.ceil(q.remaining / healRate) : "?";
+            const etaS = Math.ceil(q.remaining / Math.max(1,Math.floor(q.rate/healQueue.length)));
             return (
               <div key={q.id} style={{ padding:"8px 10px", background:"rgba(50,100,180,.07)", border:"1px solid rgba(80,140,220,.2)", borderRadius:6 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
@@ -3049,9 +3036,9 @@ return (
     </div>
     {wounded > 0 && tentLvl > 0 && (<>
       <input type="range" min={0} max={Math.max(1,maxHeal)} value={sv}
-        step={CMD_SIZE.small}
-        onChange={e => { const v=+e.target.value; setHealAmt(v===maxHeal?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
-        onInput={e => { const v=+e.target.value; setHealAmt(v===maxHeal?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
+        step={1}
+        onChange={e => { const v=+e.target.value; setHealAmt(v); }}
+        onInput={e => { const v=+e.target.value; setHealAmt(v); }}
         style={{ width:"100%", accentColor:"#88aaff", marginBottom:6 }}/>
       <button className="btn" onClick={() => setHealAmt(maxHeal)}
         style={{ width:"100%", marginBottom:4, padding:"5px",
@@ -3311,7 +3298,7 @@ hqOpen, setHqOpen, hqTab, setHqTab,
 cmds, setCmds, tiles, rss, setRss, gems, pKeys,
 bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
 trainingQueues, setTrainingQueues, trainSlider, setTrainSlider,
-healQueue, setHealQueue, setWounded, setWoundedQueue,
+healQueue, setHealQueue, setWounded, setWoundedQueue, queueHealing, autoHeal, setAutoHeal, trainingSpeedMult,
 upgQueue, sliderVals, setSliderVals, bLog,
 upgrade, canAfford, assignTroops, returnTroops, queueTraining, troopCounts, setTroopCounts, setTroopSlot,
 recallMarch, setScreen, gearInventory, playerHqKey,
@@ -3443,7 +3430,6 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             unlockedBranches={unlockedBranches}
             trainingSpeedMult={trainingSpeedMult}
             discardTroops={(bKey, n) => {
-              setBarracks(p => Math.max(0, p - n));
               if (bKey) setTroopCounts(prev => ({ ...prev, [bKey]: Math.max(0, (prev[bKey]||0) - n) }));
             }}/>
         )}
@@ -3459,7 +3445,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
         {hqTab === "repairbay" && (
           <RepairBayScreen bldgs={bldgs} woundedTroops={woundedTroops}
             woundedQueue={woundedQueue} bLog={bLog}
-            healQueue={healQueue} setHealQueue={setHealQueue}
+            healQueue={healQueue} queueHealing={queueHealing} autoHeal={autoHeal} setAutoHeal={setAutoHeal}
             rss={rss} setRss={setRss} canAfford={canAfford}
             unlockedBranches={unlockedBranches} troopCounts={troopCounts}
             barracksPool={barracksPool}

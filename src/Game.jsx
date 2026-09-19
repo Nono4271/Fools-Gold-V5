@@ -22,6 +22,7 @@ import { applyGearToCmd } from "../shared/utils/gearStats.js";
 // Hooks
 import { useResources } from "./hooks/useResources.js";
 import { useAI } from "./hooks/useAI.js";
+import { useArmyEconomy } from "./hooks/useArmyEconomy.js";
 import { useTraining } from "./hooks/useTraining.js";
 import { useMarch, applyXp } from "./hooks/useMarch.js";
 import { useForts, isTileInRange, buildAnchors } from "./hooks/useForts.js";
@@ -181,7 +182,7 @@ export default function RiseToWar() {
   const [loadPct,  setLoadPct]  = useState(0);
   const [loadLabel,setLoadLabel]= useState("Generating world...");
   const [playerHqKey, setPlayerHqKey] = useState(null);
-  const [rss,    setRss]     = useState({ stone:200_000, wood:200_000, gas: 200_000, food: 200_000 });
+  const {rss,setRss,troopCounts,setTroopCounts,trainingQueues,setTrainingQueues,healQueue,setHealQueue,woundedTroops,setWounded,addWounded,autoHeal,setAutoHeal,dispatch:dispatchArmy} = useArmyEconomy();
   const [gems,   setGems]    = useState(20000);
   const [crewOpen,      setCrewOpen]      = useState(false);
   const [searchOpen,    setSearchOpen]    = useState(false);
@@ -350,7 +351,6 @@ export default function RiseToWar() {
   // troopCounts: { "faction:branch:tier" => number }
   // 54 independent pools — one per distinct troop type (e.g. "pirates:swashbucklers:0" = Deckhands)
   // Total of all values must not exceed barracksCapacity(bldgs.barracks)
-  const [troopCounts, setTroopCounts] = useState({});
 
   // Convenience: total troops across all pools (for capacity checks)
   const barracksPool = Object.values(troopCounts).reduce((s, n) => s + (n || 0), 0);
@@ -485,10 +485,7 @@ export default function RiseToWar() {
       spd: g.spd + tomeSpdBonus,
     };
   };
-  const [woundedTroops,  setWounded]       = useState(0);
   const [woundedQueue,   setWoundedQueue]  = useState(0);
-  const [healQueue,      setHealQueue]     = useState([]); // [{ id, branchKey, remaining, total }]
-  const [trainingQueues, setTrainingQueues] = useState([]);  // array of { id, branchKey, remaining, total }
   const [trainSlider,    setTrainSlider]   = useState(100);
 
   const [bLog,          setBLog]          = useState([]);
@@ -1387,7 +1384,7 @@ export default function RiseToWar() {
     findPathBatch,
   });
 
-  useTraining({ screen, bldgs, setTrainingQueues, setTroopCounts, setBarracks, setWounded, woundedQueue, setWoundedQueue, trainingSpeedMult, healQueue, setHealQueue });
+  useTraining({screen,bldgs,dispatchArmy});
 
   useUpgrades({ screen, setUpgQueue, setBldgs, setBarracks });
 
@@ -1508,7 +1505,7 @@ export default function RiseToWar() {
     cmds: cmdsRef.current,
     setCmds: setPlayerCmds,
     setAiCmds,
-    setTiles, patchTile, setWounded, setBarracks,
+    setTiles, patchTile, addWounded, setBarracks,
     setBattles, setBLog, setWinner, setUnseenBattles,
     tilesRef, floaty, gearInventory,
     combatXpMult,
@@ -2241,22 +2238,7 @@ export default function RiseToWar() {
     }
 
     if (def.applies === "universal" || def.applies === "healing") {
-      // Reduce all active heal queue entries by durationMs worth of healing
-      setHealQueue(prev => {
-        if (!prev?.length) return prev;
-        const b = { training: 0 }; // fallback — actual bldgs not in scope here
-        // Approximate troops healed: healRate * (durationMs/1000)
-        // Use a reasonable rate estimate of 2/s minimum
-        const estimatedRate = 2;
-        const troopsToHeal  = Math.floor(estimatedRate * def.durationMs / 1000);
-        let remaining = troopsToHeal;
-        return prev.map(q => {
-          if (remaining <= 0) return q;
-          const reduce = Math.min(q.remaining, remaining);
-          remaining -= reduce;
-          return q.remaining - reduce <= 0 ? null : { ...q, remaining: q.remaining - reduce };
-        }).filter(Boolean);
-      });
+      if (healQueue[0]) dispatchArmy({type:"healSpeedup",id:healQueue[0].id,duration:def.durationMs});
       floaty(`💉 ${def.label} applied!`, "#88aaff",
         playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
     }
@@ -2295,7 +2277,7 @@ export default function RiseToWar() {
       floaty(`🔨 ${def.label} applied!`, "#c8a060",
         playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
     }
-  }, [setConsumables, setUpgQueue, setRssSpeedUps, setHealQueue, floaty, playerHqRef]);
+  }, [setConsumables, setUpgQueue, setRssSpeedUps, healQueue, dispatchArmy, floaty, playerHqRef]);
 
   // ── HQ Relocation ───────────────────────────────────────────────────────────
   // Applies a relocation: patches old HQ tiles back to plain, patches new 3x3 as HQ.
@@ -2402,16 +2384,11 @@ export default function RiseToWar() {
   // branchKey: "faction:branch:tier" e.g. "pirates:swashbucklers:0"
   // Multiple queues allowed (even same branchKey). Max slots = trainingQueueCount(training lvl).
   const queueTraining = useCallback((branchKey, amount) => {
-    const maxQueues = trainingQueueCount(bldgs.training || 0);
-    if (trainingQueues.length >= maxQueues) return;  // all slots full
-    const cap = barracksCapacity(bldgs.barracks || 0);
-    if (barracksPool + amount > cap) return;
-    const cost = { stone:amount*2, wood:amount*2, gas: amount, food: Math.floor(amount*0.5) };
-    if (!canAfford(cost)) return;
-    setRss(p => ({ stone:p.stone-cost.stone, wood:p.wood-cost.wood, gas: p.ore-cost.ore, food: p.gas-cost.gas }));
-    const newQueue = { id: `q_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, branchKey, remaining: amount, total: amount };
-    setTrainingQueues(prev => [...prev, newQueue]);
-  }, [canAfford, bldgs.barracks, bldgs.training, barracksPool, trainingQueues]);
+    dispatchArmy({type:"train",branchKey,amount,buildings:bldgs,unlocked:unlockedBranches,speedMult:trainingSpeedMult,now:Date.now(),id:crypto.randomUUID()});
+  }, [bldgs,unlockedBranches,trainingSpeedMult,dispatchArmy]);
+  const queueHealing = useCallback(amount => {
+    dispatchArmy({type:"heal",amount,buildings:bldgs,now:Date.now(),id:crypto.randomUUID()});
+  }, [bldgs,dispatchArmy]);
 
   // bKey: "faction:branch:tier" — unique key for one troop type pool
   const bKey = (b) => (b && b.faction && b.branch && b.tier != null)
@@ -2886,6 +2863,7 @@ export default function RiseToWar() {
         bldgs={bldgs} setBldgs={setBldgs} barracksPool={barracksPool} setBarracks={setBarracks} troopCounts={troopCounts} setTroopCounts={setTroopCounts}
         woundedTroops={woundedTroops} woundedQueue={woundedQueue} trainingQueues={trainingQueues}
         healQueue={healQueue} setHealQueue={setHealQueue}
+        queueHealing={queueHealing} autoHeal={autoHeal} setAutoHeal={setAutoHeal} trainingSpeedMult={trainingSpeedMult}
         setWounded={setWounded} setWoundedQueue={setWoundedQueue}
         trainSlider={trainSlider} setTrainSlider={setTrainSlider} setTrainingQueues={setTrainingQueues}
         upgQueue={upgQueue} sliderVals={sliderVals} setSliderVals={setSliderVals}

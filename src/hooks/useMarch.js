@@ -114,7 +114,7 @@ return {
 
 export function useMarch({
 screen, tiles, tileVersion, bldgs, cmds,
-setCmds, setAiCmds, setTiles, patchTile, setWounded, setBarracks,
+setCmds, setAiCmds, setTiles, patchTile, addWounded, setBarracks,
 setBattles, setBLog, setWinner, setUnseenBattles,
 tilesRef, floaty, gearInventory,
 combatXpMult,
@@ -343,7 +343,7 @@ arrivedAttackers.forEach(async staleCmd => {
     if (!res.won && !res.isDraw) {
       floaty("💀 DEFEATED — retreating", "#cc3030", destKey);
       const wl = Math.floor(res.lost * 0.30);
-      if (wl > 0) { setWounded(w => w + wl); floaty(`🏥 +${wl} wounded`, "#88aaff", destKey); }
+      if (wl > 0) { addWounded(cmd, wl); floaty(`🏥 +${wl} wounded`, "#88aaff", destKey); }
       setCmds(p => p.map(c => {
         if (c.uid !== cmd.uid) return c;
         const rp = bfsPath(originKey, hqKey);
@@ -357,6 +357,7 @@ arrivedAttackers.forEach(async staleCmd => {
       return;
     }
     if (res.isDraw) {
+      addWounded(cmd, Math.floor(res.lost * 0.30));
       floaty("⚔ DRAW — rematch in 5 min", "#c0a020", destKey);
       setCmds(p => p.map(c => {
         if (c.uid !== cmd.uid) return c;
@@ -369,7 +370,7 @@ arrivedAttackers.forEach(async staleCmd => {
     // Won vs AI commander — continue to garrison waves below with remaining troops
     const troopsAfterAi = Math.max(0, cmdTroops(cmd) - res.lost);
     const wcAi = Math.floor(res.lost * 0.30);
-    if (wcAi > 0) { setWounded(w => w + wcAi); floaty(`🏥 +${wcAi} wounded`, "#88aaff", destKey); }
+    if (wcAi > 0) { addWounded(cmd, wcAi); floaty(`🏥 +${wcAi} wounded`, "#88aaff", destKey); }
     floaty("⚔ Commander routed — garrison defends!", "#d0a030", destKey);
     setCmds(p => p.map(c => c.uid === cmd.uid
       ? { ...c, troops:troopsAfterAi, ...applySlotLosses(c, res.lost), ...applyXp(c, Math.round(res.xpGain * (combatXpMult ?? 1)), floaty) }
@@ -479,7 +480,7 @@ arrivedAttackers.forEach(async staleCmd => {
     floaty(`⚔ Wave ${wi+1}/${totalWaves} cleared!`, "#3daa60", destKey);
   }
 
-  if (totalWounded > 0) { setWounded(w => w + totalWounded); floaty(`🏥 +${totalWounded} wounded`, "#88aaff", destKey); }
+  if (totalWounded > 0) { addWounded(cmd, totalWounded); floaty(`🏥 +${totalWounded} wounded`, "#88aaff", destKey); }
 
   if (playerDefeated) {
     floaty("💀 DEFEATED — retreating", "#cc3030", destKey);
@@ -616,6 +617,7 @@ useEffect(() => {
           setUnseenBattles(n => n + 1);
         }
         if (res.isDraw) {
+          totalWounded += Math.floor(res.lost * 0.30);
           // Still a draw — set new 5-min timer and stop the chain
           remainingTroops = Math.max(1, remainingTroops - res.lost);
           newDrawTimer = Date.now() + 5 * 60 * 1000;
@@ -684,7 +686,7 @@ useEffect(() => {
 
       // Apply wounded
       if (totalWounded > 0) {
-        setWounded(w => w + totalWounded);
+        addWounded(cmd, totalWounded);
         floaty(`🏥 +${totalWounded} wounded`, "#88aaff", destKey);
       }
 

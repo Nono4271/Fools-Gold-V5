@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {resourceIncomeTick as tick} from '../shared/utils/resourceIncome.js';
+const empty=()=>({stone:0,wood:0,gas:0,food:0});
+const tile=(rss,powerLevel=2)=>({owner:'player',rss,powerLevel});
+const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-9,`${a} != ${b}`);
+test('passive income uses four current resources',()=>{const r=tick(empty(),{});assert.deepEqual(Object.keys(r),Object.keys(empty()));for(const v of Object.values(r))near(v,200/60);});
+test('P1 pays all four resources',()=>{for(const v of Object.values(tick(empty(),{a:tile('gas',1)})))near(v,250/60);});
+test('gas and food tiles pay their own resources',()=>{const r=tick(empty(),{a:tile('gas',3),b:tile('food',4)});near(r.gas,480/60);near(r.food,560/60);});
+test('buildings pay matching resources',()=>{const r=tick(empty(),{},{quarry:1,lumber:2,forge:3,refinery:4});Object.values(r).forEach((v,i)=>near(v,(200+300*(i+1))/60));});
+test('mutated tile ownership is read every tick',()=>{const t={a:tile('food')};near(tick(empty(),t).food,440/60);t.a.owner='enemy';near(tick(empty(),t).food,200/60);t.b=tile('gas');near(tick(empty(),t).gas,440/60);});
+test('fort occupancy is read every tick',()=>{const t={a:tile('wood')};near(tick(empty(),t,{},[{tileKey:'a'}]).wood,200/60);near(tick(empty(),t).wood,440/60);});
+test('resource bonuses affect current tile income',()=>{near(tick(empty(),{a:tile('gas')},{},[],{gas:.5}).gas,560/60);});
+test('storage caps safely and preserves unchanged state',()=>{const full={stone:200000,wood:200000,gas:200000,food:200000};assert.equal(tick(full,{}),full);assert.deepEqual(tick(Object.fromEntries(Object.keys(full).map(k=>[k,199999])),{}),full);});

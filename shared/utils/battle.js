@@ -58,7 +58,7 @@ return skills.some(s => s?.effect?.type === "immunity" && s.effect.immune?.inclu
 
 // ── Proc troop skills on a given trigger ──────────────────────────────────────
 // defTroopBranch: the branch RECEIVING the effect (for immunity checks)
-function procTroopSkills(troopSkills, trigger, skillLevels, rs, roundLog, actorLabel, defTroopBranch) {
+function procTroopSkills(troopSkills, trigger, skillLevels, rs, roundLog, actorLabel, defTroopBranch, round) {
 for (const skill of troopSkills) {
 if (!skill || skill.trigger !== trigger || skill.trigger === "passive") continue;
 const lvl  = skillLevels?.[skill.key] ?? 1;
@@ -2963,6 +2963,13 @@ const totalArmyCommand = atkSlotResolved.length > 0
       return (sz === "large" ? 25 : sz === "medium" ? 2 : 1) * totalAtkTroops;
     })();
 
+// Class bonuses — unlock at Lv20
+const cmdRespectLevel = cmd.respectLevel ?? cmd.lvl ?? 5;
+const bastionActive   = (cmd.cls === "balanced")   && (cmdRespectLevel >= 20);
+const attackerBonus   = (cmd.cls === "attacker")   && (cmdRespectLevel >= 20);
+const strategistBonus = (cmd.cls === "strategist") && (cmdRespectLevel >= 20);
+const bastionHpMult   = bastionActive ? 2 : 1;
+
 let atkTroopHp     = totalAtkTroops * atkTroopHpPer * bastionHpMult;
 let defTroopHp     = defTroops      * defTroopHpPer;
 const atkHpMax     = atkTroopHp;
@@ -2992,13 +2999,6 @@ const defCmdSpd2 = dc ? (dc.spd || 40) : 40;
 
 // Scaling attack bonus for this commander (consistent per cmd, varies by rarity)
 const cmdScalingBonus = scalingBonus(cmd.rarity || "soldier", cmdAtkStat + cmdFocStat * 0.5, cmd.id || 0);
-
-// Class bonuses — unlock at Lv20
-const cmdRespectLevel = cmd.respectLevel ?? cmd.lvl ?? 5;
-const bastionActive   = (cmd.cls === "balanced")   && (cmdRespectLevel >= 20);
-const attackerBonus   = (cmd.cls === "attacker")   && (cmdRespectLevel >= 20);
-const strategistBonus = (cmd.cls === "strategist") && (cmdRespectLevel >= 20);
-const bastionHpMult   = bastionActive ? 2 : 1;
 
 // Defender cmd stats for its normal attack formula
 const defCmdMight = dc ? (dc.atk || 80) : 80;
@@ -3481,7 +3481,7 @@ if (rs.weakSpotStacks.length > 0) {
 
 // round_start troop skills — all atk slots apply to enemy
 for (const sl of atkSlotResolved) {
-  procTroopSkills(sl.skills, "round_start", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", dc?.troopBranch ?? null);
+  procTroopSkills(sl.skills, "round_start", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", dc?.troopBranch ?? null, round);
 }
 
 // Log hero skills
@@ -3638,7 +3638,7 @@ for (const ent of order) {
     if (!sl || !sl.tierData || atkSlotHp[slotIdx] <= 0 || defTroopHp <= 0) continue;
 
     // on_hit troop skills from this slot — pass primary defTroopBranch for immunity
-    procTroopSkills(sl.skills, "on_hit", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null);
+    procTroopSkills(sl.skills, "on_hit", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null, round);
 
     const count     = Math.ceil(atkSlotHp[slotIdx] / sl.hpPer);
     const slotLabel = sl.branchDef?.label || `Slot ${slotIdx+1}`;
@@ -3763,7 +3763,7 @@ for (const ent of order) {
     if (rs.enemyConfused > 0) {
       rs.enemyConfused--;
       if (Math.random() < 0.5) {
-        const selfDmg = calcTroopDmg(dsl.branchDef, dsl.tierData, dsl.def, 1, Math.ceil(defSlotHp[dSlotIdx]/dsl.hpPer), defLvlMult, 1, 1, false, false, 1, round, dsl.branch, 1, 1);
+        const selfDmg = calcTroopDmg(dsl.branchDef, dsl.tierData, dsl.def, 0, defCommand, roundTerrBonus, 0, false, 1, [], round);
         const prevSlot = defSlotHp[dSlotIdx];
         defSlotHp[dSlotIdx] = Math.max(0, defSlotHp[dSlotIdx] - selfDmg);
         defTroopHp = Math.max(0, defSlotHp.reduce((s,h)=>s+h,0));
@@ -3775,7 +3775,7 @@ for (const ent of order) {
     if (Math.random() < rs.enemyMissChance) { roundLog.actions.push({ actor:"Defenders", action:"Enemy troops missed!", dmg:0 }); continue; }
 
     // on_hit troop skills — this def slot targeting attacker
-    procTroopSkills(dsl.skills, "on_hit", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null);
+    procTroopSkills(dsl.skills, "on_hit", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null, round);
 
     const rangedReduce = (dsl.branchDef?.role === "ranged" && rs.rangedDmgReduce > 0) ? rs.rangedDmgReduce : 0;
     const defSlotModSum = -(rs.enemyDmgReduce||0) - (rs.troopDmgReduce||0) - (rs.dmgReduce||0) - rangedReduce;
@@ -3805,7 +3805,7 @@ for (const ent of order) {
     damageFirstTakenRound = round;
 
     // on_hit_received — attacker's primary slot reacts
-    procTroopSkills(atkSlotResolved[0]?.skills ?? atkTroopSkills, "on_hit_received", atkSkillLevels, rs, roundLog, "Troops", dsl.branch ?? null);
+    procTroopSkills(atkSlotResolved[0]?.skills ?? atkTroopSkills, "on_hit_received", atkSkillLevels, rs, roundLog, "Troops", dsl.branch ?? null, round);
 
     const dLabel = dsl.branchDef?.label || `Defenders ${dSlotIdx+1}`;
     roundLog.actions.push({ actor:"Defenders", action:`${dLabel} attack`, dmg:dmgD, atkKilled:Math.max(0,Math.round((prevAtkTotal2-atkTroopHp)/atkTroopHpPer)), atkRemaining:Math.max(0,Math.round(atkTroopHp/atkTroopHpPer)), isPlayer:false });
@@ -3814,11 +3814,11 @@ for (const ent of order) {
 
 // round_end troop skills (all atk slots)
 for (const sl of atkSlotResolved) {
-  procTroopSkills(sl.skills, "round_end", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null);
+  procTroopSkills(sl.skills, "round_end", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null, round);
 }
 // round_end for all def slots
 for (const dsl of defSlotResolved) {
-  procTroopSkills(dsl.skills, "round_end", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null);
+  procTroopSkills(dsl.skills, "round_end", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null, round);
 }
 
 // ── Life Drain tick ───────────────────────────────────────────────────────────
