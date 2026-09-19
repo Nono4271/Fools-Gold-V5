@@ -941,6 +941,7 @@ function RosterPortrait({ cmd, selected, onClick, isLocked, isOppositeAlignment 
 
 // ── Commander detail (right panel) ────────────────────────────────────────────
 function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectSchematics, setCmds, onSchematicUsed, gems, setGems }) {
+  const { staminaMax = 150 } = useGameContext();
   const [showSkills, setShowSkills] = useState(false);
   const [showSchematics, setShowSchematics] = useState(false);
   const [showClassPopup, setShowClassPopup] = useState(null);
