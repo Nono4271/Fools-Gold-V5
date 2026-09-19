@@ -1350,9 +1350,15 @@ export default function RiseToWar() {
 
           // Non-founders: join a same-faction crew with space
           const options = [...(crewsByFaction[fk] || []), ...newCrews.filter(c => c.faction === fk)];
-          const target  = options.find(c => (c.members || []).length < CREW_CAP);
+          const target   = options.find(c => (c.members || []).length < CREW_CAP);
           if (target) {
-            target.members = [...(target.members || []), playerId];
+            // Build a new object instead of mutating the crew straight out of
+            // prevCrews (nextCrews is only a shallow copy — mutating target
+            // mutated the actual prevCrews entry and corrupted state).
+            const updated = { ...target, members: [...(target.members || []), playerId] };
+            nextCrews = nextCrews.map(c => c.id === updated.id ? updated : c);
+            const nIdx = newCrews.findIndex(c => c.id === updated.id);
+            if (nIdx !== -1) newCrews[nIdx] = updated;
             inCrew.add(playerId);
           }
         }
@@ -2427,28 +2433,26 @@ export default function RiseToWar() {
       const returningOld = branchChanged ? oldTroops : 0;
       const curInSlot    = branchChanged ? 0 : oldTroops;
 
-      // All pool accounting happens inside the setTroopCounts updater so it
-      // always reads the latest counts (avoids stale-closure overflow bugs).
-      // We capture `final` via a ref so setCmds can use it synchronously after.
-      let finalTroops = curInSlot; // default: no change
+      // Pool accounting is computed synchronously up front — setTroopCounts's
+      // updater callback is NOT guaranteed to run before the next line, so we
+      // can't rely on it to set a captured variable (that was the bug: new
+      // slot assignments always read back as 0 and got deleted on confirm).
+      const availInPool = troopCounts[newKey] || 0;
+      const capped      = Math.min(newTroops, maxByCmd);
+      const delta       = capped - curInSlot;
+      const drawn       = delta > 0 ? Math.min(delta, availInPool) : 0;
+      const returned    = delta < 0 ? Math.min(-delta, curInSlot) : 0;
+      const final       = curInSlot + drawn - returned;
+
       setTroopCounts(counts => {
         const next = { ...counts };
         // Return old-branch troops first (so they're available if same pool)
         if (branchChanged && oldKey && returningOld > 0)
           next[oldKey] = (next[oldKey] || 0) + returningOld;
-        // Now compute draw from fresh counts
-        const availInPool = next[newKey] || 0;
-        const capped      = Math.min(newTroops, maxByCmd);
-        const delta       = capped - curInSlot;
-        const drawn       = delta > 0 ? Math.min(delta, availInPool) : 0;
-        const returned    = delta < 0 ? Math.min(-delta, curInSlot) : 0;
-        finalTroops       = curInSlot + drawn - returned;
         if (newKey)
-          next[newKey] = Math.max(0, availInPool - drawn + returned);
+          next[newKey] = Math.max(0, (next[newKey] || 0) - drawn + returned);
         return next;
       });
-
-      const final = finalTroops;
 
       if (final === 0 || !branch) {
         const filtered = newSlots.filter((_, i) => i !== slotIndex);
