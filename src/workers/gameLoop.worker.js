@@ -1,3 +1,4 @@
+import { marchCanAdvance } from '../../shared/utils/marchMotion.js';
 // ── Game Loop Web Worker ──────────────────────────────────────────────────────
 // Offloads all setInterval logic from the main thread so React renders never
 // block touch events, map pans, or tile taps.
@@ -85,8 +86,8 @@ function tickMarch() {
     }
 
     if (ws.arrived) continue; // waiting for main thread to clear march
-    const isFinalStep = (ws.step + 1) >= m.path.length;
-    if (!isFinalStep && now - ws.lastStepTime < m.stepMs) continue;
+    // Every segment takes the full configured time, including the final one.
+    if (!marchCanAdvance(ws.lastStepTime, m.stepMs, now)) continue;
 
     const nextStep = ws.step + 1;
     if (nextStep >= m.path.length) {

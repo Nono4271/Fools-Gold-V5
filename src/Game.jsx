@@ -1762,7 +1762,7 @@ export default function RiseToWar() {
               const retreatPath = pathByUid[cmd.uid];
               const stepMs = marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, null));
               if (retreatPath && retreatPath.length >= 2) {
-                return { ...cmd, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() } };
+                return { ...cmd, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:cmd.tk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() } };
               }
               return { ...cmd, tk:hqKey };
             }));
@@ -1922,7 +1922,7 @@ export default function RiseToWar() {
       setCmds(p => p.map(c => c.uid===freshCmd.uid ? {
         ...c,
         stamina: Math.max(0, (c.stamina ?? staminaMax) - staminaCost),
-        march:{ type, path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, lastStepTime:Date.now() }
+        march:{ type, path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }
       } : c));
     });
   }, [floaty, gearInventory, findPath, crewmatePlayerIds]);
@@ -1934,7 +1934,7 @@ export default function RiseToWar() {
       const m = cmd.march;
       const reversePath = [...m.path.slice(0, m.step+1)].reverse();
       if (reversePath.length < 2) return prev.map(c => c.uid===uid ? { ...c, march:null } : c);
-      return prev.map(c => c.uid===uid ? { ...c, march:{ type:"move", path:reversePath, step:0, dest:m.origin, origin:cmd.tk, stepMs:m.stepMs, lastStepTime:Date.now() } } : c);
+      return prev.map(c => c.uid===uid ? { ...c, march:{ type:"move", path:reversePath, step:0, dest:m.origin, origin:cmd.tk, stepMs:m.stepMs, startedAt:Date.now(), lastStepTime:Date.now() } } : c);
     });
   }, []);
 
@@ -1962,7 +1962,7 @@ export default function RiseToWar() {
       if (!path || path.length < 2) return;
       setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
         drawTimer:null, drawTile:null, drawOrigin:null,
-        march:{ type:"recall", path, step:0, dest:hqKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() }
+        march:{ type:"recall", path, step:0, dest:hqKey, origin:cmd.tk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }
       } : c));
     });
   }, [gearInventory, findPath, forts]);
@@ -1979,7 +1979,7 @@ export default function RiseToWar() {
       if (!path || path.length < 2) return;
       setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
         drawTimer:null, drawTile:null, drawOrigin:null,
-        march:{ type:"recall", path, step:0, dest:fortTileKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() }
+        march:{ type:"recall", path, step:0, dest:fortTileKey, origin:cmd.tk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }
       } : c));
     });
     setRecallPopup(null);
@@ -1998,7 +1998,7 @@ export default function RiseToWar() {
       if (!path || path.length < 2) return;
       setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
         drawTimer:null, drawTile:null, drawOrigin:null,
-        march:{ type:"recall", path, step:0, dest:hqKey, origin:cmd.tk, stepMs, lastStepTime:Date.now() }
+        march:{ type:"recall", path, step:0, dest:hqKey, origin:cmd.tk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }
       } : c));
     });
     setRecallPopup(null);
@@ -2024,7 +2024,7 @@ export default function RiseToWar() {
       if (!path || path.length < 2) return;
       setCmds(prev => prev.map(c => c.uid===uid ? { ...c,
         drawTimer:null, drawTile:null, drawOrigin:null,
-        march:{ type:"reposition", path, step:0, dest:fortTileKey, destFortId:fortId, origin:cmd.tk, stepMs, lastStepTime:Date.now() }
+        march:{ type:"reposition", path, step:0, dest:fortTileKey, destFortId:fortId, origin:cmd.tk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }
       } : c));
     });
     return { ok: true };
@@ -2050,7 +2050,7 @@ export default function RiseToWar() {
           if (!srcKey) return counts;
           return { ...counts, [srcKey]: Math.max(0, (counts[srcKey] || 0) - amount) };
         });
-        return [...prev, { uid:`rein_${Date.now()}`, cmdUid:cmd.uid, amount, branchKey:srcKey, path, step:0, stepMs, lastStepTime:Date.now() }];
+        return [...prev, { uid:`rein_${Date.now()}`, cmdUid:cmd.uid, amount, branchKey:srcKey, path, step:0, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }];
       });
     });
   }, [gearInventory, findPath]);

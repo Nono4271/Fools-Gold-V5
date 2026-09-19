@@ -78,7 +78,7 @@ const tickAiMarch = useCallback((dispatches) => {
       if (!cmd || cmd.march) continue;
       const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
       const destKey = destByUid[uid];
-      updates.push({ uid, march: { type:"attack", path, step:0, dest:destKey, origin:cmd.tk, stepMs, lastStepTime:now } });
+      updates.push({ uid, march: { type:"attack", path, step:0, dest:destKey, origin:cmd.tk, stepMs, startedAt:now, lastStepTime:now } });
     }
     if (!updates.length) return;
     setCmds(p => {

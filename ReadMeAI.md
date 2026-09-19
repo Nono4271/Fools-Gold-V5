@@ -8,6 +8,17 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-19 — Codex (Sol Medium)
+
+### Fix: missing march route and stop-start commander movement
+- **Files:** `src/MapRenderer.jsx`, `src/workers/march.worker.js`, `src/workers/gameLoop.worker.js`, `shared/utils/marchMotion.js`, march creators, and `tests/marchMotion.test.js`.
+- Route lines were only refreshed when no commander was marching, so a new march never showed its line. Lines now refresh on every march state change and show the full route plus endpoint.
+- Movement previously waited one tile time before animating, eased to a stop at every centre, and skipped timing the final segment. The animation now starts immediately and moves at constant speed across the whole route; every segment takes its configured time. Existing speed formulas/rates are unchanged.
+- Existing BFS already selects the shortest passable adjacent-tile route and does not require owned land. Existing attack eligibility/adjacency checks are unchanged.
+- Three focused tests cover constant motion, final-segment timing, and shortest adjacent pathfinding. Full automated suite and production build pass. Phone visual confirmation still needed.
+
+---
+
 ## 2026-09-19 — Codex (Astra)
 
 ### Fix: map freezes / Gacha crashes from destroyed commander sprites

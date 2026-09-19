@@ -1694,7 +1694,7 @@ function drawMarchLines(gfx, cmds, reinMarches, tiles) {
   cmds.forEach(cmd => {
     if (!cmd.march || cmd.owner !== "player") return;
     const m = cmd.march;
-    drawPath(m.path.slice(m.step), 0x22cc55); // green for player
+    drawPath(m.path, 0x22cc55); // show the full assigned route and target
   });
   (reinMarches || []).forEach(rm => drawPath(rm.path.slice(rm.step), 0x2299ff)); // blue for reinforcements
 }
@@ -2970,25 +2970,21 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const tiles_   = tilesRef.current;
     const worker   = marchWorkerRef.current;
 
-    // Send transition messages to worker for commanders that just stepped to a new tile
+    // Give the animation worker the whole route. It moves at constant speed
+    // across tile centres instead of restarting an ease at every tile.
     cmds.forEach(cmd => {
-      if (!cmd.march || !cmd.tk) return;
-      const prev = prevCmds.find(c => c.uid === cmd.uid);
-      if (!prev || prev.tk === cmd.tk) return;
-      const fromTile = tiles_[prev.tk];
-      const toTile   = tiles_[cmd.tk];
-      if (!fromTile || !toTile) return;
-      const { cx: fx, cy: fy } = isoXY(fromTile.c, fromTile.r);
-      const { cx: tx, cy: ty } = isoXY(toTile.c,   toTile.r);
-      const fElev = fromTile.isWin ? 10 : 4;
-      const tElev = toTile.isWin   ? 10 : 4;
-      worker?.postMessage({
-        type: 'transition', uid: cmd.uid,
-        fromX: fx, fromY: fy - fElev,
-        toX:   tx, toY:   ty - tElev,
-        startTime: Date.now(),
-        stepMs: cmd.march.stepMs || 3000,
-      });
+      const m = cmd.march;
+      if (!m?.path?.length || !(m.stepMs > 0)) return;
+      const points = m.path.map(key => {
+        const tile = tiles_[key];
+        if (!tile) return null;
+        const {cx,cy}=isoXY(tile.c,tile.r);
+        return {x:cx,y:cy-(tile.isWin?10:4)};
+      }).filter(Boolean);
+      if (points.length !== m.path.length) return;
+      const startTime = m.startedAt ?? (m.lastStepTime - m.step * m.stepMs);
+      const routeId = `${m.path.join(';')}|${startTime}|${m.stepMs}`;
+      worker?.postMessage({type:'route',uid:cmd.uid,routeId,points,startTime,stepMs:m.stepMs});
     });
 
     // Remove stopped marchers from worker
@@ -3002,10 +2998,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     cmdsRef.current = cmds;
     cByTileRef.current = buildCByTile(cmds);
-    // Static redraw when nobody is marching (ticker handles the marching case)
-    if (!cmds.some(c => c.march)) {
-      redrawRef.current?.redrawOverlays();
-    }
+    // Route lines must update when a march begins, steps, or ends.
+    if (marchGfxRef.current) drawMarchLines(marchGfxRef.current, cmds, reinRef.current, tilesRef.current);
+    // The ticker owns moving icons while marching; otherwise draw them once.
+    if (!cmds.some(c => c.march)) renderCommanderIcons();
   }, [cmds]);
 
   return (

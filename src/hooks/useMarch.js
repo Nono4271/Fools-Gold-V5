@@ -217,7 +217,7 @@ arrivedAttackers.forEach(async staleCmd => {
     setCmds(p => p.map(c => {
       if (c.uid !== cmd.uid) return c;
       if (retreatPath && retreatPath.length >= 2) {
-        return { ...c, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:destKey, stepMs, lastStepTime:Date.now() } };
+        return { ...c, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:destKey, stepMs, startedAt:Date.now(), lastStepTime:Date.now() } };
       }
       return { ...c, tk:hqKey, march:null };
     }));
@@ -349,7 +349,7 @@ arrivedAttackers.forEach(async staleCmd => {
         const rp = bfsPath(originKey, hqKey);
         const sm = marchStepMs(effectiveMarchSpd(boostedCmd.spd||60, null, boostedCmd.gearBonuses?.armySpd||0));
         let u = { ...c, ...clearSlots(c), tk:originKey, march:null, drawTimer:null, drawTile:null, drawOrigin:null };
-        if (rp?.length >= 2) u = { ...u, march:{ type:"move", path:rp, step:0, dest:hqKey, origin:originKey, stepMs:sm, lastStepTime:Date.now() } };
+        if (rp?.length >= 2) u = { ...u, march:{ type:"move", path:rp, step:0, dest:hqKey, origin:originKey, stepMs:sm, startedAt:Date.now(), lastStepTime:Date.now() } };
         else u = { ...u, tk:hqKey };
         return { ...u, ...applyXp(u, Math.round(res.xpGain * (combatXpMult ?? 1)), floaty) };
       }));
@@ -489,7 +489,7 @@ arrivedAttackers.forEach(async staleCmd => {
       const rp = bfsPath(originKey, hqKey);
       const sm = marchStepMs(effectiveMarchSpd(boostedCmd.spd||60, null, boostedCmd.gearBonuses?.armySpd||0));
       let u = { ...c, ...clearSlots(c), tk:originKey, march:null, drawTimer:null, drawTile:null, drawOrigin:null };
-      if (rp?.length >= 2) u = { ...u, march:{ type:"move", path:rp, step:0, dest:hqKey, origin:originKey, stepMs:sm, lastStepTime:Date.now() } };
+      if (rp?.length >= 2) u = { ...u, march:{ type:"move", path:rp, step:0, dest:hqKey, origin:originKey, stepMs:sm, startedAt:Date.now(), lastStepTime:Date.now() } };
       else u = { ...u, tk:hqKey };
       return { ...u, ...applyXp(u, Math.round(totalXp * (combatXpMult ?? 1)), floaty) };
     }));
@@ -697,7 +697,7 @@ useEffect(() => {
           const retreatPath = bfsPath(destKey, getAiHqKey(cmd));
           const stepMs = marchStepMs(effectiveMarchSpd(c.spd||60, null));
           if (retreatPath && retreatPath.length >= 2) {
-            return { ...c, troops:0, march:{ type:"move", path:retreatPath, step:0, dest:getAiHqKey(cmd), origin:destKey, stepMs, lastStepTime:Date.now() } };
+            return { ...c, troops:0, march:{ type:"move", path:retreatPath, step:0, dest:getAiHqKey(cmd), origin:destKey, stepMs, startedAt:Date.now(), lastStepTime:Date.now() } };
           }
           return { ...c, troops:0, tk:getAiHqKey(cmd) };
         }));
@@ -712,7 +712,7 @@ useEffect(() => {
           let updated = { ...c, troops:0, tk:originKey, march:null,
             drawTimer:null, drawTile:null, drawOrigin:null };
           if (retreatPath && retreatPath.length >= 2) {
-            updated = { ...updated, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:originKey, stepMs, lastStepTime:Date.now() } };
+            updated = { ...updated, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:originKey, stepMs, startedAt:Date.now(), lastStepTime:Date.now() } };
           } else { updated = { ...updated, tk:hqKey }; }
           return { ...updated, ...applyXp(updated, Math.round(totalXp * (combatXpMult ?? 1)), floaty) };
         }));
@@ -840,7 +840,7 @@ arrivedAI.forEach(async cmd => {
       const retreatPath = bfsPath(finalTk, getAiHqKey(cmd));
       if (retreatPath && retreatPath.length >= 2) {
         const stepMs = marchStepMs(effectiveMarchSpd(c.spd||60, null));
-        updated = { ...updated, march:{ type:"move", path:retreatPath, step:0, dest:getAiHqKey(cmd), origin:finalTk, stepMs, lastStepTime:Date.now() } };
+        updated = { ...updated, march:{ type:"move", path:retreatPath, step:0, dest:getAiHqKey(cmd), origin:finalTk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() } };
       } else { updated = { ...updated, tk:getAiHqKey(cmd) }; }
     }
     // Bug 20 fix: use applyXp so AI commanders gain stat growth and Lv25 bonuses, same as player
