@@ -188,6 +188,7 @@ export function useGameLoop({
                   path:         c.march.path,
                   step:         c.march.step,
                   stepMs:       c.march.stepMs,
+                  startedAt:    c.march.startedAt,
                   lastStepTime: c.march.lastStepTime,
                   arrived:      c.march.arrived,
                 }

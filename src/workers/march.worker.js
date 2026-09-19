@@ -9,7 +9,7 @@ function tick() {
   if (!routes.size) return;
   const now = Date.now(), positions=[];
   for (const [uid, route] of routes) {
-    const point = positionAlongRoute(route.points, route.startTime, route.stepMs, now);
+    const point = positionAlongRoute(route.points, route.startTime, route.segmentDurations, now);
     if (point) positions.push({uid,px:point.x,py:point.y});
   }
   self.postMessage({type:'frame',positions});
@@ -18,7 +18,7 @@ self.onmessage=({data})=>{
   switch(data.type){
     case 'route': {
       const current=routes.get(data.uid);
-      if(current?.routeId!==data.routeId) routes.set(data.uid,{routeId:data.routeId,points:data.points,startTime:data.startTime,stepMs:data.stepMs});
+      if(current?.routeId!==data.routeId) routes.set(data.uid,{routeId:data.routeId,points:data.points,startTime:data.startTime,segmentDurations:data.segmentDurations});
       break;
     }
     case 'remove': routes.delete(data.uid); break;

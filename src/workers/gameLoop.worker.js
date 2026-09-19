@@ -1,4 +1,4 @@
-import { marchCanAdvance } from '../../shared/utils/marchMotion.js';
+import { marchCanAdvance, marchSegmentMs, reachedMarchDestination } from '../../shared/utils/marchMotion.js';
 // ── Game Loop Web Worker ──────────────────────────────────────────────────────
 // Offloads all setInterval logic from the main thread so React renders never
 // block touch events, map pans, or tile taps.
@@ -80,30 +80,35 @@ function tickMarch() {
 
     // Use worker-authoritative state; seed from snapshot only when march is new or path changed
     let ws = workerMarchState.get(cmd.uid);
-    if (!ws || ws.pathLen !== m.path.length) {
-      ws = { step: m.step, lastStepTime: m.lastStepTime, pathLen: m.path.length, arrived: m.arrived || false };
+    const routeId=m.startedAt ?? m.lastStepTime;
+    if (!ws || ws.pathLen !== m.path.length || ws.routeId !== routeId) {
+      ws = { step: m.step, lastStepTime: m.lastStepTime, pathLen: m.path.length, routeId, arrived: m.arrived || false };
       workerMarchState.set(cmd.uid, ws);
     }
 
     if (ws.arrived) continue; // waiting for main thread to clear march
-    // Every segment takes the full configured time, including the final one.
-    if (!marchCanAdvance(ws.lastStepTime, m.stepMs, now)) continue;
-
     const nextStep = ws.step + 1;
     if (nextStep >= m.path.length) {
+      workerMarchState.delete(cmd.uid);
+      updates.push({ uid:cmd.uid, tk:m.path.at(-1), clearMarch:true });
+      continue;
+    }
+    const segmentMs=marchSegmentMs(m.path[ws.step],m.path[nextStep],m.stepMs);
+    if (!marchCanAdvance(ws.lastStepTime, segmentMs, now)) continue;
+    ws.step = nextStep;
+    // Keep the original schedule instead of adding worker/snapshot delay each tile.
+    ws.lastStepTime += segmentMs;
+    if (reachedMarchDestination(nextStep,m.path.length)) {
       const dest = m.path[m.path.length - 1];
       ws.arrived = true;
-      ws.step = nextStep;
       if (m.type === 'attack') {
-        updates.push({ uid: cmd.uid, tk: dest, marchPatch: { ...m, step: nextStep, arrived: true } });
+        updates.push({ uid: cmd.uid, tk: dest, marchPatch: { ...m, step: nextStep, lastStepTime:ws.lastStepTime, arrived: true } });
       } else {
         updates.push({ uid: cmd.uid, tk: dest, clearMarch: true });
         workerMarchState.delete(cmd.uid);
       }
     } else {
-      ws.step = nextStep;
-      ws.lastStepTime = now;
-      updates.push({ uid: cmd.uid, tk: m.path[nextStep], marchPatch: { ...m, step: nextStep, lastStepTime: now } });
+      updates.push({ uid: cmd.uid, tk: m.path[nextStep], marchPatch: { ...m, step: nextStep, lastStepTime: ws.lastStepTime } });
     }
   }
 

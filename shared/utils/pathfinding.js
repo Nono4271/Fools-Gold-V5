@@ -33,25 +33,54 @@ export function adj(c, r) {
     .map(([tc,tr]) => `${tc},${tr}`);
 }
 
+const MARCH_DIRS = [
+  [-1,0,1],[1,0,1],[0,-1,1],[0,1,1],
+  [-1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[1,-1,Math.SQRT2],[1,1,Math.SQRT2],
+];
+
+function marchNbrs(c, r) {
+  const out = [];
+  for (const [dc,dr,cost] of MARCH_DIRS) {
+    const tc=c+dc, tr=r+dr, key=`${tc},${tr}`;
+    if (tc<0 || tr<0 || tc>=COLS || tr>=ROWS || IMPASSABLE.has(key)) continue;
+    // Do not squeeze diagonally through the corner of blocked terrain.
+    if (dc && dr && (IMPASSABLE.has(`${c+dc},${r}`) || IMPASSABLE.has(`${c},${r+dr}`))) continue;
+    out.push([key,cost]);
+  }
+  return out;
+}
+
+function octile(a, b) {
+  const [ac,ar]=a.split(',').map(Number), [bc,br]=b.split(',').map(Number);
+  const dx=Math.abs(ac-bc), dy=Math.abs(ar-br);
+  return Math.max(dx,dy)+(Math.SQRT2-1)*Math.min(dx,dy);
+}
+function heapPush(heap,item){
+  heap.push(item);let i=heap.length-1;
+  while(i){const p=(i-1)>>1;if(heap[p][0]<=item[0])break;heap[i]=heap[p];i=p;}heap[i]=item;
+}
+function heapPop(heap){
+  const first=heap[0],last=heap.pop();if(!heap.length)return first;
+  let i=0;while(true){let l=i*2+1;if(l>=heap.length)break;let r=l+1,c=r<heap.length&&heap[r][0]<heap[l][0]?r:l;if(heap[c][0]>=last[0])break;heap[i]=heap[c];i=c;}heap[i]=last;return first;
+}
+
 export function bfsPath(fromKey, toKey) {
   if (fromKey === toKey) return [fromKey];
-  const parent = new Map();
-  const queue  = [fromKey];
-  parent.set(fromKey, null);
-  let head = 0;
-  while (head < queue.length) {
-    const cur = queue[head++];
+  const parent=new Map([[fromKey,null]]), best=new Map([[fromKey,0]]);
+  const startH=octile(fromKey,toKey);
+  const open=[[startH+startH*1e-6,0,fromKey]];
+  while (open.length) {
+    const [,cost,cur]=heapPop(open);
+    if (cost !== best.get(cur)) continue;
+    if(cur===toKey){const path=[];let k=cur;while(k!==null){path.push(k);k=parent.get(k);}return path.reverse();}
     const [cc, cr] = cur.split(',').map(Number);
-    for (const nk of adj(cc, cr)) {
-      if (parent.has(nk)) continue;
+    for (const [nk,moveCost] of marchNbrs(cc,cr)) {
+      const nextCost=cost+moveCost;
+      if (nextCost >= (best.get(nk) ?? Infinity)) continue;
+      best.set(nk,nextCost);
       parent.set(nk, cur);
-      if (nk === toKey) {
-        const path = [];
-        let k = nk;
-        while (k !== null) { path.push(k); k = parent.get(k); }
-        return path.reverse();
-      }
-      queue.push(nk);
+      const h=octile(nk,toKey);
+      heapPush(open,[nextCost+h+h*1e-6,nextCost,nk]);
     }
   }
   return null;

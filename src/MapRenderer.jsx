@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo } from "react";
 import * as PIXI from "pixi.js";
 import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
+import {marchSegmentMs} from "../shared/utils/marchMotion.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
 
 /* ─── Tile geometry ──────────────────────────────────────────────────────── */
@@ -2983,9 +2984,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return {x:cx,y:cy-(tile.isWin?10:4)};
       }).filter(Boolean);
       if (points.length !== m.path.length) return;
-      const startTime = m.startedAt ?? (m.lastStepTime - m.step * m.stepMs);
+      const segmentDurations=m.path.slice(1).map((key,i)=>marchSegmentMs(m.path[i],key,m.stepMs));
+      const elapsedBeforeStep=segmentDurations.slice(0,m.step).reduce((sum,ms)=>sum+ms,0);
+      const startTime = m.startedAt ?? (m.lastStepTime - elapsedBeforeStep);
       const routeId = `${m.path.join(';')}|${startTime}|${m.stepMs}`;
-      worker?.postMessage({type:'route',uid:cmd.uid,routeId,points,startTime,stepMs:m.stepMs});
+      worker?.postMessage({type:'route',uid:cmd.uid,routeId,points,startTime,segmentDurations});
     });
 
     // Remove stopped marchers from worker

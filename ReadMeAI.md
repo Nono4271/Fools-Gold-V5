@@ -8,6 +8,17 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-19 — Codex (Sol Medium)
+
+### Fix: landing capture delay and diagonal marches
+- **Files:** pathfinding/march workers, `shared/utils/pathfinding.js`, `shared/utils/marchMotion.js`, `src/MapRenderer.jsx`, and march tests.
+- Capture/battle now begins when the army reaches the target. The prior code waited one extra full tile time (often about 5 seconds).
+- March routes can use diagonal steps and choose the quickest passable route. Attack/foothold adjacency remains edge-only and blocked terrain cannot be corner-cut.
+- March motion is 15% faster overall. Diagonal timing accounts for its longer distance, so it does not create an uncontrolled speed jump.
+- Added arrival, diagonal routing, adjacency, and speed tests. All 107 tests and the production build pass.
+
+---
+
 ## 2026-09-19 — Codex (Sol Light)
 
 ### Fix: commander icon crash after march update

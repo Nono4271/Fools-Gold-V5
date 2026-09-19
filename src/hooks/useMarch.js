@@ -300,7 +300,7 @@ arrivedAttackers.forEach(async staleCmd => {
               if (c.uid === cmd.uid) {
                 const survived = Math.max(0, Math.floor(cmdTroops(cmd) * (res.survivalRate ?? 0.5)));
                 return { ...c, troops: survived, march: rp?.length >= 2
-                  ? { type:"move", path:rp, step:0, dest:hqKey, origin:destKey, stepMs:stepMs2, lastStepTime:Date.now() }
+                  ? { type:"move", path:rp, step:0, dest:hqKey, origin:destKey, stepMs:stepMs2, startedAt:Date.now(), lastStepTime:Date.now() }
                   : null, tk: rp?.length >= 2 ? c.tk : hqKey };
               }
               return c;
@@ -395,7 +395,7 @@ arrivedAttackers.forEach(async staleCmd => {
         const rp = bfsPath(destKey, hqKey);
         setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c,
           march: rp && rp.length > 1
-            ? { type:"retreat", path:rp, step:0, dest:hqKey, origin:destKey, stepMs:stepMs2, lastStepTime:Date.now() }
+            ? { type:"retreat", path:rp, step:0, dest:hqKey, origin:destKey, stepMs:stepMs2, startedAt:Date.now(), lastStepTime:Date.now() }
             : null,
           tk: rp && rp.length > 1 ? c.tk : hqKey,
         } : c));
