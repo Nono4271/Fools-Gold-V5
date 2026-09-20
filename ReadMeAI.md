@@ -8,6 +8,262 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+# CURRENT AUDIT AND ROADMAP — READ THIS FIRST
+
+Last consolidated: 2026-09-20. The repository is the source of truth. The
+dated entries below are history and may describe bugs that were fixed later.
+
+## Rules for AI collaborators
+
+1. Items marked **COMPLETE — DO NOT RECHECK** were already audited, fixed and
+   tested. Do not spend usage re-auditing or redesigning them unless the owner
+   reports a regression or your current change directly touches that system.
+2. Run only the tests related to files you change, plus the normal build gate
+   when code changes. Documentation-only changes do not need a full test run.
+3. Do not assume a feature is missing from the main file. Trace its component,
+   hook, worker, shared constant and server event before changing it.
+4. Do not invent requirements. This game follows LOTR: Rise to War 1.0 as its
+   functional reference, uses one-commander armies, and keeps original Fool's
+   Gold names, art and presentation.
+5. Work on `codex/core-fixes-20260919`. Do not merge to main or deploy to the
+   production branch without the owner's instruction. Update this file after
+   every change.
+
+## Locked owner decisions
+
+- Final target is landscape mobile; browser/Cloudflare is the current test
+  platform. Respect phone safe areas and prevent camera/UI overlap.
+- Resources are stone, wood, gas and food. Ore does not exist. Training costs
+  no stone; food is normally highest, while wood/gas vary by faction.
+- One command is 100 small, 50 medium or 4 large troops. Lower tiers train
+  faster. Small commands take roughly 10–35 minutes, medium longer, large
+  longer, and nothing exceeds one hour. Costs and times vary modestly by
+  faction/branch. See `docs/training-values.md`.
+- Training and forts cannot be sped up. Building, healing and recall require
+  specific speedups; universal speedups may also apply. Do not silently extend
+  speedups to training or fort timers.
+- Wounded troops go to the healing tent and return to their original barracks
+  troop branch. Healing is manual by default with an optional auto-heal toggle.
+- Voluntary relocation requires all armies home, keeps all owned territory and
+  only moves the HQ. Forced relocation returns armies instantly, chooses a
+  valid open 3x3 pad on faction-owned land in any faction region, relaxes
+  border restrictions only if necessary, and falls back to the faction capital
+  even if enemies own it.
+- Captures occur immediately on arrival. A captured tile receives three minutes
+  of protection. Deleting/abandoning a tile takes five minutes.
+- Background/offline timer progress is required in the finished game.
+
+## 1. Current architecture
+
+- **Client:** React UI with most live game state coordinated in `src/Game.jsx`.
+- **World renderer:** PixiJS in `src/MapRenderer.jsx`; map, HQ, fort, prop,
+  selection, commander and march visuals are separate display layers.
+- **Game systems:** hooks in `src/hooks/` handle AI, battle, marches,
+  pathfinding, resources, forts, gacha, training, upgrades and server sync.
+- **Heavy work:** browser workers in `src/workers/` run map generation,
+  pathfinding, marching, battle, spawning, forts and the game loop.
+- **Shared rules/data:** `shared/constants/` and `shared/utils/` hold troops,
+  factions, commanders, skills, buildings, items, gear, map values, battle,
+  economy, relocation, income and movement rules.
+- **Server prototype:** `server/index.js` is a Node WebSocket session server.
+  It accepts initialization and broadcasts selected world changes. It is not a
+  complete authoritative multiplayer server or durable database.
+- **Tests:** `tests/` covers troop economy, healing, battle roster execution,
+  resources, march motion, commander sprite lifecycle and current map visuals.
+- **Current persistence:** primarily client/session state. Durable accounts,
+  cross-device saves and authoritative world recovery are not complete.
+
+## 2. Complete systems
+
+Do not re-audit these without a reported regression or a directly related
+change.
+
+- **COMPLETE — DO NOT RECHECK:** ore removal and canonical stone/wood/gas/food
+  resource flow, including repaired AI and tile income.
+- **COMPLETE — DO NOT RECHECK:** building costs and build-time rebalance.
+- **COMPLETE — DO NOT RECHECK:** T1–T3 training costs/times, faction variation,
+  command sizes, no-stone rule, capacity reservation and completed-command
+  delivery. The 72 reviewed values are in `docs/training-values.md`.
+- **COMPLETE — DO NOT RECHECK:** healing flow: wounded reservation, original
+  troop-type return, food payment, manual/auto toggle, tent requirement,
+  capacity safety and healing speedups.
+- **COMPLETE — DO NOT RECHECK:** march timing formula, shortest diagonal routes,
+  constant movement, immediate start, final segment timing and arrival capture.
+  Attack eligibility still requires valid tile adjacency.
+- **COMPLETE — DO NOT RECHECK:** battle initialization/confusion crash fixes and
+  execution coverage for the existing 72 T1–T3 faction troops.
+- **COMPLETE — DO NOT RECHECK:** five-minute tile deletion and three-minute
+  post-capture protection.
+- **COMPLETE — DO NOT RECHECK:** item definitions, Bag replacing the old Gear
+  shortcut, building/healing/universal timer speedups and resource boosts.
+- **COMPLETE — DO NOT RECHECK:** voluntary and forced HQ relocation behavior.
+  Relocation gameplay is entered through the HQ flow; the Bag token message is
+  a separate UI cleanup item.
+- **COMPLETE — DO NOT RECHECK:** fort construction/upgrade timers and existing
+  fort build, station, recall, demolish and abandon flow.
+- **COMPLETE — DO NOT RECHECK:** leaderboard UI and calculation.
+- **COMPLETE — DO NOT RECHECK:** Commander detail `staminaMax` crash, Gacha/map
+  Pixi sprite-destruction crash, troop-slot Confirm bug and crew state-mutation
+  bug.
+- **COMPLETE — DO NOT RECHECK:** Pirate HQ redesign, HQ centering, adjacent
+  prop/selection presentation, and the current spawn-area dark map test.
+
+## 3. Partially implemented systems
+
+- **Gacha/shop:** Summon Gate pulls, gems/medallions, commander rewards,
+  duplicates/respect, schematics and gear rewards exist. The original roadmap
+  phrase “shop integration” is not defined in the repository. Do not invent a
+  store or monetization design; ask the owner or locate the original design
+  source before expanding it.
+- **Troop roster:** Eight factions have T1–T3 branches, art and battle data.
+  Tier 4 and neutral-unit roster integration remain unfinished.
+- **Neutral PvE:** tile garrisons, defender commanders and spawn encounters
+  exist. A complete neutral unit roster with its own integrated data/art is not
+  present.
+- **Crew:** create, browse, join/request, leave, member list, basic level field,
+  AI crews and a Crew Help placeholder exist. This is not Crew 2.0.
+- **Gear:** inventory, slots, rarity, rolled stats, equipping, gacha drops and
+  battle/stat application exist. The planned gear rework still needs an
+  owner-approved design and balance pass.
+- **Map graphics:** the dark grass and two resource-art families work inside a
+  25-tile test radius around the random player spawn. Full-world conversion,
+  more terrain/prop variation, crossings, gates, keeps and seven faction bases
+  remain.
+- **Commander map visuals:** circular commander portraits render and move on
+  the map. Purpose-built map sprites are still required.
+- **Multiplayer:** WebSocket sessions and broadcasts exist for selected tile,
+  siege and fort changes. Authority, persistence, identity, reconnect recovery
+  and scaling are incomplete.
+- **Mobile/UI:** landscape safe-area work and touch fixes exist, but all screens
+  still need device testing and a consistent visual polish pass.
+- **Offline progression:** timer data uses deadlines in several systems, but
+  durable background/offline recovery is not complete across the whole game.
+
+## 4. Missing systems and content
+
+- Tier 4 troops built through the existing faction branch/tier architecture.
+- Neutral units built through the same troop/battle architecture, not a
+  disconnected combat system.
+- Remaining troop roster additions and corresponding balance/art.
+- Season Chapters framework and chapter data.
+- Chapter locks for map crossings/gates, the Holy Grail/endgame area, war
+  declarations, major systems, objectives and events.
+- Crew 2.0: officer ranks, Crew levels/XP, functional Help, currency, Store,
+  Boosts, Diplomacy, War Declaration, Structures, records/logs and an original
+  headquarters/table interaction screen inspired functionally by Fellowship in
+  Rise to War 1.0.
+- World, faction and Crew chat.
+- Tutorial and task/progression framework.
+- Remaining gear rework decisions and implementation.
+- Full map art conversion and final mobile graphics/UI polish.
+- Durable, server-authoritative seasons and real multiplayer infrastructure.
+
+## 5. Technical debt to fix before multiplayer
+
+- `src/Game.jsx` owns too many unrelated systems and large mutable/ref-backed
+  maps. Split domain state before adding server authority.
+- Game rules are divided between React callbacks, hooks and workers. Move every
+  multiplayer-sensitive rule into shared deterministic functions callable by
+  the server.
+- The client currently creates/holds too much world truth. The server must own
+  captures, combat results, resources, timers, inventory, troops, relocation,
+  chapters, crews and diplomacy.
+- Replace session-only state with durable storage, migrations, account/player
+  IDs, world/season IDs and reconnect snapshots.
+- Add command validation, idempotency and server timestamps so duplicate or
+  delayed messages cannot spend/capture twice.
+- Replace full-map client/server transfers with region/chunk snapshots and
+  small validated updates suitable for thousands of players.
+- Remove temporary `?debug`/mobile diagnostics after the related phone tests
+  are complete.
+- Resolve the Bag relocation-token “coming soon” message so it directs players
+  to the existing HQ relocation flow or opens it.
+- Add the required recall-specific speedup; keep training and forts excluded.
+
+## 6. Current Alpha/Beta launch blockers
+
+- Tier 4 and neutral units are required before multiplayer conversion.
+- Season Chapters and their progression gates do not exist.
+- Crew 2.0 and chat do not exist.
+- The world art conversion, remaining seven faction bases, keep/mob/commander
+  map sprites and mobile UI polish are incomplete.
+- No durable authoritative server, account persistence or reconnect recovery.
+- Battle execution tests pass for the current roster, but balance, mixed armies,
+  long wars, wounded/healing loops and large-scale regression playtests remain.
+- Offline progression is incomplete across all timers.
+- No currently reproduced Gacha/Commander/map-freeze crash remains after the
+  fixes above. Treat a new occurrence as a regression and collect the exact
+  phone console error before re-auditing those systems.
+
+## 7. Dependencies
+
+- Finish T4 + neutral roster/data before final battle balancing and before
+  generating all missing troop/mob art.
+- Define Season Chapters before gates, crossings, Holy Grail access, war
+  declarations, seasonal objectives and server APIs.
+- Define Crew 2.0 roles/data before Crew chat permissions, diplomacy, wars,
+  structures, logs and the table UI.
+- Finalize deterministic shared battle/economy rules before making the server
+  authoritative.
+- Finish full-world terrain/prop rules before final keep/gate/base placement
+  polish and performance tuning.
+- Complete server identity/persistence before real chat, Crew ownership,
+  diplomacy and season progression.
+
+## 8. Recommended Alpha/Beta implementation order
+
+1. Finish the current map-art direction: full-world tiles/props, seven faction
+   bases, keep sprites, gate/crossing tuning, mob sprites, commander sprites and
+   dotted march lines/arrows.
+2. Add T4 troops and neutral units through existing troop/branch/battle data.
+3. Run focused battle balance/playtests with all tiers and neutral encounters.
+4. Build the Season Chapters data model and unlock checks in shared code, then
+   connect gates, Holy Grail, war declarations, objectives and events.
+5. Build Crew 2.0 data/functions, then the headquarters/table UI.
+6. Add world/faction/Crew chat using the future player/server identity model.
+7. Complete gear rework, tutorial and task progression.
+8. Finish offline/background recovery and remaining mobile UI/graphics polish.
+9. Stabilize all systems in the browser Alpha/Beta before converting authority
+   to the real multiplayer server.
+
+## 9. Must be complete before real multiplayer conversion
+
+- T4 troops, neutral units and roster completion.
+- Final deterministic battle, march, healing, training, item, fort, relocation
+  and resource rules shared by client and server.
+- Season Chapters with server-owned unlock state.
+- Crew 2.0 rules, chat permissions, diplomacy and war declaration rules.
+- Stable map/gate/crossing/keep/Holy Grail data and IDs.
+- Offline timer semantics and reconnect behavior.
+- Tutorial/task state that can be stored server-side.
+- Full Alpha/Beta regression playtest and mobile performance pass.
+- A migration plan from browser state to accounts and persistent worlds.
+
+## Approved graphics/map backlog
+
+- **DONE:** Pirate HQ redesign and placement.
+- Redesign faction bases for Wizards, Orcs, Dragons, Holy Knights, Creatures of
+  the Night, Coldborns and Ashen Dead. Show each design for owner approval.
+- Expand the new terrain/resource tile and prop treatment across the whole map.
+- Monitor and tweak gates/crossings to match the owner's desired Rise to War
+  style, chapter locks and play flow.
+- Change march routes to dotted lines with directional arrows and retain a
+  clear target endpoint.
+- Create purpose-built commander sprites for the world map.
+- Create sprites for all remaining mobs/neutral encounters.
+- Create sprites for keeps and blend them with the new map style.
+
+---
+
+## 2026-09-20 — Codex
+
+### Consolidated audit and cross-AI roadmap
+- Added the current architecture, completed/partial/missing systems, technical debt, launch blockers, dependencies, implementation order and pre-multiplayer requirements above the historical log.
+- Marked verified finished systems **COMPLETE — DO NOT RECHECK** to prevent repeated audits and wasted usage unless a regression is reported or related code changes.
+- Added the approved graphics backlog: seven faction bases, full-map props/tiles, gate tuning, dotted arrow march paths, commander map sprites, remaining mob sprites and keep sprites.
+
+---
+
 ## 2026-09-20 — Codex
 
 ### HQ centering and neighboring-tile presentation
