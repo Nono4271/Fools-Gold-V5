@@ -12,6 +12,8 @@ import assert from 'node:assert/strict';
 
 import { resourceIncomeTick } from '../shared/utils/resourceIncome.js';
 import { regenEggs, regenStamina, EGG_REGEN_MS, STAMINA_REGEN_MS } from '../shared/utils/tactics.js';
+import { tomesPowerTick, TOMES_TICK_MS } from '../shared/utils/tomes.js';
+import { secsUntil } from '../shared/utils/tileTimers.js';
 import { stepReinforcement } from '../shared/utils/reinforcements.js';
 import { advanceMarch } from '../shared/utils/marchMotion.js';
 
@@ -65,4 +67,34 @@ test('advanceMarch does nothing when no step is due yet', () => {
   const path = ['0,0', '1,0'];
   const r = advanceMarch(0, 1000, path, 1000, 1500);
   assert.equal(r.advanced, false);
+});
+
+test('tomes power tick defaults to one 10s tick (pph/360) so existing behavior is unchanged', () => {
+  assert.equal(TOMES_TICK_MS, 10_000);
+  assert.ok(Math.abs(tomesPowerTick(0, 3600) - 3600 / 360) < 1e-9);
+  assert.ok(Math.abs(tomesPowerTick(5, 720) - (5 + 720 / 360)) < 1e-9);
+});
+
+test('tomes power tick credits the full elapsed gap after a backgrounded pause', () => {
+  const oneTick = tomesPowerTick(0, 1200);
+  const tenMin = tomesPowerTick(0, 1200, 10 * 60_000); // 60 ticks' worth
+  assert.ok(Math.abs(tenMin - oneTick * 60) < 1e-9);
+  assert.ok(Math.abs(tomesPowerTick(0, 1200, 3_600_000) - 1200) < 1e-9); // 1h at 1200/hr
+});
+
+test('tomes power tick owes nothing with no income or no elapsed time', () => {
+  assert.equal(tomesPowerTick(42, 0, 600_000), 42);
+  assert.equal(tomesPowerTick(42, -5, 600_000), 42);
+  assert.equal(tomesPowerTick(42, 1000, 0), 42);
+  assert.equal(tomesPowerTick(42, 1000, -1), 42);
+});
+
+test('fort demolish/abandon countdown follows the absolute deadline, not interval firings', () => {
+  const start = 1_000_000;
+  const deadline = start + 30 * 60_000;
+  assert.equal(secsUntil(deadline, start), 1800);
+  // Tab backgrounded 20 min with zero interval firings: real time still counts.
+  assert.equal(secsUntil(deadline, start + 20 * 60_000), 600);
+  assert.equal(secsUntil(deadline, start + 30 * 60_000), 0);
+  assert.equal(secsUntil(deadline, start + 99 * 60_000), 0); // never negative
 });
