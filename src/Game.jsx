@@ -29,6 +29,7 @@ import { useBattle } from "./hooks/useBattle.js";
 import { useGacha } from "./hooks/useGacha.js";
 import { useTomes } from "./hooks/useTomes.js";
 import { useFortRemovals } from "./hooks/useFortRemovals.js";
+import { isDoubleTap } from "../shared/utils/doubleTap.js";
 import { useVoidTap } from "./hooks/useVoidTap.js";
 import { useTroopSlots } from "./hooks/useTroopSlots.js";
 import { useRelocation } from "./hooks/useRelocation.js";
@@ -480,6 +481,9 @@ export default function RiseToWar() {
 
   const [mode,       setMode]      = useState("view");
   const [selKey,     setSelKey]    = useState(null);
+  const selKeyRef = useRef(null);
+  useEffect(() => { selKeyRef.current = selKey; }, [selKey]);
+  const lastTapRef = useRef({ k: null, t: 0 });
   const [popupPos,   setPopupPos]  = useState(null);
   const [tileScreenX, setTileScreenX] = useState(null);
   const [tileScreenY, setTileScreenY] = useState(null);
@@ -1281,13 +1285,23 @@ export default function RiseToWar() {
     // ── keepPart fix: redirect to primary keep tile ──────────────────────────
     // Clicking any tile in the keep footprint should open the keep itself,
     // not the keepPart tile which has no defCmd/keepName and causes a black screen.
-    if (tile.isKeepPart && tile.keepPrimaryKey) {
+    if ((tile.isKeepPart || tile.isCampPart) && tile.keepPrimaryKey) {
       const primaryTile = tilesRef.current[tile.keepPrimaryKey];
       if (primaryTile) { k = tile.keepPrimaryKey; tile = primaryTile; }
     }
 
     const mode = modeRef.current;
     const mvCmd = mvCmdRef.current;
+
+    // ── Double-tap the selected tile to close its popup ──────────────────────
+    const nowMs = Date.now();
+    const doubleTap = mode === "view" && selKeyRef.current === k && isDoubleTap(lastTapRef.current, k, nowMs);
+    lastTapRef.current = doubleTap ? { k: null, t: 0 } : { k, t: nowMs };
+    if (doubleTap) {
+      setSelKey(null); setPopupPos(null); setTileScreenX(null); setTileScreenY(null);
+      setPopupMode("main"); setEditArmyCmd(null);
+      return;
+    }
 
     if (mode==="selectMarchDest" && mvCmd) {
       if (k===mvCmd.tk) { setMode("view"); setMvCmd(null); return; }

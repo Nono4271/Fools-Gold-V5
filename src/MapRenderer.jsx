@@ -715,6 +715,43 @@ function drawAllPropsNoScatter(gfx, tiles, rMin, rMax, cMin, cMax) {
   }
 }
 
+/* ─── Neutral/Ancient camp marker ────────────────────────────────────────────
+   A tent with a tier-coloured pennant on a ring, so camps read as camps and
+   not as plain tiles. Colour follows the camp's power level (P7/P9/P11/P13). */
+const CAMP_TIER_COLOR = { 7: 0x8fc46a, 9: 0xe0b030, 11: 0xe06a30, 13: 0xc050f0 };
+function drawCampMarker(gfx, cx, cy, w, h, pl, owner) {
+  const big = Math.max(w, h);
+  const s = 1 + 0.4 * (big - 1);              // bigger footprint -> bigger icon
+  const tier = owner === 'player' ? 0x50d070 : (CAMP_TIER_COLOR[pl] ?? 0xe0b030);
+  const base = cy;                             // ground contact point (footprint centre)
+  // ground ring
+  gfx.lineStyle(2, tier, 0.85);
+  gfx.beginFill(0x000000, 0.28);
+  gfx.drawEllipse(cx, base, TW * 0.30 * s, TH * 0.30 * s);
+  gfx.endFill();
+  gfx.lineStyle(0);
+  // tent body
+  const tw = 20 * s, th = 30 * s;
+  gfx.lineStyle(1.5, 0x2e2010, 1);
+  gfx.beginFill(0xcdb47c);
+  gfx.drawPolygon([cx - tw, base, cx, base - th, cx + tw, base]);
+  gfx.endFill();
+  gfx.beginFill(0xa08850);                     // shaded right half
+  gfx.drawPolygon([cx, base - th, cx + tw, base, cx + tw * 0.15, base]);
+  gfx.endFill();
+  gfx.lineStyle(0);
+  gfx.beginFill(0x1e140a);                     // doorway
+  gfx.drawPolygon([cx - 6 * s, base, cx - 1 * s, base - 14 * s, cx + 4 * s, base]);
+  gfx.endFill();
+  // pole + pennant
+  gfx.lineStyle(2, 0x2e2010, 1);
+  gfx.moveTo(cx, base - th); gfx.lineTo(cx, base - th - 16 * s);
+  gfx.lineStyle(0);
+  gfx.beginFill(tier);
+  gfx.drawPolygon([cx, base - th - 16 * s, cx + 14 * s, base - th - 11 * s, cx, base - th - 6 * s]);
+  gfx.endFill();
+}
+
 function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
   const rnd  = tileRng(c, r);
   const base = sy + TH / 2;
@@ -2011,6 +2048,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       // No upfront baking — getOrBakeTex() handles everything lazily on first use.
     }
     world.addChild(visualPropsContainer);
+    // Neutral/Ancient camp icons (redrawn with props; visible camps only).
+    const campGfx = new PIXI.Graphics(); world.addChild(campGfx);
 
     // HQ container
     const hqCont = new PIXI.Container();
@@ -2270,6 +2309,24 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
             sprite.position.set(footprint.x,footprint.y);
             sprite.zIndex=footprint.y;
             visualPropsContainer.addChild(sprite);
+          }
+        }
+      }
+
+      // Camp icons: iterate the precomputed camp list (not every tile) and draw
+      // the ones inside the props bounds. Ownership tint reads the live tile.
+      campGfx.clear();
+      if (zoomRef.current >= 0.5) {
+        const tilesNow = tilesRef.current;
+        const camps = tilesNow?.__camps;
+        if (camps) {
+          for (const cp of camps) {
+            if (cp.c + cp.w < pb.cMin || cp.c > pb.cMax || cp.r + cp.h < pb.rMin || cp.r > pb.rMax) continue;
+            const t = tilesNow[cp.key];
+            if (!t?.isCamp) continue;
+            // centre of the w x h footprint (top-left is the primary tile)
+            const mid = isoXY(cp.c + (cp.w - 1) / 2, cp.r + (cp.h - 1) / 2);
+            drawCampMarker(campGfx, mid.cx, mid.cy + TH / 2, cp.w, cp.h, t.powerLevel, t.owner);
           }
         }
       }
