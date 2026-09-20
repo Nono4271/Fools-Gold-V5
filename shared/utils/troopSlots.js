@@ -1,6 +1,7 @@
 // Pure rules for assigning barracks troops to a commander's (max 3) troop slots.
 // Extracted from Game.jsx so the future server can run the same rules.
 import { FACTION_TROOPS, COMMAND_COST } from "../constants/troops.js";
+import { ANCIENT_FACTIONS } from "../constants/ancientTroops.js";
 import { normaliseTroopSlots } from "./pathfinding.js";
 
 export const MAX_TROOP_SLOTS = 3;
@@ -11,12 +12,32 @@ export function troopPoolKey(branch) {
     ? `${branch.faction}:${branch.branch}:${branch.tier}` : null;
 }
 
+// Look up a branch def across real factions AND the Ancients (see
+// ancientTroops.js) — additive fallback, same pattern used in troops.js and
+// battle.js so all three places resolve an Ancient the same way.
+function findBranchDef(branch) {
+  if (!branch) return null;
+  const f = FACTION_TROOPS[branch.faction] || ANCIENT_FACTIONS[branch.faction];
+  return f?.branches?.find(b => b.key === branch.branch) ?? null;
+}
+
 // Command points one troop of this branch uses (small/medium/large).
 export function branchCommandCost(branch) {
-  const size = branch
-    ? (FACTION_TROOPS[branch.faction]?.branches?.find(b => b.key === branch.branch)?.size ?? "small")
-    : "small";
+  const size = branch ? (findBranchDef(branch)?.size ?? "small") : "small";
   return COMMAND_COST[size] ?? 1;
+}
+
+// ── Ancients: "only one Ancient may be used in an army" ──────────────────────
+// Enforces the branch's `uniqueSlot` flag (see ancientTroops.js "skill D").
+// Not tied to which specific Ancient — any second Ancient in the same
+// army's slots is blocked, not just a duplicate of the same one.
+export function isAncientUniqueBranch(branch) {
+  return !!findBranchDef(branch)?.uniqueSlot;
+}
+
+// True if any slot OTHER than `excludeIndex` already carries an Ancient.
+export function armyHasOtherAncient(slots, excludeIndex = -1) {
+  return slots.some((sl, idx) => idx !== excludeIndex && isAncientUniqueBranch(sl?.branch));
 }
 
 // Commander with its slot list and derived troops/troopBranch fields refreshed.
@@ -28,6 +49,13 @@ export function withTroopSlots(cmd, slots) {
 // returnedOld goes back to oldKey (branch swapped); drawn/returned apply to newKey.
 export function planTroopSlot({ cmd, slotIndex, branch, newTroops, pool, commandCap }) {
   const existingSlots = normaliseTroopSlots(cmd);
+
+  // Ancients: refuse to place a 2nd Ancient into a different slot. No
+  // change at all — same shape as a no-op set (see `blocked` field).
+  if (branch && newTroops > 0 && isAncientUniqueBranch(branch) && armyHasOtherAncient(existingSlots, slotIndex)) {
+    return { slots: existingSlots, oldKey: null, returnedOld: 0, newKey: null, drawn: 0, returned: 0, blocked: "ancient_unique" };
+  }
+
   const newSlots = [...existingSlots];
 
   const otherUsed = newSlots.reduce((sum, sl, idx) =>
@@ -96,10 +124,18 @@ export function planArmySlots({ cmd, desired, pool, commandCap }) {
   }
   const slots = [];
   let capLeft = commandCap;
+  let ancientPlaced = false;
+  const blockedKeys = [];
   for (const want of desired) {
     if (slots.length >= MAX_TROOP_SLOTS) break;
     const key = troopPoolKey(want?.branch);
     if (!key || !(want.troops > 0)) continue;
+    // Ancients: only the first Ancient in `desired` order gets a slot; any
+    // further Ancient is skipped entirely (not drawn from the pool).
+    if (isAncientUniqueBranch(want.branch)) {
+      if (ancientPlaced) { blockedKeys.push(key); continue; }
+      ancientPlaced = true;
+    }
     const cost = branchCommandCost(want.branch);
     const n = Math.max(0, Math.min(Math.floor(want.troops), work[key] || 0, Math.floor(capLeft / cost + 1e-9)));
     if (n <= 0) continue;
@@ -108,7 +144,7 @@ export function planArmySlots({ cmd, desired, pool, commandCap }) {
     slots.push({ branch: want.branch, troops: n });
   }
   for (const key of Object.keys(poolDelta)) if (poolDelta[key] === 0) delete poolDelta[key];
-  return { slots, poolDelta };
+  return blockedKeys.length ? { slots, poolDelta, blockedKeys } : { slots, poolDelta };
 }
 
 export function applyPoolDelta(counts, poolDelta) {

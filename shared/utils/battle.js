@@ -3,6 +3,8 @@ import { TERR  } from "../constants/terrain.js";
 import { POWER_DEFS, XP_PER_COMMAND } from "../constants/map.js";
 import { skillFiresOnRound, getActiveSkills, getPassiveBonuses } from "../constants/skills.js";
 import { npcForPowerLevel, factionDefCmdForTile, FACTION_BRANCHES_EXPORT } from "../constants/heroes.js";
+import { resolveNeutralUnit, getNeutralTierSkills } from "../constants/neutralTroops.js";
+import { ANCIENT_FACTIONS } from "../constants/ancientTroops.js";
 
 // ── Normalize a commander to troopSlots array (backward compat) ──────────────
 function normaliseTroopSlots(cmd) {
@@ -20,7 +22,7 @@ function totalSlotTroops(slots) {
 function resolveBranch(troopBranch) {
 if (!troopBranch) return null;
 const { faction, branch, tier = 0 } = troopBranch;
-const f = FACTION_TROOPS[faction];
+const f = FACTION_TROOPS[faction] || ANCIENT_FACTIONS[faction];
 if (!f) return null;
 const b = f.branches.find(b => b.key === branch);
 if (!b) return null;
@@ -31,7 +33,7 @@ return { branchDef: b, tierData: b.tiers[tier] ?? null };
 function getTierSkillsForBattle(troopBranch) {
 if (!troopBranch) return [];
 const { faction, branch, tier = 0 } = troopBranch;
-const f = FACTION_TROOPS[faction];
+const f = FACTION_TROOPS[faction] || ANCIENT_FACTIONS[faction];
 if (!f) return [];
 const b = f.branches.find(b => b.key === branch);
 if (!b) return [];
@@ -41,6 +43,28 @@ else if (tier === 0) skills.push(b.skills.a);
 else if (tier === 1) skills.push(b.skills.b);
 else { skills.push(b.skills.a); skills.push(b.skills.b); }
 return skills;
+}
+
+// ── Resolve a neutral unit into the same slot shape battle resolution uses
+//    for faction troops (see `atkSlotResolved`/`defSlotResolved` in
+//    `simBattle`). Purely additive — nothing in `simBattle` calls this yet,
+//    since live map placement/garrison spawning for neutral units is not
+//    wired up (data + battle-engine support only, see ReadMeAI). Future
+//    integration can push the result of this straight into an
+//    `atkSlotResolved`/`defSlotResolved`-style array.
+export function getNeutralSlotForBattle(neutralKey, troops) {
+  const unit = resolveNeutralUnit(neutralKey);
+  if (!unit) return null;
+  return {
+    branch:    { neutral: neutralKey },
+    troops:    troops || 0,
+    branchDef: { key: unit.key, label: unit.label, size: unit.size, dmgType: unit.dmgType, role: unit.role, tags: unit.tags || [] },
+    tierData:  unit.stats,
+    skills:    getNeutralTierSkills(neutralKey),
+    hpPer:     unit.stats?.hp  ?? 25,
+    spd:       unit.stats?.spd ?? 50,
+    def:       unit.stats?.def ?? 20,
+  };
 }
 
 // ── Check if a troop branch has a specific immunity ───────────────────────────
@@ -59,7 +83,14 @@ return skills.some(s => s?.effect?.type === "immunity" && s.effect.immune?.inclu
 
 // ── Proc troop skills on a given trigger ──────────────────────────────────────
 // defTroopBranch: the branch RECEIVING the effect (for immunity checks)
-function procTroopSkills(troopSkills, trigger, skillLevels, rs, roundLog, actorLabel, defTroopBranch, round) {
+// alliedSlots: (optional, additive) the resolved slot array for the SAME side
+//   as `troopSkills`'s owner (e.g. `atkSlotResolved` or `defSlotResolved`) —
+//   only used by tag-synergy effect types below to check "is there another
+//   allied unit sharing tag X". Existing callers/effects are unaffected when
+//   this is omitted.
+// actingSlot: (optional, additive) the specific slot object currently firing
+//   its skills, so tag-synergy checks can exclude "itself" as a valid target.
+export function procTroopSkills(troopSkills, trigger, skillLevels, rs, roundLog, actorLabel, defTroopBranch, round, alliedSlots, actingSlot) {
 for (const skill of troopSkills) {
 if (!skill || skill.trigger !== trigger || skill.trigger === "passive") continue;
 const lvl  = skillLevels?.[skill.key] ?? 1;
@@ -100,6 +131,73 @@ switch (eff.type) {
   case "counter_attack":rs.troopCounterAtk    = true; break;
   case "lifesteal":     rs.lifesteal          = (rs.lifesteal || 0) + (eff.value || 0.50); break;
   case "immunity":      break;
+  // ── Neutral-unit tag synergy effects ──────────────────────────────────
+  // Active abilities that trigger between allied units sharing a tag (NOT a
+  // passive blanket stat bonus): each one requires another allied slot
+  // (from `alliedSlots`, same side as the acting unit, excluding itself)
+  // whose `branchDef.tags` includes the target tag. If no such ally exists,
+  // the ability simply has no target and does nothing this proc — no `rs`
+  // change, no log line. See `shared/constants/neutralTroops.js` for which
+  // of the 15 neutral units use these.
+  case "tag_shield_ally": {
+    // Bear Shaman — shields a random other beast-tagged ally by reducing
+    // this side's incoming damage for the round. Reuses the existing
+    // `dmg_reduce` field/cap rather than tracking a specific target slot's
+    // HP separately.
+    const tag = eff.tag || "beast";
+    const hasAlly = (alliedSlots || []).some(s => s && s !== actingSlot && (s.troops || 0) > 0 && s.branchDef?.tags?.includes(tag));
+    if (!hasAlly) break;
+    rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.25));
+    roundLog.actions.push({ actor:actorLabel, action:`${skill.icon} ${skill.name} — shields a ${tag} ally!`, dmg:0, isTroopSkill:true });
+    break;
+  }
+  case "tag_buff_allies_tag": {
+    // Swarmwing Broodmother — buffs the attack of all beast-tagged allies.
+    // Reuses `rs.troopAtkMult` (already side-wide) rather than a per-slot
+    // buff table, gated on at least one other beast-tagged ally existing.
+    const tag = eff.tag || "beast";
+    const hasAlly = (alliedSlots || []).some(s => s && s !== actingSlot && (s.troops || 0) > 0 && s.branchDef?.tags?.includes(tag));
+    if (!hasAlly) break;
+    rs.troopAtkMult *= (1 + (eff.value || 0.20));
+    roundLog.actions.push({ actor:actorLabel, action:`${skill.icon} ${skill.name} — buffs all ${tag}-tagged allies!`, dmg:0, isTroopSkill:true });
+    break;
+  }
+  case "tag_intercept_for_tag": {
+    // Rubble Warden — intercepts a hit meant for another construct-tagged
+    // ally, mitigating it with its own high DEF (approximated as a
+    // dmg_reduce application, same pattern as other mitigation skills).
+    const tag = eff.tag || "construct";
+    const hasAlly = (alliedSlots || []).some(s => s && s !== actingSlot && (s.troops || 0) > 0 && s.branchDef?.tags?.includes(tag));
+    if (!hasAlly) break;
+    rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.20));
+    roundLog.actions.push({ actor:actorLabel, action:`${skill.icon} ${skill.name} — intercepts a hit for a ${tag} ally!`, dmg:0, isTroopSkill:true });
+    break;
+  }
+  case "tag_full_shield_ally": {
+    // Ruin Colossus — grants a construct-tagged ally a shield absorbing
+    // nearly all of its next hit. See file-header note above the switch:
+    // approximated via the existing 85%-capped `dmg_reduce` field (a "full"
+    // always-zero-damage flag would need new plumbing at every hit
+    // resolution call site, which is out of scope for this additive change).
+    const tag = eff.tag || "construct";
+    const hasAlly = (alliedSlots || []).some(s => s && s !== actingSlot && (s.troops || 0) > 0 && s.branchDef?.tags?.includes(tag));
+    if (!hasAlly) break;
+    rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.85));
+    roundLog.actions.push({ actor:actorLabel, action:`${skill.icon} ${skill.name} — full shield on a ${tag} ally!`, dmg:0, isTroopSkill:true });
+    break;
+  }
+  case "tag_heal_ally_on_hit": {
+    // Scavenger Chief — on landing a hit, heals a raider-tagged ally for a
+    // % of the damage just dealt. Reuses the existing `rs.lifesteal`
+    // pipeline (already consumed at commander-attack resolution) gated on
+    // an eligible raider-tagged ally being present.
+    const tag = eff.tag || "raider";
+    const hasAlly = (alliedSlots || []).some(s => s && s !== actingSlot && (s.troops || 0) > 0 && s.branchDef?.tags?.includes(tag));
+    if (!hasAlly) break;
+    rs.lifesteal = (rs.lifesteal || 0) + (eff.value || 0.30);
+    roundLog.actions.push({ actor:actorLabel, action:`${skill.icon} ${skill.name} — heals a ${tag} ally!`, dmg:0, isTroopSkill:true });
+    break;
+  }
   // Troop passive damage reductions (applied as dmgReduce)
   case "focus_dmg_reduce":
     rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.02));
@@ -3483,7 +3581,7 @@ if (rs.weakSpotStacks.length > 0) {
 
 // round_start troop skills — all atk slots apply to enemy
 for (const sl of atkSlotResolved) {
-  procTroopSkills(sl.skills, "round_start", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", dc?.troopBranch ?? null, round);
+  procTroopSkills(sl.skills, "round_start", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", dc?.troopBranch ?? null, round, atkSlotResolved, sl);
 }
 
 // Log hero skills
@@ -3640,7 +3738,7 @@ for (const ent of order) {
     if (!sl || !sl.tierData || atkSlotHp[slotIdx] <= 0 || defTroopHp <= 0) continue;
 
     // on_hit troop skills from this slot — pass primary defTroopBranch for immunity
-    procTroopSkills(sl.skills, "on_hit", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null, round);
+    procTroopSkills(sl.skills, "on_hit", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null, round, atkSlotResolved, sl);
 
     const count     = Math.ceil(atkSlotHp[slotIdx] / sl.hpPer);
     const slotLabel = sl.branchDef?.label || `Slot ${slotIdx+1}`;
@@ -3777,7 +3875,7 @@ for (const ent of order) {
     if (Math.random() < rs.enemyMissChance) { roundLog.actions.push({ actor:"Defenders", action:"Enemy troops missed!", dmg:0 }); continue; }
 
     // on_hit troop skills — this def slot targeting attacker
-    procTroopSkills(dsl.skills, "on_hit", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null, round);
+    procTroopSkills(dsl.skills, "on_hit", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null, round, defSlotResolved, dsl);
 
     const rangedReduce = (dsl.branchDef?.role === "ranged" && rs.rangedDmgReduce > 0) ? rs.rangedDmgReduce : 0;
     const defSlotModSum = -(rs.enemyDmgReduce||0) - (rs.troopDmgReduce||0) - (rs.dmgReduce||0) - rangedReduce;
@@ -3807,7 +3905,7 @@ for (const ent of order) {
     damageFirstTakenRound = round;
 
     // on_hit_received — attacker's primary slot reacts
-    procTroopSkills(atkSlotResolved[0]?.skills ?? atkTroopSkills, "on_hit_received", atkSkillLevels, rs, roundLog, "Troops", dsl.branch ?? null, round);
+    procTroopSkills(atkSlotResolved[0]?.skills ?? atkTroopSkills, "on_hit_received", atkSkillLevels, rs, roundLog, "Troops", dsl.branch ?? null, round, atkSlotResolved, atkSlotResolved[0]);
 
     const dLabel = dsl.branchDef?.label || `Defenders ${dSlotIdx+1}`;
     roundLog.actions.push({ actor:"Defenders", action:`${dLabel} attack`, dmg:dmgD, atkKilled:Math.max(0,Math.round((prevAtkTotal2-atkTroopHp)/atkTroopHpPer)), atkRemaining:Math.max(0,Math.round(atkTroopHp/atkTroopHpPer)), isPlayer:false });
@@ -3816,11 +3914,11 @@ for (const ent of order) {
 
 // round_end troop skills (all atk slots)
 for (const sl of atkSlotResolved) {
-  procTroopSkills(sl.skills, "round_end", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null, round);
+  procTroopSkills(sl.skills, "round_end", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null, round, atkSlotResolved, sl);
 }
 // round_end for all def slots
 for (const dsl of defSlotResolved) {
-  procTroopSkills(dsl.skills, "round_end", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null, round);
+  procTroopSkills(dsl.skills, "round_end", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null, round, defSlotResolved, dsl);
 }
 
 // ── Life Drain tick ───────────────────────────────────────────────────────────
