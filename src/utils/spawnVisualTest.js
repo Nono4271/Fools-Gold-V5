@@ -39,6 +39,28 @@ export function selectionEdgesBesideHq(c, r, tiles) {
   ];
 }
 
+// Build the 12 possible outer edge segments of a 3x3 HQ. Segments touching
+// territory owned by the same player are omitted so the HQ joins the territory.
+export function hqJoinedBorderSegments(pc, r0, tiles) {
+  const hq = tiles[`${pc},${r0}`];
+  if (!hq) return [];
+  const segments=[];
+  const add=(c,r,side,nc,nr)=>{
+    if (sameTerritory(hq,tiles[`${nc},${nr}`])) return;
+    const {cx,cy}=isoXY(c,r), top=[cx,cy], right=[cx+TW/2,cy+TH/2];
+    const bottom=[cx,cy+TH], left=[cx-TW/2,cy+TH/2];
+    const pair=side===0?[top,right]:side===1?[right,bottom]:side===2?[bottom,left]:[left,top];
+    segments.push(pair.flat());
+  };
+  for(let i=-1;i<=1;i++) {
+    add(pc+i,r0-1,0,pc+i,r0-2);
+    add(pc+1,r0+i,1,pc+2,r0+i);
+    add(pc+i,r0+1,2,pc+i,r0+2);
+    add(pc-1,r0+i,3,pc-2,r0+i);
+  }
+  return segments;
+}
+
 // The surface centre is shared by selection, props and the large resource base.
 export function resourceFootprint(c, r, tile = {}) {
   const {cx, cy} = isoXY(c, r);
