@@ -1,4 +1,4 @@
-import {trainingQuote,trainingSecondsLeft} from "../../../shared/utils/training.js";
+import {trainingQuote,trainingSecondsLeft,capstoneTrainDiscount} from "../../../shared/utils/training.js";
 import {healingFoodCost,healingRate} from "../../../shared/utils/armyEconomy.js";
 import { useState, useEffect, memo, useMemo } from "react";
 import { useGameContext } from "../../GameContext.js";
@@ -437,7 +437,7 @@ const BRANCH_LVL_BONUS = [
         display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column",
         boxShadow:`0 0 40px ${fColor}22` }}>
         <div style={{ fontSize:52, lineHeight:1 }}>{fDef.s}</div>
-        <div style={{ fontFamily:P.ff, fontSize:13, fontWeight:700, color:fColor, marginTop:4 }}>{roman[tierIdx]}</div>
+        <div style={{ fontFamily:P.ff, fontSize:13, fontWeight:700, color:fColor, marginTop:4 }}>{branch.capstone ? "★" : roman[tierIdx]}</div>
       </div>
     </div>
   )}
@@ -452,7 +452,7 @@ const BRANCH_LVL_BONUS = [
     <div style={{ display:"flex", alignItems:"center", gap:5 }}>
       <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:fColor,
         background:`${fColor}22`, border:`1px solid ${fColor}55`,
-        borderRadius:4, padding:"1px 7px" }}>{roman[tierIdx]}</div>
+        borderRadius:4, padding:"1px 7px" }}>{branch.capstone ? "★" : roman[tierIdx]}</div>
       <div style={{ fontFamily:P.ff, fontSize:8, fontWeight:700, color:fColor,
         letterSpacing:".06em" }}>{fDef.quarters ?? fDef.n}</div>
     </div>
@@ -852,7 +852,7 @@ const BRANCH_LVL_BONUS = [
     <div style={{ fontSize:7, fontFamily:P.ff, fontWeight:700,
       color: tierUnlocked ? fDef.c : "#3a3028",
       background: tierUnlocked ? `${fDef.c}44` : "rgba(0,0,0,.5)",
-      padding:"1px 5px", borderRadius:3, backdropFilter:"blur(2px)" }}>{roman[idx]}</div>
+      padding:"1px 5px", borderRadius:3, backdropFilter:"blur(2px)" }}>{br.capstone ? "★" : roman[idx]}</div>
   </div>
   {/* label */}
   <div style={{ fontSize:7, fontFamily:P.ff, fontWeight:700,
@@ -1413,7 +1413,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
   const snapVal = value => Math.min(maxAmount,Math.max(0,Math.floor(value/cmdStep)*cmdStep));
   const sv = snapVal(sliderVal);
   const numCmds = sv / CMD_SIZE[cmdLabel];
-  const quote = isScrap ? null : trainingQuote(card?.bKey,sv,trainingSpeedMult);
+  const capstoneDiscount = card?.branch?.capstone ? capstoneTrainDiscount(bldgs[`b_${card.fKey}_${card.branch.key}`]) : 0;
+  const quote = isScrap ? null : trainingQuote(card?.bKey,sv,trainingSpeedMult,capstoneDiscount);
   const trainCost = quote?.cost ?? null;
   const timeSecs = quote?.totalSeconds || 0;
 
