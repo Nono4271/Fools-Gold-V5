@@ -7,6 +7,12 @@ import { censorText } from "../../../shared/utils/profanity.js";
    • Local-only today (see src/hooks/useChat.js) — no real multiplayer server
    • World/Faction/Crew are populated with AI flavor chatter so they don't feel
      empty; DMs/Groups are player-initiated with any known player id
+   • Every scrollable region here needs BOTH "scr" (the site's overflow/
+     touch-action styling, css.js) AND "chat-scroll" (src/main.tsx's global
+     touchstart handler blocks touch-scrolling everywhere by default, for
+     iOS pull-to-refresh, and only lets it through inside an allowlisted
+     class — "chat-scroll" is chat's entry in that allowlist, alongside
+     .roster-scroll/.battle-popup/.gear-picker-list/.find-tiles-popup)
 ───────────────────────────────────────────────────────────────────────────── */
 
 const BTN_RESET = {
@@ -170,7 +176,7 @@ export default memo(function ChatPanel({
 
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         {/* Channel list */}
-        <div className="scr" style={{
+        <div className="scr chat-scroll" style={{
           width: 128, flexShrink: 0, minHeight: 0, overflowY: "auto", borderRight: `1px solid ${BORDER_COL}`,
           padding: 6, display: "flex", flexDirection: "column", gap: 4,
         }}>
@@ -200,34 +206,40 @@ export default memo(function ChatPanel({
         {/* Message view / picker */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
           {picking ? (
-            <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ ...TEXT_SM, color: GOLD }}>
-                {picking === "dm" ? "Start a DM" : "Start a Group"}
-              </div>
-              {picking === "group" && (
-                <input
-                  value={groupName} onChange={e => setGroupName(e.target.value)}
-                  placeholder="Group name" maxLength={24}
-                  style={{
-                    background: "rgba(255,255,255,.05)", border: "1px solid #2a3040", borderRadius: 4,
-                    padding: "7px 9px", color: "#c8c0b0", fontFamily: "'Cinzel',serif", fontSize: 10, outline: "none",
-                  }}
-                />
-              )}
-              <div style={{ ...TEXT_XS, color: "#5a6a7a" }}>
-                {picking === "dm" ? "Pick a player" : "Pick two or more players"}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {otherKnownIds.map(id => (
-                  <PickerRow key={id} id={id} label={displayName(id, playerId, playerName, crews)}
-                    checked={picking === "dm" ? pickSel[0] === id : pickSel.includes(id)}
-                    onToggle={pid => picking === "dm" ? setPickSel([pid]) : togglePick(pid)} />
-                ))}
-                {otherKnownIds.length === 0 && (
-                  <div style={{ ...TEXT_XS, color: "#3a4050" }}>No other players known yet.</div>
+            <>
+              {/* Scrollable rows; Cancel/Start are pinned in a footer below,
+                  outside the scroll area, so they're always reachable even
+                  with a long player list or a short viewport — same pattern
+                  as the message view's compose bar. */}
+              <div className="scr chat-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ ...TEXT_SM, color: GOLD }}>
+                  {picking === "dm" ? "Start a DM" : "Start a Group"}
+                </div>
+                {picking === "group" && (
+                  <input
+                    value={groupName} onChange={e => setGroupName(e.target.value)}
+                    placeholder="Group name" maxLength={24}
+                    style={{
+                      background: "rgba(255,255,255,.05)", border: "1px solid #2a3040", borderRadius: 4,
+                      padding: "7px 9px", color: "#c8c0b0", fontFamily: "'Cinzel',serif", fontSize: 10, outline: "none",
+                    }}
+                  />
                 )}
+                <div style={{ ...TEXT_XS, color: "#5a6a7a" }}>
+                  {picking === "dm" ? "Pick a player" : "Pick two or more players"}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {otherKnownIds.map(id => (
+                    <PickerRow key={id} id={id} label={displayName(id, playerId, playerName, crews)}
+                      checked={picking === "dm" ? pickSel[0] === id : pickSel.includes(id)}
+                      onToggle={pid => picking === "dm" ? setPickSel([pid]) : togglePick(pid)} />
+                  ))}
+                  {otherKnownIds.length === 0 && (
+                    <div style={{ ...TEXT_XS, color: "#3a4050" }}>No other players known yet.</div>
+                  )}
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <div style={{ display: "flex", gap: 8, padding: "8px 10px", borderTop: `1px solid ${BORDER_COL}`, flexShrink: 0 }}>
                 <button onClick={() => { setPicking(null); setPickSel([]); }} style={{
                   ...BTN_RESET, flex: 1, padding: "8px 0", borderRadius: 4,
                   background: "rgba(255,255,255,.04)", border: "1px solid #2a3040", color: "#8a9aaa", ...TEXT_XS,
@@ -243,14 +255,14 @@ export default memo(function ChatPanel({
                   }}
                 >Start</button>
               </div>
-            </div>
+            </>
           ) : !active ? (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div style={{ ...TEXT_XS, color: "#3a4050" }}>Select a channel</div>
             </div>
           ) : (
             <>
-              <div ref={msgListRef} className="scr" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+              <div ref={msgListRef} className="scr chat-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
                 {msgs.length === 0 && (
                   <div style={{ ...TEXT_XS, color: "#3a4050", textAlign: "center", padding: "20px 0" }}>
                     No messages yet.
