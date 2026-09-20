@@ -1,21 +1,16 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 
 import { unstable_batchedUpdates } from "react-dom";
-import { MapRenderer, clearHQCache } from "./MapRenderer";
 
 // Constants
-import { CSS } from "./constants/css.js";
 import { getFactionAlignment } from "../shared/constants/factions.js";
-import { validateRelocationPad, allHqKeyList } from "../shared/utils/relocation.js";
-import { HDEFS } from "../shared/constants/heroes.js";
-import { HQP, POWER_DEFS, hqSiegeValue, FORT_LEVELS, XP_PER_COMMAND } from "../shared/constants/map.js";
+import { HQP, POWER_DEFS, hqSiegeValue, FORT_LEVELS } from "../shared/constants/map.js";
 import { FACTION_TROOPS } from "../shared/constants/troops.js";
-import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainingQueueCount, tierFromBranchLevel } from "../shared/constants/buildings.js";
+import { barracksCapacity, upgCost, upgDuration, maxAvailLevel, tierFromBranchLevel } from "../shared/constants/buildings.js";
 import { isoXY } from "../shared/constants/geometry.js";
 
 // Utils
-import { adj, effectiveMarchSpd, marchStepMs, setImpassableTiles, normaliseTroopSlots } from "../shared/utils/pathfinding.js";
-import { garrisonDefCmd } from "../shared/utils/garrisonUtils.js";
+import { adj, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../shared/utils/pathfinding.js";
 import { applyGearToCmd } from "../shared/utils/gearStats.js";
 
 // Hooks
@@ -23,10 +18,8 @@ import { useResources } from "./hooks/useResources.js";
 import { useAI } from "./hooks/useAI.js";
 import { useArmyEconomy } from "./hooks/useArmyEconomy.js";
 import { useTraining } from "./hooks/useTraining.js";
-import { useMarch, applyXp } from "./hooks/useMarch.js";
-import { useForts, isTileInRange, buildAnchors } from "./hooks/useForts.js";
-import { GameContext } from "./GameContext.js";
-import { generateSpawnCommander, spawnTilePortraitPath, rollSpawnRssRewards, rollRareDrop, canSweepSpawn, spawnDisplayName, spawnAccentColor, SPAWN_RESPAWN_MS } from "./utils/spawnUtils.js";
+import { useMarch } from "./hooks/useMarch.js";
+import { useForts } from "./hooks/useForts.js";
 import { useUpgrades } from "./hooks/useUpgrades.js";
 import { useGameLoop } from "./hooks/useGameLoop.js";
 import { usePathfinding } from "./hooks/usePathfinding.js";
@@ -39,29 +32,20 @@ import { useTroopSlots } from "./hooks/useTroopSlots.js";
 import { useRelocation } from "./hooks/useRelocation.js";
 import { useConsumables } from "./hooks/useConsumables.js";
 import { useTileTimers } from "./hooks/useTileTimers.js";
+import { useTacticTicks } from "./hooks/useTacticTicks.js";
+import { useAiCrews } from "./hooks/useAiCrews.js";
+import { useReinforcements } from "./hooks/useReinforcements.js";
+import { useTactics } from "./hooks/useTactics.js";
+import { useMapInit } from "./hooks/useMapInit.js";
 import { consumeOne, withRssBoosts } from "../shared/utils/consumables.js";
 
 // Screens
+import GameView from "./GameView.jsx";
+import { perfLog } from "./utils/perfLog.jsx";
 import TitleScreen from "./components/screens/TitleScreen.jsx";
 import FactionScreen from "./components/screens/FactionScreen.jsx";
 import GachaScreen from "./components/screens/GachaScreen.jsx";
 
-// Game components
-import HUD from "./components/game/HUD.jsx";
-import TilePopup from "./components/game/TilePopup.jsx";
-import HQMenu from "./components/game/HQMenu.jsx";
-import WorldMap from "./components/game/WorldMap.jsx";
-import BattleLog from "./components/game/BattleLog.jsx";
-import CommanderPicker from "./components/game/CommanderPicker.jsx";
-import BottomPanel from "./components/game/BottomPanel.jsx";
-import WinScreen from "./components/game/WinScreen.jsx";
-import Minimap from "./components/game/Minimap.jsx";
-import WizardsTomes, { ScrollStackIcon } from "./components/game/WizardsTomes.jsx";
-import GameBar from "./components/game/GameBar.jsx";
-import Leaderboard from "./components/game/Leaderboard.jsx";
-import CrewPanel from "./components/game/CrewPanel.jsx";
-import CommanderScreen from "./components/screens/CommanderScreen.jsx";
-import BagScreen from "./components/screens/BagScreen.jsx";
 
 export default function RiseToWar() {
   // ── Screens ──
@@ -598,20 +582,6 @@ export default function RiseToWar() {
   // ── Hooks ──
   useResources({ screen, tilesRef, setRss, bldgs, fortsRef: _fortsRef, rssBonus });
 
-  // ── Dragon Egg regen — refills full cap in 24 hrs regardless of cap size ──
-  useEffect(() => {
-    if (screen !== "game") return;
-    const id = setInterval(() => {
-      setDragonEggs(e => {
-        const cap = 20 + (tomesNodeLevels["tr"] ?? 0);
-        if (e >= cap) return e;
-        const regenPerTick = cap / (24 * 60); // fills in 24hr, tick every 1 min
-        return Math.min(cap, e + regenPerTick);
-      });
-    }, 60_000);
-    return () => clearInterval(id);
-  }, [screen, tomesNodeLevels]);
-
   // Compute leaderboard entries safely — only iterates patched (owned) tiles
   useEffect(() => {
     if (!leaderboardOpen) return;
@@ -673,80 +643,6 @@ export default function RiseToWar() {
     };
   }, [screen, mapReady]);
 
-  // ── Training tick — deduct 2 eggs every 10 min, credit XP, stop at max ticks ──
-  useEffect(() => {
-    if (screen !== "game") return;
-    // XP per tick = 25% of tile's command_budget × 850 (tier2 XP rate)
-    const POWER_COMMAND = { 1:0.3,2:2.5,3:4,4:8,5:10,6:15,7:18,8:30,9:35,10:55,11:65,12:75,13:90 };
-    const id = setInterval(() => {
-      setCmds(prev => prev.map(cmd => {
-        if (!cmd.training) return cmd;
-        const elapsed  = Date.now() - (cmd.trainingStartMs ?? Date.now());
-        const ticksDue = Math.min(cmd.trainingTicks ?? 1, Math.floor(elapsed / 600_000));
-        const ticksDone = cmd.trainingTicksDone ?? 0;
-        if (ticksDue <= ticksDone) return cmd;
-        const newTicks = ticksDue - ticksDone;
-        const tilePl   = tilesMapRef.current?.[cmd.gatherTileKey]?.powerLevel ?? 1;
-        const budget   = POWER_COMMAND[tilePl] ?? 0.3;
-        const xpPerTick = Math.round(budget * (XP_PER_COMMAND[2] ?? 850) * 0.25);
-        const xpGain   = Math.round(xpPerTick * trainingXpMult * newTicks);
-        setDragonEggs(e => Math.max(0, e - newTicks * 2));
-        const nextDone = ticksDone + newTicks;
-        const finished = nextDone >= (cmd.trainingTicks ?? 1);
-        // Apply full applyXp logic — handles level-ups, stat growth, skill points
-        const xpResult = applyXp(cmd, xpGain, (msg, color, tk) => floaty(msg, color, tk));
-        return { ...cmd, ...xpResult, trainingTicksDone: nextDone, training: !finished };
-      }));
-    }, 10_000);
-    return () => clearInterval(id);
-  }, [screen, setCmds, setDragonEggs, trainingXpMult]);
-
-  // ── Gather tick — deduct 1 egg every 10 min, credit 4x RSS, stop at max ticks ──
-  useEffect(() => {
-    if (screen !== "game") return;
-    const RATE_BY_PL = { 2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600 };
-    const id = setInterval(() => {
-      setCmds(prev => prev.map(cmd => {
-        if (!cmd.gathering || !cmd.gatherTileKey) return cmd;
-        const tile = tilesMapRef.current?.[cmd.gatherTileKey];
-        if (!tile) return { ...cmd, gathering: false };
-        const elapsed = Date.now() - (cmd.gatherStartMs ?? Date.now());
-        const ticksDue = Math.min(cmd.gatherTicks ?? 1, Math.floor(elapsed / 600_000));
-        const ticksDone = cmd.gatherTicksDone ?? 0;
-        if (ticksDue <= ticksDone) return cmd; // not time yet
-        const newTicks = ticksDue - ticksDone;
-        const pl = tile.powerLevel ?? 2;
-        const ratePerHr = RATE_BY_PL[pl] ?? 240;
-        const rssGain = Math.floor(ratePerHr * 4 * newTicks); // 4x per tick-hour
-        if (tile.rss) {
-          setRss(p => ({ ...p, [tile.rss]: p[tile.rss] + rssGain }));
-        }
-        setDragonEggs(e => Math.max(0, e - newTicks));
-        const nextDone = ticksDone + newTicks;
-        const finished = nextDone >= (cmd.gatherTicks ?? 1);
-        return { ...cmd, gatherTicksDone: nextDone, gathering: !finished };
-      }));
-    }, 10_000); // check every 10s, acts at 10-min boundaries
-    return () => clearInterval(id);
-  }, [screen, setCmds, setRss, setDragonEggs]);
-
-  // ── Stamina regen: +20/hr = +1 per 3 minutes ─────────────────────────────
-  useEffect(() => {
-    if (screen !== "game") return;
-    const STAMINA_MAX   = staminaMax;
-    const REGEN_PER_HR  = 20;
-    const INTERVAL_MS   = 3 * 60 * 1000; // 3 minutes = 1 regen tick
-    const REGEN_PER_TICK = REGEN_PER_HR / (60 / 3); // = 1 per tick
-    const id = setInterval(() => {
-      setPlayerCmds(prev => prev.map(c => {
-        const cur = c.stamina ?? STAMINA_MAX;
-        if (cur >= STAMINA_MAX) return c;
-        return { ...c, stamina: Math.min(STAMINA_MAX, cur + REGEN_PER_TICK) };
-      }));
-    }, INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [screen]);
-
   const { initPathfinding, findPath, findPathBatch } = usePathfinding();
   const { runBattle } = useBattle();
 
@@ -759,487 +655,16 @@ export default function RiseToWar() {
     notifyDisplayPanZoom();
   }, [notifyDisplayPanZoom]);
 
-  // ── Init map on game start via Web Worker ──
-  useEffect(() => {
-    if (screen !== "game" || tiles.__ready) return;
-
-    setLoadPct(0);
-    setLoadLabel("Generating world...");
-
-    const worker = new Worker(
-      new URL("./workers/mapGen.worker.js", import.meta.url),
-      { type: "module" }
-    );
-
-    worker.onmessage = async (e) => {
-      const { type, pct, label, buffers, meta, spawnKeys, factionTileKeys } = e.data;
-
-      if (type === "progress") {
-        setLoadPct(pct);
-        if (label) setLoadLabel(label);
-        return;
-      }
-
-      if (type === "done") {
-        worker.terminate();
-        setLoadPct(10);
-        setLoadLabel("Building world...");
-
-        // ── Reconstruct tile map from zero-copy typed arrays ──────────────
-        // Workers transfer ArrayBuffers — wrap them back into typed arrays.
-        const terrainArr  = new Uint8Array(buffers.terrain);
-        const ownerArr    = new Uint8Array(buffers.owner);
-        const rssArr      = new Uint8Array(buffers.rss);
-        const troopArr    = new Uint8Array(buffers.troop);
-        const powerArr    = new Uint8Array(buffers.power);
-        const regionArr   = new Uint8Array(buffers.region);
-        const flagArr     = new Uint16Array(buffers.flags);
-        const garrisonArr = new Uint32Array(buffers.garrison);
-        const siegeArr    = new Uint32Array(buffers.siege);
-        const siegeMaxArr = new Uint32Array(buffers.siegeMax);
-        const keepPrimArr = new Int32Array(buffers.keepPrim);
-
-        const {
-          COLS: C, ROWS: R,
-          regionList, keepMeta, crossings, impassKeys,
-          TERRAIN_DEC, RSS_DEC, TROOP_DEC, OWNER_DEC,
-          F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_DEFEATED, F_GATE, F_BORDER,
-        } = meta;
-
-        const SIZE = C * R;
-
-        // ── FIX 1a: Shared prototype for garrisonDefeated getter ─────────
-        // Previously each of the 490k tile objects got its own inline getter,
-        // creating 490k unique hidden classes and a proportional GC/OOM risk.
-        // One prototype shared across all tiles eliminates that allocation spike.
-        const TileProto = {
-          get garrisonDefeated() {
-            return (this.defeatedWaves?.length ?? 0) >= (this.garrisonWaves ?? 1)
-              && (this.garrisonWaves ?? 1) > 0;
-          },
-        };
-
-        // Build region lookup by index
-        const regionByIdx = {};
-        regionList.forEach((reg, i) => { regionByIdx[i+1] = reg; });
-
-        // Build keepPrimaryKey lookup: flat index → "cx,cy" string
-        const keepPrimKeyCache = {};
-
-        // ── Proxy-based tile map — zero reconstruction time ───────────────────
-        // Previously: 1.4M Object.create calls = 11-15s on the main thread.
-        // Now: a Proxy intercepts tiles[key] and computes the tile on-demand
-        // from the typed arrays. Zero upfront work. Tiles that get mutated
-        // (via patchTile, HQ placement, etc.) are stored in the backing store
-        // and returned directly, bypassing the Proxy computation.
-        //
-        // keepPrimKeyCache is still used for keepPart → primaryKey lookups.
-
-        const _tileStore = {}; // backing store for patched/special tiles
-
-        const makeTile = (c, r) => {
-          const idx   = r * C + c;
-          const flags = flagArr[idx];
-          const k     = `${c},${r}`;
-          const reg   = regionByIdx[regionArr[idx]] || null;
-
-          const isKeep    = !!(flags & F_KEEP);
-          const isKeepPart= !!(flags & F_KEEPPART);
-          const isHQ      = !!(flags & F_HQ);
-          const isHQPart  = !!(flags & F_HQPART);
-          const isWin     = !!(flags & F_WIN);
-          const isGate    = !!(flags & F_GATE);
-          const isBorder  = !!(flags & F_BORDER);
-
-          let keepPrimaryKey = null;
-          if (isKeepPart || isHQPart) {
-            const pi = keepPrimArr[idx];
-            if (!keepPrimKeyCache[pi]) {
-              const pc = pi % C, pr = Math.floor(pi / C);
-              keepPrimKeyCache[pi] = `${pc},${pr}`;
-            }
-            keepPrimaryKey = keepPrimKeyCache[pi];
-          }
-
-          const km = (isKeep && keepMeta[k]) ? keepMeta[k] : null;
-          const owner = OWNER_DEC[ownerArr[idx]] || null;
-          
-          // Determine faction for border coloring
-          let faction = null;
-          const factionKeys = ["pirates", "orcs", "wizards", "dragons", "holyknights", "nightcreatures", "coldborns", "ashen_dead"];
-          if (isHQ || isHQPart) {
-            if (factionKeys.includes(owner)) {
-              // AI HQ tile - owner is the faction name
-              faction = owner;
-            } else if (owner === "player") {
-              // Player HQ - use the player's faction (will be set later when we know playerFacKey)
-              faction = "player"; // Placeholder, will match playerFacKey comparison
-            }
-          }
-
-          const tile = Object.create(TileProto);
-          tile.c = c; tile.r = r; tile.k = k;
-          tile.terrain    = TERRAIN_DEC[terrainArr[idx]] || "grass";
-          tile.rss        = RSS_DEC[rssArr[idx]] || null;
-          tile.troopBranch = null;
-          tile.powerLevel = powerArr[idx];
-          tile.regionKey  = reg?.key   || null;
-          tile.regionName = reg?.name  || null;
-          tile.keepName   = km?.keepName || (isKeepPart && reg ? reg.keepName : null);
-          tile.owner      = owner;
-          tile.faction    = faction; // Set faction for border coloring
-          tile.garrison   = garrisonArr[idx] / 100;
-          tile.garrisonTroops = garrisonArr[idx] / 100;
-          tile.hasAiCommander = false;
-          tile.siege      = siegeArr[idx];
-          tile.siegeMax   = siegeMaxArr[idx];
-          tile.garrisonWaves  = km?.garrisonWaves ?? 1;
-          tile.defeatedWaves  = [];
-          tile.resetAt    = null;
-          tile.isKeep     = isKeep;
-          tile.isKeepPart = isKeepPart;
-          tile.isHQ       = isHQ;
-          tile.isHQPart   = isHQPart;
-          tile.isWin      = isWin;
-          tile.isGate     = isGate;
-          tile.isBorder   = isBorder;
-          tile.homeFaction     = km?.homeFaction || null;
-          tile.crossingType    = km?.type || null;
-          tile.crossingAxis    = km?.axis || null;
-          tile.keepPrimaryKey  = keepPrimaryKey;
-          tile.defCmd          = km?.defCmd || null;
-          tile.faction         = faction;
-          
-          return tile;
-        };
-
-        const rawMap = new Proxy(_tileStore, {
-          get(store, key) {
-            // Fast path: special/patched tiles stored directly
-            if (key in store) return store[key];
-            // Symbol, __ready, and non-coord keys go to store directly
-            if (typeof key !== "string" || key === "__ready") return store[key];
-            // Parse "c,r" coordinate keys
-            const comma = key.indexOf(",");
-            if (comma < 1) return undefined;
-            const c = +key.slice(0, comma);
-            const r = +key.slice(comma + 1);
-            if (isNaN(c) || isNaN(r) || c < 0 || r < 0 || c >= C || r >= R) return undefined;
-            return makeTile(c, r);
-          },
-          set(store, key, value) {
-            store[key] = value;
-            return true;
-          },
-          has(store, key) {
-            if (typeof key === "string" && key.indexOf(",") > 0) return true;
-            return key in store;
-          },
-          // ownKeys only returns patched/special tiles — prevents Object.entries/keys
-          // from enumerating all 1.4M tiles. Code that needs full iteration must use
-          // the typed arrays directly or the factionTileKeys index.
-          ownKeys(store) {
-            return Reflect.ownKeys(store);
-          },
-          getOwnPropertyDescriptor(store, key) {
-            if (key in store) return Object.getOwnPropertyDescriptor(store, key);
-            return undefined;
-          },
-        });
-
-        setLoadPct(90);
-        setLoadLabel("Almost there...");
-
-        // Player HQ — worker already stamped this tile as F_HQ in flagArr and set
-        // terrain/garrison/siege in the typed arrays. We just need to override the
-        // owner from the faction code to "player" for the first spawn tile.
-        // The 8 surrounding part tiles also need owner="player".
-        const playerSpawn = spawnKeys[facKey]?.[0] || null;
-        if (playerSpawn && rawMap[playerSpawn]) {
-          // Override ownership only — all other data already correct from worker
-          rawMap[playerSpawn] = Object.assign(Object.create(Object.getPrototypeOf(rawMap[playerSpawn])),
-            rawMap[playerSpawn], { owner: "player", faction: facKey, defCmd: null, defeatedWaves: [], resetAt: null });
-        // playerSpawn is the CENTER tile (cc,cr from map gen).
-        // Set owner on all 9 tiles: center ± 1 in c and r.
-        const [hc, hr] = playerSpawn.split(",").map(Number);
-          for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-              const fk = `${hc+dc},${hr+dr}`;
-              if (rawMap[fk]) {
-                const existing = rawMap[fk];
-                rawMap[fk] = Object.assign(Object.create(Object.getPrototypeOf(existing)),
-                  existing, { owner: "player" });
-              }
-            }
-          }
-          setPlayerHqKey(playerSpawn);
-
-          // ── Diagnostic: log ownership/flags for the 5x5 area around the HQ center ──
-          // Center tile = hc+1, hr+1 (playerSpawn is top-left of 3x3)
-          const diagCx = hc, diagCy = hr;
-
-          // ── End diagnostic ──
-          const { cx, cy } = isoXY(hc, hr);
-          const initZoom = 1.25;
-          const px = -cx * initZoom + window.innerWidth / 2;
-          const py = -cy * initZoom + window.innerHeight / 2;
-          panRef.current = { x: px, y: py };
-          zoomRef.current = initZoom;
-          setZoomState(initZoom);
-        }
-
-        // Place AI HQs — each of the 50 AI players gets their own 3x3 HQ
-        const allFactions = ["pirates","orcs","wizards","dragons","holyknights","nightcreatures","coldborns","ashen_dead"];
-        const aiFactions  = allFactions.filter(f => f !== facKey);
-        // newAiHqKeys: { [fk]: string[] } — all HQ primary keys per faction.
-        // HQ footprints are already fully stamped into the typed arrays by the worker
-        // (flags, ownership, terrain, garrison, siege) — no rawMap mutation needed here.
-        const newAiHqKeys = {};
-        aiFactions.forEach(aiFk => {
-          newAiHqKeys[aiFk] = spawnKeys[aiFk] || [];
-        });
-        // Include player's faction AI HQs (indices 1-49, skipping index 0 = player's own HQ)
-        if (spawnKeys[facKey]?.length > 1) {
-          newAiHqKeys[facKey] = spawnKeys[facKey].slice(1);
-        }
-
-        aiHqKeysRef.current = newAiHqKeys;
-
-        // ── Pre-populate _tileStore with all HQ primary tiles ─────────────────
-        // The Proxy computes tiles on-demand but Object.entries(tiles) in buildHQLayer
-        // only sees _tileStore entries. HQ tiles must be in _tileStore so the
-        // _hqKeyIndex gets populated on first redrawHQs() call.
-        // We only store the primary (isHQ===true) tile, not the 8 part tiles —
-        // buildHQLayer only iterates primary HQ tiles.
-        const allSpawnKeys = [];
-        allFactions.forEach(fk => { if (spawnKeys[fk]) allSpawnKeys.push(...spawnKeys[fk]); });
-        allSpawnKeys.forEach(hqKey => {
-          if (!(hqKey in _tileStore)) {
-            _tileStore[hqKey] = rawMap[hqKey]; // triggers makeTile, stores result
-          }
-          // Add faction to AI HQ tiles for border coloring
-          const tile = _tileStore[hqKey];
-          const factionKeys = ["rome", "gaul", "carthage", "pirates", "egypt", "hispania", "greece", "germania"];
-          if (tile && (tile.isHQ || tile.isHQPart) && factionKeys.includes(tile.owner)) {
-            // AI HQ tile - owner is the faction name
-            tile.faction = tile.owner;
-          }
-        });
-
-        // ── Initialize per-faction AI Maps ────────────────────────────────
-        const INIT_BLDGS_VAL = { hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 };
-        // factionTileKeys was pre-built by the worker scanning ownerArr in one pass —
-        // no O(1.4M) rawMap scan needed here. Convert arrays to Sets for O(1) lookup.
-        Object.keys(newAiHqKeys).forEach(aiFk => {
-          aiRssMapRef.current.set(aiFk, { stone:5000, wood:5000, gas: 5000, food: 5000 });
-          aiBldgsMapRef.current.set(aiFk, { ...INIT_BLDGS_VAL });
-          aiPoolMapRef.current.set(aiFk, barracksCapacity(0));
-          aiTileKeysMapRef.current.set(aiFk, new Set(factionTileKeys?.[aiFk] || []));
-        });
-
-        // ── Assign per-HQ AI player IDs and seed first-HQ commanders ────────
-        // Each of the 50 HQs per faction gets a stable ID: "ai_pirates_0" … "ai_pirates_49"
-        // Economy (rss/bldgs/pool) stays shared per faction for performance.
-        // Only the closest same-faction HQ gets commanders (spawned below). All others get none.
-        // The first HQ per faction gets commanders immediately so the AI is active at start.
-        const AI_STARTERS = {}; // { [fk]: [soldierHDef, veteranHDef] }
-        for (const aiFk of Object.keys(newAiHqKeys)) {
-          AI_STARTERS[aiFk] = [
-            HDEFS.find(h => h.faction === aiFk && h.rarity === "soldier"),
-            HDEFS.find(h => h.faction === aiFk && h.rarity === "veteran"),
-          ].filter(Boolean);
-        }
-
-        const ICONS_BY_FACTION = {
-          pirates:"🏴‍☠️", orcs:"⚔️", dragons:"🐉", nightcreatures:"🦇",
-          wizards:"🔮", holyknights:"⚔", coldborns:"❄️", ashen_dead:"💀",
-        };
-
-        let globalAiIdx = 0;
-        const initialAiCmds = [];
-        const [pSpawnC, pSpawnR] = (playerSpawn || "0,0").split(",").map(Number);
-
-        Object.keys(newAiHqKeys).forEach(aiFk => {
-          // Sort HQs by distance to player so the closest one gets commanders
-          newAiHqKeys[aiFk] = [...newAiHqKeys[aiFk]].sort((a, b) => {
-            const [ac, ar] = a.split(",").map(Number);
-            const [bc, br] = b.split(",").map(Number);
-            const dA = Math.abs(ac - pSpawnC) + Math.abs(ar - pSpawnR);
-            const dB = Math.abs(bc - pSpawnC) + Math.abs(br - pSpawnR);
-            return dA - dB;
-          });
-          const hqArr = newAiHqKeys[aiFk] || [];
-          if (!hqArr.length) return;
-          const starters = AI_STARTERS[aiFk];
-
-          hqArr.forEach((hqKey, i) => {
-            const playerId = `ai_${aiFk}_${i}`;
-            aiPlayerIdMapRef.current.set(hqKey, playerId);
-
-            // Set ownerPlayerId on the HQ tile itself
-            const hqTile = _tileStore[hqKey] || rawMap[hqKey];
-            if (hqTile) {
-              hqTile.ownerPlayerId = playerId;
-              hqTile.faction = aiFk;
-              _tileStore[hqKey] = hqTile;
-            }
-
-            // Spawn commanders for the 10 closest HQs of the player's own faction.
-            if (i < 10 && aiFk === facKey) {
-              starters.forEach((h, si) => {
-                initialAiCmds.push({
-                  ...h,
-                  uid: `${playerId}_cmd${si}_${Date.now()}`,
-                  id:  `${playerId}_cmd${si}`,
-                  owner: "ai",
-                  faction: aiFk,
-                  ownerPlayerId: playerId,
-                  tk: hqKey, hqKey,
-                  troops: 0, troopBranch: null, troopSlots: [],
-                  march: null, lvl: 5, xp: 0,
-                  respectPoints: 0, respectLevel: 0,
-                  skillPoints: {}, unspentSkillPoints: 5,
-                  gear: { helmet:null, armor:null, bracers:null, accessory:null },
-                });
-              });
-              spawnedAiHqsRef.current.add(hqKey);
-              console.log(`[AI HQ] Active commander HQ → ${hqKey} (faction: ${aiFk})`);
-            }
-            globalAiIdx++;
-          });
-        });
-        // ── Seed AI crew founders ─────────────────────────────────────────
-        // 3 founders per faction (2 for player's faction) each get 1000 gems.
-        // At 500 gems creation cost, each can found exactly one crew → 3 crews/faction.
-        aiGemsRef.current.clear();
-        aiFoundersRef.current.clear();
-        Object.entries(newAiHqKeys).forEach(([fk, hqArr]) => {
-          const founderCount = fk === facKey ? 2 : 3;
-          // Pick evenly-spaced indices so founders are spread across the map
-          const step = Math.max(1, Math.floor(hqArr.length / founderCount));
-          for (let f = 0; f < founderCount; f++) {
-            const idx = f * step;
-            if (idx >= hqArr.length) break;
-            const playerId = aiPlayerIdMapRef.current.get(hqArr[idx]);
-            if (playerId) {
-              aiGemsRef.current.set(playerId, 1000);
-              aiFoundersRef.current.add(playerId);
-            }
-          }
-        });
-
-        const oppAlign   = playerAlignment === "humans" ? "creatures" : "humans";
-        const primaryAiFk = aiFactions.find(f =>
-          (oppAlign === "humans"
-            ? ["pirates","wizards","holyknights"]
-            : ["orcs","dragons","nightcreatures"]).includes(f)
-        ) || aiFactions[0];
-
-        // pKeysRef: player owns no tiles at this point — their HQ is placed in the
-        // block above (setPlayerHqKey). patchTile maintains pKeysRef incrementally
-        // from here on. powerPerHrRef starts at 0 (player has no ring tiles yet).
-        pKeysRef.current = new Set();
-
-        // Build eligible spawn keys — excludes gates, borders, keeps, HQ, owned tiles
-        // Format: "c,r|regionKey" so worker can place 100 per region
-        const eligibleSpawnKeys = [];
-        for (let r2 = 0; r2 < R; r2++) {
-          for (let c2 = 0; c2 < C; c2++) {
-            const idx2 = r2 * C + c2;
-            const flags2    = flagArr[idx2];
-            const isHQ2     = !!(flags2 & F_HQ);
-            const isHQPart2 = !!(flags2 & F_HQPART);
-            const isKeep2   = !!(flags2 & F_KEEP);
-            const isKeepPart2 = !!(flags2 & F_KEEPPART);
-            const isGate2   = !!(flags2 & F_GATE);
-            const isBorder2 = !!(flags2 & F_BORDER);
-            const pl2    = powerArr[idx2];
-            const owner2 = OWNER_DEC[ownerArr[idx2]];
-            if (!owner2 && !isHQ2 && !isHQPart2 && !isKeep2 && !isKeepPart2 && !isGate2 && !isBorder2 && pl2 >= 3 && pl2 <= 10) {
-              const regKey = regionByIdx[regionArr[idx2]]?.key ?? 'unknown';
-              eligibleSpawnKeys.push(`${c2},${r2}|${regKey}`);
-            }
-          }
-        }
-        eligibleSpawnKeysRef.current = eligibleSpawnKeys;
-        console.log('[SPAWN] Eligible keys built:', eligibleSpawnKeys.length);
-
-        rawMap.__ready = true;
-        setImpassableTiles(impassKeys || []);
-        initPathfinding(impassKeys || []);
-        perfLog(`impass: ${(impassKeys||[]).length} border tiles sent`);
-        clearHQCache();
-
-        // ── FIX 3: Batch all final setState calls so they flush in one React
-        // render pass. Without this, each call triggers its own render; the
-        // tileVersion bump from setTiles may arrive before __ready is true on
-        // tilesMapRef in the mapReady effect, leaving the loading screen up.
-        unstable_batchedUpdates(() => {
-          setCrossingsState(crossings || []);
-          setKeepMeta(keepMeta);
-          setAiHqKeys(newAiHqKeys);
-          setAiFactionKeys([...aiFactions, facKey]);
-          setAiCmds(initialAiCmds);
-          setAiCmdsVersion(v => v + 1);
-          setAiFaction(primaryAiFk);
-          setPlayerCmds(prev => prev.map(cmd => {
-            if (cmd.owner === "player") {
-              const spawn = (spawnKeys[facKey] || [])[0];
-              return spawn ? { ...cmd, tk: spawn } : cmd;
-            }
-            if (cmd.owner === "ai" && cmd.faction) {
-              const spawn = (spawnKeys[cmd.faction] || [])[0];
-              return spawn ? { ...cmd, tk: spawn } : cmd;
-            }
-            return cmd;
-          }));
-          setTiles(rawMap); // tileVersion bumps here, inside the batch
-        });
-
-        // Trigger a teleport so MapRenderer's world position syncs with panRef.
-        // The tiles useEffect in MapRenderer also syncs world position now,
-        // but this ensures it happens even if tiles was already set.
-        setTimeout(() => {
-          mapRendererRef.current?.teleport(panRef.current.x, panRef.current.y);
-        }, 0);
-      }
-    };
-
-    worker.onerror = (err) => {
-      console.error("mapGen worker error:", err);
-      worker.terminate();
-      // ── FIX: Reset state so user can retry by refreshing or re-navigating.
-      // Previously only setLoadLabel was called, leaving loadPct at whatever
-      // value it reached — the loading screen stayed up with no way to recover.
-      setLoadPct(0);
-      setLoadLabel("Error generating map — please refresh");
-    };
-
-    worker.postMessage({ facKey });
-
-    return () => worker.terminate();
-  }, [screen]);
-
-  // ── Reset mapReady when leaving game ──
-  // Only wipe tiles when navigating to a new-game flow (title/faction).
-  // Overlay screens (gacha, commander, gear) keep the map alive so
-  // returning to "game" doesn't trigger a full world regeneration.
-  useEffect(() => {
-    if (screen === "title" || screen === "faction") {
-      setMapReady(false);
-      setTiles({});
-      setLoadPct(0);
-      setLoadLabel("Generating world...");
-      clearHQCache();
-    }
-  }, [screen]);
-
-  // ── Mark map ready once tiles are populated ──
-  useEffect(() => {
-    if (screen === "game" && tilesMapRef.current.__ready) {
-      setMapReady(true);
-    }
-  }, [tileVersion, screen]);
+  // ── World generation, reset and mapReady — rules in shared/utils/worldTiles.js ──
+  useMapInit({
+    screen, facKey, playerAlignment, tiles, tileVersion, tilesMapRef, setTiles,
+    setLoadPct, setLoadLabel, setMapReady, setPlayerHqKey,
+    panRef, zoomRef, setZoomState, mapRendererRef,
+    aiHqKeysRef, aiRssMapRef, aiBldgsMapRef, aiPoolMapRef, aiTileKeysMapRef,
+    aiPlayerIdMapRef, spawnedAiHqsRef, aiGemsRef, aiFoundersRef, pKeysRef, eligibleSpawnKeysRef,
+    setCrossingsState, setKeepMeta, setAiHqKeys, setAiFactionKeys, setAiCmds, setAiCmdsVersion,
+    setAiFaction, setPlayerCmds, initPathfinding, perfLog,
+  });
 
   // ── Floaty helper ──
   const floaty = useCallback((txt, col, k) => {
@@ -1255,6 +680,12 @@ export default function RiseToWar() {
   }, []);
   // Give useGacha access to floaty now that it's defined.
   floatyRef.current = floaty;
+
+  // ── Dragon eggs, training/gather orders, stamina — rules in shared/utils/tactics.js ──
+  useTacticTicks({
+    screen, dragonEggsCap, setDragonEggs, setCmds, setPlayerCmds, setRss,
+    tilesMapRef, trainingXpMult, staminaMaxRef, floaty,
+  });
 
   // ── Tile protection + abandonment timers — rules in shared/utils/tileTimers.js ──
   const { registerProtection } = useTileTimers({
@@ -1286,77 +717,8 @@ export default function RiseToWar() {
     return ids;
   }, [playerCrewId, crews]);
 
-  // ── AI crew ticker — runs every 30s ─────────────────────────────────────
-  // Founders create a crew (500 gems). Others join a same-faction crew with space.
-  useEffect(() => {
-    if (screen !== "game" || !mapReady) return;
-    const CREW_COST = 500;
-    const CREW_CAP  = 40;
-
-    const id = setInterval(() => {
-      setCrews(prevCrews => {
-        let nextCrews = [...prevCrews];
-
-        // Build a lookup: faction → crews of that faction with space
-        const crewsByFaction = {};
-        for (const crew of nextCrews) {
-          if (!crew.faction) continue;
-          if (!crewsByFaction[crew.faction]) crewsByFaction[crew.faction] = [];
-          crewsByFaction[crew.faction].push(crew);
-        }
-
-        // Build set of playerIds already in a crew
-        const inCrew = new Set();
-        for (const crew of nextCrews) {
-          for (const m of (crew.members || [])) inCrew.add(m);
-        }
-
-        const newCrews = [];
-
-        for (const [hqKey, playerId] of aiPlayerIdMapRef.current) {
-          if (inCrew.has(playerId)) continue;
-          const fk = playerId.split("_")[1];
-
-          // Founders: create a new crew if they can afford it
-          if (aiFoundersRef.current.has(playerId)) {
-            const gems = aiGemsRef.current.get(playerId) ?? 0;
-
-            if (gems >= CREW_COST) {
-              const crewId   = `crew_ai_${playerId}_${Date.now()}`;
-              const abbr     = fk.slice(0, 4).toUpperCase();
-              const existing = nextCrews.filter(c => c.faction === fk).length + newCrews.filter(c => c.faction === fk).length;
-              const name     = `${fk.charAt(0).toUpperCase() + fk.slice(1)} ${["Vanguard","Legion","Order"][existing] || "Band"}`;
-              newCrews.push({ id: crewId, name, abbr, faction: fk, members: [playerId], cap: CREW_CAP });
-              aiGemsRef.current.set(playerId, gems - CREW_COST);
-              inCrew.add(playerId);
-              continue;
-            }
-          }
-
-          // Non-founders: join a same-faction crew with space
-          const options = [...(crewsByFaction[fk] || []), ...newCrews.filter(c => c.faction === fk)];
-          const target   = options.find(c => (c.members || []).length < CREW_CAP);
-          if (target) {
-            // Build a new object instead of mutating the crew straight out of
-            // prevCrews (nextCrews is only a shallow copy — mutating target
-            // mutated the actual prevCrews entry and corrupted state).
-            const updated = { ...target, members: [...(target.members || []), playerId] };
-            nextCrews = nextCrews.map(c => c.id === updated.id ? updated : c);
-            const nIdx = newCrews.findIndex(c => c.id === updated.id);
-            if (nIdx !== -1) newCrews[nIdx] = updated;
-            inCrew.add(playerId);
-          }
-        }
-
-        if (!newCrews.length && nextCrews === prevCrews) return prevCrews;
-
-        return [...nextCrews, ...newCrews];
-      });
-    }, 30000);
-
-    return () => clearInterval(id);
-  }, [screen, mapReady]);
-
+  // ── AI crew ticker — rules in shared/utils/aiCrews.js ──
+  useAiCrews({ screen, mapReady, setCrews, aiPlayerIdMapRef, aiFoundersRef, aiGemsRef });
 
   // ── Server sync — authoritative tile state ──
   const { emitTileCapture, emitTileSiege, emitFortUpdate, connected: serverConnected } = useServerSync({
@@ -1591,113 +953,12 @@ export default function RiseToWar() {
     },
   });
 
-  // ── Reinforcement march tick ──
-  useEffect(() => {
-    if (screen !== "game") return;
-    const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
-    const id = setInterval(() => {
-      const now = Date.now();
-      setReinMarches(prev => {
-        if (!prev.length) return prev;
-        const next = [];
-        prev.forEach(rm => {
-          if (!rm.path || rm.path.length === 0) return;
-          if (!rm.returning) {
-            const targetCmd  = cmdsRef.current.find(c => c.uid === rm.cmdUid && c.owner === "player");
-            const destKey    = rm.path[rm.path.length - 1];
-            const destTile   = tilesRef.current[destKey];
-            const cmdGone    = !targetCmd || (targetCmd.troops === 0 && !targetCmd.march && targetCmd.tk !== destKey);
-            const tileFlipped = destTile && destTile.owner !== "player" && destKey !== hqKey;
-            if (cmdGone || tileFlipped) {
-              // Fix #6: offload BFS to the pathfinding worker instead of blocking
-              // the main thread. Fire async, apply result in a follow-up state update.
-              const currentPos = rm.path[Math.min(rm.step, rm.path.length - 1)] ?? hqKey;
-              const capturedRm = { ...rm };
-              findPath(currentPos, hqKey).then(returnPath => {
-                if (returnPath && returnPath.length >= 2) {
-                  setReinMarches(cur => cur.map(r =>
-                    r.uid === capturedRm.uid
-                      ? { ...r, returning: true, path: returnPath, step: 0, lastStepTime: Date.now() }
-                      : r
-                  ));
-                } else {
-                  setReinMarches(cur => cur.filter(r => r.uid !== capturedRm.uid));
-                  setTroopCounts(counts => {
-                    if (!capturedRm.branchKey) return counts;
-                    const cap   = barracksCapacity(bldgs.barracks || 0);
-                    const total = Object.values(counts).reduce((s, n) => s + (n || 0), 0);
-                    const space = Math.max(0, cap - total);
-                    const add   = Math.min(capturedRm.amount, space);
-                    return { ...counts, [capturedRm.branchKey]: (counts[capturedRm.branchKey] || 0) + add };
-                  });
-                }
-              });
-              floaty(`⚠ Reinforcements redirected to base`, "#cc8030", currentPos);
-              // Drop from next — the async handler above will re-insert with updated path
-              return;
-            }
-          }
-
-          const elapsed = now - rm.lastStepTime;
-          if (elapsed < rm.stepMs) { next.push(rm); return; }
-          const nextStep = rm.step + 1;
-          if (nextStep >= rm.path.length) {
-            if (rm.returning) {
-              setTroopCounts(counts => {
-                if (!rm.branchKey) return counts;
-                const cap   = barracksCapacity(bldgs.barracks || 0);
-                const total = Object.values(counts).reduce((s, n) => s + (n || 0), 0);
-                const space = Math.max(0, cap - total);
-                const add   = Math.min(rm.amount, space);
-                return { ...counts, [rm.branchKey]: (counts[rm.branchKey] || 0) + add };
-              });
-              floaty(`🏰 ${rm.amount} reinforcements returned to barracks`, "#88aaff", hqKey);
-            } else {
-              setPlayerCmds(cmds => cmds.map(c => {
-                if (c.uid !== rm.cmdUid) return c;
-                const capCmd    = cmdCommand(c.lvl||5, bldgs.commandcenter||0, c.commandBonus??0);
-                const capTroops = Math.round(capCmd / 0.01); // convert cmd points → small troop equivalent
-                const newTroops = Math.min(capTroops, (c.troops||0) + rm.amount);
-                const overflow  = ((c.troops||0) + rm.amount) - newTroops;
-                if (overflow > 0) {
-                  setTroopCounts(counts => {
-                    if (!rm.branchKey) return counts;
-                    const bCap  = barracksCapacity(bldgs.barracks || 0);
-                    const total = Object.values(counts).reduce((s, n) => s + (n || 0), 0);
-                    const space = Math.max(0, bCap - total);
-                    const add   = Math.min(overflow, space);
-                    return { ...counts, [rm.branchKey]: (counts[rm.branchKey] || 0) + add };
-                  });
-                  floaty(`↩ ${overflow} troops returned (cmd full)`, "#88aaff", rm.path[rm.path.length-1]);
-                }
-                return { ...c, troops: newTroops, troopSlots: (() => {
-                  if (!c.troopSlots || c.troopSlots.length === 0) return c.troopSlots;
-                  const added = newTroops - (c.troops || 0);
-                  if (added <= 0) return c.troopSlots;
-                  // Distribute added troops proportionally by slot count
-                  const totalSlotTroops = c.troopSlots.reduce((s, sl) => s + (sl.troops || 0), 0);
-                  let remaining = added;
-                  return c.troopSlots.map((sl, i) => {
-                    const frac = totalSlotTroops > 0 ? (sl.troops || 0) / totalSlotTroops : 1 / c.troopSlots.length;
-                    const share = i === c.troopSlots.length - 1
-                      ? remaining
-                      : Math.round(added * frac);
-                    remaining -= share;
-                    return { ...sl, troops: (sl.troops || 0) + share };
-                  });
-                })() };
-              }));
-              floaty(`+${rm.amount} reinforcements arrived!`, "#88aaff", rm.path[rm.path.length-1]);
-            }
-          } else {
-            next.push({ ...rm, step: nextStep, lastStepTime: now });
-          }
-        });
-        return next;
-      });
-    }, 100);
-    return () => clearInterval(id);
-  }, [screen, floaty, bldgs.barracks, bldgs.commandcenter, findPath]);
+  // ── Reinforcement marches — rules in shared/utils/reinforcements.js ──
+  const { startReinforcement } = useReinforcements({
+    screen, playerHqRef, cmdsRef, tilesRef, setReinMarches, setTroopCounts, setPlayerCmds,
+    bldgs, findPath, floaty, applyAllBonuses, gearInventory, reinSpeedMult, troopCounts,
+    setMode, setReinCmd, setSliderVals,
+  });
 
   // ── Computed ──
 
@@ -1953,181 +1214,14 @@ export default function RiseToWar() {
     return { ok: true };
   }, [gearInventory, findPath, getFortAtTile]);
 
-  const startReinforcement = useCallback((cmd, amount) => {
-    if (!cmd || amount <= 0) return;
-    const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
-    const _rSlots2 = normaliseTroopSlots(cmd);
-    const stepMs = Math.max(50, Math.floor(marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, _rSlots2.length ? _rSlots2.map(sl=>sl.branch) : cmd.troopBranch)) * reinSpeedMult / 2));
-    setMode("view"); setReinCmd(null);
-    setSliderVals(v => ({ ...v, [`rein_${cmd.uid}`]:undefined }));
-    findPath(hqKey, cmd.tk).then(path => {
-      if (!path || path.length < 2) return;
-      setReinMarches(prev => {
-        if (prev.some(r => r.cmdUid === cmd.uid && !r.returning)) return prev;
-        // Determine which troop type pool to draw from.
-        // Use the first slot of the destination commander as the source type.
-        const slots = normaliseTroopSlots(cmd);
-        const srcBranch = slots[0]?.branch ?? cmd.troopBranch;
-        const srcKey = srcBranch ? `${srcBranch.faction}:${srcBranch.branch}:${srcBranch.tier ?? 0}` : null;
-        setTroopCounts(counts => {
-          if (!srcKey) return counts;
-          return { ...counts, [srcKey]: Math.max(0, (counts[srcKey] || 0) - amount) };
-        });
-        return [...prev, { uid:`rein_${Date.now()}`, cmdUid:cmd.uid, amount, branchKey:srcKey, path, step:0, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }];
-      });
-    });
-  }, [gearInventory, findPath]);
-
   const canAfford = useCallback(c => Object.entries(c).every(([k,v]) => (rss[k]||0)>=v), [rss]);
 
-  // ── Tactic handlers ───────────────────────────────────────────────────────
-  const onQuickGather = useCallback((tileKey, tile) => {
-    if (dragonEggs < 3) return;
-    const pl = tile?.powerLevel ?? 0;
-    if (pl < 2 || !tile?.rss) return;
-    // Rate from useResources RATE_BY_PL
-    const RATE_BY_PL = { 2:240,3:280,4:360,5:420,6:560,7:640,8:720,9:800,10:1000,11:1200,12:1400,13:1600 };
-    const rate = RATE_BY_PL[pl] ?? 240;
-    const amount = Math.floor(rate * 3 * 1.1);
-    setDragonEggs(e => Math.max(0, e - 3));
-    setRss(p => ({ ...p, [tile.rss]: p[tile.rss] + amount }));
-  }, [dragonEggs, setRss]);
-
-  const onRecon = useCallback((tileKey, tile) => {
-    // garrisonDefCmd already imported from garrisonUtils
-    const garrison = garrisonDefCmd(tile, facKey);
-    const entry = {
-      type: "recon",
-      timestamp: Date.now(),
-      tileKey,
-      tileName: tile.regionName ?? tileKey,
-      powerLevel: tile.powerLevel ?? 1,
-      defCmdName:  garrison?.n     ?? "Garrison",
-      defCmdIcon:  garrison?.icon  ?? "⚔",
-      defLvl:      garrison?.lvl   ?? 1,
-      defCmdCls:   garrison?.cmdCls ?? null,
-      defCmdStats: garrison?.stats  ?? null,
-      defSkillsSnapshot: garrison?.skills ?? [],
-      defTroopBranch: garrison?.troopBranch ?? null,
-      defTroopsStart: garrison?.troops ?? 0,
-      defTroopsEnd:   garrison?.troops ?? 0,
-      defBust: null,
-      atkName: null, atkIcon: null, won: null,
-    };
-    setBattles(prev => [entry, ...prev]);
-  }, [facKey, setBattles]);
-
-  const onGather = useCallback((tileKey, tile, cmdUid, ticks, isTraining = false) => {
-    const eggCost = isTraining ? 2 : 1;
-    if ((dragonEggs ?? 0) < eggCost) return;
-    setCmds(prev => prev.map(c => c.uid === cmdUid ? {
-      ...c,
-      gathering:        !isTraining,
-      training:         isTraining,
-      gatherTileKey:    tileKey,
-      gatherTicks:      ticks,
-      gatherTicksDone:  0,
-      gatherStartMs:    Date.now(),
-      trainingTicks:    isTraining ? ticks : undefined,
-      trainingStartMs:  isTraining ? Date.now() : undefined,
-      trainingTicksDone: isTraining ? 0 : undefined,
-    } : c));
-  }, [dragonEggs, setCmds]);
-
-  const onSweep = useCallback((spawnKey, cmd) => {
-    const spawn = spawns[spawnKey];
-    if (!spawn || spawn.defeated) return;
-    if (!cmd || (cmd.stamina ?? staminaMax) < 10) return;
-
-    // Deduct stamina
-    setCmds(prev => prev.map(c => c.uid === cmd.uid
-      ? { ...c, stamina: Math.max(0, (c.stamina ?? staminaMax) - 10) }
-      : c
-    ));
-
-    // Generate spawn commander
-    const spawnCmd = generateSpawnCommander(spawn.level, facKey, hashSpawnId(spawnKey));
-
-    // Run battle
-    runBattle({
-      atkCmd:    cmd,
-      defCmd:    spawnCmd,
-      destKey:   spawnKey,
-      originKey: cmd.tk,
-      isSpawn:   true,
-      onResult: (res) => {
-        if (res.won) {
-          // Mark spawn defeated
-          spawnWorkerRef.current?.postMessage({ type: "defeated", spawnKey });
-
-          // Credit XP to commander
-          setCmds(prev => prev.map(c => {
-            if (c.uid !== cmd.uid) return c;
-            return { ...c, ...applyXp(c, spawn.xpReward, floaty) };
-          }));
-
-          // Credit mystic orbs
-          setMysticOrbs(prev => Math.min(mysticOrbsCap, prev + spawn.orbReward));
-
-          // Credit RSS rewards
-          const rssRewards = rollSpawnRssRewards(spawn.level);
-          setRss(prev => {
-            const next = { ...prev };
-            rssRewards.forEach(({ rss, amount }) => {
-              next[rss] = (next[rss] ?? 0) + amount;
-            });
-            return next;
-          });
-
-          // Rare drop — TODO: add to inventory when item system built
-          const rareDrop = rollRareDrop(spawn.level);
-          if (rareDrop) floaty(`✨ ${rareDrop.label}!`, "#e0c040", cmd.tk);
-        }
-
-        // Add to battle log
-        setBattles(prev => [{
-          type:          "sweep",
-          timestamp:     Date.now(),
-          spawnKey,
-          spawnLevel:    spawn.level,
-          spawnName:     spawnDisplayName(spawn.level),
-          atkName:       cmd.n,
-          atkIcon:       cmd.icon,
-          defCmdName:    spawnCmd.n,
-          defCmdIcon:    spawnCmd.icon,
-          defLvl:        spawnCmd.lvl,
-          defTroopBranch:spawnCmd.troopBranch,
-          defTroopsStart:spawnCmd.troops * 3,
-          defTroopsEnd:  res.won ? 0 : spawnCmd.troops * 3,
-          atkTroopsStart:cmd.troops,
-          atkTroopsEnd:  res.atkTroopsEnd ?? cmd.troops,
-          won:           res.won,
-          xpGain:        res.won ? spawn.xpReward : 0,
-          orbReward:     res.won ? spawn.orbReward : 0,
-          rssRewards:    res.won ? rollSpawnRssRewards(spawn.level) : [],
-        }, ...prev]);
-      },
-    });
-  }, [spawns, facKey, staminaMax, setCmds, setMysticOrbs, mysticOrbsCap, setRss, setBattles, runBattle, floaty]);
-
-  // Simple hash for spawn ID
-  const hashSpawnId = (key) => {
-    let h = 0;
-    for (let i = 0; i < key.length; i++) h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
-    return Math.abs(h);
-  };
-
-  const onLongMarch = useCallback(() => {
-    if (!hasLongMarch || (dragonEggs ?? 0) < 10) return;
-    setDragonEggs(e => Math.max(0, e - 10));
-    setLongMarchReady(true);
-  }, [hasLongMarch, dragonEggs]);
-
-  const onQuickMarch = useCallback(() => {
-    if (!hasQuickMarch || (dragonEggs ?? 0) < 5) return;
-    setDragonEggs(e => Math.max(0, e - 5));
-    setQuickMarchReady(true);
-  }, [hasQuickMarch, dragonEggs]);
+  // ── Tactics — rules in shared/utils/tactics.js ──
+  const { onQuickGather, onRecon, onGather, onSweep, onLongMarch, onQuickMarch } = useTactics({
+    dragonEggs, setDragonEggs, setRss, setCmds, setBattles, facKey,
+    spawns, spawnWorkerRef, staminaMax, runBattle, setMysticOrbs, mysticOrbsCap,
+    hasLongMarch, hasQuickMarch, setLongMarchReady, setQuickMarchReady, floaty,
+  });
 
   // Bag items + Expedience — rules in shared/utils/consumables.js
   const { onExpedience, useConsumable } = useConsumables({
@@ -2152,7 +1246,7 @@ export default function RiseToWar() {
   }, [bldgs,dispatchArmy]);
 
   // Troop slot actions — rules in shared/utils/troopSlots.js
-  const { setTroopSlot, assignTroops, returnTroops } = useTroopSlots({
+  const { setTroopSlot, setArmySlots, assignTroops, returnTroops } = useTroopSlots({
     setCmds, troopCounts, setTroopCounts, commandCenterLvl: bldgs.commandcenter,
   });
 
@@ -2297,592 +1391,42 @@ export default function RiseToWar() {
     />
   );
 
-  // ── Game screen ──
-  return (
-    <GameContext.Provider value={{ staminaMax }}>
-    <div style={{
-      width:"100vw", height:"100vh", position:"relative", overflow:"hidden",
-      background:"transparent", userSelect:"none",
-      touchAction:"none",
-      // Phone optimizations: eliminate tap delay and visual tap flash
-      WebkitTapHighlightColor:"transparent",
-      WebkitTouchCallout:"none",
-      WebkitUserSelect:"none",
-      // Prevent overscroll bounce on iOS
-      overscrollBehavior:"none",
-    }}>
-      <style>{CSS}
-        {`
-          * { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-          canvas { touch-action: none !important; }
-          button, .btn { touch-action: manipulation; cursor: pointer; }
-          [style*="position: fixed"], [style*="position:fixed"] { touch-action: auto; }
-          .scr, [style*="overflow-y: auto"], [style*="overflowY: auto"] { touch-action: pan-y !important; }
-          .scr * { touch-action: pan-y; }
-          .scr button, .scr .btn, .scr input[type="range"] { touch-action: manipulation !important; }
-          .gear-picker-list { touch-action: pan-y !important; }
-          .gear-picker-list * { touch-action: pan-y; }
-          .gear-picker-list button, .gear-picker-list .btn { touch-action: manipulation !important; }
-        `}
-      </style>
-
-      {/* ── Loading overlay ── */}
-      {!mapReady && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 9999,
-          background: "#080704",
-          display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          gap: 18,
-        }}>
-          <style>{`
-            @keyframes spin { to { transform: rotate(360deg); } }
-            @keyframes pulse { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
-          `}</style>
-          <div style={{
-            width: 48, height: 48, borderRadius: "50%",
-            border: "3px solid #2a2010",
-            borderTop: "3px solid #f0c040",
-            animation: "spin 1s linear infinite",
-          }} />
-          <div style={{
-            fontFamily: "'Cinzel Decorative',serif", fontSize: 15,
-            background: "linear-gradient(135deg,#f0c040,#c03030,#f0c040)",
-            backgroundSize: "200% auto",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            animation: "shimmer 3s linear infinite",
-            letterSpacing: ".15em",
-          }}>FOOLS GOLD</div>
-          <div style={{ width: 220, display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={{
-              width: "100%", height: 4,
-              background: "#1a1508", borderRadius: 2,
-              overflow: "hidden",
-            }}>
-              <div style={{
-                height: "100%",
-                width: `${loadPct}%`,
-                background: "linear-gradient(90deg,#8a4020,#f0c040)",
-                borderRadius: 2,
-                transition: "width .4s ease",
-              }} />
-            </div>
-            <div style={{
-              fontFamily: "'Cinzel',serif", fontSize: 9,
-              color: "#6a5030", letterSpacing: ".12em",
-              textAlign: "center",
-              animation: "pulse 1.6s ease-in-out infinite",
-            }}>{loadLabel}</div>
-          </div>
-        </div>
-      )}
-
-      <HUD facName={facName} facKey={facKey} pKeys={pKeys} rss={rss} gems={gems} tiles={tiles}
-        mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap} voidTapReady={voidTapReady}
-        dragonEggs={dragonEggs} dragonEggsCap={dragonEggsCap} tileCap={tileCap} />
-
-      {/* Server connection indicator */}
-      <div style={{
-        position:"fixed", top:8, right:8, zIndex:9999,
-        display:"flex", alignItems:"center", gap:5,
-        background:"rgba(0,0,0,0.55)", borderRadius:6,
-        padding:"3px 8px", fontSize:11, color: serverConnected ? "#4ddd88" : "#dd6644",
-        border: serverConnected ? "1px solid #2a7a50" : "1px solid #7a3322",
-        pointerEvents:"none",
-      }}>
-        <span style={{width:7,height:7,borderRadius:"50%",display:"inline-block",
-          background: serverConnected ? "#4ddd88" : "#dd6644",
-          boxShadow: serverConnected ? "0 0 6px #4ddd88" : "none"}} />
-        {serverConnected ? "Server" : "Offline"}
-      </div>
-
-      <MapRenderer
-        ref={mapRendererRef}
-        tiles={tiles} cmds={cmds} selKey={selKey} mode={mode} mvCmd={mvCmd}
-        reinMarchesRef={reinMarchesRef}
-        panRef={panRef} zoomRef={zoomRef} ZOOM_LEVELS={ZOOM_LEVELS}
-        onTileClick={onTileClick}
-        onPanChange={onPanChange}
-        onZoomChange={handleZoomChange}
-        playerHqKey={playerHqKey}
-        playerFacKey={facKey}
-        playerName={facName}
-        crewmatePlayerIds={crewmatePlayerIds}
-        allHqKeys={Object.values(aiHqKeysRef.current).flat().concat(playerHqKey ? [playerHqKey] : [])}
-        aiPlayerIdMap={aiPlayerIdMapRef.current}
-        forts={forts}
-        guardedTiles={guardedTiles}
-        guardedTileKeys={[...guardedTiles.keys()].sort().join("|")}
-        spawns={spawns}
-        protectedTileKeys={Object.entries(protectedTiles).filter(([,u])=>Date.now()<u).map(([k])=>k).join("|")}
-      />
-
-      {/* Zoom controls removed — use pinch / mouse wheel */}
-
-      {/* Floaties */}
-      {floats.map(f => (
-        <div key={f.id} style={{position:"fixed",left:f.x,top:f.y,zIndex:600,pointerEvents:"none",fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:12,color:f.col,animation:"floatUp 1.8s ease forwards",textShadow:"0 1px 6px rgba(0,0,0,.9)",whiteSpace:"nowrap"}}>
-          {f.txt}
-        </div>
-      ))}
-
-      <TilePopup
-        selKey={selKey} selTile={selTile}
-        tileScreenX={tileScreenX} tileScreenY={tileScreenY}
-        popupMode={popupMode} setPopupMode={setPopupMode}
-        onEnterHQ={onEnterHQ}
-        cmds={cmds} cmdsOnSel={cmdsOnSel} marchingToSel={marchingToSel} canAtk={canAtk}
-        crewmatePlayerIds={crewmatePlayerIds}
-        barracksPool={barracksPool} editArmyCmd={editArmyCmd} setEditArmyCmd={setEditArmyCmd}
-        sliderVals={sliderVals} setSliderVals={setSliderVals}
-        deletingTiles={deletingTiles} deletingSecsLeft={deletingSecsLeft}
-        setDeletingTiles={setDeletingTiles} setDeletingSecsLeft={setDeletingSecsLeft}
-        setSelKey={setSelKey}
-        setAtkKey={setAtkKey} setMode={setMode} setPick={setPick}
-        setMvCmd={setMvCmd} setReinCmd={setReinCmd}
-        startMarch={startMarch}
-        recallMarch={recallMarch} recallStationary={recallStationary}
-        startGuard={startGuard} cancelGuard={cancelGuard} guardedTiles={guardedTiles}
-        setBarracks={setBarracks} setCmds={setCmds}
-        nowTick={nowTick}
-        playerHqKey={playerHqKey}
-        facKey={facKey} facName={facName}
-        forts={forts}
-        buildFort={buildFortWithCost}
-        upgradeFort={upgradeFort}
-        getFortAtTile={getFortAtTile}
-        startReposition={startReposition}
-        demolishFort={demolishFort}
-        abandonFort={abandonFort}
-        setCmdScreenOpen={setCmdScreenOpen}
-        setCmdScreenUid={setCmdScreenUid}
-        hasQuickGather={hasQuickGather} onQuickGather={onQuickGather}
-        hasRecon={hasRecon}           onRecon={onRecon}
-        hasGather={hasGather}         onGather={onGather}
-        hasCmdTraining={hasCmdTraining}
-        dragonEggs={dragonEggs}
-        upgQueue={upgQueue}           onExpedience={onExpedience}
-        staminaMax={staminaMax}       trainingXpMult={trainingXpMult}
-        hasLongMarch={hasLongMarch}   onLongMarch={onLongMarch}   longMarchReady={longMarchReady}
-        hasQuickMarch={hasQuickMarch} onQuickMarch={onQuickMarch} quickMarchReady={quickMarchReady}
-        spawns={spawns} onSweep={onSweep}
-        protectedTiles={protectedTiles}
-        onPerformRelocation={performRelocation}
-        lastRelocateAt={lastRelocateAt}
-        relocationTokens={(consumables ?? []).find(c => c.typeId === "relocation")?.quantity ?? 0}
-        allHqKeys={Object.values(aiHqKeys).flat().concat(playerHqKey ? [playerHqKey] : [])}
-        isValidRelocPad={selKey && selTile?.owner === "player" && !selTile?.isHQ && !selTile?.isHQPart
-          ? validateRelocationPad(selKey, tiles, allHqKeyList(aiHqKeys, playerHqKey), playerHqKey).valid
-          : false}
-      />
-
-      {showBattleLog && (
-        <BattleLog
-          battles={battles} bLog={bLog} unseenBattles={unseenBattles}
-          onClose={() => setShowBattleLog(false)}
-        />
-      )}
-
-      {mode==="pickAttackCmd" && (
-        <CommanderPicker
-          mode={mode} atkKey={atkKey} tiles={tiles} cmdsAdjToSel={cmdsAdjToSel}
-          pickCmd={pickCmd} setPick={setPick}
-          setMode={setMode} setAtkKey={setAtkKey}
-          setSelKey={setSelKey} setPopupPos={setPopupPos}
-          startMarch={startMarch}
-          cmdPathLengths={cmdPathLengths}
-        />
-      )}
-
-      {mode==="pickMoveCmd" && (
-        <CommanderPicker
-          mode={mode} atkKey={atkKey} tiles={tiles} cmdsAdjToSel={cmdsForMove}
-          pickCmd={pickCmd} setPick={setPick}
-          setMode={setMode} setAtkKey={setAtkKey}
-          setSelKey={setSelKey} setPopupPos={setPopupPos}
-          startMarch={startMarch}
-          cmdPathLengths={cmdPathLengths}
-        />
-      )}
-
-      {panelOpen && (
-        <BottomPanel
-          mode={mode} mvCmd={mvCmd} setMvCmd={setMvCmd}
-          reinCmd={reinCmd} setReinCmd={setReinCmd}
-          cmdsOnSel={cmdsOnSel} barracksPool={barracksPool}
-          bldgs={bldgs} sliderVals={sliderVals} setSliderVals={setSliderVals}
-          startReinforcement={startReinforcement}
-          setMode={setMode} setAtkKey={setAtkKey} setPick={setPick}
-          setSelKey={setSelKey} setPopupPos={setPopupPos}
-          gearInventory={gearInventory}
-          reinMarches={reinMarches}
-          playerHqKey={playerHqKey}
-        />
-      )}
-
-      <HQMenu
-        hqOpen={hqOpen} setHqOpen={setHqOpen} hqTab={hqTab} setHqTab={setHqTab}
-        cmds={cmds} setCmds={setCmds} tiles={tiles} rss={rss} setRss={setRss} gems={gems} pKeys={pKeys}
-        bldgs={bldgs} setBldgs={setBldgs} barracksPool={barracksPool} setBarracks={setBarracks} troopCounts={troopCounts} setTroopCounts={setTroopCounts}
-        woundedTroops={woundedTroops} woundedQueue={woundedQueue} trainingQueues={trainingQueues}
-        healQueue={healQueue} setHealQueue={setHealQueue}
-        queueHealing={queueHealing} autoHeal={autoHeal} setAutoHeal={setAutoHeal} trainingSpeedMult={trainingSpeedMult}
-        setWounded={setWounded} setWoundedQueue={setWoundedQueue}
-        trainSlider={trainSlider} setTrainSlider={setTrainSlider} setTrainingQueues={setTrainingQueues}
-        upgQueue={upgQueue} sliderVals={sliderVals} setSliderVals={setSliderVals}
-        bLog={bLog} upgrade={upgrade} canAfford={canAfford}
-        assignTroops={assignTroops} setTroopSlot={setTroopSlot} returnTroops={returnTroops} queueTraining={queueTraining}
-        recallMarch={recallMarch} setScreen={setScreen}
-        gearInventory={gearInventory}
-        playerHqKey={playerHqKey}
-        facKey={facKey}
-        unlockedBranches={unlockedBranches} setUnlockedBranches={setUnlockedBranches}
-        quarterLevels={quarterLevels} setQuarterLevels={setQuarterLevels}
-        mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap}
-        voidTapLvl={voidTapLvl} voidTapReady={voidTapReady}
-        lastVoidTap={lastVoidTap} voidTapCooldown={voidTapCooldown}
-        doVoidTap={doVoidTap}
-        troopSkillLevels={troopSkillLevels} setTroopSkillLevels={setTroopSkillLevels}
-        setMysticOrbs={setMysticOrbs}
-      />
-
-      {leaderboardOpen && (
-        <Leaderboard
-          onClose={() => setLeaderboardOpen(false)}
-          playerEntries={playerEntries}
-          crews={[]}
-          playerCrewId={null}
-        />
-      )}
-
-      {winner && (
-        <WinScreen
-          winner={winner} aiFaction={aiFaction}
-          setWinner={setWinner} setTiles={setTiles} setCmds={setCmds}
-          setMode={setMode} setSelKey={setSelKey} setUpgQueue={setUpgQueue}
-          setBldgs={setBldgs} setTroopCounts={setTroopCounts}
-          setAiRss={setAiRss} setAiBldgs={setAiBldgs} setAiBarracksPool={setAiBarracksPool}
-          aiLastActionRef={aiLastActionRef} setScreen={setScreen}
-          setWounded={setWounded} setWoundedQueue={setWoundedQueue}
-          setRss={setRss} setReinMarches={setReinMarches}
-          setTrainingQueues={setTrainingQueues} setBLog={setBLog}
-          setBattles={setBattles} setUnseenBattles={setUnseenBattles}
-          setDeletingTiles={setDeletingTiles} setDeletingSecsLeft={setDeletingSecsLeft}
-          setPlayerHqKey={setPlayerHqKey} setAiHqKeys={setAiHqKeys}
-        />
-      )}
-
-      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} playerHqKey={playerHqKey} aiHqKeys={aiHqKeys} onWorldMap={() => setWorldMapOpen(true)} forts={forts} />
-
-      {/* HQ + Search buttons overlapping bottom of minimap */}
-      {!worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
-        <div style={{ position:"fixed", top:"calc(var(--sat) + 100px)", left:8, zIndex:300, display:"flex", gap:5, width:130, justifyContent:"center" }}>
-          <button onClick={centerOnHQ} style={{
-            width:44, height:44, borderRadius:"50%",
-            background:"radial-gradient(circle at 35% 30%, #2a1e08, #0e0a04)",
-            border:"1px solid rgba(200,160,64,.35)",
-            display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-            cursor:"pointer", padding:0, gap:1,
-            boxShadow:"0 0 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06)",
-            touchAction:"manipulation",
-          }}>
-            <span style={{fontSize:18, lineHeight:1}}>🏰</span>
-            <span style={{fontSize:6, color:"#c8a060", fontFamily:"'Cinzel',serif", letterSpacing:".04em"}}>HQ</span>
-          </button>
-          <button onClick={() => setSearchOpen(v => !v)} style={{
-            width:44, height:44, borderRadius:"50%",
-            background:"radial-gradient(circle at 35% 30%, #0a1828, #040c14)",
-            border:"1px solid rgba(80,140,200,.25)",
-            display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-            cursor:"pointer", padding:0, gap:1,
-            boxShadow:"0 0 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06)",
-            touchAction:"manipulation",
-          }}>
-            <span style={{fontSize:18, lineHeight:1}}>🔍</span>
-            <span style={{fontSize:6, color:"#80aacc", fontFamily:"'Cinzel',serif", letterSpacing:".04em"}}>SEARCH</span>
-          </button>
-        </div>
-      )}
-
-      {/* Wizard's Tomes trigger — bottom-left below minimap */}
-      {!tomesOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
-        <button onClick={()=>setTomesOpen(true)} style={{
-          position:"fixed", left:8, bottom:"calc(var(--sab, 0px) + 6px)", zIndex:300,
-          background:"radial-gradient(circle at 35% 30%, #1a1030, #08060e)",
-          border:"1px solid rgba(200,160,64,.25)", borderRadius:"50%",
-          width:75, height:75,
-          display:"flex", alignItems:"center", justifyContent:"center",
-          cursor:"pointer", padding:0,
-          boxShadow:"0 0 14px rgba(80,40,120,.4), inset 0 1px 0 rgba(255,255,255,.06)",
-          touchAction:"manipulation",
-        }}>
-          <ScrollStackIcon size={55}/>
-        </button>
-      )}
-
-      {tomesOpen && (
-        <WizardsTomes
-          open={tomesOpen}
-          onClose={()=>setTomesOpen(false)}
-          facKey={facKey}
-          tomesLevel={tomesLevel}
-          setTomesLevel={setTomesLevel}
-          powerPool={powerPool}
-          setPowerPool={setPowerPool}
-          powerPerHr={powerPerHr}
-          tomesUnspentPoints={tomesUnspentPoints}
-          setTomesUnspentPoints={setTomesUnspentPoints}
-          onNodeLevelsChange={setTomesNodeLevels}
-        />
-      )}
-
-      {gearScreenOpen && (
-        <BagScreen
-          gearInventory={gearInventory}
-          setGearInventory={setGearInventory}
-          cmds={cmds}
-          setCmds={setCmds}
-          playerAlignment={playerAlignment}
-          respectSchematics={respectSchematics}
-          consumables={consumables}
-          onUseConsumable={useConsumable}
-          onClose={() => setGearScreenOpen(false)}
-        />
-      )}
-
-      {cmdScreenOpen && (
-        <CommanderScreen
-          cmds={cmds}
-          setCmds={setCmds}
-          bldgs={bldgs}
-          gearInventory={gearInventory}
-          setGearInventory={setGearInventory}
-          respectSchematics={respectSchematics}
-          onSchematicUsed={(id) => setRespectSchematics(prev => prev.filter(s => s.instanceId !== id))}
-          initialUid={cmdScreenUid}
-          gems={gems}
-          setGems={setGems}
-          onClose={() => { setCmdScreenOpen(false); setCmdScreenUid(null); }}
-        />
-      )}
-
-      {/* ── Recall Popup — stationed at fort ── */}
-      {recallPopup && (
-        <div style={{
-          position:"fixed", inset:0, zIndex:800,
-          background:"rgba(0,0,0,0.75)",
-          display:"flex", alignItems:"center", justifyContent:"center",
-          pointerEvents:"auto",
-        }} onClick={() => setRecallPopup(null)}>
-          <div style={{
-            background:"rgba(8,10,16,.97)",
-            border:"1px solid #8a6020",
-            borderRadius:8,
-            padding:"16px 20px",
-            minWidth:220,
-            boxShadow:"0 8px 32px rgba(0,0,0,.9), 0 0 0 1px rgba(200,160,64,.15)",
-            animation:"fadeUp .15s ease",
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{fontFamily:"'Cinzel',serif", fontSize:11, color:"#c8a060", fontWeight:700, letterSpacing:".06em", marginBottom:12, textAlign:"center"}}>
-              ↩ RECALL — {recallPopup.cmdName}
-            </div>
-            <div style={{display:"flex", flexDirection:"column", gap:8}}>
-              <button onClick={() => recallToFort(recallPopup.uid, recallPopup.fortTileKey)}
-                style={{padding:"8px 12px", background:"linear-gradient(135deg,rgba(20,60,100,.7),rgba(10,40,80,.5))", border:"1px solid #2060a0", borderRadius:5, color:"#80c0f0", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, cursor:"pointer", letterSpacing:".05em"}}>
-                📍 Return to Fort
-              </button>
-              <button onClick={() => recallToHQ(recallPopup.uid)}
-                style={{padding:"8px 12px", background:"linear-gradient(135deg,rgba(80,50,10,.7),rgba(60,30,0,.5))", border:"1px solid #a07020", borderRadius:5, color:"#f0c060", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, cursor:"pointer", letterSpacing:".05em"}}>
-                🏰 Return to HQ
-              </button>
-              <button onClick={() => setRecallPopup(null)}
-                style={{padding:"5px 12px", background:"rgba(40,30,20,.5)", border:"1px solid #3a2a18", borderRadius:5, color:"#6a5a4a", fontFamily:"'Cinzel',serif", fontSize:9, cursor:"pointer"}}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {worldMapPrompt && (
-        <div style={{
-          position:"fixed", inset:0, zIndex:700,
-          background:"rgba(0,0,0,0.75)",
-          display:"flex", alignItems:"center", justifyContent:"center",
-        }} onClick={() => setWorldMapPrompt(false)}>
-          <div style={{
-            background:"rgba(5,7,11,0.98)",
-            border:"1px solid #8a6020",
-            borderRadius:8,
-            padding:"20px 24px",
-            width:220,
-            textAlign:"center",
-            boxShadow:"0 8px 40px rgba(0,0,0,0.8)",
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:"#c8a060",marginBottom:8}}>
-              🗺 World Map
-            </div>
-            <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:"#6a5a4a",marginBottom:16,lineHeight:1.6}}>
-              You're at maximum zoom out.<br/>Open the world map?
-            </div>
-            <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-              <button onClick={() => { setWorldMapPrompt(false); setWorldMapOpen(true); }}
-                style={{
-                  padding:"8px 16px",
-                  background:"linear-gradient(160deg,#2a1e08,#120e04)",
-                  border:"1px solid #8a6020", borderRadius:4,
-                  color:"#f0c060", fontFamily:"'Cinzel',serif",
-                  fontSize:10, cursor:"pointer",
-                }}>Open Map</button>
-              <button onClick={() => setWorldMapPrompt(false)}
-                style={{
-                  padding:"8px 16px",
-                  background:"none",
-                  border:"1px solid #2a2418", borderRadius:4,
-                  color:"#6a5a4a", fontFamily:"'Cinzel',serif",
-                  fontSize:10, cursor:"pointer",
-                }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {worldMapOpen && (
-        <WorldMap
-          tiles={tiles}
-          crossings={crossingsState}
-          keepMeta={keepMeta}
-          onClose={() => setWorldMapOpen(false)}
-          onTeleport={teleportTo}
-          panRef={panRef}
-          zoom={zoomState}
-          playerHqKey={playerHqKey}
-          crewmatePlayerIds={crewmatePlayerIds}
-          aiHqKeys={aiHqKeys}
-          forts={forts}
-        />
-      )}
-
-      <GameBar
-        cmds={cmds}
-        facName={facName}
-        tiles={tiles}
-        unseenBattles={unseenBattles}
-        setHqOpen={setHqOpen} setHqTab={setHqTab}
-        onCenterHQ={centerOnHQ}
-        setScreen={setScreen}
-        setShowBattleLog={setShowBattleLog}
-        setUnseenBattles={setUnseenBattles}
-        setCmdScreenOpen={setCmdScreenOpen}
-        setCmdScreenUid={setCmdScreenUid}
-        setGearScreenOpen={setGearScreenOpen}
-        gearInventoryCount={gearInventory.length}
-        setLeaderboardOpen={setLeaderboardOpen}
-        playerHqKey={playerHqKey}
-        hidden={worldMapOpen || hqOpen || cmdScreenOpen || gearScreenOpen || showBattleLog || tomesOpen}
-        showPerf={showPerf}
-        setShowPerf={setShowPerf}
-        panRef={panRef}
-        zoomRef={zoomRef}
-        mapRendererRef={mapRendererRef}
-        voidTapReady={voidTapReady}
-        crewOpen={crewOpen} setCrewOpen={setCrewOpen} playerCrewId={playerCrewId}
-        searchOpen={searchOpen} setSearchOpen={setSearchOpen}
-        forts={forts}
-        spawns={spawns}
-        spawnWorkerRef={spawnWorkerRef}
-        eligibleSpawnKeysRef={eligibleSpawnKeysRef}
-      />
-
-      {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
-
-      {crewOpen && (
-        <CrewPanel
-          onClose={() => setCrewOpen(false)}
-          crews={crews}
-          playerCrewId={playerCrewId}
-          pendingCrewId={pendingCrewId}
-          playerName={facName}
-          facKey={facKey}
-          playerGems={gems}
-          crewCreationCost={500}
-          onCreateCrew={(name, abbr) => {
-            const id = `crew_${Date.now()}`;
-            // members stores faction keys for AI, player's facKey for the human
-            setCrews(prev => [...prev, { id, name, abbr, faction: facKey, members: [facKey], cap: 40 }]);
-            setPlayerCrewId(id);
-          }}
-          onJoinRequest={(crewId) => {
-            // Auto-accept for local play — add player's faction to the crew
-            setCrews(prev => prev.map(c =>
-              c.id === crewId ? { ...c, members: [...(c.members||[]), facKey] } : c
-            ));
-            setPlayerCrewId(crewId);
-          }}
-          onLeaveCrew={() => {
-            setCrews(prev => prev.map(c =>
-              c.id === playerCrewId ? { ...c, members: (c.members||[]).filter(m => m !== facKey) } : c
-            ));
-            setPlayerCrewId(null); setPendingCrewId(null);
-          }}
-        />
-      )}
-
-    </div>
-    </GameContext.Provider>
-  );
-}
-
-// ── On-screen performance logger — tap to clear, shows last 12 events ─────────
-let _perfSetLog = null;
-window._perfLog = function(label) {
-  const now = performance.now();
-  window._perfLogs = window._perfLogs || [];
-  const dt = window._perfLogs.length ? Math.round(now - window._perfLogs[window._perfLogs.length-1].t) : 0;
-  window._perfLogs = [...window._perfLogs.slice(-11), { label, t: now, dt }];
-  _perfSetLog?.(window._perfLogs);
-};
-function perfLog(label) { window._perfLog(label); }
-
-function PerfOverlay({ open, onToggle }) {
-  const [logs, setLogs] = useState([]);
-  _perfSetLog = setLogs;
-
-  if (!open) return null;
-
-  return (
-    <div style={{
-      position:"fixed", top:8, right:8, zIndex:99999,
-      fontFamily:"monospace", pointerEvents:"auto",
-    }}>
-      <div style={{
-          width:260,
-          background:"rgba(0,0,0,.92)", border:"1px solid #555",
-          borderRadius:6, padding:"6px 8px",
-          fontSize:10, color:"#ccc",
-        }}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,alignItems:"center"}}>
-            <span style={{color:"#f0c040",fontWeight:700,fontSize:11}}>⏱ PERF LOG</span>
-            <span
-              onTouchEnd={e=>{e.stopPropagation();window._perfLogs=[];setLogs([]);}}
-              onClick={e=>{e.stopPropagation();window._perfLogs=[];setLogs([]);}}
-              style={{color:"#aaa",padding:"2px 8px",background:"#333",borderRadius:3,cursor:"pointer"}}>CLR</span>
-          </div>
-          {logs.length === 0
-            ? <div style={{color:"#666",fontSize:9}}>tap a tile or pan to record...</div>
-            : logs.map((l,i) => (
-              <div key={i} style={{
-                display:"flex",justifyContent:"space-between",
-                borderBottom:"1px solid #222",padding:"2px 0",
-                color: l.dt > 100 ? "#ff5050" : l.dt > 33 ? "#f0c040" : "#66dd66"
-              }}>
-                <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{l.label}</span>
-                <span style={{marginLeft:8,flexShrink:0,fontWeight:700}}>+{l.dt}ms</span>
-              </div>
-            ))
-          }
-          <div style={{fontSize:8,color:"#555",marginTop:3}}>🔴&gt;100ms 🟡&gt;33ms 🟢fast</div>
-        </div>
-    </div>
-  );
+  // ── Game screen — layout lives in GameView.jsx ──
+  return <GameView {...{
+    ZOOM_LEVELS, abandonFort, aiFaction, aiHqKeys, aiHqKeysRef, aiLastActionRef,
+    aiPlayerIdMapRef, assignTroops, atkKey, autoHeal, bLog, barracksPool, battles, bldgs,
+    buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
+    cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
+    crewOpen, crewmatePlayerIds, crews, crossingsState, deletingSecsLeft, deletingTiles,
+    demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
+    facKey, facName, floats, forts, gearInventory, gearScreenOpen, gems, getFortAtTile,
+    guardedTiles, handleZoomChange, hasCmdTraining, hasGather, hasLongMarch, hasQuickGather,
+    hasQuickMarch, hasRecon, healQueue, hqOpen, hqTab, keepMeta, lastRelocateAt, lastVoidTap,
+    leaderboardOpen, loadLabel, loadPct, longMarchReady, mapReady, mapRendererRef,
+    marchingToSel, minimapRedrawRef, mode, mvCmd, mysticOrbs, mysticOrbsCap, nowTick,
+    onEnterHQ, onExpedience, onGather, onLongMarch, onPanChange, onQuickGather, onQuickMarch,
+    onRecon, onSweep, onTileClick, pKeys, panRef, panelOpen, pendingCrewId, performRelocation,
+    pickCmd, playerAlignment, playerCrewId, playerEntries, playerHqKey, popupMode, powerPerHr,
+    powerPool, protectedTiles, quarterLevels, queueHealing, queueTraining, quickMarchReady,
+    recallMarch, recallPopup, recallStationary, recallToFort, recallToHQ, reinCmd, reinMarches,
+    reinMarchesRef, respectSchematics, returnTroops, rss, searchOpen, selKey, selTile,
+    serverConnected, setAiBarracksPool, setAiBldgs, setAiHqKeys, setAiRss, setArmySlots,
+    setAtkKey, setAutoHeal, setBLog, setBarracks, setBattles, setBldgs, setCmdScreenOpen,
+    setCmdScreenUid, setCmds, setCrewOpen, setCrews, setDeletingSecsLeft, setDeletingTiles,
+    setEditArmyCmd, setGearInventory, setGearScreenOpen, setGems, setHealQueue, setHqOpen,
+    setHqTab, setLeaderboardOpen, setMode, setMvCmd, setMysticOrbs, setPendingCrewId, setPick,
+    setPlayerCrewId, setPlayerHqKey, setPopupMode, setPopupPos, setPowerPool, setQuarterLevels,
+    setRecallPopup, setReinCmd, setReinMarches, setRespectSchematics, setRss, setScreen,
+    setSearchOpen, setSelKey, setShowBattleLog, setShowPerf, setSliderVals, setTiles,
+    setTomesLevel, setTomesNodeLevels, setTomesOpen, setTomesUnspentPoints, setTrainSlider,
+    setTrainingQueues, setTroopCounts, setTroopSkillLevels, setTroopSlot, setUnlockedBranches,
+    setUnseenBattles, setUpgQueue, setWinner, setWorldMapOpen, setWorldMapPrompt, setWounded,
+    setWoundedQueue, showBattleLog, showPerf, sliderVals, spawnWorkerRef, spawns, staminaMax,
+    startGuard, startMarch, startReinforcement, startReposition, teleportTo, tileCap,
+    tileScreenX, tileScreenY, tiles, tomesLevel, tomesOpen, tomesUnspentPoints, trainSlider,
+    trainingQueues, trainingSpeedMult, trainingXpMult, troopCounts, troopSkillLevels,
+    unlockedBranches, unseenBattles, upgQueue, upgrade, upgradeFort, useConsumable,
+    voidTapCooldown, voidTapLvl, voidTapReady, winner, worldMapOpen, worldMapPrompt,
+    woundedQueue, woundedTroops, zoomRef, zoomState,
+  }} />;
 }
