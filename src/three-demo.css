@@ -28,3 +28,11 @@ button:disabled { opacity:.4; cursor:default; }
   .back { bottom:max(10px, env(safe-area-inset-bottom)); min-width:60px; padding:10px 8px; font-size:11px; }
   .hint { display:none; }
 }
+
+/* V2: quieter HUD, clear enabled action, landscape safe-area spacing. */
+.demo-ui .top-bar { border-color:#76634688; background:linear-gradient(#171c17ed,#111710ce); }
+.demo-ui button { min-height:44px; }
+.demo-ui #march:not(:disabled) { background:linear-gradient(#546a3c,#243720); border-color:#b5ce89; box-shadow:0 0 18px #9bbe4933; color:#f1f5cf; }
+.demo-ui .badge { border-color:#756a45; }
+.demo-ui .hint { max-width:36vw; white-space:normal; font-size:10px; }
+@media(max-width:550px) { .top-bar { width:96%; } .resource { min-width:0; flex:1; font-size:9px; } }
