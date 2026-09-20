@@ -106,7 +106,7 @@ const SPAWN_CMD_NAMES = [
 ];
 
 // ── RSS reward pool ───────────────────────────────────────────────────────────
-const RSS_TYPES = ["gas", "wood", "stone", "ore"];
+const RSS_TYPES = ["gas", "wood", "stone", "food"];
 
 // Random between 1–4 RSS types, amounts scale with level
 export function rollSpawnRssRewards(level, rng = Math.random) {
