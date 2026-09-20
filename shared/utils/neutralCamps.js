@@ -50,6 +50,12 @@ export function campFootprint(size) {
 export const TIER_POWER_LEVEL = { 0: 7, 1: 9, 2: 11 };
 export const ANCIENT_POWER_LEVEL = 13;
 
+// Every camp has 2 garrison waves (owner spec), even though the P7/P9 tiles
+// they are modeled on have 1. Each wave keeps the camp's power-level budget,
+// i.e. same level and troop count per wave; the wave index only varies which
+// commander/branch is picked (see garrisonWaveDefCmd).
+export const CAMP_GARRISON_WAVES = 2;
+
 export function campPowerLevel(unit, { isAncient = false } = {}) {
   return isAncient ? ANCIENT_POWER_LEVEL : (TIER_POWER_LEVEL[unit.tier] ?? 7);
 }
@@ -101,6 +107,7 @@ export function buildCampTemplate(unit, opts = {}) {
     isAncient,
     footprint: campFootprint(unit.size),
     powerLevel: pl,
+    garrisonWaves: CAMP_GARRISON_WAVES,
     siege: campSiegeMax(unit, { isAncient }),
     siegeMax: campSiegeMax(unit, { isAncient }),
     defenders: campDefenders(unit, { isAncient }),

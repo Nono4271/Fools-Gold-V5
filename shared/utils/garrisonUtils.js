@@ -146,11 +146,29 @@ export function garrisonWaveDefCmd(tile, waveIndex, playerFaction) {
 
   if (powerLevel < 4) return garrisonDefCmd(tile, playerFaction);
 
-  const baseCmd = factionDefCmdForTile(waveC, waveR, playerFaction, powerLevel, waveIndex);
+  let baseCmd = factionDefCmdForTile(waveC, waveR, playerFaction, powerLevel, waveIndex);
   if (!baseCmd) return garrisonDefCmd(tile, playerFaction);
 
+  // Camps: every wave has the same level AND the same troop layout/count as
+  // wave 0 (owner spec: "same level and troop count, just a second wave").
+  // Only the commander differs, picked from wave 0's faction so the commander
+  // matches the troops. Other tiles keep their per-wave variety.
+  let layoutFaction = baseCmd.faction;
+  let layoutSeed = waveSeed;
+  if (tile.isCamp && waveIndex > 0) {
+    const wave0 = factionDefCmdForTile(c, r, playerFaction, powerLevel, 0);
+    if (wave0) {
+      layoutFaction = wave0.faction;
+      layoutSeed = baseSeed;
+      for (let k = 0; k < 24 && !(baseCmd.faction === wave0.faction && baseCmd.n !== wave0.n); k++) {
+        const cand = factionDefCmdForTile((waveC + k * 7919) | 0, (waveR + k * 104729) | 0, playerFaction, powerLevel, waveIndex);
+        if (cand && cand.faction === wave0.faction && cand.n !== wave0.n) baseCmd = cand;
+      }
+    }
+  }
+
   const split = tierSplitForPowerLevel(powerLevel, budget);
-  const slots = buildTroopSlots(baseCmd.faction, split, waveSeed);
+  const slots = buildTroopSlots(layoutFaction, split, layoutSeed);
   const totalTroops = slots.reduce((s, sl) => s + sl.troops, 0);
 
   return {

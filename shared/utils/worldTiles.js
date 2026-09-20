@@ -103,6 +103,8 @@ export function createTileMap(arrays, meta) {
     tile.campName = cm?.campName ?? null;
     tile.campUnitKey = cm?.campUnitKey ?? null;
     tile.campFaction = cm?.campFaction ?? null;
+    tile.campW = cm?.campW ?? (isCamp ? 1 : 0);
+    tile.campH = cm?.campH ?? (isCamp ? 1 : 0);
     tile.isWin = !!(flags & F_WIN);
     tile.isGate = !!(flags & F_GATE);
     tile.isBorder = !!(flags & F_BORDER);
@@ -114,6 +116,14 @@ export function createTileMap(arrays, meta) {
     tile.faction = faction;
     return tile;
   };
+
+  // Non-enumerable list of camp primary tiles ({key,c,r,w,h}) so the renderer can
+  // find camps without scanning every visible tile (Object.keys(store) unaffected).
+  const camps = Object.entries(campMeta || {}).map(([key, cm]) => {
+    const comma = key.indexOf(",");
+    return { key, c: +key.slice(0, comma), r: +key.slice(comma + 1), w: cm.campW ?? 1, h: cm.campH ?? 1 };
+  });
+  Object.defineProperty(store, "__camps", { value: camps, enumerable: false });
 
   const map = new Proxy(store, {
     get(s, key) {
