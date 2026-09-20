@@ -19,6 +19,10 @@ export default defineConfig({
    outDir: "dist",
    emptyOutDir: true,
    rollupOptions: {
+     input: {
+       main: path.resolve(import.meta.dirname, "index.html"),
+       threeDemo: path.resolve(import.meta.dirname, "three-demo.html"),
+     },
      output: {
        manualChunks(id) {
          // PixiJS never changes between deploys — isolate for long-term cache hits.
