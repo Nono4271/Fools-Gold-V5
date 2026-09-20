@@ -8,10 +8,21 @@ const buildings={training:5,barracks:1,healingtent:1},key='pirates:swashbucklers
 const train=(s,more={})=>reduce(s,{type:'train',branchKey:key,amount:200,buildings,unlocked:{'pirates:swashbucklers':2},now:0,id:'train',...more});
 const tick=(s,now)=>reduce(s,{type:'tick',buildings,now});
 const heal=(s,amount,more={})=>reduce(s,{type:'heal',amount,buildings,now:0,id:'heal',...more});
-test('all 72 troop quotes respect size, tier, time and cost rules',()=>{
+test('all 80 troop quotes respect size, tier, time and cost rules',()=>{
  for(const [f,faction] of Object.entries(FACTION_TROOPS)) for(const b of faction.branches){let previous;
-  b.tiers.forEach((_,tier)=>{const q=trainingQuote(`${f}:${b.key}:${tier}`,CMD_SIZE[b.size]);assert.equal(q.commandSize,CMD_SIZE[b.size]);assert.equal(q.cost.stone,0);assert.ok(q.baseSeconds>=600&&q.baseSeconds<=3600);if(b.size==='small')assert.ok(q.baseSeconds<=2100);assert.ok(q.cost.food>Math.max(q.cost.wood,q.cost.gas));if(previous){assert.ok(q.baseSeconds>previous.baseSeconds);assert.ok(q.cost.food>previous.cost.food);}previous=q;});
+  b.tiers.forEach((_,tier)=>{const q=trainingQuote(`${f}:${b.key}:${tier}`,CMD_SIZE[b.size]);assert.equal(q.commandSize,CMD_SIZE[b.size]);assert.equal(q.cost.stone,0);if(b.capstone){assert.ok(q.baseSeconds>=3600&&q.baseSeconds<=7200);}else{assert.ok(q.baseSeconds>=600&&q.baseSeconds<=3600);if(b.size==='small')assert.ok(q.baseSeconds<=2100);}assert.ok(q.cost.food>Math.max(q.cost.wood,q.cost.gas));if(previous){assert.ok(q.baseSeconds>previous.baseSeconds);assert.ok(q.cost.food>previous.cost.food);}previous=q;});
  }
+});
+test('capstone branch training cost/time discount scales 0% at level 1 to 50% at level 6',()=>{
+ const branch=FACTION_TROOPS.pirates.branches[3];
+ assert.equal(branch.capstone,true);
+ const key=`pirates:${branch.key}:0`;
+ const full=trainingQuote(key,CMD_SIZE[branch.size],1,0);
+ const half=trainingQuote(key,CMD_SIZE[branch.size],1,0.30);
+ const max=trainingQuote(key,CMD_SIZE[branch.size],1,0.50);
+ assert.ok(half.cost.food<full.cost.food&&half.baseSeconds<full.baseSeconds);
+ assert.ok(max.cost.food<half.cost.food&&max.baseSeconds<half.baseSeconds);
+ assert.equal(Math.round(max.cost.food/full.cost.food*100)/100,0.5);
 });
 test('larger commands take longer and cost moderately more',()=>{const quotes=FACTION_TROOPS.pirates.branches.map(b=>trainingQuote(`pirates:${b.key}:2`,CMD_SIZE[b.size]));for(let i=1;i<3;i++){assert.ok(quotes[i].baseSeconds>quotes[i-1].baseSeconds);const sum=q=>Object.values(q.cost).reduce((a,b)=>a+b,0);assert.ok(sum(quotes[i])>sum(quotes[i-1]));assert.ok(sum(quotes[i])/sum(quotes[i-1])<1.3);}});
 test('payment and ETA match the menu quote',()=>{const s=train(initial()),q=trainingQuote(key,200);for(const k of Object.keys(q.cost))assert.equal(s.rss[k],200000-q.cost[k]);assert.equal(trainingSecondsLeft(s.trainingQueues[0],0),q.totalSeconds);});
