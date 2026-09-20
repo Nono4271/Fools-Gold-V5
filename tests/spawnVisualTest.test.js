@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {isInSpawnVisualArea,sameTerritory,resourceLayout,resourceFootprint,hqNeighborVisualOffset,selectionEdgesBesideHq} from '../src/utils/spawnVisualTest.js';
+import {isInSpawnVisualArea,sameTerritory,resourceLayout,resourceFootprint,selectionEdgesBesideHq} from '../src/utils/spawnVisualTest.js';
 
 test('visual test follows the random player HQ with a 25 tile radius',()=>{
   assert.equal(isInSpawnVisualArea(125,225,'100,200'),true);
@@ -37,14 +37,6 @@ test('resource roots and selection use the same centre for single and 2x2 tiles'
   assert.equal(big.halfWidth,small.halfWidth*2);
   assert.equal(big.halfHeight,small.halfHeight*2);
   assert.equal(big.y-small.y,26.5);
-});
-
-test('resource art beside an HQ shifts outward without changing its tile',()=>{
-  const tiles={'10,10':{isHQ:true}};
-  const east=hqNeighborVisualOffset(12,10,tiles);
-  assert.ok(east.x>0);
-  assert.ok(east.y>0);
-  assert.deepEqual(hqNeighborVisualOffset(13,10,tiles),{x:0,y:0});
 });
 
 test('selection beside an HQ omits only the shared edge',()=>{

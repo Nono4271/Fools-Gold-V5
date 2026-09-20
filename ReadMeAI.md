@@ -257,6 +257,17 @@ change.
 
 ## 2026-09-20 — Codex
 
+### HQ centering v3 and centered neighboring props
+- Moved the approved Pirate HQ halfway back from the over-corrected south position, using the midpoint between the two phone-tested placements.
+- Removed the rejected outward prop shift. Every resource prop is centered on its own tile again, preventing adjacent clusters from being pushed together.
+- The HQ now repaints only its occupied 3x3 ground footprint above the prop layer. This hides only prop pixels that intrude beneath the physical base; no resource tile, prop, ring or surrounding land is removed.
+- The selected tile still omits only the edge shared directly with the HQ border.
+- Validation: 113 tests and production build pass. Phone screenshot confirmation remains required.
+
+---
+
+## 2026-09-20 — Codex
+
 ### Consolidated audit and cross-AI roadmap
 - Added the current architecture, completed/partial/missing systems, technical debt, launch blockers, dependencies, implementation order and pre-multiplayer requirements above the historical log.
 - Marked verified finished systems **COMPLETE — DO NOT RECHECK** to prevent repeated audits and wasted usage unless a regression is reported or related code changes.

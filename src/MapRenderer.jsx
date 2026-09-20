@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo }
 import * as PIXI from "pixi.js";
 import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
-import {isInSpawnVisualArea, sameTerritory, resourceFootprint, hqNeighborVisualOffset, selectionEdgesBesideHq} from "./utils/spawnVisualTest.js";
+import {isInSpawnVisualArea, sameTerritory, resourceFootprint, selectionEdgesBesideHq} from "./utils/spawnVisualTest.js";
 import {softenTerritoryColor} from "./utils/hqTerrainStyle.js";
 import {createResourceSpriteCache} from "./utils/resourceSprites.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
@@ -1411,7 +1411,7 @@ function removeFortSprite(tileKey, fortLayer) {
   }
 }
 
-function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids) {
+function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids, groundTexture) {
   const [pc, pr] = tileKey.split(",").map(Number);
   const blendWithTerrain = isInSpawnVisualArea(pc,pr,playerHqKey);
   // tileKey is the CENTER tile. Top-left of the 3×3 is one step back.
@@ -1456,7 +1456,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
   const group = new PIXI.Container();
   group.__hqKey = tileKey;
-  
+
   // ── Border (draw before sprite so sprite renders on top) ──
   const borderGfx = new PIXI.Graphics();
   const borderTint = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
@@ -1466,6 +1466,15 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   borderPath.push(isoXY(tlc + 2, tlr).cx + TW/2, isoXY(tlc + 2, tlr).cy - elev + TH/2);
   borderPath.push(isoXY(tlc + 2, tlr + 2).cx, isoXY(tlc + 2, tlr + 2).cy - elev + TH);
   borderPath.push(isoXY(tlc, tlr + 2).cx - TW/2, isoXY(tlc, tlr + 2).cy - elev + TH/2);
+
+  // Repaint only the occupied 3x3 footprint above the prop layer. Neighboring
+  // props stay centered on their own tiles, while pixels that extend beneath
+  // the base are naturally hidden by the HQ ground and building.
+  if (blendWithTerrain) {
+    const foundationGfx = new PIXI.Graphics();
+    fillVisualGround(foundationGfx,borderPath,pc,pr,tile.terrain || 'grass',true,groundTexture);
+    group.addChild(foundationGfx);
+  }
 
   borderGfx.lineStyle(blendWithTerrain ? 2.6 : 8, 0x151b10, blendWithTerrain ? 0.30 : 0.8);
   borderGfx.drawPolygon(borderPath);
@@ -1513,7 +1522,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // The approved square Pirate sprite uses its visible base as the ground
   // anchor. Align that base with the south point of the 3x3 footprint.
   const spriteY = useApprovedPirateArt
-    ? worldCY + TH * 2 + off.yOff
+    ? worldCY + TH * 1.55 + off.yOff
     : sPt.cy - elev + TH * 0.60 + off.yOff;
 
   if (blendWithTerrain) {
@@ -1634,7 +1643,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
-function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids, vb, allHqKeys, aiPlayerIdMap) {
+function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids, vb, allHqKeys, aiPlayerIdMap, groundTexture) {
   if (_hqKeyIndex.size === 0 || !vb) {
     if (!vb) _hqKeyIndex.clear();
     // Seed from patched tiles
@@ -1694,7 +1703,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     }
 
     const tileWithPid = ownerPlayerId && !tile.ownerPlayerId ? { ...tile, ownerPlayerId } : tile;
-    hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids));
+    hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids, groundTexture));
     _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew, blendWithTerrain });
 
     // Count tint changes for summary log
@@ -2233,13 +2242,12 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
             const baked=resourceSpriteCache.get(tile.rss,pl);
             if(!baked)continue;
             const footprint=resourceFootprint(c,r,tile);
-            const away=hqNeighborVisualOffset(c,r,tiles,pl>=10?22:18);
             const sprite=visualPropsPool.pop()??new PIXI.Sprite();
             sprite.texture=baked.texture;
             sprite.scale.set(1);
             sprite.anchor.set(baked.anchorX,baked.anchorY);
-            sprite.position.set(footprint.x+away.x,footprint.y+away.y);
-            sprite.zIndex=footprint.y+away.y;
+            sprite.position.set(footprint.x,footprint.y);
+            sprite.zIndex=footprint.y;
             visualPropsContainer.addChild(sprite);
           }
         }
@@ -2368,7 +2376,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKeyRef.current, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current, aiPlayerIdMapRef_.current);
+      }, PIXI, isPanning, playerName, playerHqKeyRef.current, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current, aiPlayerIdMapRef_.current, groundTexture);
     }
 
     function redrawAllHQs() {
@@ -2379,7 +2387,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKeyRef.current, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current, aiPlayerIdMapRef_.current);
+      }, PIXI, isPanning, playerName, playerHqKeyRef.current, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current, aiPlayerIdMapRef_.current, groundTexture);
     }
 
     redrawRef.current = {

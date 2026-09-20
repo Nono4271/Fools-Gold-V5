@@ -28,25 +28,6 @@ export function sameTerritory(a, b) {
 
 const isHqFootprint = (tile) => Boolean(tile?.isHQ || tile?.isHQPart);
 
-// Keep adjacent resource art on its tile while nudging tall clusters away from
-// the HQ wall. Gameplay coordinates and resource ownership stay unchanged.
-export function hqNeighborVisualOffset(c, r, tiles, distance = 18) {
-  let hq = null;
-  for (let dr = -2; dr <= 2 && !hq; dr++) {
-    for (let dc = -2; dc <= 2; dc++) {
-      if (tiles[`${c + dc},${r + dr}`]?.isHQ) {
-        hq = {c:c + dc, r:r + dr};
-        break;
-      }
-    }
-  }
-  if (!hq || Math.max(Math.abs(c-hq.c),Math.abs(r-hq.r)) !== 2) return {x:0,y:0};
-  const from = isoXY(hq.c,hq.r), to = isoXY(c,r);
-  const dx=to.cx-from.cx, dy=to.cy-from.cy;
-  const length=Math.hypot(dx,dy) || 1;
-  return {x:dx/length*distance,y:dy/length*distance};
-}
-
 // Edges are ordered top-right, right-bottom, bottom-left, left-top. Remove
 // only an edge shared with the HQ; the other three sides remain full size.
 export function selectionEdgesBesideHq(c, r, tiles) {
