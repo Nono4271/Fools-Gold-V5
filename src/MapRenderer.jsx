@@ -2,7 +2,8 @@ import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo }
 import * as PIXI from "pixi.js";
 import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
-import {isInSpawnVisualArea, sameTerritory, visualResourceWidth} from "./utils/spawnVisualTest.js";
+import {isInSpawnVisualArea, sameTerritory, resourceFootprint} from "./utils/spawnVisualTest.js";
+import {createResourceSpriteCache} from "./utils/resourceSprites.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
 
 /* ─── Tile geometry ──────────────────────────────────────────────────────── */
@@ -39,12 +40,18 @@ const DARK_VISUAL_TERRAIN = {
   hellfire:0x352d29, ruin:0x45423d, shore:0x625d4e,
 };
 
-const VISUAL_RESOURCE_ASSETS = {
-  wood:"/props/dark-map/wood.webp",
-  stone:"/props/dark-map/stone.webp",
-  food:"/props/dark-map/food.webp",
-  gas:"/props/dark-map/gas.webp",
-};
+// One world-space texture matrix keeps the grass continuous across tile edges.
+const GROUND_TEXTURE_MATRIX = new PIXI.Matrix(0.7,0,0,0.46,0,0);
+function fillVisualGround(gfx, points, c, r, terrain, inVisualTest, groundTexture) {
+  const natural = !['river','ravine','rockymountain','hellfire','shore','road'].includes(terrain);
+  if (inVisualTest && natural && groundTexture?.baseTexture.valid) {
+    const tint = terrain === 'forest' ? 0xc3cfbc : terrain === 'mountain' ? 0xd2d0c6 : 0xffffff;
+    gfx.beginTextureFill({texture:groundTexture,matrix:GROUND_TEXTURE_MATRIX,color:tint});
+  } else {
+    gfx.beginFill(inVisualTest ? getSpawnVisualColor(c,r,terrain) : getTileBaseColor(c,r,terrain));
+  }
+  gfx.drawPolygon(points);gfx.endFill();
+}
 
 /* ─── Resource prop colors ───────────────────────────────────────────────── */
 const RC = {
@@ -223,7 +230,7 @@ function drawJoinedTerritoryEdges(gfx, tiles, c, r, tile, points, color) {
    No per-tile scene graph nodes. Camera moves = zero draw calls.
 ══════════════════════════════════════════════════════════════════════════ */
 
-function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null, visualCenterKey = null) {
+function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null, visualCenterKey = null, groundTexture = null) {
   if (!window.__rangeLogged) {
 
     window.__rangeLogged = true;
@@ -504,7 +511,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         gfx.beginFill(0xf0c040, 0.55); gfx.drawPolygon(TOP); gfx.endFill();
         if (zoom >= 0.75) { gfx.lineStyle(2, 0xf0c040, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
       } else {
-        gfx.beginFill(inVisualTest ? getSpawnVisualColor(c,r,terrain) : getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
+        fillVisualGround(gfx,TOP,c,r,terrain,inVisualTest,groundTexture);
         // Hellfire terrain: add a subtle red-orange lava glow tint over the dark base
         if (terrain === "hellfire") {
           const rng2 = tileRng(c + 3, r + 7);
@@ -559,16 +566,8 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const pl = tile.powerLevel ?? 0;
       if (pl < 10 || !tile.isKeep || tile.isGate || tile.isWin) continue;
       // 2x2 diamond: N tip at primary tile top, covers exactly the same area as 4 tiles
-      const { cx, cy } = isoXY(c, r);
-      const elev = 4;
-      const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
-      const MERGED = [
-        cx,        cy - elev,              // N
-        cx + TW,   cy - elev + TH,         // E
-        cx,        cy - elev + TH * 2,     // S
-        cx - TW,   cy - elev + TH,         // W
-      ];
-      gfx.beginFill(baseColor); gfx.drawPolygon(MERGED); gfx.endFill();
+      const MERGED = resourceFootprint(c,r,tile).points;
+      fillVisualGround(gfx,MERGED,c,r,tile.terrain,isInSpawnVisualArea(c,r,visualCenterKey),groundTexture);
       gfx.lineStyle(0);
 
       // Owner tint
@@ -596,14 +595,13 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // 5x5 diamond centered on data tile
       const { cx, cy } = isoXY(c, r);
       const elev = 4;
-      const baseColor = getTileBaseColor(c, r, tile.terrain || "grass");
       const KEEP5 = [
         cx,          cy - elev - TH * 2,       // N
         cx + TW*2.5, cy - elev + TH * 0.5,    // E
         cx,          cy - elev + TH * 3,       // S
         cx - TW*2.5, cy - elev + TH * 0.5,    // W
       ];
-      gfx.beginFill(baseColor); gfx.drawPolygon(KEEP5); gfx.endFill();
+      fillVisualGround(gfx,KEEP5,c,r,tile.terrain,isInSpawnVisualArea(c,r,visualCenterKey),groundTexture);
       gfx.lineStyle(0);
       // Owner tint
       const owner3 = tile.owner || null;
@@ -1921,9 +1919,16 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const visualPropsContainer = new PIXI.Container();
     const visualPropsPool = [];
     visualPropsContainer.sortableChildren = true;
-    const visualResourceTextures = Object.fromEntries(
-      Object.entries(VISUAL_RESOURCE_ASSETS).map(([key,path]) => [key,PIXI.Texture.from(path)])
-    );
+    const onVisualAssetsLoaded = () => {
+      if (appRef.current !== app) return;
+      lastBoundsRef.current = null;
+      redrawRef.current?.markPropsDirty?.();
+      redrawRef.current?.redraw?.(true);
+    };
+    const resourceSpriteCache = createResourceSpriteCache(app.renderer,onVisualAssetsLoaded);
+    const groundTexture = PIXI.Texture.from('/props/dark-map/grass-ground.webp');
+    groundTexture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+    if (!groundTexture.baseTexture.valid) groundTexture.baseTexture.once('loaded',onVisualAssetsLoaded);
 
     // ── iOS lazy texture baking ───────────────────────────────────────────────
     // Instead of baking all 52 textures synchronously at startup (blocking the
@@ -1985,14 +1990,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       // P10–P13: draw white outline around the 2x visual diamond
       const pl = tile.powerLevel ?? 0;
       if (pl >= 10 && tile.isKeep) {
-        const { cx, cy } = isoXY(sc, sr);
-        const elev = 4;
-        const MERGED = [
-          cx,        cy - elev,            // N
-          cx + TW,   cy - elev + TH,       // E
-          cx,        cy - elev + TH * 2,   // S
-          cx - TW,   cy - elev + TH,       // W
-        ];
+        const MERGED = resourceFootprint(sc,sr,tile).points;
         selGfx.lineStyle(3, 0xffffff, 0.95);
         selGfx.drawPolygon(MERGED);
         selGfx.lineStyle(0);
@@ -2194,16 +2192,18 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
             const r=d-c;
             if(r<pb.rMin||r>pb.rMax||!isInSpawnVisualArea(c,r,playerHqKeyRef.current))continue;
             const tile=tiles[`${c},${r}`];
-            if(!tile?.rss||tile.isHQ||tile.isHQPart||tile.isWin||tile.isShore)continue;
+            if(!tile?.rss||tile.isHQ||tile.isHQPart||tile.isKeepPart||tile.isGate||tile.isWin||tile.isShore)continue;
             const pl=tile.powerLevel||1;
-            if(pl===1||((tile.isKeep&&!tile.isGate)||tile.isKeepPart)&&pl<10)continue;
-            const texture=visualResourceTextures[tile.rss];
-            if(!texture)continue;
-            const {cx,cy}=isoXY(c,r),base=cy-4+(tile.isKeep&&pl>=10?TH:TH*0.5);
+            if (pl === 1 || (tile.isKeep && pl < 10)) continue;
+            const baked=resourceSpriteCache.get(tile.rss,pl);
+            if(!baked)continue;
+            const footprint=resourceFootprint(c,r,tile);
             const sprite=visualPropsPool.pop()??new PIXI.Sprite();
-            const size=visualResourceWidth(pl)*(tile.isKeep&&pl>=10?1.15:1);
-            sprite.texture=texture;sprite.anchor.set(0.5,0.88);
-            sprite.x=cx;sprite.y=base;sprite.width=size;sprite.height=size;sprite.zIndex=base;
+            sprite.texture=baked.texture;
+            sprite.scale.set(1);
+            sprite.anchor.set(baked.anchorX,baked.anchorY);
+            sprite.position.set(footprint.x,footprint.y);
+            sprite.zIndex=footprint.y;
             visualPropsContainer.addChild(sprite);
           }
         }
@@ -2266,7 +2266,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const tg = tileFrontRef.current;
       tg.clear();
       drawAllTiles(tg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax,
-        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z, playerFacKeyRef.current, crewPidsRef.current, playerHqKeyRef.current);
+        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z, playerFacKeyRef.current, crewPidsRef.current, playerHqKeyRef.current, groundTexture);
 
       // ── Props layer: only redraw when state changed OR viewport moved outside
       // the previously rendered props buffer. Never block synchronously — always
@@ -2810,7 +2810,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       touchTarget.removeEventListener("touchend",    safeTE);
       touchTarget.removeEventListener("touchcancel", safeTE);
       if (panHeartbeatId) clearInterval(panHeartbeatId);
+      groundTexture.baseTexture.off('loaded',onVisualAssetsLoaded);
+      visualPropsPool.forEach(sprite => sprite.destroy());
       app.destroy(true, { children: true });
+      resourceSpriteCache.destroy();
       appRef.current = null; worldRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps

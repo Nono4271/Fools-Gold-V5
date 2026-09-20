@@ -8,6 +8,20 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Codex
+
+### Graphics revision: two resource families, centred props, continuous grass
+- P2–P9 use new simple tree/boulder/wheat/gas-vent assets; each resource grows from two objects at P2 to five at P9, with size changes between levels.
+- P10–P13 use the developed forest/quarry/farm/refinery designs, larger sizing and added resource details at successive levels.
+- Props use per-asset ground/root anchors and preserve image proportions. Shared footprint geometry places large resource props at the centre of their selection diamond.
+- Added a world-aligned repeating grass texture to ordinary, P10+ and static-keep ground in the existing 25-tile HQ test radius. Eliminates the old yellow P10+ patches; preserves special water/crossing terrain.
+- Clusters are baked once per resource/power and reused as one sprite per tile. Load callbacks refresh graphics; cleanup preserves source textures for reopening the map.
+- Added asset notes/prompts in `public/props/dark-map/ART.md`.
+- Validation: 112 tests pass; production build passes. Reviewed an asset/footprint composition sheet. Cloud browser cannot open the local preview, so full in-game phone rendering/performance remains to be checked by the user.
+- No resource rates, tile powers, map generation, march rules or other gameplay values changed.
+
+---
+
 ## 2026-09-20 — Codex (Sol Medium)
 
 ### Playable graphics test around the random player spawn
