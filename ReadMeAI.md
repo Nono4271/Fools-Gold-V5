@@ -8,6 +8,118 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet) — Neutral units (15) + The Ancients (4 T4 unaligned units)
+
+Roadmap item: "Missing systems and content" → neutral units, "built through the
+existing troop/branch/battle architecture, not a disconnected combat system."
+Owner design conversation (this session) settled the exact roster before any
+code was written; implemented as described, nothing invented beyond that.
+
+### Part 1 — 15 neutral units (`shared/constants/neutralTroops.js`, new file)
+- 7 units across 3 brand-new races — **Beastfolk** (Wolf Rider T1/small,
+  Bear Shaman T2/medium, Swarmwing Broodmother T3/large), **Stoneborn**
+  (Rubble Warden T2/medium, Ruin Colossus T3/large), **Sandrunner** (Dune
+  Raider T2/small, Scavenger Chief T3/medium) — plus 8 **Renegade** units,
+  one per existing faction (a rogue/deserter/outcast flavor of that
+  faction's race, e.g. Pirate Deserter, Rogue Battlemage). 1 T1, rest T2/T3
+  per owner's "more T2/T3, only a couple T1" instruction. Placed ~5/5/5
+  across a `region: "south"|"mid"|"north"` field (data only — no live map
+  placement/garrison spawning wired up, see Scope note below).
+- **New shared tag vocabulary** (`NEUTRAL_TAGS`): `beast`, `pack`,
+  `construct`, `armored`, `raider`, `swarm`, `renegade`. Only neutrals use
+  tags today; existing faction troops could adopt them later with zero
+  migration (every tag check added below no-ops safely via optional
+  chaining if `branchDef.tags` is undefined).
+- **Tag synergy = active abilities, not a passive stat bonus** (explicit
+  owner correction mid-design). Exactly 5 of the 15 units carry a
+  tag-conditional skill; the other 10 use normal single-unit skills reusing
+  existing effect types (lifesteal, bonus_damage, dmg_reduce, def_down,
+  double_attack, atk_stack, ignore_def_pct). The 5 synergy units/effects:
+  Bear Shaman (`tag_shield_ally`), Swarmwing Broodmother
+  (`tag_buff_allies_tag`), Rubble Warden (`tag_intercept_for_tag`), Ruin
+  Colossus (`tag_full_shield_ally`), Scavenger Chief (`tag_heal_ally_on_hit`)
+  — each requires another allied slot with the matching tag to be present in
+  the same army; with none present the ability simply has no target and
+  does nothing (no passive fallback bonus).
+- **Battle engine plumbing** (`shared/utils/battle.js`): `procTroopSkills`
+  gained two new optional trailing params, `alliedSlots` (the resolved slot
+  array for the SAME side as the acting unit) and `actingSlot` (so a unit
+  can exclude itself when scanning for a tagged ally). All 5 existing call
+  sites updated to pass the correct same-side slot array
+  (`atkSlotResolved`/`defSlotResolved`, already in scope at each site) —
+  fully additive, no existing effect type or call site's prior behavior
+  changed. Added the 5 new `case` branches for the tag effects above.
+
+### Part 2 — The Ancients (`shared/constants/ancientTroops.js`, new file)
+4 units, a new unaligned race said to predate the 8 factions and every
+other neutral race. Owner spec: large-only, T4 power bracket, stats 15-20%
+above faction T4, "only one Ancient may be used in an army."
+- **Voidmaw, the First Devourer** (physical/melee), **Aeonspire, the Silent
+  Watcher** (magical/siege), **Ruinfather, Who Walked Before**
+  (physical/melee), **The Nameless Colossus** (physical/siege).
+- **Stats:** baselined against the average of the 3 faction T4 capstones
+  that are actually large-sized (Abyssal Leviathan / Doomcaller / Bone
+  Colossus — the other 5 capstones were deliberately scaled down to
+  medium/small by an earlier owner decision, so they're excluded from this
+  baseline): dmgLo 553, dmgHi 585, def 97, hp 1817, siege 767, spd 47. Each
+  Ancient individually scaled 15-20% above that (checked in
+  `tests/ancientTroops.test.js`), not identical to each other.
+- **Skills A/B/C + D, per owner clarification:** each Ancient has 3 real
+  combat abilities (A/B/C), every one carrying `procBase`/`procMax` exactly
+  like every other troop skill in the game — they level 1-10 through the
+  existing generic `skillProcAtLevel`/`skillOrbCost` system with zero new
+  upgrade plumbing. Checked the existing faction T4 capstones too: their
+  `a`/`b`/`c` skills already carried `procBase`/`procMax`, so they were
+  already upgradable before this change — nothing there needed fixing.
+  Skill **D** is NOT a combat ability — it's the "only one Ancient per
+  army" rule, added as a real 4th skill entry for visibility, but
+  `trigger: "passive"` with no `procBase`/`procMax`/`effect`, so it cannot
+  be leveled (the one skill in this whole change without a %, by design).
+- **Structural reuse:** each Ancient is a capstone-shaped branch object
+  (`capstone: true`, one `tiers[0]` block, skills `a/b/c` fielded together)
+  so it resolves through the exact same path as every faction's T4 capstone
+  in both `troops.js` and `battle.js`, with only an additive fallback
+  lookup added to each (`ANCIENT_FACTIONS`, checked after `FACTION_TROOPS`)
+  — zero new branching logic in either file's resolution functions.
+  Ancients are kept OUT of `FACTION_TROOPS`/`FACTION_KEYS` (only reachable
+  via the synthetic `faction: "ancients"` key) so nothing assuming "8 real
+  factions" anywhere in the codebase is affected.
+- **"Only one Ancient per army" — real enforcement**
+  (`shared/utils/troopSlots.js`): new `isAncientUniqueBranch`/
+  `armyHasOtherAncient` helpers keyed off each Ancient branch's
+  `uniqueSlot: true` flag. `planTroopSlot` now refuses (no-ops, returns
+  `blocked: "ancient_unique"`) placing a 2nd Ancient into a different slot
+  than one already carried. `planArmySlots` (army Confirm) only places the
+  *first* Ancient encountered in the desired-slots list and skips any
+  further one (reported via a new optional `blockedKeys` field, empty/
+  omitted for any army with 0-1 Ancients — verified this doesn't change the
+  return shape for ordinary all-faction-troop armies). The rule blocks any
+  second Ancient, not just a duplicate of the same one.
+
+### Scope note (explicit, not silently narrowed)
+Both parts are **data + battle-engine + army-composition-rule support
+only**. Not done in this change:
+- No live map placement or garrison spawning for the 15 neutrals (the
+  existing `src/utils/spawnUtils.js`/`src/workers/spawn.worker.js` per-
+  faction leveled "spawn" system is untouched and is a different, already-
+  complete feature — do not confuse the two).
+- No acquisition path for Ancients (no gacha entry, no reward/quest source)
+  — there is currently no way for a player to actually get an Ancient into
+  a barracks pool to test the uniqueSlot rule in the live UI, only via the
+  pure functions directly (see tests).
+- No portrait/unit art for any of the 19 new units (portrait path helpers
+  added and follow existing naming conventions, ready for when art exists).
+
+**Tests:** `tests/neutralTroops.test.js` (15-unit roster, tag-synergy
+firing/non-firing, region split) and `tests/ancientTroops.test.js` (4-unit
+roster, stat-ratio bounds, skill A/B/C upgradability, skill D shape,
+capstone-path resolution, `planTroopSlot`/`planArmySlots` unique-slot
+enforcement). Full suite: 214 passing, 0 failing (`npm install` was needed
+— this upload's `node_modules` wasn't present, same as the last session).
+Production build clean.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet) — T4 capstone troops, brought into this build
 
 This upload was the pre-T4 baseline (3 branches/faction, no `capstone`) plus other
