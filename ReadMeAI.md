@@ -178,11 +178,12 @@ change.
   delayed messages cannot spend/capture twice.
 - Replace full-map client/server transfers with region/chunk snapshots and
   small validated updates suitable for thousands of players.
-- Remove temporary `?debug`/mobile diagnostics after the related phone tests
-  are complete.
-- Resolve the Bag relocation-token “coming soon” message so it directs players
-  to the existing HQ relocation flow or opens it.
-- Add the required recall-specific speedup; keep training and forts excluded.
+- ~~Remove temporary `?debug`/mobile diagnostics after the related phone tests
+  are complete.~~ **Done (Claude)** — see the 2026-09-20 "tech-debt cleanup" entry.
+- ~~Resolve the Bag relocation-token “coming soon” message so it directs players
+  to the existing HQ relocation flow or opens it.~~ **Done (Claude)** — same entry.
+- ~~Add the required recall-specific speedup; keep training and forts excluded.~~
+  **Done (Claude)** — same entry.
 
 ## 6. Current Alpha/Beta launch blockers
 
@@ -256,6 +257,19 @@ change.
 - Create purpose-built commander sprites for the world map.
 - Create sprites for all remaining mobs/neutral encounters.
 - Create sprites for keeps and blend them with the new map style.
+
+---
+
+## 2026-09-20 — Claude (Sonnet)
+
+### Small tech-debt cleanup batch (roadmap section 5, remaining small items)
+Three small items left in "Technical debt to fix before multiplayer":
+
+- **Removed temp `?debug` pan-freeze diagnostics** (`src/MapRenderer.jsx`): owner confirmed phone pan-freeze testing is done. Removed the `PAN_DEBUG` flag, the `[PAN_DEBUG]` console logging, and the 3s heartbeat interval. Kept the underlying try/catch wrappers around the touch handlers (`safeTS`/`safeTM`/`safeTE`) since those aren't debug-only — they're real defensive code that resets `isPanning` if a handler throws — just switched their logging from debug-gated to a plain unconditional `console.error` so a real failure there is never silent.
+- **Fixed the Bag's "Relocation Token" item** (`src/hooks/useConsumables.js`): using it from the Bag used to consume the token, immediately give it back (`restoreOne`), and show "Relocation coming soon!" — a dead stub, since the real relocation flow already exists and works fine from `TilePopup.jsx` (tap a valid pad tile → "RELOCATE HQ HERE"). Now it just shows a message pointing the player to that flow and doesn't touch the token count at all — there's no target tile picked yet from the Bag, so there's nothing to actually relocate.
+- **Added the recall-specific speedup** (per the locked decision: "Building, healing and recall require specific speedups; universal speedups may also apply"): recall marches (`cmd.march.type === "recall"` — set when a fort is destroyed/decommissioned or a commander is otherwise recalled) previously had no speedup path at all. Added `su_recall_*` consumable defs (`shared/constants/consumables.js`, same duration tiers as building/healing) and a "Recall Speed Ups" Bag group. New pure function `speedUpRecall(cmds, durationMs)` in `shared/utils/consumables.js` shifts the recalling commander's `march.lastStepTime` back by the speedup duration — this reuses the exact catch-up mechanism from the background-timer work above (`advanceMarch`), so the worker naturally covers the skipped distance on its next tick rather than needing separate fast-forward logic. Universal speedups now also apply to recall. Training and forts remain excluded, per the locked no-speedup rule — untouched.
+
+New/updated tests: `tests/splitRules.test.js` gained a `speedUpRecall` test (player-only, recall-march-only, AI/other-march-types/no-march all left untouched). Full suite: 165 passing, 0 failing. Build clean, live smoke test shows no runtime errors.
 
 ---
 
