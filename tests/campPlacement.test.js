@@ -89,3 +89,37 @@ test('placing many camps around the same anchor never overlaps', () => {
     }
   }
 });
+
+// ── Spreading camps across a region (not clustered around the keep) ──────────
+import { regionCandidates, spreadPoints } from '../shared/utils/campPlacement.js';
+
+test('spreadPoints picks well-separated points and keeps away from the avoid point', () => {
+  const cands = [];
+  for (let r = 0; r < 100; r += 4) for (let c = 0; c < 100; c += 4) cands.push([c, r]);
+  const pts = spreadPoints(cands, 16, [[50, 50]]);
+  assert.equal(pts.length, 16);
+  let minPair = Infinity;
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+    minPair = Math.min(minPair, Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]));
+  }
+  assert.ok(minPair >= 20, `points at least 20 apart, got ${minPair}`);
+  assert.ok(pts.every(([c, r]) => Math.hypot(c - 50, r - 50) >= 20), 'nobody hugs the avoid point');
+  assert.deepEqual(spreadPoints(cands, 16, [[50, 50]]), pts); // deterministic
+});
+
+test('spreadPoints returns fewer points when there are not enough candidates', () => {
+  assert.equal(spreadPoints([[1, 1], [9, 9]], 5).length, 2);
+  assert.deepEqual(spreadPoints([], 3), []);
+});
+
+test('regionCandidates stays inside the region, off its borders and off blocked tiles', () => {
+  // Region 1 = columns 0..99, region 2 = columns 100..199 on a 200x100 map.
+  const regionAt = (c) => (c < 100 ? 1 : 2);
+  const isBlocked = (c, r) => c >= 40 && c <= 60 && r >= 40 && r <= 60;
+  const cands = regionCandidates({ regionIdx: 1, regionAt, isBlocked, cx: 50, cy: 50, radius: 100, step: 4, margin: 10, cols: 200, rows: 100 });
+  assert.ok(cands.length > 0);
+  for (const [c, r] of cands) {
+    assert.ok(c < 90, `column ${c} is at least the margin away from the region border`);
+    assert.ok(!isBlocked(c, r));
+  }
+});

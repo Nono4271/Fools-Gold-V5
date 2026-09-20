@@ -77,6 +77,22 @@ test('real generated map: every planned camp is placed and Find Camps sees them'
   assert.equal(map.__camps.length, plan.length);
   assert.equal(Object.keys(map).includes('__camps'), false, 'camp list does not pollute tile-store keys');
   for (const key of placed.slice(0, 50)) assert.equal(map[key].garrisonWaves, 2);
+  // Camps are spread across each region, not packed around its keep.
+  const regionArr = new Uint8Array(done.buffers.region);
+  const byRegion = {};
+  for (const key of placed) {
+    const [c, r] = key.split(',').map(Number);
+    (byRegion[regionArr[r * 1845 + c]] ??= []).push([c, r]);
+  }
+  for (const [ri, pts] of Object.entries(byRegion)) {
+    const reg = done.meta.regionList[ri - 1];
+    if (!reg || pts.length < 20) continue;
+    const dist = pts.map(([c, r]) => Math.hypot(c - reg.cx, r - reg.cy)).sort((a, b) => a - b);
+    const nn = pts.map(p => Math.min(...pts.filter(q => q !== p).map(q => Math.hypot(p[0] - q[0], p[1] - q[1]))));
+    const meanNN = nn.reduce((a, b) => a + b, 0) / nn.length;
+    assert.ok(dist[dist.length >> 1] > 30, `${reg.name}: median distance from keep ${dist[dist.length >> 1].toFixed(0)}`);
+    assert.ok(meanNN > 12, `${reg.name}: mean nearest-neighbour ${meanNN.toFixed(1)}`);
+  }
   // Both waves have the same level and troop count; only the commander changes.
   const { garrisonWaveCount, garrisonWaveDefCmd } = await import('../shared/utils/garrisonUtils.js');
   const step = Math.max(1, Math.floor(placed.length / 60));
