@@ -23,7 +23,7 @@ import { PerfOverlay } from "./utils/perfLog.jsx";
 
 export default function GameView(props) {
   const {
-    ZOOM_LEVELS, abandonFort, aiFaction, aiHqKeys, aiHqKeysRef, aiLastActionRef,
+    ZOOM_LEVELS, abandonFort, startFortRemoval, cancelFortRemoval, aiFaction, aiHqKeys, aiHqKeysRef, aiLastActionRef,
     aiPlayerIdMapRef, assignTroops, atkKey, autoHeal, bLog, barracksPool, battles, bldgs,
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
@@ -214,8 +214,8 @@ export default function GameView(props) {
         upgradeFort={upgradeFort}
         getFortAtTile={getFortAtTile}
         startReposition={startReposition}
-        demolishFort={demolishFort}
-        abandonFort={abandonFort}
+        startFortRemoval={startFortRemoval}
+        cancelFortRemoval={cancelFortRemoval}
         setCmdScreenOpen={setCmdScreenOpen}
         setCmdScreenUid={setCmdScreenUid}
         hasQuickGather={hasQuickGather} onQuickGather={onQuickGather}

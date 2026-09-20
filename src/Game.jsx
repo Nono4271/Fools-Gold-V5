@@ -28,6 +28,7 @@ import { useServerSync } from "./hooks/useServerSync.js";
 import { useBattle } from "./hooks/useBattle.js";
 import { useGacha } from "./hooks/useGacha.js";
 import { useTomes } from "./hooks/useTomes.js";
+import { useFortRemovals } from "./hooks/useFortRemovals.js";
 import { useVoidTap } from "./hooks/useVoidTap.js";
 import { useTroopSlots } from "./hooks/useTroopSlots.js";
 import { useRelocation } from "./hooks/useRelocation.js";
@@ -766,6 +767,8 @@ export default function RiseToWar() {
     forts,
     buildFort,
     upgradeFort,
+    startFortRemoval,
+    cancelFortRemoval,
     destroyFort,
     stationAtFort,
     unstationCmd,
@@ -804,6 +807,9 @@ export default function RiseToWar() {
     }
     floaty("🚪 Fort abandoned", "#8a8a8a", null);
   }, [destroyFort, forts, patchTile, floaty]);
+
+  // Fires demolish/abandon when a fort's stored deadline passes.
+  useFortRemovals({ screen, forts, demolishFort, abandonFort });
 
   const fortsRef = useRef(forts);
   useEffect(() => { fortsRef.current = forts; _fortsRef.current = forts; }, [forts]);
@@ -1397,7 +1403,7 @@ export default function RiseToWar() {
 
   // ── Game screen — layout lives in GameView.jsx ──
   return <GameView {...{
-    ZOOM_LEVELS, abandonFort, aiFaction, aiHqKeys, aiHqKeysRef, aiLastActionRef,
+    ZOOM_LEVELS, abandonFort, startFortRemoval, cancelFortRemoval, aiFaction, aiHqKeys, aiHqKeysRef, aiLastActionRef,
     aiPlayerIdMapRef, assignTroops, atkKey, autoHeal, bLog, barracksPool, battles, bldgs,
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
