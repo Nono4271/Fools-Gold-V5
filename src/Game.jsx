@@ -6,11 +6,10 @@ import { MapRenderer, clearHQCache } from "./MapRenderer";
 // Constants
 import { CSS } from "./constants/css.js";
 import { getFactionAlignment } from "../shared/constants/factions.js";
-import { CONSUMABLE_DEFS } from "../shared/constants/consumables.js";
-import { validateRelocationPad, findForcedRelocationPad, hq3x3Keys } from "../shared/utils/relocation.js";
-import { npcForPowerLevel, factionDefCmdForTile, HDEFS } from "../shared/constants/heroes.js";
-import { HQP, POWER_DEFS, SIEGE_BASE, hqSiegeValue, FORT_LEVELS, XP_PER_COMMAND } from "../shared/constants/map.js";
-import { FACTION_TROOPS, COMMAND_COST } from "../shared/constants/troops.js";
+import { validateRelocationPad, allHqKeyList } from "../shared/utils/relocation.js";
+import { HDEFS } from "../shared/constants/heroes.js";
+import { HQP, POWER_DEFS, hqSiegeValue, FORT_LEVELS, XP_PER_COMMAND } from "../shared/constants/map.js";
+import { FACTION_TROOPS } from "../shared/constants/troops.js";
 import { barracksCapacity, cmdCommand, upgCost, upgDuration, maxAvailLevel, trainingQueueCount, tierFromBranchLevel } from "../shared/constants/buildings.js";
 import { isoXY } from "../shared/constants/geometry.js";
 
@@ -36,6 +35,11 @@ import { useBattle } from "./hooks/useBattle.js";
 import { useGacha } from "./hooks/useGacha.js";
 import { useTomes } from "./hooks/useTomes.js";
 import { useVoidTap } from "./hooks/useVoidTap.js";
+import { useTroopSlots } from "./hooks/useTroopSlots.js";
+import { useRelocation } from "./hooks/useRelocation.js";
+import { useConsumables } from "./hooks/useConsumables.js";
+import { useTileTimers } from "./hooks/useTileTimers.js";
+import { consumeOne, withRssBoosts } from "../shared/utils/consumables.js";
 
 // Screens
 import TitleScreen from "./components/screens/TitleScreen.jsx";
@@ -445,17 +449,12 @@ export default function RiseToWar() {
   const tomeFocBonus   = tomeNodeLv("tl_b1") * 2;             // Willpower
   const tomeAtkBonus   = tomeNodeLv("tl_b2") * 2;             // Overpower
   const [rssSpeedUps, setRssSpeedUps] = useState({}); // active rss boosts — must be before rssBonus
-  const rssBonus = {                                           // RSS Mastery nodes
+  const rssBonus = withRssBoosts({                             // RSS Mastery nodes + active boosts
     food:  tomeNodeLv("tr_b1") * 0.015,
     wood:  tomeNodeLv("tr_b2") * 0.015,
     stone: tomeNodeLv("tr_b3") * 0.015,
     gas:   tomeNodeLv("tr_b4") * 0.015,
-  };
-  // Merge active resource speed-up boosts
-  const now_ = Date.now();
-  for (const [rssType, endsAt] of Object.entries(rssSpeedUps)) {
-    if (endsAt > now_) rssBonus[rssType] = (rssBonus[rssType] ?? 0) + 0.30;
-  }
+  }, rssSpeedUps, Date.now());
   const hasQuickGather = tomeNodeLv("tl_t") >= 1;
   const hasRecon       = tomeNodeLv("tr_t") >= 1;
   const hasGather      = tomeNodeLv("tr_b") >= 1;
@@ -613,23 +612,6 @@ export default function RiseToWar() {
     return () => clearInterval(id);
   }, [screen, tomesNodeLevels]);
 
-  // ── Tile protection ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const id = setInterval(() => {
-      const now = Date.now();
-      setProtectedTiles(prev => {
-        const next = {};
-        let changed = false;
-        for (const [k, until] of Object.entries(prev)) {
-          if (until > now) next[k] = until;
-          else changed = true;
-        }
-        return changed ? next : prev;
-      });
-    }, 5000);
-    return () => clearInterval(id);
-  }, []);
-
   // Compute leaderboard entries safely — only iterates patched (owned) tiles
   useEffect(() => {
     if (!leaderboardOpen) return;
@@ -660,10 +642,6 @@ export default function RiseToWar() {
       setPlayerEntries(all);
     } catch(e) { console.warn("Leaderboard compute error:", e); }
   }, [leaderboardOpen, facName, facKey]);
-
-  const registerProtection = useCallback((tileKey) => {
-    setProtectedTiles(prev => ({ ...prev, [tileKey]: Date.now() + 3 * 60 * 1000 }));
-  }, []);
 
   // ── Spawn worker — init after map is ready ──────────────────────────────
   useEffect(() => {
@@ -1278,6 +1256,13 @@ export default function RiseToWar() {
   // Give useGacha access to floaty now that it's defined.
   floatyRef.current = floaty;
 
+  // ── Tile protection + abandonment timers — rules in shared/utils/tileTimers.js ──
+  const { registerProtection } = useTileTimers({
+    setProtectedTiles, deletingTiles, setDeletingTiles, setDeletingSecsLeft,
+    tilesMapRef, patchTile, facKey, playerHqRef, cmdsRef, setPlayerCmds,
+    findPathBatch, applyAllBonuses, gearInventory, floaty,
+  });
+
   // ── Lazy AI commander spawning ──────────────────────────────────────────
   // Disabled: only the single closest same-faction HQ gets commanders (spawned at init).
   // All other HQs exist on the map but have no commanders.
@@ -1714,68 +1699,6 @@ export default function RiseToWar() {
     return () => clearInterval(id);
   }, [screen, floaty, bldgs.barracks, bldgs.commandcenter, findPath]);
 
-  // ── Tile deletion countdown ──
-  useEffect(() => {
-    if (Object.keys(deletingTiles).length===0) return;
-    const id = setInterval(() => {
-      const now = Date.now();
-      const expired = [];
-      const newSecs = {};
-      Object.entries(deletingTiles).forEach(([key, startedAt]) => {
-        const elapsed = now - startedAt;
-        newSecs[key] = Math.max(0, Math.ceil((15000-elapsed)/1000));
-        if (elapsed >= 15000) expired.push(key);
-      });
-      setDeletingSecsLeft(newSecs);
-      if (expired.length > 0) {
-        expired.forEach(key => {
-          const t = tilesMapRef.current[key];
-          if (!t || t.owner !== "player") return;
-          const pl = t.powerLevel || 1;
-          const pd = POWER_DEFS[pl];
-          const npc2 = npcForPowerLevel(pl);
-          const [tc, tr] = key.split(",").map(Number);
-          const resetDefCmd = pd
-            ? (pl >= 4
-                ? (() => {
-                    const fc = factionDefCmdForTile(tc, tr, facKey, pl);
-                    if (!fc) return { n:npc2.n, icon:npc2.icon, cls:npc2.cls, faction:null, rarity:'soldier', lvl:pd.cmdLvl, troops:pd.command, troopBranch:npc2.troopBranch, atk:npc2.atk*pd.cmdLvl, spd:npc2.spd+pd.cmdLvl*2 };
-                    return { ...fc, troops: pd.command };
-                  })()
-                : { n:npc2.n, icon:npc2.icon, cls:npc2.cls, faction:null, rarity:'soldier', lvl:pd.cmdLvl, troops:pd.command, troopBranch:npc2.troopBranch, atk:npc2.atk*pd.cmdLvl, spd:npc2.spd+pd.cmdLvl*2 })
-            : null;
-          patchTile(key, { owner:null, garrison:pd?pd.command:50, siege:t.siegeMax??SIEGE_BASE, siegeMax:t.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:resetDefCmd });
-        });
-        const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
-        // Fix #6: offload retreat BFS to worker. Collect all affected cmds,
-        // fire one findPathBatch call, then apply results in a single state update.
-        const retreatCmds = cmdsRef.current.filter(cmd =>
-          expired.includes(cmd.tk) && cmd.tk !== hqKey && !cmd.march
-        );
-        if (retreatCmds.length > 0) {
-          const batchReqs = retreatCmds.map(cmd => ({ requestId: cmd.uid, from: cmd.tk, to: hqKey }));
-          findPathBatch(batchReqs).then(results => {
-            const pathByUid = Object.fromEntries(results.map(r => [r.requestId, r.path]));
-            setPlayerCmds(prev => prev.map(cmd => {
-              if (!expired.includes(cmd.tk) || cmd.tk === hqKey) return cmd;
-              if (cmd.march) return cmd;
-              const retreatPath = pathByUid[cmd.uid];
-              const stepMs = marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd||60, null));
-              if (retreatPath && retreatPath.length >= 2) {
-                return { ...cmd, march:{ type:"move", path:retreatPath, step:0, dest:hqKey, origin:cmd.tk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() } };
-              }
-              return { ...cmd, tk:hqKey };
-            }));
-          });
-        }
-        expired.forEach(key => floaty("🏳 Tile abandoned", "#a08060", key));
-        setDeletingTiles(prev => { const n={...prev}; expired.forEach(k=>delete n[k]); return n; });
-        setDeletingSecsLeft(prev => { const n={...prev}; expired.forEach(k=>delete n[k]); return n; });
-      }
-    }, 250);
-    return () => clearInterval(id);
-  }, [deletingTiles, floaty, findPathBatch, gearInventory]);
-
   // ── Computed ──
 
   // ── Sync React state from pre-built refs when map becomes ready ──────────
@@ -2206,184 +2129,16 @@ export default function RiseToWar() {
     setQuickMarchReady(true);
   }, [hasQuickMarch, dragonEggs]);
 
-  const onExpedience = useCallback((buildingType) => {
-    setUpgQueue(q => {
-      const entry = q[buildingType];
-      if (!entry) return q;
-      const remaining = entry.endsAt - Date.now();
-      if (remaining > 5 * 60 * 1000) return q; // > 5 min, not eligible
-      return { ...q, [buildingType]: { ...entry, endsAt: Date.now() } };
-    });
-  }, [setUpgQueue]);
+  // Bag items + Expedience — rules in shared/utils/consumables.js
+  const { onExpedience, useConsumable } = useConsumables({
+    setConsumables, setUpgQueue, setRssSpeedUps, healQueue, dispatchArmy, floaty, playerHqRef,
+  });
 
-  // ── Use a consumable ────────────────────────────────────────────────────────
-  const useConsumable = useCallback((typeId) => {
-    const def = CONSUMABLE_DEFS[typeId];
-    if (!def) return;
-
-    // Decrement quantity; remove entry if qty hits 0
-    setConsumables(prev => {
-      const entry = prev.find(c => c.typeId === typeId);
-      if (!entry || entry.quantity <= 0) return prev;
-      if (entry.quantity === 1) return prev.filter(c => c.typeId !== typeId);
-      return prev.map(c => c.typeId === typeId ? { ...c, quantity: c.quantity - 1 } : c);
-    });
-
-    if (def.applies === "universal" || def.applies === "building") {
-      // Apply to all active building upgrades
-      setUpgQueue(q => {
-        const next = { ...q };
-        for (const key of Object.keys(next)) {
-          const entry = next[key];
-          if (entry && entry.endsAt > Date.now()) {
-            next[key] = { ...entry, endsAt: Math.max(Date.now(), entry.endsAt - def.durationMs) };
-          }
-        }
-        return next;
-      });
-    }
-
-    if (def.applies === "universal" || def.applies === "healing") {
-      if (healQueue[0]) dispatchArmy({type:"healSpeedup",id:healQueue[0].id,duration:def.durationMs});
-      floaty(`💉 ${def.label} applied!`, "#88aaff",
-        playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
-    }
-
-    if (def.applies === "rss") {
-      // Add/extend boost for this rss type
-      setRssSpeedUps(prev => ({
-        ...prev,
-        [def.rssType]: Math.max(Date.now(), prev[def.rssType] ?? 0) + def.durationMs,
-      }));
-      floaty(`${def.icon} ${def.label} active for ${def.durationLabel}!`, "#80b040",
-        playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
-    }
-
-    if (def.applies === "medallion") {
-      // 1 medallion = 1 pull — trigger pull(1) directly if available
-      // The pull function handles all reward logic; medallion bypasses gem cost
-      floaty("🥇 Medallion used!", "#f0c040",
-        playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
-      // pull is called by GachaScreen; here we just consume and the gacha screen
-      // reads medallion count from consumables to offer the option
-    }
-
-    if (def.applies === "relocation") {
-      floaty("🧭 Relocation coming soon!", "#a855f7",
-        playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
-      // Restore the consumable since it wasn't actually used
-      setConsumables(prev => {
-        const entry = prev.find(c => c.typeId === typeId);
-        if (entry) return prev.map(c => c.typeId === typeId ? { ...c, quantity: c.quantity + 1 } : c);
-        return [...prev, { instanceId: `cons_restore_${Date.now()}`, typeId, quantity: 1 }];
-      });
-    }
-
-    if (def.applies === "building" || def.applies === "universal") {
-      floaty(`🔨 ${def.label} applied!`, "#c8a060",
-        playerHqRef.current ?? `${HQP.player.c},${HQP.player.r}`);
-    }
-  }, [setConsumables, setUpgQueue, setRssSpeedUps, healQueue, dispatchArmy, floaty, playerHqRef]);
-
-  // ── HQ Relocation ───────────────────────────────────────────────────────────
-  // Applies a relocation: patches old HQ tiles back to plain, patches new 3x3 as HQ.
-  const applyHqMove = useCallback((newCenterKey) => {
-    const [nc, nr] = newCenterKey.split(",").map(Number);
-    const newKeys  = new Set(hq3x3Keys(nc, nr));
-
-    // Delete old HQ tiles instantly — revert to neutral unowned plain tiles
-    const oldCenter = playerHqRef.current;
-    if (oldCenter) {
-      const [oc, or_] = oldCenter.split(",").map(Number);
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          const k = `${oc+dc},${or_+dr}`;
-          if (!newKeys.has(k)) {
-            patchTile(k, {
-              isHQ: false, isHQPart: false,
-              owner: null, faction: null,
-              garrison: 0, garrisonTroops: 0,
-              siege: 50, siegeMax: 50,
-              defeatedWaves: [], resetAt: null,
-              defCmd: null, hasAiCommander: false,
-            });
-          }
-        }
-      }
-    }
-
-    // Stamp new HQ — center gets isHQ, surrounding 8 get isHQPart
-    for (const k of newKeys) {
-      const isCenter = k === newCenterKey;
-      const existing = tiles[k];
-      patchTile(k, {
-        isHQ:     isCenter,
-        isHQPart: !isCenter,
-        owner:    "player",
-        faction:  facKey,
-        garrison: 0,
-        siege:    existing?.siegeMax ?? 300,
-        siegeMax: existing?.siegeMax ?? 300,
-        defeatedWaves: [],
-        resetAt:  null,
-        defCmd:   null,
-        hasAiCommander: false,
-      });
-    }
-
-    setPlayerHqKey(newCenterKey);
-  }, [playerHqRef, patchTile, facKey, tiles, setPlayerHqKey]);
-
-  // Planned relocation — costs 1 token, 72hr cooldown, all commanders must be at HQ
-  const performRelocation = useCallback((newCenterKey) => {
-    const allHqKeysList = Object.values(aiHqKeys).flat().concat(playerHqKey ? [playerHqKey] : []);
-    const result = validateRelocationPad(newCenterKey, tiles, allHqKeysList, playerHqKey);
-    if (!result.valid) { floaty(`⚠ ${result.reason}`, "#cc6030", newCenterKey); return; }
-
-    // Check cooldown
-    const COOLDOWN_MS = 72 * 60 * 60 * 1000;
-    if (lastRelocateAt && Date.now() - lastRelocateAt < COOLDOWN_MS) {
-      const hoursLeft = Math.ceil((COOLDOWN_MS - (Date.now() - lastRelocateAt)) / 3_600_000);
-      floaty(`⏳ Cannot relocate for ${hoursLeft}h`, "#cc6030", newCenterKey);
-      return;
-    }
-
-    // All commanders must be at HQ (not marching)
-    const marchingCmds = cmds.filter(c => c.owner === "player" && c.march);
-    if (marchingCmds.length > 0) {
-      floaty("⚠ Recall all commanders before relocating", "#cc6030", newCenterKey);
-      return;
-    }
-
-    // Deduct 1 relocation token
-    const tokenEntry = consumables.find(c => c.typeId === "relocation");
-    if (!tokenEntry || tokenEntry.quantity <= 0) {
-      floaty("⚠ No Relocation Tokens", "#cc6030", newCenterKey);
-      return;
-    }
-    setConsumables(prev => {
-      const entry = prev.find(c => c.typeId === "relocation");
-      if (!entry) return prev;
-      if (entry.quantity === 1) return prev.filter(c => c.typeId !== "relocation");
-      return prev.map(c => c.typeId === "relocation" ? { ...c, quantity: c.quantity - 1 } : c);
-    });
-
-    applyHqMove(newCenterKey);
-    setLastRelocateAt(Date.now());
-    floaty("🏰 HQ Relocated!", "#f0c040", newCenterKey);
-  }, [tiles, aiHqKeys, playerHqKey, lastRelocateAt, cmds, consumables, setConsumables, applyHqMove, floaty]);
-
-  // Forced relocation — triggered when player HQ is captured (no token cost, no cooldown)
-  const onForcedRelocate = useCallback(() => {
-    const allHqKeysList = Object.values(aiHqKeys).flat().concat(playerHqKey ? [playerHqKey] : []);
-    const newCenter = findForcedRelocationPad(tiles, allHqKeysList, playerHqKey, facKey);
-    if (!newCenter) {
-      setWinner("ai");
-      return;
-    }
-    applyHqMove(newCenter);
-    floaty("🏰 HQ Forced Relocation!", "#cc4444", newCenter);
-  }, [tiles, aiHqKeys, playerHqKey, facKey, applyHqMove, setWinner, floaty]);
+  // ── HQ Relocation — rules in shared/utils/relocation.js ──
+  const { performRelocation, onForcedRelocate } = useRelocation({
+    tiles, patchTile, facKey, aiHqKeys, playerHqKey, playerHqRef, setPlayerHqKey,
+    cmds, consumables, setConsumables, lastRelocateAt, setLastRelocateAt, setWinner, floaty,
+  });
   onForcedRelocateRef.current = onForcedRelocate;
 
   // queueTraining(branchKey, amount)
@@ -2396,101 +2151,10 @@ export default function RiseToWar() {
     dispatchArmy({type:"heal",amount,buildings:bldgs,now:Date.now(),id:crypto.randomUUID()});
   }, [bldgs,dispatchArmy]);
 
-  // bKey: "faction:branch:tier" — unique key for one troop type pool
-  const bKey = (b) => (b && b.faction && b.branch && b.tier != null)
-    ? `${b.faction}:${b.branch}:${b.tier}` : null;
-
-  // setTroopSlot(uid, slotIndex, branch, troops) — set one slot on a commander.
-  // slotIndex: 0-2. If troops===0 or branch null, remove the slot. Max 3 slots.
-  // Draws from / returns to the per-troop-type pool in troopCounts.
-  const setTroopSlot = useCallback((uid, slotIndex, branch, newTroops) => {
-    setCmds(prev => {
-      const cmd = prev.find(c => c.uid===uid);
-      if (!cmd) return prev;
-      const commandCap = cmdCommand(cmd.lvl||5, bldgs.commandcenter||0, cmd.commandBonus??0);
-
-      const existingSlots = normaliseTroopSlots(cmd);
-      const newSlots = [...existingSlots];
-
-      // Command used by OTHER slots
-      const otherUsed = newSlots.reduce((sum, sl, idx) => {
-        if (idx === slotIndex) return sum;
-        const bSize = sl.branch ? (FACTION_TROOPS[sl.branch.faction]?.branches?.find(b => b.key===sl.branch.branch)?.size ?? "small") : "small";
-        return sum + (sl.troops || 0) * (COMMAND_COST[bSize] ?? 1);
-      }, 0);
-      const remainingCap = Math.max(0, commandCap - otherUsed);
-      const branchSize = branch ? (FACTION_TROOPS[branch.faction]?.branches?.find(b => b.key===branch.branch)?.size ?? "small") : "small";
-      const cmdCost    = COMMAND_COST[branchSize] ?? 1;
-      const maxByCmd   = Math.floor(remainingCap / cmdCost);
-
-      const oldSlot       = existingSlots[slotIndex];
-      const oldTroops     = oldSlot?.troops || 0;
-      const oldKey        = bKey(oldSlot?.branch);
-      const newKey        = bKey(branch);
-      const branchChanged = oldKey !== newKey;
-
-      // Troops in old slot return to old pool if branch changed
-      const returningOld = branchChanged ? oldTroops : 0;
-      const curInSlot    = branchChanged ? 0 : oldTroops;
-
-      // Pool accounting is computed synchronously up front — setTroopCounts's
-      // updater callback is NOT guaranteed to run before the next line, so we
-      // can't rely on it to set a captured variable (that was the bug: new
-      // slot assignments always read back as 0 and got deleted on confirm).
-      const availInPool = troopCounts[newKey] || 0;
-      const capped      = Math.min(newTroops, maxByCmd);
-      const delta       = capped - curInSlot;
-      const drawn       = delta > 0 ? Math.min(delta, availInPool) : 0;
-      const returned    = delta < 0 ? Math.min(-delta, curInSlot) : 0;
-      const final       = curInSlot + drawn - returned;
-
-      setTroopCounts(counts => {
-        const next = { ...counts };
-        // Return old-branch troops first (so they're available if same pool)
-        if (branchChanged && oldKey && returningOld > 0)
-          next[oldKey] = (next[oldKey] || 0) + returningOld;
-        if (newKey)
-          next[newKey] = Math.max(0, (next[newKey] || 0) - drawn + returned);
-        return next;
-      });
-
-      if (final === 0 || !branch) {
-        const filtered = newSlots.filter((_, i) => i !== slotIndex);
-        return prev.map(c => c.uid===uid ? { ...c, troopSlots: filtered, troops: filtered.reduce((s,sl)=>s+(sl.troops||0),0), troopBranch: filtered[0]?.branch ?? null } : c);
-      }
-      newSlots[slotIndex] = { branch, troops: final };
-      const trimmed = newSlots.filter(Boolean).slice(0, 3);
-      return prev.map(c => c.uid===uid ? { ...c, troopSlots: trimmed, troops: trimmed.reduce((s,sl)=>s+(sl.troops||0),0), troopBranch: trimmed[0]?.branch ?? null } : c);
-    });
-  }, [troopCounts, bldgs.commandcenter]);
-
-  // Legacy alias: assignTroops(uid, branch, total) maps to slot 0
-  const assignTroops = useCallback((uid, troopBranch, newTotal) => {
-    setTroopSlot(uid, 0, troopBranch, newTotal);
-  }, [setTroopSlot]);
-
-  const returnTroops = useCallback((uid) => {
-    setCmds(prev => {
-      const cmd = prev.find(c => c.uid===uid);
-      if (!cmd) return prev;
-      const slots = normaliseTroopSlots(cmd);
-      setTroopCounts(counts => {
-        const next = { ...counts };
-        // Return each slot's troops to its own per-type pool
-        for (const sl of slots) {
-          const k = bKey(sl.branch);
-          if (k && sl.troops > 0) next[k] = (next[k] || 0) + sl.troops;
-        }
-        // Fallback: legacy cmd.troops with no slots
-        if (!slots.length && cmd.troops > 0) {
-          const k = bKey(cmd.troopBranch);
-          if (k) next[k] = (next[k] || 0) + cmd.troops;
-        }
-        return next;
-      });
-      return prev.map(c => c.uid===uid ? { ...c, troopSlots:[], troops:0, troopBranch:null } : c);
-    });
-  }, [setTroopCounts]);
+  // Troop slot actions — rules in shared/utils/troopSlots.js
+  const { setTroopSlot, assignTroops, returnTroops } = useTroopSlots({
+    setCmds, troopCounts, setTroopCounts, commandCenterLvl: bldgs.commandcenter,
+  });
 
   const upgrade = useCallback(type => {
     const lvl = bldgs[type]||0;
@@ -2616,12 +2280,7 @@ export default function RiseToWar() {
       medallionCount={(consumables ?? []).find(c => c.typeId === "medallion")?.quantity ?? 0}
       onUseMedallion={() => {
         // Consume 1 medallion then pull
-        setConsumables(prev => {
-          const entry = prev.find(c => c.typeId === "medallion");
-          if (!entry || entry.quantity <= 0) return prev;
-          if (entry.quantity === 1) return prev.filter(c => c.typeId !== "medallion");
-          return prev.map(c => c.typeId === "medallion" ? { ...c, quantity: c.quantity - 1 } : c);
-        });
+        setConsumables(prev => consumeOne(prev, "medallion"));
         pull(1); // free pull — pull() handles rewards, medallion bypasses gem cost by calling directly
       }}
       playerAlignment={playerAlignment} setScreen={setScreen}
@@ -2813,7 +2472,7 @@ export default function RiseToWar() {
         relocationTokens={(consumables ?? []).find(c => c.typeId === "relocation")?.quantity ?? 0}
         allHqKeys={Object.values(aiHqKeys).flat().concat(playerHqKey ? [playerHqKey] : [])}
         isValidRelocPad={selKey && selTile?.owner === "player" && !selTile?.isHQ && !selTile?.isHQPart
-          ? validateRelocationPad(selKey, tiles, Object.values(aiHqKeys).flat().concat(playerHqKey ? [playerHqKey] : []), playerHqKey).valid
+          ? validateRelocationPad(selKey, tiles, allHqKeyList(aiHqKeys, playerHqKey), playerHqKey).valid
           : false}
       />
 
