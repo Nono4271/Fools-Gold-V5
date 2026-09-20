@@ -8,6 +8,26 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Chat wired into the game + profanity filter
+
+Follow-up to the chat system entry directly below. Two owner-requested changes:
+
+**1. Wired up.** `ChatPanel` is now live:
+- `src/Game.jsx`: `chatOpen` state next to `crewOpen`; calls `useChat({screen, playerId:"player", playerName: facName, playerFacKey: facKey, crews, aiPlayerIds: chatKnownPlayerIds})` right after the `useAiCrews` ticker. `chatKnownPlayerIds` is `[...aiPlayerIdMapRef.current.values()]`, memoized on `mapReady` (that map is filled once at map init and never changes after — same assumption `useAiCrews`/`crewmatePlayerIds` already make about it).
+- **Crew-membership quirk found while wiring this up:** `GameView.jsx`'s crew create/join/leave handlers store the local player's own membership as their **faction key** (e.g. `"pirates"`), not a player id — only AI members (`shared/utils/aiCrews.js`) use the full `ai_<faction>_<i>` id. `chatRules.js` assumes `crew.members` holds real player ids, so `src/hooks/useChat.js` now has a `normalizeCrewsForPlayer` step that swaps a bare-faction-key entry for the real `playerId` before handing crews to `canPost`/`resolveChannelsFor`/AI chatter. Nothing in `aiCrews.js` or the crew-formation flow itself was touched, per the original brief — this is purely a read-side adapter in the chat wiring.
+- `src/GameView.jsx`: imports and renders `<ChatPanel>` the same way `<CrewPanel>` is rendered (open/close state, same `crews`/`facName` props already in scope); passes `chatOpen`/`setChatOpen` down to `GameBar`.
+- `src/components/game/GameBar.jsx`: new "💬 Chat" `ActionButton`, leftmost in the bottom-right icon row (i.e. the one closest to the Wizard's Tomes circle at bottom-left) — same green/blue active-state coloring pattern as the Crew button.
+
+**2. Profanity filter**, since the owner wants it now so it "just carries over" once the server exists:
+- `shared/utils/profanity.js` (new, pure): `censorText(text, wordList = DEFAULT_PROFANITY_WORDS)` — whole-word, case-insensitive masking (`"shit"` → `"s***"`). No dependencies, so the exact same function can run server-side unchanged later.
+- `src/hooks/useChat.js`: `profanityFilterEnabled` (default **on**) + `setProfanityFilterEnabled`, applied to the local player's outgoing text in `sendMessage` and to generated AI chatter lines before they're appended (defense in depth — the chatter pool is already clean, but it runs through the same filter for consistency).
+- `src/components/game/ChatPanel.jsx`: 🛡 toggle button in the header (green when on).
+- Client-side only today, same as the rest of chat — no server to enforce it yet.
+
+**Tests:** `tests/profanity.test.js` (4) — masking, whole-word boundary (`"class"` isn't touched by an `"ass"` filter word), empty input/word-list. Suite: 275 pass, 0 fail. `npm run build` clean (576 modules now, was 570 — confirms the new files are actually pulled into the bundle this time).
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Chat system: World / Faction / Crew / DM / Group (new)
 
 New feature, built against today's reality: there is no real multiplayer server yet (that's the last roadmap item, "a ways away"). The only real player is the local user (id `"player"`); everyone else is a simulated AI (`ai_<faction>_<i>`, `shared/utils/worldTiles.js` `aiPlayerId`) with simulated crews (`shared/utils/aiCrews.js`). So the design is rules-in-`shared/`, wiring-in-`src/`, same split the rest of the codebase uses — a real server can adopt the exact same channel/message/permission functions later with zero rewrite.
