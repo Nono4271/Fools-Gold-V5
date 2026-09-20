@@ -8,6 +8,19 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Chat: auto-scroll, scrollable history, un-censorable profanity toggle
+
+Owner feedback after trying the wired-up chat panel (screenshot showed the message list not scrolling to new messages).
+
+1. **Auto-scroll + scrollable history**, `src/components/game/ChatPanel.jsx`: the message list is a flex child of a flex column that never got `minHeight: 0`, so it grew to fit all its content instead of clipping to the panel and scrolling — a classic flexbox gotcha (a flex item's default `min-height: auto` lets it overflow its container instead of shrinking). Added `minHeight: 0` to the message-view column, the message list itself, and the channel-list column for the same reason. A new effect scrolls the message list (`msgListRef.current.scrollTop = scrollHeight`) to the bottom whenever the active channel's message count changes or the channel switches.
+2. **Profanity toggle now affects history, not just new messages.** Previously `useChat.js` censored text once at send/generate time and stored only the censored string, so toggling the filter off did nothing for anything already in the list. Messages are now always stored with their raw text; `censorText()` (`shared/utils/profanity.js`) is applied at render time in `ChatPanel.jsx` based on the current `profanityFilterEnabled` state, so flipping the 🛡 toggle re-masks or reveals every message in the channel immediately, past and future alike.
+
+No shared/rules changes — `shared/utils/chatRules.js`, `aiChatter.js`, `profanity.js` untouched; this was all in the two wiring files (`useChat.js`, `ChatPanel.jsx`).
+
+**Tests:** no new tests (UI/display-timing behavior, not covered by the existing pure-function suite). Suite: 275 pass, 0 fail. `npm run build` clean.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Chat wired into the game + profanity filter
 
 Follow-up to the chat system entry directly below. Two owner-requested changes:
