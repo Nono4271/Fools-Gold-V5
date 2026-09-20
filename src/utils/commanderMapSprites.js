@@ -1,6 +1,6 @@
 export function commanderAtlas(cmd) {
-  if (cmd.id === 'h1' || cmd.bust?.includes('h1_redwake_fynn')) return '/commanders/map/h1-walk-v1.png';
-  if (cmd.id === 'h13' || cmd.bust?.includes('h13_admiral_brine')) return '/commanders/map/h13-walk-v1.png';
+  if (cmd.id === 'h1' || cmd.bust?.includes('h1_redwake_fynn')) return '/commanders/map/h1-walk-v2.png';
+  if (cmd.id === 'h13' || cmd.bust?.includes('h13_admiral_brine')) return '/commanders/map/h13-walk-v2.png';
   return null;
 }
 
@@ -19,7 +19,8 @@ export function facingRow(dx, dy, previous = 0) {
 }
 
 export function animationColumn(marching, now) {
-  return marching ? 1 + Math.floor(now/130)%5 : 0;
+  // A slower cycle makes both planted steps readable at map scale.
+  return marching ? 1 + Math.floor(now/200)%5 : 0;
 }
 
 export function makeAtlasEntry(PIXI, url, textCont) {

@@ -264,6 +264,16 @@ change.
 
 ## 2026-09-20 — Codex
 
+### Commander walk stabilization
+- Repacked the Fynn and Brine atlases as v2 with each pose aligned to the same torso center and foot line. This removes the whole-body jump that made marching look like shaking.
+- Slowed the five-pose cycle from 130 ms to 200 ms per pose so both legs read as steps at the small map size.
+- March speed, path, timing and gameplay are unchanged.
+- Do not recheck unless the owner reports a regression.
+
+---
+
+## 2026-09-20 — Codex
+
 ### Commander walking and HQ deployment correction
 - Fixed Fynn/Brine sliding: the asynchronously loaded atlas frames were attached to a discarded copy, leaving the live sprite permanently on its first frame. The displayed entry now receives all 24 frames and cycles through the five walking poses.
 - HQ hiding now follows deployment state. An undeployed commander at an HQ/HQ-part tile is hidden; any active march remains visible while leaving, crossing, or returning over the HQ artwork. After arrival home ends the march, the commander hides again.

@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {commanderAtlas,commanderInsideHQ,facingRow,animationColumn} from '../src/utils/commanderMapSprites.js';
 test('both pirates use atlases, including AI instances with replaced IDs',()=>{
-  assert.ok(commanderAtlas({id:'h1'}));assert.ok(commanderAtlas({id:'h13'}));
-  assert.ok(commanderAtlas({id:'ai_cmd1',bust:'/commanders/h13_admiral_brine_bust.webp'}));
+  assert.match(commanderAtlas({id:'h1'}),/-v2\.png$/);assert.match(commanderAtlas({id:'h13'}),/-v2\.png$/);
+  assert.match(commanderAtlas({id:'ai_cmd1',bust:'/commanders/h13_admiral_brine_bust.webp'}),/-v2\.png$/);
   assert.equal(commanderAtlas({id:'h14'}),null);
 });
 test('HQ hides only undeployed commanders; every active march remains visible',()=>{
@@ -15,7 +15,8 @@ test('HQ hides only undeployed commanders; every active march remains visible',(
   cmd.march=null;assert.equal(commanderInsideHQ(cmd,tiles),false);
 });
 test('walking changes frames, arrival returns to standing, facing remains stable while stopped',()=>{
-  assert.equal(animationColumn(true,0),1);assert.equal(animationColumn(true,130),2);
+  assert.equal(animationColumn(true,0),1);assert.equal(animationColumn(true,200),2);
+  assert.equal(animationColumn(true,800),5);assert.equal(animationColumn(true,1000),1);
   assert.equal(animationColumn(false,650),0);
   assert.deepEqual([[1,1],[-1,1],[1,-1],[-1,-1]].map(([x,y])=>facingRow(x,y)),[0,1,2,3]);
   assert.equal(facingRow(0,0,3),3);
