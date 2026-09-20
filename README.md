@@ -1,24 +1,27 @@
-# What's in this zip
+# What changed in this zip
 
-New content only — apply these on top of your existing project, not as a full replacement.
+This is part 2 of the neutral/Ancient camp work — wiring the camp plan
+(delivered in the previous zip) into the actual live map. Full test suite
+(239/239) and production build both pass.
 
-## New files
-- `shared/constants/neutralTroops.js` — 15 neutral units (Beastfolk, Stoneborn, Sandrunner, 8 faction renegades), tags, 5 tag-synergy abilities
-- `shared/constants/ancientTroops.js` — 4 Ancients (T4, large-only, above every faction's T4), skills A/B/C + passive "only one per army" skill D
-- `tests/neutralTroops.test.js`
-- `tests/ancientTroops.test.js`
+## Files in this zip
 
-## Edited files
-- `shared/constants/troops.js` — added a fallback lookup so Ancients resolve through the same code faction troops use (1 new import, 1 changed line)
-- `shared/utils/battle.js` — threaded ally-slot info into the skill system so tag-synergy abilities can find a matching ally; added the 5 new tag-effect types; added the Ancients fallback lookup
-- `shared/utils/troopSlots.js` — added the "only one Ancient per army" rule
-- `ReadMeAI.md` — new dated entry at the top documenting all of this for other AI collaborators
+- **`src/workers/mapGen.worker.js`** — added camp flag bits, a placement
+  pass that finds real tile locations for every planned camp and stamps
+  them onto the map (same pattern the game already uses for keeps), and
+  camp data added to what the map generator hands off when it's done.
+- **`shared/utils/worldTiles.js`** — reads those new camp tiles back out
+  so the rest of the game can see a camp's name/unit/faction, and keeps
+  the existing PvE spawn system from placing monsters on top of a camp.
+- **`tests/worldTiles.test.js`** — 2 new tests covering the above.
+- **`ReadMeAI.md`** — new dated entry at the top documenting this pass,
+  including a flagged gap: camps aren't yet checked against water/mountain
+  terrain, so a camp could visually land somewhere odd until a phone
+  playtest confirms placement looks right.
 
-## Verified
-- Full test suite: 214/214 passing
-- Production build: clean
+## Bottom line
 
-## Not done yet (flagged on purpose, not silently skipped)
-- No live map placement for the 15 neutrals — they don't spawn in-game yet
-- No way to actually obtain an Ancient in-game yet (no reward/gacha source) — the "only one per army" rule is built and tested, just nothing to test it with live
-- No art for any of the 19 new units
+Neutral and Ancient camps are now real, attackable structures on the map —
+same attack/siege/capture flow as a keep, no new combat code needed. Only
+thing left before this is fully done: eyeball it on a phone to make sure
+camps aren't spawning on water or cliffs.

@@ -8,6 +8,165 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet) — Neutral/Ancient camps wired into the live map (part 2)
+
+Follow-up to the camp placement PLAN directly below — this entry wires that
+plan into the actual live map generator, so camps are now real, attackable
+tiles, not just planning data.
+
+**`src/workers/mapGen.worker.js`:**
+- Added `F_CAMP = 1<<9` and `F_CAMPPART = 1<<10` flag bits (bits 0-8 were
+  already used; these are the next free ones).
+- After the existing keep-placement loop, added a camp-placement pass:
+  calls `planAllCamps({campsPerRegion:30, campsPerZone:20})` from
+  `shared/utils/neutralCamps.js`, then for each planned camp uses
+  `findCampSlot`/`occupyFootprint` (new pure module, see below) to find a
+  free w×h footprint near that camp's named region, avoiding existing keep
+  footprints (`KEEP_FOOTPRINT_SET`) and other impassable tiles
+  (`impassKeys`) plus every camp already placed this pass. Stamps
+  terrain/power/garrison/siege/siegeMax/flags on the primary tile (mirrors
+  how keeps stamp their primary tile) and `F_CAMPPART` + `keepPrimArr`
+  pointer on the rest of the footprint (same generic footprint-part
+  mechanism keeps already use — no new pointer array needed). Builds a
+  `campMeta[key]` entry (campName/campUnitKey/campFaction/garrisonWaves)
+  the same way `keepMeta` already works. If no free slot is found within
+  the search radius, that one camp is skipped rather than overlapping
+  anything (silent per-camp skip, not a hard failure).
+- `F_CAMP`, `F_CAMPPART`, `campMeta` added to the final `postMessage`'s
+  `meta` object so the main thread receives them.
+
+**New file `shared/utils/campPlacement.js`:** pure, dependency-free grid
+search (`footprintCells`, `footprintFits`, `findCampSlot`, `occupyFootprint`)
+extracted so it's unit-testable without any worker/typed-array setup.
+Expanding-ring search outward from the camp's anchor region, deterministic
+(fixed scan order), returns `null` if nothing fits within `maxRadius` (the
+worker skips that camp in that case). Covered by
+`tests/campPlacement.test.js` (7 tests: cell coverage, bounds/overlap
+rejection, anchor-first placement, outward search when blocked, null on
+failure, no-overlap across a 30-camp stress run).
+
+**`shared/utils/worldTiles.js` (`createTileMap`):** decodes the new flags —
+`tile.isCamp`, `tile.isCampPart` — and, for a camp's primary tile, pulls
+`campName`/`campUnitKey`/`campFaction` from `campMeta` and folds
+`garrisonWaves` into the same field keeps already populate
+(`km?.garrisonWaves ?? cm?.garrisonWaves ?? 1`). `keepPrimaryKey` resolution
+(already shared by keep/HQ parts) now also covers camp parts. Backward
+compatible: `campMeta`/`F_CAMP`/`F_CAMPPART` are optional on `meta`, so
+older map data / existing tests with no camp fields still decode exactly as
+before. Also updated `spawnEligibleKeys` to exclude camp tiles from the
+mob-spawn-eligible set (`F_CAMP`/`F_CAMPPART` OR'd into `blocked`, guarded
+with `|| 0` so it's a no-op when those flags aren't present) — camps are a
+separate PvE structure from the existing spawn/mob system and shouldn't
+double up on the same tile.
+
+**No changes needed to combat/capture code.** Confirmed (as previously
+found) that the existing generic garrison/siege system in
+`garrisonUtils.js` + `useMarch.js` already handles any tile shaped like
+one — the camp-aware branches added there last entry are all that was
+needed; attacking, sieging, and capturing a camp goes through the exact
+same code path as a keep.
+
+**Verified:** full suite green — 239/239 tests (`tests/campPlacement.test.js`
+was already at 7/7; added 2 more to `tests/worldTiles.test.js` for
+camp-tile decoding + spawn-eligibility exclusion) — and `npm run build`
+completes clean, `mapGen.worker.js` bundles fine importing from `shared/`
+(confirms the worker-imports-from-shared direction, already used
+elsewhere, works through Vite's worker bundling).
+
+**Not done (flagged, not silently added):**
+- **No terrain-suitability filtering.** Camp placement only avoids keep
+  footprints and existing impassable tiles — it does NOT check for
+  water/mountain terrain under a camp footprint the way it probably
+  should. A camp could visually land on water or a cliff. This needs a
+  visual/phone playtest pass to confirm before this ships — flagging
+  explicitly rather than guessing at terrain codes I haven't visually
+  verified.
+- Camp art/portraits are still blocked on the same ChatGPT-art item as
+  everything else in that queue (roadmap item #1) — camps render with
+  whatever generic keep-like placeholder the map view already uses for
+  flagged structures, nothing camp-specific yet.
+- No renderer/UI work to show a camp's name/unit on the map view itself —
+  the data is there (`tile.campName`, `tile.campUnitKey`) but nothing
+  currently reads it for display.
+
+---
+
+## 2026-09-20 — Claude (Sonnet) — Neutral/Ancient camp placement plan (map integration, part 1)
+
+Follow-up to the neutral units + Ancients entry directly below. Owner spec
+(this session): camps are keep-like structures players attack, sized by
+their unit's size (small 1x1 / medium 1x2 / large 2x2), each with 2
+defenders whose strength matches a specific power tile (T1~P7, T2~P9,
+T3~P11, T4/Ancient~P13), siege HP 100k-500k scaled by tier, named
+"{unit label} Camp". Placement: the 15 neutrals' 3 region bands get ~30
+camps per named sub-region in that band; the 4 Ancients go one each to
+Dawngate/Twilightspire/Lastwatch/Finalhope (the keeps ringing the Holy
+Grail), 20 camps per zone.
+
+**Fixed first (`shared/constants/neutralTroops.js`):** the `region` field
+on 7 of the 15 units was wrong. It was assigned by flavor before any map
+work existed and didn't track real geography — checked against the actual
+`REGION_LIST`/`FACTION_REGIONS` in `src/workers/mapGen.worker.js`: all 8
+faction home regions sit at the map's north/south edges, NONE in the
+middle third (the middle third is contested ground — Holy Grail +
+the 4 Ancient gate zones live there, no faction owns it). Corrected split:
+north (top third) = the 4 top-cluster renegades (wizard, dragon, coldborn,
+nightcreature) + Ruin Colossus; south (bottom third) = the 4 bottom-cluster
+renegades (orc, holyknight, pirate, ashen-dead) + Dune Raider; mid (middle
+third, no faction ties) = all 3 Beastfolk + Rubble Warden + Scavenger
+Chief. Moved: `swarmwing_broodmother`, `rubble_warden`, `scavenger_chief`
+(north/south → mid), `rogue_battlemage`, `wyrm_poacher` (mid/south →
+north), `warband_outcast`, `fallen_paladin` (mid → south). Unchanged: the
+other 8. `tests/neutralTroops.test.js`'s region-split test already
+tolerated 4-6 per band, so it needed no change and still passes.
+
+**New file `shared/constants/mapRegions.js`:** a shared-accessible mirror
+of `REGION_LIST`/`FACTION_REGIONS` (key/name/cx/cy/factions only — layer/
+keepName omitted, not needed here). `shared/` can't import from a browser
+worker, same constraint already flagged in the roadmap's tech-debt section,
+so this mirrors the fields camp placement needs — MUST STAY IN SYNC by
+hand if the real `REGION_LIST` changes (same convention already used for
+`FACTION_BRANCHES_EXPORT` in heroes.js). Adds `regionBand(cy)`: cy<435 =
+"north", 435-870 = "mid", >=870 = "south" (ROWS=1305, so thirds). Also
+exports `ANCIENT_ZONE_NAMES` and `findRegionByName` for the 4 gate zones
+(looked up by `name`, since the raw region list's `key`/`name` pairs are
+mismatched leftovers — e.g. the region named "Dawngate" has key
+"battlemarsh").
+
+**New file `shared/utils/neutralCamps.js`:** pure, deterministic camp
+planning — `campFootprint`/`CAMP_FOOTPRINTS` (small/medium/large →
+1x1/1x2/2x2), `campPowerLevel` (T1/T2/T3 → P7/P9/P11, Ancients → P13),
+`campSiegeMax` (100000/235000/365000/500000 by tier bracket — evenly
+spaced across the owner's 100k-500k range, scaled by tier per their
+explicit choice over a flat random roll), `campName` ("{label} Camp"),
+`campDefenders` (exactly 2, garrisoned with the camp's own unit, strength
+from the comparable power level's `cmdLvl`), `buildCampTemplate` (bundles
+all of the above for one unit), `planCampsForBand`/`planAllNeutralCamps`
+(deterministically assigns ~30 camps per named sub-region per band, one of
+that band's 5 units per camp via a seeded hash — same camp count/unit
+every run, no RNG dependency), and `planAncientZoneCamps`/`planAllCamps`
+for the 4 gate zones (20 camps each, all one assigned Ancient — pairing is
+a documented, trivially-reassignable judgment call: Dawngate→Nameless
+Colossus, Twilightspire→Voidmaw, Lastwatch→Aeonspire, Finalhope→
+Ruinfather).
+
+**Scope note (explicit):** this is a placement PLAN, not a live map wire-
+in. It does not touch `mapGen.worker.js`'s tile arrays, the renderer, or
+attack/capture flow — it answers "how many camps, what stats, which named
+region, what unit," which is the correctness-critical part to get right
+before touching a ~1900-line procedural generator. The next follow-up
+chunk is resolving each planned camp into an actual (c,r) tile (finding
+empty tiles of the right footprint size near its named region, the way
+keeps/spawns already do), then wiring siege/capture combat and the
+renderer. Not done, not silently skipped.
+
+**Tests:** `tests/neutralCamps.test.js` (12 tests — footprint-by-size,
+power-level-by-tier, siege scaling, naming, defender count/strength,
+per-band region coverage, deterministic re-planning, Ancient zone
+assignment). Full suite: 226 passing, 0 failing. Production build clean.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet) — Neutral units (15) + The Ancients (4 T4 unaligned units)
 
 Roadmap item: "Missing systems and content" → neutral units, "built through the
