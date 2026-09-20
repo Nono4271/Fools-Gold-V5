@@ -317,7 +317,7 @@ export default memo(function TilePopup({
         <div style={{ padding:"8px 10px 6px", borderBottom:"1px solid rgba(255,255,255,.06)", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700, color:ownership==="player"?"#c8f0c8":ownership==="crew"?"#80c0ff":ownership==="faction"?"#e87830":ownership==="ally"?"#c080ff":ownership==="enemy"?"#ff8080":"#c8a060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-              {selTile.isWin?"⚜ The Holy Grail":selTile.isGate&&selTile.crossingType==="crossing"?`🌊 ${selTile.keepName||"River Crossing"}`:selTile.isGate&&selTile.crossingType==="tunnel"?`⛰ ${selTile.keepName||"Tunnel Gate"}`:selTile.isKeep?`🏰 ${selTile.keepName||selTile.regionName+" Keep"}`:selTile.isRuin?"🏚 Ruin":selTile.regionName||"Tile"}
+              {selTile.isWin?"⚜ The Holy Grail":selTile.isGate&&selTile.crossingType==="crossing"?`🌊 ${selTile.keepName||"River Crossing"}`:selTile.isGate&&selTile.crossingType==="tunnel"?`⛰ ${selTile.keepName||"Tunnel Gate"}`:selTile.isCamp?`🏕 ${selTile.campName||"Camp"}`:selTile.isKeep?`🏰 ${selTile.keepName||selTile.regionName+" Keep"}`:selTile.isRuin?"🏚 Ruin":selTile.regionName||"Tile"}
             </div>
             <div style={{ fontSize:7, color:"#5a5a6a", marginTop:1 }}>
               {selTile.c},{selTile.r}
