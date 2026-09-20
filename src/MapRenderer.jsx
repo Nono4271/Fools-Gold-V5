@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo }
 import * as PIXI from "pixi.js";
 import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
-import {isInSpawnVisualArea, sameTerritory, resourceFootprint, isInHqClearance} from "./utils/spawnVisualTest.js";
+import {isInSpawnVisualArea, sameTerritory, resourceFootprint} from "./utils/spawnVisualTest.js";
 import {softenTerritoryColor} from "./utils/hqTerrainStyle.js";
 import {createResourceSpriteCache} from "./utils/resourceSprites.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
@@ -1479,7 +1479,9 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   group.addChild(borderGfx);
 
   // ── Sprite ──
-  const spriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
+  const originalSpriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
+  const useApprovedPirateArt = blendWithTerrain && originalSpriteName === "hq_pirates.webp";
+  const spriteName = useApprovedPirateArt ? "hq_pirates_dark_v2.webp" : originalSpriteName;
   const spriteUrl  = `/hq/${spriteName}`;
 
   // Width covers the full 3x3 diamond left<->right extent.
@@ -1522,9 +1524,10 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   }
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, 0.905);
+    sp.anchor.set(0.5, useApprovedPirateArt ? 0.97 : 0.905);
     sp.width  = targetW;
-    sp.height = targetH;
+    // Preserve the approved sprite proportions; other factions keep their existing fit.
+    sp.height = useApprovedPirateArt ? targetW * sp.texture.height / sp.texture.width : targetH;
     sp.x = spriteX;
     sp.y = spriteY;
 
@@ -2070,9 +2073,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         selGfx.lineTo(cx + TW/2, mid);   // E
         selGfx.lineStyle(0);
       } else {
-        const nearHQ = isInHqClearance(sc,sr,tilesRef.current);
-        const hw = nearHQ ? TW * 0.34 : TW / 2;
-        const hh = nearHQ ? TH * 0.34 : TH / 2;
+        const hw = TW / 2;
+        const hh = TH / 2;
         const TOP = [cx, mid-hh, cx+hw, mid, cx, mid+hh, cx-hw, mid];
         selGfx.lineStyle(1.5, 0xf0eedb, 0.92);
         selGfx.drawPolygon(TOP);
@@ -2213,7 +2215,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
             if(r<pb.rMin||r>pb.rMax||!isInSpawnVisualArea(c,r,playerHqKeyRef.current))continue;
             const tile=tiles[`${c},${r}`];
             if(!tile?.rss||tile.isHQ||tile.isHQPart||tile.isKeepPart||tile.isGate||tile.isWin||tile.isShore)continue;
-            if(isInHqClearance(c,r,tiles))continue;
             const pl=tile.powerLevel||1;
             if (pl === 1 || (tile.isKeep && pl < 10)) continue;
             const baked=resourceSpriteCache.get(tile.rss,pl);

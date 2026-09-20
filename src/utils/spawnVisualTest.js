@@ -26,18 +26,6 @@ export function sameTerritory(a, b) {
   return Boolean(aid && aid === territoryIdentity(b));
 }
 
-// HQs occupy 3×3 tiles. Reserve one additional ring so tall resource art and
-// its selection outline cannot intrude into the base footprint.
-export function isInHqClearance(c, r, tiles, margin = 1) {
-  for (let dr = -margin; dr <= margin; dr++) {
-    for (let dc = -margin; dc <= margin; dc++) {
-      const tile = tiles[`${c + dc},${r + dr}`];
-      if (tile?.isHQ || tile?.isHQPart) return true;
-    }
-  }
-  return false;
-}
-
 // The surface centre is shared by selection, props and the large resource base.
 export function resourceFootprint(c, r, tile = {}) {
   const {cx, cy} = isoXY(c, r);

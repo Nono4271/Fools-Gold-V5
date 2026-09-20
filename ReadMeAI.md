@@ -10,6 +10,19 @@ Branch: codex/core-fixes-20260919
 
 ## 2026-09-20 — Codex
 
+### Approved Pirate HQ art and removal of the rejected clearance ring
+- Restored every resource prop outside the actual HQ footprint; removed the one-tile hiding rule and its obsolete test.
+- Restored full tile selection diamonds beside HQs. Existing ground-selection layering remains below props and buildings.
+- The previous ring only hid artwork: it never removed resources or changed relocation rules. This change restores their visibility without changing gameplay.
+- User approved the new Pirate HQ design. Added transparent `public/hq/hq_pirates_dark_v2.webp`; it renders for Pirate HQs in the existing spawn visual-test area, with natural proportions and a grounded anchor. Original art remains available outside the test area.
+- Other seven factions still use their original artwork; new faction designs need user approval.
+- Validation: 112 tests and production build pass. Phone visual confirmation is still needed; the cloud browser cannot initialize the map renderer.
+- Existing thin ownership borders and resource power/size variations remain.
+
+---
+
+## 2026-09-20 — Codex
+
 ### Hotfix: restore HQ sprites and protect the base boundary
 - Removed the HQ pixel filter introduced in the previous graphics pass. On the phone it rendered the faction base invisible and exposed a black commander marker beneath it.
 - Kept the approved thin, muted ownership border and subtle contact shading. Original faction HQ sprites render directly again.
