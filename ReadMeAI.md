@@ -8,6 +8,52 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet) — Camp placement now avoids water/roads/keeps/HQs (part 3)
+
+Follow-up correction to part 2 directly below. That first wiring pass only
+avoided keep footprints and border/crossing tiles — it ran BEFORE roads,
+HQs and P10-P13 special tiles were placed, so nothing stopped a camp from
+landing on water, a road, or getting overwritten later by an HQ. Owner
+caught this; fixed properly rather than patched around.
+
+**`src/workers/mapGen.worker.js`:**
+- Moved the entire camp-placement pass from right after the keep loop to
+  the very end of generation — after starter-keep ownership, the
+  anti-lockout pass, road generation, HQ placement, AND P10-P13 special-tile
+  placement are all finished. Camps are a tiny slice of a ~2.4M-tile map, so
+  searching for free spots this late is cheap and means the grid it's
+  searching is the FINAL one, not a half-built one.
+- Added an `isCampBlocked(c, r)` check (on top of the existing
+  keep-footprint/impassable-tile Set) that now also rejects: any
+  `F_KEEP|F_KEEPPART|F_HQ|F_HQPART|F_GATE|F_BORDER`-flagged tile, any
+  `ROAD_TILE_SET` road tile, and water/mountain/road terrain
+  (`river`/`rockymountain`/`road`/`hellfire`). Passed into
+  `findCampSlot`'s new `isBlocked` param (see below) — a real camp can no
+  longer land on water, a road, a keep, or an HQ.
+- Mob/monster spawns were already covered from the other direction (see
+  part 2's `spawnEligibleKeys` change) — this repo generates no mob tiles
+  inside `mapGen.worker.js` itself, so there was nothing else to check
+  there.
+
+**`shared/utils/campPlacement.js`:** `footprintFits`/`findCampSlot` take an
+optional `isBlocked(c, r)` callback now, checked alongside the `occupied`
+Set. Kept optional and backward compatible — every existing call site
+(tests, and the plain-Set-only usage) is untouched. This is what lets the
+worker check terrain/flags directly off its live arrays instead of having
+to pre-build a multi-hundred-thousand-entry Set of every water/road tile
+up front. Covered by a new test in `tests/campPlacement.test.js` (rejects a
+cell the callback flags even when the occupied Set says it's free, then
+finds a real free slot around it).
+
+**Verified:** full suite green — 240/240 tests, `npm run build` clean.
+
+**Not done (flagged, not silently added):** no visual/phone playtest yet —
+this is a logic-level guarantee (grid data says no overlap), not a
+confirmation that camps look right on screen. Still worth an eyeball pass
+once camp art exists.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet) — Neutral/Ancient camps wired into the live map (part 2)
 
 Follow-up to the camp placement PLAN directly below — this entry wires that
@@ -66,21 +112,11 @@ one — the camp-aware branches added there last entry are all that was
 needed; attacking, sieging, and capturing a camp goes through the exact
 same code path as a keep.
 
-**Verified:** full suite green — 239/239 tests (`tests/campPlacement.test.js`
-was already at 7/7; added 2 more to `tests/worldTiles.test.js` for
-camp-tile decoding + spawn-eligibility exclusion) — and `npm run build`
-completes clean, `mapGen.worker.js` bundles fine importing from `shared/`
-(confirms the worker-imports-from-shared direction, already used
-elsewhere, works through Vite's worker bundling).
+**Corrected by part 3 above:** this pass ran before roads/HQs/P10-P13 were
+placed and didn't check water/mountain terrain — camp placement was moved
+later and made terrain/road/HQ-aware. Left this entry intact for history.
 
 **Not done (flagged, not silently added):**
-- **No terrain-suitability filtering.** Camp placement only avoids keep
-  footprints and existing impassable tiles — it does NOT check for
-  water/mountain terrain under a camp footprint the way it probably
-  should. A camp could visually land on water or a cliff. This needs a
-  visual/phone playtest pass to confirm before this ships — flagging
-  explicitly rather than guessing at terrain codes I haven't visually
-  verified.
 - Camp art/portraits are still blocked on the same ChatGPT-art item as
   everything else in that queue (roadmap item #1) — camps render with
   whatever generic keep-like placeholder the map view already uses for
@@ -591,6 +627,11 @@ change.
 
 - Finish T4 + neutral roster/data before final battle balancing and before
   generating all missing troop/mob art.
+- **Art still needed from the owner's ChatGPT-art queue (blocked on weekly
+  usage reset, per owner):** the 4 Ancients (T4), the 15 neutral units, AND
+  now the neutral/Ancient camp structures (map sprite — small/medium/large
+  footprint, per-tier or per-unit visual). Camps are new to this list as of
+  the live map wiring above; everything else was already known.
 - Define Season Chapters before gates, crossings, Holy Grail access, war
   declarations, seasonal objectives and server APIs.
 - Define Crew 2.0 roles/data before Crew chat permissions, diplomacy, wars,
