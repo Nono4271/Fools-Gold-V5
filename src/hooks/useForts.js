@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { FORT_LEVELS, FORT_MAX_LEVEL, FORT_RANGE_RADIUS, FORT_SIEGE_RESET_MS } from "../../shared/constants/map.js";
+import { withFortRemoval, withoutFortRemoval } from "../../shared/utils/fortRemoval.js";
 
 // Chebyshev distance check
 function inRange(ac, ar, bc, br) {
@@ -95,6 +96,22 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
       emitFortUpdate?.({ action: "upgrade", fort: upgraded });
       return upgraded;
     }));
+  }, [emitFortUpdate]);
+
+  // ── Demolish/abandon timer (deadline stored on the fort, survives the popup) ─
+  // The fort is actually removed by useFortRemovals when the deadline passes.
+  const startFortRemoval = useCallback((fortId, mode) => {
+    const f = fortsRef.current.find(x => x.id === fortId);
+    const now = Date.now();
+    const started = withFortRemoval(f, mode, now);
+    if (!f || started === f) return; // unknown fort/mode, or already running
+    setForts(prev => prev.map(x => x.id === fortId ? withFortRemoval(x, mode, now) : x));
+    emitFortUpdate?.({ action: "removal", fort: started });
+  }, [emitFortUpdate]);
+
+  const cancelFortRemoval = useCallback((fortId) => {
+    setForts(prev => prev.map(x => x.id === fortId ? withoutFortRemoval(x) : x));
+    emitFortUpdate?.({ action: "removalCancel", fortId });
   }, [emitFortUpdate]);
 
   // ── Destroy fort ────────────────────────────────────────────────────────────
@@ -243,6 +260,8 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
     forts,
     buildFort,
     upgradeFort,
+    startFortRemoval,
+    cancelFortRemoval,
     destroyFort,
     stationAtFort,
     unstationCmd,
