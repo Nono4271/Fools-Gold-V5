@@ -1755,7 +1755,7 @@ const TIER_COLORS_MS = ["#8a8aaa", "#4488cc", "#a855f7"];
 const TIER_ROMAN_MS  = ["I", "II", "III"];
 
 function ManageShipScreen({
-  cmd, setTroopSlot, returnTroops, troopCounts, bldgs,
+  cmd, setArmySlots, returnTroops, troopCounts, bldgs,
   unlockedBranches, staminaMax, onBack,
 }) {
   const ub = unlockedBranches || {};
@@ -1902,14 +1902,8 @@ function ManageShipScreen({
 
   // ── Confirm — flush all slots to game state ──────────────────────────────
   function handleConfirm() {
-    [0, 1, 2].forEach(i => {
-      const sl = slots[i];
-      if (sl && sl.branch) {
-        setTroopSlot(cmd.uid, i, sl.branch, sl.troops);
-      } else {
-        setTroopSlot(cmd.uid, i, null, 0);
-      }
-    });
+    // One atomic update for all 3 slots (per-slot calls could shift slots / double-draw).
+    setArmySlots(cmd.uid, slots);
     onBack();
   }
 
@@ -2358,7 +2352,7 @@ function ManageShipScreen({
 
 function BattleGroupsScreen({
   cmds, setCmds, bldgs, barracksPool, troopCounts,
-  sliderVals, setSliderVals, setTroopSlot, returnTroops,
+  sliderVals, setSliderVals, setTroopSlot, setArmySlots, returnTroops,
   playerHqKey, unlockedBranches, staminaMax,
 }) {
   const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
@@ -2684,7 +2678,7 @@ function BattleGroupsScreen({
       return (
         <ManageShipScreen
           cmd={cmd}
-          setTroopSlot={setTroopSlot}
+          setArmySlots={setArmySlots}
           returnTroops={returnTroops}
           troopCounts={troopCounts}
           bldgs={bldgs}
@@ -3300,7 +3294,7 @@ bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
 trainingQueues, setTrainingQueues, trainSlider, setTrainSlider,
 healQueue, setHealQueue, setWounded, setWoundedQueue, queueHealing, autoHeal, setAutoHeal, trainingSpeedMult,
 upgQueue, sliderVals, setSliderVals, bLog,
-upgrade, canAfford, assignTroops, returnTroops, queueTraining, troopCounts, setTroopCounts, setTroopSlot,
+upgrade, canAfford, assignTroops, returnTroops, queueTraining, troopCounts, setTroopCounts, setTroopSlot, setArmySlots,
 recallMarch, setScreen, gearInventory, playerHqKey,
 facKey, unlockedBranches, setUnlockedBranches,
 quarterLevels, setQuarterLevels,
@@ -3436,7 +3430,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
         {hqTab === "army" && (
           <BattleGroupsScreen cmds={cmds} setCmds={setCmds} bldgs={bldgs}
             barracksPool={barracksPool} setBarracks={setBarracks}
-            troopCounts={troopCounts} setTroopSlot={setTroopSlot}
+            troopCounts={troopCounts} setTroopSlot={setTroopSlot} setArmySlots={setArmySlots}
             sliderVals={sliderVals} setSliderVals={setSliderVals}
             assignTroops={assignTroops} returnTroops={returnTroops}
             playerHqKey={playerHqKey} unlockedBranches={unlockedBranches}
