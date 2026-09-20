@@ -145,3 +145,11 @@ test('every planned camp carries a finite in-bounds anchor (cx, cy) for mapGen p
     assert.ok(Number.isInteger(e.cy) && e.cy >= 0 && e.cy < 1305, `${e.regionKey} cy`);
   }
 });
+
+test('every camp template has 2 garrison waves, whatever tier or footprint', () => {
+  const plan = planAllCamps({ campsPerRegion: 30, campsPerZone: 20 });
+  for (const e of plan) assert.equal(e.template.garrisonWaves, 2, `${e.unit} template waves`);
+  // tiles modeled on P7/P9 have 1 wave; camps keep those power levels (level + troop budget) unchanged
+  assert.ok(plan.some(e => e.template.powerLevel === 7));
+  assert.ok(plan.some(e => e.template.powerLevel === 9));
+});

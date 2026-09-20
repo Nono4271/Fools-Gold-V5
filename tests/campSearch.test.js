@@ -68,6 +68,26 @@ test('real generated map: every planned camp is placed and Find Camps sees them'
   const near = findCamps(map, c0, r0, all);
   assert.ok(near.length > 0, 'search finds camps around a placed camp');
   assert.ok(near.every(x => map[x.key].isCamp && x.name.endsWith('Camp')));
+  // Camps carry their name, 2 waves, footprint and a renderer-facing camp list.
+  const first = map[placed[0]];
+  assert.equal(first.isCamp, true);
+  assert.ok(first.campName && first.campName.endsWith('Camp'), 'tile popup gets the camp name');
+  assert.equal(first.garrisonWaves, 2);
+  assert.ok(first.campW >= 1 && first.campH >= 1);
+  assert.equal(map.__camps.length, plan.length);
+  assert.equal(Object.keys(map).includes('__camps'), false, 'camp list does not pollute tile-store keys');
+  for (const key of placed.slice(0, 50)) assert.equal(map[key].garrisonWaves, 2);
+  // Both waves have the same level and troop count; only the commander changes.
+  const { garrisonWaveCount, garrisonWaveDefCmd } = await import('../shared/utils/garrisonUtils.js');
+  const step = Math.max(1, Math.floor(placed.length / 60));
+  for (let i = 0; i < placed.length; i += step) {
+    const t = map[placed[i]];
+    assert.equal(garrisonWaveCount(t), 2);
+    const [w0, w1] = [0, 1].map(wi => garrisonWaveDefCmd(t, wi, 'pirates'));
+    assert.equal(w1.lvl, w0.lvl, `${t.campName} level`);
+    assert.equal(w1.troops, w0.troops, `${t.campName} troop count`);
+    assert.deepEqual(w1.troopSlots, w0.troopSlots, `${t.campName} troop layout`);
+  }
   // Ancient camps live in the gate zones (Finalhope is anchored at 769,761).
   assert.ok(findCamps(map, 769, 761, new Set(['ancient']), { radius: 300 }).length > 0);
 });
