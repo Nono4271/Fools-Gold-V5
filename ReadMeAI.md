@@ -8,6 +8,26 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Chat: DM/group picker's Cancel/Start buttons were unreachable
+
+Owner feedback: could select players for a DM or group but had no way to confirm — the buttons were there in the code (`confirmPicker`, wired since the picker was first built) but lived inside the SAME scrollable div as the player-row checkboxes, at the bottom. Combined with the touch-scroll bug fixed directly below (this picker div had neither `.scr` nor `.chat-scroll` originally), a long player list or a short viewport made them functionally unreachable.
+
+**Fix**, `src/components/game/ChatPanel.jsx`: split the picker view the same way the message view already splits messages from the compose bar — the header/input/player-rows stay in the scrollable `.scr.chat-scroll` region, and Cancel/Start now sit in their own `flexShrink: 0` footer row below it, always visible regardless of list length or scroll position.
+
+**Tests:** none (pure layout). Suite: 275 pass, 0 fail. `npm run build` clean.
+
+---
+
+## 2026-09-20 — Claude (Sonnet 5) — Chat history still wasn't touch-scrollable (root cause: a global gesture blocker, not CSS)
+
+Follow-up to the entry directly below — the previous flex `min-height` fix was correct (verified: the message list's `scrollHeight` genuinely exceeds its `clientHeight`, and programmatic scroll — the new auto-scroll effect — moved it fine) but the owner still couldn't manually scroll to read history. Root cause was one level up: `src/main.tsx` has a document-level `touchstart` listener (added for iOS pull-to-refresh/swipe-back blocking) that calls `preventDefault()` on any touch that isn't on an interactive element (`button`/`input`/etc.) or inside a specific class allowlist (`.roster-scroll`, `.battle-popup`, `.gear-picker-list`, `.find-tiles-popup`). `ChatPanel`'s scrollable `<div>`s weren't on that list, so touch-drag scrolling was blocked at the document level before it ever reached the panel — invisible to any CSS inspection, and irrelevant to a mouse wheel/programmatic test, which is why it looked fixed from the "auto-scroll now works" checkpoint.
+
+**Fix:** added `"chat-scroll"` to `src/main.tsx`'s allowlist (`e.target.closest(".chat-scroll")`) and tagged all three of `ChatPanel.jsx`'s scrollable regions — the channel list, the message list, and the DM/group picker list — with `className="scr chat-scroll"` (also added the missing `minHeight: 0` to the picker list, same flex-clipping fix as the other two got last time). Left a comment in `ChatPanel.jsx` explaining both classes are required on any new scrollable region added there. `CrewPanel.jsx` and other panels using bare `.scr` without a matching allowlist entry likely have this exact same latent bug on touch devices — out of scope here (untouched, not part of the chat brief), but worth flagging for a follow-up pass.
+
+**Tests:** no new tests (this is a global touch-gesture/event-handling behavior, outside the pure-function test suite's reach — would need an actual touch-device or Playwright-with-real-touch-input check, not `node:test`). Suite: 275 pass, 0 fail. `npm run build` clean.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Chat: auto-scroll, scrollable history, un-censorable profanity toggle
 
 Owner feedback after trying the wired-up chat panel (screenshot showed the message list not scrolling to new messages).
