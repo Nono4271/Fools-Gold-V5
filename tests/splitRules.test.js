@@ -1,4 +1,4 @@
-// Rules moved out of Game.jsx: relocation, consumables, tile timers.
+// Rules moved out of Game.jsx: relocation, consumables, tile timers, tactics, AI crews, reinforcements.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RELOCATION_COOLDOWN_MS, allHqKeyList, checkPlannedRelocation, hqMovePatches} from '../shared/utils/relocation.js';
@@ -91,4 +91,116 @@ test('abandoned tile goes neutral with a fresh defender', () => {
   assert.equal(low.siege, 77);
   assert.ok(low.defCmd && low.garrison > 0);
   assert.ok(abandonedTilePatch({powerLevel:6}, '5,5', 'pirates').defCmd);
+});
+
+// ── Tactics & ticks (split 5, 8) ──
+import {TICK_MS, EGG_COST, dragonEggCap, regenEggs, regenStamina, quickGatherReward, gatherOrder, gatherTick, trainingTick, reconReport, spawnSeed} from '../shared/utils/tactics.js';
+
+test('eggs refill the cap over 24h; stamina +1 per tick up to max', () => {
+  assert.equal(dragonEggCap({tr:3}), 23);
+  let e = 0; for (let i = 0; i < 24 * 60; i++) e = regenEggs(e, 20);
+  assert.ok(Math.abs(e - 20) < 1e-6);
+  assert.equal(regenEggs(25, 20), 25);
+  assert.equal(regenStamina({stamina:10}, 150).stamina, 11);
+  const full = {stamina:150}; assert.equal(regenStamina(full, 150), full);
+  const missing = {}; assert.equal(regenStamina(missing, 150), missing);
+});
+
+test('quick gather needs eggs and a P2+ resource tile', () => {
+  assert.deepEqual(quickGatherReward({powerLevel:2, rss:'wood'}, 3), {rss:'wood', amount:Math.floor(240 * 3 * 1.1)});
+  assert.equal(quickGatherReward({powerLevel:2, rss:'wood'}, 2), null);
+  assert.equal(quickGatherReward({powerLevel:1, rss:'wood'}, 9), null);
+});
+
+test('gather ticks pay 4x hourly rate per 10 min and stop at the order length', () => {
+  const cmd = {gathering:true, gatherTileKey:'k', ...gatherOrder('k', 2, false, 0)};
+  assert.equal(gatherTick(cmd, {powerLevel:3, rss:'gas'}, TICK_MS - 1), null);
+  const r = gatherTick(cmd, {powerLevel:3, rss:'gas'}, TICK_MS * 5);
+  assert.equal(r.newTicks, 2); assert.equal(r.amount, 280 * 4 * 2); assert.equal(r.eggs, 2 * EGG_COST.gather);
+  assert.deepEqual(r.patch, {gatherTicksDone:2, gathering:false});
+  assert.deepEqual(gatherTick(cmd, null, 0), {stop:true});
+});
+
+test('training ticks give XP and cost 2 eggs each', () => {
+  const cmd = gatherOrder('k', 3, true, 0);
+  const r = trainingTick(cmd, 2, 1, TICK_MS);
+  assert.equal(r.eggs, 2); assert.ok(r.xp > 0); assert.equal(r.patch.training, true);
+  assert.equal(trainingTick({...cmd, trainingTicksDone:3}, 2, 1, TICK_MS * 9), null);
+});
+
+test('recon report and spawn seed', () => {
+  const rep = reconReport('4,4', {powerLevel:5}, {n:'Bob', troops:9}, 7);
+  assert.equal(rep.type, 'recon'); assert.equal(rep.defCmdName, 'Bob'); assert.equal(rep.defTroopsStart, 9);
+  assert.equal(spawnSeed('3,4'), spawnSeed('3,4')); assert.ok(spawnSeed('3,4') >= 0);
+});
+
+// ── AI crews (split 6) ──
+import {aiCrewTick, AI_CREW_COST, AI_CREW_CAP} from '../shared/utils/aiCrews.js';
+
+test('AI founders create a crew; others join it in the same tick', () => {
+  const r = aiCrewTick({crews:[], aiPlayerIds:['ai_orcs_1', 'ai_orcs_2', 'ai_orcs_3'], founders:new Set(['ai_orcs_1']), gemsOf:() => 1000, now:5});
+  assert.equal(r.crews.length, 1);
+  assert.deepEqual(r.crews[0].members, ['ai_orcs_1', 'ai_orcs_2', 'ai_orcs_3']);
+  assert.equal(r.crews[0].name, 'Orcs Vanguard');
+  assert.deepEqual(r.gems, {ai_orcs_1: 1000 - AI_CREW_COST});
+});
+
+test('two joiners to an existing crew both stay (old code lost one per tick)', () => {
+  const crews = [{id:'c', faction:'orcs', members:['ai_orcs_1']}];
+  const r = aiCrewTick({crews, aiPlayerIds:['ai_orcs_1', 'ai_orcs_2', 'ai_orcs_3'], founders:new Set(), gemsOf:() => 0, now:0});
+  assert.deepEqual(r.crews[0].members, ['ai_orcs_1', 'ai_orcs_2', 'ai_orcs_3']);
+  assert.deepEqual(crews[0].members, ['ai_orcs_1']); // input untouched
+});
+
+test('AI crews respect the cap and return the same array when nothing changes', () => {
+  const full = [{id:'c', faction:'orcs', members:Array.from({length:AI_CREW_CAP}, (_, i) => `ai_orcs_${i}`)}];
+  const r = aiCrewTick({crews:full, aiPlayerIds:['ai_orcs_99'], founders:new Set(), gemsOf:() => 0, now:0});
+  assert.equal(r.crews, full);
+});
+
+// ── Reinforcements (split 7) ──
+import {returnToBarracks, reinforcementSourceKey, reinforcementAborted, stepReinforcement, mergeReinforcement, reinforcementRoom, branchFromKey, commandUsed} from '../shared/utils/reinforcements.js';
+
+test('returning reinforcements respect barracks space', () => {
+  assert.deepEqual(returnToBarracks({a:90}, 'a', 50, 100), {a:100});
+  assert.deepEqual(returnToBarracks({a:1}, null, 50, 100), {a:1});
+});
+
+test('reinforcement source, abort and stepping', () => {
+  assert.equal(reinforcementSourceKey({troopSlots:[{branch:{faction:'pirates', branch:'gunners'}}]}), 'pirates:gunners:0');
+  const rm = {path:['h', 'm', 'd'], step:0, stepMs:100, lastStepTime:0};
+  assert.equal(reinforcementAborted(rm, null, null, 'h'), true);
+  assert.equal(reinforcementAborted(rm, {troops:5}, {owner:'player'}, 'h'), false);
+  assert.equal(reinforcementAborted(rm, {troops:5}, {owner:'ai'}, 'h'), true);
+  assert.equal(reinforcementAborted({...rm, returning:true}, null, null, 'h'), false);
+  assert.equal(stepReinforcement(rm, 50).state, 'wait');
+  assert.equal(stepReinforcement(rm, 100).rm.step, 1);
+  assert.equal(stepReinforcement({...rm, step:2}, 100).state, 'arrived');
+});
+
+const sw = {faction:'pirates', branch:'swashbucklers', tier:0}, gn = {faction:'pirates', branch:'gunners', tier:0}, bs = {faction:'pirates', branch:'sea_beasts', tier:0};
+const K = b => `${b.faction}:${b.branch}:${b.tier}`;
+
+test('arriving troops join their own slot, capped at their real command size', () => {
+  // cap 5: 300 small (3.0) + 50 medium (1.0) used -> 1.0 left -> 50 more medium
+  const cmd = {troopSlots:[{branch:sw, troops:300}, {branch:gn, troops:50}]};
+  const r = mergeReinforcement(cmd, K(gn), 80, 5);
+  assert.deepEqual(r.cmd.troopSlots, [{branch:sw, troops:300}, {branch:gn, troops:100}]);
+  assert.equal(r.cmd.troops, 400); assert.equal(r.overflow, 30);
+});
+
+test('arriving troops of a new type take a free slot; no free slot means all overflow', () => {
+  const r = mergeReinforcement({troopSlots:[{branch:sw, troops:100}]}, K(bs), 4, 5);
+  assert.deepEqual(r.cmd.troopSlots[1], {branch:bs, troops:4}); assert.equal(r.overflow, 0);
+  const full = {troopSlots:[{branch:sw, troops:1}, {branch:gn, troops:1}, {branch:{...bs, tier:1}, troops:1}]};
+  assert.deepEqual(mergeReinforcement(full, K(bs), 4, 5), {cmd:full, overflow:4});
+});
+
+test('send limit uses real size, troops en route and that type in barracks', () => {
+  const cmd = {troopSlots:[{branch:gn, troops:100}]}; // 2.0 of 5 used -> room for 150 medium
+  assert.deepEqual(reinforcementRoom({cmd, commandCap:5, pool:{[K(gn)]:1000}}), {srcKey:K(gn), room:150, available:1000, maxAdd:150});
+  assert.equal(reinforcementRoom({cmd, commandCap:5, pool:{[K(gn)]:1000}, inTransit:100}).maxAdd, 50);
+  assert.equal(reinforcementRoom({cmd, commandCap:5, pool:{[K(sw)]:1000}}).maxAdd, 0);
+  assert.equal(branchFromKey('pirates:gunners:2').tier, 2);
+  assert.equal(commandUsed(cmd), 2);
 });
