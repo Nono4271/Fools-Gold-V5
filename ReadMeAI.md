@@ -8,6 +8,69 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet) — T4 capstone troops, brought into this build
+
+This upload was the pre-T4 baseline (3 branches/faction, no `capstone`) plus other
+AI collaborators' unrelated work (3D demo, commander gait v3, sprite/UI polish —
+see entries below). Re-implemented the previously-designed T4 capstone system on
+top of it, since it wasn't present in this file yet. Design, unchanged from the
+version delivered earlier: each faction gets exactly 1 T4 unit as a 4th branch
+(not a tier inside the existing 3) — a single fixed elite unit, all 3 skills
+(A+B+signature) active from the start, unlocking at **Quarter level 9**. The
+branch has 6 upgrade levels: level 1 unlocks it for training, levels 2-6 reduce
+its own training cost/time by 10%/level, capped at 50% off at level 6.
+
+- **New branches** (`shared/constants/troops.js`): every faction's `branches` grew
+  from 3 to 4 — Abyssal Leviathan (pirates, large), Void Warden (wizards, medium),
+  Doomcaller (orcs, large), Sovereign Wyrm (dragons, small), Seraph Vanguard
+  (holyknights, medium), Umbral Colossus (nightcreatures, medium), Frostbound
+  Titan (coldborns, small), Bone Colossus (ashen_dead, large). Sizes are mixed
+  per owner request ("don't want all large") — the 5 non-large units have their
+  stat blocks (dmgLo/dmgHi/def/hp/siege/spd) scaled down to match their command
+  batch size (50 or 100 per command vs. 4 for large), using the same large →
+  medium → small ratios the game's regular tiered branches already use (dmg/hp/
+  siege drop steeply, def less so, speed rises). `resolveTroopTier`/`getTierSkills`
+  special-case `branch.capstone` to resolve the single stat block with all 3
+  skills together.
+- **Unlock/level gating** (`shared/constants/buildings.js`): `BRANCH_UNLOCK_Q`
+  gained a 4th entry (`9`); new `B4_MAX` makes the capstone's full level 1-6
+  range available as soon as Quarter hits 9. Reuses `BRANCH_COST`/`BRANCH_DUR`
+  unchanged.
+- **Battle engine** (`shared/utils/battle.js`): `getTierSkillsForBattle` (the
+  separate hardcoded copy used by actual combat resolution) also special-cases
+  `capstone` branches to field all 3 skills. Also fixed a real bug found while
+  re-wiring this: the `"lifesteal"` troop-skill effect type (used by Umbral
+  Colossus's Consume Essence) had no matching `case` in `procTroopSkills`, so it
+  would have silently never healed anything — added `case "lifesteal"` next to
+  the other single-target on-hit effects, feeding the existing `rs.lifesteal`
+  field that command-level combat already reads.
+- **Capstone training discount** (`shared/utils/training.js`): capstone units are
+  priced above the normal T3 bracket (`CAPSTONE_BASE_COST`/`CAPSTONE_BASE_MINUTES`)
+  and `capstoneTrainDiscount(branchLevel)` scales 0%→50% off as the branch levels
+  1→6, applied to both cost and time via `trainingQuote`'s new `costTimeDiscount`
+  param. Wired end-to-end: `Game.jsx`'s `queueTraining` computes the discount from
+  the branch's stored level and passes it through `armyEconomy.js`'s `train`
+  action → `trainingQuote`; `HQMenu.jsx`'s training-queue preview computes and
+  applies the same discount so the displayed quote matches what's charged.
+  (Confirmed again: the general "-10% train cost & time per branch level" label
+  shown for the other 3 branches, `BRANCH_LVL_BONUS`, is still pure display text
+  with no backing calculation — pre-existing, out of scope, left as-is.)
+- **UI** (`HQMenu.jsx`): capstone units show a ★ instead of a roman-numeral tier
+  badge in the branch list and troop detail modal, since they aren't "tier one"
+  of anything.
+
+New/updated tests: `tests/capstoneTroops.test.js` (structure, unlock gating,
+discount curve, and a check that capstone sizes aren't all the same).
+`tests/armyEconomy.test.js` updated for the capstone cost/time bracket and a
+discount-scaling test. Full suite: 185 passing, 0 failing (`npm install` was
+also needed — this upload's `node_modules` wasn't present). Build clean, live
+Playwright smoke test shows no console/runtime errors.
+
+Not done (flagged, not silently added): capstone portrait art (none exists,
+same as the rest of the roster).
+
+---
+
 # CURRENT AUDIT AND ROADMAP — READ THIS FIRST
 
 ## 2026-09-20 — Separate 3D demo polish v2
