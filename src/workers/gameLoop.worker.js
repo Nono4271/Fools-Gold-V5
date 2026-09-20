@@ -1,3 +1,4 @@
+import { advanceMarch } from '../../shared/utils/marchMotion.js';
 // ── Game Loop Web Worker ──────────────────────────────────────────────────────
 // Offloads all setInterval logic from the main thread so React renders never
 // block touch events, map pans, or tile taps.
@@ -79,30 +80,33 @@ function tickMarch() {
 
     // Use worker-authoritative state; seed from snapshot only when march is new or path changed
     let ws = workerMarchState.get(cmd.uid);
-    if (!ws || ws.pathLen !== m.path.length) {
-      ws = { step: m.step, lastStepTime: m.lastStepTime, pathLen: m.path.length, arrived: m.arrived || false };
+    const routeId=m.startedAt ?? m.lastStepTime;
+    if (!ws || ws.pathLen !== m.path.length || ws.routeId !== routeId) {
+      ws = { step: m.step, lastStepTime: m.lastStepTime, pathLen: m.path.length, routeId, arrived: m.arrived || false };
       workerMarchState.set(cmd.uid, ws);
     }
 
     if (ws.arrived) continue; // waiting for main thread to clear march
-    const isFinalStep = (ws.step + 1) >= m.path.length;
-    if (!isFinalStep && now - ws.lastStepTime < m.stepMs) continue;
-
-    const nextStep = ws.step + 1;
-    if (nextStep >= m.path.length) {
+    // Catches all the way up (not just one step) after the worker was
+    // paused/throttled — e.g. a backgrounded tab or locked phone.
+    const res = advanceMarch(ws.step, ws.lastStepTime, m.path, m.stepMs, now);
+    if (!res.advanced) continue;
+    ws.step = res.step;
+    ws.lastStepTime = res.lastStepTime;
+    if (res.clear) {
+      workerMarchState.delete(cmd.uid);
+      updates.push({ uid:cmd.uid, tk:m.path.at(-1), clearMarch:true });
+    } else if (res.reachedEnd) {
       const dest = m.path[m.path.length - 1];
       ws.arrived = true;
-      ws.step = nextStep;
       if (m.type === 'attack') {
-        updates.push({ uid: cmd.uid, tk: dest, marchPatch: { ...m, step: nextStep, arrived: true } });
+        updates.push({ uid: cmd.uid, tk: dest, marchPatch: { ...m, step: ws.step, lastStepTime:ws.lastStepTime, arrived: true } });
       } else {
         updates.push({ uid: cmd.uid, tk: dest, clearMarch: true });
         workerMarchState.delete(cmd.uid);
       }
     } else {
-      ws.step = nextStep;
-      ws.lastStepTime = now;
-      updates.push({ uid: cmd.uid, tk: m.path[nextStep], marchPatch: { ...m, step: nextStep, lastStepTime: now } });
+      updates.push({ uid: cmd.uid, tk: m.path[ws.step], marchPatch: { ...m, step: ws.step, lastStepTime: ws.lastStepTime } });
     }
   }
 
@@ -302,7 +306,7 @@ function tickAiEcon() {
 
   const cmdUpdates   = []; // { uid, troops, troopBranch, unspentSkillPoints, skillPoints }
   const poolUpdates  = {}; // { fk: newPool }
-  const rssUpdates   = {}; // { fk: { stone, wood, ore, gas } }
+  const rssUpdates   = {}; // { fk: { stone, wood, gas, food } }
   const bldgUpdates  = {}; // { fk: { ...bldgs } }
 
   for (const fk of aiFactionKeys) {
