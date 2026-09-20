@@ -3,7 +3,6 @@ import {
   resolveChannelsFor, canPost, createMessage, createDmChannel, createGroupChannel,
 } from "../../shared/utils/chatRules.js";
 import { generateAiChatter } from "../../shared/utils/aiChatter.js";
-import { censorText } from "../../shared/utils/profanity.js";
 
 // LOCAL PERSISTENCE ONLY: this hook keeps all chat state (channels, messages)
 // in React state for the lifetime of the tab/session — nothing is written to
@@ -33,11 +32,13 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
   const [messages, setMessages] = useState({}); // { [channelId]: Message[] }
   const [dms, setDms] = useState([]);
   const [groups, setGroups] = useState([]);
-  // Word-list based, client-side today; same censorText() will run
-  // server-side unchanged once the multiplayer server exists.
+  // Display-time only: messages are always stored with their raw text, and
+  // shared/utils/profanity.js's censorText() is applied by the UI (see
+  // ChatPanel.jsx) when this is on — so toggling it also reveals/re-masks
+  // every earlier message, not just new ones. Word-list based, client-side
+  // today; the same censorText() will run server-side unchanged once the
+  // multiplayer server exists.
   const [profanityFilterEnabled, setProfanityFilterEnabled] = useState(true);
-  const profanityRef = useRef(profanityFilterEnabled);
-  profanityRef.current = profanityFilterEnabled;
 
   const latest = useRef({ crews, aiPlayerIds, dms, groups, playerFacKey, playerId });
   latest.current = { crews, aiPlayerIds, dms, groups, playerFacKey, playerId };
@@ -59,12 +60,11 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
     const channel = channels.find(c => c.id === channelId);
     if (!channel) return { ok: false, reason: "Unknown channel" };
     if (!canPost(playerId, channel, ctx)) return { ok: false, reason: "Not allowed to post here" };
-    const cleanText = profanityFilterEnabled ? censorText(text) : text;
-    const msg = createMessage({ channelId, senderId: playerId, senderName: playerName, text: cleanText, now: Date.now() });
+    const msg = createMessage({ channelId, senderId: playerId, senderName: playerName, text, now: Date.now() });
     if (!msg) return { ok: false, reason: "Empty message" };
     appendMessage(msg);
     return { ok: true, message: msg };
-  }, [channels, ctx, playerId, playerName, appendMessage, profanityFilterEnabled]);
+  }, [channels, ctx, playerId, playerName, appendMessage]);
 
   // ── Start (or reopen) a DM with another known player ────────────────────────
   const startDm = useCallback((otherPlayerId) => {
@@ -99,9 +99,7 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
       // One shot at flavor chatter per channel per tick, silently skipped when
       // no AI is eligible to speak there (e.g. an empty crew).
       chattyChannels.forEach((channel, i) => {
-        const msg = generateAiChatter(channel, chatterCtx, seedBase + i);
-        if (!msg) return;
-        appendMessage(profanityRef.current ? { ...msg, text: censorText(msg.text) } : msg);
+        appendMessage(generateAiChatter(channel, chatterCtx, seedBase + i));
       });
     };
     const id = setInterval(tick, AI_CHATTER_INTERVAL_MS);
