@@ -17,8 +17,11 @@ const M = 60_000;
 const H = 3_600_000;
 
 // ── Speed-up types ────────────────────────────────────────────────────────────
-// applies: "universal" | "building" | "healing" | "rss"
+// applies: "universal" | "building" | "healing" | "recall" | "rss"
 // rssType: only for rss speed-ups — "food" | "wood" | "stone" | "gas"
+// Locked decision: training and forts cannot be sped up. Building, healing
+// and recall each have their own speedup type; universal speedups apply to
+// all three.
 
 const SPEEDUP_DURATIONS = [
   { mins:  5,  ms:  5*M,  label:  "5 Min",  rarity: "grey"   },
@@ -34,6 +37,7 @@ const SPEEDUP_DURATIONS = [
 
 const BUILDING_DURATIONS = SPEEDUP_DURATIONS; // same times
 const HEALING_DURATIONS  = SPEEDUP_DURATIONS;
+const RECALL_DURATIONS   = SPEEDUP_DURATIONS;
 
 const RSS_DURATIONS = [
   { mins: 30,  ms: 30*M, label: "30 Min", rarity: "grey"   },
@@ -59,7 +63,7 @@ for (const dur of SPEEDUP_DURATIONS) {
   DEFS[id] = {
     id, applies: "universal",
     label: `${dur.label} Speed Up`,
-    desc: `Reduces any building upgrade or healing time by ${dur.label}.`,
+    desc: `Reduces any building upgrade, healing time or marching recall by ${dur.label}.`,
     icon: "⏩", rarity: dur.rarity, durationMs: dur.ms, durationLabel: dur.label,
   };
 }
@@ -83,6 +87,17 @@ for (const dur of HEALING_DURATIONS) {
     label: `${dur.label} Healing Speed Up`,
     desc: `Reduces troop healing time by ${dur.label}.`,
     icon: "💉", rarity: dur.rarity, durationMs: dur.ms, durationLabel: dur.label,
+  };
+}
+
+// Recall speed-ups
+for (const dur of RECALL_DURATIONS) {
+  const id = `su_recall_${dur.mins}`;
+  DEFS[id] = {
+    id, applies: "recall",
+    label: `${dur.label} Recall Speed Up`,
+    desc: `Reduces a marching commander's recall time by ${dur.label}.`,
+    icon: "🏳", rarity: dur.rarity, durationMs: dur.ms, durationLabel: dur.label,
   };
 }
 
@@ -137,6 +152,12 @@ export const CONSUMABLE_GROUPS = [
     label: "Healing Speed Ups",
     icon: "💉",
     ids: HEALING_DURATIONS.map(d => `su_heal_${d.mins}`),
+  },
+  {
+    key: "recall",
+    label: "Recall Speed Ups",
+    icon: "🏳",
+    ids: RECALL_DURATIONS.map(d => `su_recall_${d.mins}`),
   },
   {
     key: "rss",
