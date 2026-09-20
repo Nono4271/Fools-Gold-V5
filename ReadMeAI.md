@@ -93,7 +93,8 @@ change.
 - **COMPLETE — DO NOT RECHECK:** battle initialization/confusion crash fixes and
   execution coverage for the existing 72 T1–T3 faction troops.
 - **COMPLETE — DO NOT RECHECK:** five-minute tile deletion and three-minute
-  post-capture protection.
+  post-capture protection. (Deletion was actually 15 s in code until Claude's
+  2026-09-20 split fix; now `TILE_DELETE_MS` in `shared/utils/tileTimers.js`.)
 - **COMPLETE — DO NOT RECHECK:** item definitions, Bag replacing the old Gear
   shortcut, building/healing/universal timer speedups and resource boosts.
 - **COMPLETE — DO NOT RECHECK:** voluntary and forced HQ relocation behavior.
@@ -162,6 +163,9 @@ change.
 
 - `src/Game.jsx` owns too many unrelated systems and large mutable/ref-backed
   maps. Split domain state before adding server authority.
+  **In progress (Claude):** steps 1–4 of 10 done — see the dated entry below.
+  Remaining: dragon egg/stamina ticks, AI crews ticker, reinforcement marches,
+  tactics (gather/recon/sweep), map init, game screen JSX.
 - Game rules are divided between React callbacks, hooks and workers. Move every
   multiplayer-sensitive rule into shared deterministic functions callable by
   the server.
@@ -252,6 +256,32 @@ change.
 - Create purpose-built commander sprites for the world map.
 - Create sprites for all remaining mobs/neutral encounters.
 - Create sprites for keeps and blend them with the new map style.
+
+---
+
+## 2026-09-20 — Claude (Opus)
+
+### Game.jsx split, steps 1–4 (troop slots, relocation, consumables, tile timers)
+Owner-approved plan: split `src/Game.jsx` one system at a time. Rules go to pure functions in `shared/utils/` (for the future server). React wiring goes to `src/hooks/`. Next comes timer catch-up after phone lock or backgrounding (no save system yet). The split does not change behavior, except for the deletion timer fix below. `Game.jsx` went from 3,228 to 2,887 lines.
+
+| Step | Rules (pure) | Hook | Game.jsx exports kept |
+|---|---|---|---|
+| 1 Troop slots | `shared/utils/troopSlots.js` | `src/hooks/useTroopSlots.js` | `setTroopSlot`, `assignTroops`, `returnTroops` |
+| 2 HQ relocation | added to `shared/utils/relocation.js` (`checkPlannedRelocation`, `hqMovePatches`, `allHqKeyList`, `RELOCATION_COOLDOWN_MS`) | `src/hooks/useRelocation.js` | `performRelocation`, `onForcedRelocate` |
+| 3 Consumables | `shared/utils/consumables.js` (`consumeOne`, `restoreOne`, `speedUpBuildings`, `expediteBuilding`, `extendRssBoost`, `withRssBoosts`) | `src/hooks/useConsumables.js` | `useConsumable`, `onExpedience` |
+| 4 Tile timers | `shared/utils/tileTimers.js` (`pruneProtections`, `deletionStatus`, `abandonedTilePatch`, `TILE_PROTECTION_MS`, `TILE_DELETE_MS`) | `src/hooks/useTileTimers.js` | `registerProtection` |
+
+State (`useState`) stays in `Game.jsx` for now. The hooks receive state and setters as arguments.
+
+**Fix: tile abandonment took 15 seconds, not 5 minutes.** The tile popup showed a 5:00 countdown, but `Game.jsx` finished the deletion after 15000 ms. The countdown now uses `TILE_DELETE_MS` (5 min), which matches the locked owner decision. Section 2 below had marked this complete.
+
+**Found, not changed:**
+- The army Confirm button calls `setTroopSlot` once per slot, using the same stale pool each time. Clearing slot 1 of 3 shifts the later slots, which can return or draw the wrong troops. The fix is one atomic "set all slots" rule; waiting for the owner's OK.
+- Resource boosts (`withRssBoosts`) are only rechecked when `Game.jsx` re-renders, so an expired boost can linger until the next render. This will be handled in the timer catch-up pass.
+
+**Tests:** `tests/troopSlots.test.js` (7) and `tests/splitRules.test.js` (10). All 135 tests pass and the build passes.
+
+**Browser smoke test:** the cloud browser can now run the full game with Chromium flags `--use-gl=swiftshader --enable-unsafe-swiftshader`. Each batch gets the same check: start a game, idle 35 s past the 30 s tickers, open every menu (HQ, Reports, Summon, Commander, Bag and its Consumables tab, Ranks, Crew), then pan. No page errors; the only console errors are the expected offline WebSocket errors.
 
 ---
 
