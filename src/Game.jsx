@@ -1225,7 +1225,7 @@ export default function RiseToWar() {
 
   // Bag items + Expedience — rules in shared/utils/consumables.js
   const { onExpedience, useConsumable } = useConsumables({
-    setConsumables, setUpgQueue, setRssSpeedUps, healQueue, dispatchArmy, floaty, playerHqRef,
+    setConsumables, setUpgQueue, setRssSpeedUps, setCmds, healQueue, dispatchArmy, floaty, playerHqRef,
   });
 
   // ── HQ Relocation — rules in shared/utils/relocation.js ──
