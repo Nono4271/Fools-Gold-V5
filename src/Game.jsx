@@ -298,7 +298,7 @@ export default function RiseToWar() {
   // Each map is keyed by faction string. All writes go directly to refs so
   // there are zero re-renders from AI economy ticks.
   const INIT_BLDGS = { hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 };
-  const aiRssMapRef      = useRef(new Map()); // Map<fk, {stone,wood,ore,gas}>
+  const aiRssMapRef      = useRef(new Map()); // Map<fk, {stone,wood,gas,food}>
   const aiBldgsMapRef    = useRef(new Map()); // Map<fk, bldgsObj>
   const aiPoolMapRef     = useRef(new Map()); // Map<fk, number>
   const aiTileKeysMapRef = useRef(new Map()); // Map<fk, Set<tileKey>>

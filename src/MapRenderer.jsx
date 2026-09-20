@@ -660,8 +660,8 @@ function drawAllPropsNoScatter(gfx, tiles, rMin, rMax, cMin, cMax) {
       const base = cy - 4 + TH * 0.5; // tile surface centre (sy + TH/2)
       const color = tile.rss === "wood"  ? 0x2a7a20
                   : tile.rss === "stone" ? 0x8a8a9a
-                  : tile.rss === "ore"   ? 0xd4a020
-                  :                        0x3a8a28; // gas
+                  : tile.rss === "gas"   ? 0xd4a020  // was checking the old "ore" prop — gas replaced it
+                  :                        0xc87830; // food
       gfx.beginFill(color, 0.90);
       // 4-vertex isometric diamond — 2 triangles, EARCUT trivial for n=4
       gfx.drawPolygon([cx, base - hh, cx + hw, base, cx, base + hh, cx - hw, base]);
