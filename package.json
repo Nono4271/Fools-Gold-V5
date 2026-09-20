@@ -11,7 +11,9 @@
     "dev:server": "cd server && node --watch index.js",
     "dev:client": "vite --host 0.0.0.0",
     "start:server": "cd server && node index.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "test:balance": "node --test tests/balance/*.test.js",
+    "balance-report": "node tools/balanceSim/cli.js"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",

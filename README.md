@@ -1,24 +1,28 @@
-# Chat: real scroll fix + unreachable picker buttons — what changed from the last zip
+# Balance-testing system — file changes
 
-Edited (full files — replace at the same paths):
-- src/main.tsx — root cause of "still not scrollable": a document-level touchstart
-  handler (built for iOS pull-to-refresh blocking) prevents touch-scroll gestures
-  everywhere except an allowlist of classes. Added "chat-scroll" to that allowlist.
-- src/components/game/ChatPanel.jsx — tagged the channel list, message list, and
-  DM/group picker list with "chat-scroll" (so the main.tsx fix actually applies to
-  them) plus the missing `min-height: 0` on the picker list (same flex fix as last
-  time). Also: DM/group picker's Cancel/Start buttons are now pinned in their own
-  footer row below the scrollable player list, instead of living at the bottom of
-  the same scrollable area where they could be unreachable — same pattern as the
-  message compose bar.
-- ReadMeAI.md — two new dated entries
+First delivery of this feature, so everything below is new unless marked (modified).
 
-Not changed from last time: everything else (shared/*, src/hooks/useChat.js,
-src/Game.jsx, src/GameView.jsx, src/components/game/GameBar.jsx, tests/*).
+## New: tools/balanceSim/ (the tool)
+- cli.js               — `npm run balance-report` entry point
+- loadoutCatalog.js     — enumerates every troop line (99 total) into 4 tier brackets
+- neutralBridge.js      — makes neutral units resolvable by simBattle (in-memory only, no source edits)
+- commanderFactory.js   — identical minimal commander shell per loadout
+- runner.js             — seeded battle trials + aggregation
+- matrix.js             — coverage matrix + outlier detection (matchup + efficiency)
+- report.js             — JSON/Markdown report builders
+- reports/report.json, reports/report.md — sample output from a 60-trial run (regenerate with `npm run balance-report`)
 
-`npm test` — 275 pass, 0 fail. `npm run build` — clean.
+## New: tests/balance/ (the gate)
+- coverage.test.js — sanity tests on the tooling itself
+- outliers.test.js — the actual "no unit is overpowered" gate (run via `npm run test:balance`)
 
-Note: CrewPanel.jsx (and possibly other panels) use the same bare ".scr" class
-without a matching main.tsx allowlist entry, so they likely have the identical
-touch-scroll bug on mobile. Flagged in ReadMeAI.md as a follow-up, not fixed here
-since it's outside the chat system.
+## Modified
+- package.json — added `test:balance` and `balance-report` scripts (existing `test`/`build` scripts untouched)
+- ReadMeAI.md  — dated entry at the top documenting the system, thresholds chosen, and what's already flagged
+
+## Already flagged in current game data (see ReadMeAI.md for full detail)
+- Efficiency outliers (overperforming): neutral/feral_bloodfang (T2), dragons/dragonkin T3,
+  neutral/rogue_battlemage (T3), dragons/sovereign_wyrm (T4)
+- Dead units (0% win rate vs every T1 opponent): coldborns/raiders T1, coldborns/frost_giants T1
+
+Run `npm run test:balance` to reproduce the gate result, `npm run balance-report` for the full matrix.

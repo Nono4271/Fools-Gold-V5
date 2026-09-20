@@ -8,6 +8,94 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Automated battle-balance testing system (new)
+
+New `tools/balanceSim/` dev-tooling package that exercises the real, unmodified `simBattle` at
+scale and flags anything statistically overpowered or underpowered. **Testing/reporting layer
+only** — nothing in `shared/utils/battle.js` (combat logic) or any troop/commander data file was
+touched. `shared/utils/gearStats.js` was also left alone: the sim's commanders never carry gear
+(`cmd.gear` stays undefined), so gear bonuses are simply never computed, per the brief ("known
+placeholder pending a rework").
+
+**What it builds:**
+- `tools/balanceSim/loadoutCatalog.js` — enumerates every troop line the sim can build an army
+  from: all 8 factions × 3 branches × T1–T3, all 8 T4 capstones, all 15 neutral units, all 4
+  Ancients (99 "loadouts" total), grouped into 4 tier brackets (T1/T2/T3/T4-with-Ancients) for
+  apples-to-apples comparison.
+- `tools/balanceSim/neutralBridge.js` — the one non-obvious piece. `battle.js`'s internal
+  `resolveBranch()` only knows about `FACTION_TROOPS` and `ANCIENT_FACTIONS` (Ancients already
+  resolve for free — `ancientTroops.js` deliberately wraps them as a capstone-shaped "faction" for
+  this exact reason). Neutral units don't have that wrapper yet (`neutralTroops.js` says outright
+  that `getNeutralSlotForBattle` is "purely additive — nothing in `simBattle` calls this yet").
+  Rather than add a third lookup branch inside `battle.js` (out of scope), this file mutates the
+  **in-memory** `FACTION_TROOPS` object at process start, adding a synthetic `"neutral"` key built
+  from `NEUTRAL_TROOPS`. Nothing on disk changes — only this tool's own process gets the extra key
+  — and `simBattle` resolves neutral units through its existing, un-touched generic code path.
+- `tools/balanceSim/commanderFactory.js` — builds an identical, minimal commander shell (fixed
+  atk 150/foc 0/spd 60/lvl 10, no class bonus, no hero skills, no gear) around each loadout's
+  troops, so any win-rate difference between two loadouts is attributable to the troop line, not
+  commander stats.
+- `tools/balanceSim/runner.js` — runs N **seeded** trials of loadout A (attacker) vs loadout B
+  (defender) through real `simBattle`, both sides sized to the same command-point budget via
+  `COMMAND_COST` (`troopsForBudget`) so a small-unit army and a large-unit army are budget-equal,
+  not troop-count-equal. Same Math.random-swap pattern `tests/battle.test.js`'s `seeded()` helper
+  already uses, just parameterized per trial so a whole run is a deterministic sequence — **no
+  live randomness anywhere**, a failing balance test reproduces exactly every time.
+- `tools/balanceSim/matrix.js` — the coverage matrix: every ordered same-tier-bracket pair (full
+  round robin), every loadout mirrored against itself, and T1→T2→T3→T4 cross-tier spot-checks
+  (informational only). Also computes two outlier signals:
+  - **Matchup outlier**: any same-tier, same-budget pairing where the attacker's win rate is
+    >70% or <30%.
+  - **Efficiency outlier**: per-unit score = (win rate, averaged across every same-tier opponent)
+    × (1 − avg troops lost, counted only on trials it actually won) — "how much you get for your
+    command-cost budget, pound for pound." Flagged when a unit's score is >2 std devs from its own
+    tier bracket's mean. This is a documented design choice, not a given formula — the brief's
+    "troops needed to win per unit of command-cost budget" admits a few reasonable readings; this
+    is the one implemented and it's spelled out in `matrix.js`'s header comment.
+- `tools/balanceSim/report.js` + `cli.js` — `npm run balance-report` runs the full matrix
+  (default 60 seeded trials/matchup, ~18s) and writes `tools/balanceSim/reports/report.json` +
+  `report.md`.
+- `tests/balance/coverage.test.js` — sanity tests on the TOOLING itself (catalog completeness,
+  budget normalization, trial reproducibility) — not a balance gate.
+- `tests/balance/outliers.test.js` — **the actual "no unit is overpowered" gate**, run via
+  `npm run test:balance` (a new script, kept separate from `npm test`/`tests/*.test.js` — see
+  "Threshold/gate decisions" below for why). Asserts (a) zero efficiency outliers and (b) no unit
+  has a 0% win rate against every single same-tier opponent ("dead unit" check). Uses 40 trials
+  (vs. the CLI's 60) to stay fast; still fully seeded/deterministic.
+
+**Threshold/gate decisions (why `npm test` wasn't touched):** a full matrix run at 60 trials shows
+same-tier 1-branch-vs-1-branch matchups clear the 70%/30% win-rate bar **~93% of the time**
+(2401/2592), and even a much stricter ≥97%/≤3% "total blowout" bar still clears ~77% of them.
+That's a real property of this combat system at these troop counts (large populations flatten
+per-trial RNG, so small stat differences compound into near-deterministic outcomes) — not a bug in
+the harness — but it makes the raw win-rate bar non-discriminating as a pass/fail gate: asserting
+zero matchup outliers would (almost) always fail regardless of what changes. So `matchupOutliers`
+is reported (JSON + Markdown, top-25 most lopsided) but NOT gated on; the efficiency-outlier metric
+(aggregated per unit across its whole tier, not one specific counter-pick) is the actual gate, and
+it does discriminate — only 4 of 99 units flag today. `npm run test:balance` is a separate script
+from `npm test` for the same reason `npm test` itself was left untouched: the existing 275-test
+suite still passes clean and shouldn't start failing because of a real, pre-existing balance issue
+in data this change isn't allowed to touch.
+
+**Already flagged (current data, 40-trial seeded run — reproduce with `npm run test:balance` or
+`npm run balance-report`):**
+- **Efficiency outliers** — `neutral/feral_bloodfang` (T2, 3.7σ above its tier mean),
+  `dragons/dragonkin T3` (2.8σ above), `neutral/rogue_battlemage` (T3, 3.3σ above),
+  `dragons/sovereign_wyrm` (T4 capstone, 2.8σ above). All four are OVER-performing outliers, not
+  under.
+- **Dead units** — `coldborns/raiders T1` and `coldborns/frost_giants T1` won 0 of 40 trials
+  against every single other T1 opponent tested. Worth a look — both are coldborns branches.
+- Full matchup-level detail (all 2401 flagged pairs, not just the above) is in
+  `tools/balanceSim/reports/report.md` after running `npm run balance-report`.
+
+**Tests:** `npm test` — 275 pass, 0 fail (fresh `npm install` was needed first; `node_modules` was
+absent, unrelated to this change — 3 of the 275 need `esbuild`, present once installed).
+`npm run build` — clean, 576 modules, no new warnings. `npm run test:balance` — 5 pass, 2 fail
+**by design** (the findings above); this is the gate doing its job on genuinely pre-existing data,
+not a bug introduced here.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Chat: DM/group picker's Cancel/Start buttons were unreachable
 
 Owner feedback: could select players for a DM or group but had no way to confirm — the buttons were there in the code (`confirmPicker`, wired since the picker was first built) but lived inside the SAME scrollable div as the player-row checkboxes, at the bottom. Combined with the touch-scroll bug fixed directly below (this picker div had neither `.scr` nor `.chat-scroll` originally), a long player list or a short viewport made them functionally unreachable.
