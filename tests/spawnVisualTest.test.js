@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {isInSpawnVisualArea,sameTerritory,resourceLayout,resourceFootprint} from '../src/utils/spawnVisualTest.js';
+import {isInSpawnVisualArea,sameTerritory,resourceLayout,resourceFootprint,isInHqClearance} from '../src/utils/spawnVisualTest.js';
 
 test('visual test follows the random player HQ with a 25 tile radius',()=>{
   assert.equal(isInSpawnVisualArea(125,225,'100,200'),true);
@@ -37,4 +37,16 @@ test('resource roots and selection use the same centre for single and 2x2 tiles'
   assert.equal(big.halfWidth,small.halfWidth*2);
   assert.equal(big.halfHeight,small.halfHeight*2);
   assert.equal(big.y-small.y,26.5);
+});
+
+test('HQ clearance reserves one ring outside its 3x3 footprint',()=>{
+  const tiles={};
+  for(let r=9;r<=11;r++) for(let c=9;c<=11;c++) {
+    tiles[`${c},${r}`]={isHQ:c===10&&r===10,isHQPart:!(c===10&&r===10)};
+  }
+  assert.equal(isInHqClearance(8,10,tiles),true);
+  assert.equal(isInHqClearance(12,10,tiles),true);
+  assert.equal(isInHqClearance(10,8,tiles),true);
+  assert.equal(isInHqClearance(10,12,tiles),true);
+  assert.equal(isInHqClearance(7,10,tiles),false);
 });

@@ -10,6 +10,18 @@ Branch: codex/core-fixes-20260919
 
 ## 2026-09-20 — Codex
 
+### Hotfix: restore HQ sprites and protect the base boundary
+- Removed the HQ pixel filter introduced in the previous graphics pass. On the phone it rendered the faction base invisible and exposed a black commander marker beneath it.
+- Kept the approved thin, muted ownership border and subtle contact shading. Original faction HQ sprites render directly again.
+- Added a one-tile clear ring outside every 3×3 HQ footprint inside the graphics test: resource props in that ring are hidden so tall art cannot cross the base boundary.
+- Selection outlines for tiles in the clear ring shrink inward so they do not touch or cross the HQ outline.
+- No tiles, resources, rates, ownership or selection behavior changed; this is rendering only.
+- Validation: 113 tests and production build pass.
+
+---
+
+## 2026-09-20 — Codex
+
 ### Map polish: ground selection, P10+ placement, existing faction HQs
 - Reviewed all five user screenshots (IMG_8524–8528).
 - Selection layer now sits below resource sprites, forts and HQs, so outlines no longer cut across trees/rocks. Selection strokes are thinner and slightly warmer.
