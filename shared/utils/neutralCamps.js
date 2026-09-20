@@ -121,7 +121,7 @@ export function neutralUnitsForBand(band) {
   return NEUTRAL_TROOPS.filter(u => u.region === band);
 }
 
-// Returns [{ regionKey, regionName, band, campIndex, unit, template }]
+// Returns [{ regionKey, regionName, band, cx, cy, campIndex, unit, template }]
 export function planCampsForBand(band, { campsPerRegion = 30 } = {}) {
   const units = neutralUnitsForBand(band);
   if (!units.length) return [];
@@ -134,6 +134,7 @@ export function planCampsForBand(band, { campsPerRegion = 30 } = {}) {
         regionKey: region.key,
         regionName: region.name,
         band,
+        cx: region.cx, cy: region.cy, // search anchor for mapGen's findCampSlot
         campIndex: i,
         unit: unit.key,
         template: buildCampTemplate(unit),
@@ -180,6 +181,7 @@ export function planAncientZoneCamps({ campsPerZone = 20 } = {}) {
         regionKey: region.key,
         regionName: region.name,
         band: region.band,
+        cx: region.cx, cy: region.cy, // search anchor for mapGen's findCampSlot
         campIndex: i,
         unit: ancient.key,
         template: buildCampTemplate(ancient, { isAncient: true }),
