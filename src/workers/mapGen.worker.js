@@ -11,7 +11,7 @@
 // non-browser server), but a worker importing FROM shared/ is fine — same
 // direction every other shared/utils import in this codebase already goes.
 import { planAllCamps } from "../../shared/utils/neutralCamps.js";
-import { findCampSlot, occupyFootprint } from "../../shared/utils/campPlacement.js";
+import { findCampSlot, occupyFootprint, regionCandidates, spreadPoints } from "../../shared/utils/campPlacement.js";
 
 const COLS = 1845, ROWS = 1305;
 const SIZE = COLS * ROWS;
@@ -1845,9 +1845,34 @@ self.onmessage = function(e) {
     for (const k of KEEP_FOOTPRINT_SET) campOccupied.add(k);
     const campPlan = planAllCamps({ campsPerRegion: 30, campsPerZone: 20 });
 
+    // Spread each region's camps evenly across the region (not around its keep):
+    // pick one well-separated anchor per camp, then let findCampSlot nudge it to a
+    // free footprint. Anchors avoid the keep at the region centre and stay off
+    // region borders (see regionCandidates/spreadPoints in campPlacement.js).
+    const entriesByRegion = new Map();
+    for (const e of campPlan) {
+      if (!entriesByRegion.has(e.regionKey)) entriesByRegion.set(e.regionKey, []);
+      entriesByRegion.get(e.regionKey).push(e);
+    }
+    const regionAt = (c, r) => regionArr[r*COLS + c];
+    for (const [regKey, entries] of entriesByRegion) {
+      const regionIdx = REGION_KEY_TO_IDX[regKey];
+      if (!regionIdx) continue;
+      const { cx, cy } = entries[0];
+      const cands = regionCandidates({ regionIdx, regionAt, isBlocked: isCampBlocked, cx, cy, cols: COLS, rows: ROWS });
+      const pts = spreadPoints(cands, entries.length, [[cx, cy]]);
+      entries.forEach((e, i) => { if (pts[i]) { e.ax = pts[i][0]; e.ay = pts[i][1]; } });
+    }
+
     for (const entry of campPlan) {
       const { w, h } = entry.template.footprint;
-      const slot = findCampSlot({
+      // Prefer the spread anchor (small search); fall back to the region centre.
+      let slot = entry.ax != null ? findCampSlot({
+        occupied: campOccupied, cx: entry.ax, cy: entry.ay,
+        w, h, cols: COLS, rows: ROWS, maxRadius: 12,
+        isBlocked: isCampBlocked,
+      }) : null;
+      if (!slot) slot = findCampSlot({
         occupied: campOccupied, cx: entry.cx, cy: entry.cy,
         w, h, cols: COLS, rows: ROWS, maxRadius: 80,
         isBlocked: isCampBlocked,
