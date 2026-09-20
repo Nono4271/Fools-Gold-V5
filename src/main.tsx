@@ -26,4 +26,9 @@ document.addEventListener(
   { passive: false }
 );
 
-createRoot(document.getElementById("root")!).render(<App />);
+if (new URLSearchParams(window.location.search).get("demo3d") === "1") {
+  document.title = "Fool's Gold — 3D Map Test";
+  void import("./three-demo.js");
+} else {
+  createRoot(document.getElementById("root")!).render(<App />);
+}
