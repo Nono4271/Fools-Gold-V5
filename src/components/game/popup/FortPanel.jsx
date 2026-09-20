@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, useRef } from "react";
 import { FORT_LEVELS } from "../../../../shared/constants/map.js";
+import { secsUntil } from "../../../../shared/utils/tileTimers.js";
 
 export default memo(function FortPanel({
   fort, selTile, selKey, cmds,
@@ -9,30 +10,47 @@ export default memo(function FortPanel({
   const [countdown, setCountdown]   = useState(0);
   const timerRef = useRef(null);
 
+  // Absolute deadline (ms) rather than a per-firing decrement, so a throttled
+  // or backgrounded tab still finishes on time; re-checked on foreground.
+  const deadlineRef = useRef(0);
+  const firedRef = useRef(false);
+
+  function stopTimer() {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+    document.removeEventListener("visibilitychange", onVisibleRef.current);
+  }
+  const onVisibleRef = useRef(() => {});
+
   function startDelete(mode) {
     const secs = mode === "demolish" ? 30 * 60 : 45 * 60;
+    stopTimer();
+    deadlineRef.current = Date.now() + secs * 1000;
+    firedRef.current = false;
     setDeleteMode(mode);
     setCountdown(secs);
-    timerRef.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current);
-          if (mode === "demolish") demolishFort?.(fort.id);
-          else abandonFort?.(fort.id);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const tick = () => {
+      if (firedRef.current) return;
+      const left = secsUntil(deadlineRef.current, Date.now());
+      setCountdown(left);
+      if (left > 0) return;
+      firedRef.current = true;
+      stopTimer();
+      if (mode === "demolish") demolishFort?.(fort.id);
+      else abandonFort?.(fort.id);
+    };
+    onVisibleRef.current = () => { if (document.visibilityState === "visible") tick(); };
+    timerRef.current = setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", onVisibleRef.current);
   }
 
   function cancelDelete() {
-    clearInterval(timerRef.current);
+    stopTimer();
     setDeleteMode(null);
     setCountdown(0);
   }
 
-  useEffect(() => () => clearInterval(timerRef.current), []);
+  useEffect(() => () => stopTimer(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fmtCountdown = (s) => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
   if (!fort) return null;
