@@ -17,6 +17,7 @@ import WizardsTomes, { ScrollStackIcon } from "./components/game/WizardsTomes.js
 import GameBar from "./components/game/GameBar.jsx";
 import Leaderboard from "./components/game/Leaderboard.jsx";
 import CrewPanel from "./components/game/CrewPanel.jsx";
+import ChatPanel from "./components/game/ChatPanel.jsx";
 import CommanderScreen from "./components/screens/CommanderScreen.jsx";
 import BagScreen from "./components/screens/BagScreen.jsx";
 import { PerfOverlay } from "./utils/perfLog.jsx";
@@ -26,6 +27,9 @@ export default function GameView(props) {
     ZOOM_LEVELS, abandonFort, startFortRemoval, cancelFortRemoval, aiFaction, aiHqKeys, aiHqKeysRef, aiLastActionRef,
     aiPlayerIdMapRef, assignTroops, atkKey, autoHeal, bLog, barracksPool, battles, bldgs,
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
+    chatChannels, chatKnownPlayerIds, chatOpen, chatProfanityFilterEnabled,
+    getChatMessages, sendChatMessage, setChatOpen, setChatProfanityFilterEnabled,
+    startChatDm, startChatGroup,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, crews, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
@@ -549,6 +553,7 @@ export default function GameView(props) {
         mapRendererRef={mapRendererRef}
         voidTapReady={voidTapReady}
         crewOpen={crewOpen} setCrewOpen={setCrewOpen} playerCrewId={playerCrewId}
+        chatOpen={chatOpen} setChatOpen={setChatOpen}
         searchOpen={searchOpen} setSearchOpen={setSearchOpen}
         forts={forts}
         spawns={spawns}
@@ -587,6 +592,23 @@ export default function GameView(props) {
             ));
             setPlayerCrewId(null); setPendingCrewId(null);
           }}
+        />
+      )}
+
+      {chatOpen && (
+        <ChatPanel
+          onClose={() => setChatOpen(false)}
+          playerId="player"
+          playerName={facName}
+          channels={chatChannels}
+          sendMessage={sendChatMessage}
+          startDm={startChatDm}
+          startGroup={startChatGroup}
+          getMessages={getChatMessages}
+          knownPlayerIds={chatKnownPlayerIds}
+          crews={crews}
+          profanityFilterEnabled={chatProfanityFilterEnabled}
+          setProfanityFilterEnabled={setChatProfanityFilterEnabled}
         />
       )}
 

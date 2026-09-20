@@ -37,6 +37,7 @@ import { useConsumables } from "./hooks/useConsumables.js";
 import { useTileTimers } from "./hooks/useTileTimers.js";
 import { useTacticTicks } from "./hooks/useTacticTicks.js";
 import { useAiCrews } from "./hooks/useAiCrews.js";
+import { useChat } from "./hooks/useChat.js";
 import { useReinforcements } from "./hooks/useReinforcements.js";
 import { useTactics } from "./hooks/useTactics.js";
 import { useMapInit } from "./hooks/useMapInit.js";
@@ -176,6 +177,7 @@ export default function RiseToWar() {
   const {rss,setRss,troopCounts,setTroopCounts,trainingQueues,setTrainingQueues,healQueue,setHealQueue,woundedTroops,setWounded,addWounded,autoHeal,setAutoHeal,dispatch:dispatchArmy} = useArmyEconomy();
   const [gems,   setGems]    = useState(20000);
   const [crewOpen,      setCrewOpen]      = useState(false);
+  const [chatOpen,      setChatOpen]      = useState(false);
   const [searchOpen,    setSearchOpen]    = useState(false);
   const [playerCrewId,  setPlayerCrewId]  = useState(null);
   const [pendingCrewId, setPendingCrewId] = useState(null);
@@ -725,6 +727,19 @@ export default function RiseToWar() {
 
   // ── AI crew ticker — rules in shared/utils/aiCrews.js ──
   useAiCrews({ screen, mapReady, setCrews, aiPlayerIdMapRef, aiFoundersRef, aiGemsRef });
+
+  // ── Chat — World/Faction/Crew/DM/Group; rules in shared/utils/chatRules.js
+  // + shared/utils/aiChatter.js. Local-only (see useChat.js), not yet persisted.
+  const chatKnownPlayerIds = useMemo(() => [...aiPlayerIdMapRef.current.values()], [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  const {
+    channels: chatChannels, sendMessage: sendChatMessage, startDm: startChatDm,
+    startGroup: startChatGroup, getMessages: getChatMessages,
+    profanityFilterEnabled: chatProfanityFilterEnabled,
+    setProfanityFilterEnabled: setChatProfanityFilterEnabled,
+  } = useChat({
+    screen, playerId: "player", playerName: facName, playerFacKey: facKey,
+    crews, aiPlayerIds: chatKnownPlayerIds,
+  });
 
   // ── Server sync — authoritative tile state ──
   const { emitTileCapture, emitTileSiege, emitFortUpdate, connected: serverConnected } = useServerSync({
@@ -1420,6 +1435,7 @@ export default function RiseToWar() {
     ZOOM_LEVELS, abandonFort, startFortRemoval, cancelFortRemoval, aiFaction, aiHqKeys, aiHqKeysRef, aiLastActionRef,
     aiPlayerIdMapRef, assignTroops, atkKey, autoHeal, bLog, barracksPool, battles, bldgs,
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
+    chatChannels, chatKnownPlayerIds, chatOpen, chatProfanityFilterEnabled,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, crews, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
@@ -1429,14 +1445,16 @@ export default function RiseToWar() {
     leaderboardOpen, loadLabel, loadPct, longMarchReady, mapReady, mapRendererRef,
     marchingToSel, minimapRedrawRef, mode, mvCmd, mysticOrbs, mysticOrbsCap, nowTick,
     onEnterHQ, onExpedience, onGather, onLongMarch, onPanChange, onQuickGather, onQuickMarch,
-    onRecon, onSweep, onTileClick, pKeys, panRef, panelOpen, pendingCrewId, performRelocation,
+    getChatMessages, onRecon, onSweep, onTileClick, pKeys, panRef, panelOpen, pendingCrewId, performRelocation,
     pickCmd, playerAlignment, playerCrewId, playerEntries, playerHqKey, popupMode, powerPerHr,
     powerPool, protectedTiles, quarterLevels, queueHealing, queueTraining, quickMarchReady,
     recallMarch, recallPopup, recallStationary, recallToFort, recallToHQ, reinCmd, reinMarches,
     reinMarchesRef, respectSchematics, returnTroops, rss, searchOpen, selKey, selTile,
-    serverConnected, setAiBarracksPool, setAiBldgs, setAiHqKeys, setAiRss, setArmySlots,
-    setAtkKey, setAutoHeal, setBLog, setBarracks, setBattles, setBldgs, setCmdScreenOpen,
+    sendChatMessage, serverConnected, setAiBarracksPool, setAiBldgs, setAiHqKeys, setAiRss, setArmySlots,
+    setAtkKey, setAutoHeal, setBLog, setBarracks, setBattles, setBldgs, setChatOpen,
+    setChatProfanityFilterEnabled, setCmdScreenOpen,
     setCmdScreenUid, setCmds, setCrewOpen, setCrews, setDeletingSecsLeft, setDeletingTiles,
+    startChatDm, startChatGroup,
     setEditArmyCmd, setGearInventory, setGearScreenOpen, setGems, setHealQueue, setHqOpen,
     setHqTab, setLeaderboardOpen, setMode, setMvCmd, setMysticOrbs, setPendingCrewId, setPick,
     setPlayerCrewId, setPlayerHqKey, setPopupMode, setPopupPos, setPowerPool, setQuarterLevels,
