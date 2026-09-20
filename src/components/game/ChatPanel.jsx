@@ -1,5 +1,6 @@
-import { useState, useMemo, memo } from "react";
+import { useState, useMemo, useRef, useEffect, memo } from "react";
 import { aiDisplayName } from "../../../shared/utils/aiChatter.js";
+import { censorText } from "../../../shared/utils/profanity.js";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    ChatPanel — World / Faction / Crew / DM / Group chat
@@ -83,6 +84,15 @@ export default memo(function ChatPanel({
 
   const otherKnownIds = knownPlayerIds.filter(id => id !== playerId);
 
+  // Auto-scroll to the newest message on load, channel switch, or new arrival.
+  // Messages themselves are stored uncensored (see useChat.js) — the filter
+  // only affects display, so toggling it re-reveals prior messages too.
+  const msgListRef = useRef(null);
+  useEffect(() => {
+    const el = msgListRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [msgs.length, active?.id]);
+
   function openChannel(id) { setSelected(id); }
 
   function handleSend() {
@@ -161,7 +171,7 @@ export default memo(function ChatPanel({
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         {/* Channel list */}
         <div className="scr" style={{
-          width: 128, flexShrink: 0, overflowY: "auto", borderRight: `1px solid ${BORDER_COL}`,
+          width: 128, flexShrink: 0, minHeight: 0, overflowY: "auto", borderRight: `1px solid ${BORDER_COL}`,
           padding: 6, display: "flex", flexDirection: "column", gap: 4,
         }}>
           {(category === "dm" || category === "group") && (
@@ -188,7 +198,7 @@ export default memo(function ChatPanel({
         </div>
 
         {/* Message view / picker */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
           {picking ? (
             <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ ...TEXT_SM, color: GOLD }}>
@@ -240,7 +250,7 @@ export default memo(function ChatPanel({
             </div>
           ) : (
             <>
-              <div className="scr" style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+              <div ref={msgListRef} className="scr" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
                 {msgs.length === 0 && (
                   <div style={{ ...TEXT_XS, color: "#3a4050", textAlign: "center", padding: "20px 0" }}>
                     No messages yet.
@@ -248,6 +258,7 @@ export default memo(function ChatPanel({
                 )}
                 {msgs.map(m => {
                   const mine = m.senderId === playerId;
+                  const text = profanityFilterEnabled ? censorText(m.text) : m.text;
                   return (
                     <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
                       <div style={{ ...TEXT_XS, color: mine ? "#40cc80" : "#6a8aa0", marginBottom: 2 }}>
@@ -259,7 +270,7 @@ export default memo(function ChatPanel({
                         border: `1px solid ${mine ? "#40aa6040" : "#1e2028"}`,
                         color: "#c8c0b0", fontSize: 10.5, fontFamily: "'Crimson Pro',serif", lineHeight: 1.4,
                         wordBreak: "break-word",
-                      }}>{m.text}</div>
+                      }}>{text}</div>
                     </div>
                   );
                 })}
