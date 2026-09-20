@@ -10,6 +10,23 @@ Branch: codex/core-fixes-20260919
 
 # CURRENT AUDIT AND ROADMAP — READ THIS FIRST
 
+## 2026-09-20 — Separate 3D demo polish v2
+
+- Updated only demo visuals/controls plus an early touch-handler exemption in
+  `src/main.tsx` for `?demo3d=1`. Normal game rules/rendering are unchanged.
+- Pirate fort now has masonry, courtyard walls, battlements, gate, windows,
+  barrels and animated flag. Added terrain shading, irregular conifers,
+  commander boots/belt, joined sample territory border and camera-angle button.
+- HQ exclusion now matches its 3x3 footprint; no extra empty resource ring.
+- Replaced tile picking with ground-plane coordinate selection and unified
+  pointer handling (tap, pan, pinch, cancel). Initial valid destination enables
+  March immediately. Active destination is frozen until arrival; speed is constant.
+- Batched repeated static props to reduce drawing overhead; route meshes are
+  disposed when replaced. Still procedural preview art, not final assets.
+- Validation: production build and Node scene/input/march checks passed using
+  actual Three.js geometry with mocked renderer. Chromium download timed out;
+  GPU rendering and iPhone visuals/performance require owner playtest.
+
 ## Separate 3D camera feasibility demo
 
 A standalone `/three-demo.html` test page was added to evaluate a true 3D map
