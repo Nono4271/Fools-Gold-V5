@@ -77,3 +77,61 @@ export function findCampSlot({ occupied, cx, cy, w, h, cols, rows, maxRadius = 6
 export function occupyFootprint(occupied, c, r, w, h) {
   for (const [fc, fr] of footprintCells(c, r, w, h)) occupied.add(cellKey(fc, fr));
 }
+
+// ── Spreading camps across a whole region ─────────────────────────────────────
+// findCampSlot only searches outward from ONE anchor, so giving every camp of a
+// region the region-centre anchor packs them all around the keep. These two pure
+// helpers pick evenly spread anchors instead: regionCandidates() lists the usable
+// points inside a region (kept away from its borders), spreadPoints() picks n of
+// them as far apart from each other (and from the `avoid` points, e.g. the keep)
+// as possible. Both are deterministic.
+
+// Candidate anchor points inside one region, on a coarse grid.
+//   regionAt(c, r)  -> region index of that tile (or undefined out of bounds)
+//   isBlocked(c, r) -> true for water/roads/structures etc.
+// A point qualifies when it is in `regionIdx`, not blocked, and the four points
+// `margin` tiles away in each cardinal direction are in the same region (or off
+// the map), so camps don't hug the border between two regions.
+export function regionCandidates({ regionIdx, regionAt, isBlocked, cx, cy, radius = 260, step = 4, margin = 10, cols, rows }) {
+  const out = [];
+  const inRegion = (c, r) => c < 0 || r < 0 || c >= cols || r >= rows || regionAt(c, r) === regionIdx;
+  const c0 = Math.max(0, cx - radius), c1 = Math.min(cols - 1, cx + radius);
+  const r0 = Math.max(0, cy - radius), r1 = Math.min(rows - 1, cy + radius);
+  for (let r = r0; r <= r1; r += step) {
+    for (let c = c0; c <= c1; c += step) {
+      if (regionAt(c, r) !== regionIdx) continue;
+      if (isBlocked && isBlocked(c, r)) continue;
+      if (!inRegion(c - margin, r) || !inRegion(c + margin, r) || !inRegion(c, r - margin) || !inRegion(c, r + margin)) continue;
+      out.push([c, r]);
+    }
+  }
+  return out;
+}
+
+// Farthest-point sampling: returns up to n points from `candidates` ([c, r]),
+// each chosen to be as far as possible from every point already chosen and from
+// every point in `avoid`. Ties go to the earliest candidate (deterministic).
+export function spreadPoints(candidates, n, avoid = []) {
+  const count = Math.min(n, candidates.length);
+  const minD = new Float64Array(candidates.length).fill(Infinity);
+  const upd = (px, py) => {
+    for (let i = 0; i < candidates.length; i++) {
+      const d = (candidates[i][0] - px) ** 2 + (candidates[i][1] - py) ** 2;
+      if (d < minD[i]) minD[i] = d;
+    }
+  };
+  for (const [ax, ay] of avoid) upd(ax, ay);
+  const picked = [];
+  const used = new Uint8Array(candidates.length);
+  for (let k = 0; k < count; k++) {
+    let best = -1, bestD = -1;
+    for (let i = 0; i < candidates.length; i++) {
+      if (!used[i] && minD[i] > bestD) { bestD = minD[i]; best = i; }
+    }
+    if (best < 0) break;
+    used[best] = 1;
+    picked.push(candidates[best]);
+    upd(candidates[best][0], candidates[best][1]);
+  }
+  return picked;
+}
