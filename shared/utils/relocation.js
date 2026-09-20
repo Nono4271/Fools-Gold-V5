@@ -122,3 +122,52 @@ function shuffle(arr) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
 }
+
+// ── Planned / forced relocation rules (moved from Game.jsx) ──────────────────
+export const RELOCATION_COOLDOWN_MS = 72 * 60 * 60 * 1000;
+
+export function allHqKeyList(aiHqKeys, playerHqKey) {
+  return Object.values(aiHqKeys || {}).flat().concat(playerHqKey ? [playerHqKey] : []);
+}
+
+// Checks run in the order the player sees them. Returns {ok:true} or {ok:false, reason}.
+export function checkPlannedRelocation({ centerKey, tiles, aiHqKeys, playerHqKey, lastRelocateAt, cmds, consumables, now }) {
+  const pad = validateRelocationPad(centerKey, tiles, allHqKeyList(aiHqKeys, playerHqKey), playerHqKey);
+  if (!pad.valid) return { ok: false, reason: `⚠ ${pad.reason}` };
+  if (lastRelocateAt && now - lastRelocateAt < RELOCATION_COOLDOWN_MS) {
+    const hoursLeft = Math.ceil((RELOCATION_COOLDOWN_MS - (now - lastRelocateAt)) / 3_600_000);
+    return { ok: false, reason: `⏳ Cannot relocate for ${hoursLeft}h` };
+  }
+  if (cmds.some(c => c.owner === "player" && c.march)) return { ok: false, reason: "⚠ Recall all commanders before relocating" };
+  const token = consumables.find(c => c.typeId === "relocation");
+  if (!token || token.quantity <= 0) return { ok: false, reason: "⚠ No Relocation Tokens" };
+  return { ok: true };
+}
+
+// Tile patches for moving the player HQ: old 3x3 reverts to neutral plain, new 3x3 is stamped.
+export function hqMovePatches(oldCenterKey, newCenterKey, tiles, facKey) {
+  const [nc, nr] = newCenterKey.split(",").map(Number);
+  const newKeys = new Set(hq3x3Keys(nc, nr));
+  const patches = [];
+  if (oldCenterKey) {
+    const [oc, or_] = oldCenterKey.split(",").map(Number);
+    for (const k of hq3x3Keys(oc, or_)) {
+      if (newKeys.has(k)) continue;
+      patches.push([k, {
+        isHQ: false, isHQPart: false, owner: null, faction: null,
+        garrison: 0, garrisonTroops: 0, siege: 50, siegeMax: 50,
+        defeatedWaves: [], resetAt: null, defCmd: null, hasAiCommander: false,
+      }]);
+    }
+  }
+  for (const k of newKeys) {
+    const isCenter = k === newCenterKey;
+    const existing = tiles[k];
+    patches.push([k, {
+      isHQ: isCenter, isHQPart: !isCenter, owner: "player", faction: facKey, garrison: 0,
+      siege: existing?.siegeMax ?? 300, siegeMax: existing?.siegeMax ?? 300,
+      defeatedWaves: [], resetAt: null, defCmd: null, hasAiCommander: false,
+    }]);
+  }
+  return patches;
+}
