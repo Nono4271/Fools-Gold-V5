@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RELOCATION_COOLDOWN_MS, allHqKeyList, checkPlannedRelocation, hqMovePatches} from '../shared/utils/relocation.js';
-import {consumeOne, restoreOne, speedUpBuildings, expediteBuilding, extendRssBoost, withRssBoosts, RSS_BOOST_BONUS} from '../shared/utils/consumables.js';
+import {consumeOne, restoreOne, speedUpBuildings, speedUpRecall, expediteBuilding, extendRssBoost, withRssBoosts, RSS_BOOST_BONUS} from '../shared/utils/consumables.js';
 import {TILE_PROTECTION_MS, TILE_DELETE_MS, pruneProtections, deletionStatus, abandonedTilePatch} from '../shared/utils/tileTimers.js';
 
 // ── Relocation ──
@@ -60,6 +60,20 @@ test('building speedups and expedience', () => {
   assert.equal(expediteBuilding(far, 'hq', 0), far);
   assert.equal(expediteBuilding({hq:{endsAt:60_000}}, 'hq', 0).hq.endsAt, 0);
   assert.equal(expediteBuilding({}, 'hq', 0).hq, undefined);
+});
+
+test('recall speedup only shifts player commanders marching home, not AI, other march types, training or forts', () => {
+  const cmds = [
+    {uid:'p1', owner:'player', march:{type:'recall', lastStepTime:10_000}},
+    {uid:'p2', owner:'player', march:{type:'move', lastStepTime:10_000}}, // not a recall
+    {uid:'p3', owner:'player', march:null},
+    {uid:'a1', owner:'ai', march:{type:'recall', lastStepTime:10_000}}, // AI excluded
+  ];
+  const next = speedUpRecall(cmds, 4_000);
+  assert.equal(next.find(c => c.uid === 'p1').march.lastStepTime, 6_000);
+  assert.equal(next.find(c => c.uid === 'p2').march.lastStepTime, 10_000);
+  assert.equal(next.find(c => c.uid === 'p3').march, null);
+  assert.equal(next.find(c => c.uid === 'a1').march.lastStepTime, 10_000);
 });
 
 test('resource boosts start, extend and apply only while active', () => {
