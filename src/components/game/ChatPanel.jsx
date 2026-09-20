@@ -62,6 +62,7 @@ function PickerRow({ id, label, checked, onToggle }) {
 export default memo(function ChatPanel({
   onClose, playerId = "player", playerName, channels, sendMessage, startDm, startGroup,
   getMessages, knownPlayerIds = [], crews = [],
+  profanityFilterEnabled = true, setProfanityFilterEnabled,
 }) {
   const [category, setCategory]   = useState("world");
   const [selectedId, setSelected] = useState(null);
@@ -124,12 +125,25 @@ export default memo(function ChatPanel({
         <div style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 13, color: GOLD }}>
           💬 CHAT
         </div>
-        <button onClick={onClose} style={{
-          background: "none", border: "1px solid #2a2a2a", color: "#777",
-          fontSize: 16, minWidth: 36, minHeight: 36, display: "flex",
-          alignItems: "center", justifyContent: "center", cursor: "pointer",
-          touchAction: "manipulation", borderRadius: 4,
-        }}>✕</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            onClick={() => setProfanityFilterEnabled?.(v => !v)}
+            title={profanityFilterEnabled ? "Profanity filter: on" : "Profanity filter: off"}
+            style={{
+              ...BTN_RESET, minWidth: 36, minHeight: 36, borderRadius: 4,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: profanityFilterEnabled ? "rgba(40,160,80,.12)" : "rgba(255,255,255,.03)",
+              border: `1px solid ${profanityFilterEnabled ? "#40aa6050" : "#2a2a2a"}`,
+              color: profanityFilterEnabled ? "#40cc80" : "#777", fontSize: 15,
+            }}
+          >🛡</button>
+          <button onClick={onClose} style={{
+            background: "none", border: "1px solid #2a2a2a", color: "#777",
+            fontSize: 16, minWidth: 36, minHeight: 36, display: "flex",
+            alignItems: "center", justifyContent: "center", cursor: "pointer",
+            touchAction: "manipulation", borderRadius: 4,
+          }}>✕</button>
+        </div>
       </div>
 
       {/* Category tabs */}

@@ -565,6 +565,8 @@ export default memo(function GameBar({
   voidTapReady,
   // Crew props
   crewOpen, setCrewOpen, playerCrewId,
+  // Chat props
+  chatOpen, setChatOpen,
   searchOpen, setSearchOpen,
   // Fort props
   forts,
@@ -664,6 +666,13 @@ export default memo(function GameBar({
           gap: 10,
           pointerEvents: "auto",
         }}>
+          <ActionButton
+            icon="💬"
+            label="Chat"
+            color={chatOpen ? "#40cc80" : "#80aacc"}
+            accent={chatOpen ? "#1a4a30" : "#1a3a5c"}
+            onClick={() => setChatOpen(v => !v)}
+          />
           <ActionButton
             icon="🌀"
             label="Summon"
