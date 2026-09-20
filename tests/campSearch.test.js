@@ -43,3 +43,31 @@ test('findCamps handles empty selection, missing map, near-origin bounds, and th
   assert.equal(findCamps(tiles, 0, 0, new Set(['t3'])).length, 20);          // default limit
   assert.equal(findCamps(tiles, 0, 0, new Set(['t3']), { limit: 5 }).length, 5);
 });
+
+test('real generated map: every planned camp is placed and Find Camps sees them', async () => {
+  // End-to-end regression for "search shows no camps": run the real map generator,
+  // decode it the way useMapInit does, then search the resulting lazy tile map.
+  globalThis.self = globalThis;
+  let done = null;
+  globalThis.postMessage = (m) => { if (m.type === 'done') done = m; };
+  await import('../src/workers/mapGen.worker.js');
+  globalThis.self.onmessage({ data: { facKey: 'pirates' } });
+  assert.ok(done, 'map generation finished');
+
+  const { decodeBuffers, createTileMap } = await import('../shared/utils/worldTiles.js');
+  const { planAllCamps } = await import('../shared/utils/neutralCamps.js');
+  const { map } = createTileMap(decodeBuffers(done.buffers), done.meta);
+
+  const plan = planAllCamps({ campsPerRegion: 30, campsPerZone: 20 });
+  const placed = Object.keys(done.meta.campMeta);
+  assert.equal(placed.length, plan.length, 'no planned camp was skipped');
+  assert.ok(placed.every(k => /^\d+,\d+$/.test(k)), 'camp keys are real coordinates');
+
+  const all = new Set(['t1', 't2', 't3', 'ancient']);
+  const [c0, r0] = placed[0].split(',').map(Number);
+  const near = findCamps(map, c0, r0, all);
+  assert.ok(near.length > 0, 'search finds camps around a placed camp');
+  assert.ok(near.every(x => map[x.key].isCamp && x.name.endsWith('Camp')));
+  // Ancient camps live in the gate zones (Finalhope is anchored at 769,761).
+  assert.ok(findCamps(map, 769, 761, new Set(['ancient']), { radius: 300 }).length > 0);
+});

@@ -134,3 +134,14 @@ test('planAllCamps combines neutral + Ancient plans', () => {
   assert.ok(plan.some(p => p.template.isAncient));
   assert.ok(plan.some(p => !p.template.isAncient));
 });
+
+test('every planned camp carries a finite in-bounds anchor (cx, cy) for mapGen placement', () => {
+  // Regression: entries without cx/cy made findCampSlot return {c: undefined, r: undefined},
+  // so no camp was ever stamped onto the map.
+  const plan = planAllCamps({ campsPerRegion: 30, campsPerZone: 20 });
+  assert.ok(plan.length > 0);
+  for (const e of plan) {
+    assert.ok(Number.isInteger(e.cx) && e.cx >= 0 && e.cx < 1845, `${e.regionKey} cx`);
+    assert.ok(Number.isInteger(e.cy) && e.cy >= 0 && e.cy < 1305, `${e.regionKey} cy`);
+  }
+});
