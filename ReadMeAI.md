@@ -8,6 +8,18 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Bug fix: camps were never placed on the map (Camps search showed "none in range")
+
+**Root cause (not a search bug):** the plan entries from `planAllCamps` (`shared/utils/neutralCamps.js`) had no `cx`/`cy`, but the camp pass in `mapGen.worker.js` reads `entry.cx`/`entry.cy` as the `findCampSlot` anchor. With `undefined` anchors `findCampSlot` returned `{c: undefined, r: undefined}` (every bounds/blocked check passes on NaN), so writes went to NaN typed-array indexes (silent no-ops) and `campMeta` got a single junk `"undefined,undefined"` entry. Result: 0 camp tiles on the map. Reproduced by running the real generator in Node before the fix.
+
+**Fix:** `planCampsForBand` and `planAncientZoneCamps` now add `cx: region.cx, cy: region.cy` to every entry (the region-center anchor mapGen searches outward from). After the fix, all 2150 planned camps place (0 skipped; 126 P7, 978 P9, 966 P11, 80 P13 primaries), every `campMeta` key is a real `"c,r"`, and Find Camps returns results from the real lazy tile map (incl. the 4 Ancient zones).
+
+**Tests:** `tests/neutralCamps.test.js` +1 (every plan entry has an in-bounds integer anchor); `tests/campSearch.test.js` +1 end-to-end (runs the real `mapGen.worker.js` in-process, decodes with `decodeBuffers`/`createTileMap`, asserts placed count == planned count, real coordinate keys, and that `findCamps` finds camps incl. Ancients). Suite: 241 pass; 3 fail = `esbuild`/`pixi.js` missing-package tests (no `node_modules` in sandbox).
+
+**Note:** the earlier "part 2/3" entries below say camps were wired into the live map, but the anchors were missing in the copy of `neutralCamps.js` this repo has, so that never actually worked until now. Not verified visually (no renderer here); camp art/rendering is still the open item noted in part 3.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Fort removal survives closing the popup + "Camps" tab in Search
 
 **1. Fort demolish/abandon timer now survives the popup.** Follow-up to the entry below: the countdown was accurate but still lived in `FortPanel` state, so closing the popup cancelled the demolition. Now the deadline is stored on the fort: `fort.removal = { mode, endsAt }`.
