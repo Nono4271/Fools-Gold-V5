@@ -3,6 +3,7 @@ import * as PIXI from "pixi.js";
 import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
 import {isInSpawnVisualArea, sameTerritory, resourceFootprint} from "./utils/spawnVisualTest.js";
+import {hqTerrainFilter, softenTerritoryColor} from "./utils/hqTerrainStyle.js";
 import {createResourceSpriteCache} from "./utils/resourceSprites.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
 
@@ -294,7 +295,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
               gfx.lineStyle(2, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
             }
           }
-          if (isSel) { gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
+          if (isSel) { gfx.lineStyle(1.5, 0xf0eedb, 0.92); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
           continue;
         }
 
@@ -484,7 +485,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
           gfx.beginFill(0x000000, 0.45); gfx.drawPolygon(TOP); gfx.endFill();
         }
         if (isSel) {
-          gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          gfx.lineStyle(1.5, 0xf0eedb, 0.92); gfx.drawPolygon(TOP); gfx.lineStyle(0);
         }
         continue;
       }
@@ -547,7 +548,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       }
 
       if (isSel) {
-        gfx.lineStyle(2.5, 0xffffff, 0.95); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+        gfx.lineStyle(1.5, 0xf0eedb, 0.92); gfx.drawPolygon(TOP); gfx.lineStyle(0);
       }
     }
   }
@@ -1412,6 +1413,7 @@ function removeFortSprite(tileKey, fortLayer) {
 
 function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids) {
   const [pc, pr] = tileKey.split(",").map(Number);
+  const blendWithTerrain = isInSpawnVisualArea(pc,pr,playerHqKey);
   // tileKey is the CENTER tile. Top-left of the 3×3 is one step back.
   const tlc = pc - 1, tlr = pr - 1;
   // Visual centre = middle tile of 3×3
@@ -1465,11 +1467,11 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   borderPath.push(isoXY(tlc + 2, tlr + 2).cx, isoXY(tlc + 2, tlr + 2).cy - elev + TH);
   borderPath.push(isoXY(tlc, tlr + 2).cx - TW/2, isoXY(tlc, tlr + 2).cy - elev + TH/2);
 
-  borderGfx.lineStyle(8, 0x000000, 0.8);
+  borderGfx.lineStyle(blendWithTerrain ? 2.6 : 8, 0x151b10, blendWithTerrain ? 0.30 : 0.8);
   borderGfx.drawPolygon(borderPath);
   borderGfx.lineStyle(0);
   
-  borderGfx.lineStyle(5, borderTint, 1.0);
+  borderGfx.lineStyle(blendWithTerrain ? 1.3 : 5, blendWithTerrain ? softenTerritoryColor(borderTint) : borderTint, blendWithTerrain ? 0.82 : 1.0);
   borderGfx.drawPolygon(borderPath);
   borderGfx.lineStyle(0);
   group.__borderPts = borderPath; // used by drawSelection and HIT_POLY
@@ -1508,6 +1510,17 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const spriteX = bx + off.xOff;
   const spriteY = sPt.cy - elev + TH * 0.60 + off.yOff;
 
+  if (blendWithTerrain) {
+    const shadow = new PIXI.Graphics();
+    const groundY = worldCY - 4 + TH / 2;
+    for (let i=3;i>=1;i--) {
+      shadow.beginFill(0x252b1c,0.035);
+      shadow.drawEllipse(bx,groundY+13,targetW*(0.43+i*0.02),TH*(0.54+i*0.05));
+      shadow.endFill();
+    }
+    group.addChild(shadow);
+  }
+
   const applySprite = (sp) => {
     sp.anchor.set(0.5, 0.905);
     sp.width  = targetW;
@@ -1515,6 +1528,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     sp.x = spriteX;
     sp.y = spriteY;
 
+    if (blendWithTerrain) sp.filters = [hqTerrainFilter(faction)];
     sp.rotation = 0;
     sp.skew.x   = 0;
     sp.skew.y   = 0;
@@ -1655,12 +1669,14 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     const owner      = tile.owner || null;
     const faction    = tile.faction || owner || null;
     const prev       = _hqStateCache.get(tileKey);
+    const [hqC,hqR] = tileKey.split(",").map(Number);
+    const blendWithTerrain = isInSpawnVisualArea(hqC,hqR,playerHqKey);
 
     const curPlayerName = owner === "player" ? playerName : null;
     const ownerPlayerId = aiPlayerIdMap?.get(tileKey) || tile.ownerPlayerId || null;
     const isAiOwned = owner === "ai" || (owner !== "player" && owner !== null);
     const isCrew = !!(isAiOwned && ownerPlayerId && crewPids?.has(ownerPlayerId));
-    if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName && prev.isCrew === isCrew) continue;
+    if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName && prev.isCrew === isCrew && prev.blendWithTerrain === blendWithTerrain) continue;
 
     for (let i = hqCont.children.length - 1; i >= 0; i--) {
       const child = hqCont.children[i];
@@ -1673,7 +1689,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
 
     const tileWithPid = ownerPlayerId && !tile.ownerPlayerId ? { ...tile, ownerPlayerId } : tile;
     hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids));
-    _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew });
+    _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew, blendWithTerrain });
 
     // Count tint changes for summary log
     if (isAiOwned && tile.faction === playerFacKey) {
@@ -1972,7 +1988,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const fortCont = new PIXI.Container();
     world.addChildAt(fortCont, world.children.indexOf(hqCont));
     fortContRef.current = fortCont;
-    const selGfx = new PIXI.Graphics(); world.addChild(selGfx);
+    // Selection belongs to the ground: trees, rocks, forts and bases occlude it.
+    const selGfx = new PIXI.Graphics();
+    world.addChildAt(selGfx, world.children.indexOf(propsGfx));
     const guardGfx = new PIXI.Graphics(); world.addChild(guardGfx); guardGfxRef.current = guardGfx;
     const protectGfx = new PIXI.Container(); world.addChild(protectGfx); protectGfxRef.current = protectGfx;
     const spawnGfx = new PIXI.Graphics(); world.addChild(spawnGfx); spawnGfxRef.current = spawnGfx;
@@ -1991,7 +2009,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const pl = tile.powerLevel ?? 0;
       if (pl >= 10 && tile.isKeep) {
         const MERGED = resourceFootprint(sc,sr,tile).points;
-        selGfx.lineStyle(3, 0xffffff, 0.95);
+        selGfx.lineStyle(1.6, 0xf0eedb, 0.92);
         selGfx.drawPolygon(MERGED);
         selGfx.lineStyle(0);
         return;
@@ -2007,7 +2025,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           cx,          cy - elev + TH * 3,       // S
           cx - TW*2.5, cy - elev + TH * 0.5,    // W
         ];
-        selGfx.lineStyle(3, 0xffffff, 0.95);
+        selGfx.lineStyle(1.6, 0xf0eedb, 0.92);
         selGfx.drawPolygon(KEEP5);
         selGfx.lineStyle(0);
         return;
@@ -2025,7 +2043,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           const nwX = Wx + (Nx - Wx) * t, nwY = Wy + (Ny - Wy) * t;
           // NE edge start (E side, 20% toward N)
           const neX = Ex + (Nx - Ex) * t, neY = Ey + (Ny - Ey) * t;
-          selGfx.lineStyle(2.5, 0xffffff, 0.9);
+          selGfx.lineStyle(1.5, 0xf0eedb, 0.92);
           selGfx.moveTo(nwX, nwY);
           selGfx.lineTo(Wx, Wy);
           selGfx.lineTo(Sx, Sy);
@@ -2047,14 +2065,14 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const hasFortOnTile = _fortsSetRef.current.has(key);
       if (hasFortOnTile) {
         // Fort tile: draw only bottom ~70% of diamond (W→S→E), sprite covers the top
-        selGfx.lineStyle(2.5, 0xffffff, 0.9);
+        selGfx.lineStyle(1.5, 0xf0eedb, 0.92);
         selGfx.moveTo(cx - TW/2, mid);   // W
         selGfx.lineTo(cx, sy2 + TH);     // S
         selGfx.lineTo(cx + TW/2, mid);   // E
         selGfx.lineStyle(0);
       } else {
         const TOP = [cx, sy2, cx+TW/2, mid, cx, sy2+TH, cx-TW/2, mid];
-        selGfx.lineStyle(2.5, 0xffffff, 0.9);
+        selGfx.lineStyle(1.5, 0xf0eedb, 0.92);
         selGfx.drawPolygon(TOP);
         selGfx.lineStyle(0);
       }
@@ -2332,7 +2350,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current, aiPlayerIdMapRef_.current);
+      }, PIXI, isPanning, playerName, playerHqKeyRef.current, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current, aiPlayerIdMapRef_.current);
     }
 
     function redrawAllHQs() {
@@ -2343,7 +2361,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKey, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current, aiPlayerIdMapRef_.current);
+      }, PIXI, isPanning, playerName, playerHqKeyRef.current, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current, aiPlayerIdMapRef_.current);
     }
 
     redrawRef.current = {

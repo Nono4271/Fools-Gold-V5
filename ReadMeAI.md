@@ -10,6 +10,19 @@ Branch: codex/core-fixes-20260919
 
 ## 2026-09-20 — Codex
 
+### Map polish: ground selection, P10+ placement, existing faction HQs
+- Reviewed all five user screenshots (IMG_8524–8528).
+- Selection layer now sits below resource sprites, forts and HQs, so outlines no longer cut across trees/rocks. Selection strokes are thinner and slightly warmer.
+- P10–P13 main clusters moved 12 world pixels toward the front of their unchanged 2×2 footprint; accompanying details adjusted to match. No selection/hit area or gameplay geometry enlarged.
+- Retained all eight original faction HQ sprites. In the 25-tile HQ visual-test area, a lightweight render filter warms the palette and blends pale lower sand skirts toward grass; Coldborn blue-white snow is exempt from the skirt treatment. Added subtle contact shading.
+- HQ ownership borders within the test area changed from thick black/neon strokes to thin, muted ownership colours. Existing relation colours, click areas and base positions are preserved.
+- HQ visual cache now accounts for the test-area boundary; HQ redraws read the current player HQ after relocation.
+- No replacement base art or source-image edits. Full phone visual/performance confirmation remains needed; automated tests/build and a source-scope check pass.
+
+---
+
+## 2026-09-20 — Codex
+
 ### Graphics revision: two resource families, centred props, continuous grass
 - P2–P9 use new simple tree/boulder/wheat/gas-vent assets; each resource grows from two objects at P2 to five at P9, with size changes between levels.
 - P10–P13 use the developed forest/quarry/farm/refinery designs, larger sizing and added resource details at successive levels.

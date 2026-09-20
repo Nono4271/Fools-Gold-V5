@@ -41,8 +41,8 @@ export function resourceLayout(powerLevel) {
   const pl = Math.max(2, Math.min(13, Number(powerLevel) || 2));
   if (pl >= 10) {
     const size = 104 + (pl - 10) * 7;
-    const details = [[-37,13],[35,15],[0,30]].slice(0,pl-10);
-    return [{family:'large',x:0,y:-3,width:size},
+    const details = [[-37,20],[35,22],[0,34]].slice(0,pl-10);
+    return [{family:'large',x:0,y:9,width:size},
       ...details.map(([x,y]) => ({family:'small',x,y,width:22}))];
   }
   // Add objects, not just pixels: P2 has two; P9 has five.
