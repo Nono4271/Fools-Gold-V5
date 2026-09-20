@@ -8,6 +8,16 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Camps now spread across each region instead of clustering at its keep
+
+**Problem (from an on-device screenshot):** every camp of a region used the region-centre as its `findCampSlot` anchor, so all 30-50 camps packed into the nearest free tiles around the keep. Measured on a generated map: median distance from the keep 4 tiles, max ~6, mean nearest-neighbour distance ~1 tile.
+
+**Fix:** `shared/utils/campPlacement.js` gets two pure, deterministic helpers: `regionCandidates` (grid of usable points inside a region, 4-tile step, kept 10 tiles off the region border, skipping blocked terrain/structures) and `spreadPoints` (farthest-point sampling: each pick is as far as possible from earlier picks and from the keep). `mapGen.worker.js` groups the plan by region (neutral + Ancient camps of the same region together, e.g. Finalhope = 50), picks one spread anchor per camp, and searches from that anchor with a small radius (12); if that fails it falls back to the old region-centre search (radius 80), so no camp is skipped. Still all 2150 camps placed. After: median distance from keep ~77 tiles, mean nearest-neighbour ~30 tiles (regions are ~205x145 tiles).
+
+**Tests:** `tests/campPlacement.test.js` +3 (spreadPoints separation/avoid/determinism, too-few-candidates, regionCandidates border margin and blocked tiles); the end-to-end test in `tests/campSearch.test.js` now asserts per-region median distance from keep > 30 and mean nearest-neighbour > 12. Suite: 248 pass; same 3 `esbuild`/`pixi.js` missing-package fails. Not looked at on device.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Camps: map icon, 2 waves, popup name; double-tap closes popup
 
 Owner feedback after the first on-device look at camps (tile popup showed the region name "Salthaven", 1/1 waves, no icon, no way to close the popup).
