@@ -18,17 +18,23 @@ const tileRate = pl => TILE_RATE_BY_PL[pl] ?? 240;
 
 export function dragonEggCap(tomeLevels) { return 20 + (tomeLevels?.tr ?? 0); }
 
-// One egg-regen tick.
-export function regenEggs(eggs, cap) {
+// Egg-regen tick. elapsedMs defaults to one regen period so callers that
+// don't pass it (existing per-minute loops) behave exactly as before;
+// passing the real elapsed time credits a late-firing tick the full gap
+// instead of losing whatever time the interval was paused/throttled for.
+export function regenEggs(eggs, cap, elapsedMs = EGG_REGEN_MS) {
   if (eggs >= cap) return eggs;
-  return Math.min(cap, eggs + cap / (24 * 60));
+  return Math.min(cap, eggs + cap * elapsedMs / (24 * 60 * 60 * 1000));
 }
 
-// One stamina-regen tick for one commander (missing stamina counts as full).
-export function regenStamina(cmd, max) {
+// Stamina-regen tick for one commander (missing stamina counts as full).
+// Same elapsedMs catch-up pattern as regenEggs.
+export function regenStamina(cmd, max, elapsedMs = STAMINA_REGEN_MS) {
   const cur = cmd.stamina ?? max;
   if (cur >= max) return cmd;
-  return { ...cmd, stamina: Math.min(max, cur + STAMINA_PER_REGEN) };
+  const gained = Math.floor(elapsedMs / STAMINA_REGEN_MS) * STAMINA_PER_REGEN;
+  if (gained <= 0) return cmd;
+  return { ...cmd, stamina: Math.min(max, cur + gained) };
 }
 
 // Quick Gather: instant 3 hours of the tile's rate +10%. Null if not allowed.

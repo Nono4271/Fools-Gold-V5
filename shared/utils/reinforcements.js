@@ -27,12 +27,18 @@ export function reinforcementAborted(rm, targetCmd, destTile, hqKey) {
   return Boolean(cmdGone || tileFlipped);
 }
 
-// Advance one march. Returns {state:"wait"|"step"|"arrived", rm}.
+// Advance one march, catching up every step real elapsed time allows (not
+// just one) so a reinforcement convoy still arrives on schedule after the
+// tab/phone was backgrounded. Returns {state:"wait"|"step"|"arrived", rm}.
 export function stepReinforcement(rm, now) {
   if (now - rm.lastStepTime < rm.stepMs) return { state: "wait", rm };
-  const step = rm.step + 1;
-  if (step >= rm.path.length) return { state: "arrived", rm };
-  return { state: "step", rm: { ...rm, step, lastStepTime: now } };
+  let step = rm.step, lastStepTime = rm.lastStepTime;
+  while (now - lastStepTime >= rm.stepMs) {
+    step += 1;
+    if (step >= rm.path.length) return { state: "arrived", rm };
+    lastStepTime += rm.stepMs;
+  }
+  return { state: "step", rm: { ...rm, step, lastStepTime } };
 }
 
 // "faction:branch:tier" -> branch object.
