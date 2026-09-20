@@ -19,6 +19,8 @@ tilted perspective camera, pan/zoom, dotted route and an articulated walking
 commander. This is a camera/performance prototype, not approved production art
 or a commitment to rebuild the main map. Do not connect it to live game state
 until the owner approves the direction after phone testing.
+Cloudflare may route unknown HTML paths back to the normal game, so the reliable
+test entry is `/?demo3d=1`; the standard URL continues loading the normal game.
 
 ## Commander walking revision — v3
 
