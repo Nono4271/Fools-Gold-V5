@@ -8,6 +8,21 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Fort removal survives closing the popup + "Camps" tab in Search
+
+**1. Fort demolish/abandon timer now survives the popup.** Follow-up to the entry below: the countdown was accurate but still lived in `FortPanel` state, so closing the popup cancelled the demolition. Now the deadline is stored on the fort: `fort.removal = { mode, endsAt }`.
+- `shared/utils/fortRemoval.js` (new, pure): `FORT_REMOVAL_MS` (30 min demolish / 45 min abandon), `withFortRemoval` (won't reset a running timer), `withoutFortRemoval`, `dueFortRemovals(forts, now)`.
+- `src/hooks/useForts.js`: new `startFortRemoval(fortId, mode)` / `cancelFortRemoval(fortId)` (both `emitFortUpdate` with actions `removal` / `removalCancel`; the server side of `FORT_UPDATE` was not checked, it may ignore these).
+- `src/hooks/useFortRemovals.js` (new, called in `Game.jsx` right after `abandonFort`): 1 s interval + `visibilitychange`, calls `demolishFort`/`abandonFort` once when a deadline passes, whether or not the panel is open.
+- `FortPanel.jsx` now only displays the countdown from `fort.removal` and calls start/cancel. Its `demolishFort`/`abandonFort` props are replaced by `startFortRemoval`/`cancelFortRemoval` (wired through `Game.jsx` → `GameView.jsx` → `TilePopup.jsx`).
+- Not persisted across a page reload (forts are in-memory state; there is no save system yet).
+
+**2. Search panel: new 🏕 CAMPS tab** (`src/components/game/GameBar.jsx` `TileSearch`). Pick T1/T2/T3/Ancient camps, "Find Camps" lists up to 20 within the same 100-tile radius as the other tabs, nearest first, showing camp name (e.g. "Wolf Rider Camp"), tier and coordinates; tapping jumps the map there. Pure search rules are in `shared/utils/campSearch.js` (`findCamps`, `CAMP_TIERS`); it matches `tile.isCamp` (primary tile only, so a 2x2 camp is one result) and maps tier by power level (P7/P9/P11/P13). The TILES tab now skips camp tiles (`isCamp`/`isCampPart`) so a P13 search doesn't list Ancient camps as plain tiles.
+
+**Tests:** `tests/fortRemoval.test.js` (4) and `tests/campSearch.test.js` (4). Suite: 239 pass; the 3 fails are the `esbuild`/`pixi.js` missing-package tests (sandbox has no `node_modules`). `npm run build` not run here; import resolution (302+ relative imports) and syntax/undefined-identifier checks pass.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Offline catch-up: leftover Tomes + Fort countdown
 
 Follow-up to "Background/offline timer catch-up (roadmap item 4)" below. Same bug class (fixed amount per interval firing, so backgrounded time is lost); two more places had it. Copied the existing fix pattern exactly, no new pattern.
