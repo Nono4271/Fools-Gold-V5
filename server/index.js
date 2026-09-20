@@ -12,11 +12,18 @@
  *   • VIEWPORT_SUB  → client narrows patch delivery to its visible window.
  *
  * Client → Server messages:
- *   { type:"GAME_INIT",   sessionId, facKey, tiles:{[key]:Tile} }
- *   { type:"TILE_CAPTURE",sessionId, key, owner, garrison, siege, siegeMax, defCmd }
- *   { type:"TILE_SIEGE",  sessionId, key, siege, garrisonDefeated, resetAt, garrison, siegeMax }
+ *   { type:"GAME_INIT",   sessionId, facKey, tiles:{[key]:Tile}, viewport?:{minC,maxC,minR,maxR} }
+ *   { type:"TILE_CAPTURE",sessionId, key, owner, garrison, siege, siegeMax, defCmd, msgId }
+ *   { type:"TILE_SIEGE",  sessionId, key, siege, garrisonDefeated, garrison, siegeMax, msgId }
  *   { type:"VIEWPORT_SUB",sessionId, minC, maxC, minR, maxR }
  *   { type:"PING" }
+ *
+ * `msgId` (TILE_CAPTURE/TILE_SIEGE) lets the server dedupe a resent message
+ * instead of re-applying it. `viewport` (GAME_INIT) lets a joining client's
+ * SESSION_STATE be filtered to its starting region instead of every mutable
+ * tile in the session. `resetAt`/`protectedUntil` are no longer read from
+ * the client — the server computes both itself (see handleTileCapture/
+ * handleTileSiege) so a client's clock skew (or tampering) can't set them.
  *
  * Server → Client messages:
  *   { type:"GAME_READY",     sessionId }
@@ -27,9 +34,32 @@
  */
 
 import { WebSocketServer } from 'ws';
+// Roadmap item 2/4: use the same deterministic rule the client uses (moved to
+// shared/ specifically so the server could import it) so garrison-reset/
+// protection timestamps are computed authoritatively here, not trusted from
+// whatever the client sent (clock skew, or a malicious client just claiming
+// a huge protectedUntil).
+import { garrisonResetMs } from '../shared/utils/captureRules.js';
+import { TILE_PROTECTION_MS } from '../shared/utils/tileTimers.js';
 
 const PORT = process.env.PORT || 3001;
 const wss  = new WebSocketServer({ port: PORT });
+
+// Roadmap item 4: idempotency — a resent/duplicate TILE_CAPTURE or
+// TILE_SIEGE (retry after a dropped ack, a double-fire, etc.) must not
+// re-apply. Per-session cache of recently seen client-supplied msgIds.
+// TTL cleanup keeps this from growing unbounded across a long session.
+const MSG_DEDUPE_TTL_MS = 5 * 60 * 1000;
+function seenRecently(session, msgId) {
+  if (!msgId) return false; // no id given — can't dedupe, let it through (back-compat)
+  const now = Date.now();
+  for (const [id, ts] of session.seenMsgIds) {
+    if (now - ts > MSG_DEDUPE_TTL_MS) session.seenMsgIds.delete(id);
+  }
+  if (session.seenMsgIds.has(msgId)) return true;
+  session.seenMsgIds.set(msgId, now);
+  return false;
+}
 
 console.log("Fool's Gold server  ws://localhost:" + PORT);
 
@@ -41,7 +71,7 @@ const resetTimers = new Map();
 // ─── Session helpers ──────────────────────────────────────────────────────────
 
 function getOrCreateSession(id) {
-  if (!sessions.has(id)) sessions.set(id, { tiles: new Map(), clients: new Set() });
+  if (!sessions.has(id)) sessions.set(id, { tiles: new Map(), clients: new Set(), seenMsgIds: new Map() });
   return sessions.get(id);
 }
 
@@ -69,6 +99,10 @@ function sendSessionState(client, session, viewport) {
   }
   if (client.readyState === 1)
     client.send(JSON.stringify({ type: 'SESSION_STATE', tiles }));
+}
+
+function isValidViewport(v) {
+  return !!v && ['minC','maxC','minR','maxR'].every(k => typeof v[k] === 'number' && Number.isFinite(v[k]));
 }
 
 function sendError(ws, message) {
@@ -101,13 +135,16 @@ function scheduleGarrisonReset(sessionId, tileKey, resetAt, garrison, siegeMax) 
 // ─── Message handlers ─────────────────────────────────────────────────────────
 
 function handleGameInit(ws, msg) {
-  const { sessionId, facKey, tiles: clientTiles } = msg;
+  const { sessionId, facKey, tiles: clientTiles, viewport } = msg;
   if (!sessionId) return sendError(ws, 'GAME_INIT missing sessionId');
 
   const session = getOrCreateSession(sessionId);
   session.clients.add(ws);
   ws._sessionId = sessionId;
-  ws._viewport  = null;
+  // Roadmap item 5: use the client's starting region, if it sent one, so a
+  // joining client isn't handed the whole session's mutable tile set —
+  // VIEWPORT_SUB narrows this further once the client starts panning.
+  ws._viewport  = isValidViewport(viewport) ? viewport : null;
 
   if (clientTiles && session.tiles.size === 0) {
     // First client — seed the authoritative tile map
@@ -123,16 +160,19 @@ function handleGameInit(ws, msg) {
       }
     }
   } else {
-    // Subsequent client — push current state
-    console.log('Client joined session=' + sessionId + ' existing tiles=' + session.tiles.size);
-    sendSessionState(ws, session, null);
+    // Subsequent client — push current state, filtered to its starting
+    // viewport when it gave one (falls back to the full set, same as before,
+    // if it didn't — an older client is still served correctly).
+    console.log('Client joined session=' + sessionId + ' existing tiles=' + session.tiles.size +
+      (ws._viewport ? ' (viewport-filtered)' : ' (full — no viewport given)'));
+    sendSessionState(ws, session, ws._viewport);
   }
 
   ws.send(JSON.stringify({ type: 'GAME_READY', sessionId }));
 }
 
 function handleTileCapture(ws, msg) {
-  const { sessionId, key, owner, garrison, siege, siegeMax, defCmd } = msg;
+  const { sessionId, key, owner, garrison, siege, siegeMax, defCmd, msgId } = msg;
   const session = sessions.get(sessionId);
   if (!session) return sendError(ws, 'Unknown session');
   if (!key)     return sendError(ws, 'TILE_CAPTURE missing key');
@@ -144,6 +184,15 @@ function handleTileCapture(ws, msg) {
     'player','ai','pirates','bountyhunters','orcs','dragons','neutral',null
   ]);
   if (!VALID_OWNERS.has(owner)) return sendError(ws, 'Invalid owner: ' + owner);
+  if (garrison != null && (typeof garrison !== 'number' || garrison < 0)) return sendError(ws, 'Invalid garrison: ' + garrison);
+  if (siege != null && siegeMax != null && siege > siegeMax) return sendError(ws, 'siege cannot exceed siegeMax');
+
+  // Idempotency: a resent/duplicate capture (retry after a dropped ack, a
+  // double-fire client bug) must not be re-applied or re-broadcast.
+  if (seenRecently(session, msgId)) {
+    console.log('TILE_CAPTURE dup ignored msgId=' + msgId + ' key=' + key);
+    return;
+  }
 
   // Cancel pending garrison reset
   const tk = sessionId + '::' + key;
@@ -158,6 +207,10 @@ function handleTileCapture(ws, msg) {
     resetAt:          null,
     defCmd:           defCmd    ?? null,
     hasAiCommander:   false,
+    // Server timestamp, not the client's: a client's Date.now() is subject
+    // to clock skew (or tampering), and this is exactly the kind of
+    // multiplayer-sensitive value the server should own.
+    protectedUntil:   Date.now() + TILE_PROTECTION_MS,
   };
 
   applyAndBroadcast(session, { [key]: patch }, ws);
@@ -165,25 +218,41 @@ function handleTileCapture(ws, msg) {
 }
 
 function handleTileSiege(ws, msg) {
-  const { sessionId, key, siege, garrisonDefeated, resetAt, garrison, siegeMax } = msg;
+  const { sessionId, key, siege, garrisonDefeated, garrison, siegeMax, msgId } = msg;
   const session = sessions.get(sessionId);
   if (!session) return sendError(ws, 'Unknown session');
   if (!key)     return sendError(ws, 'TILE_SIEGE missing key');
 
   const tile = session.tiles.get(key);
   if (!tile)    return sendError(ws, 'Tile not found: ' + key);
+  if (siege != null && (typeof siege !== 'number' || siege < 0)) return sendError(ws, 'Invalid siege: ' + siege);
+
+  if (seenRecently(session, msgId)) {
+    console.log('TILE_SIEGE dup ignored msgId=' + msgId + ' key=' + key);
+    return;
+  }
+
+  // Server-computed reset delay (shared/utils/captureRules.js), not the
+  // client's claimed `resetAt` timestamp — same clock-skew/tamper concern
+  // as protectedUntil above. Known limitation: the mutable tile shape sent
+  // to the server doesn't currently carry `isGate`, so a gate's 1-hour reset
+  // isn't distinguishable here yet from a regular tile's 15-min reset — not
+  // new to this change, just now visible because the server computes this
+  // itself instead of trusting the client's already-correct value.
+  const now = Date.now();
+  const nextResetAt = garrisonDefeated ? now + garrisonResetMs(tile) : null;
 
   const patch = {
     siege:            siege            ?? tile.siege,
     garrisonDefeated: garrisonDefeated ?? tile.garrisonDefeated,
-    resetAt:          resetAt          ?? tile.resetAt,
+    resetAt:          nextResetAt,
   };
 
   applyAndBroadcast(session, { [key]: patch }, ws);
 
-  if (garrisonDefeated && resetAt && resetAt > Date.now()) {
+  if (garrisonDefeated && nextResetAt) {
     scheduleGarrisonReset(
-      sessionId, key, resetAt,
+      sessionId, key, nextResetAt,
       garrison ?? tile.garrison,
       siegeMax ?? tile.siegeMax ?? 50,
     );
