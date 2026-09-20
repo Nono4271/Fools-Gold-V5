@@ -28,6 +28,20 @@ export function speedUpBuildings(upgQueue, durationMs, now) {
   return next;
 }
 
+// Recall speedup: shortens the remaining travel time of every player
+// commander currently marching home ({type:"recall"} — a fort being
+// destroyed/decommissioned, or a forced/manual recall). Training and forts
+// are excluded per the locked no-speedup rule; this only ever touches
+// recall marches. Shifting lastStepTime back lets the normal march-step
+// catch-up (advanceMarch) cover the skipped distance on its next tick,
+// same mechanism used for background/offline catch-up.
+export function speedUpRecall(cmds, durationMs) {
+  return cmds.map(c => {
+    if (c.owner !== "player" || c.march?.type !== "recall") return c;
+    return { ...c, march: { ...c.march, lastStepTime: c.march.lastStepTime - durationMs } };
+  });
+}
+
 // Expedience tactic: finish one building upgrade if it is inside the window.
 export function expediteBuilding(upgQueue, buildingType, now) {
   const entry = upgQueue[buildingType];
