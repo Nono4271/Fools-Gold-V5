@@ -1,0 +1,76 @@
+// Pure rules for reinforcement marches (barracks troops sent to a commander in the field).
+// Moved from Game.jsx.
+import { troopPoolKey, branchCommandCost, withTroopSlots, MAX_TROOP_SLOTS } from "./troopSlots.js";
+import { normaliseTroopSlots } from "./pathfinding.js";
+
+// Add troops back to one barracks pool, limited by free barracks space.
+export function returnToBarracks(counts, branchKey, amount, barracksCap) {
+  if (!branchKey) return counts;
+  const total = Object.values(counts).reduce((s, n) => s + (n || 0), 0);
+  const add = Math.min(amount, Math.max(0, barracksCap - total));
+  return { ...counts, [branchKey]: (counts[branchKey] || 0) + add };
+}
+
+// Pool a reinforcement draws from: the target commander's first slot type.
+export function reinforcementSourceKey(cmd) {
+  const slots = normaliseTroopSlots(cmd);
+  const b = slots[0]?.branch ?? cmd.troopBranch;
+  return b ? troopPoolKey({ ...b, tier: b.tier ?? 0 }) : null;
+}
+
+// Outbound march should turn back: commander gone/emptied, or destination lost.
+export function reinforcementAborted(rm, targetCmd, destTile, hqKey) {
+  if (rm.returning) return false;
+  const destKey = rm.path[rm.path.length - 1];
+  const cmdGone = !targetCmd || (targetCmd.troops === 0 && !targetCmd.march && targetCmd.tk !== destKey);
+  const tileFlipped = destTile && destTile.owner !== "player" && destKey !== hqKey;
+  return Boolean(cmdGone || tileFlipped);
+}
+
+// Advance one march. Returns {state:"wait"|"step"|"arrived", rm}.
+export function stepReinforcement(rm, now) {
+  if (now - rm.lastStepTime < rm.stepMs) return { state: "wait", rm };
+  const step = rm.step + 1;
+  if (step >= rm.path.length) return { state: "arrived", rm };
+  return { state: "step", rm: { ...rm, step, lastStepTime: now } };
+}
+
+// "faction:branch:tier" -> branch object.
+export function branchFromKey(key) {
+  if (!key) return null;
+  const [faction, branch, tier] = key.split(":");
+  return { faction, branch, tier: Number(tier) || 0 };
+}
+
+// Command points a commander's slots use, by each slot's troop size.
+export function commandUsed(cmd) {
+  return normaliseTroopSlots(cmd).reduce((s, sl) => s + (sl.troops || 0) * branchCommandCost(sl.branch), 0);
+}
+
+// How many troops can be sent: limited by command room (after troops already
+// on the way) and by that troop type in barracks. Returns {srcKey, room, available, maxAdd}.
+export function reinforcementRoom({ cmd, commandCap, pool, inTransit = 0 }) {
+  const srcKey = reinforcementSourceKey(cmd);
+  if (!srcKey) return { srcKey, room: 0, available: 0, maxAdd: 0 };
+  const cost = branchCommandCost(branchFromKey(srcKey));
+  const room = Math.max(0, Math.floor((commandCap - commandUsed(cmd)) / cost + 1e-9) - inTransit);
+  const available = pool[srcKey] || 0;
+  return { srcKey, room, available, maxAdd: Math.max(0, Math.min(room, available)) };
+}
+
+// Merge arriving troops into the slot of their own type (or a free slot),
+// limited by command room at their real size. Returns {cmd, overflow}.
+export function mergeReinforcement(cmd, branchKey, amount, commandCap) {
+  const branch = branchFromKey(branchKey);
+  if (!branch || amount <= 0) return { cmd, overflow: Math.max(0, amount) };
+  const slots = [...normaliseTroopSlots(cmd)];
+  const idx = slots.findIndex(sl => sl.branch && troopPoolKey({ ...sl.branch, tier: sl.branch.tier ?? 0 }) === branchKey);
+  if (idx === -1 && slots.length >= MAX_TROOP_SLOTS) return { cmd, overflow: amount };
+  const room = Math.max(0, Math.floor((commandCap - commandUsed(cmd)) / branchCommandCost(branch) + 1e-9));
+  const add = Math.min(amount, room);
+  if (add > 0) {
+    if (idx === -1) slots.push({ branch, troops: add });
+    else slots[idx] = { ...slots[idx], troops: (slots[idx].troops || 0) + add };
+  }
+  return { cmd: add > 0 ? withTroopSlots(cmd, slots) : cmd, overflow: amount - add };
+}

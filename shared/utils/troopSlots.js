@@ -82,3 +82,37 @@ export function returnAllTroopsToPool(counts, cmd) {
   }
   return next;
 }
+
+// Set all slots at once (army Confirm). Current troops are returned to the pool
+// first, then each desired slot draws in order, limited by pool and command cap.
+// desired: array of null | {branch, troops}. Returns {slots, poolDelta: {key: n}}.
+export function planArmySlots({ cmd, desired, pool, commandCap }) {
+  const work = { ...pool };
+  const poolDelta = {};
+  const move = (key, n) => { work[key] = (work[key] || 0) + n; poolDelta[key] = (poolDelta[key] || 0) + n; };
+  for (const sl of normaliseTroopSlots(cmd)) {
+    const key = troopPoolKey(sl.branch);
+    if (key && sl.troops > 0) move(key, sl.troops);
+  }
+  const slots = [];
+  let capLeft = commandCap;
+  for (const want of desired) {
+    if (slots.length >= MAX_TROOP_SLOTS) break;
+    const key = troopPoolKey(want?.branch);
+    if (!key || !(want.troops > 0)) continue;
+    const cost = branchCommandCost(want.branch);
+    const n = Math.max(0, Math.min(Math.floor(want.troops), work[key] || 0, Math.floor(capLeft / cost + 1e-9)));
+    if (n <= 0) continue;
+    move(key, -n);
+    capLeft -= n * cost;
+    slots.push({ branch: want.branch, troops: n });
+  }
+  for (const key of Object.keys(poolDelta)) if (poolDelta[key] === 0) delete poolDelta[key];
+  return { slots, poolDelta };
+}
+
+export function applyPoolDelta(counts, poolDelta) {
+  const next = { ...counts };
+  for (const [key, n] of Object.entries(poolDelta)) next[key] = Math.max(0, (next[key] || 0) + n);
+  return next;
+}
