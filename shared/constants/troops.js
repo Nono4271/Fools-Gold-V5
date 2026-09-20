@@ -30,6 +30,13 @@
 //    effect magnitudes are fixed (stated in desc)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Additive-only fallback lookup for the Ancients (see ancientTroops.js) —
+// deliberately NOT merged into FACTION_TROOPS/FACTION_KEYS so nothing that
+// assumes "8 real factions" is affected. Imported here (rather than the
+// other way around) so ancientTroops.js stays a self-contained data file
+// with no dependency back on this one.
+import { ANCIENT_FACTIONS } from "./ancientTroops.js";
+
 // ── Damage triangle modifier ──────────────────────────────────────────────────
 export function troopSizeModifier(atkSize, defSize) {
   if (!atkSize || !defSize) return 1.0;
@@ -1172,7 +1179,7 @@ export const FACTION_KEYS = Object.keys(FACTION_TROOPS);
 // Resolve a { faction, branch, tier } ref to a branch object
 export function resolveTroopBranch(troopRef) {
   if (!troopRef?.faction || !troopRef?.branch) return null;
-  const faction = FACTION_TROOPS[troopRef.faction];
+  const faction = FACTION_TROOPS[troopRef.faction] || ANCIENT_FACTIONS[troopRef.faction];
   if (!faction) return null;
   return faction.branches.find(b => b.key === troopRef.branch) ?? null;
 }
