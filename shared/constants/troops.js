@@ -551,15 +551,15 @@ export const FACTION_TROOPS = {
             name: "Ember Trail",
             icon: "🔥",
             trigger: "on_hit",
-            desc: "On hit, chance to deal an extra 140% instance of damage.",
+            desc: "On hit, chance to deal an extra 90% instance of damage.",
             procBase: 0.25, procMax: 0.65,
-            effect: { type: "bonus_damage", value: 1.40 },
+            effect: { type: "bonus_damage", value: 0.90 },
           },
         },
         tiers: [
           { label: "Scaleblade", desc: "A lithe dragonkin skirmisher with fire in their veins.",      dmgLo: 16, dmgHi: 20, def: 13, hp: 24, siege: 13, spd: 72 },
           { label: "Emberclaw",  desc: "Faster and fiercer, leaving scorch marks with every pass.",   dmgLo: 20, dmgHi: 25, def: 17, hp: 32, siege: 18, spd: 72 },
-          { label: "Ashfang",    desc: "A dragonkin assassin who strikes like a flame and vanishes.", dmgLo: 25, dmgHi: 32, def: 22, hp: 42, siege: 23, spd: 72 },
+          { label: "Ashfang",    desc: "A dragonkin assassin who strikes like a flame and vanishes.", dmgLo: 22, dmgHi: 28, def: 22, hp: 42, siege: 23, spd: 72 },
         ],
       },
       {
@@ -648,9 +648,9 @@ export const FACTION_TROOPS = {
             name: "Dragonfire Breath",
             icon: "🔥",
             trigger: "on_hit",
-            desc: "On hit, chance to deal an extra 150% instance of damage.",
+            desc: "On hit, chance to deal an extra 70% instance of damage.",
             procBase: 0.20, procMax: 0.60,
-            effect: { type: "bonus_damage", value: 1.50 },
+            effect: { type: "bonus_damage", value: 0.70 },
           },
           c: {
             key: "sovereigns_wrath",
@@ -663,7 +663,7 @@ export const FACTION_TROOPS = {
           },
         },
         tiers: [
-          { label: "Sovereign Wyrm", desc: "The last of the true dragon-kings — every other dragon in the sky yields to it.", dmgLo: 33, dmgHi: 36, def: 36, hp: 48, siege: 24, spd: 120 },
+          { label: "Sovereign Wyrm", desc: "The last of the true dragon-kings — every other dragon in the sky yields to it.", dmgLo: 28, dmgHi: 31, def: 36, hp: 48, siege: 24, spd: 120 },
         ],
       },
     ],
@@ -962,7 +962,7 @@ export const FACTION_TROOPS = {
       {
         key: "raiders", label: "Raiders", size: "small", dmgType: "physical", role: "melee",
         tiers: [
-          { label: "Raider",    dmgLo: 8,  dmgHi: 11, def: 11, hp: 14, siege: 6,  spd: 71 },
+          { label: "Raider",    dmgLo: 12, dmgHi: 16, def: 14, hp: 24, siege: 10, spd: 71 },
           { label: "Pillager",  dmgLo: 13, dmgHi: 17, def: 18, hp: 22, siege: 10, spd: 71 },
           { label: "Berserker", dmgLo: 21, dmgHi: 27, def: 30, hp: 35, siege: 17, spd: 71 },
         ],
@@ -986,7 +986,7 @@ export const FACTION_TROOPS = {
       {
         key: "bear_riders", label: "Bear Riders", size: "medium", dmgType: "physical", role: "mounted",
         tiers: [
-          { label: "Iceclaw Rider",    dmgLo: 14, dmgHi: 17, def: 18, hp: 36, siege: 6,  spd: 70 },
+          { label: "Iceclaw Rider",    dmgLo: 18, dmgHi: 22, def: 20, hp: 50, siege: 10, spd: 70 },
           { label: "Frostpaw Rider",   dmgLo: 23, dmgHi: 27, def: 28, hp: 58, siege: 9,  spd: 70 },
           { label: "Frost Bear Rider", dmgLo: 36, dmgHi: 42, def: 45, hp: 88, siege: 15, spd: 70 },
         ],
@@ -1010,7 +1010,7 @@ export const FACTION_TROOPS = {
       {
         key: "frost_giants", label: "Frost Giants", size: "large", dmgType: "physical", role: "melee",
         tiers: [
-          { label: "Frost Giant", dmgLo: 175, dmgHi: 185, def: 30, hp: 610,  siege: 205, spd: 45 },
+          { label: "Frost Giant", dmgLo: 270, dmgHi: 290, def: 37, hp: 780,  siege: 345, spd: 45 },
           { label: "Frost Hulk",  dmgLo: 308, dmgHi: 322, def: 53, hp: 1055, siege: 363, spd: 45 },
           { label: "Frost Titan", dmgLo: 440, dmgHi: 460, def: 75, hp: 1500, siege: 520, spd: 45 },
         ],

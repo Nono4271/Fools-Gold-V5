@@ -315,14 +315,14 @@ export const NEUTRAL_TROOPS = [
     tags: ["renegade"],
     region: "north",
     desc: "Expelled from the Ethereal Vault for casting what the order forbade — and still casting it.",
-    stats: { dmgLo: 24, dmgHi: 30, def: 26, hp: 50, siege: 18, spd: 75 },
+    stats: { dmgLo: 20, dmgHi: 25, def: 26, hp: 42, siege: 18, spd: 64 },
     skills: {
       a: {
         key: "forbidden_surge", name: "Forbidden Surge", icon: "🔮",
         trigger: "on_hit",
-        desc: "On hit, chance to deal an extra 100% instance of focus damage.",
+        desc: "On hit, chance to deal an extra 50% instance of focus damage.",
         procBase: 0.20, procMax: 0.60,
-        effect: { type: "bonus_damage", value: 1.00, dmgType: "focus" },
+        effect: { type: "bonus_damage", value: 0.50, dmgType: "focus" },
       },
     },
   },
@@ -407,7 +407,7 @@ export const NEUTRAL_TROOPS = [
     tags: ["renegade"],
     region: "north",
     desc: "Cast out of the Shadowfen for losing themselves to the beast too often — now they don't fight it.",
-    stats: { dmgLo: 26, dmgHi: 32, def: 20, hp: 48, siege: 13, spd: 78 },
+    stats: { dmgLo: 20, dmgHi: 25, def: 20, hp: 36, siege: 13, spd: 70 },
     skills: {
       a: {
         key: "feral_frenzy", name: "Feral Frenzy", icon: "🩸",
