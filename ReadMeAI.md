@@ -10,6 +10,16 @@ Branch: codex/core-fixes-20260919
 
 # CURRENT AUDIT AND ROADMAP — READ THIS FIRST
 
+## Separate 3D camera feasibility demo
+
+A standalone `/three-demo.html` test page was added to evaluate a true 3D map
+without replacing or changing the live PixiJS game. It uses Three.js and simple
+procedural test models: a pirate HQ, all four resources, selectable land, fixed
+tilted perspective camera, pan/zoom, dotted route and an articulated walking
+commander. This is a camera/performance prototype, not approved production art
+or a commitment to rebuild the main map. Do not connect it to live game state
+until the owner approves the direction after phone testing.
+
 ## Commander walking revision — v3
 
 Owner approved the separate-limb preview, stronger arm swing and fixed boot
