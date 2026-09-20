@@ -5,6 +5,7 @@ import { barracksCapacity } from "../../shared/constants/buildings.js";
 import { adj, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
 import { isTileInRange } from "./useForts.js";
 import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/garrisonUtils.js";
+import { resolveSiegeOutcome, garrisonResetMs } from "../../shared/utils/captureRules.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
 import { getPassiveBonuses, getActiveSkills, MAIN_SKILLS } from "../../shared/constants/skills.js";
@@ -57,14 +58,9 @@ function clearSlots(cmd) {
   return { troops: 0, troopBranch: null };
 }
 
-// Returns the garrison reset delay for a tile
-// Keeps and gates: 1 hr. Regular tiles: 15 min (both from map.js constants).
-function garrisonResetMs(tile) {
-  if (tile?.isHQ) return KEEP_GARRISON_RESET_MS;
-  if (tile?.isGate) return GATE_GARRISON_RESET_MS;
-  if (tile?.isKeep) return KEEP_GARRISON_RESET_MS;
-  return 900000; // 15 min for regular tiles (SIEGE_RESET_MS)
-}
+// garrisonResetMs and resolveSiegeOutcome moved to shared/utils/captureRules.js
+// (roadmap: move multiplayer-sensitive rules into shared/ so the server can
+// call the exact same function instead of trusting a client-computed patch).
 
 export function applyXp(cmd, xpGain, floaty) {
 let newXp  = (cmd.xp  || 0) + xpGain;
@@ -251,19 +247,17 @@ arrivedAttackers.forEach(async staleCmd => {
   const allWavesDefeated = (defTile.defeatedWaves?.length ?? 0) >= garrisonWaveCount(defTile);
   if (allWavesDefeated) {
     const siegePower = cmdSiegePower(cmd, boostedCmd);
-    const currentSiege = defTile.siege ?? SIEGE_BASE;
-    let siegeCaptured = false;
-    if (siegePower >= currentSiege) {
-      siegeCaptured = true;
-      patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, protectedUntil:Date.now()+180000 });
-      _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, protectedUntil:Date.now()+180000 });
+    const { captured: siegeCaptured, patch: outcomePatch } = resolveSiegeOutcome({ tile: defTile, siegePower });
+    if (siegeCaptured) {
+      patchTile(destKey, outcomePatch);
+      _emitCapture(destKey, outcomePatch);
       registerProtection?.(destKey);
       floaty("⚔ CAPTURED!", "#3daa60", destKey);
       if (destKey === WIN_KEY) setWinner("player");
     } else {
-      patchTile(destKey, { siege:currentSiege-siegePower, resetAt:Date.now()+garrisonResetMs(defTile) });
-      _emitSiege(destKey, { siege:currentSiege-siegePower, defeatedWaves:defTile.defeatedWaves, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
-      floaty(`🔨 SIEGE ${currentSiege-siegePower}/${defTile.siegeMax??SIEGE_BASE}`, "#d0a030", destKey);
+      patchTile(destKey, outcomePatch);
+      _emitSiege(destKey, outcomePatch);
+      floaty(`🔨 SIEGE ${outcomePatch.siege}/${outcomePatch.siegeMax}`, "#d0a030", destKey);
     }
     setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null, tk:siegeCaptured?destKey:originKey } : c));
     return;
@@ -510,21 +504,21 @@ arrivedAttackers.forEach(async staleCmd => {
   // All waves cleared — siege phase
   const siegePower   = cmdSiegePower({ ...cmd, troops:remainingTroops,
     troopSlots: cmd.troopSlots ? applySlotLosses(cmd, cmdTroops(cmd)-remainingTroops).troopSlots : undefined }, boostedCmd);
-  const currentSiege = defTile.siege ?? SIEGE_BASE;
-  let tileCaptured = false;
+  const { captured: tileCaptured, patch: outcomePatch } = resolveSiegeOutcome({
+    tile: defTile, siegePower, defeatedWaves: newlyDefeated,
+    capture: { defCmd: null, hasAiCommander: false },
+  });
 
-  if (siegePower >= currentSiege) {
-    tileCaptured = true;
-    patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:null, hasAiCommander:false, protectedUntil:Date.now()+180000 });
-    _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:null, protectedUntil:Date.now()+180000 });
-      registerProtection?.(destKey);
+  if (tileCaptured) {
+    patchTile(destKey, outcomePatch);
+    _emitCapture(destKey, outcomePatch);
+    registerProtection?.(destKey);
     floaty("⚔ CAPTURED!", "#3daa60", destKey);
     if (destKey === WIN_KEY) setWinner("player");
   } else {
-    const newSiege = currentSiege - siegePower;
-    patchTile(destKey, { siege:newSiege, defeatedWaves:newlyDefeated, resetAt:Date.now()+garrisonResetMs(defTile), defCmd:null, hasAiCommander:false });
-    _emitSiege(destKey, { siege:newSiege, defeatedWaves:newlyDefeated, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
-    floaty(`🔨 SIEGE ${newSiege}/${defTile.siegeMax??SIEGE_BASE}`, "#d0a030", destKey);
+    patchTile(destKey, outcomePatch);
+    _emitSiege(destKey, outcomePatch);
+    floaty(`🔨 SIEGE ${outcomePatch.siege}/${outcomePatch.siegeMax}`, "#d0a030", destKey);
   }
 
   const finalTk = tileCaptured ? destKey : originKey;
@@ -729,20 +723,22 @@ useEffect(() => {
       }
 
       // Player won all fights — attempt siege/capture
-      const siegePower   = cmdSiegePower({ ...cmd, troops: remainingTroops }, boostedCmd);
-      const currentSiege = defTile.siege ?? SIEGE_BASE;
-      if (siegePower >= currentSiege) {
-        tileCaptured = true;
-        patchTile(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:null, hasAiCommander:false, protectedUntil:Date.now()+180000 });
-        _emitCapture(destKey, { owner:"player", garrison:0, siege:defTile.siegeMax??SIEGE_BASE, siegeMax:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:null, protectedUntil:Date.now()+180000 });
-      registerProtection?.(destKey);
+      const siegePower = cmdSiegePower({ ...cmd, troops: remainingTroops }, boostedCmd);
+      const outcome = resolveSiegeOutcome({
+        tile: defTile, siegePower, defeatedWaves: defTile.defeatedWaves ?? [],
+        capture: { defCmd: null, hasAiCommander: false },
+      });
+      tileCaptured = outcome.captured;
+      if (tileCaptured) {
+        patchTile(destKey, outcome.patch);
+        _emitCapture(destKey, outcome.patch);
+        registerProtection?.(destKey);
         floaty("⚔ CAPTURED!", "#3daa60", destKey);
         if (destKey === WIN_KEY) setWinner("player");
       } else {
-        const nowDefeated = defTile.defeatedWaves ?? [];
-        patchTile(destKey, { siege:currentSiege-siegePower, defeatedWaves:nowDefeated, resetAt:Date.now()+garrisonResetMs(defTile), defCmd:null, hasAiCommander:false });
-        _emitSiege(destKey, { siege:currentSiege-siegePower, defeatedWaves:nowDefeated, resetAt:Date.now()+garrisonResetMs(defTile), garrison:defTile.garrison, siegeMax:defTile.siegeMax??SIEGE_BASE });
-        floaty(`⚔ SIEGE ${currentSiege-siegePower}/${defTile.siegeMax??SIEGE_BASE}`, "#d0a030", destKey);
+        patchTile(destKey, outcome.patch);
+        _emitSiege(destKey, outcome.patch);
+        floaty(`⚔ SIEGE ${outcome.patch.siege}/${outcome.patch.siegeMax}`, "#d0a030", destKey);
       }
 
       const finalTk = tileCaptured ? destKey : originKey;
@@ -794,17 +790,23 @@ arrivedAI.forEach(async cmd => {
 
   if ((defTile.defeatedWaves?.length ?? 0) >= garrisonWaveCount(defTile)) {
     const siegePower = cmdSiegePower(cmd, boostedCmd2);
-    const currentSiege = defTile.siege ?? SIEGE_BASE;
-    if (siegePower >= currentSiege) {
+    const outcome = resolveSiegeOutcome({
+      tile: defTile, siegePower,
+      capture: {
+        owner: "ai", faction: cmd.faction, ownerPlayerId: cmd.ownerPlayerId || null, protect: false,
+        defCmd: { lvl:cmd.lvl||5, troops:Math.floor((cmd.troops||0)*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 },
+      },
+    });
+    if (outcome.captured) {
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
       const isFriendly = cmd.faction === facKey;
-      patchTile(destKey, { owner:"ai", faction: cmd.faction, ownerPlayerId: cmd.ownerPlayerId || null, garrison:0, siege:defTile.siegeMax??SIEGE_BASE, defeatedWaves:[], resetAt:null, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor((cmd.troops||0)*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
+      patchTile(destKey, outcome.patch);
       floaty(isFriendly ? "🤝 Ally captured tile!" : "⚠ ENEMY CAPTURED TILE!", isFriendly ? "#2299ff" : "#dd3322", destKey);
       if (destKey === WIN_KEY) setWinner("ai");
       else if (isPlayerHQ) { if (onForcedRelocate) onForcedRelocate(); else setWinner("ai"); }
       setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
     } else {
-      patchTile(destKey, { siege:currentSiege-siegePower, resetAt:Date.now()+garrisonResetMs(defTile) });
+      patchTile(destKey, outcome.patch);
       setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null, tk:originKey } : c));
     }
     return;
@@ -818,17 +820,22 @@ arrivedAI.forEach(async cmd => {
 
   if (res.won) {
     const siegePower = cmdSiegePower({ ...cmd, troops: newTroops }, boostedCmd2);
-    const currentSiege = defTile.siege ?? SIEGE_BASE;
-    if (siegePower >= currentSiege) {
-      tileCaptured = true;
+    const outcome = resolveSiegeOutcome({
+      tile: defTile, siegePower,
+      capture: {
+        owner: "ai", faction: cmd.faction, ownerPlayerId: cmd.ownerPlayerId || null, protect: false,
+        hasAiCommander: true, siegeMax: 300,
+        defCmd: { lvl:cmd.lvl||5, troops:Math.floor(newTroops*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 },
+      },
+    });
+    tileCaptured = outcome.captured;
+    patchTile(destKey, outcome.patch);
+    if (tileCaptured) {
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
       const isFriendly = cmd.faction === facKey;
-      patchTile(destKey, { owner:"ai", faction: cmd.faction, ownerPlayerId: cmd.ownerPlayerId || null, garrison:0, siege:300, siegeMax:300, defeatedWaves:[], resetAt:null, hasAiCommander:true, defCmd:{ lvl:cmd.lvl||5, troops:Math.floor(newTroops*0.6), troopBranch:cmd.troopBranch||{faction:'pirates',branch:'cutthroats',tier:0}, atk:cmd.atk||150, spd:cmd.spd||60 } });
       floaty(isFriendly ? "🤝 Ally captured tile!" : "⚠ ENEMY CAPTURED TILE!", isFriendly ? "#2299ff" : "#dd3322", destKey);
       if (destKey === WIN_KEY) setWinner("ai");
       else if (isPlayerHQ) { if (onForcedRelocate) onForcedRelocate(); else setWinner("ai"); }
-    } else {
-      patchTile(destKey, { siege:currentSiege-siegePower, defeatedWaves: defTile.defeatedWaves ?? [], resetAt:Date.now()+garrisonResetMs(defTile) });
     }
   }
 

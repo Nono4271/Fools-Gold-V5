@@ -68,7 +68,7 @@ function extractMutableState(tiles) {
   return mutable;
 }
 
-export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId }) {
+export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId, initialViewport }) {
   const wsRef          = useRef(null);
   const [connected, setConnected] = useState(false);
   const backoffRef     = useRef(500);
@@ -107,6 +107,9 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId })
       type: 'TILE_CAPTURE',
       sessionId,
       key,
+      // Roadmap item 4: lets the server dedupe a resent/duplicate message
+      // (dropped ack, double-fire) instead of re-applying it.
+      msgId: `${sessionId}:${key}:cap:${Date.now()}:${Math.random().toString(36).slice(2)}`,
       ...patch,
     });
   }, [safeSend, sessionId]);
@@ -120,6 +123,7 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId })
       type: 'TILE_SIEGE',
       sessionId,
       key,
+      msgId: `${sessionId}:${key}:siege:${Date.now()}:${Math.random().toString(36).slice(2)}`,
       ...patch,
     });
   }, [safeSend, sessionId]);
@@ -162,6 +166,10 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId })
             type: 'GAME_INIT',
             sessionId,
             tiles: extractMutableState(tiles), // mutable subset only — ~50KB not ~200MB
+            // Roadmap item 5: a joining client only needs its starting region,
+            // not every mutable tile in the world — see server/index.js's
+            // handleGameInit, which uses this to filter SESSION_STATE.
+            viewport: initialViewport,
           }));
         } else {
           // Map not ready yet; GAME_INIT will fire from the mapReady effect below
@@ -243,7 +251,7 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId })
 
     sentInitRef.current = true;
     const mutableTiles = extractMutableState(tiles);
- ws.send(JSON.stringify({ type: "GAME_INIT", sessionId, tiles: mutableTiles }));
+    ws.send(JSON.stringify({ type: "GAME_INIT", sessionId, tiles: mutableTiles, viewport: initialViewport }));
     console.log('[ServerSync] GAME_INIT sent — tiles:', Object.keys(tiles).length);
   }, [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
