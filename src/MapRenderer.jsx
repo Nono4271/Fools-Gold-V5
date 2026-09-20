@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo }
 import * as PIXI from "pixi.js";
 import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
-import {isInSpawnVisualArea, sameTerritory, resourceFootprint, selectionEdgesBesideHq} from "./utils/spawnVisualTest.js";
+import {isInSpawnVisualArea, sameTerritory, resourceFootprint, selectionEdgesBesideHq, hqJoinedBorderSegments} from "./utils/spawnVisualTest.js";
 import {softenTerritoryColor} from "./utils/hqTerrainStyle.js";
 import {createResourceSpriteCache} from "./utils/resourceSprites.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
@@ -1411,7 +1411,7 @@ function removeFortSprite(tileKey, fortLayer) {
   }
 }
 
-function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids, groundTexture) {
+function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids, groundTexture, tiles) {
   const [pc, pr] = tileKey.split(",").map(Number);
   const blendWithTerrain = isInSpawnVisualArea(pc,pr,playerHqKey);
   // tileKey is the CENTER tile. Top-left of the 3×3 is one step back.
@@ -1476,12 +1476,16 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     group.addChild(foundationGfx);
   }
 
+  const borderSegments = hqJoinedBorderSegments(pc,pr,tiles);
+  const drawBorderSegments = () => {
+    for (const [x1,y1,x2,y2] of borderSegments) {
+      borderGfx.moveTo(x1,y1);borderGfx.lineTo(x2,y2);
+    }
+  };
   borderGfx.lineStyle(blendWithTerrain ? 2.6 : 8, 0x151b10, blendWithTerrain ? 0.30 : 0.8);
-  borderGfx.drawPolygon(borderPath);
-  borderGfx.lineStyle(0);
-  
+  drawBorderSegments();
   borderGfx.lineStyle(blendWithTerrain ? 1.3 : 5, blendWithTerrain ? softenTerritoryColor(borderTint) : borderTint, blendWithTerrain ? 0.82 : 1.0);
-  borderGfx.drawPolygon(borderPath);
+  drawBorderSegments();
   borderGfx.lineStyle(0);
   group.__borderPts = borderPath; // used by drawSelection and HIT_POLY
 
@@ -1686,12 +1690,13 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     const prev       = _hqStateCache.get(tileKey);
     const [hqC,hqR] = tileKey.split(",").map(Number);
     const blendWithTerrain = isInSpawnVisualArea(hqC,hqR,playerHqKey);
+    const borderSignature = hqJoinedBorderSegments(hqC,hqR,tiles).map(segment=>segment.join(",")).join("|");
 
     const curPlayerName = owner === "player" ? playerName : null;
     const ownerPlayerId = aiPlayerIdMap?.get(tileKey) || tile.ownerPlayerId || null;
     const isAiOwned = owner === "ai" || (owner !== "player" && owner !== null);
     const isCrew = !!(isAiOwned && ownerPlayerId && crewPids?.has(ownerPlayerId));
-    if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName && prev.isCrew === isCrew && prev.blendWithTerrain === blendWithTerrain) continue;
+    if (prev && prev.faction === faction && prev.owner === owner && prev.isSelected === isSelected && prev.playerName === curPlayerName && prev.isCrew === isCrew && prev.blendWithTerrain === blendWithTerrain && prev.borderSignature === borderSignature) continue;
 
     for (let i = hqCont.children.length - 1; i >= 0; i--) {
       const child = hqCont.children[i];
@@ -1703,8 +1708,8 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     }
 
     const tileWithPid = ownerPlayerId && !tile.ownerPlayerId ? { ...tile, ownerPlayerId } : tile;
-    hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids, groundTexture));
-    _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew, blendWithTerrain });
+    hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids, groundTexture, tiles));
+    _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew, blendWithTerrain, borderSignature });
 
     // Count tint changes for summary log
     if (isAiOwned && tile.faction === playerFacKey) {
@@ -1724,11 +1729,37 @@ function drawMarchLines(gfx, cmds, reinMarches, tiles) {
       const { cx, cy } = isoXY(tc, tr);
       return { x: cx, y: cy - elev + TH / 2 };
     });
-    gfx.lineStyle(5, 0x000000, 0.32);
-    gfx.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach(p => gfx.lineTo(p.x, p.y));
-    gfx.lineStyle(2.5, col, 0.9);
-    gfx.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach(p => gfx.lineTo(p.x, p.y));
-    gfx.lineStyle(0);
+    const segments=[];
+    let total=0;
+    for(let i=1;i<pts.length;i++){
+      const a=pts[i-1],b=pts[i],len=Math.hypot(b.x-a.x,b.y-a.y);
+      segments.push({a,b,len,start:total});total+=len;
+    }
+    const pointAt=(distance)=>{
+      const seg=segments.find(s=>distance<=s.start+s.len) || segments[segments.length-1];
+      const t=Math.max(0,Math.min(1,(distance-seg.start)/seg.len));
+      return {x:seg.a.x+(seg.b.x-seg.a.x)*t,y:seg.a.y+(seg.b.y-seg.a.y)*t,
+        angle:Math.atan2(seg.b.y-seg.a.y,seg.b.x-seg.a.x)};
+    };
+    // Dotted route with a dark backing so it remains legible on every terrain.
+    for(let d=0;d<=total;d+=10){
+      const p=pointAt(d);
+      gfx.beginFill(0x080b08,0.55);gfx.drawCircle(p.x,p.y,3.1);gfx.endFill();
+      gfx.beginFill(col,0.95);gfx.drawCircle(p.x,p.y,1.75);gfx.endFill();
+    }
+    // Direction arrows repeat along long routes and always point to the target.
+    for(let d=48;d<total-18;d+=64){
+      const p=pointAt(d),cs=Math.cos(p.angle),sn=Math.sin(p.angle);
+      const triangle=(size,color,alpha)=>{
+        const tip=[p.x+cs*size,p.y+sn*size];
+        const baseX=p.x-cs*size*.62,baseY=p.y-sn*size*.62;
+        const width=size*.68;
+        gfx.beginFill(color,alpha);
+        gfx.drawPolygon([tip[0],tip[1],baseX-sn*width,baseY+cs*width,baseX+sn*width,baseY-cs*width]);
+        gfx.endFill();
+      };
+      triangle(7.5,0x080b08,0.65);triangle(5.6,col,1);
+    }
     const last = pts[pts.length-1];
     gfx.beginFill(col,0.18); gfx.drawCircle(last.x,last.y,8); gfx.endFill();
     gfx.beginFill(col,0.85); gfx.drawCircle(last.x,last.y,5); gfx.endFill();
@@ -2950,7 +2981,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     }
   }, [spawns]);
 
-  // Protection — shield icon on recently captured tiles (no glow)
+  // Protection — centered shield and soft glow on recently captured tiles.
   useEffect(() => {
     const cont = protectGfxRef.current;
     if (!cont) return;
@@ -2965,11 +2996,22 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const { cx, cy } = isoXY(c, r);
       const elev = tile?.isWin ? 10 : 4;
       const sy = cy - elev;
-      // Position shield just above the top vertex of the tile diamond
+      const mid = sy + TH/2;
+      const diamond=[cx,sy,cx+TW/2,mid,cx,sy+TH,cx-TW/2,mid];
+      const glow=new PIXI.Graphics();
+      glow.beginFill(0x73c9ff,0.10);glow.drawPolygon(diamond);glow.endFill();
+      glow.lineStyle(7,0x73c9ff,0.07);glow.drawPolygon(diamond);
+      glow.lineStyle(3,0x73c9ff,0.16);glow.drawPolygon(diamond);
+      glow.lineStyle(1.3,0xb8e8ff,0.78);glow.drawPolygon(diamond);glow.lineStyle(0);
+      cont.addChild(glow);
+      const badge=new PIXI.Graphics();
+      badge.beginFill(0x10243a,0.72);badge.drawCircle(cx,mid,11);badge.endFill();
+      badge.lineStyle(1.2,0x9bdcff,0.82);badge.drawCircle(cx,mid,11);badge.lineStyle(0);
+      cont.addChild(badge);
       const txt = new PIXI.Text("🛡", { fontSize: 14, align: "center" });
-      txt.anchor.set(0.5, 1.0);
+      txt.anchor.set(0.5, 0.5);
       txt.x = cx;
-      txt.y = sy - 2;
+      txt.y = mid;
       cont.addChild(txt);
     }
   }, [protectedTileKeys]);
