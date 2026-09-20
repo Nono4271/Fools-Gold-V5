@@ -1882,6 +1882,7 @@ self.onmessage = function(e) {
         campUnitKey: entry.unit,
         campFaction: entry.template.campFaction,
         garrisonWaves: entry.template.garrisonWaves,
+        campW: w, campH: h, // footprint, so the renderer can centre the camp icon
       };
     }
   }
