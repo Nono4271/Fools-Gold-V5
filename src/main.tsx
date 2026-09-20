@@ -9,6 +9,8 @@ import "./index.css";
 document.addEventListener(
   "touchstart",
   (e) => {
+    // The separate 3D demo owns its touch handling.
+    if (new URLSearchParams(location.search).get("demo3d") === "1") return;
     // When a scrollable overlay screen is active, let the browser handle
     // touch naturally so pan gestures reach the scroll containers.
     if (document.documentElement.classList.contains("gacha-open")) return;
