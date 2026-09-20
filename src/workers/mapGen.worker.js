@@ -1383,61 +1383,6 @@ self.onmessage = function(e) {
     }
   }
 
-  // ── Neutral/Ancient camps ──────────────────────────────────────────────────
-  // Pure planning logic lives in shared/utils/neutralCamps.js (which unit,
-  // which stats, which named region — unit-tested independently); this pass
-  // just finds a free footprint near each planned region and stamps it onto
-  // the live grid, the same way keeps stamp their footprint above. Camps only
-  // avoid keep footprints + existing impassable tiles (KEEP_FOOTPRINT_SET +
-  // impassKeys) — NOT water/mountain terrain suitability. Flagged in
-  // ReadMeAI as a known limitation needing a visual/phone playtest pass.
-  postMessage({ type:"progress", pct:87, label:"Placing neutral camps..." });
-  const campMeta = {};
-  {
-    const campOccupied = new Set(impassKeys);
-    for (const k of KEEP_FOOTPRINT_SET) campOccupied.add(k);
-    const campPlan = planAllCamps({ campsPerRegion: 30, campsPerZone: 20 });
-
-    for (const entry of campPlan) {
-      const { w, h } = entry.template.footprint;
-      const slot = findCampSlot({
-        occupied: campOccupied, cx: entry.cx, cy: entry.cy,
-        w, h, cols: COLS, rows: ROWS, maxRadius: 60,
-      });
-      if (!slot) continue; // no room found nearby — skip rather than overlap anything
-
-      const { c, r } = slot;
-      const primaryIdx = r*COLS + c;
-      for (let dc=0; dc<w; dc++) {
-        for (let dr=0; dr<h; dr++) {
-          const fc = c+dc, fr = r+dr;
-          const fi = fr*COLS + fc;
-          const isPrimary = dc===0 && dr===0;
-          terrainArr[fi] = TERRAIN_ENC.grass;
-          rssArr[fi]     = 0;
-          regionArr[fi]  = REGION_KEY_TO_IDX[entry.regionKey] ?? regionArr[fi];
-          if (isPrimary) {
-            powerArr[fi]    = entry.template.powerLevel;
-            garrisonArr[fi] = Math.round((POWER_DEFS[entry.template.powerLevel]?.command ?? 90) * 100);
-            siegeArr[fi]    = entry.template.siege;
-            siegeMaxArr[fi] = entry.template.siegeMax;
-            flagArr[fi]     = (flagArr[fi] & ~(F_CAMPPART|F_HQ|F_HQPART|F_KEEP|F_KEEPPART)) | F_CAMP;
-          } else {
-            flagArr[fi]     = (flagArr[fi] & ~(F_CAMP|F_HQ|F_HQPART|F_KEEP|F_KEEPPART)) | F_CAMPPART;
-            keepPrimArr[fi] = primaryIdx;
-          }
-        }
-      }
-      occupyFootprint(campOccupied, c, r, w, h);
-      campMeta[`${c},${r}`] = {
-        campName: entry.template.name,
-        campUnitKey: entry.unit,
-        campFaction: entry.template.campFaction,
-        garrisonWaves: entry.template.garrisonWaves,
-      };
-    }
-  }
-
   // Pre-own starter keeps
   const STARTER_CMDS = {
     pirates:        { n:"Saltmere Captain",       icon:"⚓"  },
@@ -1866,7 +1811,82 @@ self.onmessage = function(e) {
 
   }
 
-  postMessage({ type:"progress", pct:98, label:"Finishing up..." });
+  // ── Neutral/Ancient camps ──────────────────────────────────────────────────
+  // Pure planning logic lives in shared/utils/neutralCamps.js (which unit,
+  // which stats, which named region — unit-tested independently); this pass
+  // just finds a free footprint near each planned region and stamps it onto
+  // the live grid, the same way keeps stamp their footprint above.
+  //
+  // Placed LAST (after keeps, HQs, roads and P10-P13 special tiles are all
+  // final) specifically so it can check the FINISHED grid and never overlap
+  // any of them: `isCampBlocked` rejects water/mountain/road terrain
+  // (river/rockymountain/road/hellfire), any keep/HQ/gate/border-flagged
+  // tile, and any ROAD_TILE_SET tile, in addition to other camps already
+  // placed this pass (`campOccupied`). Camps are a tiny fraction of the
+  // ~2.4M-tile map, so searching outward from each camp's anchor region for
+  // a free spot is cheap and safe to do this late.
+  postMessage({ type:"progress", pct:98, label:"Placing neutral camps..." });
+  const campMeta = {};
+  {
+    const BLOCKED_FLAGS = F_KEEP | F_KEEPPART | F_HQ | F_HQPART | F_GATE | F_BORDER;
+    const BLOCKED_TERRAIN = new Set([
+      TERRAIN_ENC.river, TERRAIN_ENC.rockymountain, TERRAIN_ENC.road, TERRAIN_ENC.hellfire,
+    ]);
+    const isCampBlocked = (c, r) => {
+      if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return true;
+      const idx = r*COLS + c;
+      if (flagArr[idx] & BLOCKED_FLAGS) return true;
+      if (ROAD_TILE_SET.has(idx)) return true;
+      if (BLOCKED_TERRAIN.has(terrainArr[idx])) return true;
+      return false;
+    };
+
+    const campOccupied = new Set(impassKeys);
+    for (const k of KEEP_FOOTPRINT_SET) campOccupied.add(k);
+    const campPlan = planAllCamps({ campsPerRegion: 30, campsPerZone: 20 });
+
+    for (const entry of campPlan) {
+      const { w, h } = entry.template.footprint;
+      const slot = findCampSlot({
+        occupied: campOccupied, cx: entry.cx, cy: entry.cy,
+        w, h, cols: COLS, rows: ROWS, maxRadius: 80,
+        isBlocked: isCampBlocked,
+      });
+      if (!slot) continue; // no room found nearby — skip rather than overlap anything
+
+      const { c, r } = slot;
+      const primaryIdx = r*COLS + c;
+      for (let dc=0; dc<w; dc++) {
+        for (let dr=0; dr<h; dr++) {
+          const fc = c+dc, fr = r+dr;
+          const fi = fr*COLS + fc;
+          const isPrimary = dc===0 && dr===0;
+          terrainArr[fi] = TERRAIN_ENC.grass;
+          rssArr[fi]     = 0;
+          regionArr[fi]  = REGION_KEY_TO_IDX[entry.regionKey] ?? regionArr[fi];
+          if (isPrimary) {
+            powerArr[fi]    = entry.template.powerLevel;
+            garrisonArr[fi] = Math.round((POWER_DEFS[entry.template.powerLevel]?.command ?? 90) * 100);
+            siegeArr[fi]    = entry.template.siege;
+            siegeMaxArr[fi] = entry.template.siegeMax;
+            flagArr[fi]     = (flagArr[fi] & ~(F_CAMPPART|F_HQ|F_HQPART|F_KEEP|F_KEEPPART)) | F_CAMP;
+          } else {
+            flagArr[fi]     = (flagArr[fi] & ~(F_CAMP|F_HQ|F_HQPART|F_KEEP|F_KEEPPART)) | F_CAMPPART;
+            keepPrimArr[fi] = primaryIdx;
+          }
+        }
+      }
+      occupyFootprint(campOccupied, c, r, w, h);
+      campMeta[`${c},${r}`] = {
+        campName: entry.template.name,
+        campUnitKey: entry.unit,
+        campFaction: entry.template.campFaction,
+        garrisonWaves: entry.template.garrisonWaves,
+      };
+    }
+  }
+
+  postMessage({ type:"progress", pct:99, label:"Finishing up..." });
 
   // ── Pre-build per-faction tile key lists ──────────────────────────────────
   // Scanning ownerArr here (worker thread, no jank) saves the main thread from
