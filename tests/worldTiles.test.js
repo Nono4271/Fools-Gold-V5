@@ -29,6 +29,35 @@ test('tile map computes tiles on demand and only enumerates stored tiles', () =>
   map['0,0'] = {x:1}; assert.deepEqual(Object.keys(map), ['0,0']); assert.equal(store['0,0'].x, 1);
 });
 
+test('camp tiles decode campName/campUnitKey/campFaction and garrisonWaves from campMeta', () => {
+  const campMetaObj = { '2,1': { campName: 'Wolf Rider Camp', campUnitKey: 'wolf_rider', campFaction: 'neutrals', garrisonWaves: 2 } };
+  const campFlagMeta = { ...meta, F_CAMP: 128, F_CAMPPART: 256, campMeta: campMetaObj };
+  const a = arrays();
+  a.flagArr[1 * C + 2] = 128;       // 2,1 primary
+  a.flagArr[1 * C + 3] = 256;       // 3,1 footprint part
+  a.keepPrimArr[1 * C + 3] = 1 * C + 2;
+  const { map } = createTileMap(a, campFlagMeta);
+  const primary = map['2,1'];
+  assert.equal(primary.isCamp, true);
+  assert.equal(primary.campName, 'Wolf Rider Camp');
+  assert.equal(primary.campUnitKey, 'wolf_rider');
+  assert.equal(primary.campFaction, 'neutrals');
+  assert.equal(primary.garrisonWaves, 2);
+  const part = map['3,1'];
+  assert.equal(part.isCampPart, true);
+  assert.equal(part.keepPrimaryKey, '2,1');
+});
+
+test('spawnEligibleKeys excludes camp tiles when F_CAMP/F_CAMPPART are present', () => {
+  const campFlagMeta = { ...meta, F_CAMP: 128, F_CAMPPART: 256 };
+  const a = arrays();
+  a.flagArr[0] = 128; // one camp primary tile
+  a.flagArr[1] = 256; // one camp part tile
+  const keys = spawnEligibleKeys(a, campFlagMeta, {1:{key:'reg'}});
+  assert.equal(keys.some(k => k.startsWith('0,0|')), false);
+  assert.equal(keys.some(k => k.startsWith('1,0|')), false);
+});
+
 test('player HQ stamp owns all 9 tiles', () => {
   const {map} = createTileMap(arrays(), meta);
   assert.equal(stampPlayerHq(map, '1,1', 'pirates'), true);
