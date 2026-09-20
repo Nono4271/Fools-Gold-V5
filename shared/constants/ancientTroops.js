@@ -127,9 +127,9 @@ export const ANCIENT_TROOPS = [
       a: {
         key: "timeless_vigil", name: "Timeless Vigil", icon: "⏳",
         trigger: "round_start",
-        desc: "On round start, chance to make the enemy take 15% more damage this round.",
-        procBase: 0.20, procMax: 0.55,
-        effect: { type: "vs_all_dmg_up", value: 0.15 },
+        desc: "On round start, chance to make the enemy take 25% more damage this round.",
+        procBase: 0.26, procMax: 0.65,
+        effect: { type: "vs_all_dmg_up", value: 0.25 },
       },
       b: {
         key: "paralyzing_gaze", name: "Paralyzing Gaze", icon: "👁️",
@@ -141,9 +141,9 @@ export const ANCIENT_TROOPS = [
       c: {
         key: "arcane_barrage", name: "Arcane Barrage", icon: "🌌",
         trigger: "on_hit",
-        desc: "On hit, chance to deal an extra 55% instance of focus damage.",
-        procBase: 0.25, procMax: 0.60,
-        effect: { type: "bonus_damage", value: 0.55, dmgType: "focus" },
+        desc: "On hit, chance to deal an extra 100% instance of focus damage.",
+        procBase: 0.35, procMax: 0.75,
+        effect: { type: "bonus_damage", value: 1.00, dmgType: "focus" },
       },
       d: SOLE_ANCIENT_SKILL,
     },

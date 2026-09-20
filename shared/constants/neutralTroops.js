@@ -407,13 +407,13 @@ export const NEUTRAL_TROOPS = [
     tags: ["renegade"],
     region: "north",
     desc: "Cast out of the Shadowfen for losing themselves to the beast too often — now they don't fight it.",
-    stats: { dmgLo: 20, dmgHi: 25, def: 20, hp: 36, siege: 13, spd: 70 },
+    stats: { dmgLo: 19, dmgHi: 23, def: 19, hp: 34, siege: 13, spd: 70 },
     skills: {
       a: {
         key: "feral_frenzy", name: "Feral Frenzy", icon: "🩸",
         trigger: "on_hit",
         desc: "On hit, chance to attack twice in one round.",
-        procBase: 0.25, procMax: 0.65,
+        procBase: 0.17, procMax: 0.50,
         effect: { type: "double_attack" },
       },
     },

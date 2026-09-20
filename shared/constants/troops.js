@@ -543,7 +543,7 @@ export const FACTION_TROOPS = {
             icon: "🦎",
             trigger: "on_hit",
             desc: "On hit, chance to attack twice in one round.",
-            procBase: 0.20, procMax: 0.70,
+            procBase: 0.14, procMax: 0.50,
             effect: { type: "double_attack" },
           },
           b: {
@@ -557,7 +557,7 @@ export const FACTION_TROOPS = {
           },
         },
         tiers: [
-          { label: "Scaleblade", desc: "A lithe dragonkin skirmisher with fire in their veins.",      dmgLo: 15, dmgHi: 19, def: 13, hp: 24, siege: 13, spd: 72 },
+          { label: "Scaleblade", desc: "A lithe dragonkin skirmisher with fire in their veins.",      dmgLo: 13, dmgHi: 17, def: 13, hp: 24, siege: 13, spd: 72 },
           { label: "Emberclaw",  desc: "Faster and fiercer, leaving scorch marks with every pass.",   dmgLo: 20, dmgHi: 25, def: 17, hp: 32, siege: 18, spd: 72 },
           { label: "Ashfang",    desc: "A dragonkin assassin who strikes like a flame and vanishes.", dmgLo: 21, dmgHi: 26, def: 22, hp: 42, siege: 23, spd: 72 },
         ],
