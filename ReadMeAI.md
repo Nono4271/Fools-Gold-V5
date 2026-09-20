@@ -8,6 +8,19 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Camps: map icon, 2 waves, popup name; double-tap closes popup
+
+Owner feedback after the first on-device look at camps (tile popup showed the region name "Salthaven", 1/1 waves, no icon, no way to close the popup).
+
+1. **Camp icon on the map.** `src/MapRenderer.jsx`: new `drawCampMarker` (tent on a ring with a pennant) drawn into a new `campGfx` layer inside `doProps`, so it redraws with props and only at zoom >= 0.5 (same gate as props). Pennant/ring colour = tier by power level (P7 green, P9 gold, P11 orange, P13/Ancient purple); green once the player owns it. Icon size scales with footprint (1x1/1x2/2x2) and is centred on the footprint. To avoid scanning every visible tile, `createTileMap` (`shared/utils/worldTiles.js`) now attaches a non-enumerable `__camps` list (`{key,c,r,w,h}`) to the tile store; `Object.keys(store)` is unchanged. `mapGen.worker.js` `campMeta` now carries `campW`/`campH`; tiles expose `campW`/`campH`. Art is vector placeholder (no sprite asset); swap `drawCampMarker` when real camp art exists.
+2. **Every camp has 2 waves.** `neutralCamps.js`: `CAMP_GARRISON_WAVES = 2`, set as `template.garrisonWaves` (flows through `campMeta` -> `tile.garrisonWaves`; popup wave bar, `garrisonWaveCount`, and the multi-wave battle loop in `useMarch.js` already key off that). Power level, level and troop budget are unchanged. `garrisonWaveDefCmd` (`shared/utils/garrisonUtils.js`) now gives camp waves the SAME level and the SAME troop layout/count as wave 0 (same faction, same seed); only the commander differs (picked from wave 0's faction). Other tiles' per-wave variety is untouched. The duplicate `garrisonWaveDefCmd` in `battle.js` is not imported anywhere and was left as is.
+3. **Popup shows the camp name.** `TilePopup.jsx` title now `🏕 {campName}` for `isCamp` tiles (was falling through to `regionName`); same branch added to `TileInfoPanel.jsx`. Clicking any tile of a 2x2/1x2 camp now redirects to the camp's primary tile (`Game.jsx` `onTileClick`: `isKeepPart || isCampPart`).
+4. **Double-tap closes the popup.** `Game.jsx` `onTileClick`: a second tap on the already-selected tile within 400 ms (and >= 60 ms, since the renderer can report one physical tap through two hit targets) closes the popup, in normal view mode only (not while picking a march destination). Rule in `shared/utils/doubleTap.js`.
+
+**Tests:** `tests/doubleTap.test.js` (3); `tests/neutralCamps.test.js` +1 (all templates 2 waves); `tests/campSearch.test.js` end-to-end test extended (camp name, 2 waves, `campW/H`, `__camps` count and non-enumerable, wave 0 vs wave 1 same level/troops/layout on ~60 real generated camps). Suite: 245 pass; the 3 fails are still the `esbuild`/`pixi.js` missing-package tests. **Not verified visually** (no Pixi/renderer or `npm run build` in the sandbox): the icon drawing, its placement/size, and the double-tap feel need an on-device look.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Bug fix: camps were never placed on the map (Camps search showed "none in range")
 
 **Root cause (not a search bug):** the plan entries from `planAllCamps` (`shared/utils/neutralCamps.js`) had no `cx`/`cy`, but the camp pass in `mapGen.worker.js` reads `entry.cx`/`entry.cy` as the `findCampSlot` anchor. With `undefined` anchors `findCampSlot` returned `{c: undefined, r: undefined}` (every bounds/blocked check passes on NaN), so writes went to NaN typed-array indexes (silent no-ops) and `campMeta` got a single junk `"undefined,undefined"` entry. Result: 0 camp tiles on the map. Reproduced by running the real generator in Node before the fix.
