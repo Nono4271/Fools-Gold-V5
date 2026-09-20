@@ -109,7 +109,7 @@ export const NEUTRAL_TROOPS = [
     tags: ["beast"],
     region: "mid",
     desc: "A lone Beastfolk scout mounted on a war-bred wolf, fast and unpredictable.",
-    stats: { dmgLo: 15, dmgHi: 19, def: 12, hp: 26, siege: 9, spd: 95 },
+    stats: { dmgLo: 13, dmgHi: 16, def: 12, hp: 26, siege: 9, spd: 70 },
     skills: {
       a: {
         key: "pack_charge", name: "Pack Charge", icon: "🐺",
@@ -240,14 +240,14 @@ export const NEUTRAL_TROOPS = [
     tags: ["raider"],
     region: "south",
     desc: "A desert raider who strikes from dust-storms and vanishes before the counter lands.",
-    stats: { dmgLo: 22, dmgHi: 27, def: 16, hp: 40, siege: 11, spd: 100 },
+    stats: { dmgLo: 19, dmgHi: 23, def: 16, hp: 40, siege: 11, spd: 85 },
     skills: {
       a: {
         key: "sandstorm_strike", name: "Sandstorm Strike", icon: "🏜️",
         trigger: "on_hit",
-        desc: "On hit, chance to deal an extra 85% instance of damage.",
+        desc: "On hit, chance to deal an extra 70% instance of damage.",
         procBase: 0.20, procMax: 0.60,
-        effect: { type: "bonus_damage", value: 0.85 },
+        effect: { type: "bonus_damage", value: 0.70 },
       },
     },
   },
@@ -292,14 +292,14 @@ export const NEUTRAL_TROOPS = [
     tags: ["renegade"],
     region: "south",
     desc: "A pirate who jumped ship on their own crew — still handy with a blade, twice as untrustworthy.",
-    stats: { dmgLo: 24, dmgHi: 29, def: 18, hp: 44, siege: 11, spd: 75 },
+    stats: { dmgLo: 22, dmgHi: 26, def: 18, hp: 44, siege: 11, spd: 75 },
     skills: {
       a: {
         key: "cutthroats_due", name: "Cutthroat's Due", icon: "🗡️",
         trigger: "on_hit",
-        desc: "On hit, chance to heal for 50% of damage dealt.",
+        desc: "On hit, chance to heal for 30% of damage dealt.",
         procBase: 0.20, procMax: 0.60,
-        effect: { type: "lifesteal", value: 0.50 },
+        effect: { type: "lifesteal", value: 0.30 },
       },
     },
   },
