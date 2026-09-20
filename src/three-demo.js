@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import './three-demo.css';
 
-const root = document.querySelector('#three-demo');
+const root = document.querySelector('#three-demo') || document.querySelector('#root');
 root.innerHTML = `
   <div class="demo-ui">
     <div class="top-bar">
