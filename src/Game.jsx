@@ -12,6 +12,7 @@ import { isoXY } from "../shared/constants/geometry.js";
 // Utils
 import { adj, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../shared/utils/pathfinding.js";
 import { applyGearToCmd } from "../shared/utils/gearStats.js";
+import { capstoneTrainDiscount } from "../shared/utils/training.js";
 
 // Hooks
 import { useResources } from "./hooks/useResources.js";
@@ -1239,7 +1240,10 @@ export default function RiseToWar() {
   // branchKey: "faction:branch:tier" e.g. "pirates:swashbucklers:0"
   // Multiple queues allowed (even same branchKey). Max slots = trainingQueueCount(training lvl).
   const queueTraining = useCallback((branchKey, amount) => {
-    dispatchArmy({type:"train",branchKey,amount,buildings:bldgs,unlocked:unlockedBranches,speedMult:trainingSpeedMult,now:Date.now(),id:crypto.randomUUID()});
+    const [f, key] = String(branchKey).split(":");
+    const branchDef = FACTION_TROOPS[f]?.branches.find(b => b.key === key);
+    const costTimeDiscount = branchDef?.capstone ? capstoneTrainDiscount(bldgs[`b_${f}_${key}`]) : 0;
+    dispatchArmy({type:"train",branchKey,amount,buildings:bldgs,unlocked:unlockedBranches,speedMult:trainingSpeedMult,costTimeDiscount,now:Date.now(),id:crypto.randomUUID()});
   }, [bldgs,unlockedBranches,trainingSpeedMult,dispatchArmy]);
   const queueHealing = useCallback(amount => {
     dispatchArmy({type:"heal",amount,buildings:bldgs,now:Date.now(),id:crypto.randomUUID()});
