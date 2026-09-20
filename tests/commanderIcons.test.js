@@ -41,3 +41,12 @@ test('a commander leaving the displayed group does not leave a stale portrait',(
   context.byTile={'1,1':[cmd]};draw();assert.equal(context.spriteMap.get(cmd.uid).sprite.visible,true);
   clearCommanderIcons(context.spriteMap);
 });
+
+test('HQ hides existing icons and removes their base markers',()=>{
+  const {cmd,context,draw}=fixture();draw();
+  let markers=0;context.gfx.drawCircle=()=>markers++;context.gfx.drawEllipse=()=>markers++;
+  context.tiles['1,1'].isHQ=true;draw();
+  assert.equal(context.spriteMap.get(cmd.uid).sprite.visible,false);assert.equal(markers,0);
+  delete context.tiles['1,1'].isHQ;draw();assert.equal(context.spriteMap.get(cmd.uid).sprite.visible,true);
+  clearCommanderIcons(context.spriteMap);
+});
