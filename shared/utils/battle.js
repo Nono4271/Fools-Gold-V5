@@ -36,7 +36,8 @@ if (!f) return [];
 const b = f.branches.find(b => b.key === branch);
 if (!b) return [];
 const skills = [];
-if (tier === 0) skills.push(b.skills.a);
+if (b.capstone) { skills.push(b.skills.a); skills.push(b.skills.b); skills.push(b.skills.c); }
+else if (tier === 0) skills.push(b.skills.a);
 else if (tier === 1) skills.push(b.skills.b);
 else { skills.push(b.skills.a); skills.push(b.skills.b); }
 return skills;
@@ -97,6 +98,7 @@ switch (eff.type) {
   case "ally_def_up":   rs.troopDefMult       *= (1 + (eff.value || 0.20)); break;
   case "atk_stack":     rs.troopAtkMult       *= (1 + (eff.valuePerStack || 0.04)); break;
   case "counter_attack":rs.troopCounterAtk    = true; break;
+  case "lifesteal":     rs.lifesteal          = (rs.lifesteal || 0) + (eff.value || 0.50); break;
   case "immunity":      break;
   // Troop passive damage reductions (applied as dmgReduce)
   case "focus_dmg_reduce":

@@ -53,7 +53,7 @@ export function armyEconomyReducer(state,action) {
     case 'set': return {...state,[action.key]:typeof action.value==='function'?action.value(state[action.key]):action.value};
     case 'wounded': {const added=splitTroops(action.slots,action.amount),wounded={...state.woundedByBranch};for(const [key,n] of Object.entries(added))wounded[key]=(wounded[key]||0)+n;return {...state,woundedByBranch:wounded};}
     case 'train': {
-      const quote=trainingQuote(action.branchKey,action.amount,action.speedMult),b=action.buildings;
+      const quote=trainingQuote(action.branchKey,action.amount,action.speedMult,action.costTimeDiscount),b=action.buildings;
       if(!quote||state.trainingQueues.some(q=>q.id===action.id))return state;
       const [f,key,tier]=action.branchKey.split(':');
       const reserved=state.trainingQueues.reduce((s,q)=>s+q.remaining,0);
