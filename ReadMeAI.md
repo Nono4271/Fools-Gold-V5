@@ -8,6 +8,25 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Offline catch-up: leftover Tomes + Fort countdown
+
+Follow-up to "Background/offline timer catch-up (roadmap item 4)" below. Same bug class (fixed amount per interval firing, so backgrounded time is lost); two more places had it. Copied the existing fix pattern exactly, no new pattern.
+
+**Fixed:**
+- **Wizard's Tomes power pool** (`src/hooks/useTomes.js`): did `setPowerPool(prev => prev + pph/360)` per 10 s firing. Math moved to new `shared/utils/tomes.js` `tomesPowerTick(currentPool, powerPerHr, elapsedMs = TOMES_TICK_MS)` (returns the same value when nothing is owed). The hook tracks the last real tick time, passes actual elapsed ms, and runs one catch-up tick on `visibilitychange` when the tab is visible — same as `useResources.js` / `useTacticTicks.js`. The default elapsed is the normal 10 s tick, so any caller not passing it gets the old `pph/360`. Catch-up uses the current `powerPerHrRef` (same approximation the resource/egg fixes make).
+- **Fort demolish/abandon countdown** (`src/components/game/popup/FortPanel.jsx`): the 30/45 min countdown did `setCountdown(prev => prev - 1)` per 1 s firing and called `demolishFort`/`abandonFort` from inside the state updater when it hit 0, so a backgrounded tab stalled the countdown (and the demolition). Now stores an absolute deadline, displays `secsUntil(deadline, now)` (new helper in `shared/utils/tileTimers.js`), re-checks on `visibilitychange`, fires the action once (guarded), and no longer runs side effects inside a state updater.
+
+**Audited every `setInterval` in `src/hooks/`, `src/components/`, `src/workers/` — confirmed correct, no change:**
+- Already-cleared list (not re-flagged): `useForts.js` (both), `useTraining.js`, `useTileTimers.js` (both), `gameLoop.worker.js` `tickSiegeReset`.
+- Absolute timestamps / real `Date.now()`: `useUpgrades.js` (`endsAt`), `useReinforcements.js` (`stepReinforcement` catches up multiple steps), `useMarch.js` draw-rematch timer (`drawTimer` deadline), `gameLoop.worker.js` `tickMarch` (`advanceMarch`) and `tickDraw` (`drawTimer`), `spawn.worker.js` `tick` (`respawnAt`), `TilePopup.jsx` protection countdown (`protectedUntil`), `useResources.js`, `useTacticTicks.js` (egg/stamina fixed; gather/training use `gatherStartMs`/`trainingStartMs`).
+- Display-only clocks that just re-read `Date.now()` (nothing accumulates): `HQMenu.jsx` (both `setNow`), `WorldMap.jsx` (100 ms viewport-centre poll), `useGameLoop.js` `sendSnapshot`, `Game.jsx` spawn-worker `tick` message (worker compares `respawnAt`), `march.worker.js` frame loop (`positionAlongRoute` from `startTime`).
+- Out of scope, untouched: `useAiCrews.js` and the AI-side ticks (`useAI` `tickAiRss`/`tickAiEcon`, worker `aiRss`/`aiMarch`/`aiEcon`) — AI-side pacing, per the locked decision.
+- Dead code noted, not changed: `gameLoop.worker.js` `tickRein` steps one convoy step per firing, but `Game.jsx` passes no `onReinStep`, so its `reinStep` messages are ignored; real convoy movement is `useReinforcements.js`. If `onReinStep` is ever wired up, switch `tickRein` to `stepReinforcement` first.
+
+**Tests:** `tests/backgroundCatchup.test.js` +4 (Tomes default tick, Tomes catch-up, Tomes no-income/no-elapsed, fort countdown deadline). Written in a sandbox with no `node_modules` and no network, so `npm run build` could not run and `armyMenus`, `commanderIcons` and `resourceSprites` (missing `esbuild`/`pixi.js`) fail on import — they fail identically on the untouched zip. Everything else passes (219/222 incl. new tests). Touched files were syntax-checked with TypeScript's parser. Re-run `npm install && npm test && npm run build` locally to confirm.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet) — Camp placement now avoids water/roads/keeps/HQs (part 3)
 
 Follow-up correction to part 2 directly below. That first wiring pass only
