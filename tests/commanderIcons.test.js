@@ -51,7 +51,9 @@ test('HQ hides existing icons and removes their base markers',()=>{
   clearCommanderIcons(context.spriteMap);
 });
 
-test('late atlas loading attaches walking frames to the displayed commander',()=>{
+test('late atlas loading, alternating strides, direction changes and arrival use the live sprite',t=>{
+  let now=10000;
+  t.mock.method(Date,'now',()=>now);
   const base={valid:false,once(_event,callback){this.finish=callback;},off(){}};
   class FakeTexture { constructor(baseTexture,frame){this.baseTexture=baseTexture;this.frame=frame;} destroy(){} }
   FakeTexture.EMPTY={};FakeTexture.from=()=>({baseTexture:base});
@@ -60,10 +62,27 @@ test('late atlas loading attaches walking frames to the displayed commander',()=
   const cmd={uid:'atlas',id:'h1',tk:'1,1',owner:'player',march:{}};
   const gfx=new Graphics(),textCont={addChild(){}};
   const spriteMap=new Map();
-  drawCommanderIcons({PIXI:{Texture:FakeTexture,Sprite:FakeSprite,Rectangle:FakeRectangle},gfx,textCont,cmds:[cmd],tiles:{'1,1':{c:1,r:1}},byTile:{'1,1':[cmd]},spriteMap,posMap:new Map([['atlas',{px:100,py:100}]]),crewPids:new Set(),facKey:'pirates',aiPlayerIdMap:new Map(),isoXY:()=>({cx:100,cy:100}),TH:40});
+  const context={PIXI:{Texture:FakeTexture,Sprite:FakeSprite,Rectangle:FakeRectangle},gfx,textCont,cmds:[cmd],tiles:{'1,1':{c:1,r:1}},byTile:{'1,1':[cmd]},spriteMap,posMap:new Map([['atlas',{px:100,py:100}]]),crewPids:new Set(),facKey:'pirates',aiPlayerIdMap:new Map(),isoXY:()=>({cx:100,cy:100}),TH:40};
+  drawCommanderIcons(context);
   const displayed=spriteMap.get('atlas');
   assert.equal(displayed.frames,null);
-  Object.assign(base,{width:1536,height:1024});base.finish();
-  assert.equal(displayed.frames.length,24);
+  Object.assign(base,{width:3696,height:448});base.finish();
+  assert.equal(displayed.frames.length,132);
+  assert.equal(displayed.frames[131].frame.x,3584);
+  assert.equal(displayed.frames[131].frame.y,336);
+  assert.ok(Math.abs(displayed.sprite.width*256/288-44.2)<1e-9);
+  drawCommanderIcons(context);
+  assert.equal(displayed.sprite.texture,displayed.frames[1]);
+  now+=550;drawCommanderIcons(context);
+  assert.equal(displayed.sprite.texture,displayed.frames[17]);
+  context.posMap.set('atlas',{px:120,py:80});drawCommanderIcons(context);
+  assert.equal(displayed.sprite.texture,displayed.frames[2*33+17]);
+  cmd.march=null;drawCommanderIcons(context);
+  assert.equal(displayed.sprite.texture,displayed.frames[2*33]);
+  context.tiles['1,1'].isHQ=true;drawCommanderIcons(context);
+  assert.equal(displayed.sprite.visible,false);
+  cmd.march={};drawCommanderIcons(context);
+  assert.equal(displayed.sprite.visible,true);
+  assert.equal(displayed.sprite.texture,displayed.frames[2*33+1]);
   clearCommanderIcons(spriteMap);
 });

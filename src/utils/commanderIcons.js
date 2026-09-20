@@ -1,4 +1,4 @@
-import {commanderAtlas, commanderInsideHQ, facingRow, animationColumn, makeAtlasEntry} from './commanderMapSprites.js';
+import {commanderAtlas, commanderInsideHQ, facingRow, animationColumn, makeAtlasEntry, ATLAS_COLUMNS} from './commanderMapSprites.js';
 // One owner for commander display objects, shared by redraws and animation frames.
 export function destroyCommanderIcon(entry) {
   if (entry.base && entry.onLoaded) entry.base.off('loaded',entry.onLoaded);
@@ -101,7 +101,10 @@ export function drawCommanderIcons({PIXI, gfx, textCont, cmds, tiles, byTile, sp
         if (entry?.atlas) {
           if (workerPos && entry.lastPos) entry.direction = facingRow(workerPos.px-entry.lastPos.px,workerPos.py-entry.lastPos.py,entry.direction);
           entry.lastPos = workerPos ? {...workerPos} : null;
-          if (entry.frames) entry.sprite.texture = entry.frames[entry.direction*6+animationColumn(Boolean(cmd.march),Date.now())];
+          const now = Date.now();
+          if (cmd.march && entry.walkStartedAt == null) entry.walkStartedAt = now;
+          if (!cmd.march) entry.walkStartedAt = null;
+          if (entry.frames) entry.sprite.texture = entry.frames[entry.direction*ATLAS_COLUMNS+animationColumn(Boolean(cmd.march),now-(entry.walkStartedAt??now))];
           entry.sprite.visible = true;
           entry.sprite.x = ipx;
           entry.sprite.y = basePy+TH/2-gi*6;

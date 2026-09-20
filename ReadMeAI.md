@@ -10,6 +10,29 @@ Branch: codex/core-fixes-20260919
 
 # CURRENT AUDIT AND ROADMAP — READ THIS FIRST
 
+## Commander walking revision — v3
+
+Owner approved the separate-limb preview, stronger arm swing and fixed boot
+facing for cleanup and test-branch deployment. Previous v1/v2 completion
+claims are superseded: timing/alignment alone did not fix the same-leg artwork.
+- Fynn/Brine now use v3 atlases: 33 columns (idle + 32 walking frames), four
+  direction rows (SE, SW, NE, NW), 112px cells, 3696x448 transparent PNGs.
+- Front/back rigs have independently alternating legs; left-facing rows mirror
+  the matching right-facing rig. Boots do not inherit calf rotation. Small
+  overlaps cover ankle joins; padded cells avoid cutting off moving boots.
+- Actual character size is 15% smaller (52 to 44.2 source-equivalent pixels).
+  Padding is compensated in sprite size/anchor so it does not shrink twice.
+- Animation starts at first contact, loops every 1100ms, and returns to the
+  correct idle direction at arrival. Hidden while undeployed inside HQ;
+  visible while marching over the HQ. No march/path/gameplay timing changes.
+- Rebuild: `node scripts/preview-commander-gait.mjs --bake` requires Sharp
+  in the art-build environment, not the game runtime. Joint helpers live in
+  `src/utils/commanderGait.js`; existing v2 source sheets are kept for rebuilds.
+- Validation: 14 focused gait/renderer tests and production build passed;
+  both atlases have transparent frame edges (no clipped feet). Cloud browser previously
+  lacked a usable Pixi renderer; final phone playtest still needed. Do not
+  claim automated tests prove on-device animation quality.
+
 Last consolidated: 2026-09-20. The repository is the source of truth. The
 dated entries below are history and may describe bugs that were fixed later.
 
