@@ -587,7 +587,7 @@ export default memo(function GameBar({
             onClick={() => setScreen("gacha")}
           />
           <ActionButton
-            icon="⚔"
+            icon="🎖"
             label="Commander"
             color="#e0b850"
             accent="#7a5010"
