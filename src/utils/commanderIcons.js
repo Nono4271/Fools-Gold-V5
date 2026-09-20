@@ -1,8 +1,11 @@
+import {commanderAtlas, commanderInsideHQ, facingRow, animationColumn, makeAtlasEntry} from './commanderMapSprites.js';
 // One owner for commander display objects, shared by redraws and animation frames.
 export function destroyCommanderIcon(entry) {
+  if (entry.base && entry.onLoaded) entry.base.off('loaded',entry.onLoaded);
   for (const object of [entry.sprite, entry.mask, entry.text]) {
     if (object && !object.destroyed) object.destroy();
   }
+  for (const frame of entry.frames || []) frame.destroy(false);
 }
 
 export function clearCommanderIcons(spriteMap) {
@@ -23,9 +26,12 @@ export function drawCommanderIcons({PIXI, gfx, textCont, cmds, tiles, byTile, sp
       if (cmd.owner === 'player') col = 0x22cc55;
       else if (crewPids?.has(cmd.ownerPlayerId)) col = 0x2299ff;
       else if (cmd.faction === facKey) col = 0xaa44ff;
-      const entry = { col };
+      let entry = { col };
       if (textCont) {
-        if (cmd.bust) {
+        const atlas = commanderAtlas(cmd);
+        if (atlas) {
+          entry = {...makeAtlasEntry(PIXI,atlas,textCont),col};
+        } else if (cmd.bust) {
           const tex = PIXI.Texture.from(cmd.bust);
           const sprite = new PIXI.Sprite(tex);
           sprite.width = 14; sprite.height = 14;
@@ -68,8 +74,9 @@ export function drawCommanderIcons({PIXI, gfx, textCont, cmds, tiles, byTile, sp
     const { cx, cy } = isoXY(tile.c, tile.r);
     const elev = tile.isWin ? 10 : 4;
     const sy = cy - elev;
-    const playerG  = tileCmds.filter(c => c.owner === 'player');
-    const allAiG   = tileCmds.filter(c => c.owner !== 'player');
+    const outside = tileCmds.filter(c=>!commanderInsideHQ(c,tiles,c.march?posMap.get(c.uid):null));
+    const playerG  = outside.filter(c => c.owner === 'player');
+    const allAiG   = outside.filter(c => c.owner !== 'player');
     const crewG    = allAiG.filter(c => { const pid = c.ownerPlayerId || aiPlayerIdMap?.get(key); return pid && crewPids?.has(pid); });
     const factionG = allAiG.filter(c => c.faction === facKey && !crewG.includes(c));
     const enemyG   = allAiG.filter(c => !crewG.includes(c) && !factionG.includes(c));
@@ -80,7 +87,6 @@ export function drawCommanderIcons({PIXI, gfx, textCont, cmds, tiles, byTile, sp
     if (enemyG.length)   groups.push({ cmds: enemyG,   col: 0xdd3322 });
     groups.forEach(({ cmds: grp, col }, gi) => {
       const ey = sy + TH * 0.72 - gi * 6;
-      gfx.beginFill(col, 0.13); gfx.lineStyle(1.4, col, 1); gfx.drawEllipse(cx, ey, 15, 5); gfx.lineStyle(0); gfx.endFill();
       const visible = grp.slice(0, 3);
       const spacing = visible.length > 1 ? 14 : 0;
       visible.forEach((cmd, i) => {
@@ -90,10 +96,21 @@ export function drawCommanderIcons({PIXI, gfx, textCont, cmds, tiles, byTile, sp
         const dx  = (i - (visible.length - 1) / 2) * spacing;
         const ipx = basePx + dx;
         const ipy = basePy + TH * 0.72 - gi * 6 - 11;
+        const entry = spriteMap.get(cmd.uid);
+        if (entry?.atlas) {
+          if (workerPos && entry.lastPos) entry.direction = facingRow(workerPos.px-entry.lastPos.px,workerPos.py-entry.lastPos.py,entry.direction);
+          entry.lastPos = workerPos ? {...workerPos} : null;
+          if (entry.frames) entry.sprite.texture = entry.frames[entry.direction*6+animationColumn(Boolean(cmd.march),Date.now())];
+          entry.sprite.visible = true;
+          entry.sprite.x = ipx;
+          entry.sprite.y = basePy+TH/2-gi*6;
+          gfx.beginFill(0x080b08,0.3); gfx.drawEllipse(ipx,entry.sprite.y,9,3); gfx.endFill();
+          gfx.lineStyle(1,col,0.55); gfx.drawEllipse(ipx,entry.sprite.y,10,3.5); gfx.lineStyle(0);
+          return;
+        }
         gfx.beginFill(0x000000, 0.45); gfx.drawCircle(ipx+1, ipy+1, 9); gfx.endFill();
         gfx.beginFill(col, 0.9);       gfx.drawCircle(ipx,   ipy,   9); gfx.endFill();
         gfx.beginFill(0x000000, 0.55); gfx.drawCircle(ipx,   ipy,   7); gfx.endFill();
-        const entry = spriteMap.get(cmd.uid);
         if (entry?.sprite) { entry.sprite.visible = true; entry.sprite.x = ipx; entry.sprite.y = ipy; entry.mask.clear(); entry.mask.beginFill(0xffffff); entry.mask.drawCircle(ipx, ipy, 7); entry.mask.endFill(); }
         else if (entry?.text) { entry.text.visible = true; entry.text.x = ipx; entry.text.y = ipy; }
       });
