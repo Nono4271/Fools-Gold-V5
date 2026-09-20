@@ -30,7 +30,7 @@ const tickAiRss = useCallback(() => {
     const bldgs   = aiBldgsMapRef.current.get(fk) || {};
     const tileKeys = aiTileKeysMapRef.current.get(fk) || new Set();
     setAiRssMap(fk, p => {
-      const n = { stone: p.stone + 5, wood: p.wood + 5, gas: p.ore + 5, food: p.gas + 5 };
+      const n = { stone: p.stone + 5, wood: p.wood + 5, gas: p.gas + 5, food: p.food + 5 };
       for (const k of tileKeys) {
         const t = tiles[k];
         if (t?.rss) {
@@ -41,8 +41,8 @@ const tickAiRss = useCallback(() => {
       return {
         stone: Math.min(9990000, n.stone),
         wood:  Math.min(9990000, n.wood),
-        gas: Math.min(9990000, n.ore),
-        food: Math.min(9990000, n.gas),
+        gas: Math.min(9990000, n.gas),
+        food: Math.min(9990000, n.food),
       };
     });
   }
