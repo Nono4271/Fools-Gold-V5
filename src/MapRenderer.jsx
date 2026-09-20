@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo }
 import * as PIXI from "pixi.js";
 import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
-import {isInSpawnVisualArea, sameTerritory, resourceFootprint, selectionEdgesBesideHq, hqJoinedBorderSegments} from "./utils/spawnVisualTest.js";
+import {usesNewWorldVisuals, sameTerritory, resourceFootprint, selectionEdgesBesideHq, hqJoinedBorderSegments} from "./utils/worldVisuals.js";
 import {softenTerritoryColor} from "./utils/hqTerrainStyle.js";
 import {createResourceSpriteCache} from "./utils/resourceSprites.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
@@ -43,13 +43,13 @@ const DARK_VISUAL_TERRAIN = {
 
 // One world-space texture matrix keeps the grass continuous across tile edges.
 const GROUND_TEXTURE_MATRIX = new PIXI.Matrix(0.7,0,0,0.46,0,0);
-function fillVisualGround(gfx, points, c, r, terrain, inVisualTest, groundTexture) {
+function fillVisualGround(gfx, points, c, r, terrain, useNewVisuals, groundTexture) {
   const natural = !['river','ravine','rockymountain','hellfire','shore','road'].includes(terrain);
-  if (inVisualTest && natural && groundTexture?.baseTexture.valid) {
+  if (useNewVisuals && natural && groundTexture?.baseTexture.valid) {
     const tint = terrain === 'forest' ? 0xc3cfbc : terrain === 'mountain' ? 0xd2d0c6 : 0xffffff;
     gfx.beginTextureFill({texture:groundTexture,matrix:GROUND_TEXTURE_MATRIX,color:tint});
   } else {
-    gfx.beginFill(inVisualTest ? getSpawnVisualColor(c,r,terrain) : getTileBaseColor(c,r,terrain));
+    gfx.beginFill(useNewVisuals ? getSpawnVisualColor(c,r,terrain) : getTileBaseColor(c,r,terrain));
   }
   gfx.drawPolygon(points);gfx.endFill();
 }
@@ -231,7 +231,7 @@ function drawJoinedTerritoryEdges(gfx, tiles, c, r, tile, points, color) {
    No per-tile scene graph nodes. Camera moves = zero draw calls.
 ══════════════════════════════════════════════════════════════════════════ */
 
-function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null, visualCenterKey = null, groundTexture = null) {
+function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null, groundTexture = null) {
   if (!window.__rangeLogged) {
 
     window.__rangeLogged = true;
@@ -491,7 +491,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       }
 
       const key = `${c},${r}`;
-      const inVisualTest = isInSpawnVisualArea(c,r,visualCenterKey);
+      const useNewVisuals = usesNewWorldVisuals(c,r);
       const isSel    = selKey === key;
       const isMvTgt  = mode === "selectMarchDest" && mvCmdUid && owner === "player";
       const hasCmds  = Boolean(cByTile[key]?.length);
@@ -512,7 +512,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         gfx.beginFill(0xf0c040, 0.55); gfx.drawPolygon(TOP); gfx.endFill();
         if (zoom >= 0.75) { gfx.lineStyle(2, 0xf0c040, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
       } else {
-        fillVisualGround(gfx,TOP,c,r,terrain,inVisualTest,groundTexture);
+        fillVisualGround(gfx,TOP,c,r,terrain,useNewVisuals,groundTexture);
         // Hellfire terrain: add a subtle red-orange lava glow tint over the dark base
         if (terrain === "hellfire") {
           const rng2 = tileRng(c + 3, r + 7);
@@ -531,7 +531,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         }
         // Regular tiles and gates get borders here; HQ borders drawn in renderHQSpriteGroup
         if (!isSel && !drawAsHQ) {
-          if (inVisualTest) {
+          if (useNewVisuals) {
             gfx.beginFill(ot,0.045);gfx.drawPolygon(TOP);gfx.endFill();
             drawJoinedTerritoryEdges(gfx,tiles,c,r,tile,TOP,ot);
           } else {
@@ -568,7 +568,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       if (pl < 10 || !tile.isKeep || tile.isGate || tile.isWin) continue;
       // 2x2 diamond: N tip at primary tile top, covers exactly the same area as 4 tiles
       const MERGED = resourceFootprint(c,r,tile).points;
-      fillVisualGround(gfx,MERGED,c,r,tile.terrain,isInSpawnVisualArea(c,r,visualCenterKey),groundTexture);
+      fillVisualGround(gfx,MERGED,c,r,tile.terrain,usesNewWorldVisuals(c,r),groundTexture);
       gfx.lineStyle(0);
 
       // Owner tint
@@ -602,7 +602,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         cx,          cy - elev + TH * 3,       // S
         cx - TW*2.5, cy - elev + TH * 0.5,    // W
       ];
-      fillVisualGround(gfx,KEEP5,c,r,tile.terrain,isInSpawnVisualArea(c,r,visualCenterKey),groundTexture);
+      fillVisualGround(gfx,KEEP5,c,r,tile.terrain,usesNewWorldVisuals(c,r),groundTexture);
       gfx.lineStyle(0);
       // Owner tint
       const owner3 = tile.owner || null;
@@ -646,7 +646,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
   // No additional drawing needed here.
 }
 
-function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax, visualCenterKey = null) {
+function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
   gfx.clear();
   const dMin = cMin + rMin, dMax = cMax + rMax;
   for (let d = dMin; d <= dMax; d++) {
@@ -657,7 +657,7 @@ function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax, visualCenterKey = null
       if (r < rMin || r > rMax) continue;
       const tile = tiles[`${c},${r}`];
       if (!tile || tile.isHQ || tile.isWin || tile.isHQPart || tile.isShore) continue;
-      if (tile.rss && isInSpawnVisualArea(c,r,visualCenterKey)) continue;
+      if (tile.rss && usesNewWorldVisuals(c,r)) continue;
       // Gate tiles and P10-13 structures get props; static keeps do not
       const isStaticKeep = (tile.isKeep && !tile.isGate) && (tile.powerLevel ?? 0) < 10;
       const isStaticPart = tile.isKeepPart && (tile.powerLevel ?? 0) < 10;
@@ -1411,9 +1411,9 @@ function removeFortSprite(tileKey, fortLayer) {
   }
 }
 
-function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerHqKey, playerFacKey, crewPids, groundTexture, tiles) {
+function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerFacKey, crewPids, groundTexture, tiles) {
   const [pc, pr] = tileKey.split(",").map(Number);
-  const blendWithTerrain = isInSpawnVisualArea(pc,pr,playerHqKey);
+  const blendWithTerrain = usesNewWorldVisuals(pc,pr);
   // tileKey is the CENTER tile. Top-left of the 3×3 is one step back.
   const tlc = pc - 1, tlr = pr - 1;
   // Visual centre = middle tile of 3×3
@@ -1644,7 +1644,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
-function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerHqKey, playerFacKey, crewPids, vb, allHqKeys, aiPlayerIdMap, groundTexture) {
+function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerFacKey, crewPids, vb, allHqKeys, aiPlayerIdMap, groundTexture) {
   if (_hqKeyIndex.size === 0 || !vb) {
     if (!vb) _hqKeyIndex.clear();
     // Seed from patched tiles
@@ -1686,7 +1686,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     const faction    = tile.faction || owner || null;
     const prev       = _hqStateCache.get(tileKey);
     const [hqC,hqR] = tileKey.split(",").map(Number);
-    const blendWithTerrain = isInSpawnVisualArea(hqC,hqR,playerHqKey);
+    const blendWithTerrain = usesNewWorldVisuals(hqC,hqR);
     const borderSignature = hqJoinedBorderSegments(hqC,hqR,tiles).map(segment=>segment.join(",")).join("|");
 
     const curPlayerName = owner === "player" ? playerName : null;
@@ -1705,7 +1705,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     }
 
     const tileWithPid = ownerPlayerId && !tile.ownerPlayerId ? { ...tile, ownerPlayerId } : tile;
-    hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerHqKey, playerFacKey, crewPids, groundTexture, tiles));
+    hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerFacKey, crewPids, groundTexture, tiles));
     _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew, blendWithTerrain, borderSignature });
 
     // Count tint changes for summary log
@@ -2209,7 +2209,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
               if (r < pb.rMin || r > pb.rMax) continue;
               const tile = tiles[`${c},${r}`];
               if (!tile || !tile.rss || tile.isHQ || tile.isWin || tile.isHQPart || tile.isShore) continue;
-              if (isInSpawnVisualArea(c,r,playerHqKeyRef.current)) continue;
+              if (usesNewWorldVisuals(c,r)) continue;
               // Skip P1 (no individual props) and static keeps/keepparts
               const pl = tile.powerLevel || 1;
               if (pl === 1) continue;
@@ -2243,19 +2243,19 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         const pg = propsFrontRef.current;
         pg.clear();
         if (zoomRef.current >= 0.5) {
-          drawAllProps(pg, tilesRef.current, pb.rMin, pb.rMax, pb.cMin, pb.cMax, playerHqKeyRef.current);
+          drawAllProps(pg, tilesRef.current, pb.rMin, pb.rMax, pb.cMin, pb.cMax);
         }
       }
 
-      // Approved dark-fantasy resource sprites around the player's actual HQ.
-      if (zoomRef.current >= 0.5 && playerHqKeyRef.current) {
+      // Approved dark-fantasy resource sprites throughout the visible world.
+      if (zoomRef.current >= 0.5) {
         const tiles=tilesRef.current;
         const dMin=pb.cMin+pb.rMin,dMax=pb.cMax+pb.rMax;
         for(let d=dMin;d<=dMax;d++){
           const cLo=Math.max(pb.cMin,d-pb.rMax),cHi=Math.min(pb.cMax,d-pb.rMin);
           for(let c=cLo;c<=cHi;c++){
             const r=d-c;
-            if(r<pb.rMin||r>pb.rMax||!isInSpawnVisualArea(c,r,playerHqKeyRef.current))continue;
+            if(r<pb.rMin||r>pb.rMax||!usesNewWorldVisuals(c,r))continue;
             const tile=tiles[`${c},${r}`];
             if(!tile?.rss||tile.isHQ||tile.isHQPart||tile.isKeepPart||tile.isGate||tile.isWin||tile.isShore)continue;
             const pl=tile.powerLevel||1;
@@ -2331,7 +2331,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const tg = tileFrontRef.current;
       tg.clear();
       drawAllTiles(tg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax,
-        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z, playerFacKeyRef.current, crewPidsRef.current, playerHqKeyRef.current, groundTexture);
+        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z, playerFacKeyRef.current, crewPidsRef.current, groundTexture);
 
       // ── Props layer: only redraw when state changed OR viewport moved outside
       // the previously rendered props buffer. Never block synchronously — always
@@ -2397,7 +2397,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKeyRef.current, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current, aiPlayerIdMapRef_.current, groundTexture);
+      }, PIXI, isPanning, playerName, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current, aiPlayerIdMapRef_.current, groundTexture);
     }
 
     function redrawAllHQs() {
@@ -2408,7 +2408,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerHqKeyRef.current, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current, aiPlayerIdMapRef_.current, groundTexture);
+      }, PIXI, isPanning, playerName, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current, aiPlayerIdMapRef_.current, groundTexture);
     }
 
     redrawRef.current = {

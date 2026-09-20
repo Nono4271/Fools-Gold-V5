@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js';
-import {resourceLayout} from './spawnVisualTest.js';
+import {resourceLayout} from './worldVisuals.js';
 
 // Anchors mark the centre of the pictured ground/root footprint, not the
 // bottom of the bitmap. Each family keeps its original image proportions.

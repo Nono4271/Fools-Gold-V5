@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {isInSpawnVisualArea,sameTerritory,resourceLayout,resourceFootprint,selectionEdgesBesideHq,hqJoinedBorderSegments} from '../src/utils/spawnVisualTest.js';
+import {usesNewWorldVisuals,sameTerritory,resourceLayout,resourceFootprint,selectionEdgesBesideHq,hqJoinedBorderSegments} from '../src/utils/worldVisuals.js';
 
-test('visual test follows the random player HQ with a 25 tile radius',()=>{
-  assert.equal(isInSpawnVisualArea(125,225,'100,200'),true);
-  assert.equal(isInSpawnVisualArea(126,225,'100,200'),false);
-  assert.equal(isInSpawnVisualArea(900,700,null),false);
+test('approved visuals cover the entire valid world instead of a spawn radius',()=>{
+  assert.equal(usesNewWorldVisuals(0,0),true);
+  assert.equal(usesNewWorldVisuals(900,700),true);
+  assert.equal(usesNewWorldVisuals(Number.NaN,700),false);
 });
 
 test('only matching owners join into one territory outline',()=>{

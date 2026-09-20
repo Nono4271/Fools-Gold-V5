@@ -107,7 +107,8 @@ change.
   Pixi sprite-destruction crash, troop-slot Confirm bug and crew state-mutation
   bug.
 - **COMPLETE — DO NOT RECHECK:** Pirate HQ redesign, HQ centering, adjacent
-  prop/selection presentation, and the current spawn-area dark map test.
+  prop/selection presentation, and full-world rollout of the approved dark
+  terrain and two-family resource art.
 
 ## 3. Partially implemented systems
 
@@ -126,10 +127,9 @@ change.
 - **Gear:** inventory, slots, rarity, rolled stats, equipping, gacha drops and
   battle/stat application exist. The planned gear rework still needs an
   owner-approved design and balance pass.
-- **Map graphics:** the dark grass and two resource-art families work inside a
-  25-tile test radius around the random player spawn. Full-world conversion,
-  more terrain/prop variation, crossings, gates, keeps and seven faction bases
-  remain.
+- **Map graphics:** the dark grass, joined territory treatment and two
+  resource-art families now cover the full world. More terrain/prop variation,
+  crossings, gates, keeps and seven faction bases remain.
 - **Commander map visuals:** Redwake Fynn and Admiral Brine have purpose-built
   walking/standing map sprites. Other commanders still use circular portraits and
   need their own sprites.
@@ -191,8 +191,8 @@ change.
 - Tier 4 and neutral units are required before multiplayer conversion.
 - Season Chapters and their progression gates do not exist.
 - Crew 2.0 and chat do not exist.
-- The world art conversion, remaining seven faction bases, keep/mob/commander
-  map sprites and mobile UI polish are incomplete.
+- The remaining seven faction bases, keep/mob/commander map sprites, added
+  terrain variation, gate/crossing polish and mobile UI polish are incomplete.
 - No durable authoritative server, account persistence or reconnect recovery.
 - Battle execution tests pass for the current roster, but balance, mixed armies,
   long wars, wounded/healing loops and large-scale regression playtests remain.
@@ -211,16 +211,15 @@ change.
   structures, logs and the table UI.
 - Finalize deterministic shared battle/economy rules before making the server
   authoritative.
-- Finish full-world terrain/prop rules before final keep/gate/base placement
-  polish and performance tuning.
+- Full-world terrain/resource rules are complete. Finish keep/gate/base
+  placement polish before the final performance pass.
 - Complete server identity/persistence before real chat, Crew ownership,
   diplomacy and season progression.
 
 ## 8. Recommended Alpha/Beta implementation order
 
-1. Finish the current map-art direction: full-world tiles/props, seven faction
-   bases, keep sprites, gate/crossing tuning, mob sprites, commander sprites and
-   dotted march lines/arrows.
+1. Finish the current map-art direction: seven faction bases, keep sprites,
+   gate/crossing tuning, mob sprites and remaining commander sprites.
 2. Add T4 troops and neutral units through existing troop/branch/battle data.
 3. Run focused battle balance/playtests with all tiers and neutral encounters.
 4. Build the Season Chapters data model and unlock checks in shared code, then
@@ -250,7 +249,8 @@ change.
 - **DONE:** Pirate HQ redesign and placement.
 - Redesign faction bases for Wizards, Orcs, Dragons, Holy Knights, Creatures of
   the Night, Coldborns and Ashen Dead. Show each design for owner approval.
-- Expand the new terrain/resource tile and prop treatment across the whole map.
+- **DONE:** Expanded the approved terrain/resource tile and prop treatment
+  across the whole map while keeping drawing limited to the visible area.
 - Monitor and tweak gates/crossings to match the owner's desired Rise to War
   style, chapter locks and play flow.
 - **DONE:** March routes use dotted lines, repeated directional arrows and a
@@ -259,6 +259,20 @@ change.
   create purpose-built sprites for the remaining commanders.
 - Create sprites for all remaining mobs/neutral encounters.
 - Create sprites for keeps and blend them with the new map style.
+
+---
+
+## 2026-09-20 — Codex
+
+### Full-world map graphics rollout
+- Removed the 25-tile player-spawn limit from the approved dark terrain,
+  resource props, joined territory borders and Pirate HQ blending.
+- The renderer still creates tiles and props only for the screen plus its
+  existing 10-tile buffer, so the 2048×2048 world is not drawn at once.
+- All four resources keep their approved P2–P9 clusters and P10–P13 developed
+  site art. P1 remains intentionally prop-free.
+- Renamed the old spawn-test helper to `worldVisuals.js`.
+- Do not recheck unless the owner reports a regression.
 
 ---
 

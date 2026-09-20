@@ -1,17 +1,10 @@
 import {isoXY, TW, TH} from '../../shared/constants/geometry.js';
 
-export const SPAWN_VISUAL_RADIUS = 25;
-
-export function parseMapKey(key) {
-  if (!key) return null;
-  const [c, r] = String(key).split(',').map(Number);
-  return Number.isFinite(c) && Number.isFinite(r) ? { c, r } : null;
-}
-
-export function isInSpawnVisualArea(c, r, centerKey, radius = SPAWN_VISUAL_RADIUS) {
-  const center = parseMapKey(centerKey);
-  if (!center) return false;
-  return Math.max(Math.abs(c - center.c), Math.abs(r - center.r)) <= radius;
+// The approved terrain and resource art now applies to every world tile.
+// Rendering is still viewport-buffered in MapRenderer, so this does not draw
+// the full 2048×2048 map at once.
+export function usesNewWorldVisuals(c, r) {
+  return Number.isFinite(c) && Number.isFinite(r);
 }
 
 export function territoryIdentity(tile) {

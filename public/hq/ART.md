@@ -6,4 +6,4 @@ Concept prompt: Reinterpret the existing Pirate terraced stone fortress with fad
 
 Final revision prompt: Preserve the approved fortress architecture and silhouette. Match the in-game terrain with finer natural stone, rough timber, desaturated roofs, lower contrast, softer diffuse light, dimmer windows and no glossy outlines. Genuine transparent alpha; no ground slab, props, text or UI.
 
-Converted to WebP at quality 88 with alpha retained. Rendering uses natural image proportions and a 0.97 vertical anchor. Only Pirate HQs within the existing 25-tile spawn test area use this revision. The other seven faction redesigns remain pending approval.
+Converted to WebP at quality 88 with alpha retained. Rendering uses natural image proportions and a 0.97 vertical anchor. Every Pirate HQ now uses this revision across the world. The other seven faction redesigns remain pending approval.
