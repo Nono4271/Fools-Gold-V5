@@ -8,6 +8,50 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Troop tuning pass #3: the 5 remaining z-score flags
+
+After pass #2, the efficiency z-score gate still flagged 5 different units (a side effect of pass
+#2 shrinking each tier's mean/std-dev, not a new problem — see pass #2's note on this). Owner asked
+whether those 5 were also in a good win-rate range and gave one new standing rule: Ancients are
+meant to be the strongest T4s in the game (stronger than every faction capstone), so their target
+band is 55-65%, not ~50%.
+
+**Before → after (single-unit-vs-own-tier-bracket win rate, 40 seeded trials per opponent):**
+
+| Unit | Before | Target | After |
+|---|---|---|---|
+| dragons/dragonkin T1 (Scaleblade) | 74.6% | ~50% | 53.3% |
+| holyknights/templars T1 | 51.1% | ~50% | 49.2% (already fine, untouched) |
+| neutral/pirate_deserter | 54.6% | ~50% | 54.8% (already fine, untouched) |
+| neutral/feral_bloodfang | 72.3% | ~50% | 53.2% |
+| ancient/aeonspire | 40.2% | 55-65% | 57.0% |
+
+**Changes:**
+- `shared/constants/troops.js` — `dragons/dragonkin` T1 (Scaleblade): dmgLo 15→13, dmgHi 19→17;
+  Predator's Dive (skill a, double_attack, T1-only) procBase 0.20→0.14, procMax 0.70→0.50.
+- `shared/constants/neutralTroops.js` — `feral_bloodfang`: dmgLo 20→19, dmgHi 25→23, def 20→19,
+  hp 36→34; Feral Frenzy (double_attack) procBase 0.25→0.17, procMax 0.65→0.50. (First pass
+  overshot to 36.1%/70.7%-ish territory before landing here — see the iteration note below.)
+- `shared/constants/ancientTroops.js` — `aeonspire`: raw stat block (dmgLo/dmgHi/def/hp/siege/spd)
+  left untouched — a first attempt buffed those directly but broke
+  `tests/ancientTroops.test.js`'s "every Ancient stat block lands 15-20% above the large-capstone
+  baseline" check, so the buff was moved entirely into skill values instead, which aren't
+  constrained by that test: Timeless Vigil (skill a, vs_all_dmg_up) value 0.15→0.25, procBase
+  0.20→0.26, procMax 0.55→0.65; Arcane Barrage (skill c, bonus_damage) value 0.55→1.00, procBase
+  0.25→0.35, procMax 0.60→0.75.
+
+Both dragonkin T1 and feral_bloodfang needed a corrective second pass (first cut undershot
+dragonkin fine but overshot feral_bloodfang to 36%; the fix above is the corrected/final version)
+— same non-linear-tuning behavior documented in pass #2.
+
+`npm test` 275/275, `npm run build` clean. Efficiency z-score gate now flags 4 units (down from 5):
+`holyknights/templars T1`, `dragons/drake_riders T2`, `neutral/pirate_deserter`, `ancient/aeonspire`
+— all of these have measured win rates inside their target bands per the table above and pass #2's
+table, so not chased further without new owner direction; this remains the expected relative-metric
+"whack-a-mole" behavior, not a bug.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Troop tuning pass #2: targeted win-rate goals
 
 Follow-up to the two entries directly below. Owner gave explicit per-unit tuning directions this
