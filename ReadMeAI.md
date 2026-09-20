@@ -8,6 +8,57 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Pre-multiplayer prep: shared capture rule, server validation/idempotency, chunked initial sync
+
+Owner picked 3 of the pre-multiplayer punch-list items from "5. Technical debt to fix before
+multiplayer" / "9. Must be complete before real multiplayer conversion" to start now, ahead of a
+real authoritative server existing:
+
+**1. Moved the tile-capture decision rule into `shared/` (new `shared/utils/captureRules.js`)**
+The "does this siege capture the tile, and what's the resulting patch" logic was duplicated across
+~6 call sites in `src/hooks/useMarch.js` (player attacking, player rematch, AI attacking) with small
+inconsistencies between them (some hardcoded `Date.now()+180000` instead of the `TILE_PROTECTION_MS`
+constant; one AI-capture site never granted the protection window at all; another reset siegeMax to
+a flat 300 regardless of the tile's own siegeMax). `resolveSiegeOutcome({ tile, siegePower, now,
+capture, defeatedWaves })` is now the single source of truth, pure and clock-injectable so it's
+testable and importable from `server/index.js`. Every pre-existing per-site quirk (no-protection AI
+capture, the flat-300 siegeMax site) was preserved via explicit `capture.protect`/`capture.siegeMax`
+options rather than silently unified — this is a refactor, not a balance change.
+`garrisonResetMs` (keep/gate = 1hr, else 15 min) moved into the same file.
+
+**2. Server-side validation/idempotency/timestamps (`server/index.js`)**
+- `TILE_CAPTURE`/`TILE_SIEGE` now require a client-generated `msgId`; the server keeps a
+  per-session dedupe cache (5-min TTL) and silently ignores a resent/duplicate message instead of
+  re-applying and re-broadcasting it.
+- Added range validation: `owner` against the existing allow-list (unchanged), plus new checks that
+  `garrison >= 0` and `siege <= siegeMax`.
+- `resetAt` and `protectedUntil` are now computed server-side (`Date.now()` + the shared
+  `garrisonResetMs`/`TILE_PROTECTION_MS`) instead of trusted from whatever the client sent — closes
+  a clock-skew/tamper gap (a client could previously claim an arbitrarily long protection window).
+- Known limitation carried forward, not introduced by this change: the mutable tile shape sent to
+  the server doesn't include `isGate`, so the server can't yet tell a gate's 1-hour reset from a
+  regular tile's 15-min reset. Needs a follow-up to `extractMutableState` in `useServerSync.js`.
+
+**3. Chunked the initial map sync (`GAME_INIT`/`SESSION_STATE`)**
+The server already did patch-based sync for *updates* (`TILE_PATCH`) and had an unused
+`VIEWPORT_SUB` viewport filter; the gap was the *initial* load on join, which sent every mutable
+tile in the session regardless of size. `useServerSync.js` now sends an `initialViewport` alongside
+`GAME_INIT` (Game.jsx passes a ±50-tile box around the player's HQ); `handleGameInit` in
+`server/index.js` uses it to filter `SESSION_STATE` for a joining client instead of dumping the
+whole session. An older/viewport-less client still gets the full set (backwards compatible).
+Live-verified against a real running server instance (temporary local WS smoke test, not committed):
+confirmed a far-away tile (500,500) was excluded from a joining client's `SESSION_STATE` when it
+sent a small viewport, and confirmed a duplicate `TILE_CAPTURE` with the same `msgId` was ignored.
+
+`npm test` 275/275, `npm run build` clean. Not done in this pass (explicitly deferred, not
+forgotten): the server still doesn't independently recompute `siegePower` from troop data to verify
+a claimed capture — it validates ranges/idempotency/timestamps but still trusts the client's
+owner/garrison/siege numbers. That's the bigger "server owns world truth" item (#1/#3 on the
+10-item pre-multiplayer list) and needs the server to have its own copy of army/troop state, not
+just tile state.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Troop tuning pass #3: the 5 remaining z-score flags
 
 After pass #2, the efficiency z-score gate still flagged 5 different units (a side effect of pass
