@@ -163,8 +163,9 @@ change.
 
 - `src/Game.jsx` owns too many unrelated systems and large mutable/ref-backed
   maps. Split domain state before adding server authority.
-  **Done (Claude):** 10-step split — see the dated entry below. Next: timer
-  catch-up after phone lock/backgrounding. State still lives in `Game.jsx`.
+  **Done (Claude):** 10-step split — see the dated entries below. Background
+  timer catch-up (resources, egg/stamina regen, marches, reinforcements) is
+  also done — see the 2026-09-20 entry. State still lives in `Game.jsx`.
 - Game rules are divided between React callbacks, hooks and workers. Move every
   multiplayer-sensitive rule into shared deterministic functions callable by
   the server.
@@ -255,6 +256,26 @@ change.
 - Create purpose-built commander sprites for the world map.
 - Create sprites for all remaining mobs/neutral encounters.
 - Create sprites for keeps and blend them with the new map style.
+
+---
+
+## 2026-09-20 — Claude (Sonnet)
+
+### Background/offline timer catch-up (roadmap item 4)
+Scope, per owner: catch up timers when the phone locks or the tab is backgrounded — not a full save/persistence system.
+
+Audited all six systems named in the roadmap item (training, building upgrades, healing, forts, marches, resources). Training queues, healing queue (`shared/utils/armyEconomy.js` `tick`), building upgrades (`useUpgrades.js`) and forts (`useForts.js`) already compared progress against absolute timestamps (`nextAt`/`endsAt`/`completesAt`) and gather/training *orders* (`shared/utils/tactics.js` `ticksOwed`) already computed whole ticks owed from elapsed real time — all of these already catch up correctly and needed no change.
+
+Three things did NOT catch up — each added/advanced a fixed amount per timer firing instead of scaling with real elapsed time, so time spent backgrounded was silently lost rather than credited on return:
+- **Resources** (`shared/utils/resourceIncome.js` `resourceIncomeTick`, `src/hooks/useResources.js`): assumed the interval always fired every 60s. Now takes `elapsedMs` and scales gains by it; the hook tracks the last tick's real timestamp and also runs one catch-up tick immediately on `visibilitychange` (tab foreground) instead of waiting for the next scheduled interval.
+- **Dragon-egg and stamina regen** (`shared/utils/tactics.js` `regenEggs`/`regenStamina`, `src/hooks/useTacticTicks.js`): same fix pattern — both now take `elapsedMs`, defaulting to their normal tick period so existing call sites are unaffected, and the hook does the same elapsed-tracking + `visibilitychange` catch-up.
+- **Marches** (`shared/utils/marchMotion.js` new `advanceMarch`, used by `src/workers/gameLoop.worker.js`'s `tickMarch`) and **reinforcement convoys** (`shared/utils/reinforcements.js` `stepReinforcement`): both only advanced one step per timer/worker firing regardless of how much real time had passed, so a march due to arrive during a long background pause just sat there until enough *live* ticks accumulated after resume — delaying arrival by the whole paused duration. Both now loop internally and fast-forward through every step the elapsed time actually covers, so a commander or reinforcement convoy arrives on schedule (by wall-clock time) even after a long pause.
+
+New tests: `tests/backgroundCatchup.test.js` (7 tests) covering elapsed-based resource income, egg/stamina catch-up, and multi-step march/reinforcement catch-up. Full suite: 164 passing, 0 failing. Verified live via the cloud-browser Playwright smoke test (world gen → 35s of play, no runtime errors).
+
+Known non-issue: building upgrade/fort timer intervals themselves may still fire late if the tab was fully suspended, but since they compare against absolute `endsAt`/`completesAt` timestamps they resolve correctly the next time they do fire — no separate catch-up logic was needed there.
+
+Not done (out of scope per owner): a full offline/save-and-resume system, and multi-step catch-up for AI crew ticks (`useAiCrews.js`) — AI-side pacing isn't player-visible in the same way.
 
 ---
 
