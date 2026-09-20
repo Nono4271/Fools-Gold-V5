@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {isInSpawnVisualArea,sameTerritory,resourceLayout,resourceFootprint,selectionEdgesBesideHq} from '../src/utils/spawnVisualTest.js';
+import {isInSpawnVisualArea,sameTerritory,resourceLayout,resourceFootprint,selectionEdgesBesideHq,hqJoinedBorderSegments} from '../src/utils/spawnVisualTest.js';
 
 test('visual test follows the random player HQ with a 25 tile radius',()=>{
   assert.equal(isInSpawnVisualArea(125,225,'100,200'),true);
@@ -43,4 +43,13 @@ test('selection beside an HQ omits only the shared edge',()=>{
   const tiles={'10,10':{isHQPart:true}};
   assert.deepEqual(selectionEdgesBesideHq(10,11,tiles),[false,true,true,true]);
   assert.deepEqual(selectionEdgesBesideHq(20,20,tiles),[true,true,true,true]);
+});
+
+test('HQ border joins matching owned territory one segment at a time',()=>{
+  const tiles={'10,10':{isHQ:true,owner:'player'}};
+  assert.equal(hqJoinedBorderSegments(10,10,tiles).length,12);
+  tiles['10,8']={owner:'player'};
+  assert.equal(hqJoinedBorderSegments(10,10,tiles).length,11);
+  tiles['11,8']={owner:'ai',ownerPlayerId:'other'};
+  assert.equal(hqJoinedBorderSegments(10,10,tiles).length,11);
 });
