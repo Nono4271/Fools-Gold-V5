@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T22:57:23.937Z",
+  "generatedAt": "2026-09-20T23:16:29.995Z",
   "config": {
     "budget": 500,
     "trials": 60,
@@ -133,8 +133,8 @@
       "bracket": "T1",
       "attacker": "pirates/swashbucklers T1",
       "defender": "neutral/wolf_rider",
-      "winRate": 0.2,
-      "reason": "pirates/swashbucklers T1 wins only 20% vs neutral/wolf_rider (same tier, same budget)"
+      "winRate": 0.75,
+      "reason": "pirates/swashbucklers T1 wins 75% vs neutral/wolf_rider (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -184,6 +184,13 @@
       "defender": "orcs/trolls T1",
       "winRate": 0,
       "reason": "pirates/gunners T1 wins only 0% vs orcs/trolls T1 (same tier, same budget)"
+    },
+    {
+      "bracket": "T1",
+      "attacker": "pirates/gunners T1",
+      "defender": "dragons/dragonkin T1",
+      "winRate": 0.7166666666666667,
+      "reason": "pirates/gunners T1 wins 72% vs dragons/dragonkin T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -294,8 +301,8 @@
       "bracket": "T1",
       "attacker": "pirates/sea_beasts T1",
       "defender": "wizards/spellblades T1",
-      "winRate": 0.13333333333333333,
-      "reason": "pirates/sea_beasts T1 wins only 13% vs wizards/spellblades T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "pirates/sea_beasts T1 wins only 0% vs wizards/spellblades T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -454,6 +461,13 @@
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
+      "defender": "pirates/sea_beasts T1",
+      "winRate": 0.11666666666666667,
+      "reason": "wizards/spellblades T1 wins only 12% vs pirates/sea_beasts T1 (same tier, same budget)"
+    },
+    {
+      "bracket": "T1",
+      "attacker": "wizards/spellblades T1",
       "defender": "wizards/acolytes T1",
       "winRate": 1,
       "reason": "wizards/spellblades T1 wins 100% vs wizards/acolytes T1 (same tier, same budget)"
@@ -476,43 +490,50 @@
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
       "defender": "orcs/warg_riders T1",
-      "winRate": 0.9333333333333333,
-      "reason": "wizards/spellblades T1 wins 93% vs orcs/warg_riders T1 (same tier, same budget)"
+      "winRate": 0.85,
+      "reason": "wizards/spellblades T1 wins 85% vs orcs/warg_riders T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
       "defender": "orcs/trolls T1",
-      "winRate": 0.06666666666666667,
-      "reason": "wizards/spellblades T1 wins only 7% vs orcs/trolls T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "wizards/spellblades T1 wins only 0% vs orcs/trolls T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
       "defender": "dragons/dragonkin T1",
-      "winRate": 0.9333333333333333,
-      "reason": "wizards/spellblades T1 wins 93% vs dragons/dragonkin T1 (same tier, same budget)"
+      "winRate": 0.9,
+      "reason": "wizards/spellblades T1 wins 90% vs dragons/dragonkin T1 (same tier, same budget)"
+    },
+    {
+      "bracket": "T1",
+      "attacker": "wizards/spellblades T1",
+      "defender": "dragons/drake_riders T1",
+      "winRate": 0.06666666666666667,
+      "reason": "wizards/spellblades T1 wins only 7% vs dragons/drake_riders T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
       "defender": "dragons/elder_dragons T1",
-      "winRate": 0.06666666666666667,
-      "reason": "wizards/spellblades T1 wins only 7% vs dragons/elder_dragons T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "wizards/spellblades T1 wins only 0% vs dragons/elder_dragons T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
       "defender": "holyknights/templars T1",
-      "winRate": 0.18333333333333332,
-      "reason": "wizards/spellblades T1 wins only 18% vs holyknights/templars T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "wizards/spellblades T1 wins only 0% vs holyknights/templars T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
       "defender": "holyknights/battlepriests T1",
-      "winRate": 0.8833333333333333,
-      "reason": "wizards/spellblades T1 wins 88% vs holyknights/battlepriests T1 (same tier, same budget)"
+      "winRate": 0.7833333333333333,
+      "reason": "wizards/spellblades T1 wins 78% vs holyknights/battlepriests T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -524,16 +545,23 @@
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
+      "defender": "nightcreatures/vampires T1",
+      "winRate": 0.03333333333333333,
+      "reason": "wizards/spellblades T1 wins only 3% vs nightcreatures/vampires T1 (same tier, same budget)"
+    },
+    {
+      "bracket": "T1",
+      "attacker": "wizards/spellblades T1",
       "defender": "nightcreatures/werewolves T1",
-      "winRate": 0.9833333333333333,
-      "reason": "wizards/spellblades T1 wins 98% vs nightcreatures/werewolves T1 (same tier, same budget)"
+      "winRate": 0.95,
+      "reason": "wizards/spellblades T1 wins 95% vs nightcreatures/werewolves T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
       "defender": "nightcreatures/spiders T1",
-      "winRate": 0.21666666666666667,
-      "reason": "wizards/spellblades T1 wins only 22% vs nightcreatures/spiders T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "wizards/spellblades T1 wins only 0% vs nightcreatures/spiders T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -552,6 +580,13 @@
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
+      "defender": "coldborns/frost_giants T1",
+      "winRate": 0.05,
+      "reason": "wizards/spellblades T1 wins only 5% vs coldborns/frost_giants T1 (same tier, same budget)"
+    },
+    {
+      "bracket": "T1",
+      "attacker": "wizards/spellblades T1",
       "defender": "ashen_dead/skeleton_legion T1",
       "winRate": 1,
       "reason": "wizards/spellblades T1 wins 100% vs ashen_dead/skeleton_legion T1 (same tier, same budget)"
@@ -559,16 +594,23 @@
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
+      "defender": "ashen_dead/mummies T1",
+      "winRate": 0.2,
+      "reason": "wizards/spellblades T1 wins only 20% vs ashen_dead/mummies T1 (same tier, same budget)"
+    },
+    {
+      "bracket": "T1",
+      "attacker": "wizards/spellblades T1",
       "defender": "ashen_dead/death_cavalry T1",
-      "winRate": 0.85,
-      "reason": "wizards/spellblades T1 wins 85% vs ashen_dead/death_cavalry T1 (same tier, same budget)"
+      "winRate": 0.7333333333333333,
+      "reason": "wizards/spellblades T1 wins 73% vs ashen_dead/death_cavalry T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "wizards/spellblades T1",
       "defender": "neutral/wolf_rider",
-      "winRate": 0.9833333333333333,
-      "reason": "wizards/spellblades T1 wins 98% vs neutral/wolf_rider (same tier, same budget)"
+      "winRate": 1,
+      "reason": "wizards/spellblades T1 wins 100% vs neutral/wolf_rider (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -756,8 +798,8 @@
       "bracket": "T1",
       "attacker": "wizards/golems T1",
       "defender": "wizards/spellblades T1",
-      "winRate": 0.16666666666666666,
-      "reason": "wizards/golems T1 wins only 17% vs wizards/spellblades T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "wizards/golems T1 wins only 0% vs wizards/spellblades T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -786,13 +828,6 @@
       "defender": "orcs/trolls T1",
       "winRate": 0,
       "reason": "wizards/golems T1 wins only 0% vs orcs/trolls T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "wizards/golems T1",
-      "defender": "dragons/dragonkin T1",
-      "winRate": 0.11666666666666667,
-      "reason": "wizards/golems T1 wins only 12% vs dragons/dragonkin T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -887,13 +922,6 @@
     },
     {
       "bracket": "T1",
-      "attacker": "wizards/golems T1",
-      "defender": "neutral/wolf_rider",
-      "winRate": 0.21666666666666667,
-      "reason": "wizards/golems T1 wins only 22% vs neutral/wolf_rider (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
       "attacker": "orcs/grunts T1",
       "defender": "pirates/swashbucklers T1",
       "winRate": 0.25,
@@ -917,8 +945,8 @@
       "bracket": "T1",
       "attacker": "orcs/grunts T1",
       "defender": "wizards/spellblades T1",
-      "winRate": 0.016666666666666666,
-      "reason": "orcs/grunts T1 wins only 2% vs wizards/spellblades T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "orcs/grunts T1 wins only 0% vs wizards/spellblades T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -952,8 +980,8 @@
       "bracket": "T1",
       "attacker": "orcs/grunts T1",
       "defender": "dragons/dragonkin T1",
-      "winRate": 0,
-      "reason": "orcs/grunts T1 wins only 0% vs dragons/dragonkin T1 (same tier, same budget)"
+      "winRate": 0.06666666666666667,
+      "reason": "orcs/grunts T1 wins only 7% vs dragons/dragonkin T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -1057,8 +1085,8 @@
       "bracket": "T1",
       "attacker": "orcs/grunts T1",
       "defender": "neutral/wolf_rider",
-      "winRate": 0,
-      "reason": "orcs/grunts T1 wins only 0% vs neutral/wolf_rider (same tier, same budget)"
+      "winRate": 0.016666666666666666,
+      "reason": "orcs/grunts T1 wins only 2% vs neutral/wolf_rider (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -1246,8 +1274,8 @@
       "bracket": "T1",
       "attacker": "orcs/trolls T1",
       "defender": "wizards/spellblades T1",
-      "winRate": 0.016666666666666666,
-      "reason": "orcs/trolls T1 wins only 2% vs wizards/spellblades T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "orcs/trolls T1 wins only 0% vs wizards/spellblades T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -1406,16 +1434,9 @@
     {
       "bracket": "T1",
       "attacker": "dragons/dragonkin T1",
-      "defender": "pirates/sea_beasts T1",
-      "winRate": 0.85,
-      "reason": "dragons/dragonkin T1 wins 85% vs pirates/sea_beasts T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "dragons/dragonkin T1",
       "defender": "wizards/spellblades T1",
-      "winRate": 0.9833333333333333,
-      "reason": "dragons/dragonkin T1 wins 98% vs wizards/spellblades T1 (same tier, same budget)"
+      "winRate": 0.9166666666666666,
+      "reason": "dragons/dragonkin T1 wins 92% vs wizards/spellblades T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -1442,29 +1463,29 @@
       "bracket": "T1",
       "attacker": "dragons/dragonkin T1",
       "defender": "orcs/warg_riders T1",
-      "winRate": 1,
-      "reason": "dragons/dragonkin T1 wins 100% vs orcs/warg_riders T1 (same tier, same budget)"
+      "winRate": 0.95,
+      "reason": "dragons/dragonkin T1 wins 95% vs orcs/warg_riders T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "dragons/dragonkin T1",
       "defender": "orcs/trolls T1",
-      "winRate": 0.18333333333333332,
-      "reason": "dragons/dragonkin T1 wins only 18% vs orcs/trolls T1 (same tier, same budget)"
+      "winRate": 0.11666666666666667,
+      "reason": "dragons/dragonkin T1 wins only 12% vs orcs/trolls T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "dragons/dragonkin T1",
       "defender": "dragons/elder_dragons T1",
-      "winRate": 0.13333333333333333,
-      "reason": "dragons/dragonkin T1 wins only 13% vs dragons/elder_dragons T1 (same tier, same budget)"
+      "winRate": 0.05,
+      "reason": "dragons/dragonkin T1 wins only 5% vs dragons/elder_dragons T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "dragons/dragonkin T1",
       "defender": "holyknights/battlepriests T1",
-      "winRate": 1,
-      "reason": "dragons/dragonkin T1 wins 100% vs holyknights/battlepriests T1 (same tier, same budget)"
+      "winRate": 0.9833333333333333,
+      "reason": "dragons/dragonkin T1 wins 98% vs holyknights/battlepriests T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -1476,16 +1497,9 @@
     {
       "bracket": "T1",
       "attacker": "dragons/dragonkin T1",
-      "defender": "nightcreatures/vampires T1",
-      "winRate": 0.8666666666666667,
-      "reason": "dragons/dragonkin T1 wins 87% vs nightcreatures/vampires T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "dragons/dragonkin T1",
       "defender": "nightcreatures/werewolves T1",
-      "winRate": 1,
-      "reason": "dragons/dragonkin T1 wins 100% vs nightcreatures/werewolves T1 (same tier, same budget)"
+      "winRate": 0.9833333333333333,
+      "reason": "dragons/dragonkin T1 wins 98% vs nightcreatures/werewolves T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -1504,13 +1518,6 @@
     {
       "bracket": "T1",
       "attacker": "dragons/dragonkin T1",
-      "defender": "coldborns/frost_giants T1",
-      "winRate": 0.7333333333333333,
-      "reason": "dragons/dragonkin T1 wins 73% vs coldborns/frost_giants T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "dragons/dragonkin T1",
       "defender": "ashen_dead/skeleton_legion T1",
       "winRate": 1,
       "reason": "dragons/dragonkin T1 wins 100% vs ashen_dead/skeleton_legion T1 (same tier, same budget)"
@@ -1518,23 +1525,16 @@
     {
       "bracket": "T1",
       "attacker": "dragons/dragonkin T1",
-      "defender": "ashen_dead/mummies T1",
-      "winRate": 0.8166666666666667,
-      "reason": "dragons/dragonkin T1 wins 82% vs ashen_dead/mummies T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "dragons/dragonkin T1",
       "defender": "ashen_dead/death_cavalry T1",
-      "winRate": 1,
-      "reason": "dragons/dragonkin T1 wins 100% vs ashen_dead/death_cavalry T1 (same tier, same budget)"
+      "winRate": 0.9666666666666667,
+      "reason": "dragons/dragonkin T1 wins 97% vs ashen_dead/death_cavalry T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "dragons/dragonkin T1",
       "defender": "neutral/wolf_rider",
-      "winRate": 0.9333333333333333,
-      "reason": "dragons/dragonkin T1 wins 93% vs neutral/wolf_rider (same tier, same budget)"
+      "winRate": 1,
+      "reason": "dragons/dragonkin T1 wins 100% vs neutral/wolf_rider (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -1715,8 +1715,8 @@
       "bracket": "T1",
       "attacker": "dragons/elder_dragons T1",
       "defender": "wizards/spellblades T1",
-      "winRate": 0.2833333333333333,
-      "reason": "dragons/elder_dragons T1 wins only 28% vs wizards/spellblades T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "dragons/elder_dragons T1 wins only 0% vs wizards/spellblades T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -1861,13 +1861,6 @@
     {
       "bracket": "T1",
       "attacker": "holyknights/templars T1",
-      "defender": "wizards/spellblades T1",
-      "winRate": 0.8,
-      "reason": "holyknights/templars T1 wins 80% vs wizards/spellblades T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "holyknights/templars T1",
       "defender": "wizards/acolytes T1",
       "winRate": 1,
       "reason": "holyknights/templars T1 wins 100% vs wizards/acolytes T1 (same tier, same budget)"
@@ -2002,8 +1995,8 @@
       "bracket": "T1",
       "attacker": "holyknights/battlepriests T1",
       "defender": "wizards/spellblades T1",
-      "winRate": 0.2833333333333333,
-      "reason": "holyknights/battlepriests T1 wins only 28% vs wizards/spellblades T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "holyknights/battlepriests T1 wins only 0% vs wizards/spellblades T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -2025,13 +2018,6 @@
       "defender": "orcs/trolls T1",
       "winRate": 0,
       "reason": "holyknights/battlepriests T1 wins only 0% vs orcs/trolls T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "holyknights/battlepriests T1",
-      "defender": "dragons/dragonkin T1",
-      "winRate": 0.2833333333333333,
-      "reason": "holyknights/battlepriests T1 wins only 28% vs dragons/dragonkin T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -2116,13 +2102,6 @@
       "defender": "ashen_dead/death_cavalry T1",
       "winRate": 0,
       "reason": "holyknights/battlepriests T1 wins only 0% vs ashen_dead/death_cavalry T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "holyknights/battlepriests T1",
-      "defender": "neutral/wolf_rider",
-      "winRate": 0.18333333333333332,
-      "reason": "holyknights/battlepriests T1 wins only 18% vs neutral/wolf_rider (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -2312,13 +2291,6 @@
       "defender": "pirates/sea_beasts T1",
       "winRate": 0,
       "reason": "nightcreatures/vampires T1 wins only 0% vs pirates/sea_beasts T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "nightcreatures/vampires T1",
-      "defender": "wizards/spellblades T1",
-      "winRate": 0.9166666666666666,
-      "reason": "nightcreatures/vampires T1 wins 92% vs wizards/spellblades T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -2631,6 +2603,13 @@
     {
       "bracket": "T1",
       "attacker": "nightcreatures/spiders T1",
+      "defender": "wizards/spellblades T1",
+      "winRate": 0.03333333333333333,
+      "reason": "nightcreatures/spiders T1 wins only 3% vs wizards/spellblades T1 (same tier, same budget)"
+    },
+    {
+      "bracket": "T1",
+      "attacker": "nightcreatures/spiders T1",
       "defender": "wizards/acolytes T1",
       "winRate": 1,
       "reason": "nightcreatures/spiders T1 wins 100% vs wizards/acolytes T1 (same tier, same budget)"
@@ -2813,13 +2792,6 @@
     {
       "bracket": "T1",
       "attacker": "coldborns/raiders T1",
-      "defender": "dragons/dragonkin T1",
-      "winRate": 0.13333333333333333,
-      "reason": "coldborns/raiders T1 wins only 13% vs dragons/dragonkin T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "coldborns/raiders T1",
       "defender": "dragons/drake_riders T1",
       "winRate": 0,
       "reason": "coldborns/raiders T1 wins only 0% vs dragons/drake_riders T1 (same tier, same budget)"
@@ -2905,8 +2877,8 @@
       "bracket": "T1",
       "attacker": "coldborns/raiders T1",
       "defender": "neutral/wolf_rider",
-      "winRate": 0.18333333333333332,
-      "reason": "coldborns/raiders T1 wins only 18% vs neutral/wolf_rider (same tier, same budget)"
+      "winRate": 0,
+      "reason": "coldborns/raiders T1 wins only 0% vs neutral/wolf_rider (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -3101,8 +3073,8 @@
       "bracket": "T1",
       "attacker": "coldborns/frost_giants T1",
       "defender": "wizards/spellblades T1",
-      "winRate": 0.05,
-      "reason": "coldborns/frost_giants T1 wins only 5% vs wizards/spellblades T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "coldborns/frost_giants T1 wins only 0% vs wizards/spellblades T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -3436,13 +3408,6 @@
     {
       "bracket": "T1",
       "attacker": "ashen_dead/mummies T1",
-      "defender": "wizards/spellblades T1",
-      "winRate": 0.75,
-      "reason": "ashen_dead/mummies T1 wins 75% vs wizards/spellblades T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "ashen_dead/mummies T1",
       "defender": "wizards/acolytes T1",
       "winRate": 1,
       "reason": "ashen_dead/mummies T1 wins 100% vs wizards/acolytes T1 (same tier, same budget)"
@@ -3472,8 +3437,8 @@
       "bracket": "T1",
       "attacker": "ashen_dead/mummies T1",
       "defender": "dragons/dragonkin T1",
-      "winRate": 0.9833333333333333,
-      "reason": "ashen_dead/mummies T1 wins 98% vs dragons/dragonkin T1 (same tier, same budget)"
+      "winRate": 1,
+      "reason": "ashen_dead/mummies T1 wins 100% vs dragons/dragonkin T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -3738,22 +3703,8 @@
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "pirates/gunners T1",
-      "winRate": 1,
-      "reason": "neutral/wolf_rider wins 100% vs pirates/gunners T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "neutral/wolf_rider",
-      "defender": "pirates/sea_beasts T1",
-      "winRate": 0.7333333333333333,
-      "reason": "neutral/wolf_rider wins 73% vs pirates/sea_beasts T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "neutral/wolf_rider",
-      "defender": "wizards/spellblades T1",
-      "winRate": 0.9333333333333333,
-      "reason": "neutral/wolf_rider wins 93% vs wizards/spellblades T1 (same tier, same budget)"
+      "winRate": 0.9666666666666667,
+      "reason": "neutral/wolf_rider wins 97% vs pirates/gunners T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -3766,8 +3717,8 @@
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "wizards/golems T1",
-      "winRate": 1,
-      "reason": "neutral/wolf_rider wins 100% vs wizards/golems T1 (same tier, same budget)"
+      "winRate": 0.95,
+      "reason": "neutral/wolf_rider wins 95% vs wizards/golems T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -3780,78 +3731,92 @@
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "orcs/warg_riders T1",
-      "winRate": 0.9666666666666667,
-      "reason": "neutral/wolf_rider wins 97% vs orcs/warg_riders T1 (same tier, same budget)"
+      "winRate": 0.7166666666666667,
+      "reason": "neutral/wolf_rider wins 72% vs orcs/warg_riders T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "orcs/trolls T1",
-      "winRate": 0.03333333333333333,
-      "reason": "neutral/wolf_rider wins only 3% vs orcs/trolls T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/wolf_rider wins only 0% vs orcs/trolls T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "dragons/dragonkin T1",
-      "winRate": 0.9833333333333333,
-      "reason": "neutral/wolf_rider wins 98% vs dragons/dragonkin T1 (same tier, same budget)"
+      "winRate": 0.7666666666666667,
+      "reason": "neutral/wolf_rider wins 77% vs dragons/dragonkin T1 (same tier, same budget)"
+    },
+    {
+      "bracket": "T1",
+      "attacker": "neutral/wolf_rider",
+      "defender": "dragons/drake_riders T1",
+      "winRate": 0.16666666666666666,
+      "reason": "neutral/wolf_rider wins only 17% vs dragons/drake_riders T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "dragons/elder_dragons T1",
-      "winRate": 0.2,
-      "reason": "neutral/wolf_rider wins only 20% vs dragons/elder_dragons T1 (same tier, same budget)"
+      "winRate": 0.016666666666666666,
+      "reason": "neutral/wolf_rider wins only 2% vs dragons/elder_dragons T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "holyknights/templars T1",
-      "winRate": 0.2833333333333333,
-      "reason": "neutral/wolf_rider wins only 28% vs holyknights/templars T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "neutral/wolf_rider",
-      "defender": "holyknights/battlepriests T1",
-      "winRate": 0.9833333333333333,
-      "reason": "neutral/wolf_rider wins 98% vs holyknights/battlepriests T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/wolf_rider wins only 0% vs holyknights/templars T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "holyknights/inquisitors T1",
-      "winRate": 0.016666666666666666,
-      "reason": "neutral/wolf_rider wins only 2% vs holyknights/inquisitors T1 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/wolf_rider wins only 0% vs holyknights/inquisitors T1 (same tier, same budget)"
+    },
+    {
+      "bracket": "T1",
+      "attacker": "neutral/wolf_rider",
+      "defender": "nightcreatures/vampires T1",
+      "winRate": 0.25,
+      "reason": "neutral/wolf_rider wins only 25% vs nightcreatures/vampires T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "nightcreatures/werewolves T1",
-      "winRate": 0.95,
-      "reason": "neutral/wolf_rider wins 95% vs nightcreatures/werewolves T1 (same tier, same budget)"
+      "winRate": 0.9166666666666666,
+      "reason": "neutral/wolf_rider wins 92% vs nightcreatures/werewolves T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "nightcreatures/spiders T1",
-      "winRate": 0.25,
-      "reason": "neutral/wolf_rider wins only 25% vs nightcreatures/spiders T1 (same tier, same budget)"
+      "winRate": 0.016666666666666666,
+      "reason": "neutral/wolf_rider wins only 2% vs nightcreatures/spiders T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "coldborns/raiders T1",
-      "winRate": 1,
-      "reason": "neutral/wolf_rider wins 100% vs coldborns/raiders T1 (same tier, same budget)"
+      "winRate": 0.95,
+      "reason": "neutral/wolf_rider wins 95% vs coldborns/raiders T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
       "attacker": "neutral/wolf_rider",
       "defender": "coldborns/bear_riders T1",
-      "winRate": 1,
-      "reason": "neutral/wolf_rider wins 100% vs coldborns/bear_riders T1 (same tier, same budget)"
+      "winRate": 0.7833333333333333,
+      "reason": "neutral/wolf_rider wins 78% vs coldborns/bear_riders T1 (same tier, same budget)"
+    },
+    {
+      "bracket": "T1",
+      "attacker": "neutral/wolf_rider",
+      "defender": "coldborns/frost_giants T1",
+      "winRate": 0.11666666666666667,
+      "reason": "neutral/wolf_rider wins only 12% vs coldborns/frost_giants T1 (same tier, same budget)"
     },
     {
       "bracket": "T1",
@@ -3859,20 +3824,6 @@
       "defender": "ashen_dead/skeleton_legion T1",
       "winRate": 1,
       "reason": "neutral/wolf_rider wins 100% vs ashen_dead/skeleton_legion T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "neutral/wolf_rider",
-      "defender": "ashen_dead/mummies T1",
-      "winRate": 0.8166666666666667,
-      "reason": "neutral/wolf_rider wins 82% vs ashen_dead/mummies T1 (same tier, same budget)"
-    },
-    {
-      "bracket": "T1",
-      "attacker": "neutral/wolf_rider",
-      "defender": "ashen_dead/death_cavalry T1",
-      "winRate": 0.9833333333333333,
-      "reason": "neutral/wolf_rider wins 98% vs ashen_dead/death_cavalry T1 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -3941,8 +3892,8 @@
       "bracket": "T2",
       "attacker": "pirates/swashbucklers T2",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.016666666666666666,
-      "reason": "pirates/swashbucklers T2 wins only 2% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0.06666666666666667,
+      "reason": "pirates/swashbucklers T2 wins only 7% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -4150,6 +4101,13 @@
     {
       "bracket": "T2",
       "attacker": "pirates/gunners T2",
+      "defender": "dragons/drake_riders T2",
+      "winRate": 0,
+      "reason": "pirates/gunners T2 wins only 0% vs dragons/drake_riders T2 (same tier, same budget)"
+    },
+    {
+      "bracket": "T2",
+      "attacker": "pirates/gunners T2",
       "defender": "dragons/elder_dragons T2",
       "winRate": 0,
       "reason": "pirates/gunners T2 wins only 0% vs dragons/elder_dragons T2 (same tier, same budget)"
@@ -4347,15 +4305,15 @@
       "bracket": "T2",
       "attacker": "pirates/sea_beasts T2",
       "defender": "dragons/dragonkin T2",
-      "winRate": 0.26666666666666666,
-      "reason": "pirates/sea_beasts T2 wins only 27% vs dragons/dragonkin T2 (same tier, same budget)"
+      "winRate": 0.15,
+      "reason": "pirates/sea_beasts T2 wins only 15% vs dragons/dragonkin T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "pirates/sea_beasts T2",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.21666666666666667,
-      "reason": "pirates/sea_beasts T2 wins only 22% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "pirates/sea_beasts T2 wins only 3% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -4549,13 +4507,6 @@
     {
       "bracket": "T2",
       "attacker": "wizards/spellblades T2",
-      "defender": "dragons/drake_riders T2",
-      "winRate": 0.8333333333333334,
-      "reason": "wizards/spellblades T2 wins 83% vs dragons/drake_riders T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "wizards/spellblades T2",
       "defender": "dragons/elder_dragons T2",
       "winRate": 0,
       "reason": "wizards/spellblades T2 wins only 0% vs dragons/elder_dragons T2 (same tier, same budget)"
@@ -4657,13 +4608,6 @@
       "defender": "neutral/rubble_warden",
       "winRate": 0,
       "reason": "wizards/spellblades T2 wins only 0% vs neutral/rubble_warden (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "wizards/spellblades T2",
-      "defender": "neutral/dune_raider",
-      "winRate": 0.15,
-      "reason": "wizards/spellblades T2 wins only 15% vs neutral/dune_raider (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -4956,8 +4900,15 @@
       "bracket": "T2",
       "attacker": "wizards/golems T2",
       "defender": "dragons/dragonkin T2",
-      "winRate": 0.18333333333333332,
-      "reason": "wizards/golems T2 wins only 18% vs dragons/dragonkin T2 (same tier, same budget)"
+      "winRate": 0.13333333333333333,
+      "reason": "wizards/golems T2 wins only 13% vs dragons/dragonkin T2 (same tier, same budget)"
+    },
+    {
+      "bracket": "T2",
+      "attacker": "wizards/golems T2",
+      "defender": "dragons/drake_riders T2",
+      "winRate": 0.7833333333333333,
+      "reason": "wizards/golems T2 wins 78% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5159,8 +5110,8 @@
       "bracket": "T2",
       "attacker": "orcs/grunts T2",
       "defender": "dragons/dragonkin T2",
-      "winRate": 0.03333333333333333,
-      "reason": "orcs/grunts T2 wins only 3% vs dragons/dragonkin T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "orcs/grunts T2 wins only 0% vs dragons/dragonkin T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5376,8 +5327,8 @@
       "bracket": "T2",
       "attacker": "orcs/warg_riders T2",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.08333333333333333,
-      "reason": "orcs/warg_riders T2 wins only 8% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "orcs/warg_riders T2 wins only 0% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5579,15 +5530,15 @@
       "bracket": "T2",
       "attacker": "orcs/trolls T2",
       "defender": "dragons/dragonkin T2",
-      "winRate": 0.016666666666666666,
-      "reason": "orcs/trolls T2 wins only 2% vs dragons/dragonkin T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "orcs/trolls T2 wins only 0% vs dragons/dragonkin T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "orcs/trolls T2",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.1,
-      "reason": "orcs/trolls T2 wins only 10% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0.016666666666666666,
+      "reason": "orcs/trolls T2 wins only 2% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5740,15 +5691,15 @@
       "bracket": "T2",
       "attacker": "dragons/dragonkin T2",
       "defender": "pirates/gunners T2",
-      "winRate": 0.75,
-      "reason": "dragons/dragonkin T2 wins 75% vs pirates/gunners T2 (same tier, same budget)"
+      "winRate": 0.7166666666666667,
+      "reason": "dragons/dragonkin T2 wins 72% vs pirates/gunners T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "dragons/dragonkin T2",
       "defender": "wizards/spellblades T2",
-      "winRate": 0.9166666666666666,
-      "reason": "dragons/dragonkin T2 wins 92% vs wizards/spellblades T2 (same tier, same budget)"
+      "winRate": 0.8833333333333333,
+      "reason": "dragons/dragonkin T2 wins 88% vs wizards/spellblades T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5782,29 +5733,29 @@
       "bracket": "T2",
       "attacker": "dragons/dragonkin T2",
       "defender": "orcs/trolls T2",
-      "winRate": 0.1,
-      "reason": "dragons/dragonkin T2 wins only 10% vs orcs/trolls T2 (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "dragons/dragonkin T2 wins only 3% vs orcs/trolls T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "dragons/dragonkin T2",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.85,
-      "reason": "dragons/dragonkin T2 wins 85% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0.7333333333333333,
+      "reason": "dragons/dragonkin T2 wins 73% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "dragons/dragonkin T2",
       "defender": "dragons/elder_dragons T2",
-      "winRate": 0.16666666666666666,
-      "reason": "dragons/dragonkin T2 wins only 17% vs dragons/elder_dragons T2 (same tier, same budget)"
+      "winRate": 0.13333333333333333,
+      "reason": "dragons/dragonkin T2 wins only 13% vs dragons/elder_dragons T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "dragons/dragonkin T2",
       "defender": "holyknights/templars T2",
-      "winRate": 0.18333333333333332,
-      "reason": "dragons/dragonkin T2 wins only 18% vs holyknights/templars T2 (same tier, same budget)"
+      "winRate": 0.1,
+      "reason": "dragons/dragonkin T2 wins only 10% vs holyknights/templars T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5852,8 +5803,8 @@
       "bracket": "T2",
       "attacker": "dragons/dragonkin T2",
       "defender": "ashen_dead/mummies T2",
-      "winRate": 0.7833333333333333,
-      "reason": "dragons/dragonkin T2 wins 78% vs ashen_dead/mummies T2 (same tier, same budget)"
+      "winRate": 0.7666666666666667,
+      "reason": "dragons/dragonkin T2 wins 77% vs ashen_dead/mummies T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5866,8 +5817,8 @@
       "bracket": "T2",
       "attacker": "dragons/dragonkin T2",
       "defender": "neutral/bear_shaman",
-      "winRate": 0.85,
-      "reason": "dragons/dragonkin T2 wins 85% vs neutral/bear_shaman (same tier, same budget)"
+      "winRate": 0.8,
+      "reason": "dragons/dragonkin T2 wins 80% vs neutral/bear_shaman (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5879,16 +5830,9 @@
     {
       "bracket": "T2",
       "attacker": "dragons/dragonkin T2",
-      "defender": "neutral/dune_raider",
-      "winRate": 0.21666666666666667,
-      "reason": "dragons/dragonkin T2 wins only 22% vs neutral/dune_raider (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "dragons/dragonkin T2",
       "defender": "neutral/pirate_deserter",
-      "winRate": 0,
-      "reason": "dragons/dragonkin T2 wins only 0% vs neutral/pirate_deserter (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "dragons/dragonkin T2 wins only 3% vs neutral/pirate_deserter (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5908,15 +5852,8 @@
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
       "defender": "pirates/gunners T2",
-      "winRate": 0.9666666666666667,
-      "reason": "dragons/drake_riders T2 wins 97% vs pirates/gunners T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "dragons/drake_riders T2",
-      "defender": "wizards/spellblades T2",
       "winRate": 0.85,
-      "reason": "dragons/drake_riders T2 wins 85% vs wizards/spellblades T2 (same tier, same budget)"
+      "reason": "dragons/drake_riders T2 wins 85% vs pirates/gunners T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5929,8 +5866,8 @@
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
       "defender": "wizards/golems T2",
-      "winRate": 0.9833333333333333,
-      "reason": "dragons/drake_riders T2 wins 98% vs wizards/golems T2 (same tier, same budget)"
+      "winRate": 0.9,
+      "reason": "dragons/drake_riders T2 wins 90% vs wizards/golems T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5942,16 +5879,9 @@
     {
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
-      "defender": "orcs/warg_riders T2",
-      "winRate": 0.9,
-      "reason": "dragons/drake_riders T2 wins 90% vs orcs/warg_riders T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "dragons/drake_riders T2",
       "defender": "orcs/trolls T2",
-      "winRate": 0.2833333333333333,
-      "reason": "dragons/drake_riders T2 wins only 28% vs orcs/trolls T2 (same tier, same budget)"
+      "winRate": 0.08333333333333333,
+      "reason": "dragons/drake_riders T2 wins only 8% vs orcs/trolls T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -5964,36 +5894,29 @@
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
       "defender": "dragons/elder_dragons T2",
-      "winRate": 0.26666666666666666,
-      "reason": "dragons/drake_riders T2 wins only 27% vs dragons/elder_dragons T2 (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "dragons/drake_riders T2 wins only 3% vs dragons/elder_dragons T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
-      "defender": "holyknights/battlepriests T2",
-      "winRate": 0.9333333333333333,
-      "reason": "dragons/drake_riders T2 wins 93% vs holyknights/battlepriests T2 (same tier, same budget)"
+      "defender": "holyknights/templars T2",
+      "winRate": 0.1,
+      "reason": "dragons/drake_riders T2 wins only 10% vs holyknights/templars T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
       "defender": "holyknights/inquisitors T2",
-      "winRate": 0.16666666666666666,
-      "reason": "dragons/drake_riders T2 wins only 17% vs holyknights/inquisitors T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "dragons/drake_riders T2 wins only 0% vs holyknights/inquisitors T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
-      "defender": "nightcreatures/vampires T2",
-      "winRate": 0.7166666666666667,
-      "reason": "dragons/drake_riders T2 wins 72% vs nightcreatures/vampires T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "dragons/drake_riders T2",
-      "defender": "nightcreatures/werewolves T2",
-      "winRate": 0.8833333333333333,
-      "reason": "dragons/drake_riders T2 wins 88% vs nightcreatures/werewolves T2 (same tier, same budget)"
+      "defender": "nightcreatures/spiders T2",
+      "winRate": 0.21666666666666667,
+      "reason": "dragons/drake_riders T2 wins only 22% vs nightcreatures/spiders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -6012,6 +5935,13 @@
     {
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
+      "defender": "coldborns/frost_giants T2",
+      "winRate": 0.18333333333333332,
+      "reason": "dragons/drake_riders T2 wins only 18% vs coldborns/frost_giants T2 (same tier, same budget)"
+    },
+    {
+      "bracket": "T2",
+      "attacker": "dragons/drake_riders T2",
       "defender": "ashen_dead/skeleton_legion T2",
       "winRate": 1,
       "reason": "dragons/drake_riders T2 wins 100% vs ashen_dead/skeleton_legion T2 (same tier, same budget)"
@@ -6020,57 +5950,36 @@
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
       "defender": "ashen_dead/mummies T2",
-      "winRate": 0.9166666666666666,
-      "reason": "dragons/drake_riders T2 wins 92% vs ashen_dead/mummies T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "dragons/drake_riders T2",
-      "defender": "ashen_dead/death_cavalry T2",
-      "winRate": 0.9166666666666666,
-      "reason": "dragons/drake_riders T2 wins 92% vs ashen_dead/death_cavalry T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "dragons/drake_riders T2",
-      "defender": "neutral/bear_shaman",
-      "winRate": 0.8333333333333334,
-      "reason": "dragons/drake_riders T2 wins 83% vs neutral/bear_shaman (same tier, same budget)"
+      "winRate": 0.8166666666666667,
+      "reason": "dragons/drake_riders T2 wins 82% vs ashen_dead/mummies T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
       "defender": "neutral/rubble_warden",
-      "winRate": 0.1,
-      "reason": "dragons/drake_riders T2 wins only 10% vs neutral/rubble_warden (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "dragons/drake_riders T2",
-      "defender": "neutral/dune_raider",
-      "winRate": 0.7833333333333333,
-      "reason": "dragons/drake_riders T2 wins 78% vs neutral/dune_raider (same tier, same budget)"
+      "winRate": 0,
+      "reason": "dragons/drake_riders T2 wins only 0% vs neutral/rubble_warden (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
       "defender": "neutral/pirate_deserter",
-      "winRate": 0.7166666666666667,
-      "reason": "dragons/drake_riders T2 wins 72% vs neutral/pirate_deserter (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "dragons/drake_riders T2",
-      "defender": "neutral/warband_outcast",
-      "winRate": 0.7666666666666667,
-      "reason": "dragons/drake_riders T2 wins 77% vs neutral/warband_outcast (same tier, same budget)"
+      "winRate": 0.23333333333333334,
+      "reason": "dragons/drake_riders T2 wins only 23% vs neutral/pirate_deserter (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "dragons/drake_riders T2",
       "defender": "neutral/feral_bloodfang",
-      "winRate": 0.9833333333333333,
-      "reason": "dragons/drake_riders T2 wins 98% vs neutral/feral_bloodfang (same tier, same budget)"
+      "winRate": 0.9166666666666666,
+      "reason": "dragons/drake_riders T2 wins 92% vs neutral/feral_bloodfang (same tier, same budget)"
+    },
+    {
+      "bracket": "T2",
+      "attacker": "dragons/drake_riders T2",
+      "defender": "neutral/frost_exile",
+      "winRate": 0.25,
+      "reason": "dragons/drake_riders T2 wins only 25% vs neutral/frost_exile (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -6139,8 +6048,8 @@
       "bracket": "T2",
       "attacker": "dragons/elder_dragons T2",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.25,
-      "reason": "dragons/elder_dragons T2 wins only 25% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0.15,
+      "reason": "dragons/elder_dragons T2 wins only 15% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -6342,8 +6251,8 @@
       "bracket": "T2",
       "attacker": "holyknights/templars T2",
       "defender": "dragons/dragonkin T2",
-      "winRate": 0.8333333333333334,
-      "reason": "holyknights/templars T2 wins 83% vs dragons/dragonkin T2 (same tier, same budget)"
+      "winRate": 0.75,
+      "reason": "holyknights/templars T2 wins 75% vs dragons/dragonkin T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -6440,8 +6349,8 @@
       "bracket": "T2",
       "attacker": "holyknights/templars T2",
       "defender": "neutral/dune_raider",
-      "winRate": 0.06666666666666667,
-      "reason": "holyknights/templars T2 wins only 7% vs neutral/dune_raider (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "holyknights/templars T2 wins only 3% vs neutral/dune_raider (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -6512,13 +6421,6 @@
       "defender": "dragons/dragonkin T2",
       "winRate": 0.85,
       "reason": "holyknights/battlepriests T2 wins 85% vs dragons/dragonkin T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "holyknights/battlepriests T2",
-      "defender": "dragons/drake_riders T2",
-      "winRate": 0.75,
-      "reason": "holyknights/battlepriests T2 wins 75% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -6596,13 +6498,6 @@
       "defender": "neutral/rubble_warden",
       "winRate": 0,
       "reason": "holyknights/battlepriests T2 wins only 0% vs neutral/rubble_warden (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "holyknights/battlepriests T2",
-      "defender": "neutral/dune_raider",
-      "winRate": 0.05,
-      "reason": "holyknights/battlepriests T2 wins only 5% vs neutral/dune_raider (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -6894,13 +6789,6 @@
     {
       "bracket": "T2",
       "attacker": "nightcreatures/vampires T2",
-      "defender": "dragons/drake_riders T2",
-      "winRate": 0.7166666666666667,
-      "reason": "nightcreatures/vampires T2 wins 72% vs dragons/drake_riders T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "nightcreatures/vampires T2",
       "defender": "dragons/elder_dragons T2",
       "winRate": 0,
       "reason": "nightcreatures/vampires T2 wins only 0% vs dragons/elder_dragons T2 (same tier, same budget)"
@@ -7098,8 +6986,8 @@
       "bracket": "T2",
       "attacker": "nightcreatures/werewolves T2",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.2,
-      "reason": "nightcreatures/werewolves T2 wins only 20% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0.016666666666666666,
+      "reason": "nightcreatures/werewolves T2 wins only 2% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -7399,8 +7287,8 @@
       "bracket": "T2",
       "attacker": "nightcreatures/spiders T2",
       "defender": "neutral/dune_raider",
-      "winRate": 0.016666666666666666,
-      "reason": "nightcreatures/spiders T2 wins only 2% vs neutral/dune_raider (same tier, same budget)"
+      "winRate": 0,
+      "reason": "nightcreatures/spiders T2 wins only 0% vs neutral/dune_raider (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -7910,8 +7798,8 @@
       "bracket": "T2",
       "attacker": "coldborns/frost_giants T2",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.1,
-      "reason": "coldborns/frost_giants T2 wins only 10% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "coldborns/frost_giants T2 wins only 0% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -8421,8 +8309,8 @@
       "bracket": "T2",
       "attacker": "ashen_dead/mummies T2",
       "defender": "neutral/dune_raider",
-      "winRate": 0.18333333333333332,
-      "reason": "ashen_dead/mummies T2 wins only 18% vs neutral/dune_raider (same tier, same budget)"
+      "winRate": 0.23333333333333334,
+      "reason": "ashen_dead/mummies T2 wins only 23% vs neutral/dune_raider (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -8722,8 +8610,15 @@
       "bracket": "T2",
       "attacker": "neutral/bear_shaman",
       "defender": "dragons/dragonkin T2",
-      "winRate": 0.8833333333333333,
-      "reason": "neutral/bear_shaman wins 88% vs dragons/dragonkin T2 (same tier, same budget)"
+      "winRate": 0.85,
+      "reason": "neutral/bear_shaman wins 85% vs dragons/dragonkin T2 (same tier, same budget)"
+    },
+    {
+      "bracket": "T2",
+      "attacker": "neutral/bear_shaman",
+      "defender": "dragons/drake_riders T2",
+      "winRate": 0.21666666666666667,
+      "reason": "neutral/bear_shaman wins only 22% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -8827,8 +8722,8 @@
       "bracket": "T2",
       "attacker": "neutral/bear_shaman",
       "defender": "neutral/dune_raider",
-      "winRate": 0.06666666666666667,
-      "reason": "neutral/bear_shaman wins only 7% vs neutral/dune_raider (same tier, same budget)"
+      "winRate": 0.05,
+      "reason": "neutral/bear_shaman wins only 5% vs neutral/dune_raider (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -8925,15 +8820,15 @@
       "bracket": "T2",
       "attacker": "neutral/rubble_warden",
       "defender": "dragons/dragonkin T2",
-      "winRate": 0.23333333333333334,
-      "reason": "neutral/rubble_warden wins only 23% vs dragons/dragonkin T2 (same tier, same budget)"
+      "winRate": 0.18333333333333332,
+      "reason": "neutral/rubble_warden wins only 18% vs dragons/dragonkin T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "neutral/rubble_warden",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.05,
-      "reason": "neutral/rubble_warden wins only 5% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/rubble_warden wins only 0% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9086,15 +8981,8 @@
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
       "defender": "pirates/sea_beasts T2",
-      "winRate": 0.8333333333333334,
-      "reason": "neutral/dune_raider wins 83% vs pirates/sea_beasts T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "neutral/dune_raider",
-      "defender": "wizards/spellblades T2",
-      "winRate": 0.9666666666666667,
-      "reason": "neutral/dune_raider wins 97% vs wizards/spellblades T2 (same tier, same budget)"
+      "winRate": 0.18333333333333332,
+      "reason": "neutral/dune_raider wins only 18% vs pirates/sea_beasts T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9120,16 +9008,9 @@
     {
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
-      "defender": "orcs/warg_riders T2",
-      "winRate": 1,
-      "reason": "neutral/dune_raider wins 100% vs orcs/warg_riders T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "neutral/dune_raider",
       "defender": "orcs/trolls T2",
-      "winRate": 0.16666666666666666,
-      "reason": "neutral/dune_raider wins only 17% vs orcs/trolls T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/dune_raider wins only 0% vs orcs/trolls T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9142,29 +9023,22 @@
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
       "defender": "dragons/drake_riders T2",
-      "winRate": 1,
-      "reason": "neutral/dune_raider wins 100% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0.9333333333333333,
+      "reason": "neutral/dune_raider wins 93% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
       "defender": "dragons/elder_dragons T2",
-      "winRate": 0.2,
-      "reason": "neutral/dune_raider wins only 20% vs dragons/elder_dragons T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/dune_raider wins only 0% vs dragons/elder_dragons T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
       "defender": "holyknights/templars T2",
-      "winRate": 0.23333333333333334,
-      "reason": "neutral/dune_raider wins only 23% vs holyknights/templars T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "neutral/dune_raider",
-      "defender": "holyknights/battlepriests T2",
-      "winRate": 1,
-      "reason": "neutral/dune_raider wins 100% vs holyknights/battlepriests T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/dune_raider wins only 0% vs holyknights/templars T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9177,15 +9051,15 @@
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
       "defender": "nightcreatures/vampires T2",
-      "winRate": 0.7666666666666667,
-      "reason": "neutral/dune_raider wins 77% vs nightcreatures/vampires T2 (same tier, same budget)"
+      "winRate": 0.16666666666666666,
+      "reason": "neutral/dune_raider wins only 17% vs nightcreatures/vampires T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
-      "defender": "nightcreatures/werewolves T2",
-      "winRate": 1,
-      "reason": "neutral/dune_raider wins 100% vs nightcreatures/werewolves T2 (same tier, same budget)"
+      "defender": "nightcreatures/spiders T2",
+      "winRate": 0.03333333333333333,
+      "reason": "neutral/dune_raider wins only 3% vs nightcreatures/spiders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9204,6 +9078,13 @@
     {
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
+      "defender": "coldborns/frost_giants T2",
+      "winRate": 0.016666666666666666,
+      "reason": "neutral/dune_raider wins only 2% vs coldborns/frost_giants T2 (same tier, same budget)"
+    },
+    {
+      "bracket": "T2",
+      "attacker": "neutral/dune_raider",
       "defender": "ashen_dead/skeleton_legion T2",
       "winRate": 1,
       "reason": "neutral/dune_raider wins 100% vs ashen_dead/skeleton_legion T2 (same tier, same budget)"
@@ -9211,23 +9092,16 @@
     {
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
-      "defender": "ashen_dead/mummies T2",
-      "winRate": 0.9666666666666667,
-      "reason": "neutral/dune_raider wins 97% vs ashen_dead/mummies T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "neutral/dune_raider",
       "defender": "ashen_dead/death_cavalry T2",
-      "winRate": 1,
-      "reason": "neutral/dune_raider wins 100% vs ashen_dead/death_cavalry T2 (same tier, same budget)"
+      "winRate": 0.8,
+      "reason": "neutral/dune_raider wins 80% vs ashen_dead/death_cavalry T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
       "defender": "neutral/bear_shaman",
-      "winRate": 0.8666666666666667,
-      "reason": "neutral/dune_raider wins 87% vs neutral/bear_shaman (same tier, same budget)"
+      "winRate": 0.26666666666666666,
+      "reason": "neutral/dune_raider wins only 27% vs neutral/bear_shaman (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9239,9 +9113,30 @@
     {
       "bracket": "T2",
       "attacker": "neutral/dune_raider",
+      "defender": "neutral/pirate_deserter",
+      "winRate": 0.08333333333333333,
+      "reason": "neutral/dune_raider wins only 8% vs neutral/pirate_deserter (same tier, same budget)"
+    },
+    {
+      "bracket": "T2",
+      "attacker": "neutral/dune_raider",
+      "defender": "neutral/warband_outcast",
+      "winRate": 0.13333333333333333,
+      "reason": "neutral/dune_raider wins only 13% vs neutral/warband_outcast (same tier, same budget)"
+    },
+    {
+      "bracket": "T2",
+      "attacker": "neutral/dune_raider",
       "defender": "neutral/feral_bloodfang",
-      "winRate": 1,
-      "reason": "neutral/dune_raider wins 100% vs neutral/feral_bloodfang (same tier, same budget)"
+      "winRate": 0.7666666666666667,
+      "reason": "neutral/dune_raider wins 77% vs neutral/feral_bloodfang (same tier, same budget)"
+    },
+    {
+      "bracket": "T2",
+      "attacker": "neutral/dune_raider",
+      "defender": "neutral/frost_exile",
+      "winRate": 0.08333333333333333,
+      "reason": "neutral/dune_raider wins only 8% vs neutral/frost_exile (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9261,15 +9156,8 @@
       "bracket": "T2",
       "attacker": "neutral/pirate_deserter",
       "defender": "pirates/sea_beasts T2",
-      "winRate": 0.9833333333333333,
-      "reason": "neutral/pirate_deserter wins 98% vs pirates/sea_beasts T2 (same tier, same budget)"
-    },
-    {
-      "bracket": "T2",
-      "attacker": "neutral/pirate_deserter",
-      "defender": "wizards/spellblades T2",
-      "winRate": 1,
-      "reason": "neutral/pirate_deserter wins 100% vs wizards/spellblades T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/pirate_deserter wins only 0% vs pirates/sea_beasts T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9296,8 +9184,8 @@
       "bracket": "T2",
       "attacker": "neutral/pirate_deserter",
       "defender": "orcs/warg_riders T2",
-      "winRate": 1,
-      "reason": "neutral/pirate_deserter wins 100% vs orcs/warg_riders T2 (same tier, same budget)"
+      "winRate": 0.9166666666666666,
+      "reason": "neutral/pirate_deserter wins 92% vs orcs/warg_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9352,8 +9240,8 @@
       "bracket": "T2",
       "attacker": "neutral/pirate_deserter",
       "defender": "nightcreatures/vampires T2",
-      "winRate": 0.9,
-      "reason": "neutral/pirate_deserter wins 90% vs nightcreatures/vampires T2 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/pirate_deserter wins only 0% vs nightcreatures/vampires T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9401,8 +9289,8 @@
       "bracket": "T2",
       "attacker": "neutral/pirate_deserter",
       "defender": "ashen_dead/mummies T2",
-      "winRate": 1,
-      "reason": "neutral/pirate_deserter wins 100% vs ashen_dead/mummies T2 (same tier, same budget)"
+      "winRate": 0.2,
+      "reason": "neutral/pirate_deserter wins only 20% vs ashen_dead/mummies T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9415,8 +9303,8 @@
       "bracket": "T2",
       "attacker": "neutral/pirate_deserter",
       "defender": "neutral/bear_shaman",
-      "winRate": 1,
-      "reason": "neutral/pirate_deserter wins 100% vs neutral/bear_shaman (same tier, same budget)"
+      "winRate": 0.016666666666666666,
+      "reason": "neutral/pirate_deserter wins only 2% vs neutral/bear_shaman (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9429,15 +9317,15 @@
       "bracket": "T2",
       "attacker": "neutral/pirate_deserter",
       "defender": "neutral/dune_raider",
-      "winRate": 1,
-      "reason": "neutral/pirate_deserter wins 100% vs neutral/dune_raider (same tier, same budget)"
+      "winRate": 0.8833333333333333,
+      "reason": "neutral/pirate_deserter wins 88% vs neutral/dune_raider (same tier, same budget)"
     },
     {
       "bracket": "T2",
       "attacker": "neutral/pirate_deserter",
       "defender": "neutral/warband_outcast",
-      "winRate": 0.15,
-      "reason": "neutral/pirate_deserter wins only 15% vs neutral/warband_outcast (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/pirate_deserter wins only 0% vs neutral/warband_outcast (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9450,8 +9338,8 @@
       "bracket": "T2",
       "attacker": "neutral/pirate_deserter",
       "defender": "neutral/frost_exile",
-      "winRate": 0.06666666666666667,
-      "reason": "neutral/pirate_deserter wins only 7% vs neutral/frost_exile (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/pirate_deserter wins only 0% vs neutral/frost_exile (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9520,8 +9408,8 @@
       "bracket": "T2",
       "attacker": "neutral/warband_outcast",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.18333333333333332,
-      "reason": "neutral/warband_outcast wins only 18% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "neutral/warband_outcast wins only 3% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9723,8 +9611,8 @@
       "bracket": "T2",
       "attacker": "neutral/feral_bloodfang",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.9166666666666666,
-      "reason": "neutral/feral_bloodfang wins 92% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 1,
+      "reason": "neutral/feral_bloodfang wins 100% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -9820,6 +9708,13 @@
     {
       "bracket": "T2",
       "attacker": "neutral/feral_bloodfang",
+      "defender": "neutral/dune_raider",
+      "winRate": 0.9666666666666667,
+      "reason": "neutral/feral_bloodfang wins 97% vs neutral/dune_raider (same tier, same budget)"
+    },
+    {
+      "bracket": "T2",
+      "attacker": "neutral/feral_bloodfang",
       "defender": "neutral/pirate_deserter",
       "winRate": 0.06666666666666667,
       "reason": "neutral/feral_bloodfang wins only 7% vs neutral/pirate_deserter (same tier, same budget)"
@@ -9891,8 +9786,8 @@
       "bracket": "T2",
       "attacker": "neutral/frost_exile",
       "defender": "dragons/drake_riders T2",
-      "winRate": 0.26666666666666666,
-      "reason": "neutral/frost_exile wins only 27% vs dragons/drake_riders T2 (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "neutral/frost_exile wins only 3% vs dragons/drake_riders T2 (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -10003,8 +9898,8 @@
       "bracket": "T2",
       "attacker": "neutral/frost_exile",
       "defender": "neutral/dune_raider",
-      "winRate": 0.016666666666666666,
-      "reason": "neutral/frost_exile wins only 2% vs neutral/dune_raider (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/frost_exile wins only 0% vs neutral/dune_raider (same tier, same budget)"
     },
     {
       "bracket": "T2",
@@ -10045,8 +9940,8 @@
       "bracket": "T3",
       "attacker": "pirates/swashbucklers T3",
       "defender": "wizards/spellblades T3",
-      "winRate": 0.016666666666666666,
-      "reason": "pirates/swashbucklers T3 wins only 2% vs wizards/spellblades T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "pirates/swashbucklers T3 wins only 0% vs wizards/spellblades T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -10080,8 +9975,8 @@
       "bracket": "T3",
       "attacker": "pirates/swashbucklers T3",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.16666666666666666,
-      "reason": "pirates/swashbucklers T3 wins only 17% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0.06666666666666667,
+      "reason": "pirates/swashbucklers T3 wins only 7% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -10254,6 +10149,13 @@
     {
       "bracket": "T3",
       "attacker": "pirates/gunners T3",
+      "defender": "dragons/drake_riders T3",
+      "winRate": 0.25,
+      "reason": "pirates/gunners T3 wins only 25% vs dragons/drake_riders T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "pirates/gunners T3",
       "defender": "dragons/elder_dragons T3",
       "winRate": 0,
       "reason": "pirates/gunners T3 wins only 0% vs dragons/elder_dragons T3 (same tier, same budget)"
@@ -10402,8 +10304,8 @@
       "bracket": "T3",
       "attacker": "pirates/sea_beasts T3",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.13333333333333333,
-      "reason": "pirates/sea_beasts T3 wins only 13% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "pirates/sea_beasts T3 wins only 0% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -10556,8 +10458,8 @@
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
       "defender": "pirates/sea_beasts T3",
-      "winRate": 0.21666666666666667,
-      "reason": "wizards/spellblades T3 wins only 22% vs pirates/sea_beasts T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "wizards/spellblades T3 wins only 0% vs pirates/sea_beasts T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -10570,22 +10472,22 @@
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
       "defender": "wizards/golems T3",
-      "winRate": 0.8,
-      "reason": "wizards/spellblades T3 wins 80% vs wizards/golems T3 (same tier, same budget)"
+      "winRate": 0.25,
+      "reason": "wizards/spellblades T3 wins only 25% vs wizards/golems T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
       "defender": "orcs/grunts T3",
-      "winRate": 0.9833333333333333,
-      "reason": "wizards/spellblades T3 wins 98% vs orcs/grunts T3 (same tier, same budget)"
+      "winRate": 0.9666666666666667,
+      "reason": "wizards/spellblades T3 wins 97% vs orcs/grunts T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
       "defender": "orcs/warg_riders T3",
-      "winRate": 0.8333333333333334,
-      "reason": "wizards/spellblades T3 wins 83% vs orcs/warg_riders T3 (same tier, same budget)"
+      "winRate": 0.7666666666666667,
+      "reason": "wizards/spellblades T3 wins 77% vs orcs/warg_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -10597,30 +10499,23 @@
     {
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
-      "defender": "dragons/dragonkin T3",
-      "winRate": 0.8,
-      "reason": "wizards/spellblades T3 wins 80% vs dragons/dragonkin T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "wizards/spellblades T3",
-      "defender": "dragons/drake_riders T3",
-      "winRate": 0.8666666666666667,
-      "reason": "wizards/spellblades T3 wins 87% vs dragons/drake_riders T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "wizards/spellblades T3",
       "defender": "dragons/elder_dragons T3",
-      "winRate": 0.016666666666666666,
-      "reason": "wizards/spellblades T3 wins only 2% vs dragons/elder_dragons T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "wizards/spellblades T3 wins only 0% vs dragons/elder_dragons T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
       "defender": "holyknights/templars T3",
+      "winRate": 0,
+      "reason": "wizards/spellblades T3 wins only 0% vs holyknights/templars T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "wizards/spellblades T3",
+      "defender": "holyknights/battlepriests T3",
       "winRate": 0.06666666666666667,
-      "reason": "wizards/spellblades T3 wins only 7% vs holyknights/templars T3 (same tier, same budget)"
+      "reason": "wizards/spellblades T3 wins only 7% vs holyknights/battlepriests T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -10633,22 +10528,22 @@
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
       "defender": "nightcreatures/vampires T3",
-      "winRate": 0.23333333333333334,
-      "reason": "wizards/spellblades T3 wins only 23% vs nightcreatures/vampires T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "wizards/spellblades T3 wins only 0% vs nightcreatures/vampires T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
       "defender": "nightcreatures/werewolves T3",
-      "winRate": 0.9333333333333333,
-      "reason": "wizards/spellblades T3 wins 93% vs nightcreatures/werewolves T3 (same tier, same budget)"
+      "winRate": 0.7833333333333333,
+      "reason": "wizards/spellblades T3 wins 78% vs nightcreatures/werewolves T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
       "defender": "nightcreatures/spiders T3",
-      "winRate": 0.06666666666666667,
-      "reason": "wizards/spellblades T3 wins only 7% vs nightcreatures/spiders T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "wizards/spellblades T3 wins only 0% vs nightcreatures/spiders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -10656,6 +10551,13 @@
       "defender": "coldborns/raiders T3",
       "winRate": 1,
       "reason": "wizards/spellblades T3 wins 100% vs coldborns/raiders T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "wizards/spellblades T3",
+      "defender": "coldborns/bear_riders T3",
+      "winRate": 0.016666666666666666,
+      "reason": "wizards/spellblades T3 wins only 2% vs coldborns/bear_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -10674,6 +10576,20 @@
     {
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
+      "defender": "ashen_dead/mummies T3",
+      "winRate": 0.05,
+      "reason": "wizards/spellblades T3 wins only 5% vs ashen_dead/mummies T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "wizards/spellblades T3",
+      "defender": "neutral/swarmwing_broodmother",
+      "winRate": 0,
+      "reason": "wizards/spellblades T3 wins only 0% vs neutral/swarmwing_broodmother (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "wizards/spellblades T3",
       "defender": "neutral/ruin_colossus",
       "winRate": 0,
       "reason": "wizards/spellblades T3 wins only 0% vs neutral/ruin_colossus (same tier, same budget)"
@@ -10681,16 +10597,9 @@
     {
       "bracket": "T3",
       "attacker": "wizards/spellblades T3",
-      "defender": "neutral/scavenger_chief",
-      "winRate": 0.7333333333333333,
-      "reason": "wizards/spellblades T3 wins 73% vs neutral/scavenger_chief (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "wizards/spellblades T3",
-      "defender": "neutral/rogue_battlemage",
-      "winRate": 0.7833333333333333,
-      "reason": "wizards/spellblades T3 wins 78% vs neutral/rogue_battlemage (same tier, same budget)"
+      "defender": "neutral/wyrm_poacher",
+      "winRate": 0.16666666666666666,
+      "reason": "wizards/spellblades T3 wins only 17% vs neutral/wyrm_poacher (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -10698,6 +10607,13 @@
       "defender": "neutral/fallen_paladin",
       "winRate": 0,
       "reason": "wizards/spellblades T3 wins only 0% vs neutral/fallen_paladin (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "wizards/spellblades T3",
+      "defender": "neutral/grave_robber",
+      "winRate": 0,
+      "reason": "wizards/spellblades T3 wins only 0% vs neutral/grave_robber (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -10975,13 +10891,6 @@
     {
       "bracket": "T3",
       "attacker": "wizards/golems T3",
-      "defender": "dragons/drake_riders T3",
-      "winRate": 0.7833333333333333,
-      "reason": "wizards/golems T3 wins 78% vs dragons/drake_riders T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "wizards/golems T3",
       "defender": "dragons/elder_dragons T3",
       "winRate": 0,
       "reason": "wizards/golems T3 wins only 0% vs dragons/elder_dragons T3 (same tier, same budget)"
@@ -11144,8 +11053,8 @@
       "bracket": "T3",
       "attacker": "orcs/grunts T3",
       "defender": "wizards/spellblades T3",
-      "winRate": 0.016666666666666666,
-      "reason": "orcs/grunts T3 wins only 2% vs wizards/spellblades T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "orcs/grunts T3 wins only 0% vs wizards/spellblades T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11174,13 +11083,6 @@
       "defender": "orcs/trolls T3",
       "winRate": 0,
       "reason": "orcs/grunts T3 wins only 0% vs orcs/trolls T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "orcs/grunts T3",
-      "defender": "dragons/dragonkin T3",
-      "winRate": 0.11666666666666667,
-      "reason": "orcs/grunts T3 wins only 12% vs dragons/dragonkin T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11382,8 +11284,8 @@
       "bracket": "T3",
       "attacker": "orcs/warg_riders T3",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.15,
-      "reason": "orcs/warg_riders T3 wins only 15% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0.05,
+      "reason": "orcs/warg_riders T3 wins only 5% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11571,15 +11473,15 @@
       "bracket": "T3",
       "attacker": "orcs/trolls T3",
       "defender": "dragons/dragonkin T3",
-      "winRate": 0.1,
-      "reason": "orcs/trolls T3 wins only 10% vs dragons/dragonkin T3 (same tier, same budget)"
+      "winRate": 0.08333333333333333,
+      "reason": "orcs/trolls T3 wins only 8% vs dragons/dragonkin T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "orcs/trolls T3",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.06666666666666667,
-      "reason": "orcs/trolls T3 wins only 7% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0.016666666666666666,
+      "reason": "orcs/trolls T3 wins only 2% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11732,15 +11634,15 @@
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "pirates/gunners T3",
-      "winRate": 0.95,
-      "reason": "dragons/dragonkin T3 wins 95% vs pirates/gunners T3 (same tier, same budget)"
+      "winRate": 0.8666666666666667,
+      "reason": "dragons/dragonkin T3 wins 87% vs pirates/gunners T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
-      "defender": "wizards/spellblades T3",
-      "winRate": 0.7333333333333333,
-      "reason": "dragons/dragonkin T3 wins 73% vs wizards/spellblades T3 (same tier, same budget)"
+      "defender": "pirates/sea_beasts T3",
+      "winRate": 0.23333333333333334,
+      "reason": "dragons/dragonkin T3 wins only 23% vs pirates/sea_beasts T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11753,8 +11655,8 @@
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "wizards/golems T3",
-      "winRate": 0.9666666666666667,
-      "reason": "dragons/dragonkin T3 wins 97% vs wizards/golems T3 (same tier, same budget)"
+      "winRate": 0.8666666666666667,
+      "reason": "dragons/dragonkin T3 wins 87% vs wizards/golems T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11774,50 +11676,50 @@
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "orcs/trolls T3",
-      "winRate": 0.15,
-      "reason": "dragons/dragonkin T3 wins only 15% vs orcs/trolls T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "dragons/dragonkin T3",
-      "defender": "dragons/drake_riders T3",
-      "winRate": 0.85,
-      "reason": "dragons/dragonkin T3 wins 85% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "dragons/dragonkin T3 wins only 3% vs orcs/trolls T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "dragons/elder_dragons T3",
-      "winRate": 0.1,
-      "reason": "dragons/dragonkin T3 wins only 10% vs dragons/elder_dragons T3 (same tier, same budget)"
+      "winRate": 0.06666666666666667,
+      "reason": "dragons/dragonkin T3 wins only 7% vs dragons/elder_dragons T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "holyknights/templars T3",
-      "winRate": 0.16666666666666666,
-      "reason": "dragons/dragonkin T3 wins only 17% vs holyknights/templars T3 (same tier, same budget)"
+      "winRate": 0.05,
+      "reason": "dragons/dragonkin T3 wins only 5% vs holyknights/templars T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "holyknights/battlepriests T3",
-      "winRate": 0.8666666666666667,
-      "reason": "dragons/dragonkin T3 wins 87% vs holyknights/battlepriests T3 (same tier, same budget)"
+      "winRate": 0.7333333333333333,
+      "reason": "dragons/dragonkin T3 wins 73% vs holyknights/battlepriests T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "holyknights/inquisitors T3",
-      "winRate": 0.03333333333333333,
-      "reason": "dragons/dragonkin T3 wins only 3% vs holyknights/inquisitors T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "dragons/dragonkin T3 wins only 0% vs holyknights/inquisitors T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "dragons/dragonkin T3",
+      "defender": "nightcreatures/vampires T3",
+      "winRate": 0.21666666666666667,
+      "reason": "dragons/dragonkin T3 wins only 22% vs nightcreatures/vampires T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "nightcreatures/werewolves T3",
-      "winRate": 0.9833333333333333,
-      "reason": "dragons/dragonkin T3 wins 98% vs nightcreatures/werewolves T3 (same tier, same budget)"
+      "winRate": 0.9333333333333333,
+      "reason": "dragons/dragonkin T3 wins 93% vs nightcreatures/werewolves T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11829,16 +11731,9 @@
     {
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
-      "defender": "coldborns/bear_riders T3",
-      "winRate": 0.8,
-      "reason": "dragons/dragonkin T3 wins 80% vs coldborns/bear_riders T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "dragons/dragonkin T3",
       "defender": "coldborns/frost_giants T3",
-      "winRate": 0.03333333333333333,
-      "reason": "dragons/dragonkin T3 wins only 3% vs coldborns/frost_giants T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "dragons/dragonkin T3 wins only 0% vs coldborns/frost_giants T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11850,16 +11745,9 @@
     {
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
-      "defender": "ashen_dead/mummies T3",
-      "winRate": 0.8833333333333333,
-      "reason": "dragons/dragonkin T3 wins 88% vs ashen_dead/mummies T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "dragons/dragonkin T3",
       "defender": "ashen_dead/death_cavalry T3",
-      "winRate": 0.8833333333333333,
-      "reason": "dragons/dragonkin T3 wins 88% vs ashen_dead/death_cavalry T3 (same tier, same budget)"
+      "winRate": 0.8166666666666667,
+      "reason": "dragons/dragonkin T3 wins 82% vs ashen_dead/death_cavalry T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11872,29 +11760,29 @@
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "neutral/scavenger_chief",
-      "winRate": 0.9666666666666667,
-      "reason": "dragons/dragonkin T3 wins 97% vs neutral/scavenger_chief (same tier, same budget)"
+      "winRate": 0.9166666666666666,
+      "reason": "dragons/dragonkin T3 wins 92% vs neutral/scavenger_chief (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "neutral/rogue_battlemage",
-      "winRate": 1,
-      "reason": "dragons/dragonkin T3 wins 100% vs neutral/rogue_battlemage (same tier, same budget)"
+      "winRate": 0.9333333333333333,
+      "reason": "dragons/dragonkin T3 wins 93% vs neutral/rogue_battlemage (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "dragons/dragonkin T3",
+      "defender": "neutral/wyrm_poacher",
+      "winRate": 0.23333333333333334,
+      "reason": "dragons/dragonkin T3 wins only 23% vs neutral/wyrm_poacher (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/dragonkin T3",
       "defender": "neutral/fallen_paladin",
-      "winRate": 0.08333333333333333,
-      "reason": "dragons/dragonkin T3 wins only 8% vs neutral/fallen_paladin (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "dragons/dragonkin T3",
-      "defender": "neutral/grave_robber",
-      "winRate": 0.7833333333333333,
-      "reason": "dragons/dragonkin T3 wins 78% vs neutral/grave_robber (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "dragons/dragonkin T3 wins only 3% vs neutral/fallen_paladin (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11907,8 +11795,15 @@
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "pirates/gunners T3",
-      "winRate": 0.9833333333333333,
-      "reason": "dragons/drake_riders T3 wins 98% vs pirates/gunners T3 (same tier, same budget)"
+      "winRate": 0.95,
+      "reason": "dragons/drake_riders T3 wins 95% vs pirates/gunners T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "dragons/drake_riders T3",
+      "defender": "pirates/sea_beasts T3",
+      "winRate": 0.25,
+      "reason": "dragons/drake_riders T3 wins only 25% vs pirates/sea_beasts T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11921,8 +11816,8 @@
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "wizards/golems T3",
-      "winRate": 0.9166666666666666,
-      "reason": "dragons/drake_riders T3 wins 92% vs wizards/golems T3 (same tier, same budget)"
+      "winRate": 0.8166666666666667,
+      "reason": "dragons/drake_riders T3 wins 82% vs wizards/golems T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11935,50 +11830,57 @@
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "orcs/warg_riders T3",
-      "winRate": 0.7666666666666667,
-      "reason": "dragons/drake_riders T3 wins 77% vs orcs/warg_riders T3 (same tier, same budget)"
+      "winRate": 0.7166666666666667,
+      "reason": "dragons/drake_riders T3 wins 72% vs orcs/warg_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "orcs/trolls T3",
-      "winRate": 0.05,
-      "reason": "dragons/drake_riders T3 wins only 5% vs orcs/trolls T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "dragons/drake_riders T3 wins only 0% vs orcs/trolls T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "dragons/dragonkin T3",
-      "winRate": 0.8333333333333334,
-      "reason": "dragons/drake_riders T3 wins 83% vs dragons/dragonkin T3 (same tier, same budget)"
+      "winRate": 0.8,
+      "reason": "dragons/drake_riders T3 wins 80% vs dragons/dragonkin T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "dragons/elder_dragons T3",
-      "winRate": 0.15,
-      "reason": "dragons/drake_riders T3 wins only 15% vs dragons/elder_dragons T3 (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "dragons/drake_riders T3 wins only 3% vs dragons/elder_dragons T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "holyknights/templars T3",
-      "winRate": 0.18333333333333332,
-      "reason": "dragons/drake_riders T3 wins only 18% vs holyknights/templars T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "dragons/drake_riders T3",
-      "defender": "holyknights/battlepriests T3",
-      "winRate": 0.75,
-      "reason": "dragons/drake_riders T3 wins 75% vs holyknights/battlepriests T3 (same tier, same budget)"
+      "winRate": 0.016666666666666666,
+      "reason": "dragons/drake_riders T3 wins only 2% vs holyknights/templars T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "holyknights/inquisitors T3",
-      "winRate": 0.1,
-      "reason": "dragons/drake_riders T3 wins only 10% vs holyknights/inquisitors T3 (same tier, same budget)"
+      "winRate": 0.016666666666666666,
+      "reason": "dragons/drake_riders T3 wins only 2% vs holyknights/inquisitors T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "dragons/drake_riders T3",
+      "defender": "nightcreatures/vampires T3",
+      "winRate": 0.15,
+      "reason": "dragons/drake_riders T3 wins only 15% vs nightcreatures/vampires T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "dragons/drake_riders T3",
+      "defender": "nightcreatures/spiders T3",
+      "winRate": 0.23333333333333334,
+      "reason": "dragons/drake_riders T3 wins only 23% vs nightcreatures/spiders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -11991,8 +11893,8 @@
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "coldborns/frost_giants T3",
-      "winRate": 0.1,
-      "reason": "dragons/drake_riders T3 wins only 10% vs coldborns/frost_giants T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "dragons/drake_riders T3 wins only 0% vs coldborns/frost_giants T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -12005,43 +11907,29 @@
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "ashen_dead/mummies T3",
-      "winRate": 0.7833333333333333,
-      "reason": "dragons/drake_riders T3 wins 78% vs ashen_dead/mummies T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "dragons/drake_riders T3",
-      "defender": "ashen_dead/death_cavalry T3",
-      "winRate": 0.75,
-      "reason": "dragons/drake_riders T3 wins 75% vs ashen_dead/death_cavalry T3 (same tier, same budget)"
+      "winRate": 0.7166666666666667,
+      "reason": "dragons/drake_riders T3 wins 72% vs ashen_dead/mummies T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "neutral/ruin_colossus",
-      "winRate": 0.11666666666666667,
-      "reason": "dragons/drake_riders T3 wins only 12% vs neutral/ruin_colossus (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "dragons/drake_riders T3",
-      "defender": "neutral/scavenger_chief",
-      "winRate": 0.7333333333333333,
-      "reason": "dragons/drake_riders T3 wins 73% vs neutral/scavenger_chief (same tier, same budget)"
+      "winRate": 0.016666666666666666,
+      "reason": "dragons/drake_riders T3 wins only 2% vs neutral/ruin_colossus (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "neutral/rogue_battlemage",
-      "winRate": 0.8666666666666667,
-      "reason": "dragons/drake_riders T3 wins 87% vs neutral/rogue_battlemage (same tier, same budget)"
+      "winRate": 0.8333333333333334,
+      "reason": "dragons/drake_riders T3 wins 83% vs neutral/rogue_battlemage (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "dragons/drake_riders T3",
       "defender": "neutral/fallen_paladin",
-      "winRate": 0.11666666666666667,
-      "reason": "dragons/drake_riders T3 wins only 12% vs neutral/fallen_paladin (same tier, same budget)"
+      "winRate": 0.03333333333333333,
+      "reason": "dragons/drake_riders T3 wins only 3% vs neutral/fallen_paladin (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -12112,6 +12000,13 @@
       "defender": "dragons/dragonkin T3",
       "winRate": 0,
       "reason": "dragons/elder_dragons T3 wins only 0% vs dragons/dragonkin T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "dragons/elder_dragons T3",
+      "defender": "dragons/drake_riders T3",
+      "winRate": 0.08333333333333333,
+      "reason": "dragons/elder_dragons T3 wins only 8% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -12270,6 +12165,13 @@
     {
       "bracket": "T3",
       "attacker": "holyknights/templars T3",
+      "defender": "wizards/spellblades T3",
+      "winRate": 0.15,
+      "reason": "holyknights/templars T3 wins only 15% vs wizards/spellblades T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "holyknights/templars T3",
       "defender": "wizards/acolytes T3",
       "winRate": 1,
       "reason": "holyknights/templars T3 wins 100% vs wizards/acolytes T3 (same tier, same budget)"
@@ -12308,13 +12210,6 @@
       "defender": "dragons/dragonkin T3",
       "winRate": 0.9833333333333333,
       "reason": "holyknights/templars T3 wins 98% vs dragons/dragonkin T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "holyknights/templars T3",
-      "defender": "dragons/drake_riders T3",
-      "winRate": 0.7833333333333333,
-      "reason": "holyknights/templars T3 wins 78% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -12474,8 +12369,8 @@
       "bracket": "T3",
       "attacker": "holyknights/battlepriests T3",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.8666666666666667,
-      "reason": "holyknights/battlepriests T3 wins 87% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0.8,
+      "reason": "holyknights/battlepriests T3 wins 80% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -12788,6 +12683,13 @@
     {
       "bracket": "T3",
       "attacker": "nightcreatures/vampires T3",
+      "defender": "wizards/spellblades T3",
+      "winRate": 0,
+      "reason": "nightcreatures/vampires T3 wins only 0% vs wizards/spellblades T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "nightcreatures/vampires T3",
       "defender": "wizards/acolytes T3",
       "winRate": 1,
       "reason": "nightcreatures/vampires T3 wins 100% vs wizards/acolytes T3 (same tier, same budget)"
@@ -12826,13 +12728,6 @@
       "defender": "dragons/dragonkin T3",
       "winRate": 0.9833333333333333,
       "reason": "nightcreatures/vampires T3 wins 98% vs dragons/dragonkin T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "nightcreatures/vampires T3",
-      "defender": "dragons/drake_riders T3",
-      "winRate": 0.7333333333333333,
-      "reason": "nightcreatures/vampires T3 wins 73% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -13012,6 +12907,13 @@
     {
       "bracket": "T3",
       "attacker": "nightcreatures/werewolves T3",
+      "defender": "dragons/drake_riders T3",
+      "winRate": 0.2,
+      "reason": "nightcreatures/werewolves T3 wins only 20% vs dragons/drake_riders T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "nightcreatures/werewolves T3",
       "defender": "dragons/elder_dragons T3",
       "winRate": 0,
       "reason": "nightcreatures/werewolves T3 wins only 0% vs dragons/elder_dragons T3 (same tier, same budget)"
@@ -13160,8 +13062,8 @@
       "bracket": "T3",
       "attacker": "nightcreatures/spiders T3",
       "defender": "wizards/spellblades T3",
-      "winRate": 0.06666666666666667,
-      "reason": "nightcreatures/spiders T3 wins only 7% vs wizards/spellblades T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "nightcreatures/spiders T3 wins only 0% vs wizards/spellblades T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -13391,8 +13293,8 @@
       "bracket": "T3",
       "attacker": "coldborns/raiders T3",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.11666666666666667,
-      "reason": "coldborns/raiders T3 wins only 12% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "coldborns/raiders T3 wins only 0% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -13545,8 +13447,8 @@
       "bracket": "T3",
       "attacker": "coldborns/bear_riders T3",
       "defender": "wizards/spellblades T3",
-      "winRate": 0.06666666666666667,
-      "reason": "coldborns/bear_riders T3 wins only 7% vs wizards/spellblades T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "coldborns/bear_riders T3 wins only 0% vs wizards/spellblades T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -13587,15 +13489,15 @@
       "bracket": "T3",
       "attacker": "coldborns/bear_riders T3",
       "defender": "dragons/dragonkin T3",
-      "winRate": 0.8,
-      "reason": "coldborns/bear_riders T3 wins 80% vs dragons/dragonkin T3 (same tier, same budget)"
+      "winRate": 0.7833333333333333,
+      "reason": "coldborns/bear_riders T3 wins 78% vs dragons/dragonkin T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "coldborns/bear_riders T3",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.16666666666666666,
-      "reason": "coldborns/bear_riders T3 wins only 17% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0.08333333333333333,
+      "reason": "coldborns/bear_riders T3 wins only 8% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -13797,8 +13699,8 @@
       "bracket": "T3",
       "attacker": "coldborns/frost_giants T3",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.18333333333333332,
-      "reason": "coldborns/frost_giants T3 wins only 18% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0.05,
+      "reason": "coldborns/frost_giants T3 wins only 5% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -14168,8 +14070,8 @@
       "bracket": "T3",
       "attacker": "ashen_dead/mummies T3",
       "defender": "wizards/spellblades T3",
-      "winRate": 0.2,
-      "reason": "ashen_dead/mummies T3 wins only 20% vs wizards/spellblades T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "ashen_dead/mummies T3 wins only 0% vs wizards/spellblades T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -14602,15 +14504,15 @@
       "bracket": "T3",
       "attacker": "neutral/swarmwing_broodmother",
       "defender": "dragons/dragonkin T3",
-      "winRate": 0.18333333333333332,
-      "reason": "neutral/swarmwing_broodmother wins only 18% vs dragons/dragonkin T3 (same tier, same budget)"
+      "winRate": 0.15,
+      "reason": "neutral/swarmwing_broodmother wins only 15% vs dragons/dragonkin T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
       "attacker": "neutral/swarmwing_broodmother",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.06666666666666667,
-      "reason": "neutral/swarmwing_broodmother wins only 7% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/swarmwing_broodmother wins only 0% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -14770,8 +14672,8 @@
       "bracket": "T3",
       "attacker": "neutral/ruin_colossus",
       "defender": "wizards/spellblades T3",
-      "winRate": 0.016666666666666666,
-      "reason": "neutral/ruin_colossus wins only 2% vs wizards/spellblades T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/ruin_colossus wins only 0% vs wizards/spellblades T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -14807,6 +14709,13 @@
       "defender": "orcs/trolls T3",
       "winRate": 0,
       "reason": "neutral/ruin_colossus wins only 0% vs orcs/trolls T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "neutral/ruin_colossus",
+      "defender": "dragons/drake_riders T3",
+      "winRate": 0.13333333333333333,
+      "reason": "neutral/ruin_colossus wins only 13% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -15015,8 +14924,8 @@
       "bracket": "T3",
       "attacker": "neutral/scavenger_chief",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.06666666666666667,
-      "reason": "neutral/scavenger_chief wins only 7% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0,
+      "reason": "neutral/scavenger_chief wins only 0% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -15164,13 +15073,6 @@
       "defender": "pirates/gunners T3",
       "winRate": 0.9333333333333333,
       "reason": "neutral/rogue_battlemage wins 93% vs pirates/gunners T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "neutral/rogue_battlemage",
-      "defender": "wizards/spellblades T3",
-      "winRate": 0.75,
-      "reason": "neutral/rogue_battlemage wins 75% vs wizards/spellblades T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -15400,8 +15302,8 @@
       "bracket": "T3",
       "attacker": "neutral/wyrm_poacher",
       "defender": "dragons/drake_riders T3",
-      "winRate": 0.9833333333333333,
-      "reason": "neutral/wyrm_poacher wins 98% vs dragons/drake_riders T3 (same tier, same budget)"
+      "winRate": 0.95,
+      "reason": "neutral/wyrm_poacher wins 95% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -15596,8 +15498,8 @@
       "bracket": "T3",
       "attacker": "neutral/fallen_paladin",
       "defender": "dragons/dragonkin T3",
-      "winRate": 0.21666666666666667,
-      "reason": "neutral/fallen_paladin wins only 22% vs dragons/dragonkin T3 (same tier, same budget)"
+      "winRate": 0.18333333333333332,
+      "reason": "neutral/fallen_paladin wins only 18% vs dragons/dragonkin T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -15763,6 +15665,13 @@
     {
       "bracket": "T3",
       "attacker": "neutral/grave_robber",
+      "defender": "wizards/spellblades T3",
+      "winRate": 0.03333333333333333,
+      "reason": "neutral/grave_robber wins only 3% vs wizards/spellblades T3 (same tier, same budget)"
+    },
+    {
+      "bracket": "T3",
+      "attacker": "neutral/grave_robber",
       "defender": "wizards/acolytes T3",
       "winRate": 1,
       "reason": "neutral/grave_robber wins 100% vs wizards/acolytes T3 (same tier, same budget)"
@@ -15801,13 +15710,6 @@
       "defender": "dragons/dragonkin T3",
       "winRate": 1,
       "reason": "neutral/grave_robber wins 100% vs dragons/dragonkin T3 (same tier, same budget)"
-    },
-    {
-      "bracket": "T3",
-      "attacker": "neutral/grave_robber",
-      "defender": "dragons/drake_riders T3",
-      "winRate": 0.7666666666666667,
-      "reason": "neutral/grave_robber wins 77% vs dragons/drake_riders T3 (same tier, same budget)"
     },
     {
       "bracket": "T3",
@@ -15953,8 +15855,8 @@
       "bracket": "T4",
       "attacker": "pirates/leviathan",
       "defender": "dragons/sovereign_wyrm",
-      "winRate": 0.8833333333333333,
-      "reason": "pirates/leviathan wins 88% vs dragons/sovereign_wyrm (same tier, same budget)"
+      "winRate": 0.85,
+      "reason": "pirates/leviathan wins 85% vs dragons/sovereign_wyrm (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16030,8 +15932,8 @@
       "bracket": "T4",
       "attacker": "wizards/void_warden",
       "defender": "dragons/sovereign_wyrm",
-      "winRate": 0.7833333333333333,
-      "reason": "wizards/void_warden wins 78% vs dragons/sovereign_wyrm (same tier, same budget)"
+      "winRate": 0.7166666666666667,
+      "reason": "wizards/void_warden wins 72% vs dragons/sovereign_wyrm (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16093,8 +15995,8 @@
       "bracket": "T4",
       "attacker": "orcs/doomcaller",
       "defender": "dragons/sovereign_wyrm",
-      "winRate": 0.75,
-      "reason": "orcs/doomcaller wins 75% vs dragons/sovereign_wyrm (same tier, same budget)"
+      "winRate": 0.7333333333333333,
+      "reason": "orcs/doomcaller wins 73% vs dragons/sovereign_wyrm (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16149,8 +16051,8 @@
       "bracket": "T4",
       "attacker": "dragons/sovereign_wyrm",
       "defender": "pirates/leviathan",
-      "winRate": 0.8666666666666667,
-      "reason": "dragons/sovereign_wyrm wins 87% vs pirates/leviathan (same tier, same budget)"
+      "winRate": 0.8333333333333334,
+      "reason": "dragons/sovereign_wyrm wins 83% vs pirates/leviathan (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16176,9 +16078,30 @@
     {
       "bracket": "T4",
       "attacker": "dragons/sovereign_wyrm",
+      "defender": "ancient/voidmaw",
+      "winRate": 0.25,
+      "reason": "dragons/sovereign_wyrm wins only 25% vs ancient/voidmaw (same tier, same budget)"
+    },
+    {
+      "bracket": "T4",
+      "attacker": "dragons/sovereign_wyrm",
+      "defender": "ancient/aeonspire",
+      "winRate": 0.25,
+      "reason": "dragons/sovereign_wyrm wins only 25% vs ancient/aeonspire (same tier, same budget)"
+    },
+    {
+      "bracket": "T4",
+      "attacker": "dragons/sovereign_wyrm",
+      "defender": "ancient/ruinfather",
+      "winRate": 0.18333333333333332,
+      "reason": "dragons/sovereign_wyrm wins only 18% vs ancient/ruinfather (same tier, same budget)"
+    },
+    {
+      "bracket": "T4",
+      "attacker": "dragons/sovereign_wyrm",
       "defender": "ancient/nameless_colossus",
-      "winRate": 0.26666666666666666,
-      "reason": "dragons/sovereign_wyrm wins only 27% vs ancient/nameless_colossus (same tier, same budget)"
+      "winRate": 0.15,
+      "reason": "dragons/sovereign_wyrm wins only 15% vs ancient/nameless_colossus (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16275,8 +16198,8 @@
       "bracket": "T4",
       "attacker": "nightcreatures/umbral_colossus",
       "defender": "dragons/sovereign_wyrm",
-      "winRate": 0.95,
-      "reason": "nightcreatures/umbral_colossus wins 95% vs dragons/sovereign_wyrm (same tier, same budget)"
+      "winRate": 0.9333333333333333,
+      "reason": "nightcreatures/umbral_colossus wins 93% vs dragons/sovereign_wyrm (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16352,8 +16275,8 @@
       "bracket": "T4",
       "attacker": "coldborns/frostbound_titan",
       "defender": "dragons/sovereign_wyrm",
-      "winRate": 0.7333333333333333,
-      "reason": "coldborns/frostbound_titan wins 73% vs dragons/sovereign_wyrm (same tier, same budget)"
+      "winRate": 0.85,
+      "reason": "coldborns/frostbound_titan wins 85% vs dragons/sovereign_wyrm (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16429,8 +16352,8 @@
       "bracket": "T4",
       "attacker": "ashen_dead/bone_colossus",
       "defender": "dragons/sovereign_wyrm",
-      "winRate": 0.13333333333333333,
-      "reason": "ashen_dead/bone_colossus wins only 13% vs dragons/sovereign_wyrm (same tier, same budget)"
+      "winRate": 0.11666666666666667,
+      "reason": "ashen_dead/bone_colossus wins only 12% vs dragons/sovereign_wyrm (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16506,8 +16429,8 @@
       "bracket": "T4",
       "attacker": "ancient/voidmaw",
       "defender": "dragons/sovereign_wyrm",
-      "winRate": 0.8166666666666667,
-      "reason": "ancient/voidmaw wins 82% vs dragons/sovereign_wyrm (same tier, same budget)"
+      "winRate": 0.8,
+      "reason": "ancient/voidmaw wins 80% vs dragons/sovereign_wyrm (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16555,8 +16478,8 @@
       "bracket": "T4",
       "attacker": "ancient/aeonspire",
       "defender": "pirates/leviathan",
-      "winRate": 0.13333333333333333,
-      "reason": "ancient/aeonspire wins only 13% vs pirates/leviathan (same tier, same budget)"
+      "winRate": 0,
+      "reason": "ancient/aeonspire wins only 0% vs pirates/leviathan (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16590,15 +16513,15 @@
       "bracket": "T4",
       "attacker": "ancient/aeonspire",
       "defender": "coldborns/frostbound_titan",
-      "winRate": 0.8666666666666667,
-      "reason": "ancient/aeonspire wins 87% vs coldborns/frostbound_titan (same tier, same budget)"
+      "winRate": 0.8166666666666667,
+      "reason": "ancient/aeonspire wins 82% vs coldborns/frostbound_titan (same tier, same budget)"
     },
     {
       "bracket": "T4",
       "attacker": "ancient/aeonspire",
       "defender": "ashen_dead/bone_colossus",
-      "winRate": 0.05,
-      "reason": "ancient/aeonspire wins only 5% vs ashen_dead/bone_colossus (same tier, same budget)"
+      "winRate": 0,
+      "reason": "ancient/aeonspire wins only 0% vs ashen_dead/bone_colossus (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16618,8 +16541,8 @@
       "bracket": "T4",
       "attacker": "ancient/aeonspire",
       "defender": "ancient/nameless_colossus",
-      "winRate": 0.016666666666666666,
-      "reason": "ancient/aeonspire wins only 2% vs ancient/nameless_colossus (same tier, same budget)"
+      "winRate": 0,
+      "reason": "ancient/aeonspire wins only 0% vs ancient/nameless_colossus (same tier, same budget)"
     },
     {
       "bracket": "T4",
@@ -16772,84 +16695,48 @@
   "efficiencyOutliers": [
     {
       "bracket": "T1",
-      "label": "wizards/spellblades T1",
-      "efficiency": 0.28431887240427584,
-      "bracketMeanEfficiency": 0.10178390375243178,
-      "bracketStdDevEfficiency": 0.08621417034836952,
-      "zScore": 2.1172269931296293,
-      "reason": "wizards/spellblades T1 efficiency 0.284 is 2.1 std devs from its T1 tier mean (0.102)"
-    },
-    {
-      "bracket": "T1",
       "label": "dragons/dragonkin T1",
-      "efficiency": 0.27595001685780707,
-      "bracketMeanEfficiency": 0.10178390375243178,
-      "bracketStdDevEfficiency": 0.08621417034836952,
-      "zScore": 2.020156459217949,
-      "reason": "dragons/dragonkin T1 efficiency 0.276 is 2.0 std devs from its T1 tier mean (0.102)"
+      "efficiency": 0.244484591185531,
+      "bracketMeanEfficiency": 0.09443972425197353,
+      "bracketStdDevEfficiency": 0.06920343144275415,
+      "zScore": 2.168170910104021,
+      "reason": "dragons/dragonkin T1 efficiency 0.244 is 2.2 std devs from its T1 tier mean (0.094)"
     },
     {
       "bracket": "T1",
-      "label": "neutral/wolf_rider",
-      "efficiency": 0.2844045377761865,
-      "bracketMeanEfficiency": 0.10178390375243178,
-      "bracketStdDevEfficiency": 0.08621417034836952,
-      "zScore": 2.11822062760485,
-      "reason": "neutral/wolf_rider efficiency 0.284 is 2.1 std devs from its T1 tier mean (0.102)"
-    },
-    {
-      "bracket": "T2",
-      "label": "dragons/drake_riders T2",
-      "efficiency": 0.36729361308646413,
-      "bracketMeanEfficiency": 0.10001461751501603,
-      "bracketStdDevEfficiency": 0.1065071251869571,
-      "zScore": 2.5094940371574235,
-      "reason": "dragons/drake_riders T2 efficiency 0.367 is 2.5 std devs from its T2 tier mean (0.100)"
-    },
-    {
-      "bracket": "T2",
-      "label": "neutral/dune_raider",
-      "efficiency": 0.37230687538467827,
-      "bracketMeanEfficiency": 0.10001461751501603,
-      "bracketStdDevEfficiency": 0.1065071251869571,
-      "zScore": 2.5565637734723805,
-      "reason": "neutral/dune_raider efficiency 0.372 is 2.6 std devs from its T2 tier mean (0.100)"
+      "label": "holyknights/templars T1",
+      "efficiency": 0.2343561403579089,
+      "bracketMeanEfficiency": 0.09443972425197353,
+      "bracketStdDevEfficiency": 0.06920343144275415,
+      "zScore": 2.0218132712346177,
+      "reason": "holyknights/templars T1 efficiency 0.234 is 2.0 std devs from its T1 tier mean (0.094)"
     },
     {
       "bracket": "T2",
       "label": "neutral/pirate_deserter",
-      "efficiency": 0.3446468899158456,
-      "bracketMeanEfficiency": 0.10001461751501603,
-      "bracketStdDevEfficiency": 0.1065071251869571,
-      "zScore": 2.2968629748612095,
-      "reason": "neutral/pirate_deserter efficiency 0.345 is 2.3 std devs from its T2 tier mean (0.100)"
+      "efficiency": 0.2565234403357173,
+      "bracketMeanEfficiency": 0.08836785931819287,
+      "bracketStdDevEfficiency": 0.08067312147273883,
+      "zScore": 2.0844065278216335,
+      "reason": "neutral/pirate_deserter efficiency 0.257 is 2.1 std devs from its T2 tier mean (0.088)"
     },
     {
-      "bracket": "T3",
-      "label": "dragons/dragonkin T3",
-      "efficiency": 0.26006138068996554,
-      "bracketMeanEfficiency": 0.09350467879938865,
-      "bracketStdDevEfficiency": 0.08104944466533148,
-      "zScore": 2.0550011487225,
-      "reason": "dragons/dragonkin T3 efficiency 0.260 is 2.1 std devs from its T3 tier mean (0.094)"
-    },
-    {
-      "bracket": "T3",
-      "label": "dragons/drake_riders T3",
-      "efficiency": 0.2711221056478226,
-      "bracketMeanEfficiency": 0.09350467879938865,
-      "bracketStdDevEfficiency": 0.08104944466533148,
-      "zScore": 2.191470004289973,
-      "reason": "dragons/drake_riders T3 efficiency 0.271 is 2.2 std devs from its T3 tier mean (0.094)"
+      "bracket": "T2",
+      "label": "neutral/feral_bloodfang",
+      "efficiency": 0.3055933591736919,
+      "bracketMeanEfficiency": 0.08836785931819287,
+      "bracketStdDevEfficiency": 0.08067312147273883,
+      "zScore": 2.6926626352112106,
+      "reason": "neutral/feral_bloodfang efficiency 0.306 is 2.7 std devs from its T2 tier mean (0.088)"
     },
     {
       "bracket": "T4",
       "label": "ancient/aeonspire",
-      "efficiency": 0.29940367361614506,
-      "bracketMeanEfficiency": 0.10546461292175914,
-      "bracketStdDevEfficiency": 0.08927478362163119,
-      "zScore": 2.1723834304247442,
-      "reason": "ancient/aeonspire efficiency 0.299 is 2.2 std devs from its T4 tier mean (0.105)"
+      "efficiency": 0.251003618841476,
+      "bracketMeanEfficiency": 0.09853345853439348,
+      "bracketStdDevEfficiency": 0.07483677523775802,
+      "zScore": 2.0373694593691614,
+      "reason": "ancient/aeonspire efficiency 0.251 is 2.0 std devs from its T4 tier mean (0.099)"
     }
   ]
 }

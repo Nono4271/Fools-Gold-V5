@@ -1,6 +1,6 @@
 # Battle Balance Report
 
-Generated: 2026-09-20T22:57:23.941Z
+Generated: 2026-09-20T23:16:29.998Z
 
 - Units in catalog: **99** (80 faction branches, 15 neutrals, 4 Ancients)
 - Budget per side: **500** command points, **60** seeded trials per matchup
@@ -11,19 +11,15 @@ Generated: 2026-09-20T22:57:23.941Z
 
 | Bracket | Unit | Efficiency | Tier mean | Tier std dev | Z-score |
 |---|---|---|---|---|---|
-| T1 | wizards/spellblades T1 | 0.284 | 0.102 | 0.086 | 2.12 |
-| T1 | dragons/dragonkin T1 | 0.276 | 0.102 | 0.086 | 2.02 |
-| T1 | neutral/wolf_rider | 0.284 | 0.102 | 0.086 | 2.12 |
-| T2 | dragons/drake_riders T2 | 0.367 | 0.100 | 0.107 | 2.51 |
-| T2 | neutral/dune_raider | 0.372 | 0.100 | 0.107 | 2.56 |
-| T2 | neutral/pirate_deserter | 0.345 | 0.100 | 0.107 | 2.30 |
-| T3 | dragons/dragonkin T3 | 0.260 | 0.094 | 0.081 | 2.06 |
-| T3 | dragons/drake_riders T3 | 0.271 | 0.094 | 0.081 | 2.19 |
-| T4 | ancient/aeonspire | 0.299 | 0.105 | 0.089 | 2.17 |
+| T1 | dragons/dragonkin T1 | 0.244 | 0.094 | 0.069 | 2.17 |
+| T1 | holyknights/templars T1 | 0.234 | 0.094 | 0.069 | 2.02 |
+| T2 | neutral/pirate_deserter | 0.257 | 0.088 | 0.081 | 2.08 |
+| T2 | neutral/feral_bloodfang | 0.306 | 0.088 | 0.081 | 2.69 |
+| T4 | ancient/aeonspire | 0.251 | 0.099 | 0.075 | 2.04 |
 
 ## Same-tier matchup outliers (win rate >70% or <30%)
 
-**2393** of 2592 same-tier, same-budget matchups flagged.
+**2382** of 2592 same-tier, same-budget matchups flagged.
 
 This count is informational, not a pass/fail gate on its own — see the ReadMeAI entry for why (budget-normalized troop counts mean 1-branch-vs-1-branch fights are inherently rock/paper/scissors at scale; the gate is the per-unit efficiency check above).
 
@@ -46,6 +42,7 @@ Top 25 most lopsided:
 | T1 | pirates/gunners T1 | nightcreatures/spiders T1 | 0% |
 | T1 | pirates/gunners T1 | coldborns/frost_giants T1 | 0% |
 | T1 | pirates/gunners T1 | ashen_dead/skeleton_legion T1 | 100% |
+| T1 | pirates/sea_beasts T1 | wizards/spellblades T1 | 0% |
 | T1 | pirates/sea_beasts T1 | wizards/acolytes T1 | 100% |
 | T1 | pirates/sea_beasts T1 | wizards/golems T1 | 0% |
 | T1 | pirates/sea_beasts T1 | orcs/grunts T1 | 0% |
@@ -55,4 +52,3 @@ Top 25 most lopsided:
 | T1 | pirates/sea_beasts T1 | holyknights/templars T1 | 0% |
 | T1 | pirates/sea_beasts T1 | holyknights/battlepriests T1 | 0% |
 | T1 | pirates/sea_beasts T1 | holyknights/inquisitors T1 | 0% |
-| T1 | pirates/sea_beasts T1 | nightcreatures/vampires T1 | 0% |
