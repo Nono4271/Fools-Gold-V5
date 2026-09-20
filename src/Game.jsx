@@ -742,12 +742,21 @@ export default function RiseToWar() {
   });
 
   // ── Server sync — authoritative tile state ──
+  // Roadmap item 5: give the server a starting region (around the player's
+  // HQ) instead of it dumping every mutable tile in the world to a joining
+  // client — see useServerSync's GAME_INIT `viewport` field and
+  // server/index.js's handleGameInit/sendSessionState.
+  const INITIAL_VIEWPORT_RADIUS = 50;
   const { emitTileCapture, emitTileSiege, emitFortUpdate, connected: serverConnected } = useServerSync({
     screen,
     tiles,
     mapReady,
     patchTile,
     sessionId,
+    initialViewport: {
+      minC: HQP.player.c - INITIAL_VIEWPORT_RADIUS, maxC: HQP.player.c + INITIAL_VIEWPORT_RADIUS,
+      minR: HQP.player.r - INITIAL_VIEWPORT_RADIUS, maxR: HQP.player.r + INITIAL_VIEWPORT_RADIUS,
+    },
   });
   const { tickAiRss, tickAiMarch, tickAiEcon } = useAI({
     aiFactionKeys,
