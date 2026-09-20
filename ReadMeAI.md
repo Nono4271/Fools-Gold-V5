@@ -257,6 +257,17 @@ change.
 
 ## 2026-09-20 — Codex
 
+### Fynn and Brine world-map sprites
+- Added transparent 6-column / 4-direction sprite atlases for Redwake Fynn (h1) and Admiral Brine (h13), matching existing portraits. Standing frame plus five walking frames per direction; other commanders retain their portraits outdoors.
+- `commanderMapSprites.js` handles atlas frames, facing, and HQ visibility; `commanderIcons.js` integrates them with the existing march worker positions. No movement speed or gameplay rules changed.
+- All commanders, including AI, are hidden inside HQ centre/footprint tiles. Marchers appear after leaving the footprint and disappear when returning inside. Removed stationary rings left behind by marching groups.
+- Generated with built-in image generation. Prompt: gritty realistic dark-fantasy isometric full-body atlas, preserve portrait costume/identity, four facing directions, idle plus five walking poses, transparent background. Assets: `public/commanders/map/h1-walk-v1.png`, `h13-walk-v1.png`.
+- Validation: eight focused commander lifecycle/visibility/animation tests pass; production build passes. Phone appearance still needs owner review.
+
+---
+
+## 2026-09-20 — Codex
+
 ### Dotted march routes, joined HQ borders and protection glow
 - Replaced solid march paths with terrain-readable dotted paths, repeated directional arrows and the existing target endpoint. Player routes remain green; reinforcement routes remain blue.
 - HQ ownership borders now check all 12 outer 3x3 edge segments. A segment disappears when it touches territory belonging to the same player, matching normal connected-tile borders.
