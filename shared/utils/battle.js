@@ -1158,8 +1158,17 @@ switch (eff.type) {
     break;
   // ── Frostbite application helpers ─────────────────────────────────────────
   case "on_hit_frostbite_chance":
-    // Raider troop skill — per-hit Frostbite chance
+    // Raider troop skill — per-hit Frostbite chance. Was dead code: this only
+    // ever set rs.onHitFrostbiteChance, which nothing else in the file reads —
+    // the chance was never rolled and Frostbite was never applied. Fixed to
+    // actually roll + apply, mirroring the sibling case right below
+    // (per_round_frostbite_aoe_chance) which already did this correctly.
     rs.onHitFrostbiteChance = (rs.onHitFrostbiteChance || 0) + (eff.chance || 0.035);
+    if (Math.random() < rs.onHitFrostbiteChance) {
+      rs.frostbiteApplied   = true;
+      rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2);
+      roundLog.actions.push({ actor: actorLabel, action: `${skill.icon} ${skill.name} — Frostbite applied! Enemy DMG -40% for 2 rnd`, dmg: 0, isTroopSkill: true });
+    }
     break;
   case "per_round_frostbite_aoe_chance":
     // Frostbite Carol / Frost Destruction — each round chance to Frostbite all enemies
@@ -3763,6 +3772,13 @@ for (const ent of order) {
         const bonus = Math.round(dmg * rs.troopBonusDmgMult);
         dmg += bonus;
         roundLog.actions.push({ actor:slotLabel, action:`💥 Bonus strike +${bonus} dmg`, dmg:bonus, isPlayer:true, isTroopSkill:true });
+        // Consume it: on_hit procs are only rolled ONCE per round (before this
+        // hits loop, not once per hit), so a single successful "bonus damage"
+        // proc was being reapplied to EVERY hit in a double_attack round
+        // (double the hits = double the free bonus damage from one proc).
+        // Zeroing it here makes one proc buff exactly the one hit it fired
+        // on, matching the skill text ("chance to deal an extra instance").
+        rs.troopBonusDmgMult = 0;
       }
       // Distribute attacker damage proportionally across alive def slots
       let dmgLeft2 = dmg;
