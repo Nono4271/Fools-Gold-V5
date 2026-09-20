@@ -8,6 +8,85 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Battle engine fixes + troop tuning from the balance sim's findings
+
+Follow-up to the balance-testing system entry directly below. Owner asked to act on the two flagged
+"engine defect"/"dead skill" findings plus tune the 4 stat/skill outliers toward their tier
+averages. **This entry DOES touch `shared/utils/battle.js` combat logic and troop data** — the
+prior entry's "testing/reporting layer only, don't touch battle.js/troop data" constraint was for
+building the sim itself; this is the owner explicitly directing fixes based on what it found.
+
+**1. Engine bug fix — `on_hit` bonus-damage was being applied to every hit in a double-attack
+round, not just the hit it proc'd on** (`shared/utils/battle.js`, attacker-slot hit loop, ~line
+3762). `procTroopSkills(..., "on_hit", ...)` rolls all on-hit skill procs ONCE per round, before the
+hit loop runs — so when a troop line has both a double-attack skill and a bonus-damage skill (both
+`on_hit`), a single successful bonus-damage roll was getting re-applied to BOTH hits of a
+double-attack round instead of just one. Confirmed live in round logs before the fix: two separate
+"💥 Bonus strike" lines in the same round, one per hit, both driven by the same proc. **Fix:**
+`rs.troopBonusDmgMult` is now zeroed out immediately after being consumed by a hit, so one proc
+buffs exactly the hit it fired on. Affects any troop line pairing a `double_attack` skill with a
+`bonus_damage` skill on `on_hit` — confirmed to matter for `dragons/dragonkin` T3 and
+`dragons/sovereign_wyrm` (both pair Predator's Dive/Wing Strike with Ember Trail/Dragonfire
+Breath); worth a broader grep for other branches sharing that pairing.
+
+**2. Dead-code fix — `coldborns/raiders`' "Frostbite Strike" skill did nothing** (`battle.js`,
+`on_hit_frostbite_chance` case, ~line 1160). The case only ever set `rs.onHitFrostbiteChance`;
+nothing else in the file ever read that variable to roll the chance or apply the debuff — confirmed
+empirically (0 frost-related log lines across every Raiders battle before the fix). Fixed by
+rolling `Math.random() < rs.onHitFrostbiteChance` and applying Frostbite on success, mirroring the
+sibling case directly below it (`per_round_frostbite_aoe_chance`, Frost Giants' skill) which
+already did this correctly.
+
+**3. Troop data tuning**, all per-branch/per-tier only (sibling tiers of the same branch were left
+alone unless they were independently flagged):
+- `coldborns/raiders` T1 (`shared/constants/troops.js`): was dead-last in dmg/def/hp/siege among
+  all 12 small-T1 branches (dmg 8-11, def 11, hp 14, siege 6) even before the skill fix. Raised to
+  dmg 12-16 / def 14 / hp 24 / siege 10 (T1-small tier average). Combined with fix #2: went from
+  0/1440 wins across every T1 opponent to a real, if still below-average, win rate.
+- `coldborns/frost_giants` T1: dead-last across every stat among all 6 large-T1 branches (dmg
+  175-185, hp 610, siege 205 — 30-45% below the next-weakest peer). Raised to dmg 270-290 / def 37
+  / hp 780 / siege 345 (T1-large tier average). Its skill already worked correctly; this was pure
+  stat tuning.
+- `coldborns/bear_riders` T1 (found DURING this pass, not in the original 4): already the
+  weakest T1-medium branch (worst dmg/hp/siege of 7) before any of today's changes, but it had
+  been surviving the "no dead units" check only because it could still beat the old, broken
+  Raiders. Once Raiders got fixed, bear_riders lost its only win and dropped to 0/960 across the
+  whole T1 bracket — a pre-existing weakness the earlier fixes unmasked, not a regression they
+  caused. Raised T1 (`Iceclaw Rider`) from dmg 14-17/def 18/hp 36/siege 6 to dmg 18-22/def 20/hp
+  50/siege 10 (tier average). `npm run test:balance`'s dead-unit check passes clean after this.
+- `dragons/dragonkin` T3 (`Ashfang`) and `dragons/sovereign_wyrm` (capstone): both still ran hot
+  after fix #1 alone (raw stats were ALSO above tier average, independent of the stacking bug).
+  Trimmed Ember Trail/Dragonfire Breath bonus-damage value 140%/150% → 70%/90%, and dmg 25-32/33-36
+  → 22-28/28-31.
+- `neutral/feral_bloodfang` (T2) and `neutral/rogue_battlemage` (T3) (`shared/constants/neutralTroops.js`):
+  no engine bug involved — Bloodfang was simply the best-statted small T2 unit in every category at
+  once (dmg, hp, AND speed, no tradeoff); trimmed dmg 26-32→20-25, hp 48→36, spd 78→70 toward the
+  T2-small tier average. Battlemage's stats were closer to average already; its Forbidden Surge
+  bonus-damage value (100%, the highest solo — non-stacked — proc value in its tier) was the driver.
+  Trimmed 100%→50%, plus a modest hp/spd/dmg trim.
+
+**Iteration note on the outlier metric:** re-running the sim after each round of tuning showed the
+expected whack-a-mole behavior of a z-score-based outlier check on a ~25-31-unit population — nerf
+the top of a tier and the mean/std-dev shift, so a previously-fine unit can pop up as the new
+"outlier" purely from a tighter distribution, not from any real change to it. After this pass:
+`feral_bloodfang`, `rogue_battlemage`, `dragonkin T3`, and `sovereign_wyrm` (the original 4) are all
+no longer flagged OR substantially reduced in efficiency; the 2 dead units + the newly-found 3rd
+(bear_riders) are fixed and pass the dead-unit check clean. A handful of DIFFERENT units now sit
+just over the 2-std-dev line (`wizards/spellblades` T1, `neutral/wolf_rider`, `dragons/drake_riders`
+T2/T3, `neutral/dune_raider`, `neutral/pirate_deserter`, `ancient/aeonspire`) — all borderline
+(z 2.0-2.6, well under the original findings' 2.7-3.7) and not acted on in this pass; see
+`tools/balanceSim/reports/report.md` (regenerate with `npm run balance-report`) for current numbers
+before deciding whether these warrant their own pass. `dragons/drake_riders` showing up in BOTH T2
+and T3 is worth a second look — dragons as a faction have now shown up as an outlier at 3 different
+tiers across this and the prior entry.
+
+**Tests:** `npm test` — 275 pass, 0 fail (no test hardcodes the changed stat values).
+`npm run build` — clean. `npm run test:balance` — 6 of 7 pass; the remaining failure is the
+efficiency-outlier test flagging the borderline units named above, which is the gate correctly
+doing its job on a real (if now much smaller and different) set of findings, not a bug.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Automated battle-balance testing system (new)
 
 New `tools/balanceSim/` dev-tooling package that exercises the real, unmodified `simBattle` at
