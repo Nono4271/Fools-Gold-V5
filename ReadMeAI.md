@@ -239,7 +239,53 @@ Commander's icon to `🎖` so they're visually distinct. Reports keeps `⚔`.
 
 ---
 
-## Guidelines for future changes made by other AI tools
+## 2026-09-19 — Claude (Sonnet), session 3
+
+### New: real gas prop art — replaces the old mine-shaft/smelter/nugget visuals
+Design process: built an HTML/SVG mockup with several concept directions,
+iterated with the project owner (bubbles → wispy steam → wispy **green**
+steam matching the existing in-game placeholder look), landed on
+"Concept 7 — Gas Pool, wispy & green" with three distinct looks across the
+power-level tiers (same pattern as wood's Lumber camp → Ancient Grove and
+food's Plague Storehouse → Cursed Granary). Implemented into the real
+isometric renderer.
+
+**File:** `src/MapRenderer.jsx`, `drawRssProp()`, `rss === "gas"` branch
+(~line 948) — replaced entirely:
+- **P2–P9 — Gas Pool:** a small dark, faintly green-glowing pool with
+  curling green wisps rising from it (2 chained bezier curves per wisp,
+  3 wisps, colors `0x3ad966` / `0x7af08c` / `0xc6ffcf` for depth). Scales
+  continuously with `sizeMult` like the other resources; a second smaller
+  pool appears once `sizeMult > 0.60`, same as the old nugget behavior.
+- **P10–P11 — "Gas Well":** the same pool, now with a simple wooden
+  collection frame straddling it and a small tank with a glowing green
+  window: still leaks a couple of uncontained wisps around the rig.
+- **P12–P13 — "Gas Refinery":** pool + a cluster of storage tanks
+  (glowing level windows), connecting pipes, and a flare stack venting a
+  large wispy green plume; P13 (`pl >= 25`) gets two tanks instead of one,
+  mirroring the old shaft-count pattern.
+- Added two shared local helpers used by all three tiers:
+  `drawGasWisps(ox, oy, wsc)` (the wisp-cluster art) and
+  `drawGasPool(px, py, prx, pry)` (the pool base). Both are plain PIXI
+  Graphics calls (`bezierCurveTo`, `drawEllipse`, `drawRoundedRect`, etc.),
+  no new dependencies.
+
+**File:** `src/MapRenderer.jsx` (~line 663) — the tile highlight-glow
+color for `gas` was `0xd4a020` (amber, matched the old mining theme from
+the previous session's fix). Changed to `0x3ad966` (green) to match the
+new pool art.
+
+**Verified:** full production build (`npm run build`) and full test suite
+(`npm test`, 107/107) pass after the change. Not yet visually confirmed
+on-device — next step is a phone playtest to check the wisps read well at
+actual isometric tile scale and the tank/pipe proportions look right at
+each tier.
+
+**Mockup reference:** the approved concept sheet (all 7 directions
+considered) is at the artifact this was designed in — ask the project
+owner if you need to see it again; it's not part of the repo.
+
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
