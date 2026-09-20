@@ -3,6 +3,7 @@ import { RARITY, CLASS } from "../../../shared/constants/heroes.js";
 import { CSS } from "../../constants/css.js";
 import { HQP, POWER_DEFS } from "../../../shared/constants/map.js";
 import { isoXY, COLS, ROWS } from "../../../shared/constants/geometry.js";
+import { CAMP_TIERS, campTierForPowerLevel, findCamps } from "../../../shared/utils/campSearch.js";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    GameBar — persistent bottom action bar + left commander portraits + right reports
@@ -194,11 +195,13 @@ const SPAWN_LEVELS = [6, 10, 12, 15, 20, 25, 30, 35, 40];
 const SEARCH_RADIUS = 100;
 
 function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClose, spawns, spawnWorkerRef, eligibleSpawnKeysRef }) {
-  const [tab, setTab] = useState("tiles"); // "tiles" | "mobs"
+  const [tab, setTab] = useState("tiles"); // "tiles" | "mobs" | "camps"
   const [selected, setSelected] = useState(new Set());
   const [selectedLevels, setSelectedLevels] = useState(new Set());
   const [results, setResults] = useState(null);
   const [mobResults, setMobResults] = useState(null);
+  const [selectedTiers, setSelectedTiers] = useState(new Set());
+  const [campResults, setCampResults] = useState(null);
   const [searched, setSearched] = useState(false);
 
   // Centre of current view — correct isoXY inverse
@@ -231,6 +234,19 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
     return next;
   });
 
+  const toggleTier = (key) => setSelectedTiers(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+
+  const doCampSearch = useCallback(() => {
+    if (!selectedTiers.size || !tiles) return;
+    const { cc, cr } = getViewCentre();
+    setCampResults(findCamps(tiles, cc, cr, selectedTiers, { radius: SEARCH_RADIUS, limit: 20 }));
+    setSearched(true);
+  }, [selectedTiers, tiles, getViewCentre]);
+
   const doSearch = useCallback(() => {
     if (!selected.size || !tiles) return;
     const { cc, cr } = getViewCentre();
@@ -245,6 +261,7 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
         if (!tile) continue;
         if (!selected.has(tile.powerLevel)) continue;
         if (tile.isHQ || tile.isGate || tile.isBorder || tile.isKeepPart) continue;
+        if (tile.isCamp || tile.isCampPart) continue; // camps have their own tab
         if (tile.isKeep && tile.powerLevel < 10) continue;
         matches.push({ key, c, r, pl: tile.powerLevel, dist });
       }
@@ -317,7 +334,7 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
 
       {/* Tabs */}
       <div style={{ display:"flex", flexShrink:0, borderBottom:"1px solid #1a1e28" }}>
-        {[["tiles","⚡ TILES"],["mobs","💀 MOBS"]].map(([t, label]) => (
+        {[["tiles","⚡ TILES"],["mobs","💀 MOBS"],["camps","🏕 CAMPS"]].map(([t, label]) => (
           <button key={t} onClick={() => { setTab(t); setSearched(false); }}
             style={{ flex:1, padding:"8px 0", background:tab===t?"rgba(255,255,255,.04)":"none",
               border:"none", borderBottom:tab===t?"2px solid #c8a060":"2px solid transparent",
@@ -450,6 +467,74 @@ function TileSearch({ tiles, panRef, zoomRef, mapRendererRef, playerHqKey, onClo
                       {defeated && <span style={{ fontSize:7, color:"#4a3a2a" }}>⏳ {secsLeft}m</span>}
                     </div>
                     <span style={{ fontSize:7, color:"#3a4a5a", fontFamily:"'Cinzel',serif" }}>{Math.round(dist)} ›</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </>}
+      {/* Camp search picker */}
+      {tab === "camps" && <>
+        <div style={{ padding:"8px 12px 6px", flexShrink:0, borderBottom:"1px solid #1a1e28" }}>
+          <div style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Cinzel',serif", marginBottom:6, letterSpacing:".05em" }}>NEUTRAL CAMPS — 100 TILE RADIUS</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:3 }}>
+            {CAMP_TIERS.map(({ key, label, powerLevel }) => {
+              const on = selectedTiers.has(key);
+              const col = POWER_DEFS[powerLevel]?.color ?? "#c8a060";
+              return (
+                <button key={key} onClick={() => toggleTier(key)} style={{
+                  display:"flex", alignItems:"center", gap:6, padding:"6px 8px",
+                  borderRadius:5, cursor:"pointer", touchAction:"manipulation",
+                  WebkitTapHighlightColor:"transparent",
+                  background: on ? `${col}18` : "rgba(255,255,255,.02)",
+                  border:`1px solid ${on ? col+"60" : "#1e2028"}`,
+                  userSelect:"none", textAlign:"left",
+                }}>
+                  <div style={{ width:14, height:14, borderRadius:3, flexShrink:0, border:`1px solid ${col}88`,
+                    background: on ? col : "rgba(0,0,0,.4)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    {on && <span style={{ fontSize:10, color:"#fff", lineHeight:1 }}>✓</span>}
+                  </div>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color: on ? col : "#5a6a6a", letterSpacing:".02em" }}>🏕 {label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ padding:"8px 12px", flexShrink:0, borderBottom:"1px solid #1a1e28" }}>
+          <button onClick={doCampSearch} disabled={!selectedTiers.size} style={{
+            width:"100%", padding:"10px 0",
+            background: selectedTiers.size ? "linear-gradient(160deg,#1a2a1a,#0e180e)" : "rgba(10,14,20,.6)",
+            border:`1px solid ${selectedTiers.size ? "#3a8050" : "#1a2028"}`,
+            borderRadius:5, color: selectedTiers.size ? "#80e0a0" : "#2a3a48",
+            fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:".06em",
+            cursor: selectedTiers.size ? "pointer" : "default", touchAction:"manipulation",
+          }}>🏕 Find Camps</button>
+        </div>
+        {searched && campResults !== null && (
+          <div className="scr" style={{ flex:1, overflowY:"auto", padding:"8px 12px" }}>
+            <div style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Cinzel',serif", marginBottom:6, letterSpacing:".05em" }}>
+              {campResults.length > 0 ? `${campResults.length} CAMPS FOUND` : "NO CAMPS IN RANGE"}
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+              {campResults.map(({ key, c, r, pl, name, dist }) => {
+                const col = POWER_DEFS[pl]?.color ?? "#c8a060";
+                const tier = campTierForPowerLevel(pl);
+                return (
+                  <button key={key} onClick={() => jumpTo(c, r)} style={{
+                    display:"flex", alignItems:"center", justifyContent:"space-between",
+                    width:"100%", padding:"10px 10px", textAlign:"left",
+                    background:"rgba(255,255,255,.03)", border:`1px solid ${col}40`,
+                    borderRadius:5, cursor:"pointer", touchAction:"manipulation",
+                  }}>
+                    <div style={{ display:"flex", flexDirection:"column", gap:2, minWidth:0 }}>
+                      <span style={{ fontSize:8, fontFamily:"'Cinzel',serif", fontWeight:700, color:col,
+                        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>🏕 {name}</span>
+                      <span style={{ fontSize:7, color:"#4a5a6a", fontFamily:"'Crimson Pro',serif" }}>
+                        {tier ? tier.label.replace(" Camps", "") : ""} · {c},{r}
+                      </span>
+                    </div>
+                    <span style={{ fontSize:7, color:"#3a4a5a", fontFamily:"'Cinzel',serif", flexShrink:0 }}>{Math.round(dist)} ›</span>
                   </button>
                 );
               })}

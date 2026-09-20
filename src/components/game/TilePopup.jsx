@@ -55,7 +55,7 @@ export default memo(function TilePopup({
   setBarracks, setCmds, setTroopSlot,
   startMarch,
   nowTick, playerHqKey, facKey, facName,
-  forts, buildFort, upgradeFort, getFortAtTile, startReposition, demolishFort, abandonFort,
+  forts, buildFort, upgradeFort, getFortAtTile, startReposition, startFortRemoval, cancelFortRemoval,
   setCmdScreenOpen, setCmdScreenUid,
   onQuickGather,
   hasQuickGather,
@@ -385,7 +385,7 @@ export default memo(function TilePopup({
         {/* Fort panel */}
         {fort&&ownership==="player"&&(
           <div style={{ padding:"6px 10px", borderBottom:"1px solid rgba(255,255,255,.04)" }}>
-            <FortPanel fort={fort} selTile={selTile} selKey={selKey} cmds={cmds} upgradeFort={upgradeFort} startReposition={startReposition} setPopupMode={setPopupMode} demolishFort={demolishFort} abandonFort={abandonFort}/>
+            <FortPanel fort={fort} selTile={selTile} selKey={selKey} cmds={cmds} upgradeFort={upgradeFort} startReposition={startReposition} setPopupMode={setPopupMode} startFortRemoval={startFortRemoval} cancelFortRemoval={cancelFortRemoval}/>
           </div>
         )}
 
