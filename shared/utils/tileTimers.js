@@ -28,6 +28,13 @@ export function deletionStatus(deletingTiles, now) {
   return { secsLeft, expired };
 }
 
+// Whole seconds left until an absolute deadline (ms timestamp), never negative.
+// Countdowns compare against a deadline instead of decrementing once per
+// interval firing, so a throttled/backgrounded tab still shows the true time.
+export function secsUntil(deadlineMs, now) {
+  return Math.max(0, Math.ceil((deadlineMs - now) / 1000));
+}
+
 // Patch that returns an abandoned tile to neutral with a fresh defender.
 export function abandonedTilePatch(tile, key, facKey) {
   const pl = tile.powerLevel || 1;
