@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo }
 import * as PIXI from "pixi.js";
 import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
+import {isInSpawnVisualArea, sameTerritory, visualResourceWidth} from "./utils/spawnVisualTest.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
 
 /* ─── Tile geometry ──────────────────────────────────────────────────────── */
@@ -31,6 +32,19 @@ const TV = {
   rockymountain:{ base: hc('#3a3630'), lite: hc('#4e4a42'), shad: hc('#1e1c18') },
 };
 const TV_DEF = TV.grass;
+
+const DARK_VISUAL_TERRAIN = {
+  grass:0x49503a, forest:0x303c2c, mountain:0x55544e, desert:0x62583e,
+  river:0x24485b, ravine:0x292725, rockymountain:0x4a4b49, road:0x514a3d,
+  hellfire:0x352d29, ruin:0x45423d, shore:0x625d4e,
+};
+
+const VISUAL_RESOURCE_ASSETS = {
+  wood:"/props/dark-map/wood.webp",
+  stone:"/props/dark-map/stone.webp",
+  food:"/props/dark-map/food.webp",
+  gas:"/props/dark-map/gas.webp",
+};
 
 /* ─── Resource prop colors ───────────────────────────────────────────────── */
 const RC = {
@@ -178,13 +192,38 @@ function getTileBaseColor(c, r, terrain) {
   return col;
 }
 
+function getSpawnVisualColor(c, r, terrain) {
+  const base = DARK_VISUAL_TERRAIN[terrain] ?? DARK_VISUAL_TERRAIN.grass;
+  // Broad, smooth color drift makes neighboring diamonds read as one landscape.
+  const wave = Math.sin(c * 0.19 + r * 0.13) * 0.035 + Math.sin(c * 0.07 - r * 0.11) * 0.025;
+  const red=(base>>16)&255, green=(base>>8)&255, blue=base&255;
+  const shift = channel => Math.max(0,Math.min(255,Math.round(channel*(1+wave))));
+  return (shift(red)<<16)|(shift(green)<<8)|shift(blue);
+}
+
+function drawJoinedTerritoryEdges(gfx, tiles, c, r, tile, points, color) {
+  const [nx,ny, ex,ey, sx,sy, wx,wy] = points;
+  const edges = [
+    [`${c},${r-1}`, nx,ny,ex,ey],
+    [`${c+1},${r}`, ex,ey,sx,sy],
+    [`${c},${r+1}`, sx,sy,wx,wy],
+    [`${c-1},${r}`, wx,wy,nx,ny],
+  ];
+  for (const [neighborKey,x1,y1,x2,y2] of edges) {
+    if (sameTerritory(tile,tiles[neighborKey])) continue;
+    gfx.lineStyle(3.4,0x11120f,0.72);gfx.moveTo(x1,y1);gfx.lineTo(x2,y2);
+    gfx.lineStyle(1.65,color,0.92);gfx.moveTo(x1,y1);gfx.lineTo(x2,y2);
+  }
+  gfx.lineStyle(0);
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    SINGLE-PASS DRAW FUNCTIONS
    All visible tiles drawn into ONE Graphics object per layer.
    No per-tile scene graph nodes. Camera moves = zero draw calls.
 ══════════════════════════════════════════════════════════════════════════ */
 
-function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null) {
+function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null, visualCenterKey = null) {
   if (!window.__rangeLogged) {
 
     window.__rangeLogged = true;
@@ -444,6 +483,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       }
 
       const key = `${c},${r}`;
+      const inVisualTest = isInSpawnVisualArea(c,r,visualCenterKey);
       const isSel    = selKey === key;
       const isMvTgt  = mode === "selectMarchDest" && mvCmdUid && owner === "player";
       const hasCmds  = Boolean(cByTile[key]?.length);
@@ -464,7 +504,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         gfx.beginFill(0xf0c040, 0.55); gfx.drawPolygon(TOP); gfx.endFill();
         if (zoom >= 0.75) { gfx.lineStyle(2, 0xf0c040, 0.8); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
       } else {
-        gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
+        gfx.beginFill(inVisualTest ? getSpawnVisualColor(c,r,terrain) : getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
         // Hellfire terrain: add a subtle red-orange lava glow tint over the dark base
         if (terrain === "hellfire") {
           const rng2 = tileRng(c + 3, r + 7);
@@ -483,7 +523,12 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         }
         // Regular tiles and gates get borders here; HQ borders drawn in renderHQSpriteGroup
         if (!isSel && !drawAsHQ) {
-          gfx.lineStyle(2, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          if (inVisualTest) {
+            gfx.beginFill(ot,0.045);gfx.drawPolygon(TOP);gfx.endFill();
+            drawJoinedTerritoryEdges(gfx,tiles,c,r,tile,TOP,ot);
+          } else {
+            gfx.lineStyle(2, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0);
+          }
         }
       }
 
@@ -602,7 +647,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
   // No additional drawing needed here.
 }
 
-function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
+function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax, visualCenterKey = null) {
   gfx.clear();
   const dMin = cMin + rMin, dMax = cMax + rMax;
   for (let d = dMin; d <= dMax; d++) {
@@ -613,6 +658,7 @@ function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
       if (r < rMin || r > rMax) continue;
       const tile = tiles[`${c},${r}`];
       if (!tile || tile.isHQ || tile.isWin || tile.isHQPart || tile.isShore) continue;
+      if (tile.rss && isInSpawnVisualArea(c,r,visualCenterKey)) continue;
       // Gate tiles and P10-13 structures get props; static keeps do not
       const isStaticKeep = (tile.isKeep && !tile.isGate) && (tile.powerLevel ?? 0) < 10;
       const isStaticPart = tile.isKeepPart && (tile.powerLevel ?? 0) < 10;
@@ -1727,6 +1773,13 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   // Keep playerFacKey in a ref so drawAllTiles can read it without a re-render
   const playerFacKeyRef = useRef(playerFacKey);
   useEffect(() => { playerFacKeyRef.current = playerFacKey; }, [playerFacKey]);
+  const playerHqKeyRef = useRef(playerHqKey);
+  useEffect(() => {
+    playerHqKeyRef.current = playerHqKey;
+    lastBoundsRef.current = null;
+    redrawRef.current?.markPropsDirty?.();
+    redrawRef.current?.redraw?.(true);
+  }, [playerHqKey]);
   const allHqKeysRef = useRef(allHqKeys || []);
   useEffect(() => { allHqKeysRef.current = allHqKeys || []; }, [allHqKeys]);
   const aiPlayerIdMapRef_ = useRef(aiPlayerIdMap || new Map());
@@ -1865,6 +1918,12 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const rssTextures       = {};   // rss string → { pl → PIXI.RenderTexture }, built lazily on first use
     const propsSpritePool   = [];   // recycled PIXI.Sprite instances
     const propsSpriteContainer = new PIXI.Container();
+    const visualPropsContainer = new PIXI.Container();
+    const visualPropsPool = [];
+    visualPropsContainer.sortableChildren = true;
+    const visualResourceTextures = Object.fromEntries(
+      Object.entries(VISUAL_RESOURCE_ASSETS).map(([key,path]) => [key,PIXI.Texture.from(path)])
+    );
 
     // ── iOS lazy texture baking ───────────────────────────────────────────────
     // Instead of baking all 52 textures synchronously at startup (blocking the
@@ -1894,6 +1953,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       world.addChild(propsSpriteContainer); // sits between tiles and keeps
       // No upfront baking — getOrBakeTex() handles everything lazily on first use.
     }
+    world.addChild(visualPropsContainer);
 
     // HQ container
     const hqCont = new PIXI.Container();
@@ -2065,6 +2125,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         return;
       }
       const pb = getViewBounds(PROPS_BUF);
+      while (visualPropsContainer.children.length > 0) {
+        visualPropsPool.push(visualPropsContainer.removeChildAt(0));
+      }
 
       if (isIOS) {
         // ── Sprite path (iOS) ────────────────────────────────────────────
@@ -2083,6 +2146,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
               if (r < pb.rMin || r > pb.rMax) continue;
               const tile = tiles[`${c},${r}`];
               if (!tile || !tile.rss || tile.isHQ || tile.isWin || tile.isHQPart || tile.isShore) continue;
+              if (isInSpawnVisualArea(c,r,playerHqKeyRef.current)) continue;
               // Skip P1 (no individual props) and static keeps/keepparts
               const pl = tile.powerLevel || 1;
               if (pl === 1) continue;
@@ -2116,7 +2180,32 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         const pg = propsFrontRef.current;
         pg.clear();
         if (zoomRef.current >= 0.5) {
-          drawAllProps(pg, tilesRef.current, pb.rMin, pb.rMax, pb.cMin, pb.cMax);
+          drawAllProps(pg, tilesRef.current, pb.rMin, pb.rMax, pb.cMin, pb.cMax, playerHqKeyRef.current);
+        }
+      }
+
+      // Approved dark-fantasy resource sprites around the player's actual HQ.
+      if (zoomRef.current >= 0.5 && playerHqKeyRef.current) {
+        const tiles=tilesRef.current;
+        const dMin=pb.cMin+pb.rMin,dMax=pb.cMax+pb.rMax;
+        for(let d=dMin;d<=dMax;d++){
+          const cLo=Math.max(pb.cMin,d-pb.rMax),cHi=Math.min(pb.cMax,d-pb.rMin);
+          for(let c=cLo;c<=cHi;c++){
+            const r=d-c;
+            if(r<pb.rMin||r>pb.rMax||!isInSpawnVisualArea(c,r,playerHqKeyRef.current))continue;
+            const tile=tiles[`${c},${r}`];
+            if(!tile?.rss||tile.isHQ||tile.isHQPart||tile.isWin||tile.isShore)continue;
+            const pl=tile.powerLevel||1;
+            if(pl===1||((tile.isKeep&&!tile.isGate)||tile.isKeepPart)&&pl<10)continue;
+            const texture=visualResourceTextures[tile.rss];
+            if(!texture)continue;
+            const {cx,cy}=isoXY(c,r),base=cy-4+(tile.isKeep&&pl>=10?TH:TH*0.5);
+            const sprite=visualPropsPool.pop()??new PIXI.Sprite();
+            const size=visualResourceWidth(pl)*(tile.isKeep&&pl>=10?1.15:1);
+            sprite.texture=texture;sprite.anchor.set(0.5,0.88);
+            sprite.x=cx;sprite.y=base;sprite.width=size;sprite.height=size;sprite.zIndex=base;
+            visualPropsContainer.addChild(sprite);
+          }
         }
       }
 
@@ -2177,7 +2266,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const tg = tileFrontRef.current;
       tg.clear();
       drawAllTiles(tg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax,
-        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z, playerFacKeyRef.current, crewPidsRef.current);
+        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z, playerFacKeyRef.current, crewPidsRef.current, playerHqKeyRef.current);
 
       // ── Props layer: only redraw when state changed OR viewport moved outside
       // the previously rendered props buffer. Never block synchronously — always

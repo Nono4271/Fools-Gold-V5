@@ -8,6 +8,18 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Codex (Sol Medium)
+
+### Playable graphics test around the random player spawn
+- **Area:** a 25-tile radius centered on the actual player HQ, so every new random spawn opens inside the test area.
+- Added original dark-fantasy Wood, Stone, Food, and Gas sprite assets under `public/props/dark-map/`.
+- Resource sprites scale with existing tile power; higher-power tiles render larger clusters. Existing resource types, rates, tile powers, and gameplay data are unchanged.
+- Test-area ground uses a darker blended palette. Adjacent tiles owned by the same player share an exterior territory outline instead of showing borders between every tile.
+- Outside the test radius retains the existing renderer for direct comparison.
+- Verified with all 110 automated tests and a production build.
+
+---
+
 ## 2026-09-19 — Codex (Sol Medium)
 
 ### Fix: landing capture delay and diagonal marches
