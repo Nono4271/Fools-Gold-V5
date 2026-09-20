@@ -190,6 +190,46 @@ export const FACTION_TROOPS = {
           { label: "Kraken Spawn",  desc: "A juvenile kraken — tentacles, chaos, devastation.",        dmgLo: 430, dmgHi: 450, def: 65, hp: 1200, siege: 490, spd: 65 },
         ],
       },
+      {
+        key: "leviathan",
+        label: "Abyssal Leviathan",
+        size: "large",
+        dmgType: "physical",
+        role: "melee",
+        capstone: true,
+        skills: {
+          a: {
+            key: "devouring_maw",
+            name: "Devouring Maw",
+            icon: "🦈",
+            trigger: "on_hit",
+            desc: "On hit, chance to strike the 2 lowest-DEF enemies for full damage each.",
+            procBase: 0.20, procMax: 0.55,
+            effect: { type: "multi_hit_lowest_def", targets: 2 },
+          },
+          b: {
+            key: "storm_hide",
+            name: "Storm Hide",
+            icon: "🌊",
+            trigger: "on_hit_received",
+            desc: "On hit received, chance to reduce damage taken by 20% for 1 round.",
+            procBase: 0.25, procMax: 0.65,
+            effect: { type: "dmg_reduce", value: 0.20, duration: 1 },
+          },
+          c: {
+            key: "abyssal_dominion",
+            name: "Abyssal Dominion",
+            icon: "🐙",
+            trigger: "round_start",
+            desc: "On round start, all allied troops deal 30% more damage this round.",
+            procBase: 1.0, procMax: 1.0,
+            effect: { type: "vs_all_dmg_up", value: 0.30 },
+          },
+        },
+        tiers: [
+          { label: "Abyssal Leviathan", desc: "A beast risen from the deepest trench — it does not surface for lesser prey.", dmgLo: 560, dmgHi: 585, def: 85, hp: 1650, siege: 750, spd: 55 },
+        ],
+      },
     ],
   },
 
@@ -291,6 +331,46 @@ export const FACTION_TROOPS = {
           { label: "Stone Golem",    desc: "A crude magical construct, slow but nearly immovable.",   dmgLo: 330, dmgHi: 340, def: 30, hp:  600, siege: 410, spd: 44 },
           { label: "Arcane Golem",   desc: "Reinforced with spell-runes, crackling with stored energy.", dmgLo: 390, dmgHi: 400, def: 40, hp:  800, siege: 530, spd: 58 },
           { label: "Void Colossus",  desc: "An apocalyptic construct that unmakes walls and armies alike.", dmgLo: 488, dmgHi: 500, def: 60, hp: 1000, siege: 650, spd: 78 },
+        ],
+      },
+      {
+        key: "void_warden",
+        label: "Void Warden",
+        size: "medium",
+        dmgType: "magical",
+        role: "siege",
+        capstone: true,
+        skills: {
+          a: {
+            key: "rift_surge",
+            name: "Rift Surge",
+            icon: "🌀",
+            trigger: "on_hit",
+            desc: "On hit, chance to deal an extra 90% instance of focus damage.",
+            procBase: 0.25, procMax: 0.65,
+            effect: { type: "bonus_damage", value: 0.90, dmgType: "focus" },
+          },
+          b: {
+            key: "warding_sigil",
+            name: "Warding Sigil",
+            icon: "🔯",
+            trigger: "on_hit_received",
+            desc: "On hit received, chance to reduce damage taken by 20% for 1 round.",
+            procBase: 0.25, procMax: 0.65,
+            effect: { type: "dmg_reduce", value: 0.20, duration: 1 },
+          },
+          c: {
+            key: "void_sovereign",
+            name: "Void Sovereign",
+            icon: "🌌",
+            trigger: "on_hit_received",
+            desc: "Each hit received this battle reduces damage taken by an additional 5%, stacking up to 5 times.",
+            procBase: 1.0, procMax: 1.0,
+            effect: { type: "decaying_dmg_reduce", value: 0.05, decayFraction: 0, maxHits: 5 },
+          },
+        },
+        tiers: [
+          { label: "Void Warden", desc: "A wizard order's last resort — a construct fused to a permanently open tear in reality.", dmgLo: 40, dmgHi: 46, def: 45, hp: 90, siege: 28, spd: 85 },
         ],
       },
     ],
@@ -396,6 +476,46 @@ export const FACTION_TROOPS = {
           { label: "Stone Crusher",  desc: "An ancient troll of legendary size — walls crumble at its touch.", dmgLo: 380, dmgHi: 400, def: 70, hp: 1400, siege: 575, spd: 53 },
         ],
       },
+      {
+        key: "doomcaller",
+        label: "Doomcaller",
+        size: "large",
+        dmgType: "physical",
+        role: "melee",
+        capstone: true,
+        skills: {
+          a: {
+            key: "savage_roar",
+            name: "Savage Roar",
+            icon: "📣",
+            trigger: "round_start",
+            desc: "On round start, chance to boost all allies' attack by 25% for 2 rounds.",
+            procBase: 0.30, procMax: 0.70,
+            effect: { type: "ally_atk_up", value: 0.25, duration: 2 },
+          },
+          b: {
+            key: "crushing_blow",
+            name: "Crushing Blow",
+            icon: "🔨",
+            trigger: "on_hit",
+            desc: "On hit, chance to stun the target for 1 round.",
+            procBase: 0.20, procMax: 0.50,
+            effect: { type: "stun", duration: 1 },
+          },
+          c: {
+            key: "warlords_fury",
+            name: "Warlord's Fury",
+            icon: "💢",
+            trigger: "round_start",
+            desc: "On round start, chance to gain +10% damage dealt, stacking up to 3 times for the battle.",
+            procBase: 0.35, procMax: 0.75,
+            effect: { type: "branch_dmg_bonus", value: 0.10, maxStacks: 3 },
+          },
+        },
+        tiers: [
+          { label: "Doomcaller", desc: "A warlord who has called down ruin on enough tribes to be feared by his own.", dmgLo: 600, dmgHi: 630, def: 95, hp: 1900, siege: 700, spd: 50 },
+        ],
+      },
     ],
   },
 
@@ -497,6 +617,46 @@ export const FACTION_TROOPS = {
           { label: "Young Dragon",      desc: "Already massive, already dangerous, not yet fully awakened.",        dmgLo: 310, dmgHi: 330, def: 35, hp:  950, siege: 400, spd: 47 },
           { label: "Winged Destroyer",  desc: "A dragon in its prime — fire, talons, and unstoppable will.",       dmgLo: 370, dmgHi: 390, def: 48, hp: 1175, siege: 500, spd: 60 },
           { label: "Elder Dragon",      desc: "Ancient, colossal, and utterly without mercy.",                     dmgLo: 455, dmgHi: 475, def: 65, hp: 1450, siege: 600, spd: 80 },
+        ],
+      },
+      {
+        key: "sovereign_wyrm",
+        label: "Sovereign Wyrm",
+        size: "small",
+        dmgType: "magical",
+        role: "melee",
+        capstone: true,
+        skills: {
+          a: {
+            key: "wing_strike",
+            name: "Wing Strike",
+            icon: "🦅",
+            trigger: "on_hit",
+            desc: "On hit, chance to attack twice in one round.",
+            procBase: 0.20, procMax: 0.55,
+            effect: { type: "double_attack" },
+          },
+          b: {
+            key: "dragonfire_breath",
+            name: "Dragonfire Breath",
+            icon: "🔥",
+            trigger: "on_hit",
+            desc: "On hit, chance to deal an extra 150% instance of damage.",
+            procBase: 0.20, procMax: 0.60,
+            effect: { type: "bonus_damage", value: 1.50 },
+          },
+          c: {
+            key: "sovereigns_wrath",
+            name: "Sovereign's Wrath",
+            icon: "👑",
+            trigger: "round_start",
+            desc: "For the first 3 rounds of battle, all allied troops deal 18% more damage.",
+            procBase: 1.0, procMax: 1.0,
+            effect: { type: "early_round_dmg_up_all", maxRound: 3, value: 0.18 },
+          },
+        },
+        tiers: [
+          { label: "Sovereign Wyrm", desc: "The last of the true dragon-kings — every other dragon in the sky yields to it.", dmgLo: 33, dmgHi: 36, def: 36, hp: 48, siege: 24, spd: 120 },
         ],
       },
     ],
@@ -602,6 +762,46 @@ export const FACTION_TROOPS = {
           { label: "Grand Inquisitor", desc: "The holy order's most feared champion — unbending, unstoppable.",  dmgLo: 25, dmgHi: 32, def: 72, hp: 118, siege: 26, spd: 76 },
         ],
       },
+      {
+        key: "seraph_vanguard",
+        label: "Seraph Vanguard",
+        size: "medium",
+        dmgType: "physical",
+        role: "melee",
+        capstone: true,
+        skills: {
+          a: {
+            key: "radiant_shield",
+            name: "Radiant Shield",
+            icon: "🛡",
+            trigger: "on_hit_received",
+            desc: "On hit received, chance to reduce damage taken by 25% for 1 round.",
+            procBase: 0.30, procMax: 0.70,
+            effect: { type: "dmg_reduce", value: 0.25, duration: 1 },
+          },
+          b: {
+            key: "judgment_strike",
+            name: "Judgment Strike",
+            icon: "⚔️",
+            trigger: "on_hit",
+            desc: "On hit, chance to deal an extra 90% instance of physical damage.",
+            procBase: 0.20, procMax: 0.60,
+            effect: { type: "bonus_damage", value: 0.90, dmgType: "physical" },
+          },
+          c: {
+            key: "seraphic_aegis",
+            name: "Seraphic Aegis",
+            icon: "🕊",
+            trigger: "round_start",
+            desc: "On round start, chance to gain +5% DEF, stacking up to 5 times for the battle.",
+            procBase: 0.40, procMax: 0.80,
+            effect: { type: "per_round_def_stack", faction: "holyknights", chance: 0.40, defPerStack: 5, maxStacks: 5 },
+          },
+        },
+        tiers: [
+          { label: "Seraph Vanguard", desc: "A knight raised to the order's highest rank, said to fight with a literal wing of the faith at their back.", dmgLo: 36, dmgHi: 40, def: 85, hp: 140, siege: 16, spd: 80 },
+        ],
+      },
     ],
   },
 
@@ -705,6 +905,46 @@ export const FACTION_TROOPS = {
           { label: "Broodmother",   desc: "A colossal matriarch commanding the swarm with terrifying will.",  dmgLo: 440, dmgHi: 470, def: 62, hp: 1250, siege: 600, spd: 70 },
         ],
       },
+      {
+        key: "umbral_colossus",
+        label: "Umbral Colossus",
+        size: "medium",
+        dmgType: "magical",
+        role: "ranged",
+        capstone: true,
+        skills: {
+          a: {
+            key: "shadow_bolt",
+            name: "Shadow Bolt",
+            icon: "🌑",
+            trigger: "on_hit",
+            desc: "On hit, chance to deal an extra 130% instance of focus damage.",
+            procBase: 0.20, procMax: 0.60,
+            effect: { type: "bonus_damage", value: 1.30, dmgType: "focus" },
+          },
+          b: {
+            key: "consume_essence",
+            name: "Consume Essence",
+            icon: "🩸",
+            trigger: "on_hit",
+            desc: "On hit, chance to heal for 60% of damage dealt.",
+            procBase: 0.25, procMax: 0.60,
+            effect: { type: "lifesteal", value: 0.60 },
+          },
+          c: {
+            key: "umbral_ascendance",
+            name: "Umbral Ascendance",
+            icon: "🌘",
+            trigger: "on_hit",
+            desc: "On hit, chance to deal maximum possible damage instead of a random roll.",
+            procBase: 0.25, procMax: 0.55,
+            effect: { type: "night_max_dmg_chance", chance: 0.25 },
+          },
+        },
+        tiers: [
+          { label: "Umbral Colossus", desc: "A shadow given lasting shape — every creature of the night owes it a debt of blood.", dmgLo: 46, dmgHi: 50, def: 48, hp: 100, siege: 25, spd: 90 },
+        ],
+      },
     ],
   },
 
@@ -783,6 +1023,36 @@ export const FACTION_TROOPS = {
             effect: { type: "per_round_frostbite_aoe_chance", chance: 0.015 },
           },
         },
+      },
+      {
+        key: "frostbound_titan", label: "Frostbound Titan", size: "small", dmgType: "physical", role: "melee",
+        capstone: true,
+        skills: {
+          a: {
+            key: "glacial_slam", name: "Glacial Slam", icon: "🧊",
+            trigger: "on_hit",
+            desc: "On hit, chance to stun the target for 1 round.",
+            procBase: 0.20, procMax: 0.50,
+            effect: { type: "stun", duration: 1 },
+          },
+          b: {
+            key: "frozen_armor", name: "Frozen Armor", icon: "❄️",
+            trigger: "on_hit_received",
+            desc: "On hit received, chance to reduce damage taken by 20% for 1 round.",
+            procBase: 0.25, procMax: 0.65,
+            effect: { type: "dmg_reduce", value: 0.20, duration: 1 },
+          },
+          c: {
+            key: "eternal_winter", name: "Eternal Winter", icon: "🌨️",
+            trigger: "round_end",
+            desc: "Each round, chance to apply Frostbite to ALL enemies.",
+            procBase: 0.20, procMax: 0.50,
+            effect: { type: "per_round_frostbite_aoe_chance", chance: 0.20 },
+          },
+        },
+        tiers: [
+          { label: "Frostbound Titan", desc: "An ancient of the ice given a name and a will — it does not tire, and it does not thaw.", dmgLo: 32, dmgHi: 35, def: 40, hp: 52, siege: 21, spd: 60 },
+        ],
       },
     ],
   },
@@ -863,6 +1133,36 @@ export const FACTION_TROOPS = {
           },
         },
       },
+      {
+        key: "bone_colossus", label: "Bone Colossus", size: "large", dmgType: "physical", role: "siege",
+        capstone: true,
+        skills: {
+          a: {
+            key: "bone_crush", name: "Bone Crush", icon: "💀",
+            trigger: "on_hit",
+            desc: "On hit, chance to ignore 20% of target's DEF.",
+            procBase: 0.25, procMax: 0.60,
+            effect: { type: "ignore_def_pct", value: 0.20 },
+          },
+          b: {
+            key: "undying_guard", name: "Undying Guard", icon: "🦴",
+            trigger: "on_hit_received",
+            desc: "On hit received, chance to reduce damage taken by 20% for 1 round.",
+            procBase: 0.25, procMax: 0.65,
+            effect: { type: "dmg_reduce", value: 0.20, duration: 1 },
+          },
+          c: {
+            key: "necrotic_dominion", name: "Necrotic Dominion", icon: "☠️",
+            trigger: "round_start",
+            desc: "On round start, gain 20% resistance to all damage types this round.",
+            procBase: 1.0, procMax: 1.0,
+            effect: { type: "dmg_type_resist_all", value: 0.20 },
+          },
+        },
+        tiers: [
+          { label: "Bone Colossus", desc: "The Necropolis's mightiest reclamation — bones of a thousand fallen bound into one.", dmgLo: 500, dmgHi: 540, def: 110, hp: 1900, siege: 850, spd: 35 },
+        ],
+      },
     ],
   },
 };
@@ -881,12 +1181,14 @@ export function resolveTroopBranch(troopRef) {
 export function resolveTroopTier(troopRef) {
   const branch = resolveTroopBranch(troopRef);
   if (!branch) return null;
+  if (branch.capstone) return branch.tiers[0] ?? null;
   const idx = (troopRef?.tier ?? 1) - 1;
   return branch.tiers[Math.min(idx, 2)] ?? null;
 }
 
-// Get skills for a tier (0=lv1, 1=lv2, 2=lv3)
+// Get skills for a tier (0=lv1, 1=lv2, 2=lv3). Capstone branches always field all 3.
 export function getTierSkills(branch, tierIndex) {
+  if (branch.capstone) return [branch.skills.a, branch.skills.b, branch.skills.c];
   if (tierIndex === 0) return [branch.skills.a];
   if (tierIndex === 1) return [branch.skills.b];
   return [branch.skills.a, branch.skills.b];

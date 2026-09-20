@@ -676,14 +676,16 @@ export function quarterMaxLevel(slot, hqLvl) {
 const B1_MAX = [0, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6];
 const B2_MAX = [0, 0, 1, 1, 2, 3, 4, 4, 5, 5, 6];
 const B3_MAX = [0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6];
+const B4_MAX = [0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 6];
 
-export const BRANCH_UNLOCK_Q = [1, 2, 5];
+export const BRANCH_UNLOCK_Q = [1, 2, 5, 9];
 
 export function branchMaxLevel(branchIdx, quarterLvl) {
   const q = Math.min(10, Math.max(0, quarterLvl || 0));
   if (branchIdx === 0) return B1_MAX[q];
   if (branchIdx === 1) return B2_MAX[q];
   if (branchIdx === 2) return B3_MAX[q];
+  if (branchIdx === 3) return B4_MAX[q];
   return 0;
 }
 
