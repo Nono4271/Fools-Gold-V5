@@ -8,6 +8,30 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Chat system: World / Faction / Crew / DM / Group (new)
+
+New feature, built against today's reality: there is no real multiplayer server yet (that's the last roadmap item, "a ways away"). The only real player is the local user (id `"player"`); everyone else is a simulated AI (`ai_<faction>_<i>`, `shared/utils/worldTiles.js` `aiPlayerId`) with simulated crews (`shared/utils/aiCrews.js`). So the design is rules-in-`shared/`, wiring-in-`src/`, same split the rest of the codebase uses — a real server can adopt the exact same channel/message/permission functions later with zero rewrite.
+
+**`shared/constants/chat.js`** — channel types (`world`/`faction`/`crew`/`dm`/`group`), message shape (`{id, channelId, senderId, senderName, text, ts}`), `MESSAGE_MAX_LEN` (280) and `POST_COOLDOWN_MS` (unused today, left for a server to enforce).
+
+**`shared/utils/chatRules.js`** — pure, framework-free:
+- `aiFactionOf(playerId)` reads the faction straight off an AI id (`"ai_ashen_dead_0"` → `"ashen_dead"`; faction keys with an underscore are handled). `factionOf(playerId, ctx)` adds `ctx.factions` (a `{playerId: facKey}` map) for the real player, who has no such id.
+- `canPost(playerId, channel, ctx)`: world = anyone; faction = `factionOf(playerId) === channel.faction`; crew = `crew.members.includes(playerId)` (crew looked up from `ctx.crews` by `channel.crewId`); dm/group = `channel.participants.includes(playerId)`. Unknown channel types always reject.
+- `createMessage`, `createDmChannel` (deterministic id from the sorted pair, so the same two players always land in the same DM), `createGroupChannel`.
+- `resolveChannelsFor(playerId, {crews, factions, dms, groups})` — every channel a player currently sees: world, their faction (if resolvable), every crew they're in, every DM/group they participate in.
+
+**`shared/utils/aiChatter.js`** — deterministic, seedable flavor-message generator for AI players so World/Faction/Crew don't sit empty. Templated text (6ish lines per faction, faction-flavored; a small set of crew-banter templates), picked with the same seeded LCG already used in `src/workers/spawn.worker.js` (`seededRng`/`hashStr`, duplicated here rather than imported from a worker). NOT a live LLM call — cheap and testable. `eligibleAiSenders(channel, ctx)` picks which AI ids may speak in a channel (all AI for world, same-faction AI for faction, crew members for crew); `generateAiChatter` picks a sender + line and returns a message via `createMessage`, or `null` when nobody's eligible (e.g. an empty crew). `aiDisplayName("ai_pirates_3")` → `"Raider 3"` for UI display (this codebase has no AI display-name scheme yet; crew UI just shows the raw id today).
+
+**`src/hooks/useChat.js`** — wires the above into local React state (`messages`, `dms`, `groups`). **LOCAL PERSISTENCE ONLY, and in fact no persistence at all right now**: state lives in memory for the tab's lifetime and does not survive a reload. This was a deliberate choice, not an oversight — the rest of `src/hooks/` has *no* save/load pattern to match yet (confirmed: zero `localStorage`/`indexedDB` usage anywhere in the repo; ReadMeAI itself already notes "there is no save system yet" for forts). **TODO before/during the multiplayer transition: give chat real persistence** (and, once the server exists, move message storage server-side). A `setInterval` (45s, gated on `screen === "game"`, same gating pattern as `useFortRemovals`) generates AI flavor chatter into World/Faction/Crew.
+
+**`src/components/game/ChatPanel.jsx`** — tabs for World/Faction/Crew/DMs/Groups, a channel list + message view + compose box, inline "start a DM" (pick one known player) and "start a group" (pick 2+) pickers. Styled to match the existing dark-fantasy panel look (`CrewPanel.jsx` conventions: fixed slide-in panel, gold/`Cinzel` text, tab bar). **Not yet wired into `Game.jsx`** — nothing in Game.jsx imports or renders it, and no button opens it; that wiring (plus supplying real `crews`/`aiPlayerIds`/`playerFacKey` props) is left for the owner or a follow-up pass.
+
+Explicitly out of scope (per the brief): no real backend/socket/server integration, no moderation/profanity filtering, `aiCrews.js`'s crew-formation logic untouched (only crew membership is read).
+
+**Tests:** `tests/chatRules.test.js` (14) — channel-permission checks for all 5 types incl. a rejected case for each (wrong faction, not in the crew, not a dm/group participant, unknown channel type), DM/group channel creation (dedupe, deterministic DM id, default group name), and `resolveChannelsFor` for both the real player and an AI id. Suite: 271 pass, 0 fail (ran with a real `npm install` this time — no `esbuild`/`pixi.js` fails). `npm run build` clean.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Camps now spread across each region instead of clustering at its keep
 
 **Problem (from an on-device screenshot):** every camp of a region used the region-centre as its `findCampSlot` anchor, so all 30-50 camps packed into the nearest free tiles around the keep. Measured on a generated map: median distance from the keep 4 tiles, max ~6, mean nearest-neighbour distance ~1 tile.

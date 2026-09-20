@@ -1,25 +1,20 @@
-# What changed in this zip (vs. the previous zip)
+# Chat system — files
 
-Bug fix on top of the live-map camp wiring: camps could have landed on
-water, mountains, roads, or gotten overwritten by a keep/HQ, because they
-were placed too early in map generation — before those things existed yet.
+New files (drop into matching paths in your repo):
+- shared/constants/chat.js
+- shared/utils/chatRules.js
+- shared/utils/aiChatter.js
+- src/hooks/useChat.js
+- src/components/game/ChatPanel.jsx
+- tests/chatRules.test.js
 
-## Files in this zip
+Edited (appended a dated entry at the top):
+- ReadMeAI.md
 
-- **`src/workers/mapGen.worker.js`** — moved camp placement to run LAST
-  (after keeps, HQs, roads, and the P10-P13 special tiles are all final),
-  and added a check that now rejects water, mountains, roads, keeps, HQs,
-  and border/gate tiles when picking a camp's spot.
-- **`shared/utils/campPlacement.js`** — the placement-search helper can now
-  take that extra "is this spot blocked" check, on top of what it already
-  checked.
-- **`tests/campPlacement.test.js`** — 1 new test for the above.
-- **`ReadMeAI.md`** — new dated entry explaining the fix, plus a note that
-  camp structure art now joins the neutral units and Ancients (T4) on the
-  list of art still needed once your ChatGPT usage resets.
+Not done: ChatPanel isn't wired into Game.jsx yet (no import, no open button, no real
+crews/aiPlayerIds/playerFacKey passed in). `npm test` (271 pass) and `npm run build`
+both clean after `npm install`.
 
-## Bottom line
-
-Camps can no longer overlap water, roads, keeps, or HQs — verified in
-tests, not yet eyeballed on a phone (still recommend that once art exists).
-240/240 tests pass, build is clean.
+Note: chat state is in-memory only (no save/reload persistence) — this was a deliberate
+call since the rest of the codebase has no local persistence pattern yet. Flagged in
+ReadMeAI.md as a TODO before/during the multiplayer transition.
