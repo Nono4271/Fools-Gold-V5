@@ -660,7 +660,7 @@ function drawAllPropsNoScatter(gfx, tiles, rMin, rMax, cMin, cMax) {
       const base = cy - 4 + TH * 0.5; // tile surface centre (sy + TH/2)
       const color = tile.rss === "wood"  ? 0x2a7a20
                   : tile.rss === "stone" ? 0x8a8a9a
-                  : tile.rss === "gas"   ? 0xd4a020  // was checking the old "ore" prop — gas replaced it
+                  : tile.rss === "gas"   ? 0x3ad966  // green pool, matches the new gas prop art
                   :                        0xc87830; // food
       gfx.beginFill(color, 0.90);
       // 4-vertex isometric diamond — 2 triangles, EARCUT trivial for n=4
@@ -946,133 +946,100 @@ function drawRssProp(gfx, rss, cx, sy, c, r, pl) {
     }
 
   } else if (rss === "gas") {
+    // ── Shared wisp helper — curling green vapor rising from a point ─────────
+    // wsc scales the whole wisp; each entry is two chained cubic-bezier
+    // segments (mirrors the S-curl used in the approved concept mockup).
+    function drawGasWisps(ox, oy, wsc) {
+      const wisps = [
+        { d: [-8,-14, 2,-24, -6,-34, -14,-44, -2,-50, -8,-60], w: 4, color: 0x3ad966, alpha: 0.60 },
+        { d: [ 8,-14,-2,-24,  6,-34,  14,-44,  2,-50,  8,-60], w: 3, color: 0x7af08c, alpha: 0.50 },
+        { d: [ 0,-16, 0,-26,  0,-40,   0,-50,  0,-58,  0,-70], w: 2, color: 0xc6ffcf, alpha: 0.55 },
+      ];
+      wisps.forEach(w => {
+        const [c1x,c1y,c2x,c2y,ex,ey,c3x,c3y,c4x,c4y,fx,fy] = w.d;
+        gfx.lineStyle(w.w*wsc, w.color, w.alpha);
+        gfx.moveTo(ox, oy);
+        gfx.bezierCurveTo(ox+c1x*wsc, oy+c1y*wsc, ox+c2x*wsc, oy+c2y*wsc, ox+ex*wsc, oy+ey*wsc);
+        gfx.bezierCurveTo(ox+c3x*wsc, oy+c3y*wsc, ox+c4x*wsc, oy+c4y*wsc, ox+fx*wsc, oy+fy*wsc);
+        gfx.lineStyle(0);
+        gfx.beginFill(w.color, w.alpha*0.9); gfx.drawCircle(ox, oy, w.w*wsc*0.5); gfx.endFill();
+      });
+    }
+    // Shared pool — a dark, faintly green-glowing pool the gas seeps out of.
+    function drawGasPool(px, py, prx, pry) {
+      gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(px, py+pry*0.3, prx*1.25, pry*0.9); gfx.endFill();
+      gfx.beginFill(0x0c1a10); gfx.drawEllipse(px, py, prx, pry); gfx.endFill();
+      gfx.beginFill(0x1e8a3c, 0.22); gfx.drawEllipse(px, py, prx, pry); gfx.endFill();
+    }
+
     if (pl >= 22) {
-      // ── P12/P13: Mine shaft ───────────────────────────────────────────────
+      // ── P12/P13: Gas Refinery ────────────────────────────────────────────
       const tierScale = pl >= 25 ? 3.5 : 2.8;
       const sc = TH * 0.45 / 88 * tierScale;
-      const numShafts = pl >= 25 ? 2 : 1;
-      // ground shadow
-      gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(cx, base, 62*sc, 13*sc); gfx.endFill();
-      function drawShaft(sx, sbase) {
-        const ew=44*sc, eh=50*sc, ex=sx-ew*0.5-4*sc, ey=sbase-eh-8*sc;
-        gfx.beginFill(0x1a1810); gfx.drawRect(ex-4*sc, ey-4*sc, ew+8*sc, eh+4*sc); gfx.endFill();
-        gfx.beginFill(0x4a3018); gfx.drawRect(ex-2*sc, ey, 6*sc, eh); gfx.endFill();
-        gfx.beginFill(0x5a3820); gfx.drawRect(ex-2*sc, ey, 3*sc, eh); gfx.endFill();
-        gfx.beginFill(0x4a3018); gfx.drawRect(ex+ew-4*sc, ey, 6*sc, eh); gfx.endFill();
-        gfx.beginFill(0x5a3820); gfx.drawRect(ex+ew-4*sc, ey, 3*sc, eh); gfx.endFill();
-        gfx.beginFill(0x3a2410); gfx.drawRect(ex-4*sc, ey-8*sc, ew+8*sc, 10*sc); gfx.endFill();
-        gfx.beginFill(0x5a3820); gfx.drawRect(ex-4*sc, ey-8*sc, ew+8*sc, 4*sc); gfx.endFill();
-        gfx.beginFill(0x080604); gfx.drawRect(ex+2*sc, ey+2*sc, ew-4*sc, eh-2*sc); gfx.endFill();
-        gfx.beginFill(0x180e06, 0.9); gfx.drawRect(ex+2*sc, ey+2*sc, ew-4*sc, eh-2*sc); gfx.endFill();
-        gfx.beginFill(0xb47828, 0.08); gfx.drawEllipse(sx, ey+eh*0.3, 12*sc, 8*sc); gfx.endFill();
-        gfx.lineStyle(2*sc, 0x3a2410, 1);
-        gfx.moveTo(ex+2*sc, ey+eh*0.4); gfx.lineTo(ex+ew-4*sc, ey+eh*0.5); gfx.lineStyle(0);
-        // cart
-        const cartx=sx+20*sc, carty=sbase-14*sc;
-        gfx.beginFill(0x3a2010); gfx.drawCircle(cartx-8*sc, carty+4*sc, 5*sc); gfx.endFill();
-        gfx.beginFill(0x5a3828); gfx.drawCircle(cartx-8*sc, carty+4*sc, 3*sc); gfx.endFill();
-        gfx.beginFill(0x3a2010); gfx.drawCircle(cartx+8*sc, carty+4*sc, 5*sc); gfx.endFill();
-        gfx.beginFill(0x5a3828); gfx.drawCircle(cartx+8*sc, carty+4*sc, 3*sc); gfx.endFill();
-        gfx.beginFill(0x2a1e0c); gfx.drawRect(cartx-14*sc, carty-10*sc, 28*sc, 14*sc); gfx.endFill();
-        gfx.beginFill(0x3a2c14); gfx.drawRect(cartx-14*sc, carty-10*sc, 3*sc, 14*sc); gfx.endFill();
-        gfx.beginFill(0x3a2c14); gfx.drawRect(cartx+11*sc, carty-10*sc, 3*sc, 14*sc); gfx.endFill();
-        gfx.beginFill(0x3a2c14); gfx.drawRect(cartx-14*sc, carty-10*sc, 28*sc, 3*sc); gfx.endFill();
-        [0,1,2,3,4,5].forEach(i => {
-          const ox=cartx-10*sc+(i%3)*7*sc, oy=carty-14*sc-Math.floor(i/3)*4*sc;
-          gfx.beginFill(0x1e1c14); gfx.drawEllipse(ox,oy+2*sc,4*sc,2*sc); gfx.endFill();
-          gfx.beginFill(i%2===0?0xc89030:0xf0c040); gfx.drawEllipse(ox,oy,4*sc,2.5*sc); gfx.endFill();
-          gfx.beginFill(0xf8e080); gfx.drawEllipse(ox-1*sc,oy-0.8*sc,1.5*sc,1*sc); gfx.endFill();
-        });
-        // rails
-        gfx.lineStyle(1.5*sc, 0x3a3020, 1);
-        gfx.moveTo(ex+4*sc, sbase+2*sc); gfx.lineTo(cartx+20*sc, sbase+2*sc);
-        gfx.moveTo(ex+4*sc, sbase+6*sc); gfx.lineTo(cartx+20*sc, sbase+6*sc);
-        for (let ri=0;ri<5;ri++){const rx2=ex+8*sc+ri*18*sc; gfx.moveTo(rx2,sbase); gfx.lineTo(rx2,sbase+8*sc);}
+      const twoTanks = pl >= 25;
+      const poolX = cx - 6*sc, poolY = base - 6*sc;
+      drawGasPool(poolX, poolY, 34*sc, 13*sc);
+      // storage tank(s) with glowing level windows
+      function drawTank(tx, tbase, tw, th, glowColor) {
+        gfx.beginFill(0x4a4a48); gfx.drawRoundedRect(tx-tw*0.5, tbase-th, tw, th, tw*0.15); gfx.endFill();
+        gfx.beginFill(0x0c1a10); gfx.drawRoundedRect(tx-tw*0.3, tbase-th*0.8, tw*0.6, th*0.55, tw*0.1); gfx.endFill();
+        gfx.beginFill(glowColor, 0.85); gfx.drawRect(tx-tw*0.26, tbase-th*0.42, tw*0.52, th*0.32); gfx.endFill();
+        gfx.beginFill(0x3a3228); gfx.drawCircle(tx+tw*0.28, tbase-th*0.92, tw*0.14); gfx.endFill();
+      }
+      if (twoTanks) {
+        drawTank(cx-38*sc, base-2*sc, 22*sc, 30*sc, 0x3ad966);
+        drawTank(cx+34*sc, base-8*sc, 24*sc, 38*sc, 0x7af08c);
+        gfx.lineStyle(3*sc, 0x3a3228, 1);
+        gfx.moveTo(cx-27*sc, base-24*sc); gfx.lineTo(cx+22*sc, base-30*sc);
+        gfx.lineStyle(0);
+      } else {
+        drawTank(cx+30*sc, base-4*sc, 24*sc, 36*sc, 0x3ad966);
+        gfx.lineStyle(3*sc, 0x3a3228, 1);
+        gfx.moveTo(poolX+20*sc, base-10*sc); gfx.lineTo(cx+22*sc, base-16*sc);
         gfx.lineStyle(0);
       }
-      if (numShafts === 1) {
-        drawShaft(cx-4*sc, base);
-      } else {
-        // P13: two shafts side by side, second offset and smaller
-        drawShaft(cx-18*sc, base);
-        drawShaft(cx+22*sc, base);
-      }
+      // flare stack with a big wispy plume
+      const stackX = cx - 2*sc, stackTop = base - 30*sc;
+      gfx.beginFill(0x3a3228); gfx.drawRect(stackX-2.5*sc, stackTop, 5*sc, 30*sc); gfx.endFill();
+      drawGasWisps(stackX, stackTop, sc * 1.15);
+      // ambient leak wisps around the base
+      drawGasWisps(poolX-24*sc, base-4*sc, sc * 0.6);
+      drawGasWisps(poolX+30*sc, base+2*sc, sc * 0.55);
     } else if (pl >= 16) {
-      // ── P10/P11: Smelter ──────────────────────────────────────────────────
+      // ── P10/P11: Gas Well ─────────────────────────────────────────────────
       const tierScale = pl >= 19 ? 2.2 : 1.7;
       const sc = TH * 0.45 / 88 * tierScale;
-      const numFurnaces = pl >= 19 ? 2 : 1;
-      // ground shadow
-      gfx.beginFill(0x000000, 0.28); gfx.drawEllipse(cx, base, 60*sc, 13*sc); gfx.endFill();
-      // ash/slag
-      gfx.beginFill(0x281e14, 0.60); gfx.drawEllipse(cx+5*sc, base, 28*sc, 7*sc); gfx.endFill();
-      function drawFurnace(fx2, fbase) {
-        const fw=36*sc, fh=52*sc, flx=fx2-fw*0.5, fly=fbase-fh-8*sc;
-        // shadow
-        gfx.beginFill(0x1a1610); gfx.drawPolygon([flx,fly+fh, flx-6*sc,fly+fh+4*sc, flx-6*sc,fly+8*sc, flx,fly]); gfx.endFill();
-        // body
-        gfx.beginFill(0x2e2820); gfx.drawRect(flx,fly,fw,fh); gfx.endFill();
-        // block seams
-        gfx.lineStyle(1*sc, 0x1e1810, 1);
-        gfx.moveTo(flx,fly+fh*0.33); gfx.lineTo(flx+fw,fly+fh*0.33);
-        gfx.moveTo(flx,fly+fh*0.66); gfx.lineTo(flx+fw,fly+fh*0.66);
-        gfx.moveTo(flx+fw*0.5,fly); gfx.lineTo(flx+fw*0.5,fly+fh);
-        gfx.lineStyle(0);
-        // top
-        gfx.beginFill(0x3e3830); gfx.drawRect(flx,fly-6*sc,fw,6*sc); gfx.endFill();
-        gfx.beginFill(0x504840); gfx.drawPolygon([flx,fly-6*sc, flx+fw,fly-6*sc, flx+fw+4*sc,fly-10*sc, flx+4*sc,fly-10*sc]); gfx.endFill();
-        // fire mouth
-        const mw=20*sc, mh=16*sc, mx2=flx+fw*0.5-mw*0.5, my2=fly+fh-mh-4*sc;
-        gfx.beginFill(0x0a0604); gfx.drawRect(mx2,my2,mw,mh); gfx.endFill();
-        gfx.beginFill(0xff5000, 0.15); gfx.drawEllipse(mx2+mw*0.5,my2+mh*0.5,mw*0.9,mh*0.9); gfx.endFill();
-        gfx.beginFill(0xff8c00, 0.25); gfx.drawEllipse(mx2+mw*0.5,my2+mh*0.5,mw*0.6,mh*0.6); gfx.endFill();
-        gfx.beginFill(0xffb400, 0.35); gfx.drawEllipse(mx2+mw*0.5,my2+mh*0.5,mw*0.35,mh*0.35); gfx.endFill();
-        gfx.beginFill(0xffe064, 0.80); gfx.drawCircle(mx2+mw*0.5, my2+mh*0.5, 2*sc); gfx.endFill();
-        // chimney
-        gfx.beginFill(0x1e1810); gfx.drawRect(fx2-4*sc, fly-22*sc, 8*sc, 18*sc); gfx.endFill();
-        gfx.beginFill(0x2e2820); gfx.drawRect(fx2-2*sc, fly-22*sc, 4*sc, 18*sc); gfx.endFill();
-        // smoke
-        for (let si=0; si<5; si++) {
-          const sp=si/4; const sy2=fly-22*sc-sp*18*sc; const ssx=fx2+Math.sin(sp*3)*4*sc;
-          gfx.beginFill(0x3c3228, (1-sp)*0.28); gfx.drawCircle(ssx,sy2,(3+sp*4)*sc); gfx.endFill();
-        }
-        // glow on ground
-        gfx.beginFill(0xff6400, 0.07); gfx.drawEllipse(fx2, fbase-2*sc, 18*sc, 5*sc); gfx.endFill();
-        // ingot mould beside
-        const ix=fx2+20*sc, iy=fbase-10*sc;
-        gfx.beginFill(0x1e1c14); gfx.drawRect(ix-10*sc,iy-4*sc,20*sc,8*sc); gfx.endFill();
-        [[ix-6*sc,iy-2*sc,0xc89030],[ix+2*sc,iy-3*sc,0xd4a020]].forEach(([ingx,ingy,col]) => {
-          gfx.beginFill(0x1a1810); gfx.drawRect(ingx-4*sc,ingy,8*sc,4*sc); gfx.endFill();
-          gfx.beginFill(col); gfx.drawRect(ingx-4*sc,ingy-3*sc,8*sc,4*sc); gfx.endFill();
-          gfx.beginFill(0xf0d060); gfx.drawRect(ingx-4*sc,ingy-3*sc,3*sc,2*sc); gfx.endFill();
-        });
-      }
-      if (numFurnaces === 1) {
-        drawFurnace(cx-6*sc, base);
-      } else {
-        // P11: two furnaces
-        drawFurnace(cx-22*sc, base);
-        drawFurnace(cx+18*sc, base);
-      }
+      const poolX = cx - 4*sc, poolY = base - 4*sc;
+      drawGasPool(poolX, poolY, 30*sc, 12*sc);
+      // simple wooden collection frame straddling the pool
+      gfx.lineStyle(3*sc, 0x5a4a34, 1);
+      gfx.moveTo(poolX-22*sc, base+2*sc); gfx.lineTo(poolX-10*sc, base-26*sc);
+      gfx.moveTo(poolX+24*sc, base+2*sc); gfx.lineTo(poolX+10*sc, base-26*sc);
+      gfx.moveTo(poolX-16*sc, base-10*sc); gfx.lineTo(poolX+18*sc, base-10*sc);
+      gfx.lineStyle(0);
+      gfx.beginFill(0x3a3228); gfx.drawRoundedRect(poolX-8*sc, base-32*sc, 16*sc, 10*sc, 2*sc); gfx.endFill();
+      // small holding tank with a glowing window
+      const tx = poolX+30*sc, tbase = base+4*sc;
+      gfx.beginFill(0x4a4a48); gfx.drawRoundedRect(tx-8*sc, tbase-22*sc, 16*sc, 22*sc, 2.5*sc); gfx.endFill();
+      gfx.beginFill(0x3ad966, 0.8); gfx.drawRect(tx-4*sc, tbase-14*sc, 8*sc, 8*sc); gfx.endFill();
+      gfx.lineStyle(2.5*sc, 0x3a3228, 1);
+      gfx.moveTo(poolX+8*sc, base-24*sc); gfx.lineTo(tx, tbase-22*sc);
+      gfx.lineStyle(0);
+      // uncontained wisps still escaping around the rig
+      drawGasWisps(poolX-20*sc, base-2*sc, sc * 0.75);
+      drawGasWisps(poolX+2*sc, base-30*sc, sc * 0.55);
     } else {
-      // ── P2–P9: original nugget ────────────────────────────────────────────
-      const rx = s * 0.14 * sizeMult, ry = s * 0.10 * sizeMult;
-      const nx = cx + (rnd()-0.5)*s*0.06;
-      const ny = base - ry*0.3;
-      gfx.beginFill(0x000000, 0.20); gfx.drawEllipse(nx, ny+ry*0.6, rx*1.2, ry*0.45); gfx.endFill();
-      gfx.beginFill(0x1e1c14); gfx.drawEllipse(nx, ny+ry*0.5, rx*1.1, ry*0.5); gfx.endFill();
-      gfx.beginFill(0x4a2e08); gfx.drawEllipse(nx, ny, rx, ry*0.85); gfx.endFill();
-      gfx.beginFill(0xc89030); gfx.drawEllipse(nx-rx*0.1, ny-ry*0.12, rx*0.75, ry*0.65); gfx.endFill();
-      gfx.beginFill(0xf0d060); gfx.drawEllipse(nx-rx*0.22, ny-ry*0.28, rx*0.38, ry*0.30); gfx.endFill();
-      gfx.beginFill(0xfffce0, 0.45); gfx.drawEllipse(nx-rx*0.25, ny-ry*0.30, nx*0.28, ry*0.18); gfx.endFill();
-      gfx.beginFill(0x64c8ff, 0.70); gfx.drawCircle(nx-rx*0.12, ny-ry*0.05, s*sizeMult*0.012); gfx.endFill();
-      gfx.beginFill(0x64c8ff, 0.70); gfx.drawCircle(nx+rx*0.08, ny+ry*0.05, s*sizeMult*0.010); gfx.endFill();
+      // ── P2–P9: Gas Pool ───────────────────────────────────────────────────
+      const prx = s * 0.14 * sizeMult, pry = s * 0.10 * sizeMult;
+      const px = cx + (rnd()-0.5)*s*0.06;
+      const py = base - pry*0.3;
+      drawGasPool(px, py, prx, pry);
+      drawGasWisps(px, py - pry*0.3, sizeMult * 0.55);
       if (sizeMult > 0.60) {
-        const rx2 = rx*0.52, ry2 = ry*0.52;
-        const nx2 = nx + rx*0.9, ny2 = ny + ry*0.3;
-        gfx.beginFill(0x1e1c14); gfx.drawEllipse(nx2, ny2+ry2*0.5, rx2*1.1, ry2*0.5); gfx.endFill();
-        gfx.beginFill(0x4a2e08); gfx.drawEllipse(nx2, ny2, rx2, ry2*0.85); gfx.endFill();
-        gfx.beginFill(0xc89030); gfx.drawEllipse(nx2-rx2*0.1, ny2-ry2*0.12, rx2*0.75, ry2*0.65); gfx.endFill();
+        const prx2 = prx*0.55, pry2 = pry*0.55;
+        const px2 = px + prx*1.1, py2 = py + pry*0.3;
+        drawGasPool(px2, py2, prx2, pry2);
+        drawGasWisps(px2, py2 - pry2*0.3, sizeMult * 0.35);
       }
     }
 
