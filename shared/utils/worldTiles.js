@@ -31,6 +31,7 @@ export function createTileMap(arrays, meta) {
     COLS: C, ROWS: R, regionList, keepMeta,
     TERRAIN_DEC, RSS_DEC, OWNER_DEC,
     F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_WIN, F_GATE, F_BORDER,
+    F_CAMP, F_CAMPPART, campMeta,
   } = meta;
 
   // One shared prototype for the garrisonDefeated getter (no per-tile getters).
@@ -55,15 +56,18 @@ export function createTileMap(arrays, meta) {
     const isKeepPart = !!(flags & F_KEEPPART);
     const isHQ = !!(flags & F_HQ);
     const isHQPart = !!(flags & F_HQPART);
+    const isCamp = !!(flags & F_CAMP);
+    const isCampPart = !!(flags & F_CAMPPART);
 
     let keepPrimaryKey = null;
-    if (isKeepPart || isHQPart) {
+    if (isKeepPart || isHQPart || isCampPart) {
       const pi = keepPrimArr[idx];
       if (!keepPrimKeyCache[pi]) keepPrimKeyCache[pi] = `${pi % C},${Math.floor(pi / C)}`;
       keepPrimaryKey = keepPrimKeyCache[pi];
     }
 
     const km = (isKeep && keepMeta[k]) ? keepMeta[k] : null;
+    const cm = (isCamp && campMeta?.[k]) ? campMeta[k] : null;
     const owner = OWNER_DEC[ownerArr[idx]] || null;
     // HQ faction for border colouring ("player" placeholder for the player's own HQ).
     let faction = null;
@@ -87,13 +91,18 @@ export function createTileMap(arrays, meta) {
     tile.hasAiCommander = false;
     tile.siege = siegeArr[idx];
     tile.siegeMax = siegeMaxArr[idx];
-    tile.garrisonWaves = km?.garrisonWaves ?? 1;
+    tile.garrisonWaves = km?.garrisonWaves ?? cm?.garrisonWaves ?? 1;
     tile.defeatedWaves = [];
     tile.resetAt = null;
     tile.isKeep = isKeep;
     tile.isKeepPart = isKeepPart;
     tile.isHQ = isHQ;
     tile.isHQPart = isHQPart;
+    tile.isCamp = isCamp;
+    tile.isCampPart = isCampPart;
+    tile.campName = cm?.campName ?? null;
+    tile.campUnitKey = cm?.campUnitKey ?? null;
+    tile.campFaction = cm?.campFaction ?? null;
     tile.isWin = !!(flags & F_WIN);
     tile.isGate = !!(flags & F_GATE);
     tile.isBorder = !!(flags & F_BORDER);
@@ -214,8 +223,8 @@ export function primaryAiFaction(aiFactions, playerAlignment) {
 // Unowned P3–P10 tiles with no special flags, as "c,r|regionKey" (spawn worker input).
 export function spawnEligibleKeys(arrays, meta, regionByIdx) {
   const { ownerArr, powerArr, regionArr, flagArr } = arrays;
-  const { COLS: C, ROWS: R, OWNER_DEC, F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_GATE, F_BORDER } = meta;
-  const blocked = F_HQ | F_HQPART | F_KEEP | F_KEEPPART | F_GATE | F_BORDER;
+  const { COLS: C, ROWS: R, OWNER_DEC, F_KEEP, F_KEEPPART, F_HQ, F_HQPART, F_GATE, F_BORDER, F_CAMP, F_CAMPPART } = meta;
+  const blocked = F_HQ | F_HQPART | F_KEEP | F_KEEPPART | F_GATE | F_BORDER | (F_CAMP||0) | (F_CAMPPART||0);
   const keys = [];
   for (let r = 0; r < R; r++) {
     for (let c = 0; c < C; c++) {
