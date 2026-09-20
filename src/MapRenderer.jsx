@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle, memo }
 import * as PIXI from "pixi.js";
 import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
-import {isInSpawnVisualArea, sameTerritory, resourceFootprint} from "./utils/spawnVisualTest.js";
+import {isInSpawnVisualArea, sameTerritory, resourceFootprint, hqNeighborVisualOffset, selectionEdgesBesideHq} from "./utils/spawnVisualTest.js";
 import {softenTerritoryColor} from "./utils/hqTerrainStyle.js";
 import {createResourceSpriteCache} from "./utils/resourceSprites.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
@@ -1510,7 +1510,11 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const targetH = targetW * 0.80;
 
   const spriteX = bx + off.xOff;
-  const spriteY = sPt.cy - elev + TH * 0.60 + off.yOff;
+  // The approved square Pirate sprite uses its visible base as the ground
+  // anchor. Align that base with the south point of the 3x3 footprint.
+  const spriteY = useApprovedPirateArt
+    ? worldCY + TH * 2 + off.yOff
+    : sPt.cy - elev + TH * 0.60 + off.yOff;
 
   if (blendWithTerrain) {
     const shadow = new PIXI.Graphics();
@@ -2075,9 +2079,18 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       } else {
         const hw = TW / 2;
         const hh = TH / 2;
-        const TOP = [cx, mid-hh, cx+hw, mid, cx, mid+hh, cx-hw, mid];
+        const TOP = [[cx,mid-hh],[cx+hw,mid],[cx,mid+hh],[cx-hw,mid]];
+        const visibleEdges = selectionEdgesBesideHq(sc,sr,tilesRef.current);
         selGfx.lineStyle(1.5, 0xf0eedb, 0.92);
-        selGfx.drawPolygon(TOP);
+        if (visibleEdges.every(Boolean)) {
+          selGfx.drawPolygon(TOP.flat());
+        } else {
+          for (let i=0;i<4;i++) if (visibleEdges[i]) {
+            const a=TOP[i], b=TOP[(i+1)%4];
+            selGfx.moveTo(a[0],a[1]);
+            selGfx.lineTo(b[0],b[1]);
+          }
+        }
         selGfx.lineStyle(0);
       }
     }
@@ -2220,12 +2233,13 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
             const baked=resourceSpriteCache.get(tile.rss,pl);
             if(!baked)continue;
             const footprint=resourceFootprint(c,r,tile);
+            const away=hqNeighborVisualOffset(c,r,tiles,pl>=10?22:18);
             const sprite=visualPropsPool.pop()??new PIXI.Sprite();
             sprite.texture=baked.texture;
             sprite.scale.set(1);
             sprite.anchor.set(baked.anchorX,baked.anchorY);
-            sprite.position.set(footprint.x,footprint.y);
-            sprite.zIndex=footprint.y;
+            sprite.position.set(footprint.x+away.x,footprint.y+away.y);
+            sprite.zIndex=footprint.y+away.y;
             visualPropsContainer.addChild(sprite);
           }
         }

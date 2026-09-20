@@ -10,6 +10,17 @@ Branch: codex/core-fixes-20260919
 
 ## 2026-09-20 — Codex
 
+### HQ centering and neighboring-tile presentation
+- Corrected the approved Pirate HQ's ground anchor: its visible base now reaches the true south point of the 3x3 HQ footprint instead of sitting almost one tile too high.
+- Resource props on tiles immediately beside an HQ remain visible and keep their gameplay tile, but their artwork shifts slightly outward to prevent tall clusters crossing the base wall.
+- A selected tile beside an HQ keeps its full-size outline but omits only the edge shared with the HQ border. Other edges remain unchanged.
+- Created a more realistic, desaturated Pirate HQ revision as a chat preview. It is not installed until the user approves it.
+- No resources, tile positions, relocation rules, ownership, rates or hit areas changed.
+
+---
+
+## 2026-09-20 — Codex
+
 ### Approved Pirate HQ art and removal of the rejected clearance ring
 - Restored every resource prop outside the actual HQ footprint; removed the one-tile hiding rule and its obsolete test.
 - Restored full tile selection diamonds beside HQs. Existing ground-selection layering remains below props and buildings.
