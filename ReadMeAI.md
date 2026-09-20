@@ -130,8 +130,9 @@ change.
   25-tile test radius around the random player spawn. Full-world conversion,
   more terrain/prop variation, crossings, gates, keeps and seven faction bases
   remain.
-- **Commander map visuals:** circular commander portraits render and move on
-  the map. Purpose-built map sprites are still required.
+- **Commander map visuals:** Redwake Fynn and Admiral Brine have purpose-built
+  walking/standing map sprites. Other commanders still use circular portraits and
+  need their own sprites.
 - **Multiplayer:** WebSocket sessions and broadcasts exist for selected tile,
   siege and fort changes. Authority, persistence, identity, reconnect recovery
   and scaling are incomplete.
@@ -254,9 +255,20 @@ change.
   style, chapter locks and play flow.
 - **DONE:** March routes use dotted lines, repeated directional arrows and a
   clear target endpoint.
-- Create purpose-built commander sprites for the world map.
+- **IN PROGRESS:** Redwake Fynn and Admiral Brine map sprites are complete;
+  create purpose-built sprites for the remaining commanders.
 - Create sprites for all remaining mobs/neutral encounters.
 - Create sprites for keeps and blend them with the new map style.
+
+---
+
+## 2026-09-20 — Codex
+
+### Commander walking and HQ deployment correction
+- Fixed Fynn/Brine sliding: the asynchronously loaded atlas frames were attached to a discarded copy, leaving the live sprite permanently on its first frame. The displayed entry now receives all 24 frames and cycles through the five walking poses.
+- HQ hiding now follows deployment state. An undeployed commander at an HQ/HQ-part tile is hidden; any active march remains visible while leaving, crossing, or returning over the HQ artwork. After arrival home ends the march, the commander hides again.
+- No path, speed, arrival, recall, battle or ownership rules changed.
+- Validation: nine focused commander tests pass, including delayed atlas loading; production build passes.
 
 ---
 

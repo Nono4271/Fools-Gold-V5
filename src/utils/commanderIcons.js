@@ -30,7 +30,8 @@ export function drawCommanderIcons({PIXI, gfx, textCont, cmds, tiles, byTile, sp
       if (textCont) {
         const atlas = commanderAtlas(cmd);
         if (atlas) {
-          entry = {...makeAtlasEntry(PIXI,atlas,textCont),col};
+          entry = makeAtlasEntry(PIXI,atlas,textCont);
+          entry.col = col;
         } else if (cmd.bust) {
           const tex = PIXI.Texture.from(cmd.bust);
           const sprite = new PIXI.Sprite(tex);
@@ -74,7 +75,7 @@ export function drawCommanderIcons({PIXI, gfx, textCont, cmds, tiles, byTile, sp
     const { cx, cy } = isoXY(tile.c, tile.r);
     const elev = tile.isWin ? 10 : 4;
     const sy = cy - elev;
-    const outside = tileCmds.filter(c=>!commanderInsideHQ(c,tiles,c.march?posMap.get(c.uid):null));
+    const outside = tileCmds.filter(c=>!commanderInsideHQ(c,tiles));
     const playerG  = outside.filter(c => c.owner === 'player');
     const allAiG   = outside.filter(c => c.owner !== 'player');
     const crewG    = allAiG.filter(c => { const pid = c.ownerPlayerId || aiPlayerIdMap?.get(key); return pid && crewPids?.has(pid); });

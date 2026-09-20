@@ -50,3 +50,20 @@ test('HQ hides existing icons and removes their base markers',()=>{
   delete context.tiles['1,1'].isHQ;draw();assert.equal(context.spriteMap.get(cmd.uid).sprite.visible,true);
   clearCommanderIcons(context.spriteMap);
 });
+
+test('late atlas loading attaches walking frames to the displayed commander',()=>{
+  const base={valid:false,once(_event,callback){this.finish=callback;},off(){}};
+  class FakeTexture { constructor(baseTexture,frame){this.baseTexture=baseTexture;this.frame=frame;} destroy(){} }
+  FakeTexture.EMPTY={};FakeTexture.from=()=>({baseTexture:base});
+  class FakeSprite { constructor(texture){this.texture=texture;this.anchor={set(){}};this.visible=true;this.destroyed=false;} destroy(){this.destroyed=true;} }
+  class FakeRectangle { constructor(x,y,width,height){Object.assign(this,{x,y,width,height});} }
+  const cmd={uid:'atlas',id:'h1',tk:'1,1',owner:'player',march:{}};
+  const gfx=new Graphics(),textCont={addChild(){}};
+  const spriteMap=new Map();
+  drawCommanderIcons({PIXI:{Texture:FakeTexture,Sprite:FakeSprite,Rectangle:FakeRectangle},gfx,textCont,cmds:[cmd],tiles:{'1,1':{c:1,r:1}},byTile:{'1,1':[cmd]},spriteMap,posMap:new Map([['atlas',{px:100,py:100}]]),crewPids:new Set(),facKey:'pirates',aiPlayerIdMap:new Map(),isoXY:()=>({cx:100,cy:100}),TH:40});
+  const displayed=spriteMap.get('atlas');
+  assert.equal(displayed.frames,null);
+  Object.assign(base,{width:1536,height:1024});base.finish();
+  assert.equal(displayed.frames.length,24);
+  clearCommanderIcons(spriteMap);
+});

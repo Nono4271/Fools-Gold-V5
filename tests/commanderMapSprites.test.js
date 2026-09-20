@@ -1,21 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {commanderAtlas,commanderInsideHQ,facingRow,animationColumn} from '../src/utils/commanderMapSprites.js';
-import {isoXY} from '../shared/constants/geometry.js';
 test('both pirates use atlases, including AI instances with replaced IDs',()=>{
   assert.ok(commanderAtlas({id:'h1'}));assert.ok(commanderAtlas({id:'h13'}));
   assert.ok(commanderAtlas({id:'ai_cmd1',bust:'/commanders/h13_admiral_brine_bust.webp'}));
   assert.equal(commanderAtlas({id:'h14'}),null);
 });
-test('HQ centre and all footprint tiles hide idle and interpolated marching commanders',()=>{
+test('HQ hides only undeployed commanders; every active march remains visible',()=>{
   const tiles={};for(let c=8;c<=12;c++)for(let r=8;r<=12;r++)tiles[`${c},${r}`]={c,r,isHQ:c===10&&r===10,isHQPart:Math.abs(c-10)<=1&&Math.abs(r-10)<=1};
   const cmd={tk:'10,10'};assert.equal(commanderInsideHQ(cmd,tiles),true);
-  cmd.march={};for(const key of ['10,10','11,10','12,10']){
-    const t=tiles[key],p=isoXY(t.c,t.r);
-    assert.equal(commanderInsideHQ(cmd,tiles,{px:p.cx,py:p.cy-4}),key!=='12,10');
-  }
-  cmd.tk='12,10';const home=isoXY(10,10);
-  assert.equal(commanderInsideHQ(cmd,tiles,{px:home.cx,py:home.cy-4}),true);
+  cmd.march={};assert.equal(commanderInsideHQ(cmd,tiles),false);
+  cmd.tk='11,10';assert.equal(commanderInsideHQ(cmd,tiles),false);
+  cmd.tk='12,10';assert.equal(commanderInsideHQ(cmd,tiles),false);
   cmd.march=null;assert.equal(commanderInsideHQ(cmd,tiles),false);
 });
 test('walking changes frames, arrival returns to standing, facing remains stable while stopped',()=>{

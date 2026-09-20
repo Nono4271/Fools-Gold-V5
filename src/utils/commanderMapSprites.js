@@ -1,23 +1,16 @@
-import {TW, TH, isoXY} from '../../shared/constants/geometry.js';
-
 export function commanderAtlas(cmd) {
   if (cmd.id === 'h1' || cmd.bust?.includes('h1_redwake_fynn')) return '/commanders/map/h1-walk-v1.png';
   if (cmd.id === 'h13' || cmd.bust?.includes('h13_admiral_brine')) return '/commanders/map/h13-walk-v1.png';
   return null;
 }
 
-// Worker coordinates are tile origins, interpolated continuously between centres.
-export function commanderInsideHQ(cmd, tiles, position) {
+// A commander is hidden only while undeployed at home. An active march stays
+// visible even while its route visually overlaps the large HQ artwork.
+export function commanderInsideHQ(cmd, tiles) {
   const tile = tiles[cmd.tk];
   if (!tile) return true;
-  if (!cmd.march || !position) return Boolean(tile.isHQ || tile.isHQPart);
-  const origin = isoXY(tile.c, tile.r);
-  const dx = (position.px-origin.cx)/(TW/2);
-  const dy = (position.py+(tile.isWin?10:4)-origin.cy)/(TH/2);
-  const c = Math.round(tile.c+(dx+dy)/2);
-  const r = Math.round(tile.r+(dy-dx)/2);
-  const at = tiles[`${c},${r}`];
-  return Boolean(at?.isHQ || at?.isHQPart);
+  if (cmd.march) return false;
+  return Boolean(tile.isHQ || tile.isHQPart);
 }
 
 export function facingRow(dx, dy, previous = 0) {
