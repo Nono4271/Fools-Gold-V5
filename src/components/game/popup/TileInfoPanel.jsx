@@ -33,6 +33,7 @@ export default memo(function TileInfoPanel({
   const titleLabel = selTile.isWin   ? "⚜ The Holy Grail"
     : selTile.isGate && selTile.crossingType === "crossing" ? `🌊 ${selTile.keepName || "River Crossing"}`
     : selTile.isGate && selTile.crossingType === "tunnel"   ? `⛰ ${selTile.keepName || "Tunnel Gate"}`
+    : selTile.isCamp  ? `🏕 ${selTile.campName || "Camp"}`
     : selTile.isKeep  ? `🏰 ${selTile.keepName || selTile.regionName + " Keep"}`
     : selTile.isRuin  ? "🏚 Ruin"
     : selTile.isHQ    ? "🏰 Headquarters"
