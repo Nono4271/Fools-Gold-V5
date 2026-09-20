@@ -163,9 +163,8 @@ change.
 
 - `src/Game.jsx` owns too many unrelated systems and large mutable/ref-backed
   maps. Split domain state before adding server authority.
-  **In progress (Claude):** steps 1–4 of 10 done — see the dated entry below.
-  Remaining: dragon egg/stamina ticks, AI crews ticker, reinforcement marches,
-  tactics (gather/recon/sweep), map init, game screen JSX.
+  **Done (Claude):** 10-step split — see the dated entry below. Next: timer
+  catch-up after phone lock/backgrounding. State still lives in `Game.jsx`.
 - Game rules are divided between React callbacks, hooks and workers. Move every
   multiplayer-sensitive rule into shared deterministic functions callable by
   the server.
@@ -261,27 +260,44 @@ change.
 
 ## 2026-09-20 — Claude (Opus)
 
-### Game.jsx split, steps 1–4 (troop slots, relocation, consumables, tile timers)
-Owner-approved plan: split `src/Game.jsx` one system at a time. Rules go to pure functions in `shared/utils/` (for the future server). React wiring goes to `src/hooks/`. Next comes timer catch-up after phone lock or backgrounding (no save system yet). The split does not change behavior, except for the deletion timer fix below. `Game.jsx` went from 3,228 to 2,887 lines.
+### Game.jsx split complete (steps 1–10) + army Confirm and reinforcement fixes
+Owner-approved plan: split `src/Game.jsx` one system at a time. Pure rules go to `shared/utils/` (for the future server) and React wiring goes to `src/hooks/`. After the split comes timer catch-up after phone lock/backgrounding (no save system yet). The split keeps behavior the same except for the fixes listed below. `Game.jsx` went from 3,228 to 1,432 lines; it now holds state, derived values, remaining actions (march/recall/forts/tile click) and screen routing. State (`useState`) stays in `Game.jsx` for now; hooks receive state and setters as arguments.
 
-| Step | Rules (pure) | Hook | Game.jsx exports kept |
+| Step | Rules (pure) | Hook | Exposed to Game.jsx |
 |---|---|---|---|
-| 1 Troop slots | `shared/utils/troopSlots.js` | `src/hooks/useTroopSlots.js` | `setTroopSlot`, `assignTroops`, `returnTroops` |
-| 2 HQ relocation | added to `shared/utils/relocation.js` (`checkPlannedRelocation`, `hqMovePatches`, `allHqKeyList`, `RELOCATION_COOLDOWN_MS`) | `src/hooks/useRelocation.js` | `performRelocation`, `onForcedRelocate` |
-| 3 Consumables | `shared/utils/consumables.js` (`consumeOne`, `restoreOne`, `speedUpBuildings`, `expediteBuilding`, `extendRssBoost`, `withRssBoosts`) | `src/hooks/useConsumables.js` | `useConsumable`, `onExpedience` |
-| 4 Tile timers | `shared/utils/tileTimers.js` (`pruneProtections`, `deletionStatus`, `abandonedTilePatch`, `TILE_PROTECTION_MS`, `TILE_DELETE_MS`) | `src/hooks/useTileTimers.js` | `registerProtection` |
+| 1 Troop slots | `shared/utils/troopSlots.js` | `src/hooks/useTroopSlots.js` | `setTroopSlot`, `setArmySlots` (new), `assignTroops`, `returnTroops` |
+| 2 HQ relocation | `shared/utils/relocation.js` (`checkPlannedRelocation`, `hqMovePatches`, `allHqKeyList`) | `src/hooks/useRelocation.js` | `performRelocation`, `onForcedRelocate` |
+| 3 Consumables | `shared/utils/consumables.js` | `src/hooks/useConsumables.js` | `useConsumable`, `onExpedience` |
+| 4 Tile timers | `shared/utils/tileTimers.js` | `src/hooks/useTileTimers.js` | `registerProtection` |
+| 5 Egg/stamina/gather/training ticks | `shared/utils/tactics.js` | `src/hooks/useTacticTicks.js` | — (effects only) |
+| 6 AI crews | `shared/utils/aiCrews.js` | `src/hooks/useAiCrews.js` | — (effect only) |
+| 7 Reinforcements | `shared/utils/reinforcements.js` | `src/hooks/useReinforcements.js` | `startReinforcement` |
+| 8 Tactics | `shared/utils/tactics.js` | `src/hooks/useTactics.js` | `onQuickGather`, `onRecon`, `onGather`, `onSweep`, `onLongMarch`, `onQuickMarch` |
+| 9 World generation | `shared/utils/worldTiles.js` (`createTileMap` Proxy tile map, `stampPlayerHq`, `aiHqKeysByFaction`, `initialAiCommanders`, `crewFounders`, `primaryAiFaction`, `spawnEligibleKeys`) | `src/hooks/useMapInit.js` (mapGen worker, world reset, `mapReady`) | — (effects only) |
+| 10 Game screen layout | — | `src/GameView.jsx` (all in-game JSX; receives ~220 props from `Game.jsx`) | `<GameView {...} />` |
 
-State (`useState`) stays in `Game.jsx` for now. The hooks receive state and setters as arguments.
+`shared/utils/resourceIncome.js` now exports `TILE_RATE_BY_PL`, which replaces two copies that were in `Game.jsx`. The on-screen perf logger (`perfLog`, `PerfOverlay`) moved to `src/utils/perfLog.jsx`.
 
-**Fix: tile abandonment took 15 seconds, not 5 minutes.** The tile popup showed a 5:00 countdown, but `Game.jsx` finished the deletion after 15000 ms. The countdown now uses `TILE_DELETE_MS` (5 min), which matches the locked owner decision. Section 2 below had marked this complete.
+**Adding something to the game screen:** declare it in `Game.jsx`, add it to the `<GameView {...{ }} />` list at the bottom, and to the destructure at the top of `GameView.jsx`. A missing prop is not a build error; it fails at runtime. Check with a script that lists unbound identifiers, such as `@babel/traverse` scope bindings.
+
+**Fixes (behavior changes):**
+- **Army Confirm:** `HQMenu.jsx` `ManageShipScreen` now calls `setArmySlots(uid, slots)` once. It returns the commander's current troops, then draws each slot in order, limited by the pool and the command cap. Previously it called `setTroopSlot` three times with a stale pool, so clearing slot 1 shifted the other slots and could draw or return the wrong troops. `setTroopSlot` is kept for single-slot edits in TilePopup.
+- **Tile abandonment:** now takes the 5 minutes the locked owner decision requires. The code used 15 s while the popup counted down from 5:00.
+- **AI crews:** several AIs joining the same crew in one tick all stay. Previously each joiner overwrote the last, so crews grew by only 1 per tick, and every tick re-rendered even when nothing changed.
+- **Reinforcements:** returning troops now go to the current HQ. The HQ key was fixed when the effect started, so it pointed at the old HQ after a relocation.
+- **Stamina regen:** now uses the current max. It had used the max from when the game started, missing tome upgrades.
+- **Sweep battle log:** now shows the resource rewards that were actually credited. They were rolled a second time just for the log.
+- **Reinforcement sizes:** arriving troops now go into the slot of their own type (or a free slot) and use their real command size (small 0.01 / medium 0.02 / large 0.25). Previously all troops counted as small and were spread across every slot, including slots of other types. The reinforce panel's max also uses the real size and only that troop type's barracks count (it used the all-types total), and a march never takes more troops than that type has. Rules: `reinforcementRoom`, `mergeReinforcement`, `commandUsed` in `shared/utils/reinforcements.js`; UI in `BottomPanel.jsx`.
+- `BottomPanel.jsx` troop label showed a literal "2014" where an em dash was intended.
 
 **Found, not changed:**
-- The army Confirm button calls `setTroopSlot` once per slot, using the same stale pool each time. Clearing slot 1 of 3 shifts the later slots, which can return or draw the wrong troops. The fix is one atomic "set all slots" rule; waiting for the owner's OK.
-- Resource boosts (`withRssBoosts`) are only rechecked when `Game.jsx` re-renders, so an expired boost can linger until the next render. This will be handled in the timer catch-up pass.
+- `TilePopup.jsx` has its own copy of the training XP table (`POWER_COMMAND`).
+- Resource boosts are only rechecked when `Game.jsx` re-renders. The timer pass will handle this.
+- Side effects (floaty, `setDragonEggs`, `setTroopCounts`) still run inside some `setState` updaters. This is harmless without StrictMode; a server port should compute results first.
 
-**Tests:** `tests/troopSlots.test.js` (7) and `tests/splitRules.test.js` (10). All 135 tests pass and the build passes.
+**Tests:** `tests/troopSlots.test.js` (12), `tests/splitRules.test.js` (23), `tests/worldTiles.test.js` (4). All 157 tests pass and the build passes. The reinforce panel was also rendered server-side: with 100 Gunners and a cap of 5 it shows Max 150 and "Barracks 1,000" (the Gunner count).
 
-**Browser smoke test:** the cloud browser can now run the full game with Chromium flags `--use-gl=swiftshader --enable-unsafe-swiftshader`. Each batch gets the same check: start a game, idle 35 s past the 30 s tickers, open every menu (HQ, Reports, Summon, Commander, Bag and its Consumables tab, Ranks, Crew), then pan. No page errors; the only console errors are the expected offline WebSocket errors.
+**Browser checks:** the cloud browser runs the full game with Chromium flags `--use-gl=swiftshader --enable-unsafe-swiftshader`. Each batch gets the same smoke test: start a game, wait past the 30 s tickers, open every menu, then pan. There were no page errors; the only console errors are the expected offline WebSocket ones. AI crews filled to 40/40 plus 9 after one tick. Army edit, end to end: assigned 200 Deckhands, then Confirm; barracks went from 2,000 to 1,800; a second Confirm without changes left it at 1,800.
 
 ---
 
