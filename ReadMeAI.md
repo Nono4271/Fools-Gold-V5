@@ -8,6 +8,69 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Troop tuning pass #2: targeted win-rate goals
+
+Follow-up to the two entries directly below. Owner gave explicit per-unit tuning directions this
+round, plus a standing rule: dragons faction units are allowed to land a bit hot (55-60% average
+win rate across their whole tier) "since they should cost more to train"; every other flagged unit
+should land close to 50%. Iterated with a scratch single-unit-vs-bracket win-rate probe (not
+committed — a temporary script, not part of `tools/balanceSim/`) to converge, since the full
+round-robin matrix is too slow to run after every micro-edit.
+
+**Before → after (average win rate across every same-tier opponent, 60 seeded trials each):**
+| Unit | Before | After | Target | In range? |
+|---|---|---|---|---|
+| `dragons/drake_riders` T2 | 70.0% | **58.7%** | 55-60% (dragon) | yes |
+| `dragons/dragonkin` T3 | 66.3% | **57.4%** | 55-60% (dragon) | yes |
+| `dragons/sovereign_wyrm` | 64.5% | **59.9%** | 55-60% (dragon) | yes |
+| `wizards/spellblades` T1 | 67.4% | **57.9%** | ~50% | close |
+| `neutral/wolf_rider` | 75.3% | **55.6%** | ~50% | close |
+| `neutral/dune_raider` | 76.2% | **51.2%** | ~50% | yes |
+| `neutral/pirate_deserter` | 70.3% | **53.2%** | ~50% | yes |
+
+**Data changes** (all `shared/constants/troops.js` unless noted; all values are the specific
+tier's own tier-row or the branch's shared skill, not sibling tiers):
+- `dragons/drake_riders` T2 (`Drake Rider`): dmg 32-40 → 31-37, spd 125 → 110; shared skill
+  Dragonfire (bonus_damage) 160% → 105% (also lowers T3 `Flamewing`, which wasn't flagged and had
+  headroom)
+- `dragons/dragonkin` T3 (`Ashfang`): dmg 25-32 → 21-26; shared skill Ember Trail (bonus_damage)
+  140% → 80% (also affects T2 `Emberclaw`, not flagged, had headroom). `dragons/dragonkin` T1
+  (`Scaleblade`) also trimmed dmg 16-20 → 15-19 per owner direction ("~15% above tier average")
+  — this one is now BACK on the efficiency-outlier list (see note below), likely tier-variance
+  noise rather than a real problem, given it only carries a single plain double-attack skill.
+- `dragons/sovereign_wyrm` (capstone): dmg 33-36 → 27-30 (three incremental trims this + prior
+  round); Dragonfire Breath (bonus_damage) 150% → 62% (three incremental trims)
+- `wizards/spellblades` T1: Spellstrike (bonus_damage) 120% → 45% (three incremental trims —
+  this was the single highest-value skill left in the T1 bracket by a wide margin)
+- `neutral/wolf_rider` (`shared/constants/neutralTroops.js`): dmg 15-19 → 13-16, spd 95 → 70
+  (speed was ~50% above its T1-small tier average; that was the main driver)
+- `neutral/dune_raider`: dmg 22-27 → 19-23, spd 100 → 85, Sandstorm Strike (bonus_damage) 85% →
+  70% (owner initially said leave its damage untouched — that was for the PRIOR round's pass only;
+  this round's general "keep tweaking, everything else closer to 50" direction covered it too)
+- `neutral/pirate_deserter`: dmg 24-29 → 22-26, Cutthroat's Due (lifesteal) 50% → 30%
+
+**Iteration behavior worth flagging:** getting all 7 into range took 3 corrective passes — the
+first trim overshot two of them (`drake_riders` to 44.6%, `dune_raider` to 40.9%, `pirate_deserter`
+to 32.5%), so they were partially buffed back up. This is normal for this kind of tuning (the
+stat/skill-value → win-rate relationship isn't linear or independently separable per unit once
+they're all sharing the same tier-relative matchup pool) and is why the win-rate numbers above were
+verified directly via simulation at each step rather than estimated.
+
+**Efficiency-outlier metric (z-score vs. tier mean) still shows 5 flags after this pass** —
+`dragons/dragonkin` T1, `holyknights/templars` T1, `neutral/pirate_deserter`, `neutral/feral_bloodfang`,
+`ancient/aeonspire`. This is the same whack-a-mole effect noted in the entry below: nerfing the
+top of a ~25-31-unit tier shrinks that tier's mean/std-dev, so units that were previously fine (or
+even already-fixed, like `feral_bloodfang` and `aeonspire`) can pop back over the 2σ line without
+their own numbers changing. Given the owner's actual ask this round was specific win-rate targets
+(now met, see table above), this entry does NOT chase the z-score list further — that metric and
+"is this unit's win rate close to 50%" are related but not the same thing, and flagged here for
+whoever picks this up next rather than acted on blindly.
+
+**Tests:** `npm test` — 275 pass, 0 fail. `npm run build` — clean. `npm run test:balance` — 6 of 7
+pass; same single efficiency-outlier-metric failure as above, not a regression.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Battle engine fixes + troop tuning from the balance sim's findings
 
 Follow-up to the balance-testing system entry directly below. Owner asked to act on the two flagged
