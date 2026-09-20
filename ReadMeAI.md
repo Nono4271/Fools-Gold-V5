@@ -188,6 +188,57 @@ file — it's used by another component in the same file).
 
 ---
 
+## 2026-09-19 — Claude (Sonnet), session 2
+
+### Fix: leftover "ore" prop where "gas" belongs (tiles, AI economy, spawn rewards)
+Context: `ore` was renamed to `gas` as a resource type at some point, but a
+few spots never got updated and still reference the old name/shape. Note
+the current canonical resource set is **stone, wood, gas, food** —
+`resourceIncome.js` and `mapGen.worker.js`'s `RSS_ENC`/`RSS_DEC` confirm
+this; freshly generated tiles never get `rss: "ore"` at all anymore.
+
+**File:** `src/MapRenderer.jsx` (~line 663) — the tile highlight/glow color
+picker still explicitly checked `tile.rss === "ore"` (dead — no tile can
+have that value) and lumped **both** `"gas"` and `"food"` tiles into one
+leftover default color (mislabeled `// gas` in the comment). Fixed: gas
+now gets its own explicit color (reusing the old ore color, since gas
+visually replaced ore — see the "Mine shaft" prop art for gas tiles), food
+gets a new distinct color instead of silently sharing gas's.
+
+**File:** `src/hooks/useAI.js` (`tickAiRss`, the per-second AI faction
+resource tick) — this was a real functional bug, not just cosmetic: it
+computed `gas: p.ore + 5` and `food: p.gas + 5` (reading from the wrong/
+nonexistent prop), then returned `gas: Math.min(9990000, n.ore)` (`n.ore`
+was never set on `n` at all — this evaluated to `NaN`) and `food:
+Math.min(9990000, n.gas)` (returned gas's value instead of food's). Net
+effect: **AI factions' gas income was broken (NaN) and food silently
+mirrored gas.** Fixed to read/write the correct `gas`/`food` keys
+throughout. Confirmed the default shape used elsewhere (`Game.jsx`'s
+`setAiRssMap`, `gameLoop.worker.js`) is already `{stone,wood,gas,food}` —
+no `ore` — so this fix matches the real shape.
+
+**File:** `src/utils/spawnUtils.js` — `RSS_TYPES` (the reward-type pool for
+defeating spawn commanders) was `["gas","wood","stone","ore"]`, missing
+`food` entirely and still offering the dead `ore` type as a reward.
+Changed to `["gas","wood","stone","food"]`.
+
+**Comments only (no logic change):** stale `{stone,wood,ore,gas}` shape
+comments in `Game.jsx` (`aiRssMapRef`) and `gameLoop.worker.js`
+(`rssUpdates`) corrected to `{stone,wood,gas,food}` to match reality.
+
+**Left alone (dead code, out of scope):** `MapRenderer.jsx` line ~39 has
+an unused `RC` resource-color palette object still keyed `wood/stone/ore/
+gas` (no `food`) — grepped the whole file and confirmed `RC` is never
+referenced anywhere, so it's inert. Left as-is to keep this change
+targeted; flag for cleanup whenever that file gets touched next.
+
+### Fix: Commander and Battle Reports shared the same icon
+**File:** `src/components/game/GameBar.jsx` — both the "Reports" button
+(opens Battle Log) and the "Commander" button used icon `⚔`. Changed
+Commander's icon to `🎖` so they're visually distinct. Reports keeps `⚔`.
+
+---
+
 ## Guidelines for future changes made by other AI tools
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
