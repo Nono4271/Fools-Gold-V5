@@ -308,7 +308,7 @@ function tickAiEcon() {
 
   const cmdUpdates   = []; // { uid, troops, troopBranch, unspentSkillPoints, skillPoints }
   const poolUpdates  = {}; // { fk: newPool }
-  const rssUpdates   = {}; // { fk: { stone, wood, ore, gas } }
+  const rssUpdates   = {}; // { fk: { stone, wood, gas, food } }
   const bldgUpdates  = {}; // { fk: { ...bldgs } }
 
   for (const fk of aiFactionKeys) {
