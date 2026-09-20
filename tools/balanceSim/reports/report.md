@@ -1,6 +1,6 @@
 # Battle Balance Report
 
-Generated: 2026-09-20T23:16:29.998Z
+Generated: 2026-09-20T23:27:13.494Z
 
 - Units in catalog: **99** (80 faction branches, 15 neutrals, 4 Ancients)
 - Budget per side: **500** command points, **60** seeded trials per matchup
@@ -11,15 +11,14 @@ Generated: 2026-09-20T23:16:29.998Z
 
 | Bracket | Unit | Efficiency | Tier mean | Tier std dev | Z-score |
 |---|---|---|---|---|---|
-| T1 | dragons/dragonkin T1 | 0.244 | 0.094 | 0.069 | 2.17 |
-| T1 | holyknights/templars T1 | 0.234 | 0.094 | 0.069 | 2.02 |
-| T2 | neutral/pirate_deserter | 0.257 | 0.088 | 0.081 | 2.08 |
-| T2 | neutral/feral_bloodfang | 0.306 | 0.088 | 0.081 | 2.69 |
-| T4 | ancient/aeonspire | 0.251 | 0.099 | 0.075 | 2.04 |
+| T1 | holyknights/templars T1 | 0.235 | 0.091 | 0.064 | 2.28 |
+| T2 | dragons/drake_riders T2 | 0.250 | 0.085 | 0.073 | 2.27 |
+| T2 | neutral/pirate_deserter | 0.258 | 0.085 | 0.073 | 2.38 |
+| T4 | ancient/aeonspire | 0.427 | 0.113 | 0.112 | 2.81 |
 
 ## Same-tier matchup outliers (win rate >70% or <30%)
 
-**2382** of 2592 same-tier, same-budget matchups flagged.
+**2384** of 2592 same-tier, same-budget matchups flagged.
 
 This count is informational, not a pass/fail gate on its own — see the ReadMeAI entry for why (budget-normalized troop counts mean 1-branch-vs-1-branch fights are inherently rock/paper/scissors at scale; the gate is the per-unit efficiency check above).
 
