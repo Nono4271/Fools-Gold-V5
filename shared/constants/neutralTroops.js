@@ -62,18 +62,27 @@ export const NEUTRAL_TAGS = [
 ];
 
 // ── Region placement ──────────────────────────────────────────────────────
-// "south" | "mid" | "north" — roughly 5 units per band, mixing new-race and
-// renegade units in each band (not "all new races in one band"). Reasoning:
-//   - south: Sandrunner (desert) + the more coastal/southern-flavored
-//     renegades (a pirate deserter, a dragon poacher hunting wyrms, a grave
-//     robber looting old battlefields).
-//   - mid: Beastfolk (temperate wilds) + orc/wizard/holy-knight renegades,
-//     factions whose home territories sit centrally on the map.
-//   - north: Stoneborn (mountains) + the colder/darker renegades (coldborn
-//     exile, feral night-creature, a wizard's rogue battlemage counted with
-//     mid instead to keep the split even — see per-unit `region` below).
-//   This is a documented judgment call, not a locked design decision; it can
-//   be rebalanced later without any structural change.
+// "south" | "mid" | "north" ~ the map's bottom/middle/top thirds by row.
+// CORRECTED to match the real faction home coordinates in
+// `src/workers/mapGen.worker.js`'s `REGION_LIST`/`FACTION_REGIONS` (this
+// file's first pass, before any map-placement work existed, had guessed by
+// flavor alone and didn't track real geography — fixed once camp placement
+// made the mismatch matter):
+//   - All 8 faction home regions sit at the map's north/south edges, none
+//     in the middle third: coldborns + nightcreatures + dragons + wizards
+//     cluster in the TOP third (low row/cy); orcs + holyknights + pirates +
+//     ashen_dead cluster in the BOTTOM third (high row/cy). The middle
+//     third is contested/neutral ground (the Holy Grail + Dawngate/
+//     Twilightspire/Lastwatch/Finalhope sit there) — no faction owns it.
+//   - south (bottom third): the 4 bottom-cluster renegades (orc, holy-
+//     knight, pirate, ashen-dead) + Dune Raider (Sandrunner).
+//   - north (top third): the 4 top-cluster renegades (wizard, dragon,
+//     coldborn, nightcreature) + Ruin Colossus (Stoneborn).
+//   - mid (middle third, no faction ties): all 3 Beastfolk + the remaining
+//     Stoneborn (Rubble Warden) + the remaining Sandrunner (Scavenger
+//     Chief) — thematically "wild frontier between the kingdoms."
+//   Still a documented judgment call for WHICH single new-race unit joins
+//   north/south vs. mid, not a locked design decision.
 
 const RAT = {
   // large → medium → small ratio convention (see file header). Kept as named
@@ -146,7 +155,7 @@ export const NEUTRAL_TROOPS = [
     dmgType: "physical",
     role: "melee",
     tags: ["beast", "pack"],
-    region: "north",
+    region: "mid",
     desc: "A monstrous matriarch trailing a cloud of biting swarmwings — Beastfolk rally to her call.",
     stats: { dmgLo: 410, dmgHi: 435, def: 58, hp: 1150, siege: 520, spd: 58 },
     // Tag synergy — requires another Beast-tagged ally present to have any
@@ -172,7 +181,7 @@ export const NEUTRAL_TROOPS = [
     dmgType: "physical",
     role: "melee",
     tags: ["construct", "armored"],
-    region: "north",
+    region: "mid",
     desc: "A squat animate rubble-golem built to stand between its kin and harm.",
     stats: { dmgLo: 24, dmgHi: 29, def: 55, hp: 110, siege: 20, spd: 40 },
     // Tag synergy — requires another Construct-tagged ally present; on
@@ -251,7 +260,7 @@ export const NEUTRAL_TROOPS = [
     dmgType: "physical",
     role: "melee",
     tags: ["raider", "pack"],
-    region: "south",
+    region: "mid",
     desc: "A hardened warband leader who keeps their raiders alive by picking the battlefield clean.",
     stats: { dmgLo: 34, dmgHi: 40, def: 26, hp: 85, siege: 16, spd: 85 },
     // Tag synergy — on landing a hit, requires another Raider-tagged ally
@@ -304,7 +313,7 @@ export const NEUTRAL_TROOPS = [
     dmgType: "magical",
     role: "ranged",
     tags: ["renegade"],
-    region: "mid",
+    region: "north",
     desc: "Expelled from the Ethereal Vault for casting what the order forbade — and still casting it.",
     stats: { dmgLo: 24, dmgHi: 30, def: 26, hp: 50, siege: 18, spd: 75 },
     skills: {
@@ -327,7 +336,7 @@ export const NEUTRAL_TROOPS = [
     dmgType: "physical",
     role: "melee",
     tags: ["renegade"],
-    region: "mid",
+    region: "south",
     desc: "Cast out of their warband for a broken oath, now fighting for whoever pays.",
     stats: { dmgLo: 28, dmgHi: 34, def: 38, hp: 78, siege: 17, spd: 60 },
     skills: {
@@ -350,7 +359,7 @@ export const NEUTRAL_TROOPS = [
     dmgType: "physical",
     role: "ranged",
     tags: ["renegade"],
-    region: "south",
+    region: "north",
     desc: "Knows exactly where a dragon's scales run thin — and has made a grim trade of it.",
     stats: { dmgLo: 26, dmgHi: 33, def: 24, hp: 46, siege: 25, spd: 78 },
     skills: {
@@ -373,7 +382,7 @@ export const NEUTRAL_TROOPS = [
     dmgType: "physical",
     role: "melee",
     tags: ["renegade"],
-    region: "mid",
+    region: "south",
     desc: "Stripped of rank by the Sanctum, but the oath-magic in their blade never noticed.",
     stats: { dmgLo: 27, dmgHi: 34, def: 65, hp: 115, siege: 24, spd: 70 },
     skills: {
