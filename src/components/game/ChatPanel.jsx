@@ -1,6 +1,7 @@
-import { useState, useMemo, useRef, useEffect, memo } from "react";
+import { useState, useRef, useEffect, memo } from "react";
 import { aiDisplayName } from "../../../shared/utils/aiChatter.js";
 import { censorText } from "../../../shared/utils/profanity.js";
+import RelationsPanel from "./RelationsPanel.jsx";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    ChatPanel — World / Faction / Crew / DM / Group chat
@@ -27,12 +28,12 @@ const GOLD       = "#c8a060";
 const TEXT_SM    = { fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: ".04em" };
 const TEXT_XS    = { fontFamily: "'Cinzel',serif", fontSize: 7, letterSpacing: ".04em" };
 
-const CATEGORIES = [
-  { id: "world",  label: "World",  types: ["world"] },
-  { id: "faction", label: "Faction", types: ["faction"] },
-  { id: "crew",   label: "Crew",   types: ["crew"] },
-  { id: "dm",     label: "DMs",    types: ["dm"] },
-  { id: "group",  label: "Groups", types: ["group"] },
+// Two top-level displays, per the owner's spec: "Chats" (World/Faction/Guild,
+// with groups created and listed below Guild) and "Direct" (Relations
+// Management entry + DM channels). Replaces the old flat 5-tab bar.
+const DISPLAYS = [
+  { id: "chats",  label: "Chats" },
+  { id: "direct", label: "Direct" },
 ];
 
 function displayName(id, playerId, playerName, crews) {
@@ -40,6 +41,17 @@ function displayName(id, playerId, playerName, crews) {
   const ai = aiDisplayName(id);
   if (ai !== id) return ai;
   return id;
+}
+
+// The crew (if any) `id` belongs to, for the "[ABBR] Name" message tag —
+// crews already carry a 4-char `abbr` (see CrewPanel.jsx/aiCrews.js).
+function crewAbbrFor(id, crews) {
+  const crew = (crews || []).find(c => (c.members || []).includes(id));
+  return crew ? crew.abbr : null;
+}
+
+function taggedName(name, abbr) {
+  return abbr ? `[${abbr}] ${name}` : name;
 }
 
 function channelLabel(channel, playerId, playerName) {
@@ -70,25 +82,32 @@ export default memo(function ChatPanel({
   onClose, playerId = "player", playerName, channels, sendMessage, startDm, startGroup,
   getMessages, knownPlayerIds = [], crews = [],
   profanityFilterEnabled = true, setProfanityFilterEnabled,
+  // Relations (friends/blacklist) — rules in shared/utils/relationsRules.js,
+  // wired in via src/hooks/useRelations.js. Surfaced here as the "Direct"
+  // display's "Relations Management" entry.
+  nameOf, friends = [], blocked = [], incoming = [], outgoing = [],
+  addFriend, declineIncoming, cancelOutgoing, unfriend, blockPlayer, unblockPlayer, search,
 }) {
-  const [category, setCategory]   = useState("world");
+  const [display, setDisplay]     = useState("chats"); // "chats" | "direct"
   const [selectedId, setSelected] = useState(null);
   const [draft, setDraft]         = useState("");
-  const [picking, setPicking]     = useState(null); // "dm" | "group" | null
+  const [picking, setPicking]     = useState(false); // group-creation picker
   const [pickSel, setPickSel]     = useState([]);
   const [groupName, setGroupName] = useState("");
+  const [relationsOpen, setRelationsOpen] = useState(false);
 
-  const byCategory = useMemo(() => {
-    const out = {};
-    for (const cat of CATEGORIES) out[cat.id] = channels.filter(c => cat.types.includes(c.type));
-    return out;
-  }, [channels]);
+  const worldCh  = channels.filter(c => c.type === "world");
+  const factionCh = channels.filter(c => c.type === "faction");
+  const crewCh   = channels.filter(c => c.type === "crew");
+  const groupCh  = channels.filter(c => c.type === "group");
+  const dmCh     = channels.filter(c => c.type === "dm");
 
-  const list = byCategory[category] || [];
-  const active = list.find(c => c.id === selectedId) || list[0] || null;
+  const list = display === "chats" ? [...worldCh, ...factionCh, ...crewCh, ...groupCh] : dmCh;
+  const active = list.find(c => c.id === selectedId) || null;
   const msgs = active ? getMessages(active.id) : [];
 
   const otherKnownIds = knownPlayerIds.filter(id => id !== playerId);
+  const resolveName = nameOf || (id => displayName(id, playerId, playerName, crews));
 
   // Auto-scroll to the newest message on load, channel switch, or new arrival.
   // Messages themselves are stored uncensored (see useChat.js) — the filter
@@ -99,7 +118,11 @@ export default memo(function ChatPanel({
     if (el) el.scrollTop = el.scrollHeight;
   }, [msgs.length, active?.id]);
 
-  function openChannel(id) { setSelected(id); }
+  function switchDisplay(id) {
+    setDisplay(id); setSelected(null); setPicking(false); setRelationsOpen(false);
+  }
+
+  function openChannel(id) { setSelected(id); setRelationsOpen(false); }
 
   function handleSend() {
     if (!active || !draft.trim()) return;
@@ -112,14 +135,18 @@ export default memo(function ChatPanel({
   }
 
   function confirmPicker() {
-    if (picking === "dm" && pickSel[0]) {
-      const ch = startDm(pickSel[0]);
-      if (ch) { setCategory("dm"); setSelected(ch.id); }
-    } else if (picking === "group" && pickSel.length >= 2) {
+    if (pickSel.length >= 2) {
       const ch = startGroup(groupName, pickSel);
-      if (ch) { setCategory("group"); setSelected(ch.id); }
+      if (ch) { setDisplay("chats"); setSelected(ch.id); }
     }
-    setPicking(null); setPickSel([]); setGroupName("");
+    setPicking(false); setPickSel([]); setGroupName("");
+  }
+
+  // Relations panel's "Message" action on a friend — starts (or reopens) a
+  // DM and drops straight into it, closing Relations.
+  function handleMessageFriend(id) {
+    const ch = startDm(id);
+    if (ch) { setRelationsOpen(false); setSelected(ch.id); }
   }
 
   return (
@@ -162,15 +189,16 @@ export default memo(function ChatPanel({
         </div>
       </div>
 
-      {/* Category tabs */}
+      {/* Display toggle — "Chats" (World/Faction/Guild/Groups) vs "Direct"
+          (Relations Management + DMs) */}
       <div style={{ display: "flex", borderBottom: `1px solid ${BORDER_COL}`, flexShrink: 0 }}>
-        {CATEGORIES.map(cat => (
-          <button key={cat.id} onClick={() => { setCategory(cat.id); setSelected(null); setPicking(null); }} style={{
+        {DISPLAYS.map(d => (
+          <button key={d.id} onClick={() => switchDisplay(d.id)} style={{
             ...BTN_RESET, flex: 1, padding: "9px 0", ...TEXT_XS,
-            color: category === cat.id ? GOLD : "#4a5a6a",
-            borderBottom: category === cat.id ? `2px solid ${GOLD}` : "2px solid transparent",
-            background: category === cat.id ? "rgba(200,160,96,.06)" : "none",
-          }}>{cat.label}</button>
+            color: display === d.id ? GOLD : "#4a5a6a",
+            borderBottom: display === d.id ? `2px solid ${GOLD}` : "2px solid transparent",
+            background: display === d.id ? "rgba(200,160,96,.06)" : "none",
+          }}>{d.label}</button>
         ))}
       </div>
 
@@ -180,59 +208,111 @@ export default memo(function ChatPanel({
           width: 128, flexShrink: 0, minHeight: 0, overflowY: "auto", borderRight: `1px solid ${BORDER_COL}`,
           padding: 6, display: "flex", flexDirection: "column", gap: 4,
         }}>
-          {(category === "dm" || category === "group") && (
-            <button onClick={() => { setPicking(category); setPickSel([]); setGroupName(""); }} style={{
-              ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
-              background: "rgba(200,160,64,.12)", border: "1px solid #c8a06040",
-              color: GOLD, ...TEXT_XS,
-            }}>+ New {category === "dm" ? "DM" : "Group"}</button>
+          {display === "chats" && (
+            <>
+              {worldCh.map(ch => (
+                <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
+                  ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
+                  background: !relationsOpen && active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
+                  border: `1px solid ${!relationsOpen && active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
+                  color: !relationsOpen && active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>{channelLabel(ch, playerId, playerName)}</button>
+              ))}
+              {factionCh.map(ch => (
+                <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
+                  ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
+                  background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
+                  border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
+                  color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>{channelLabel(ch, playerId, playerName)}</button>
+              ))}
+              {crewCh.length === 0 && (
+                <div style={{ ...TEXT_XS, color: "#3a4050", padding: "10px 4px" }}>No guild yet</div>
+              )}
+              {crewCh.map(ch => (
+                <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
+                  ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
+                  background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
+                  border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
+                  color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>{channelLabel(ch, playerId, playerName)}</button>
+              ))}
+              <button onClick={() => { setPicking(true); setPickSel([]); setGroupName(""); setSelected(null); }} style={{
+                ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
+                background: "rgba(200,160,64,.12)", border: "1px solid #c8a06040",
+                color: GOLD, ...TEXT_XS,
+              }}>+ New Group</button>
+              {groupCh.map(ch => (
+                <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
+                  ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
+                  background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
+                  border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
+                  color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>{channelLabel(ch, playerId, playerName)}</button>
+              ))}
+            </>
           )}
-          {list.length === 0 && !picking && (
-            <div style={{ ...TEXT_XS, color: "#3a4050", padding: "10px 4px" }}>
-              {category === "faction" || category === "crew" ? "None yet" : "Nothing here"}
-            </div>
+          {display === "direct" && (
+            <>
+              <button onClick={() => { setRelationsOpen(true); setSelected(null); }} style={{
+                ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
+                background: relationsOpen ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
+                border: `1px solid ${relationsOpen ? "#c8a06050" : "#1e2028"}`,
+                color: relationsOpen ? GOLD : "#6a7a8a", ...TEXT_XS,
+              }}>⚙ Relations</button>
+              {dmCh.length === 0 && (
+                <div style={{ ...TEXT_XS, color: "#3a4050", padding: "10px 4px" }}>No DMs yet</div>
+              )}
+              {dmCh.map(ch => (
+                <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
+                  ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
+                  background: !relationsOpen && active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
+                  border: `1px solid ${!relationsOpen && active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
+                  color: !relationsOpen && active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>{channelLabel(ch, playerId, playerName)}</button>
+              ))}
+            </>
           )}
-          {list.map(ch => (
-            <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
-              ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
-              background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
-              border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-              color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-            }}>{channelLabel(ch, playerId, playerName)}</button>
-          ))}
         </div>
 
-        {/* Message view / picker */}
+        {/* Message view / group picker / relations */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
-          {picking ? (
+          {relationsOpen ? (
+            <RelationsPanel
+              onBack={() => setRelationsOpen(false)}
+              nameOf={resolveName}
+              friends={friends} blocked={blocked} incoming={incoming} outgoing={outgoing}
+              addFriend={addFriend} declineIncoming={declineIncoming} cancelOutgoing={cancelOutgoing}
+              unfriend={unfriend} blockPlayer={blockPlayer} unblockPlayer={unblockPlayer}
+              search={search} onMessage={handleMessageFriend}
+            />
+          ) : picking ? (
             <>
               {/* Scrollable rows; Cancel/Start are pinned in a footer below,
                   outside the scroll area, so they're always reachable even
                   with a long player list or a short viewport — same pattern
                   as the message view's compose bar. */}
               <div className="scr chat-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ ...TEXT_SM, color: GOLD }}>
-                  {picking === "dm" ? "Start a DM" : "Start a Group"}
-                </div>
-                {picking === "group" && (
-                  <input
-                    value={groupName} onChange={e => setGroupName(e.target.value)}
-                    placeholder="Group name" maxLength={24}
-                    style={{
-                      background: "rgba(255,255,255,.05)", border: "1px solid #2a3040", borderRadius: 4,
-                      padding: "7px 9px", color: "#c8c0b0", fontFamily: "'Cinzel',serif", fontSize: 10, outline: "none",
-                    }}
-                  />
-                )}
-                <div style={{ ...TEXT_XS, color: "#5a6a7a" }}>
-                  {picking === "dm" ? "Pick a player" : "Pick two or more players"}
-                </div>
+                <div style={{ ...TEXT_SM, color: GOLD }}>Start a Group</div>
+                <input
+                  value={groupName} onChange={e => setGroupName(e.target.value)}
+                  placeholder="Group name" maxLength={24}
+                  style={{
+                    background: "rgba(255,255,255,.05)", border: "1px solid #2a3040", borderRadius: 4,
+                    padding: "7px 9px", color: "#c8c0b0", fontFamily: "'Cinzel',serif", fontSize: 10, outline: "none",
+                  }}
+                />
+                <div style={{ ...TEXT_XS, color: "#5a6a7a" }}>Pick two or more players</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {otherKnownIds.map(id => (
                     <PickerRow key={id} id={id} label={displayName(id, playerId, playerName, crews)}
-                      checked={picking === "dm" ? pickSel[0] === id : pickSel.includes(id)}
-                      onToggle={pid => picking === "dm" ? setPickSel([pid]) : togglePick(pid)} />
+                      checked={pickSel.includes(id)}
+                      onToggle={togglePick} />
                   ))}
                   {otherKnownIds.length === 0 && (
                     <div style={{ ...TEXT_XS, color: "#3a4050" }}>No other players known yet.</div>
@@ -240,18 +320,18 @@ export default memo(function ChatPanel({
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, padding: "8px 10px", borderTop: `1px solid ${BORDER_COL}`, flexShrink: 0 }}>
-                <button onClick={() => { setPicking(null); setPickSel([]); }} style={{
+                <button onClick={() => { setPicking(false); setPickSel([]); }} style={{
                   ...BTN_RESET, flex: 1, padding: "8px 0", borderRadius: 4,
                   background: "rgba(255,255,255,.04)", border: "1px solid #2a3040", color: "#8a9aaa", ...TEXT_XS,
                 }}>Cancel</button>
                 <button
                   onClick={confirmPicker}
-                  disabled={picking === "dm" ? !pickSel[0] : pickSel.length < 2}
+                  disabled={pickSel.length < 2}
                   style={{
                     ...BTN_RESET, flex: 1, padding: "8px 0", borderRadius: 4,
                     background: "linear-gradient(160deg,#1a3a2a,#0e2018)", border: "1px solid #306050",
                     color: "#50c090", ...TEXT_XS,
-                    opacity: (picking === "dm" ? !pickSel[0] : pickSel.length < 2) ? .4 : 1,
+                    opacity: pickSel.length < 2 ? .4 : 1,
                   }}
                 >Start</button>
               </div>
@@ -274,7 +354,7 @@ export default memo(function ChatPanel({
                   return (
                     <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
                       <div style={{ ...TEXT_XS, color: mine ? "#40cc80" : "#6a8aa0", marginBottom: 2 }}>
-                        {mine ? "You" : m.senderName}
+                        {taggedName(mine ? "You" : m.senderName, crewAbbrFor(m.senderId, crews))}
                       </div>
                       <div style={{
                         maxWidth: "85%", padding: "6px 9px", borderRadius: 6,
