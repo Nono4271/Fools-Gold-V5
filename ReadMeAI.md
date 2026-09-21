@@ -1863,6 +1863,69 @@ access to the map's tile-selection state. Wire that up if/when it matters.
 **Verified:** full test suite (`npm test`, 352/352) and production build
 (`npm run build`) both pass.
 
+## 2026-09-21 — Claude (Sonnet), session 17
+
+### Crew UI polish round — landing/HQ art, emblem recoloring, create-page tweaks
+
+**CrewLanding.jsx / CrewHQ.jsx backgrounds:** wired in two owner-supplied
+AI-generated images as real backgrounds — `public/crew/war-table-bg.jpg`
+(not-in-crew landing screen) and `public/crew/hq-table-bg.jpg` (in-crew HQ
+war table). Removed a leftover CSS "table silhouette" placeholder div on
+the landing screen. Renamed "Found a Crew"/"Found Crew" buttons to "Create
+a Crew"/"Create Crew" throughout.
+
+**CrewHQ.jsx layout, iterated against owner feedback across several
+rounds:** replaced the old horizontal tab bar with a right-edge icon rail,
+then a left-identity-column + bottom-icon-row layout, then spaced the left
+column out and pushed the bottom row right (Help now sits at the
+bottom-right corner). Diplomacy/Boosts/rally-Target hotspots now sit in a
+row **above** the table image (not scattered across it, per correction).
+
+**Emblem system — independent icon recoloring
+(`shared/constants/crew.js`, `src/components/game/crew/Emblem.jsx`):**
+emblem icons used to be emoji glyphs, which can't be recolored via CSS
+(multi-color emoji ignore `color`). Replaced them with 24 original,
+hand-authored, single-color inline SVG icons (up from 12), so the icon
+color and the badge background color can now be set independently.
+`EMBLEM_ICONS` grew from 12 to 24 — 12 new icons, several tied to a
+faction (dragon→dragons, cross→holyknights, snowflake→coldborns,
+moon/bat→nightcreatures, orb→wizards, hammer→orcs, reaper→ashen_dead,
+trident→pirates), plus general-purpose shield/eagle/lion. Emblem shape is
+`{shape, icon, color, iconColor}` now (was `{shape, icon, color}`);
+`isValidEmblem` and `DEFAULT_EMBLEM` updated to match. `EmblemPicker` has
+separate "BACKGROUND COLOR" and "ICON COLOR" swatch rows. Icons were sanity
+-checked visually via a Playwright screenshot before finalizing (a moon
+crescent path was initially rendering blank and was fixed).
+
+**TODO / art upgrade idea:** these 24 icons are deliberately simple flat
+SVG shapes — cheap, deterministic, no image pipeline, but not going to
+win any art awards. If the owner wants nicer emblem art, ChatGPT (which
+has image generation) could be used to generate a real icon set instead:
+one clean, single-subject icon per `EMBLEM_ICONS` id (skull, sword, axe,
+wolf, raven, flame, anchor, star, serpent, tower, crown, arrow, dragon,
+cross, snowflake, moon, bat, orb, hammer, reaper, trident,
+shield_emblem, eagle, lion), on a transparent background, simple flat
+game-icon style, one consistent color (e.g. flat white or black) so it
+can still be recolored/tinted in CSS the same way the current SVGs are.
+Exported as PNG/SVG per icon into `public/crew/icons/<id>.png`, then
+`Emblem.jsx`'s `ICON_PATHS` map would need to swap from inline SVG paths
+to `<img>`/CSS-mask references — masking (not just an `<img>`) is what
+would be needed to keep the "recolor via CSS" behavior, since a plain PNG
+can't be recolored the way a `fill="currentColor"` SVG can. Not started;
+flagging as a possible follow-up since it's outside what this session's
+tools could generate.
+
+**CrewCreate.jsx:** swapped field order so Abbreviation is asked before
+Name (was Name then Abbreviation).
+
+**Default crew privacy (`shared/constants/crew.js`):**
+`DEFAULT_CREW_PRIVACY` changed from `CREW_PRIVACY.LOCKED` to
+`CREW_PRIVACY.OPEN`. Updated `tests/crewRules.test.js`'s "createCrew
+defaults" test to match.
+
+**Verified:** full test suite (`npm test`, 352/352) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
