@@ -17,8 +17,23 @@ export const CREW_MAX_OFFICERS = 4;
 export const CREW_PRIVACY = { OPEN: "open", LOCKED: "locked", PRIVATE: "private" };
 export const DEFAULT_CREW_PRIVACY = CREW_PRIVACY.LOCKED;
 
-// ── Description / emblem ────────────────────────────────────────────────────
+// ── Description / emblem / language ────────────────────────────────────────
 export const CREW_DESCRIPTION_MAX_LEN = 200;
+
+// A crew's stated language, shown in the HQ header — informational only
+// (doesn't gate anything; the game itself is English-only today).
+export const CREW_LANGUAGES = [
+  "English", "Spanish", "Portuguese", "French", "German", "Italian",
+  "Polish", "Russian", "Turkish", "Arabic", "Hindi",
+  "Japanese", "Korean", "Chinese",
+];
+export const DEFAULT_CREW_LANGUAGE = CREW_LANGUAGES[0];
+
+// ── Rally target ─────────────────────────────────────────────────────────
+// A single pinned target the founder/an officer sets for the whole crew to
+// see and rally on (shows in CrewHQ's header area). Not a queue — setting a
+// new one replaces the old. { tileKey, label, setBy, setAt } | null.
+export const CREW_TARGET_LABEL_MAX_LEN = 40;
 
 // Emblem = { shape, icon, color }, all ids into a fixed catalog rather than
 // free-form art — keeps it deterministic (no upload/CDN) and easy to render
@@ -108,13 +123,18 @@ export const FORTRESS_COMMANDER_SLOTS_PER_MEMBER = 2;
 // Earned via Crew Help and crew-activity contribution (see crewRules.js).
 // Catalog kept intentionally small — a first, real (not stub) pass per the
 // owner's call; easy to extend once more sinks are designed.
+// effect.type "consumable" reuses the game's existing Bag/consumables system
+// (shared/constants/consumables.js typeIds) rather than inventing a parallel
+// one — buying one of these just adds/uses that real consumable. "resource"
+// items grant a flat amount immediately. See src/GameView.jsx's
+// onBuyStoreItem for how each type is applied.
 export const CREW_STORE_ITEMS = [
-  { id: "relocate",      name: "Relocation Token",   cost: 500,  effect: { type: "relocationToken" } },
-  { id: "speedup_1h",    name: "1h Speedup",         cost: 150,  effect: { type: "speedup", ms: 3_600_000 } },
-  { id: "speedup_8h",    name: "8h Speedup",         cost: 900,  effect: { type: "speedup", ms: 28_800_000 } },
-  { id: "wood_pack",     name: "Wood Pack (50k)",    cost: 200,  effect: { type: "resource", res: "wood",  amount: 50_000 } },
-  { id: "stone_pack",    name: "Stone Pack (50k)",   cost: 200,  effect: { type: "resource", res: "stone", amount: 50_000 } },
-  { id: "gas_pack",      name: "Gas Pack (50k)",     cost: 200,  effect: { type: "resource", res: "gas",   amount: 50_000 } },
+  { id: "relocate",   name: "Relocation Token",  cost: 500, effect: { type: "consumable", typeId: "relocation", grantsToBag: true } },
+  { id: "speedup_1h", name: "1h Building Speedup", cost: 150, effect: { type: "consumable", typeId: "su_bldg_60" } },
+  { id: "speedup_8h", name: "8h Building Speedup", cost: 900, effect: { type: "consumable", typeId: "su_bldg_480" } },
+  { id: "wood_pack",  name: "Wood Pack (50k)",   cost: 200, effect: { type: "resource", res: "wood",  amount: 50_000 } },
+  { id: "stone_pack", name: "Stone Pack (50k)",  cost: 200, effect: { type: "resource", res: "stone", amount: 50_000 } },
+  { id: "gas_pack",   name: "Gas Pack (50k)",    cost: 200, effect: { type: "resource", res: "gas",   amount: 50_000 } },
 ];
 
 // Contribution Points earned per Crew Help given (flat, independent of the
