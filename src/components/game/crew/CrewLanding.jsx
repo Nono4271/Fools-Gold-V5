@@ -5,41 +5,27 @@ import { GOLD, BTN_RESET, TEXT_XS } from "./crewStyles.js";
    war-room scene (CSS only — no image asset) with a table silhouette,
    flavor text, and Join/Create actions.
 ───────────────────────────────────────────────────────────────────────── */
+// CREW_BG_URL: swap in a real painted scene (people gathering around a war
+// table) once the owner has one from the art queue — drop the file at
+// public/crew/war-table-bg.jpg and set this to "/crew/war-table-bg.jpg".
+// Until then this renders null and the CSS scene below is the only backdrop.
+const CREW_BG_URL = null;
+
 export default function CrewLanding({ onBrowse, onCreate, crewCount }) {
   return (
     <div style={{
       position: "absolute", inset: 0,
-      background: `
-        radial-gradient(ellipse 70% 50% at 50% 38%, rgba(120,90,40,.14), transparent 70%),
-        linear-gradient(180deg, #0a0d12 0%, #05070a 55%, #030405 100%)
-      `,
+      backgroundImage: CREW_BG_URL
+        ? `linear-gradient(180deg, rgba(5,7,10,.55), rgba(3,4,5,.85)), url(${CREW_BG_URL})`
+        : `
+          radial-gradient(ellipse 70% 55% at 50% 55%, rgba(120,90,40,.16), transparent 70%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, rgba(40,30,15,.25), transparent 70%),
+          linear-gradient(180deg, #0a0d12 0%, #05070a 55%, #030405 100%)
+        `,
+      backgroundSize: "cover", backgroundPosition: "center",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       padding: "24px 20px", overflow: "hidden",
     }}>
-      {/* Table silhouette */}
-      <div style={{
-        position: "absolute", bottom: "18%", width: "78%", maxWidth: 420, height: 120,
-        background: "linear-gradient(180deg, #241a10, #120c07)",
-        border: "1px solid #3a2a18", borderRadius: "8px 8px 40px 40px / 8px 8px 14px 14px",
-        boxShadow: "0 30px 60px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.04)",
-        opacity: .85,
-      }}>
-        {/* map/parchment hint */}
-        <div style={{
-          position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)",
-          width: "60%", height: 46, background: "rgba(220,200,160,.08)",
-          border: "1px solid rgba(220,200,160,.15)", borderRadius: 3,
-        }} />
-        {/* silhouette figures */}
-        {[-1, 1].map(side => (
-          <div key={side} style={{
-            position: "absolute", bottom: -8, left: side < 0 ? "8%" : undefined, right: side > 0 ? "8%" : undefined,
-            width: 26, height: 60, borderRadius: "40% 40% 10% 10%",
-            background: "linear-gradient(180deg, #1c1a18, #0a0908)",
-          }} />
-        ))}
-      </div>
-
       <div style={{ position: "relative", textAlign: "center", maxWidth: 380 }}>
         <div style={{ fontSize: 34, marginBottom: 10 }}>⚔️</div>
         <div style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 18, color: GOLD, letterSpacing: ".04em" }}>
@@ -73,7 +59,7 @@ export default function CrewLanding({ onBrowse, onCreate, crewCount }) {
             border: "1px solid #306050", color: "#50c090",
             fontFamily: "'Cinzel',serif", fontSize: 12, letterSpacing: ".06em",
           }}>
-            ⚓ Found a Crew
+            ⚓ Create a Crew
           </button>
         </div>
       </div>

@@ -115,7 +115,7 @@ export default function CrewCreate({ playerGems, crewCreationCost, onCreate, onC
         </div>
       )}
 
-      <button onClick={handleSubmit} style={primaryBtn(false)}>⚓ Found Crew</button>
+      <button onClick={handleSubmit} style={primaryBtn(false)}>⚓ Create Crew</button>
       <button onClick={onCancel} style={{ ...BTN_RESET, ...TEXT_XS, color: "#5a6a7a", textAlign: "center", padding: "4px 0" }}>← Back</button>
     </div>
   );
