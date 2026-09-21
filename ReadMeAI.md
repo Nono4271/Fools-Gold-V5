@@ -1398,6 +1398,29 @@ and `chatNormalizedCrews`/`chatRecentMessages` down to `ChatPanel`/
 **Verified:** full test suite (`npm test`, 287/287) and production build
 (`npm run build`) both pass.
 
+## 2026-09-20 — Claude (Sonnet), session 5
+
+### Chat preview is now the permanent chat entry point; Chat icon removed from GameBar
+**File:** `src/components/game/ChatPreview.jsx` — dropped the
+`messages.length === 0` early return, so the preview always renders (an
+empty state shows a plain "💬 Chat" row when there are no messages yet).
+Moved it from bottom-left to bottom-center (`left: 50%` +
+`translateX(-50%)`), between the Wizard's Tomes trigger (bottom-left,
+`GameView.jsx`) and GameBar's bottom-right icon cluster, per the owner's
+request.
+
+**File:** `src/components/game/GameBar.jsx` — removed the 💬 "Chat"
+`ActionButton` from the bottom-right icon row and the now-unused
+`chatOpen`/`setChatOpen` props from its destructure — ChatPreview is the
+only way to open chat now.
+
+**File:** `src/GameView.jsx` — stopped passing `chatOpen`/`setChatOpen`
+down into `GameBar` (dead props after the button's removal); still used
+locally to gate `ChatPreview`/`ChatPanel` rendering.
+
+**Verified:** full test suite (`npm test`, 287/287) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
