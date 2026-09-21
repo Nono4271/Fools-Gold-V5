@@ -34,10 +34,23 @@
  * it applies and broadcasts its own outcome to EVERY client, including the
  * one that sent the (wrong) optimistic update. Omitting `attacker` (an older
  * client) falls back to trusting the client's claim, same as before this.
- * `playerId` (a stable per-browser id, NOT real auth — see
- * src/utils/playerIdentity.js) is stored as `ws._playerId` and used to stamp
- * `ownerPlayerId` on a "player" capture, instead of trusting anything the
- * client puts in the capture message for who is attacking.
+ * `playerId` (a stable per-browser id, or a real accountId once a player has
+ * logged in — see src/utils/playerIdentity.js) is stored as `ws._playerId`
+ * and used to stamp `ownerPlayerId` on a "player" capture, instead of
+ * trusting anything the client puts in the capture message for who is
+ * attacking.
+ *
+ * HTTP (alongside the WS upgrade, same port):
+ *   POST /api/register { username, password } → { accountId, username } | { error }
+ *   POST /api/login    { username, password } → { accountId, username } | { error }
+ *   See server/auth.js — salted/hashed accounts under server/data/accounts/,
+ *   no sessions/tokens; the client just adopts the returned accountId as its
+ *   playerId from then on.
+ *
+ * TILE_PATCH is now filtered per-client by each connection's last-known
+ * viewport (ws._viewport, set on GAME_INIT / VIEWPORT_SUB) — see
+ * applyAndBroadcast. A connection with no known viewport still gets every
+ * patch (safe fallback), same as before this.
  *
  * Server → Client messages:
  *   { type:"GAME_READY",     sessionId }
@@ -55,9 +68,11 @@
  */
 
 import { WebSocketServer } from 'ws';
+import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { makeAuth } from './auth.js';
 // Roadmap item 2/4: use the same deterministic rule the client uses (moved to
 // shared/ specifically so the server could import it) so garrison-reset/
 // protection timestamps are computed authoritatively here, not trusted from
@@ -101,7 +116,55 @@ function computeSiegePower(attacker) {
 }
 
 const PORT = process.env.PORT || 3001;
-const wss  = new WebSocketServer({ port: PORT });
+
+// ─── Accounts (username/password) ──────────────────────────────────────────
+// Roadmap item: a real-ish identity so a player's stuff follows them across
+// browsers/devices, on top of the per-browser playerId (playerIdentity.js)
+// used for everything else. No sessions/tokens — login/register just hand
+// back an accountId, which the client stores and sends as its playerId from
+// then on. See server/auth.js for storage details and scope limits.
+const ACCOUNTS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data', 'accounts');
+const auth = makeAuth(ACCOUNTS_DIR);
+
+function readJsonBody(req, cb) {
+  let body = '';
+  req.on('data', (chunk) => {
+    body += chunk;
+    if (body.length > 10_000) req.destroy(); // guard against absurd payloads
+  });
+  req.on('end', () => {
+    try { cb(null, JSON.parse(body || '{}')); } catch (e) { cb(e); }
+  });
+}
+
+function sendJson(res, status, obj) {
+  res.writeHead(status, {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  });
+  res.end(JSON.stringify(obj));
+}
+
+const httpServer = http.createServer((req, res) => {
+  if (req.method === 'OPTIONS') return sendJson(res, 204, {});
+
+  if (req.method === 'POST' && (req.url === '/api/register' || req.url === '/api/login')) {
+    return readJsonBody(req, (err, body) => {
+      if (err) return sendJson(res, 400, { error: 'Invalid JSON' });
+      const { username, password } = body || {};
+      const result = req.url === '/api/register'
+        ? auth.register(username, password)
+        : auth.login(username, password);
+      sendJson(res, result.error ? 400 : 200, result);
+    });
+  }
+
+  sendJson(res, 404, { error: 'Not found' });
+});
+
+const wss = new WebSocketServer({ server: httpServer });
 
 // Roadmap item 4: idempotency — a resent/duplicate TILE_CAPTURE or
 // TILE_SIEGE (retry after a dropped ack, a double-fire, etc.) must not
@@ -119,7 +182,9 @@ function seenRecently(session, msgId) {
   return false;
 }
 
-console.log("Fool's Gold server  ws://localhost:" + PORT);
+httpServer.listen(PORT, () => {
+  console.log("Fool's Gold server  ws://localhost:" + PORT + "  (+ /api/register, /api/login)");
+});
 
 // ─── Persistence ────────────────────────────────────────────────────────────
 // Roadmap item 4 (scoped): survive a server restart/crash and let a client
@@ -190,16 +255,37 @@ function getOrCreateSession(id) {
 }
 
 function applyAndBroadcast(session, patches, senderWs = null) {
+  const merged = {};
   for (const [key, patch] of Object.entries(patches)) {
     const prev = session.tiles.get(key) || {};
-    session.tiles.set(key, { ...prev, ...patch, k: key });
+    const tile = { ...prev, ...patch, k: key };
+    session.tiles.set(key, tile);
+    merged[key] = tile;
   }
   session.dirty = true;
-  const msg = JSON.stringify({ type: 'TILE_PATCH', patches });
+  const fullMsg = JSON.stringify({ type: 'TILE_PATCH', patches });
+
   for (const client of session.clients) {
     // Skip the originating client — it already applied optimistically
     if (senderWs && client._clientId === senderWs._clientId) continue;
-    if (client.readyState === 1) client.send(msg);
+    if (client.readyState !== 1) continue;
+
+    const vp = client._viewport;
+    if (!vp) { client.send(fullMsg); continue; } // no known viewport — safe fallback: send everything
+
+    // Roadmap item: don't push a patch for a tile outside this client's
+    // last-known viewport. Coordless patches (shouldn't normally happen —
+    // every tile carries c/r) fall back to being sent, same as no-viewport.
+    const visible = {};
+    for (const [key, patch] of Object.entries(patches)) {
+      const tile = merged[key];
+      if (tile.c == null || tile.r == null ||
+          (tile.c >= vp.minC && tile.c <= vp.maxC && tile.r >= vp.minR && tile.r <= vp.maxR)) {
+        visible[key] = patch;
+      }
+    }
+    if (Object.keys(visible).length === 0) continue; // nothing this client can see — skip the send
+    client.send(JSON.stringify({ type: 'TILE_PATCH', patches: visible }));
   }
 }
 
