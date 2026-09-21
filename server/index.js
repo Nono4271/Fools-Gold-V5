@@ -154,9 +154,16 @@ const httpServer = http.createServer((req, res) => {
     return readJsonBody(req, (err, body) => {
       if (err) return sendJson(res, 400, { error: 'Invalid JSON' });
       const { username, password } = body || {};
-      const result = req.url === '/api/register'
-        ? auth.register(username, password)
-        : auth.login(username, password);
+      let result;
+      try {
+        result = req.url === '/api/register'
+          ? auth.register(username, password)
+          : auth.login(username, password);
+      } catch (e) {
+        // e.g. the accounts directory isn't writable on this host
+        console.error('[auth] ' + req.url + ' failed:', e.message);
+        return sendJson(res, 500, { error: 'Account server error — try again later' });
+      }
       sendJson(res, result.error ? 400 : 200, result);
     });
   }
