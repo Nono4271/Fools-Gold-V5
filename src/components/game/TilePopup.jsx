@@ -805,8 +805,15 @@ export default memo(function TilePopup({
               BUILD FORT · 🥚×3
             </button>
           )}
-          {/* Build Crew Fortress — unclaimed p10+ tile, founder/officer only */}
-          {!crewFortressAtTile && isNeutral && myCrew && (selTile.powerLevel||1)>=FORTRESS_MIN_POWER_LEVEL && (
+          {/* Build Crew Fortress — unclaimed p10+ tile, founder/officer only.
+              Hidden entirely (not just disabled) on camps/keeps/gates/ruins/
+              the win tile — those are separate special-tile systems with
+              their own ATTACK button and wave/siege rules just above; a
+              fortress can never be built on them (canBuildFortressOnTile
+              already rejects them), so the button shouldn't even show. */}
+          {!crewFortressAtTile && isNeutral && myCrew
+            && !selTile.isCamp && !selTile.campType && !selTile.isKeep && !selTile.isGate && !selTile.isRuin && !selTile.isWin
+            && (selTile.powerLevel||1)>=FORTRESS_MIN_POWER_LEVEL && (
             <button onClick={()=>canBuildFortressHere && onBuildCrewFortress?.(selKey, selTile)}
               disabled={!canBuildFortressHere}
               title={fortressBuildCheck.reason || ""}
