@@ -134,17 +134,16 @@ export default function CrewHQ({
                 border: "1px solid #3a2a18", overflow: "hidden",
               }} />
 
-              {/* Diplomacy/Boosts/Target hotspots float ON TOP of the table,
-                  staggered at different heights near the top edge (like
-                  pieces set down on a map) rather than lined up in a single
-                  straight row. */}
-              <div style={{ position: "absolute", top: "5%", left: "8%" }}>
+              {/* Diplomacy/Boosts/Target hotspots float ON TOP of the table
+                  surface itself — down among the map/pieces, staggered at
+                  different heights, not pinned along the top edge. */}
+              <div style={{ position: "absolute", top: "42%", left: "29%" }}>
                 <TableHotspot icon="🕊️" label="Diplomacy" onClick={() => setTab("diplomacy")} />
               </div>
-              <div style={{ position: "absolute", top: "2%", left: "43%" }}>
+              <div style={{ position: "absolute", top: "30%", left: "50%" }}>
                 <TableHotspot icon="🧪" label="Boosts" onClick={() => setTab("boosts")} />
               </div>
-              <div style={{ position: "absolute", top: "9%", right: "7%" }}>
+              <div style={{ position: "absolute", top: "55%", left: "70%" }}>
                 <TableHotspot icon="🎯" label={crew.target ? crew.target.label || "Target set" : "Tasks"}
                   onClick={() => canPinTarget && setSettingTarget(v => !v)} />
 
