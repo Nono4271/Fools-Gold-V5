@@ -1,15 +1,17 @@
-# CrewHQ spacing pass
+# Crew landing background — real image wired in
 
-File changed: `src/components/game/crew/CrewHQ.jsx`
+Files:
 
-- Left column: bigger gaps between emblem/name, level bar, stats and the
-  announcement panel, so the column reads as spaced-out content instead of
-  everything crammed at the top with one big gap before Disband.
-- Bottom icon row: right-aligned instead of centered, so Help now sits in
-  the bottom-right corner.
-- Table hotspots: Diplomacy, Boosts and the Target ("No tasks") widget are
-  now each positioned independently, spread across different areas of the
-  table (top-center, mid-left, lower-right) instead of stacked tightly
-  together on one edge.
+- `public/crew/war-table-bg.jpg` — your image, saved here (this is a
+  static asset folder, served as-is at `/crew/war-table-bg.jpg`).
+- `src/components/game/crew/CrewLanding.jsx` — `CREW_BG_URL` now points at
+  it; added a soft dark radial panel behind the title/text/buttons so
+  they stay legible against the busy scene (the image itself is untouched,
+  this is just an overlay in front of it).
 
-Verified: full test suite (352/352) and production build both pass.
+Drop `public/crew/war-table-bg.jpg` into your repo at that exact path
+alongside the updated `CrewLanding.jsx` and it'll show immediately — no
+other wiring needed.
+
+Verified: full test suite (352/352) and production build both pass (the
+image gets copied into `dist/crew/` by the build, confirmed).
