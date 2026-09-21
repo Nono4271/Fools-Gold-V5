@@ -15,7 +15,7 @@ export const CREW_MAX_OFFICERS = 4;
 //           officer must accept.
 // private — invite-only; never appears in Browse/search results at all.
 export const CREW_PRIVACY = { OPEN: "open", LOCKED: "locked", PRIVATE: "private" };
-export const DEFAULT_CREW_PRIVACY = CREW_PRIVACY.LOCKED;
+export const DEFAULT_CREW_PRIVACY = CREW_PRIVACY.OPEN;
 
 // ── Description / emblem / language ────────────────────────────────────────
 export const CREW_DESCRIPTION_MAX_LEN = 200;
@@ -35,14 +35,30 @@ export const DEFAULT_CREW_LANGUAGE = CREW_LANGUAGES[0];
 // new one replaces the old. { tileKey, label, setBy, setAt } | null.
 export const CREW_TARGET_LABEL_MAX_LEN = 40;
 
-// Emblem = { shape, icon, color }, all ids into a fixed catalog rather than
-// free-form art — keeps it deterministic (no upload/CDN) and easy to render
-// as layered SVG/CSS. Catalog is intentionally small for the first pass and
-// meant to grow.
+// Emblem = { shape, icon, color, iconColor }, all ids into a fixed catalog
+// rather than free-form art — keeps it deterministic (no upload/CDN) and
+// easy to render as layered SVG/CSS. `color` is the badge background,
+// `iconColor` recolors the icon glyph itself independently (see Emblem.jsx —
+// icons are hand-authored single-color SVGs specifically so this works).
+// 24 icons: the original 12 plus 12 new ones, several tied to a faction
+// (see shared/constants/factions.js) so factions have a recognizable pick.
 export const EMBLEM_SHAPES = ["shield", "banner", "crest", "roundel"];
 export const EMBLEM_ICONS  = [
+  // original set
   "skull", "sword", "axe", "wolf", "raven", "flame", "anchor", "star",
   "serpent", "tower", "crown", "arrow",
+  // faction-themed additions
+  "dragon",   // dragons
+  "cross",    // holyknights
+  "snowflake",// coldborns
+  "moon",     // nightcreatures
+  "bat",      // nightcreatures (alt)
+  "orb",      // wizards
+  "hammer",   // orcs
+  "reaper",   // ashen_dead
+  "trident",  // pirates
+  // general-purpose additions
+  "shield_emblem", "eagle", "lion",
 ];
 export const EMBLEM_COLORS = [
   "#c8a060", // gold
@@ -53,11 +69,17 @@ export const EMBLEM_COLORS = [
   "#4a4a4a", // iron grey
   "#a05a20", // rust orange
   "#1a1a1a", // black
+  "#e8dcc0", // parchment
+  "#dcdcdc", // silver
 ];
-export const DEFAULT_EMBLEM = { shape: EMBLEM_SHAPES[0], icon: EMBLEM_ICONS[0], color: EMBLEM_COLORS[0] };
+export const DEFAULT_EMBLEM = {
+  shape: EMBLEM_SHAPES[0], icon: EMBLEM_ICONS[0],
+  color: EMBLEM_COLORS[0], iconColor: EMBLEM_COLORS[8],
+};
 
 export function isValidEmblem(e) {
-  return !!e && EMBLEM_SHAPES.includes(e.shape) && EMBLEM_ICONS.includes(e.icon) && EMBLEM_COLORS.includes(e.color);
+  return !!e && EMBLEM_SHAPES.includes(e.shape) && EMBLEM_ICONS.includes(e.icon)
+    && EMBLEM_COLORS.includes(e.color) && EMBLEM_COLORS.includes(e.iconColor);
 }
 
 // ── Level / XP / member-cap / fortress-slot schedule ───────────────────────
