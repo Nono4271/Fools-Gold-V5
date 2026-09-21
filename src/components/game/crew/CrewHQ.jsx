@@ -63,7 +63,7 @@ export default function CrewHQ({
         width: 190, flexShrink: 0, borderRight: `1px solid ${BORDER_COL}`,
         padding: "16px 10px 16px", display: "flex", flexDirection: "column", gap: 22,
         overflowY: "auto",
-      }} className="scr">
+      }} className="scr crew-scroll">
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, textAlign: "center" }}>
           <Emblem emblem={crew.emblem} size={48} />
           <div style={{ ...TEXT_SM, color: GOLD, fontWeight: 700, fontSize: 12 }}>[{crew.abbr}] {crew.name}</div>
@@ -123,7 +123,7 @@ export default function CrewHQ({
 
       {/* Right side — table (with hotspots) or the active tab's content, plus the bottom icon row */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <div className="scr" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12, position: "relative" }}>
+        <div className="scr crew-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12, position: "relative" }}>
           {tab === null ? (
             <div style={{ position: "absolute", inset: 0 }}>
               {/* The war table itself — owner-supplied scene. Fills the whole

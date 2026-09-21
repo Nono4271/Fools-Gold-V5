@@ -79,7 +79,7 @@ export default memo(function CrewScreen({
         )}
 
         {view === "browse" && (
-          <div className="scr" style={{ flex: 1, overflowY: "auto", padding: "10px 12px" }}>
+          <div className="scr crew-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px" }}>
             <button onClick={() => setView("landing")} style={{
               background: "none", border: "none", color: "#5a6a7a", fontFamily: "'Cinzel',serif",
               fontSize: 9, cursor: "pointer", padding: "4px 0", marginBottom: 8,
@@ -92,7 +92,7 @@ export default memo(function CrewScreen({
         )}
 
         {view === "create" && (
-          <div className="scr" style={{ flex: 1, overflowY: "auto", padding: "10px 12px" }}>
+          <div className="scr crew-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px" }}>
             <CrewCreate
               playerGems={playerGems} crewCreationCost={crewCreationCost}
               onCreate={onCreateCrew}

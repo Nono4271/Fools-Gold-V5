@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { canSetDiplomacy, diplomacyStatusOf, flaggedDiplomacyCrews } from "../../../../shared/utils/crewRules.js";
 import { Emblem } from "./Emblem.jsx";
 import { BTN_RESET, BORDER_COL, GOLD, TEXT_SM, TEXT_XS } from "./crewStyles.js";
@@ -71,6 +72,34 @@ function SetStatusButtons({ status, onSet }) {
   );
 }
 
+function DiplomacyHeader() {
+  const [showInfo, setShowInfo] = useState(false);
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ ...TEXT_SM, color: GOLD, fontWeight: 700, fontSize: 11 }}>Diplomacy</span>
+        <button
+          onClick={() => setShowInfo(v => !v)}
+          aria-label="About Diplomacy"
+          style={{
+            ...BTN_RESET, width: 18, height: 18, borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: showInfo ? GOLD : "#5a6a7a", border: `1px solid ${showInfo ? GOLD : BORDER_COL}`,
+            fontFamily: "'Cinzel',serif", fontSize: 10, fontWeight: 700, lineHeight: 1,
+          }}
+        >i</button>
+      </div>
+      {showInfo && (
+        <div style={{ ...TEXT_XS, color: "#6a7a8a", lineHeight: 1.5, marginTop: 6 }}>
+          Cosmetic only — allies show orange, enemies show a darker red on the
+          map. It doesn't stop you attacking them, and it's one-way: this
+          crew's own standing toward you may be different.
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CrewDiplomacy({ crew, crews, playerId, onSetDiplomacy }) {
   const canManage = canSetDiplomacy(crew, playerId);
 
@@ -78,11 +107,7 @@ export default function CrewDiplomacy({ crew, crews, playerId, onSetDiplomacy })
     const others = (crews || []).filter(c => c.id !== crew.id);
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ ...TEXT_XS, color: "#6a7a8a", lineHeight: 1.5, marginBottom: 2 }}>
-          Cosmetic only — allies show orange, enemies show a darker red on the
-          map. It doesn't stop you attacking them, and it's one-way: this
-          crew's own standing toward you may be different.
-        </div>
+        <DiplomacyHeader />
         {others.length === 0 ? (
           <EmptyState text="No other crews exist yet." />
         ) : (
@@ -102,6 +127,7 @@ export default function CrewDiplomacy({ crew, crews, playerId, onSetDiplomacy })
   const flagged = flaggedDiplomacyCrews(crew, crews);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <DiplomacyHeader />
       {flagged.length === 0 ? (
         <EmptyState text="Diplomatic talks are still underway. No standings have been set yet." />
       ) : (
