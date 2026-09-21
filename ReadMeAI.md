@@ -1421,6 +1421,75 @@ locally to gate `ChatPreview`/`ChatPanel` rendering.
 **Verified:** full test suite (`npm test`, 287/287) and production build
 (`npm run build`) both pass.
 
+## 2026-09-20 — Claude (Sonnet), session 6
+
+### New: sub-channels inside crew and group chat
+Crew and group chat are no longer single channels — each is now a
+container of nested sub-channels. World/Faction/DM are unaffected (still
+flat, per the owner's spec).
+
+**New — pure rules:**
+- `shared/constants/chat.js` — `MAX_SUBCHANNELS` (5), `defaultCrewSubchannels()`
+  (#Announcement, leader-only to post + #General, both `locked: true` — can't
+  be deleted or reordered), `defaultGroupSubchannels()` (#General only),
+  `isSubchannelShape()`.
+- `shared/utils/subchannels.js` — `subchannelId`/`parseSubchannelId` (the
+  `"<parentChannelId>::<subId>"` composite id a message actually posts to),
+  `subchannelsOf` (defaults for a crew/group that predates this feature),
+  `addSubchannel`/`removeSubchannel`/`moveSubchannel` (locked ones protected,
+  cap enforced), `canManageSubchannels` (crew: `crew.founder` only; group:
+  `channel.ownerId` only), `canPostInSubchannel` (container membership +
+  the leader-only gate).
+- `tests/subchannels.test.js` — 10 tests, all passing.
+- **No officer role yet** — the owner confirmed leader-only for
+  `#Announcement` posting is fine for now; a real officer/rank system (and
+  extending the leader-only check) is future work, not blocking.
+
+**Changed — crew data now carries a real `founder` + `subChannels`:**
+`src/GameView.jsx` (`onCreateCrew`) and `shared/utils/aiCrews.js` (AI crew
+founding) both set `founder`/`subChannels: defaultCrewSubchannels()` at
+creation. Incidentally fixes a latent bug — `CrewPanel.jsx` already
+referenced `myCrew.founder` but nothing ever set it, so it always rendered
+blank.
+
+**Changed — `shared/utils/chatRules.js`:** exported `findCrew` (now reused
+by subchannels.js); `createGroupChannel` gains `ownerId` (the creator —
+only they can manage that group's sub-channels) and seeds
+`subChannels: defaultGroupSubchannels()`.
+
+**Changed — `src/hooks/useChat.js`:**
+- `sendMessage` now recognizes a composite sub-channel id and checks
+  `canPostInSubchannel` instead of the old container-level `canPost`.
+- `normalizeCrewsForPlayer` also swaps `founder` (same facKey-vs-playerId
+  quirk as `members`).
+- `startGroup` sets `ownerId` on the new group.
+- Added `addGroupSubchannel`/`removeGroupSubchannel`/`moveGroupSubchannel`
+  (groups own their sub-channel list directly, unlike crews).
+- AI flavor chatter in a crew now always lands in that crew's #General —
+  never #Announcement, and there's no "AI officer" concept.
+- `getRecentMessages` (the closed-state preview) now also sweeps every
+  crew/group's sub-channels, not just the container id.
+
+**New — `src/components/game/SubchannelManager.jsx`:** the popover behind
+ChatPanel's gear icon — Add tab (name a channel) and Manage tab (▲/▼
+reorder, ✕ delete; locked ones show a 🔒 and no controls).
+
+**Changed — `src/components/game/ChatPanel.jsx`:** opening a crew or group
+now shows its sub-channel list first (🔒 marks a leader-only one) instead
+of jumping straight to messages; picking one opens its thread with a `‹`
+back breadcrumb. The compose bar is replaced with "🔒 Only the leader can
+post here" when the viewer can't post in that sub-channel. A ⚙ gear icon
+appears in the header — next to the profanity/close buttons — only when
+the viewer can manage the currently-open crew/group's channels (crew
+founder or group creator), opening `SubchannelManager`.
+
+**Wiring — `src/GameView.jsx`/`src/Game.jsx`:** added `manageCrewSubchannels`
+(GameView, since crew data lives in its `crews` state) and threaded the
+three new `useChat.js` group-subchannel mutators down to `ChatPanel`.
+
+**Verified:** full test suite (`npm test`, 297/297) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
