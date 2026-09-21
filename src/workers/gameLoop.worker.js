@@ -1,4 +1,7 @@
 import { advanceMarch } from '../../shared/utils/marchMotion.js';
+import { aiTrainingTick } from '../../shared/utils/aiEconomy.js';
+import { barracksCapacity } from '../../shared/constants/buildings.js';
+import { AI_STAMINA_MAX, canAffordMarch } from '../../shared/utils/tactics.js';
 // ── Game Loop Web Worker ──────────────────────────────────────────────────────
 // Offloads all setInterval logic from the main thread so React renders never
 // block touch events, map pans, or tile taps.
@@ -240,6 +243,9 @@ function tickAiMarch() {
   const dispatches = [];
 
   for (const cmd of toProcess) {
+    // Out of stamina (same 20-per-attack rule as the player): sit this one out
+    // without burning the march cooldown; it regens +1 per 3 min.
+    if (!canAffordMarch(cmd, 'attack', AI_STAMINA_MAX)) continue;
     const lastMs = aiLastMarch[cmd.uid] || 0;
     if (now - lastMs < COOLDOWN) continue;
 
@@ -278,7 +284,8 @@ const BLDG_COST = {
 };
 const BLDG_MAX = {hq:10,quarry:20,lumber:20,forge:20,refinery:20,barracks:10,training:10,commandcenter:10,healingtent:10,walls:10};
 const RSS_BLDGS = new Set(["quarry","lumber","forge","refinery","storage"]);
-function _barrCap(lvl)  { return lvl<=0 ? 2000 : Math.round(2000*Math.pow(45,(lvl-1)/9)); }
+// Same barracks capacity curve as the player (was a steeper /9 curve: ~7x the player's at lvl 10).
+const _barrCap = barracksCapacity;
 function _cmdCap(lvl)   { const CC=[0,2,4,7,10,13,17,21,25,30,35]; return (lvl||1)+(CC[Math.min(10,lvl||0)]||0); }
 function _upgCost(type,lvl) { const b=BLDG_COST[type]; if(!b) return {}; const m=Math.pow(1.8,lvl); return Object.fromEntries(Object.entries(b).map(([k,v])=>[k,Math.round(v*m)])); }
 function _maxLvl(type,hqLvl) { const abs=BLDG_MAX[type]||10; if(type==="hq") return abs; return Math.min(abs, RSS_BLDGS.has(type)?hqLvl*2:hqLvl); }
@@ -286,6 +293,10 @@ function _maxLvl(type,hqLvl) { const abs=BLDG_MAX[type]||10; if(type==="hq") ret
 // ── AI economy: 5000ms ────────────────────────────────────────────────────
 // Fully computed in worker — sends back diffs for main thread to apply in one pass.
 const FACTION_BRANCH_KEYS = {}; // populated from first snapshot that has aiFactionKeys
+// Per-faction training state kept in the worker: the queue of in-progress
+// commands (finish timestamps) and the authoritative barracks pool. Only this
+// tick ever changes the pool, so we don't rebuild it from the 2 s snapshot.
+const aiEconLocal = {}; // { [fk]: { pool, queue: number[] } }
 
 function tickAiEcon() {
   const { aiCmds, aiFactionKeys, aiPool, aiRss, aiBldgs, aiHqKeys } = snapshot || {};
@@ -310,7 +321,8 @@ function tickAiEcon() {
   const bldgUpdates  = {}; // { fk: { ...bldgs } }
 
   for (const fk of aiFactionKeys) {
-    const curPool  = aiPool?.[fk]  ?? _barrCap(0);
+    const local = aiEconLocal[fk] || (aiEconLocal[fk] = { pool: aiPool?.[fk] ?? _barrCap(0), queue: [] });
+    const curPool  = local.pool;
     const curRss   = { ...(aiRss?.[fk]  || { stone:5000, wood:5000, gas: 5000, food: 5000 }) };
     const curBldgs = { ...(aiBldgs?.[fk] || { hq:1, barracks:0, commandcenter:0 }) };
     const hqKeyVal = aiHqKeys?.[fk];
@@ -340,15 +352,17 @@ function tickAiEcon() {
       newPool = Math.max(0, newPool - assign);
     }
 
-    // Train troops
-    const barrCap = _barrCap(curBldgs.barracks || 0);
-    if (newPool < barrCap) {
-      const trainAmt = Math.min(500, barrCap - newPool);
-      const cost = { wood:trainAmt, gas:trainAmt, food:trainAmt*2 };
-      if (Object.entries(cost).every(([k,v]) => newRss[k] >= v)) {
-        Object.entries(cost).forEach(([k,v]) => newRss[k] -= v);
-        newPool = Math.min(barrCap, newPool + trainAmt);
-      }
+    // Train troops — time-gated like the player's training queues (see
+    // shared/utils/aiEconomy.js). Finished commands land in the pool; new ones are
+    // paid for up front and only start if there is a free queue, room under the
+    // barracks cap, and enough resources. No more instant refill every tick.
+    {
+      const t = aiTrainingTick({
+        pool: newPool, rss: newRss, queue: local.queue,
+        trainingLvl: curBldgs.training || 0, barracksLvl: curBldgs.barracks || 0,
+        commanderCount: fkCmds.length, now: Date.now(),
+      });
+      newPool = t.pool; newRss = t.rss; local.queue = t.queue;
     }
 
     // Upgrade buildings
@@ -365,6 +379,7 @@ function tickAiEcon() {
       break;
     }
 
+    local.pool = newPool;
     if (newPool !== curPool)  poolUpdates[fk] = newPool;
     if (JSON.stringify(newRss)   !== JSON.stringify(curRss))   rssUpdates[fk]  = newRss;
     if (JSON.stringify(newBldgs) !== JSON.stringify(curBldgs)) bldgUpdates[fk] = newBldgs;
@@ -396,6 +411,7 @@ self.onmessage = (e) => {
       paused = false;
       workerMarchState.clear();
       Object.keys(aiLastMarch).forEach(k => delete aiLastMarch[k]);
+      Object.keys(aiEconLocal).forEach(k => delete aiEconLocal[k]);
       startAll();
       break;
 
