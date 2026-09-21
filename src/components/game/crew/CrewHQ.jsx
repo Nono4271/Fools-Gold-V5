@@ -6,6 +6,7 @@ import CrewMembers from "./CrewMembers.jsx";
 import CrewStructures from "./CrewStructures.jsx";
 import CrewStore from "./CrewStore.jsx";
 import CrewHelp from "./CrewHelp.jsx";
+import CrewDiplomacy from "./CrewDiplomacy.jsx";
 import CrewComingSoon from "./CrewComingSoon.jsx";
 import { BTN_RESET, BORDER_COL, GOLD, TEXT_SM, TEXT_XS, dangerBtn } from "./crewStyles.js";
 
@@ -36,13 +37,13 @@ const BOTTOM_TABS = [
    table view for that tab's content, with a "Back to table" affordance.
 ───────────────────────────────────────────────────────────────────────── */
 export default function CrewHQ({
-  crew, playerId, playerName, now,
+  crew, crews, playerId, playerName, now,
   onLeave, onDisband,
   onPromote, onDemote, onKick,
   onRequestBuildFortress, onDemolishFortress,
   onBuyStoreItem,
   crewHallLvl, helpsUsed, onHelpMember, canHelp,
-  onUpdateAnnouncement, onSetTarget, onClearTarget,
+  onUpdateAnnouncement, onSetTarget, onClearTarget, onSetDiplomacy,
 }) {
   const [tab, setTab] = useState(null); // null = show the table; otherwise a tab id
   const [editingAnnouncement, setEditingAnnouncement] = useState(false);
@@ -193,8 +194,7 @@ export default function CrewHQ({
                 <CrewHelp crewHallLvl={crewHallLvl} helpsUsed={helpsUsed} onHelpMember={onHelpMember} canHelp={canHelp} />
               )}
               {tab === "diplomacy" && (
-                <CrewComingSoon icon="🕊️" title="Diplomacy"
-                  note="Ally/Neutral/War standing with other crews — cosmetic for now, no real teeth until real multiplayer exists." />
+                <CrewDiplomacy crew={crew} crews={crews} playerId={playerId} onSetDiplomacy={onSetDiplomacy} />
               )}
               {tab === "boosts" && (
                 <CrewComingSoon icon="🧪" title="Boosts"
