@@ -1926,6 +1926,30 @@ defaults" test to match.
 **Verified:** full test suite (`npm test`, 352/352) and production build
 (`npm run build`) both pass.
 
+## 2026-09-21 — Claude (Sonnet), session 18
+
+### CrewHQ table image — full-bleed, hotspots floating on it staggered
+
+**`src/components/game/crew/CrewHQ.jsx`:** the table image was leaving
+bare black space above and below it. Cause: it sat in a `flex:1` box
+inside a parent with `overflowY:"auto"`, and flex-grow doesn't resolve
+inside a scrolling context, so the box just shrank to `minHeight`. Fixed
+by switching the table view to `position:"absolute", inset:0` on the
+pane itself (no longer flex-column), so it always fills the whole
+content area edge-to-edge regardless of scroll context.
+
+Diplomacy/Boosts/Target hotspots now float directly on top of the table
+image near its top edge, each independently `position:"absolute"` at a
+different top/left offset (staggered, not a single straight row) —
+closer to the reference screenshot where pieces sit unevenly across the
+table rather than in a lined-up row floating separately above it.
+
+Renamed the rally-target hotspot's empty-state label from "No tasks" to
+"Tasks".
+
+**Verified:** full test suite (`npm test`, 352/352) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
