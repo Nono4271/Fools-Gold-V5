@@ -1695,6 +1695,61 @@ hook and `MessageBubble` wiring don't change.
 **Verified:** full test suite (`npm test`, 304/304) and production build
 (`npm run build`) both pass.
 
+## 2026-09-21 — Claude (Sonnet), session 14
+
+### Chat feature pack: unread badges, replies, reactions, mentions, mute,
+### typing indicator, scroll-lock, search — local-only, no moderation
+
+Per the owner: build out the previously-proposed "missing chat features"
+list, plus a mid-stream request to add message replies. Design answers from
+the owner: relative timestamps (server will send UTC epoch ms later — no
+storage change needed, already true); @mentions via autocomplete + highlight;
+reactions are player-only (AI never auto-reacts); no Report button (no
+moderation backend exists) — Copy only, alongside the new Reply.
+
+**New file:** `src/hooks/useRelativeTime.js` — self-refreshing "2m ago"-style
+hook (re-renders every 15s), reading straight off the existing `ts` epoch-ms
+field.
+
+**File:** `src/hooks/useChat.js` — added, all local-only/in-memory:
+- `lastReadAt` map + `markRead(channelId)` + `unreadCount` (counts messages
+  newer than last-read per channel the player can see, skipping muted ones).
+- `mutedChannelIds` (Set, top-level channels only) + `toggleMute`.
+- `reactions` (`{ messageId: { emoji: [playerId] } }`) + `toggleReaction`.
+- `typingByChannel` — the AI chatter tick now stages a message behind a
+  1–1.9s "typing" delay instead of posting instantly.
+- `leaveGroup(channelId)`.
+- `sendMessage(channelId, text, { replyTo })` — `replyTo` is a snapshot
+  (`{ id, senderName, text }`) stamped onto the outgoing message.
+
+**File:** `src/Game.jsx`, `src/GameView.jsx` — plumbed all of the above
+through to `ChatPreview`/`ChatPanel` props. No behavior of their own.
+
+**File:** `src/components/game/ChatPreview.jsx` — red unread-count badge
+(caps display at "99+").
+
+**File:** `src/components/game/ChatPanel.jsx` — the bulk of the UI work:
+- `MessageBubble`: relative timestamp, reply-quote block, @mention
+  highlighting, reaction pills, long-press (touch) / right-click (desktop)
+  opens a message menu — React / Reply / Copy.
+- Reply: dismissible "Replying to…" strip above the compose bar; sending
+  clears it.
+- @mention autocomplete: typing `@partial` shows up to 5 matching names,
+  pick one to insert `@Name `.
+- Channel rows (World/Faction/Guild/Group/DM) got a mute toggle.
+- "Leave Group" button in a group's sub-channel header.
+- Typing indicator line above the compose bar.
+- Scroll-lock: only auto-scrolls to the newest message if already at the
+  bottom; otherwise shows a "↓ New messages" pill.
+- 🔍 search-within-channel filter in the sub-channel header.
+- Viewing a channel calls `markRead`, clearing its unread badge.
+
+**Known limitation:** no Report/moderation — deliberate, per the owner,
+since there's no backend to act on reports.
+
+**Verified:** full test suite (`npm test`, 304/304) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
