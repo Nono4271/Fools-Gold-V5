@@ -18,6 +18,7 @@ import GameBar from "./components/game/GameBar.jsx";
 import Leaderboard from "./components/game/Leaderboard.jsx";
 import CrewPanel from "./components/game/CrewPanel.jsx";
 import ChatPanel from "./components/game/ChatPanel.jsx";
+import ChatPreview from "./components/game/ChatPreview.jsx";
 import CommanderScreen from "./components/screens/CommanderScreen.jsx";
 import BagScreen from "./components/screens/BagScreen.jsx";
 import { PerfOverlay } from "./utils/perfLog.jsx";
@@ -27,9 +28,12 @@ export default function GameView(props) {
     ZOOM_LEVELS, abandonFort, startFortRemoval, cancelFortRemoval, aiFaction, aiHqKeys, aiHqKeysRef, aiLastActionRef,
     aiPlayerIdMapRef, assignTroops, atkKey, autoHeal, bLog, barracksPool, battles, bldgs,
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
-    chatChannels, chatKnownPlayerIds, chatOpen, chatProfanityFilterEnabled,
+    chatChannels, chatKnownPlayerIds, chatOpen, chatProfanityFilterEnabled, chatNormalizedCrews,
+    chatRecentMessages,
     getChatMessages, sendChatMessage, setChatOpen, setChatProfanityFilterEnabled,
     startChatDm, startChatGroup,
+    relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
+    relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, crews, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
@@ -595,6 +599,16 @@ export default function GameView(props) {
         />
       )}
 
+      {!chatOpen && (
+        <ChatPreview
+          onOpen={() => setChatOpen(true)}
+          playerId="player"
+          messages={chatRecentMessages}
+          crews={chatNormalizedCrews}
+          profanityFilterEnabled={chatProfanityFilterEnabled}
+        />
+      )}
+
       {chatOpen && (
         <ChatPanel
           onClose={() => setChatOpen(false)}
@@ -606,9 +620,21 @@ export default function GameView(props) {
           startGroup={startChatGroup}
           getMessages={getChatMessages}
           knownPlayerIds={chatKnownPlayerIds}
-          crews={crews}
+          crews={chatNormalizedCrews}
           profanityFilterEnabled={chatProfanityFilterEnabled}
           setProfanityFilterEnabled={setChatProfanityFilterEnabled}
+          nameOf={relationsNameOf}
+          friends={relFriends}
+          blocked={relBlocked}
+          incoming={relIncoming}
+          outgoing={relOutgoing}
+          addFriend={relAddFriend}
+          declineIncoming={relDeclineIncoming}
+          cancelOutgoing={relCancelOutgoing}
+          unfriend={relUnfriend}
+          blockPlayer={relBlockPlayer}
+          unblockPlayer={relUnblockPlayer}
+          search={relSearch}
         />
       )}
 

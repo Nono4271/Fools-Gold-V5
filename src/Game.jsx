@@ -25,12 +25,10 @@ import { useUpgrades } from "./hooks/useUpgrades.js";
 import { useGameLoop } from "./hooks/useGameLoop.js";
 import { usePathfinding } from "./hooks/usePathfinding.js";
 import { useServerSync } from "./hooks/useServerSync.js";
-import { getOrCreatePlayerId, getOrCreateSessionId } from "./utils/playerIdentity.js";
 import { useBattle } from "./hooks/useBattle.js";
 import { useGacha } from "./hooks/useGacha.js";
 import { useTomes } from "./hooks/useTomes.js";
 import { useFortRemovals } from "./hooks/useFortRemovals.js";
-import { marchStaminaCost } from "../shared/utils/tactics.js";
 import { isDoubleTap } from "../shared/utils/doubleTap.js";
 import { useVoidTap } from "./hooks/useVoidTap.js";
 import { useTroopSlots } from "./hooks/useTroopSlots.js";
@@ -40,6 +38,8 @@ import { useTileTimers } from "./hooks/useTileTimers.js";
 import { useTacticTicks } from "./hooks/useTacticTicks.js";
 import { useAiCrews } from "./hooks/useAiCrews.js";
 import { useChat } from "./hooks/useChat.js";
+import { useRelations } from "./hooks/useRelations.js";
+import { aiDisplayName } from "../shared/utils/aiChatter.js";
 import { useReinforcements } from "./hooks/useReinforcements.js";
 import { useTactics } from "./hooks/useTactics.js";
 import { useMapInit } from "./hooks/useMapInit.js";
@@ -171,11 +171,8 @@ export default function RiseToWar() {
   }, []);
 
   const [mapReady, setMapReady] = useState(false);
-  // Stable session ID — persisted (localStorage), or the logged-in account's
-  // last known session (see playerIdentity.js), so reloading — or logging in
-  // from another browser — resumes the same in-progress game instead of
-  // starting a fresh random session every load.
-  const [sessionId] = useState(() => getOrCreateSessionId());
+  // Stable session ID — generated once per browser session
+  const [sessionId] = useState(() => `fg-${Math.random().toString(36).slice(2,10)}`);
   const [loadPct,  setLoadPct]  = useState(0);
   const [loadLabel,setLoadLabel]= useState("Generating world...");
   const [playerHqKey, setPlayerHqKey] = useState(null);
@@ -696,7 +693,7 @@ export default function RiseToWar() {
 
   // ── Dragon eggs, training/gather orders, stamina — rules in shared/utils/tactics.js ──
   useTacticTicks({
-    screen, dragonEggsCap, setDragonEggs, setCmds, setPlayerCmds, setAiCmds, setRss,
+    screen, dragonEggsCap, setDragonEggs, setCmds, setPlayerCmds, setRss,
     tilesMapRef, trainingXpMult, staminaMaxRef, floaty,
   });
 
@@ -738,37 +735,39 @@ export default function RiseToWar() {
   const chatKnownPlayerIds = useMemo(() => [...aiPlayerIdMapRef.current.values()], [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
   const {
     channels: chatChannels, sendMessage: sendChatMessage, startDm: startChatDm,
-    startGroup: startChatGroup, getMessages: getChatMessages,
+    startGroup: startChatGroup, getMessages: getChatMessages, getRecentMessages: getChatRecentMessages,
     profanityFilterEnabled: chatProfanityFilterEnabled,
     setProfanityFilterEnabled: setChatProfanityFilterEnabled,
+    normalizedCrews: chatNormalizedCrews,
   } = useChat({
     screen, playerId: "player", playerName: facName, playerFacKey: facKey,
     crews, aiPlayerIds: chatKnownPlayerIds,
   });
 
+  // Last couple of messages across every chat channel, for the closed-state
+  // mini preview (ChatPreview.jsx) — recomputed whenever chat messages change.
+  const chatRecentMessages = getChatRecentMessages(2);
+
+  // ── Relations — friends/blacklist, reached from ChatPanel's Direct display;
+  // rules in shared/utils/relationsRules.js. Local-only (see useRelations.js).
+  const relationsNameOf = useCallback(
+    (id) => (id === "player" ? facName : aiDisplayName(id)),
+    [facName]
+  );
+  const {
+    friends: relFriends, blocked: relBlocked, incoming: relIncoming, outgoing: relOutgoing,
+    addFriend: relAddFriend, declineIncoming: relDeclineIncoming, cancelOutgoing: relCancelOutgoing,
+    unfriend: relUnfriend, blockPlayer: relBlockPlayer, unblockPlayer: relUnblockPlayer,
+    search: relSearch,
+  } = useRelations({ playerId: "player", knownPlayerIds: chatKnownPlayerIds, nameOf: relationsNameOf });
+
   // ── Server sync — authoritative tile state ──
-  // Roadmap item 5: give the server a starting region (around the player's
-  // HQ) instead of it dumping every mutable tile in the world to a joining
-  // client — see useServerSync's GAME_INIT `viewport` field and
-  // server/index.js's handleGameInit/sendSessionState.
-  const INITIAL_VIEWPORT_RADIUS = 50;
-  // A stable per-browser id so the server can tell this connection apart
-  // from another one in the same session — see src/utils/playerIdentity.js.
-  const playerId = useMemo(() => getOrCreatePlayerId(), []);
   const { emitTileCapture, emitTileSiege, emitFortUpdate, connected: serverConnected } = useServerSync({
     screen,
     tiles,
     mapReady,
     patchTile,
     sessionId,
-    playerId,
-    // Roadmap item 3: lets useServerSync track the player's pan/zoom and
-    // send VIEWPORT_SUB as they move, instead of only once at the start.
-    panRef, zoomRef,
-    initialViewport: {
-      minC: HQP.player.c - INITIAL_VIEWPORT_RADIUS, maxC: HQP.player.c + INITIAL_VIEWPORT_RADIUS,
-      minR: HQP.player.r - INITIAL_VIEWPORT_RADIUS, maxR: HQP.player.r + INITIAL_VIEWPORT_RADIUS,
-    },
   });
   const { tickAiRss, tickAiMarch, tickAiEcon } = useAI({
     aiFactionKeys,
@@ -1127,7 +1126,7 @@ export default function RiseToWar() {
     }
 
     // Stamina check: moves cost 10, attacks cost 20
-    const staminaCost = marchStaminaCost(type);
+    const staminaCost = type === "attack" ? 20 : 10;
     const curStamina = freshCmd.stamina ?? staminaMax;
     if (curStamina < staminaCost) {
       floaty(`⚡ Not enough stamina! (${curStamina}/${staminaMax})`, "#cc8030", freshCmd.tk);
@@ -1456,7 +1455,10 @@ export default function RiseToWar() {
     ZOOM_LEVELS, abandonFort, startFortRemoval, cancelFortRemoval, aiFaction, aiHqKeys, aiHqKeysRef, aiLastActionRef,
     aiPlayerIdMapRef, assignTroops, atkKey, autoHeal, bLog, barracksPool, battles, bldgs,
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
-    chatChannels, chatKnownPlayerIds, chatOpen, chatProfanityFilterEnabled,
+    chatChannels, chatKnownPlayerIds, chatOpen, chatProfanityFilterEnabled, chatNormalizedCrews,
+    chatRecentMessages,
+    relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
+    relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, crews, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
