@@ -1597,19 +1597,22 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     // not fudges to fake centering. scale/yScale/xScale are for sizing only.
     orcs:           { xOff:  0,  yOff:  0, scale: 1.20, yScale: 1.00 },
     ai:             { xOff:  0,  yOff:  0, scale: 1.20, yScale: 1.00 },
-    // Dragons/nightcreatures/ashen dead: bumped up a size step.
-    dragons:        { xOff:  0,  yOff:  0, scale: 1.30, yScale: 1.00 },
-    // Wizard art has ~37% dead transparent space top+bottom, which made it
-    // read as short/squished — yScale stretches it back to a proper height;
-    // xScale widens it independently since the silhouette was reading too
-    // narrow/tall after the vertical stretch.
-    wizards:        { xOff:  0,  yOff:  0, scale: 1.24, yScale: 1.34, xScale: 1.22 },
-    // Holyknights/coldborns: nudged down-left (toward the diamond's
-    // bottom-left corner) a smidge, no size change.
-    holyknights:    { xOff: -8,  yOff:  6, scale: 1.14, yScale: 1.00 },
-    nightcreatures: { xOff:  0,  yOff:  0, scale: 1.30, yScale: 1.00 },
+    // Dragons: sized up again, plus nudged toward the diamond's bottom-left
+    // corner like the others below.
+    dragons:        { xOff: -10, yOff:  8, scale: 1.42, yScale: 1.00 },
+    // Wizard: was reading too big and overhanging on the left after the
+    // xScale widen — pulled scale/xScale back down and shifted right to
+    // pull the left edge in.
+    wizards:        { xOff:  6,  yOff:  0, scale: 1.18, yScale: 1.34, xScale: 1.14 },
+    // Coldborns: confirmed good, untouched.
     coldborns:      { xOff: -8,  yOff:  6, scale: 1.16, yScale: 1.00 },
-    ashen_dead:     { xOff:  0,  yOff:  0, scale: 1.30, yScale: 1.00 },
+    // Holyknights: still needs to sit further toward the bottom-left corner
+    // — pushed further than the last pass.
+    holyknights:    { xOff: -16, yOff: 12, scale: 1.14, yScale: 1.00 },
+    // Nightcreatures ("Creature of the Night"): nudged toward bottom-left.
+    nightcreatures: { xOff: -10, yOff:  8, scale: 1.30, yScale: 1.00 },
+    // Ashen dead: nudged toward bottom-left.
+    ashen_dead:     { xOff: -10, yOff:  8, scale: 1.30, yScale: 1.00 },
   };
   const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0, yScale: 1.0 };
 
