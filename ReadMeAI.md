@@ -705,9 +705,11 @@ change.
   for yourself) rather than crewmate-to-crewmate — see the TODO in the
   2026-09-21 session 16 entry below; fix this once real multiplayer exists.
   Diplomacy and Level are real, built tabs now — see the 2026-09-21 session
-  20 and 24 entries below. Cooperation/Records tabs are still "coming soon"
-  stubs; Records is scoped (not built) as of session 25 below, blocked on
-  real multiplayer the same way Crew Help is.
+  20 and 24 entries below. Cooperation and Records tabs are still "coming
+  soon" stubs; both are scoped (not built) as of sessions 25/26 below —
+  Records is a Keep-capture log/leaderboard, Cooperation is a Rally (join a
+  crewmate's march on a Keep) — blocked on real multiplayer the same way
+  Crew Help is.
   The rally target is a text label only — not yet tied to an actual map tile.
 - **Gear:** inventory, slots, rarity, rolled stats, equipping, gacha drops and
   battle/stat application exist. The planned gear rework still needs an
@@ -2266,6 +2268,83 @@ Scoped, not built, this session:
    the other.
 
 No files changed besides this log and the section 4 roadmap line above.
+
+**Verified:** no code touched; test suite/build unaffected.
+
+## 2026-09-21 — Claude (Sonnet), session 26
+
+### Documentation only — Cooperation tab named "Rally", design scoped, held pending real multiplayer (no code changed)
+
+Owner named the Cooperation tab **Rally** and asked for research into how
+"Rally" works in games like *Game of War* / *Lord of the Rings: Rise to
+War* before scoping it. Researched (sources: [Game of War Wiki –
+Rallying](https://gow-fireage.fandom.com/wiki/Rallying), [HBO Games Support
+– Rally Overview](https://hbogamessupport.wbgames.com/hc/en-us/articles/360001088408-Rally-Overview))
+and scoped the design against this codebase:
+
+1. **The genre pattern:** a crewmate becomes rally leader, picks a valid
+   target, sets a join window (minutes to hours). Other crewmates join by
+   marching their own army toward the rally during that window — each
+   reserves a slot the moment they commit troops, and can still recall
+   before the window closes; once it closes only the leader can cancel.
+   Capacity is capped (by the leader's building level in most of these
+   games). When the window expires, every joined army combines into **one
+   attack** on the target, not separate fights. Personal buffs stay
+   personal — they only apply to that player's own troops within the
+   combined force.
+2. **Mapped onto this codebase:** the target should be the crew's pinned
+   Rally Target (`crew.rallyTarget` label, founder/officer-set — session
+   19 already scoped this as needing a real Objectives/map-pin system, not
+   raw tile-selection) pointed at a world-map Keep. This is the exact
+   "group effort" siege Records (session 25 above) was scoped around — a
+   Rally's joined armies are what would generate the multiple
+   defender-damage/siege-damage entries Records sums per capture. So Rally
+   is the mechanism, Records is the log of what it produced; build them
+   together, not independently.
+3. **Held, not built, same reason as Records and Crew Help:** there is
+   exactly one real player today (`"player"`); joining a crewmate's rally
+   with a second real army is meaningless until real multiplayer exists.
+   Building a fake single-player version (e.g. auto-combining your own
+   armies) would invent behavior the real feature doesn't have and would
+   need throwing away later, so this stays documentation-only per the
+   owner's call.
+
+No files changed besides this log and the section 4 roadmap line above.
+
+**Verified:** no code touched; test suite/build unaffected.
+
+## 2026-09-21 — Claude (Sonnet), session 27
+
+### Documentation only — Rally mechanic fully specified (no code changed)
+
+Owner locked down the actual Rally rules, refining session 26's genre
+research into this game's exact design:
+
+- **Target confirmed:** Keeps.
+- **Who can initiate:** founder or an officer — same permission tier as
+  Diplomacy and the existing Rally Target label (`isFounderOrOfficer()` in
+  `shared/utils/crewRules.js`), not any member.
+- **Capacity:** leader + 4 more armies, 5 total.
+- **Control on timer expiry:** the whole combined force comes under the
+  founder's control, as if it were his own single army — contributing
+  crewmates don't keep independent control of their troops once the rally
+  fires.
+- **Early end:** the leader can end the rally before the timer expires and
+  immediately assume control of whatever armies are already stationed in
+  it at that moment (doesn't need to wait for a full 5).
+- **Stamina:** the rally moves/acts at the stamina of its *weakest*
+  contributing army — the lowest stamina among all joined armies caps what
+  the combined force can still do, not an average or the leader's own.
+- **Leader control while active:** the leader can rearrange (reorder) or
+  dismiss individual armies from the rally both while the join timer is
+  still running and after taking control post-timer/post-early-end.
+
+This is now a complete spec, not just genre research — still not built,
+same multiplayer blocker as session 26: joining with a second real army
+needs other real players first. Whoever builds this should treat the bullet
+list above as the acceptance criteria.
+
+No files changed besides this log.
 
 **Verified:** no code touched; test suite/build unaffected.
 

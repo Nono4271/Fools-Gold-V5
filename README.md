@@ -1,22 +1,22 @@
-# Session 25 — Records tab scoped (documentation only, no code)
+# Session 27 — Rally mechanic fully specified (documentation only, no code)
 
 ## What changed
-- `ReadMeAI.md` — added the session 25 log entry and updated the section 4
-  roadmap line (Diplomacy/Level are now real tabs; Records is scoped but
-  held).
+- `ReadMeAI.md` — added the session 27 entry locking down the exact Rally
+  rules (this replaces session 26's genre research with your actual spec).
 
-## Why no code
-Records targets world-map Keeps, which have no crew-ownership or
-"who attacked this" tracking today. Ranking "active participants" only
-makes sense once real multiplayer exists (other real crewmates, not just
-AI), so this is held the same way Crew Help was — scoped now, built later.
+## The locked spec
+- Target: Keeps.
+- Founder or officer only can initiate a rally.
+- Capacity: leader + 4 more armies (5 total).
+- On timer expiry: founder gets full control of the combined force, as if
+  it were his own army.
+- Leader can end the rally early and take control of whatever's stationed
+  at that moment.
+- The rally's stamina = its weakest contributing army's stamina.
+- Leader can rearrange or dismiss armies from the rally, both while the
+  join timer is running and after taking control.
 
-## What's decided for the eventual build
-- Target: world-map Keep tiles (`isKeep`, powerLevel ≥10) — not Crew
-  Fortresses.
-- Two tracked numbers per capture, each a **sum across every attack**:
-  total damage to defenders (combat damage) and total siege damage
-  (siege-power hits). Siege runs higher since it doesn't cost troops and
-  can repeat, limited only by stamina.
-- Blocked on real multiplayer before it can mean anything with more than
-  one real participant.
+## Still held
+Same reason as sessions 25/26: needs real multiplayer before a second real
+army can actually join. This is now a complete, buildable spec waiting on
+that.
