@@ -12,6 +12,9 @@ import { censorText } from "../../../shared/utils/profanity.js";
 ───────────────────────────────────────────────────────────────────────────── */
 
 const TEXT_XS = { fontFamily: "'Cinzel',serif", fontSize: 7, letterSpacing: ".04em" };
+// Sender name + "[ABBR] Name" tag — 1.5x TEXT_XS, matching ChatPanel.jsx's
+// own TEXT_NAME bump.
+const TEXT_NAME = { fontFamily: "'Cinzel',serif", fontSize: 10.5, letterSpacing: ".03em", fontWeight: 600 };
 const GOLD    = "#c8a060";
 
 function crewAbbrFor(id, crews) {
@@ -53,9 +56,9 @@ export default memo(function ChatPreview({
           const text = profanityFilterEnabled ? censorText(m.text) : m.text;
           return (
             <div key={m.id} style={{ display: "flex", gap: 4, alignItems: "baseline", overflow: "hidden" }}>
-              <span style={{ ...TEXT_XS, color: mine ? "#40cc80" : GOLD, flexShrink: 0 }}>{name}:</span>
+              <span style={{ ...TEXT_NAME, color: mine ? "#40cc80" : GOLD, flexShrink: 0 }}>{name}:</span>
               <span style={{
-                fontFamily: "'Crimson Pro',serif", fontSize: 10, color: "#a8a090",
+                fontFamily: "'Crimson Pro',serif", fontSize: 15, color: "#a8a090",
                 whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
               }}>{text}</span>
             </div>

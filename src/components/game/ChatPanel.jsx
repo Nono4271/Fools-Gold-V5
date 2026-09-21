@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, memo } from "react";
 import { aiDisplayName } from "../../../shared/utils/aiChatter.js";
+import { aiFactionOf } from "../../../shared/utils/chatRules.js";
 import { censorText } from "../../../shared/utils/profanity.js";
 import {
   subchannelsOf, subchannelId, canManageSubchannels, canPostInSubchannel,
@@ -44,10 +45,18 @@ const BORDER_COL = "#1a2030";
 const GOLD       = "#c8a060";
 const TEXT_SM    = { fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: ".04em" };
 const TEXT_XS    = { fontFamily: "'Cinzel',serif", fontSize: 7, letterSpacing: ".04em" };
+// Message sender name + "[ABBR] Name" crew tag — 1.5x TEXT_XS, and a hair
+// bolder so it holds up at the bigger size.
+const TEXT_NAME  = { fontFamily: "'Cinzel',serif", fontSize: 10.5, letterSpacing: ".03em", fontWeight: 600 };
 
 // Two top-level displays, per the owner's spec: "Chats" (World/Faction/Guild,
 // with groups created and listed below Guild) and "Direct" (Relations
-// Management entry + DM channels). Replaces the old flat 5-tab bar.
+// Management entry + DM channels). Replaces the old flat 5-tab bar. Warm
+// parchment/ember scheme, sized up from the original 7px Cinzel — the small
+// caps serif was hard to read at that size.
+const TAB_FONT   = { fontFamily: "'Crimson Pro',serif", fontSize: 13, fontWeight: 700, letterSpacing: ".02em" };
+const TAB_ACTIVE_COL   = "#f0c878";
+const TAB_INACTIVE_COL = "#a89878";
 const DISPLAYS = [
   { id: "chats",  label: "Chats" },
   { id: "direct", label: "Direct" },
@@ -62,9 +71,20 @@ function displayName(id, playerId, playerName, crews) {
 
 // The crew (if any) `id` belongs to, for the "[ABBR] Name" message tag —
 // crews already carry a 4-char `abbr` (see CrewPanel.jsx/aiCrews.js).
+function crewFor(id, crews) {
+  return (crews || []).find(c => (c.members || []).includes(id)) || null;
+}
 function crewAbbrFor(id, crews) {
-  const crew = (crews || []).find(c => (c.members || []).includes(id));
-  return crew ? crew.abbr : null;
+  return crewFor(id, crews)?.abbr || null;
+}
+
+// Best-effort faction label for the name popup's profile view — an AI id's
+// shape gives it away directly (aiFactionOf); otherwise fall back to a
+// shared crew's own `.faction` (covers Nyro, who has no id-shape faction of
+// his own — shared/constants/nyro.js — but always shares the player's crew).
+function factionLabelFor(id, crews) {
+  const fk = aiFactionOf(id) || crewFor(id, crews)?.faction;
+  return fk ? fk.charAt(0).toUpperCase() + fk.slice(1) : "Unknown";
 }
 
 function taggedName(name, abbr) {
@@ -102,6 +122,31 @@ function SubchannelRows({ subChannels, activeSubId, onSelect }) {
           {s.leaderOnly && <span style={{ flexShrink: 0, marginLeft: 4 }}>🔒</span>}
         </button>
       ))}
+    </div>
+  );
+}
+
+function NameMenuBtn({ onClick, tone = "neutral", children }) {
+  const palette = {
+    neutral: { bg: "rgba(255,255,255,.04)", border: "#2a3040", color: "#c8c0b0" },
+    good:    { bg: "rgba(40,160,80,.15)",   border: "#40aa6050", color: "#40cc80" },
+    bad:     { bg: "rgba(160,40,40,.15)",   border: "#602020",  color: "#cc6060" },
+    gold:    { bg: "rgba(200,160,96,.12)",  border: "#c8a06050", color: GOLD },
+  }[tone];
+  return (
+    <button onClick={onClick} style={{
+      ...BTN_RESET, padding: "9px 0", borderRadius: 4, textAlign: "center",
+      ...TEXT_SM, fontSize: 11,
+      background: palette.bg, border: `1px solid ${palette.border}`, color: palette.color,
+    }}>{children}</button>
+  );
+}
+
+function ProfileRow({ label, value }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+      <span style={{ ...TEXT_XS, fontSize: 9, color: "#5a6a7a" }}>{label}</span>
+      <span style={{ ...TEXT_SM, fontSize: 11, color: "#c8c0b0", textAlign: "right" }}>{value}</span>
     </div>
   );
 }
@@ -150,6 +195,12 @@ export default memo(function ChatPanel({
   const [groupName, setGroupName] = useState("");
   const [relationsOpen, setRelationsOpen] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  // Clicking a sender's name in the message list opens a small popup —
+  // "menu" (Add/Remove Friend, Block/Unblock, View Profile) or "profile"
+  // (a lightweight read-only card: name, crew, faction, relation status —
+  // there's no dedicated profile screen elsewhere in the game yet).
+  const [nameMenuId, setNameMenuId] = useState(null);
+  const [nameMenuView, setNameMenuView] = useState("menu");
 
   const worldCh  = channels.filter(c => c.type === "world");
   const factionCh = channels.filter(c => c.type === "faction");
@@ -207,6 +258,12 @@ export default memo(function ChatPanel({
   function insertEmoji(e) {
     setDraft(prev => (prev.length + e.length > 280 ? prev : prev + e));
   }
+
+  function openNameMenu(id) {
+    if (!id || id === playerId) return; // no self-actions on your own name
+    setNameMenuId(id); setNameMenuView("menu");
+  }
+  function closeNameMenu() { setNameMenuId(null); }
 
   function handleAddSub(name) {
     if (active.type === "crew") onManageCrewSubchannels?.(active.crewId, { type: "add", name });
@@ -309,10 +366,10 @@ export default memo(function ChatPanel({
       <div style={{ display: "flex", borderBottom: `1px solid ${BORDER_COL}`, flexShrink: 0 }}>
         {DISPLAYS.map(d => (
           <button key={d.id} onClick={() => switchDisplay(d.id)} style={{
-            ...BTN_RESET, flex: 1, padding: "9px 0", ...TEXT_XS,
-            color: display === d.id ? GOLD : "#4a5a6a",
-            borderBottom: display === d.id ? `2px solid ${GOLD}` : "2px solid transparent",
-            background: display === d.id ? "rgba(200,160,96,.06)" : "none",
+            ...BTN_RESET, flex: 1, padding: "11px 0", ...TAB_FONT,
+            color: display === d.id ? TAB_ACTIVE_COL : TAB_INACTIVE_COL,
+            borderBottom: display === d.id ? `3px solid ${TAB_ACTIVE_COL}` : "3px solid transparent",
+            background: display === d.id ? "rgba(232,160,64,.12)" : "rgba(255,255,255,.02)",
           }}>{d.label}</button>
         ))}
       </div>
@@ -495,14 +552,21 @@ export default memo(function ChatPanel({
                   const text = profanityFilterEnabled ? censorText(m.text) : m.text;
                   return (
                     <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
-                      <div style={{ ...TEXT_XS, color: mine ? "#40cc80" : "#6a8aa0", marginBottom: 2 }}>
+                      <div
+                        onClick={() => openNameMenu(m.senderId)}
+                        style={{
+                          ...TEXT_NAME, color: mine ? "#40cc80" : "#6a8aa0", marginBottom: 2,
+                          cursor: mine ? "default" : "pointer",
+                          textDecoration: mine ? "none" : "underline", textDecorationColor: "transparent",
+                        }}
+                      >
                         {taggedName(mine ? "You" : m.senderName, crewAbbrFor(m.senderId, crews))}
                       </div>
                       <div style={{
                         maxWidth: "85%", padding: "6px 9px", borderRadius: 6,
                         background: mine ? "rgba(40,160,80,.12)" : "rgba(255,255,255,.04)",
                         border: `1px solid ${mine ? "#40aa6040" : "#1e2028"}`,
-                        color: "#c8c0b0", fontSize: 10.5, fontFamily: "'Crimson Pro',serif", lineHeight: 1.4,
+                        color: "#c8c0b0", fontSize: 16, fontFamily: "'Crimson Pro',serif", lineHeight: 1.4,
                         wordBreak: "break-word",
                       }}>{text}</div>
                     </div>
@@ -566,6 +630,72 @@ export default memo(function ChatPanel({
           )}
         </div>
       </div>
+
+      {/* Name popup — tap a sender's name in the message list to open this.
+          "menu" offers Add/Remove Friend, Block/Unblock, View Profile;
+          "profile" is a lightweight read-only card (no dedicated profile
+          screen exists elsewhere in the game yet). */}
+      {nameMenuId && (
+        <div
+          onClick={closeNameMenu}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9700,
+            background: "rgba(0,0,0,.55)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{
+            width: 240, background: PANEL_BG, border: `1px solid ${BORDER_COL}`,
+            borderRadius: 8, padding: 14, boxShadow: "0 8px 30px rgba(0,0,0,.7)",
+          }}>
+            {nameMenuView === "menu" ? (
+              <>
+                <div style={{ ...TEXT_NAME, fontSize: 13, color: GOLD, marginBottom: 10, textAlign: "center" }}>
+                  {taggedName(resolveName(nameMenuId), crewAbbrFor(nameMenuId, crews))}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <NameMenuBtn tone="gold" onClick={() => setNameMenuView("profile")}>👤 View Profile</NameMenuBtn>
+                  {blocked.includes(nameMenuId) ? (
+                    <NameMenuBtn tone="good" onClick={() => { unblockPlayer(nameMenuId); closeNameMenu(); }}>✅ Unblock</NameMenuBtn>
+                  ) : (
+                    <>
+                      {friends.includes(nameMenuId) ? (
+                        <NameMenuBtn onClick={() => { unfriend(nameMenuId); closeNameMenu(); }}>✖ Remove Friend</NameMenuBtn>
+                      ) : (
+                        <NameMenuBtn tone="good" onClick={() => { addFriend(nameMenuId); closeNameMenu(); }}>🤝 Add Friend</NameMenuBtn>
+                      )}
+                      <NameMenuBtn tone="bad" onClick={() => { blockPlayer(nameMenuId); closeNameMenu(); }}>🚫 Block</NameMenuBtn>
+                    </>
+                  )}
+                  <NameMenuBtn onClick={closeNameMenu}>Cancel</NameMenuBtn>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <button onClick={() => setNameMenuView("menu")} style={{
+                    ...BTN_RESET, color: "#8a9aaa", fontSize: 16, padding: "0 4px",
+                  }}>‹</button>
+                  <div style={{ ...TEXT_SM, fontSize: 12, color: GOLD }}>Profile</div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+                  <ProfileRow label="Name" value={resolveName(nameMenuId)} />
+                  <ProfileRow label="Crew" value={
+                    crewFor(nameMenuId, crews)
+                      ? `[${crewFor(nameMenuId, crews).abbr}] ${crewFor(nameMenuId, crews).name}`
+                      : "No crew"
+                  } />
+                  <ProfileRow label="Faction" value={factionLabelFor(nameMenuId, crews)} />
+                  <ProfileRow label="Status" value={
+                    blocked.includes(nameMenuId) ? "Blocked" : friends.includes(nameMenuId) ? "Friend" : "Not connected"
+                  } />
+                </div>
+                <NameMenuBtn onClick={closeNameMenu}>Close</NameMenuBtn>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 });
