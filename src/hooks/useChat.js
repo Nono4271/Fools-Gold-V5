@@ -84,6 +84,18 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
 
   const getMessages = useCallback((channelId) => messages[channelId] || [], [messages]);
 
+  // Most recent messages across every channel the player sees, newest last —
+  // for the closed-state mini preview (ChatPreview.jsx) shown even while the
+  // chat panel itself is closed.
+  const getRecentMessages = useCallback((n = 2) => {
+    const channelIds = new Set(channels.map(c => c.id));
+    const all = Object.entries(messages)
+      .filter(([channelId]) => channelIds.has(channelId))
+      .flatMap(([, msgs]) => msgs);
+    all.sort((a, b) => a.ts - b.ts);
+    return all.slice(-n);
+  }, [messages, channels]);
+
   // ── Occasional AI flavor chatter so World/Faction/Crew don't feel dead ──────
   useEffect(() => {
     if (screen !== "game") return;
@@ -107,7 +119,11 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
   }, [screen, appendMessage]);
 
   return {
-    channels, sendMessage, startDm, startGroup, getMessages,
+    channels, sendMessage, startDm, startGroup, getMessages, getRecentMessages,
     profanityFilterEnabled, setProfanityFilterEnabled,
+    // Local player's membership normalized to their playerId (see
+    // normalizeCrewsForPlayer above) — ChatPanel.jsx needs this, not the raw
+    // `crews` prop, to correctly tag "player" messages with their crew abbr.
+    normalizedCrews: ctx.crews,
   };
 }
