@@ -733,11 +733,17 @@ change.
 - Chapter locks for map crossings/gates, the Holy Grail/endgame area, war
   declarations, major systems, objectives and events.
 - Crew 2.0 remaining: Boosts, Diplomacy (currently simulated-only, no real
-  gameplay effect), War Declaration, records/logs, a real map-tile pin for the
-  rally target, and true crewmate-to-crewmate Crew Help (today it's self-serve
-  — see the Crew 2.0 note under section 3). Roles, levels/XP, Store, Structures
-  (Crew Fortress build + full siege combat) and the headquarters/table screen
-  are done — see session 16 below.
+  gameplay effect), War Declaration, records/logs, and true crewmate-to-
+  crewmate Crew Help (today it's self-serve — see the Crew 2.0 note under
+  section 3). Roles, levels/XP, Store, Structures (Crew Fortress build + full
+  siege combat) and the headquarters/table screen are done — see session 16
+  below.
+- Rally Target, owner decision (session 19): NOT a bare map-tile pin. It
+  should point at a real Objectives/map-pin system that crew leadership
+  (founder/officer) sets — that system does not exist yet and must be built
+  first (objective data shape, who can set one, how it's placed on the map);
+  Rally Target then just displays/links to whatever leadership currently has
+  pinned. Do not wire Rally Target to raw tile-selection state as a shortcut.
 - World, faction and Crew chat.
 - Tutorial and task/progression framework.
 - Remaining gear rework decisions and implementation.
@@ -1982,6 +1988,117 @@ photo.
 
 **Verified:** full test suite (`npm test`, 352/352) and production build
 (`npm run build`) both pass.
+
+## 2026-09-21 — Claude (Sonnet), session 19
+
+### Documentation only — owner scoping decisions on 3 Crew HQ placeholders (no code changed)
+
+Owner reviewed the three "simplified placeholder" items flagged after session
+18 (Crew Help self-serve, Rally Target text-only, Emblem icon art) and scoped
+each rather than having any built this session:
+
+1. **Emblem icon art** — confirmed as a ChatGPT (image-gen) task, not a code
+   task. Already flagged with full generation spec in session 17's "TODO /
+   art upgrade idea" note above; no new code work needed until the owner
+   supplies the generated icon set, at which point `Emblem.jsx`'s
+   `ICON_PATHS` swap (inline SVG → PNG/CSS-mask) described there is the
+   follow-up.
+2. **Crew Help (self-serve → crewmate-to-crewmate)** — confirmed blocked on
+   real multiplayer/player identity existing at all (already flagged under
+   section 3/4 above and in session 16). No action until multiplayer lands.
+3. **Rally Target** — owner clarified the target design: it should be tied to
+   a real **Objectives/map-pin system set by crew leadership** (founder/
+   officer), not a raw map-tile click. That objectives/pin system is a new
+   feature with no code today and must be designed and built first; Rally
+   Target is then just a display/link onto it. Updated section 4's roadmap
+   line above to reflect this so a future pass doesn't wire Rally Target
+   directly to tile-selection state as a shortcut.
+
+No files changed besides this log and the section 4 roadmap line above.
+
+**Verified:** no code touched; test suite/build unaffected.
+
+## 2026-09-21 — Claude (Sonnet), session 20
+
+### Diplomacy built for real (owner spec, this session) — Ally/Neutral/Enemy standing, cosmetic tile-color only
+
+Owner design (verbatim spec, implemented as described, nothing invented
+beyond it): two views by role (founder/officer set standing toward every
+other crew; a plain member just sees what THEIR crew has flagged, or a
+flavor line if nothing's flagged). One-way — crew A flagging crew B ally
+does not make crew B see crew A as an ally. Purely cosmetic: changes tile/
+structure outline color only, no gameplay effect (an ally can still be
+attacked). Also: same-faction tiles change from orange to purple, freeing
+orange for "ally."
+
+**Data model (`shared/constants/crew.js`):** `CREW_DIPLOMACY_STATUS`
+(`ally`/`enemy` — no `neutral` constant, since neutral is simply no entry,
+never stored). `crew.diplomacy: { [otherCrewId]: "ally"|"enemy" }`, added to
+`createCrew()`'s default shape (so AI crews get it too, since
+`aiCrews.js` already builds crews through `createCrew()`).
+
+**Rules (`shared/utils/crewRules.js`, pure, same pattern as
+`setCrewTarget`/`clearCrewTarget`):** `canSetDiplomacy` (founder/officer,
+same tier as rally target) · `setDiplomacyStatus(crew, actorId, targetCrewId,
+status)` (no-ops if the actor lacks permission, the target is itself, or
+there's no targetCrewId; an invalid/`"neutral"` status deletes the entry
+rather than storing it) · `diplomacyStatusOf` · `flaggedDiplomacyCrews(crew,
+allCrews)` (resolves `crew.diplomacy` against the real crews list for the
+member read-only view — drops entries for a crew that no longer exists) ·
+`diplomacyPlayerIdSets(crew, allCrews)` (resolves the SAME crew's diplomacy
+map into `{allyIds, enemyIds}` playerId `Set`s, by walking each flagged
+crew's `members[]` — this is what map tile-coloring consumes, kept here and
+pure so `MapRenderer.jsx` doesn't need any diplomacy-specific logic of its
+own, just Set lookups).
+
+**UI (`src/components/game/crew/CrewDiplomacy.jsx`, new):** replaces the old
+`CrewComingSoon` stub on the Diplomacy tab. Founder/officer: every other
+crew in the game as a row (emblem, name, level/member count) with
+Ally/Neutral/Enemy buttons, highlighting the current status; a top note
+spells out "cosmetic, one-way, doesn't stop attacks." Plain member:
+read-only rows for only the crews `flaggedDiplomacyCrews` returns, each with
+a colored ALLY/ENEMY badge; empty state is the owner's exact line —
+"Diplomatic talks are still underway." No files/props elsewhere needed
+touching beyond threading `crews` and a new `onSetDiplomacy` callback down
+`CrewScreen.jsx` → `CrewHQ.jsx` → `CrewDiplomacy.jsx`, and wiring
+`onSetDiplomacy` in `GameView.jsx` (`setDiplomacyStatus` on the player's own
+crew via `setCrews`, same shape as the existing `onSetTarget`/
+`onClearTarget` handlers right above it).
+
+**Map tile-color (`src/MapRenderer.jsx`), the actual owner-requested
+behavior:** `ownerTint()` — the one function every tile/HQ-border draw call
+already routed through — gained a 6th param, `diplomacyPids`
+(`{allyIds, enemyIds}`). Priority order now: player green → crewmate blue →
+**ally orange `0xe87830` / enemy darker-red `0x8a1414` (new, checked against
+`diplomacyPids`, AI-owned tiles only)** → same-faction **purple `0xaa44ff`**
+(was orange `0xe87830` — the exact swap the owner asked for, and note this
+purple already matches `commanderIcons.js`'s existing same-faction color, so
+it's now consistent with how faction commander icons were already tinted)
+→ default red `0xdc3c28`. Threaded `diplomacyPids` through every call site
+that already threaded `crewPids` the same way: `drawAllTiles`,
+`_buildOneHQ`, `buildHQLayer`, and the main `MapRenderer` component (new
+`diplomacyPlayerIds` prop → `diplomacyPidsRef`, same ref-and-effect pattern
+as the existing `crewPidsRef`, triggering the same HQ-cache-clear + redraw
+on change). `Game.jsx` computes it once via a new `diplomacyPlayerIds`
+useMemo (`diplomacyPlayerIdSets(myCrew, crews)`, mirroring the existing
+`crewmatePlayerIds` useMemo right above it) and passes it through
+`GameView.jsx` to the main map `MapRenderer`. **Not threaded to `Minimap.jsx`
+or `WorldMap.jsx`** — those still only distinguish player/crewmate/enemy;
+flagging that as a known follow-up rather than silently leaving it half
+done. The one placeholder-fill `ownerTint()` call in `_buildOneHQ` (used
+only while an HQ sprite is still loading) was left on `crewPids=null` with
+no diplomacy arg either, matching its existing simplification.
+
+**Tests:** `tests/crewDiplomacy.test.js` (9, new) — default empty diplomacy
+map on `createCrew`, permission gating, ally/enemy/neutral-clears-the-entry,
+self-target and missing-target no-ops, one-way independence between two
+crews' own diplomacy objects, `flaggedDiplomacyCrews` dropping entries for a
+crew no longer in the list, and `diplomacyPlayerIdSets` building correct
+ally/enemy playerId Sets from real crew member lists (plus an empty-input
+no-throw case). `ownerTint`/`MapRenderer.jsx` itself has no direct unit test
+(Pixi-dependent, same as the rest of the renderer) — verified by full build
+only. Full suite: 361/361 (352 prior + 9 new). `npm run build` clean, 609
+modules transformed (import graph resolves, `CrewDiplomacy.jsx` included).
 
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
