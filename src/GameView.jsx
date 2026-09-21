@@ -35,8 +35,10 @@ export default function GameView(props) {
     chatRecentMessages,
     chatActiveDisplay, setChatActiveDisplay, chatActiveChannelId, setChatActiveChannelId,
     chatActiveSubId, setChatActiveSubId,
+    chatMutedChannelIds, chatToggleMute, chatReactions, chatToggleReaction, chatTypingByChannel,
+    chatUnreadCount, chatMarkRead,
     getChatMessages, sendChatMessage, setChatOpen, setChatProfanityFilterEnabled,
-    startChatDm, startChatGroup,
+    startChatDm, startChatGroup, leaveChatGroup,
     addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
@@ -645,6 +647,7 @@ export default function GameView(props) {
           messages={chatRecentMessages}
           crews={chatNormalizedCrews}
           profanityFilterEnabled={chatProfanityFilterEnabled}
+          unreadCount={chatUnreadCount}
         />
       )}
 
@@ -678,9 +681,14 @@ export default function GameView(props) {
           addGroupSubchannel={addGroupSubchannel}
           removeGroupSubchannel={removeGroupSubchannel}
           moveGroupSubchannel={moveGroupSubchannel}
+          leaveGroup={leaveChatGroup}
           activeDisplay={chatActiveDisplay} setActiveDisplay={setChatActiveDisplay}
           activeChannelId={chatActiveChannelId} setActiveChannelId={setChatActiveChannelId}
           activeSubId={chatActiveSubId} setActiveSubId={setChatActiveSubId}
+          mutedChannelIds={chatMutedChannelIds} toggleMute={chatToggleMute}
+          reactions={chatReactions} toggleReaction={chatToggleReaction}
+          typingByChannel={chatTypingByChannel}
+          markRead={chatMarkRead}
         />
       )}
 

@@ -742,7 +742,7 @@ export default function RiseToWar() {
   const chatKnownPlayerIdsWithNyro = useMemo(() => [NYRO_ID, ...chatKnownPlayerIds], [chatKnownPlayerIds]);
   const {
     channels: chatChannels, sendMessage: sendChatMessage, startDm: startChatDm,
-    startGroup: startChatGroup, getMessages: getChatMessages,
+    startGroup: startChatGroup, leaveGroup: leaveChatGroup, getMessages: getChatMessages,
     getActiveChannelMessages: getChatActiveChannelMessages,
     addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     profanityFilterEnabled: chatProfanityFilterEnabled,
@@ -751,6 +751,10 @@ export default function RiseToWar() {
     activeDisplay: chatActiveDisplay, setActiveDisplay: setChatActiveDisplay,
     activeChannelId: chatActiveChannelId, setActiveChannelId: setChatActiveChannelId,
     activeSubId: chatActiveSubId, setActiveSubId: setChatActiveSubId,
+    mutedChannelIds: chatMutedChannelIds, toggleMute: chatToggleMute,
+    reactions: chatReactions, toggleReaction: chatToggleReaction,
+    typingByChannel: chatTypingByChannel,
+    unreadCount: chatUnreadCount, markRead: chatMarkRead,
   } = useChat({
     screen, playerId: "player", playerName: facName, playerFacKey: facKey,
     crews, aiPlayerIds: chatKnownPlayerIds,
@@ -1469,9 +1473,11 @@ export default function RiseToWar() {
     aiPlayerIdMapRef, assignTroops, atkKey, autoHeal, bLog, barracksPool, battles, bldgs,
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
     chatChannels, chatKnownPlayerIds: chatKnownPlayerIdsWithNyro, chatOpen, chatProfanityFilterEnabled, chatNormalizedCrews,
-    chatRecentMessages, addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
+    chatRecentMessages, addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel, leaveChatGroup,
     chatActiveDisplay, setChatActiveDisplay, chatActiveChannelId, setChatActiveChannelId,
     chatActiveSubId, setChatActiveSubId,
+    chatMutedChannelIds, chatToggleMute, chatReactions, chatToggleReaction, chatTypingByChannel,
+    chatUnreadCount, chatMarkRead,
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
