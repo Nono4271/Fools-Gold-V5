@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { applyXp } from "./useMarch.js";
-import { regenEggs, regenStamina, gatherTick, trainingTick, EGG_REGEN_MS, STAMINA_REGEN_MS } from "../../shared/utils/tactics.js";
+import { regenEggs, regenStamina, gatherTick, trainingTick, EGG_REGEN_MS, STAMINA_REGEN_MS, AI_STAMINA_MAX } from "../../shared/utils/tactics.js";
 
 // Timed ticks: dragon-egg regen, training/gather orders, stamina regen.
 // Rules live in shared/utils/tactics.js.
@@ -11,7 +11,7 @@ import { regenEggs, regenStamina, gatherTick, trainingTick, EGG_REGEN_MS, STAMIN
 // silently lost that regen — both now use real elapsed time and also
 // catch up immediately when the tab regains focus.
 export function useTacticTicks({
-  screen, dragonEggsCap, setDragonEggs, setCmds, setPlayerCmds, setRss,
+  screen, dragonEggsCap, setDragonEggs, setCmds, setPlayerCmds, setAiCmds, setRss,
   tilesMapRef, trainingXpMult, staminaMaxRef, floaty,
 }) {
   const dragonEggsCapRef = useRef(dragonEggsCap);
@@ -67,7 +67,8 @@ export function useTacticTicks({
     return () => clearInterval(id);
   }, [screen, setCmds, setRss, setDragonEggs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Stamina: +1 every 3 min up to the current max.
+  // Stamina: +1 every 3 min up to the current max. AI commanders regen the same
+  // way (up to AI_STAMINA_MAX), using the same real-elapsed catch-up.
   const staminaLastTickRef = useRef(Date.now());
   useEffect(() => {
     if (screen !== "game") return;
@@ -77,6 +78,7 @@ export function useTacticTicks({
       const elapsed = now - staminaLastTickRef.current;
       staminaLastTickRef.current = now;
       setPlayerCmds(prev => prev.map(c => regenStamina(c, staminaMaxRef.current, elapsed)));
+      setAiCmds?.(prev => prev.map(c => regenStamina(c, AI_STAMINA_MAX, elapsed)));
     };
     const id = setInterval(tick, STAMINA_REGEN_MS);
     const onVisible = () => { if (document.visibilityState === "visible") tick(); };

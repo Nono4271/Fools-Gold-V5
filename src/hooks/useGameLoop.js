@@ -20,6 +20,7 @@
 //   onTick(now)                   — update nowTick (HUD countdowns)
 
 import { useEffect, useRef } from 'react';
+import { AI_STAMINA_MAX } from '../../shared/utils/tactics.js';
 
 export function useGameLoop({
   screen,
@@ -216,6 +217,7 @@ export function useGameLoop({
             march:             c.march ? { type: c.march.type } : null,
             ownerPlayerId:     c.ownerPlayerId || null,
             lvl:               c.lvl || 5,
+            stamina:           c.stamina ?? AI_STAMINA_MAX,
             unspentSkillPoints: c.unspentSkillPoints || 0,
           }))
         : [];

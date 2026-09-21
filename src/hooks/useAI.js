@@ -6,6 +6,7 @@
 import { useCallback } from "react";
 import { rssRate } from "../../shared/constants/buildings.js";
 import { effectiveMarchSpd, marchStepMs } from "../../shared/utils/pathfinding.js";
+import { AI_STAMINA_MAX, canAffordMarch, spendMarchStamina } from "../../shared/utils/tactics.js";
 
 export function useAI({
   aiFactionKeys,
@@ -79,6 +80,9 @@ const tickAiMarch = useCallback((dispatches) => {
   const eligible = dispatches.filter(({ uid, destKey }) => {
     const cmd = curCmds.find(c => c.uid === uid);
     if (!cmd || cmd.march) return false;
+    // Same stamina rule as the player: an attack costs 20 and is refused when
+    // the commander can't pay (stamina regens +1 per 3 min, see useTacticTicks).
+    if (!canAffordMarch(cmd, "attack", AI_STAMINA_MAX)) return false;
     return aiCanChallenge(cmd.lvl, curTiles?.[destKey]);
   });
   if (!eligible.length) return;
@@ -96,7 +100,7 @@ const tickAiMarch = useCallback((dispatches) => {
     for (const { requestId: uid, path } of results) {
       if (!path || path.length < 2) continue;
       const cmd = cmdsRef.current.find(c => c.uid === uid);
-      if (!cmd || cmd.march) continue;
+      if (!cmd || cmd.march || !canAffordMarch(cmd, "attack", AI_STAMINA_MAX)) continue;
       const stepMs = marchStepMs(effectiveMarchSpd(cmd.spd || 60, cmd.troopBranch));
       const destKey = destByUid[uid];
       updates.push({ uid, march: { type:"attack", path, step:0, dest:destKey, origin:cmd.tk, stepMs, startedAt:now, lastStepTime:now } });
@@ -107,8 +111,11 @@ const tickAiMarch = useCallback((dispatches) => {
       const next = p.map(c => {
         const upd = updates.find(u => u.uid === c.uid);
         if (!upd) return c;
+        // Re-check against the live commander: stamina may have been spent
+        // while the path was being computed. Deduct on dispatch, like the player.
+        if (!canAffordMarch(c, "attack", AI_STAMINA_MAX)) return c;
         changed = true;
-        return { ...c, march: upd.march };
+        return { ...spendMarchStamina(c, "attack", AI_STAMINA_MAX), march: upd.march };
       });
       return changed ? next : p;
     });
