@@ -14,14 +14,20 @@
  *   • On incoming TILE_PATCH, apply server patches via patchTile so all clients
  *     see consistent state.
  *   • Reconnect with exponential back-off on disconnect.
+ *   • Send a stable per-browser `playerId` on GAME_INIT so the server can
+ *     bind captures to this connection's own identity (playerIdentity.js).
+ *   • Poll pan/zoom (when `panRef`/`zoomRef` are passed) and send VIEWPORT_SUB
+ *     as the player moves, so a long session's view of the map stays fresh
+ *     beyond its starting region.
  *
  * Usage (in Game.jsx):
  *   const { emitTileCapture, emitTileSiege, connected } = useServerSync({
- *     screen, tiles, mapReady, patchTile, sessionId,
+ *     screen, tiles, mapReady, patchTile, sessionId, playerId, panRef, zoomRef,
  *   });
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { viewBoundsCR } from '../../shared/constants/geometry.js';
 
 // In dev: Vite proxies /ws → ws://localhost:3001 (see vite.config.ts)
 // In prod: set VITE_WS_URL env var to your deployed server, e.g. wss://yourdomain.com
@@ -73,7 +79,8 @@ function extractMutableState(tiles) {
   return mutable;
 }
 
-export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId, initialViewport }) {
+export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId, initialViewport, playerId, panRef, zoomRef }) {
+  const lastViewportRef = useRef(null); // last {minC,maxC,minR,maxR} sent via VIEWPORT_SUB
   const wsRef          = useRef(null);
   const [connected, setConnected] = useState(false);
   const backoffRef     = useRef(500);
@@ -181,6 +188,10 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId, i
             // not every mutable tile in the world — see server/index.js's
             // handleGameInit, which uses this to filter SESSION_STATE.
             viewport: initialViewport,
+            // Roadmap item: lets the server bind captures to this connection's
+            // own identity instead of trusting the client's claimed owner —
+            // see src/utils/playerIdentity.js and server/index.js's ws._playerId.
+            playerId,
           }));
         } else {
           // Map not ready yet; GAME_INIT will fire from the mapReady effect below
@@ -262,9 +273,50 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId, i
 
     sentInitRef.current = true;
     const mutableTiles = extractMutableState(tiles);
-    ws.send(JSON.stringify({ type: "GAME_INIT", sessionId, tiles: mutableTiles, viewport: initialViewport }));
+    ws.send(JSON.stringify({ type: "GAME_INIT", sessionId, tiles: mutableTiles, viewport: initialViewport, playerId }));
     console.log('[ServerSync] GAME_INIT sent — tiles:', Object.keys(tiles).length);
   }, [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Track the player's pan/zoom and send VIEWPORT_SUB as they move ──────────
+  // Roadmap item 3: the server already supported filtering a joining client's
+  // SESSION_STATE by viewport (VIEWPORT_SUB), but nothing sent updates as the
+  // player panned around after joining — so a long session only ever caught
+  // up on its *starting* region. Polled + throttled rather than wired to
+  // every pan event: panning fires on every pointer-move frame, and a tile
+  // region doesn't need sub-second freshness the way rendering does.
+  // Scope note: this only re-requests a snapshot for the newly visible area
+  // (what VIEWPORT_SUB already did) — it does NOT filter the ongoing
+  // TILE_PATCH broadcast, which still goes to every client regardless of
+  // their viewport. Filtering live patches by viewport is a bigger change
+  // (risk of a client missing an update to a tile it cares about for reasons
+  // beyond "currently on screen" — minimap, leaderboard, etc.) and is left
+  // for a follow-up, not done here.
+  useEffect(() => {
+    if (!panRef || !zoomRef) return; // caller didn't wire pan/zoom tracking
+
+    const VIEWPORT_POLL_MS = 3000;
+    const MOVE_THRESHOLD = 20; // tiles — ignore tiny pans/jitter
+
+    function meaningfullyMoved(prev, next) {
+      if (!prev) return true;
+      return Math.abs(next.minC - prev.minC) >= MOVE_THRESHOLD ||
+             Math.abs(next.minR - prev.minR) >= MOVE_THRESHOLD;
+    }
+
+    const interval = setInterval(() => {
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (!panRef.current || !zoomRef.current) return;
+
+      const bounds = viewBoundsCR(panRef.current, zoomRef.current, window.innerWidth, window.innerHeight, 10);
+      if (!meaningfullyMoved(lastViewportRef.current, bounds)) return;
+
+      lastViewportRef.current = bounds;
+      safeSend({ type: 'VIEWPORT_SUB', sessionId, ...bounds });
+    }, VIEWPORT_POLL_MS);
+
+    return () => clearInterval(interval);
+  }, [panRef, zoomRef, safeSend, sessionId]);
 
   return { emitTileCapture, emitTileSiege, emitFortUpdate, connected };
 }
