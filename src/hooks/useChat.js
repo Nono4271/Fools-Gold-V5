@@ -3,6 +3,10 @@ import {
   resolveChannelsFor, canPost, createMessage, createDmChannel, createGroupChannel,
 } from "../../shared/utils/chatRules.js";
 import { generateAiChatter } from "../../shared/utils/aiChatter.js";
+import {
+  subchannelId, parseSubchannelId, subchannelsOf, canPostInSubchannel,
+  addSubchannel, removeSubchannel, moveSubchannel,
+} from "../../shared/utils/subchannels.js";
 
 // LOCAL PERSISTENCE ONLY: this hook keeps all chat state (channels, messages)
 // in React state for the lifetime of the tab/session — nothing is written to
@@ -24,7 +28,13 @@ const AI_CHATTER_INTERVAL_MS = 45_000;
 function normalizeCrewsForPlayer(crews, playerId, playerFacKey) {
   return (crews || []).map(c => {
     if (!playerFacKey || !(c.members || []).includes(playerFacKey)) return c;
-    return { ...c, members: c.members.map(m => m === playerFacKey ? playerId : m) };
+    return {
+      ...c,
+      members: c.members.map(m => m === playerFacKey ? playerId : m),
+      // crew.founder (the crew "leader" — shared/utils/subchannels.js gates
+      // #Announcement and channel management on it) has the same quirk.
+      founder: c.founder === playerFacKey ? playerId : c.founder,
+    };
   });
 }
 
@@ -56,7 +66,26 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
   }, []);
 
   // ── Post a message as the local player ──────────────────────────────────────
+  // World/faction/dm post straight to their (flat) channel id. Crew/group
+  // channels are containers only, once sub-channels exist — a message
+  // targets a composite "<parentId>::<subId>" id (shared/utils/subchannels.js)
+  // instead, gated by canPostInSubchannel (container membership + a
+  // leader-only sub-channel's own check, e.g. #Announcement).
   const sendMessage = useCallback((channelId, text) => {
+    const parsed = parseSubchannelId(channelId);
+    if (parsed) {
+      const parentChannel = channels.find(c => c.id === parsed.parentId);
+      if (!parentChannel) return { ok: false, reason: "Unknown channel" };
+      const sub = subchannelsOf(parentChannel, ctx).find(s => s.id === parsed.subId);
+      if (!sub) return { ok: false, reason: "Unknown channel" };
+      if (!canPostInSubchannel(playerId, parentChannel, sub, ctx)) {
+        return { ok: false, reason: "Not allowed to post here" };
+      }
+      const msg = createMessage({ channelId, senderId: playerId, senderName: playerName, text, now: Date.now() });
+      if (!msg) return { ok: false, reason: "Empty message" };
+      appendMessage(msg);
+      return { ok: true, message: msg };
+    }
     const channel = channels.find(c => c.id === channelId);
     if (!channel) return { ok: false, reason: "Unknown channel" };
     if (!canPost(playerId, channel, ctx)) return { ok: false, reason: "Not allowed to post here" };
@@ -75,26 +104,50 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
   }, [playerId]);
 
   // ── Start a group chat with several known players ───────────────────────────
+  // The starter becomes the group's owner — the only one who can later
+  // add/manage its sub-channels (createGroupChannel seeds it with #General).
   const startGroup = useCallback((name, participantIds) => {
     const participants = [...new Set([playerId, ...(participantIds || [])])];
-    const channel = createGroupChannel(name, participants);
+    const channel = createGroupChannel(name, participants, { ownerId: playerId });
     setGroups(prev => [...prev, channel]);
     return channel;
   }, [playerId]);
 
+  // ── Group sub-channel add/remove/reorder — gated to the group's owner by
+  // ChatPanel.jsx before it ever calls these (see subchannels.js's
+  // canManageSubchannels), same trust boundary as sendMessage above. Crews
+  // manage theirs through GameView.jsx's manageCrewSubchannels instead,
+  // since crew data lives outside this hook.
+  const addGroupSubchannel = useCallback((groupId, name) => {
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, subChannels: addSubchannel(g.subChannels, name) } : g));
+  }, []);
+  const removeGroupSubchannel = useCallback((groupId, subId) => {
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, subChannels: removeSubchannel(g.subChannels, subId) } : g));
+  }, []);
+  const moveGroupSubchannel = useCallback((groupId, subId, direction) => {
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, subChannels: moveSubchannel(g.subChannels, subId, direction) } : g));
+  }, []);
+
   const getMessages = useCallback((channelId) => messages[channelId] || [], [messages]);
 
-  // Most recent messages across every channel the player sees, newest last —
-  // for the closed-state mini preview (ChatPreview.jsx) shown even while the
-  // chat panel itself is closed.
+  // Most recent messages across every channel the player sees (including
+  // every crew/group's sub-channels), newest last — for the closed-state
+  // mini preview (ChatPreview.jsx) shown even while the chat panel itself
+  // is closed.
   const getRecentMessages = useCallback((n = 2) => {
-    const channelIds = new Set(channels.map(c => c.id));
+    const channelIds = new Set();
+    for (const c of channels) {
+      channelIds.add(c.id);
+      if (c.type === "crew" || c.type === "group") {
+        for (const sub of subchannelsOf(c, ctx)) channelIds.add(subchannelId(c.id, sub.id));
+      }
+    }
     const all = Object.entries(messages)
       .filter(([channelId]) => channelIds.has(channelId))
       .flatMap(([, msgs]) => msgs);
     all.sort((a, b) => a.ts - b.ts);
     return all.slice(-n);
-  }, [messages, channels]);
+  }, [messages, channels, ctx]);
 
   // ── Occasional AI flavor chatter so World/Faction/Crew don't feel dead ──────
   useEffect(() => {
@@ -109,9 +162,20 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
       const seedBase = Date.now();
       const chatterCtx = { crews: normalizedCrews, aiPlayerIds: aiPlayerIds || [], now: Date.now() };
       // One shot at flavor chatter per channel per tick, silently skipped when
-      // no AI is eligible to speak there (e.g. an empty crew).
+      // no AI is eligible to speak there (e.g. an empty crew). A crew's
+      // chatter always lands in its #General sub-channel — AI never posts to
+      // a leader-only #Announcement, and there's no "AI officer" concept.
       chattyChannels.forEach((channel, i) => {
-        appendMessage(generateAiChatter(channel, chatterCtx, seedBase + i));
+        const msg = generateAiChatter(channel, chatterCtx, seedBase + i);
+        if (!msg) return;
+        if (channel.type === "crew") {
+          const subs = subchannelsOf(channel, { crews: normalizedCrews });
+          const general = subs.find(s => s.id === "general") || subs[0];
+          if (!general) return;
+          appendMessage({ ...msg, channelId: subchannelId(channel.id, general.id) });
+        } else {
+          appendMessage(msg);
+        }
       });
     };
     const id = setInterval(tick, AI_CHATTER_INTERVAL_MS);
@@ -120,6 +184,7 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
 
   return {
     channels, sendMessage, startDm, startGroup, getMessages, getRecentMessages,
+    addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     profanityFilterEnabled, setProfanityFilterEnabled,
     // Local player's membership normalized to their playerId (see
     // normalizeCrewsForPlayer above) — ChatPanel.jsx needs this, not the raw
