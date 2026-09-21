@@ -3,8 +3,9 @@
 // Each faction has 50 AI players, each with their own commander.
 // Economy (rss/bldgs/pool) is shared per-faction. March is per-commander.
 
-import { useCallback } from "react";
-import { rssRate } from "../../shared/constants/buildings.js";
+import { useCallback, useRef } from "react";
+import { aiResourceIncomeTick } from "../../shared/utils/resourceIncome.js";
+import { applyRssSpent } from "../../shared/utils/aiEconomy.js";
 import { effectiveMarchSpd, marchStepMs } from "../../shared/utils/pathfinding.js";
 import { AI_STAMINA_MAX, canAffordMarch, spendMarchStamina } from "../../shared/utils/tactics.js";
 
@@ -24,28 +25,23 @@ export function useAI({
 }) {
 
 // ── Resource tick — called every 1s ──────────────────────────────────────
-const tickAiRss = useCallback(() => {
+// Same per-HOUR income as the player (shared/utils/resourceIncome.js), credited
+// for the real time since the last tick, so a throttled/late tick catches up
+// instead of losing time. (Was +5 and rssRate() per tile every second.)
+const lastRssTickRef = useRef(0);
+const tickAiRss = useCallback((nowArg) => {
   if (!aiFactionKeys?.length) return;
+  const now = typeof nowArg === "number" ? nowArg : Date.now();
+  const last = lastRssTickRef.current;
+  lastRssTickRef.current = now;
+  if (!last) return; // first tick only starts the clock
+  const elapsed = now - last;
+  if (elapsed <= 0) return;
   const tiles = tilesRef.current;
   for (const fk of aiFactionKeys) {
-    const bldgs   = aiBldgsMapRef.current.get(fk) || {};
+    const bldgs    = aiBldgsMapRef.current.get(fk) || {};
     const tileKeys = aiTileKeysMapRef.current.get(fk) || new Set();
-    setAiRssMap(fk, p => {
-      const n = { stone: p.stone + 5, wood: p.wood + 5, gas: p.gas + 5, food: p.food + 5 };
-      for (const k of tileKeys) {
-        const t = tiles[k];
-        if (t?.rss) {
-          const b = t.rss === "stone" ? "quarry" : t.rss === "wood" ? "lumber" : t.rss === "gas" ? "forge" : "refinery";
-          n[t.rss] += rssRate(bldgs[b] || 0);
-        }
-      }
-      return {
-        stone: Math.min(9990000, n.stone),
-        wood:  Math.min(9990000, n.wood),
-        gas: Math.min(9990000, n.gas),
-        food: Math.min(9990000, n.food),
-      };
-    });
+    setAiRssMap(fk, p => aiResourceIncomeTick(p, tiles, tileKeys, bldgs, elapsed));
   }
 }, [aiFactionKeys, tilesRef, aiBldgsMapRef, aiTileKeysMapRef, setAiRssMap]);
 
@@ -126,7 +122,7 @@ const tickAiMarch = useCallback((dispatches) => {
 // Worker computed all diffs. Main thread applies in one pass.
 const tickAiEcon = useCallback((updates) => {
   if (!updates) return;
-  const { cmdUpdates, poolUpdates, rssUpdates, bldgUpdates } = updates;
+  const { cmdUpdates, poolUpdates, rssSpent, bldgUpdates } = updates;
 
   if (cmdUpdates?.length) {
     setCmds(p => p.map(c => {
@@ -138,8 +134,10 @@ const tickAiEcon = useCallback((updates) => {
   if (poolUpdates) {
     for (const [fk, val] of Object.entries(poolUpdates)) setAiPoolMap(fk, () => val);
   }
-  if (rssUpdates) {
-    for (const [fk, val] of Object.entries(rssUpdates)) setAiRssMap(fk, () => val);
+  if (rssSpent) {
+    // Subtract what the worker spent from the LIVE totals, so income credited
+    // since the worker's snapshot isn't overwritten.
+    for (const [fk, spent] of Object.entries(rssSpent)) setAiRssMap(fk, p => applyRssSpent(p, spent));
   }
   if (bldgUpdates) {
     for (const [fk, val] of Object.entries(bldgUpdates)) setAiBldgsMap(fk, () => val);

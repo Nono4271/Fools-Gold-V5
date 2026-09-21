@@ -162,6 +162,12 @@ export function useGameLoop({
   useEffect(() => {
     if (screen !== 'game') return;
 
+    const freshFromMap = (mapRef) => {
+      const o = {};
+      if (mapRef?.current) for (const [fk, v] of mapRef.current) o[fk] = v;
+      return o;
+    };
+
     function sendSnapshot() {
       const w = workerRef.current;
       if (!w) return;
@@ -234,8 +240,8 @@ export function useGameLoop({
           aiTileKeys:    aiTileKeysObj,
           aiFactionKeys: aiFactionKeysListRef_.current || [],
           aiPool:        aiPoolRef_.current  || {},
-          aiRss:         aiRssRef_.current   || {},
-          aiBldgs:       aiBldgsRef_.current || {},
+          aiRss:         freshFromMap(aiRssMapRef),   // live totals, not the render-synced copy
+          aiBldgs:       freshFromMap(aiBldgsMapRef),
           aiHqKeys:      aiHqKeysRef_.current || {},
           CMD_MARCH_COOLDOWN_MS: 15000,
         },
