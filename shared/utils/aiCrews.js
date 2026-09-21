@@ -1,8 +1,13 @@
 // Pure rules for AI players founding and joining crews (moved from Game.jsx).
-import { defaultCrewSubchannels } from "../constants/chat.js";
+import { createCrew } from "./crewRules.js";
+import { CREW_MAX_MEMBER_CAP } from "../constants/crew.js";
 
 export const AI_CREW_COST = 500; // gems to found a crew
-export const AI_CREW_CAP = 100;
+// AI crews don't level up yet (no AI-side crew XP/activity tracking exists),
+// so they stay at the Crew 2.0 level-1 cap (50, from createCrew()) until
+// that's built. CREW_MAX_MEMBER_CAP is kept around as the theoretical
+// ceiling once they do.
+export const AI_CREW_CAP = CREW_MAX_MEMBER_CAP;
 
 // One crew tick. aiPlayerIds: e.g. ["ai_pirates_3", ...]. founders: Set of ids that
 // may found a crew. gemsOf(id) returns an AI's gems.
@@ -24,12 +29,11 @@ export function aiCrewTick({ crews, aiPlayerIds, founders, gemsOf, now }) {
       const have = gemsOf(playerId) ?? 0;
       if (have >= AI_CREW_COST) {
         const sameFaction = order.filter(id => byId.get(id).faction === fk).length;
-        const crew = {
+        const crew = createCrew({
           id: `crew_ai_${playerId}_${now}`,
           name: `${fk.charAt(0).toUpperCase() + fk.slice(1)} ${["Vanguard","Legion","Order"][sameFaction] || "Band"}`,
-          abbr: fk.slice(0, 4).toUpperCase(), faction: fk, members: [playerId], cap: AI_CREW_CAP,
-          founder: playerId, subChannels: defaultCrewSubchannels(),
-        };
+          abbr: fk.slice(0, 4).toUpperCase(), faction: fk, founderId: playerId,
+        });
         byId.set(crew.id, crew); order.push(crew.id);
         gems[playerId] = have - AI_CREW_COST;
         inCrew.add(playerId); changed = true;
@@ -38,7 +42,7 @@ export function aiCrewTick({ crews, aiPlayerIds, founders, gemsOf, now }) {
     }
 
     // Everyone else joins the first same-faction crew with space (latest version of it).
-    const targetId = order.find(id => { const c = byId.get(id); return c.faction === fk && (c.members || []).length < AI_CREW_CAP; });
+    const targetId = order.find(id => { const c = byId.get(id); return c.faction === fk && (c.members || []).length < (c.cap ?? AI_CREW_CAP); });
     if (targetId) {
       const target = byId.get(targetId);
       byId.set(targetId, { ...target, members: [...(target.members || []), playerId] });
