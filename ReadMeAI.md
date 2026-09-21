@@ -1954,6 +1954,27 @@ the map/pieces are, not pinned along the top edge. Repositioned to
 `top:55%/left:70%` (Tasks) — percentages of the table pane, matching the
 marked-up positions.
 
+**Follow-up 2 (same session) — hotspot color clash + slow table load:**
+
+*Color clash:* the green boxes + full-color emoji (🕊️🧪🎯) fought with the
+warm candlelit photo. Replaced `TableHotspot` with a round gold "wax seal"
+badge (dark radial-gradient fill, gold ring, single-color gold outline SVG
+icon per hotspot — dove/flask/target shapes) so it reads as one object
+sitting on the table, matching the emblem system's "single-color SVG,
+recolorable" approach instead of clashing multi-color emoji.
+
+*Slow load (~15s to appear):* `public/crew/war-table-bg.jpg` and
+`hq-table-bg.jpg` were 1672px-wide, ~380KB JPEGs — far bigger than the
+size they're actually displayed at in this UI. Resized to 1100px wide and
+re-compressed (quality 68), landing at ~112KB each (~30% of the original
+weight) — should cut load time roughly 3x on the same connection. Also
+layered a dark gradient underneath the image in `CrewHQ.jsx` (same trick
+`CrewLanding.jsx` already used) so the table pane reads as "loading" in a
+themed dark tone rather than blank/broken while the JPG streams in. If it's
+still slow after this, the remaining time is almost certainly the network
+itself (e.g. testing over a remote/streamed device, per the owner's other
+screenshots) rather than anything in this code path.
+
 **Verified:** full test suite (`npm test`, 352/352) and production build
 (`npm run build`) both pass.
 
