@@ -33,6 +33,8 @@ export default function GameView(props) {
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
     chatChannels, chatKnownPlayerIds, chatOpen, chatProfanityFilterEnabled, chatNormalizedCrews,
     chatRecentMessages,
+    chatActiveDisplay, setChatActiveDisplay, chatActiveChannelId, setChatActiveChannelId,
+    chatActiveSubId, setChatActiveSubId,
     getChatMessages, sendChatMessage, setChatOpen, setChatProfanityFilterEnabled,
     startChatDm, startChatGroup,
     addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
@@ -85,6 +87,13 @@ export default function GameView(props) {
       return c;
     }));
   }
+
+  // Chat (preview + panel) is suppressed while any other full-screen/overlay
+  // menu is open — same set GameBar's "hidden" prop already checks, plus
+  // Crew/Leaderboard/the win screen, which are also full overlays chat would
+  // otherwise sit on top of.
+  const chatBlocked = worldMapOpen || hqOpen || cmdScreenOpen || gearScreenOpen
+    || showBattleLog || tomesOpen || crewOpen || leaderboardOpen || !!winner;
 
   return (
     <GameContext.Provider value={{ staminaMax }}>
@@ -625,7 +634,11 @@ export default function GameView(props) {
         />
       )}
 
-      {!chatOpen && (
+      {/* Chat never shows alongside another full-screen/overlay menu (World
+          Map, HQ, Commander/Gear screens, Battle Log, Wizard's Tomes, Crew,
+          Leaderboard, the win screen) — same set GameBar's own "hidden"
+          prop below already checks. */}
+      {!chatOpen && !chatBlocked && (
         <ChatPreview
           onOpen={() => setChatOpen(true)}
           playerId="player"
@@ -635,7 +648,7 @@ export default function GameView(props) {
         />
       )}
 
-      {chatOpen && (
+      {chatOpen && !chatBlocked && (
         <ChatPanel
           onClose={() => setChatOpen(false)}
           playerId="player"
@@ -665,6 +678,9 @@ export default function GameView(props) {
           addGroupSubchannel={addGroupSubchannel}
           removeGroupSubchannel={removeGroupSubchannel}
           moveGroupSubchannel={moveGroupSubchannel}
+          activeDisplay={chatActiveDisplay} setActiveDisplay={setChatActiveDisplay}
+          activeChannelId={chatActiveChannelId} setActiveChannelId={setChatActiveChannelId}
+          activeSubId={chatActiveSubId} setActiveSubId={setChatActiveSubId}
         />
       )}
 

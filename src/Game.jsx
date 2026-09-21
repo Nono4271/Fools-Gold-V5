@@ -747,6 +747,9 @@ export default function RiseToWar() {
     profanityFilterEnabled: chatProfanityFilterEnabled,
     setProfanityFilterEnabled: setChatProfanityFilterEnabled,
     normalizedCrews: chatNormalizedCrews,
+    activeDisplay: chatActiveDisplay, setActiveDisplay: setChatActiveDisplay,
+    activeChannelId: chatActiveChannelId, setActiveChannelId: setChatActiveChannelId,
+    activeSubId: chatActiveSubId, setActiveSubId: setChatActiveSubId,
   } = useChat({
     screen, playerId: "player", playerName: facName, playerFacKey: facKey,
     crews, aiPlayerIds: chatKnownPlayerIds,
@@ -1465,6 +1468,8 @@ export default function RiseToWar() {
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
     chatChannels, chatKnownPlayerIds: chatKnownPlayerIdsWithNyro, chatOpen, chatProfanityFilterEnabled, chatNormalizedCrews,
     chatRecentMessages, addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
+    chatActiveDisplay, setChatActiveDisplay, chatActiveChannelId, setChatActiveChannelId,
+    chatActiveSubId, setChatActiveSubId,
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
