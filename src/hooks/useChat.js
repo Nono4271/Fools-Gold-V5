@@ -253,6 +253,30 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
     return total;
   }, [leafChannelIds, mutedChannelIds, topIdFor, lastReadAt, messages]);
 
+  // Per-channel unread — a leaf channel (or crew/group sub-channel) counts
+  // as unread if it has any message newer than its own lastReadAt (muted
+  // channels are excluded, same as the badge count above). ChatPanel.jsx
+  // uses unreadLeafIds for sub-channel rows and unreadTopIds (leaf ids
+  // folded up to their container) for the top-level World/Faction/Guild/
+  // Group/DM rows, clearing per-tab the moment it's viewed (see markRead
+  // calls in ChatPanel.jsx).
+  const unreadLeafIds = useMemo(() => {
+    const ids = new Set();
+    for (const id of leafChannelIds) {
+      if (mutedChannelIds.has(topIdFor(id))) continue;
+      const since = lastReadAt[id] || 0;
+      const msgs = messages[id];
+      if (msgs && msgs.length && msgs[msgs.length - 1].ts > since) ids.add(id);
+    }
+    return ids;
+  }, [leafChannelIds, mutedChannelIds, topIdFor, lastReadAt, messages]);
+
+  const unreadTopIds = useMemo(() => {
+    const ids = new Set();
+    for (const id of unreadLeafIds) ids.add(topIdFor(id));
+    return ids;
+  }, [unreadLeafIds, topIdFor]);
+
   // Most recent messages across every channel the player sees (including
   // every crew/group's sub-channels), newest last — for the closed-state
   // mini preview (ChatPreview.jsx) shown even while the chat panel itself
@@ -363,7 +387,7 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
     profanityFilterEnabled, setProfanityFilterEnabled,
     activeDisplay, setActiveDisplay, activeChannelId, setActiveChannelId, activeSubId, setActiveSubId,
     mutedChannelIds, toggleMute, reactions, toggleReaction, typingByChannel,
-    unreadCount, markRead,
+    unreadCount, markRead, unreadLeafIds, unreadTopIds,
     // Local player's membership normalized to their playerId (see
     // normalizeCrewsForPlayer above) — ChatPanel.jsx needs this, not the raw
     // `crews` prop, to correctly tag "player" messages with their crew abbr.
