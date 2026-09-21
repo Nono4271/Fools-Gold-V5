@@ -4,6 +4,7 @@
 // ("ai_<faction>_<i>", shared/utils/worldTiles.js) and crew membership
 // (shared/utils/aiCrews.js) — no new AI-identity scheme.
 import { CHANNEL_TYPES } from "../constants/chat.js";
+import { NYRO_ID, NYRO_NAME } from "../constants/nyro.js";
 import { aiFactionOf, createMessage } from "./chatRules.js";
 
 // Same small LCG used elsewhere in this codebase for seeded, testable
@@ -23,8 +24,11 @@ const FACTION_TITLES = {
   holyknights: "Paladin", nightcreatures: "Shade", coldborns: "Frostguard", ashen_dead: "Wraith",
 };
 
-// "ai_pirates_3" -> "Raider 3". Falls back to the raw id if it isn't an AI id.
+// "ai_pirates_3" -> "Raider 3". Falls back to the raw id if it isn't an AI id
+// — except Nyro (shared/constants/nyro.js), a named companion whose id
+// deliberately doesn't fit that shape.
 export function aiDisplayName(playerId) {
+  if (playerId === NYRO_ID) return NYRO_NAME;
   const fk = aiFactionOf(playerId);
   if (!fk) return playerId;
   const idx = playerId.split("_").pop();
@@ -32,7 +36,7 @@ export function aiDisplayName(playerId) {
   return `${title} ${idx}`;
 }
 
-const FACTION_LINES = {
+export const FACTION_LINES = {
   pirates: [
     "Winds are fair — good day for a raid.", "Anyone spot the coastline patrols moving?",
     "Cargo's secured, splitting the haul at the keep.", "Rum's low. Someone owes the crew a run to port.",
@@ -74,7 +78,7 @@ const FACTION_LINES = {
     "The march continues, as it always does.", "Old bones, new orders — muster at the keep.",
   ],
 };
-const GENERIC_LINES = [
+export const GENERIC_LINES = [
   "All quiet on this front.", "Anyone else seeing activity nearby?", "Reporting in, nothing new.",
 ];
 

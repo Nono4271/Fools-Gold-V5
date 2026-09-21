@@ -2,7 +2,7 @@
 import { defaultCrewSubchannels } from "../constants/chat.js";
 
 export const AI_CREW_COST = 500; // gems to found a crew
-export const AI_CREW_CAP = 40;
+export const AI_CREW_CAP = 100;
 
 // One crew tick. aiPlayerIds: e.g. ["ai_pirates_3", ...]. founders: Set of ids that
 // may found a crew. gemsOf(id) returns an AI's gems.
