@@ -704,7 +704,10 @@ change.
   active building-upgrade timer today, but is still self-serve (you click it
   for yourself) rather than crewmate-to-crewmate — see the TODO in the
   2026-09-21 session 16 entry below; fix this once real multiplayer exists.
-  Diplomacy/Boosts/Cooperation/Records tabs are still "coming soon" stubs.
+  Diplomacy and Level are real, built tabs now — see the 2026-09-21 session
+  20 and 24 entries below. Cooperation/Records tabs are still "coming soon"
+  stubs; Records is scoped (not built) as of session 25 below, blocked on
+  real multiplayer the same way Crew Help is.
   The rally target is a text label only — not yet tied to an actual map tile.
 - **Gear:** inventory, slots, rarity, rolled stats, equipping, gacha drops and
   battle/stat application exist. The planned gear rework still needs an
@@ -2224,6 +2227,47 @@ and that every level 1–50 resolves without throwing.
 **Verified:** full test suite (`npm test`, 367/367) and production build
 (`npm run build`, 610 modules — up from 609, confirming `CrewLevel.jsx` is
 bundled) both pass.
+
+## 2026-09-21 — Claude (Sonnet), session 25
+
+### Documentation only — Records tab scoped, held pending real multiplayer (no code changed)
+
+Owner described the Records tab: a log of world-map Keep captures (`isKeep`
+tiles, `powerLevel` ≥10 — not Crew Fortresses, a separate already-crew-owned
+structure) recording capture time + keep name, plus rankings of active
+participants by total damage dealt to keep defenders and total siege damage
+dealt.
+
+Scoped, not built, this session:
+
+1. **Target confirmed as world-map Keeps**, not Crew Fortresses. Keeps have
+   no crew-ownership concept today (`resolveSiegeOutcome` in
+   `shared/utils/captureRules.js` just sets `owner`/`faction`/
+   `ownerPlayerId` on capture — nothing ties a capture to a crew or logs who
+   fought). Owner confirmed bigger keeps should ideally take a **group
+   effort** — several armies (possibly several players) sieging the same
+   keep over time.
+2. **Blocked on real multiplayer, same as Crew Help** (session 16/19 above).
+   Today there is exactly one real player (`"player"`); every other
+   commander on the map is a simulated AI. "Active participants" ranked
+   against each other only means something once other real crewmates can
+   send armies at the same keep — so this is held, not stubbed out with
+   fake data, until that exists.
+3. **Damage accounting confirmed for the eventual build:** both numbers are
+   **sums across every attack**, not a single battle's number — e.g. 5
+   armies dealing 150k/100k/75k/50k/40k defender damage to the same keep
+   totals 415k for that capture. Siege damage sums the same way but runs
+   much higher, since sieging (`calcSiegePower`, applied via
+   `resolveSiegeOutcome`) doesn't cost troops the way `simBattle` combat
+   does — a siege-focused army can hit the same keep repeatedly, limited
+   only by stamina, not losses. Whoever builds this should sum
+   `runBattle`/`simBattle` defender damage separately from siege-power
+   hits, per keep-capture, per contributing player — neither collapses into
+   the other.
+
+No files changed besides this log and the section 4 roadmap line above.
+
+**Verified:** no code touched; test suite/build unaffected.
 
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,

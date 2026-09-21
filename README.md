@@ -1,12 +1,22 @@
-# Session 24 — Boosts tab → Level tab
+# Session 25 — Records tab scoped (documentation only, no code)
 
 ## What changed
-- `shared/constants/crew.js` — added `crewLevelPerks(level)`: returns the perk(s) that unlock at exactly a level (`+5 Member Cap` every 2 levels up to 20, `+1 Fortress Slot` at 15/30/45).
-- `src/components/game/crew/CrewLevel.jsx` — **new file.** The Level tab UI: current level/XP bar + a row for every level 1–50 (real perk badge or "Placeholder — perk TBD").
-- `src/components/game/crew/CrewHQ.jsx` — renamed the "Boosts" hotspot to "Level {crew.level}", wired the new `level` tab to `CrewLevel`, swapped the icon path, cleaned up stale "Boosts" comments.
-- `src/components/game/crew/CrewComingSoon.jsx` — comment cleanup (Boosts/Diplomacy no longer use this stub).
-- `tests/crewLevelPerks.test.js` — **new file.** Covers the member-cap schedule, fortress-slot levels, the 20-level cap ceiling, and that all 50 levels resolve.
-- `ReadMeAI.md` — added the session 24 change-log entry.
+- `ReadMeAI.md` — added the session 25 log entry and updated the section 4
+  roadmap line (Diplomacy/Level are now real tabs; Records is scoped but
+  held).
 
-## Verified
-`npm test` — 367/367 passing. `npm run build` — clean, 610 modules (up from 609, confirming `CrewLevel.jsx` is bundled).
+## Why no code
+Records targets world-map Keeps, which have no crew-ownership or
+"who attacked this" tracking today. Ranking "active participants" only
+makes sense once real multiplayer exists (other real crewmates, not just
+AI), so this is held the same way Crew Help was — scoped now, built later.
+
+## What's decided for the eventual build
+- Target: world-map Keep tiles (`isKeep`, powerLevel ≥10) — not Crew
+  Fortresses.
+- Two tracked numbers per capture, each a **sum across every attack**:
+  total damage to defenders (combat damage) and total siege damage
+  (siege-power hits). Siege runs higher since it doesn't cost troops and
+  can repeat, limited only by stamina.
+- Blocked on real multiplayer before it can mean anything with more than
+  one real participant.
