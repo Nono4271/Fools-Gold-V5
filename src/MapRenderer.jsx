@@ -1378,6 +1378,17 @@ const HQ_SPRITES = {
   ai:            "hq_orcs.webp",
 };
 
+const DARK_HQ_SPRITES = {
+  "hq_pirates.webp":        "hq_pirates_dark_v2.webp",
+  "hq_dragons.webp":        "hq_dragons_dark_v2.webp",
+  "hq_nightcreatures.webp": "hq_nightcreatures_dark_v2.webp",
+  "hq_orcs.webp":           "hq_orcs_dark_v2.webp",
+  "hq_arcane.webp":         "hq_arcane_dark_v2.webp",
+  "hq_ashen_dead.webp":     "hq_ashen_dead_dark_v2.webp",
+  "hq_coldborns.webp":      "hq_coldborns_dark_v2.webp",
+  "hq_holyknights.webp":    "hq_holyknights_dark_v2.webp",
+};
+
 const FORT_SPRITES = {
   1: "/forts/fort_l1.webp",
   2: "/forts/fort_l2.webp",
@@ -1530,8 +1541,13 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
   // ── Sprite ──
   const originalSpriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
-  const useApprovedPirateArt = blendWithTerrain && originalSpriteName === "hq_pirates.webp";
-  const spriteName = useApprovedPirateArt ? "hq_pirates_dark_v2.webp" : originalSpriteName;
+  const darkHQSpriteName = DARK_HQ_SPRITES[originalSpriteName];
+  const useDarkHQArt = blendWithTerrain && !!darkHQSpriteName;
+  // Pirate has a deliberately different visible-base anchor because its approved
+  // dark asset was authored at a different framing; other factions keep their
+  // existing faction-specific placement logic.
+  const useApprovedPirateArt = useDarkHQArt && originalSpriteName === "hq_pirates.webp";
+  const spriteName = useDarkHQArt ? darkHQSpriteName : originalSpriteName;
   const spriteUrl  = `/hq/${spriteName}`;
 
   // Width covers the full 3x3 diamond left<->right extent.
