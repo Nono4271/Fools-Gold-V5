@@ -1,10 +1,11 @@
 import { useState, memo } from "react";
+import { aiDisplayName } from "../../../shared/utils/aiChatter.js";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    CrewPanel — Guild ("Crew") system
    • Player can create a crew (4-20 char name, 4-char abbreviation)
    • Or request to join an existing crew
-   • Starting cap: 40 members per crew
+   • Starting cap: 100 members per crew
    • Creating a crew costs 500 gems — only the 3 AI players per faction seeded
      with 2000 gems can ever afford to found one, naturally capping AI crews at 3
    • AI players auto-create/join crews on a 30s ticker (managed in Game.jsx)
@@ -80,7 +81,7 @@ function CrewCard({ crew, onJoinRequest, playerCrewId, pendingCrewId, playerName
             background: "rgba(255,255,255,.04)", border: "1px solid #1e2028",
             borderRadius: 3, padding: "1px 5px",
             fontWeight: m === playerName ? 700 : 400,
-          }}>{m}</div>
+          }}>{m === playerName ? m : aiDisplayName(m)}</div>
         ))}
         {crew.members.length > 8 && (
           <div style={{ ...TEXT_XS, color: "#3a4050", padding: "1px 5px" }}>
@@ -280,7 +281,7 @@ export default memo(function CrewPanel({ onClose, crews, playerCrewId, pendingCr
                     border: `1px solid ${m === playerName ? "#40aa6030" : "#1e2028"}`,
                   }}>
                     <span style={{ ...TEXT_XS, color: m === playerName ? "#40cc80" : "#6a7a8a" }}>
-                      {m === myCrew.founder ? "⚓ " : "  "}{m}
+                      {m === myCrew.founder ? "⚓ " : "  "}{m === playerName ? m : aiDisplayName(m)}
                     </span>
                     {m === playerName && (
                       <span style={{ ...TEXT_XS, color: "#40aa60", background: "rgba(40,160,80,.15)",
