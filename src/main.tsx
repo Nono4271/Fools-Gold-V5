@@ -19,6 +19,7 @@ document.addEventListener(
     if ((e.target as Element | null)?.closest(".battle-popup")) return;
     if ((e.target as Element | null)?.closest(".find-tiles-popup")) return;
     if ((e.target as Element | null)?.closest(".chat-scroll")) return;
+    if ((e.target as Element | null)?.closest(".crew-scroll")) return;
     const target = e.target as Element | null;
     if (!target) return;
     const interactive = target.closest(
