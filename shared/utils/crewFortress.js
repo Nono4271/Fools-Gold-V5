@@ -30,6 +30,9 @@ export function canBuildFortressOnTile(tile) {
     return { ok: false, reason: `Must be a power level ${FORTRESS_MIN_POWER_LEVEL}+ tile` };
   }
   if (tile.isCamp || tile.campType) return { ok: false, reason: "Cannot build on a camp" };
+  if (tile.isKeep || tile.isGate || tile.isRuin || tile.isWin || tile.isHQ) {
+    return { ok: false, reason: "Cannot build on a special tile" };
+  }
   if (tile.owner) return { ok: false, reason: "Tile is already claimed" };
   if (tile.fort || tile.crewFortress) return { ok: false, reason: "Tile already has a structure" };
   return { ok: true, reason: null };
@@ -125,9 +128,23 @@ export function unstationCommander(fortress, playerId, commanderUid) {
 // The fortress has no defenders of its own — an attacker must clear every
 // stationed army first. This just answers "is it clear to siege"; actually
 // resolving those battles reuses the existing battle system (shared/utils/
-// battle.js), not duplicated here.
+// battle.js / runBattle), via src/hooks/useFortressSiege.js.
 export function isClearToSiege(fortress) {
   return stationedCount(fortress) === 0;
+}
+
+// Deterministic fight order: lowest playerId first, then insertion order
+// within that player's stationed list. Returns { playerId, commanderUid } or
+// null once the fortress is clear. useFortressSiege.js fights one of these
+// per battle, same "defeat them one at a time" pattern the existing AI-
+// commander-on-tile code in useMarch.js already uses.
+export function nextDefender(fortress) {
+  const byPlayer = fortress?.stationedByPlayer || {};
+  for (const playerId of Object.keys(byPlayer).sort()) {
+    const uid = byPlayer[playerId]?.[0];
+    if (uid) return { playerId, commanderUid: uid };
+  }
+  return null;
 }
 
 // Applies one siege hit. Returns { fortress, destroyed, lastHitBy } —

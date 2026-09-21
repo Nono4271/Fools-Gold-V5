@@ -5,6 +5,7 @@
 import {
   CREW_ROLES, CREW_MAX_OFFICERS, CREW_PRIVACY, DEFAULT_CREW_PRIVACY,
   CREW_DESCRIPTION_MAX_LEN, DEFAULT_EMBLEM, isValidEmblem,
+  CREW_LANGUAGES, DEFAULT_CREW_LANGUAGE, CREW_TARGET_LABEL_MAX_LEN,
   crewMemberCapForLevel, crewFortressSlotsForLevel, applyCrewXp,
   CREW_HELP_CONTRIBUTION,
 } from "../constants/crew.js";
@@ -49,9 +50,14 @@ export function canKick(crew, actorId, targetId) {
 
 export function canInviteOrAccept(crew, actorId) { return isFounderOrOfficer(crew, actorId); }
 export function canManageFortress(crew, actorId) { return isFounderOrOfficer(crew, actorId); } // build or voluntary demolish
+// Announcement (the crew's description, shown as a banner in CrewHQ) is
+// founder-only to edit — officers cannot. Rally target is a founder/officer
+// tool, same tier as fortress management.
+export function canEditAnnouncement(crew, actorId) { return isFounder(crew, actorId); }
+export function canSetTarget(crew, actorId) { return isFounderOrOfficer(crew, actorId); }
 
 // ── Creation ─────────────────────────────────────────────────────────────
-export function validateCrewCreation({ name, abbr, description, emblem, privacy }) {
+export function validateCrewCreation({ name, abbr, description, emblem, privacy, language }) {
   const errs = [];
   if (!name || name.trim().length < 4 || name.trim().length > 20) {
     errs.push("Name must be 4–20 characters");
@@ -68,6 +74,9 @@ export function validateCrewCreation({ name, abbr, description, emblem, privacy 
   if (privacy && !Object.values(CREW_PRIVACY).includes(privacy)) {
     errs.push("Invalid privacy setting");
   }
+  if (language && !CREW_LANGUAGES.includes(language)) {
+    errs.push("Invalid language selection");
+  }
   return errs;
 }
 
@@ -77,13 +86,14 @@ export function validateCrewCreation({ name, abbr, description, emblem, privacy 
 // stores whatever id it's given).
 export function createCrew({
   id, name, abbr, description = "", emblem = DEFAULT_EMBLEM, privacy = DEFAULT_CREW_PRIVACY,
-  faction, founderId, cap,
+  language = DEFAULT_CREW_LANGUAGE, faction, founderId, cap,
 }) {
   return {
     id, name: name.trim(), abbr: abbr.trim().toUpperCase(),
     description: (description || "").slice(0, CREW_DESCRIPTION_MAX_LEN),
     emblem: isValidEmblem(emblem) ? emblem : DEFAULT_EMBLEM,
     privacy: Object.values(CREW_PRIVACY).includes(privacy) ? privacy : DEFAULT_CREW_PRIVACY,
+    language: CREW_LANGUAGES.includes(language) ? language : DEFAULT_CREW_LANGUAGE,
     faction,
     founder: founderId,
     officers: [],
@@ -94,7 +104,28 @@ export function createCrew({
     contributions: {},     // { [playerId]: totalContributionPoints }
     subChannels: defaultCrewSubchannels(),
     fortresses: [],
+    target: null,          // { tileKey, label, setBy, setAt } | null — see setCrewTarget
   };
+}
+
+// ── Announcement / rally target ─────────────────────────────────────────
+export function updateAnnouncement(crew, actorId, text) {
+  if (!canEditAnnouncement(crew, actorId)) return crew;
+  return { ...crew, description: (text || "").slice(0, CREW_DESCRIPTION_MAX_LEN) };
+}
+
+export function setCrewTarget(crew, actorId, { tileKey, label }) {
+  if (!canSetTarget(crew, actorId)) return crew;
+  if (!tileKey) return crew;
+  return {
+    ...crew,
+    target: { tileKey, label: (label || "").slice(0, CREW_TARGET_LABEL_MAX_LEN), setBy: actorId, setAt: Date.now() },
+  };
+}
+
+export function clearCrewTarget(crew, actorId) {
+  if (!canSetTarget(crew, actorId)) return crew;
+  return { ...crew, target: null };
 }
 
 // ── Search visibility ────────────────────────────────────────────────────
