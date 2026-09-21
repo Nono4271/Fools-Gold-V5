@@ -27,3 +27,33 @@ export function isMessageShape(m) {
 export function isChannelShape(c) {
   return !!c && typeof c.id === "string" && typeof CHANNEL_TYPES[c.type] === "string";
 }
+
+// ── Sub-channels — nested channels inside crew and group chat ONLY (world/
+// faction/dm stay flat). Rules live in shared/utils/subchannels.js; this
+// file just holds the shared shape/limit/defaults, same split as the rest
+// of chat (constants here, rules in utils/).
+//
+// subchannel: { id, name, locked, leaderOnly }
+//   locked     — #Announcement/#General: can't be deleted or reordered.
+//   leaderOnly — only the crew's founder (crew.founder) or a group's
+//                creator (channel.ownerId) may post; read-only for everyone
+//                else. Used for #Announcement today. There's no officer
+//                rank yet — extend the leader-only check in
+//                subchannels.js (not this flag) if/when one gets added.
+export const MAX_SUBCHANNELS = 5;
+
+export function defaultCrewSubchannels() {
+  return [
+    { id: "announcement", name: "Announcement", locked: true, leaderOnly: true },
+    { id: "general", name: "General", locked: true, leaderOnly: false },
+  ];
+}
+
+export function defaultGroupSubchannels() {
+  return [{ id: "general", name: "General", locked: true, leaderOnly: false }];
+}
+
+export function isSubchannelShape(s) {
+  return !!s && typeof s.id === "string" && typeof s.name === "string"
+    && typeof s.locked === "boolean" && typeof s.leaderOnly === "boolean";
+}
