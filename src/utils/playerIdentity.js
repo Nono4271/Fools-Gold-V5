@@ -9,6 +9,7 @@
 //  "client can claim to be anyone" gap for now, not to build auth.
 // ─────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "foolsgold_player_id";
+const SESSION_KEY = "foolsgold_session_id";
 
 function randomId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -31,6 +32,31 @@ export function getOrCreatePlayerId() {
   }
 }
 
+// ─── Session continuity ─────────────────────────────────────────────────
+// The server already saves each session's tile state to disk
+// (server/index.js) — this is what lets a *browser* resume it: the
+// sessionId used to persist rather than being regenerated every load.
+function randomSessionId() {
+  return `fg-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function getOrCreateSessionId() {
+  try {
+    let id = localStorage.getItem(SESSION_KEY);
+    if (!id) {
+      id = randomSessionId();
+      localStorage.setItem(SESSION_KEY, id);
+    }
+    return id;
+  } catch {
+    return randomSessionId();
+  }
+}
+
+function setSessionId(id) {
+  try { localStorage.setItem(SESSION_KEY, id); } catch { /* best-effort */ }
+}
+
 // ─── Optional username/password accounts (server/auth.js) ─────────────────
 // Logging in doesn't replace this file's whole scheme — it just overwrites
 // the stored id with the server-issued accountId, so the same playerId
@@ -43,11 +69,15 @@ export function getAccountUsername() {
   try { return localStorage.getItem(USERNAME_KEY); } catch { return null; }
 }
 
-function adoptAccount({ accountId, username }) {
+function adoptAccount({ accountId, username, lastSessionId }) {
   try {
     localStorage.setItem(STORAGE_KEY, accountId);
     localStorage.setItem(USERNAME_KEY, username);
   } catch { /* best-effort — still return the id below */ }
+  // If this account has a known session from a previous login (any browser),
+  // resume it instead of whatever sessionId this browser already had —
+  // that's what makes "log in" actually continue your progress.
+  if (lastSessionId) setSessionId(lastSessionId);
   return accountId;
 }
 
