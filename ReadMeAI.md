@@ -1637,6 +1637,29 @@ on channel switch or when the input is refocused.
 **Verified:** full test suite (`npm test`, 304/304) and production build
 (`npm run build`) both pass.
 
+## 2026-09-21 — Claude (Sonnet), session 12
+
+### Preview widened leftward, left-column font 1.5x, "Aa" translate placeholder
+**File:** `src/components/game/ChatPreview.jsx` — width `285` → `428` (1.5x).
+Anchoring switched from `left:50% + translateX(-50%)` (centered, grows both
+ways) to `right: calc(50% - 142.5px)` (pins the old right edge in place), so
+the extra width grows mostly leftward per the owner's spec, instead of
+pushing out evenly on both sides.
+
+**File:** `src/components/game/ChatPanel.jsx` — new `TEXT_LEFT` (10.5px,
+1.5x of the old 7px) applied to every left-column row: World/Faction/Guild/
+Group/DM buttons, "No guild yet"/"No DMs yet", the Relations entry, and
+`SubchannelRows`. Column width `128px` → `160px` to give the bigger text a
+little more room before truncating.
+
+New "Aa" header button (next to the existing gear/profanity icons) —
+**placeholder only** for a future message-translate feature; toggles its own
+highlighted on/off state but doesn't call a translation service yet (there
+isn't one wired up in this codebase).
+
+**Verified:** full test suite (`npm test`, 304/304) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
