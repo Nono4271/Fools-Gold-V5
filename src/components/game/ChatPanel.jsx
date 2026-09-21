@@ -121,10 +121,15 @@ export default memo(function ChatPanel({
   // group sub-channels live in useChat.js's own `groups` state, so those get
   // direct mutators.
   onManageCrewSubchannels, addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
+  // Lifted up into useChat.js (rather than local state here) so the open
+  // channel/sub-channel/display-tab survives the panel closing and
+  // reopening — see useChat.js. Defaults to World if nothing was passed.
+  activeDisplay = "chats", setActiveDisplay, activeChannelId = "world", setActiveChannelId,
+  activeSubId = null, setActiveSubId,
 }) {
-  const [display, setDisplay]     = useState("chats"); // "chats" | "direct"
-  const [selectedId, setSelected] = useState(null);
-  const [selectedSubId, setSelectedSub] = useState(null);
+  const display = activeDisplay, setDisplay = setActiveDisplay;
+  const selectedId = activeChannelId, setSelected = setActiveChannelId;
+  const selectedSubId = activeSubId, setSelectedSub = setActiveSubId;
   const [subManagerOpen, setSubManagerOpen] = useState(false);
   const [draft, setDraft]         = useState("");
   const [picking, setPicking]     = useState(false); // group-creation picker
