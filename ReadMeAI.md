@@ -690,8 +690,22 @@ change.
 - **Neutral PvE:** tile garrisons, defender commanders and spawn encounters
   exist. A complete neutral unit roster with its own integrated data/art is not
   present.
-- **Crew:** create, browse, join/request, leave, member list, basic level field,
-  AI crews and a Crew Help placeholder exist. This is not Crew 2.0.
+- **Crew 2.0:** create (emblem, privacy, language), browse, join/request, leave,
+  member list, 3-tier roles (founder/officer/member) with full permission
+  matrix, level/XP with member-cap and fortress-slot growth, Contribution
+  Points, a Crew Store (real resource/consumable grants), founder-editable
+  announcement, and a founder/officer rally-target label are all implemented
+  and tested (`shared/utils/crewRules.js`, `shared/constants/crew.js`,
+  `tests/crewRules.test.js`). Crew Fortress structures are fully wired: build
+  from the map (unclaimed p10+ tile), a real build timer, stationing, and full
+  siege combat that fights every stationed defender then sieges the fortress
+  itself (`shared/utils/crewFortress.js`, `src/hooks/useFortressSiege.js`,
+  `tests/crewFortress.test.js`). Crew Help really reduces the player's own
+  active building-upgrade timer today, but is still self-serve (you click it
+  for yourself) rather than crewmate-to-crewmate — see the TODO in the
+  2026-09-21 session 16 entry below; fix this once real multiplayer exists.
+  Diplomacy/Boosts/Cooperation/Records tabs are still "coming soon" stubs.
+  The rally target is a text label only — not yet tied to an actual map tile.
 - **Gear:** inventory, slots, rarity, rolled stats, equipping, gacha drops and
   battle/stat application exist. The planned gear rework still needs an
   owner-approved design and balance pass.
@@ -718,10 +732,12 @@ change.
 - Season Chapters framework and chapter data.
 - Chapter locks for map crossings/gates, the Holy Grail/endgame area, war
   declarations, major systems, objectives and events.
-- Crew 2.0: officer ranks, Crew levels/XP, functional Help, currency, Store,
-  Boosts, Diplomacy, War Declaration, Structures, records/logs and an original
-  headquarters/table interaction screen inspired functionally by Fellowship in
-  Rise to War 1.0.
+- Crew 2.0 remaining: Boosts, Diplomacy (currently simulated-only, no real
+  gameplay effect), War Declaration, records/logs, a real map-tile pin for the
+  rally target, and true crewmate-to-crewmate Crew Help (today it's self-serve
+  — see the Crew 2.0 note under section 3). Roles, levels/XP, Store, Structures
+  (Crew Fortress build + full siege combat) and the headquarters/table screen
+  are done — see session 16 below.
 - World, faction and Crew chat.
 - Tutorial and task/progression framework.
 - Remaining gear rework decisions and implementation.
@@ -758,7 +774,9 @@ change.
 
 - Tier 4 and neutral units are required before multiplayer conversion.
 - Season Chapters and their progression gates do not exist.
-- Crew 2.0 and chat do not exist.
+- Crew 2.0's Boosts/Diplomacy/War Declaration/records and Crew chat do not
+  exist yet (core Crew 2.0 — roles, levels, Store, Fortress structures/siege —
+  is done, see session 16 below).
 - The remaining seven faction bases, keep/mob/commander map sprites, added
   terrain variation, gate/crossing polish and mobile UI polish are incomplete.
 - No durable authoritative server, account persistence or reconnect recovery.
@@ -1786,6 +1804,63 @@ Clearing reuses the existing `markRead` effect that already fires whenever
 the active channel/sub-channel changes — no new clearing logic needed.
 
 **Verified:** full test suite (`npm test`, 304/304) and production build
+(`npm run build`) both pass.
+
+## 2026-09-21 — Claude (Sonnet), session 16
+
+### Crew 2.0 — fortress siege combat, Crew Help/Store wiring, language/announcement/target
+
+**Fortress placement (`src/components/game/TilePopup.jsx`, `src/Game.jsx`,
+`src/GameView.jsx`):** clicking an unclaimed p10+ tile now shows a "BUILD
+CREW FORTRESS" button (founder/officer only, same UX as the existing "BUILD
+FORT"). Hidden entirely — not just disabled — on camps/keeps/gates/ruins/the
+win tile, since a fortress can never be built there
+(`canBuildFortressOnTile` already rejected them; the button used to still
+render in a disabled state on those tiles, which was confusing UI clutter).
+`Game.jsx` ticks fortress `buildEndsAt` every second and auto-completes.
+
+**Fortress siege combat (new file `src/hooks/useFortressSiege.js`):** a
+full combat system, dispatched via a distinct `march.type: "siegeFortress"`
+(never `"attack"`) so it can never collide with the existing generic
+attack-arrival handler in `useMarch.js`. Fights every commander stationed
+in the fortress one at a time (deterministic order via
+`crewFortress.js`'s `nextDefender`), then applies siege damage to the
+fortress itself once clear. Destroying it reverts the tile to unclaimed and
+hands it to the attacker outright — no further fight needed, per spec. A
+new "ATTACK FORTRESS" button in `TilePopup.jsx` dispatches this; a new
+`pickSiegeCmd` mode reuses the existing `CommanderPicker`.
+
+**Crew Help (`src/GameView.jsx`):** now really reduces the player's active
+building-upgrade timer (`crewHelpAmount`/`crewHallStats` from
+`shared/constants/buildings.js`), tracked via a `helpsUsed` field added to
+that upgrade's `upgQueue` entry.
+**TODO before real multiplayer:** this is currently self-serve (you click
+"Request Help" and speed up your own build) because there's no other real
+player to click it for you yet. Owner wants: other crewmates help you and
+you help them, and a player can't help themselves. Fix once real player
+identity/multiplayer exists — likely a per-member "help" action surfaced to
+crewmates, not a button the build's own owner can click.
+
+**Crew Store (`src/GameView.jsx`):** consumable-type items (relocation
+token, 1h/8h building speedups) now grant a real consumable to the bag
+(`createConsumable`), redeemed later via the existing
+`useConsumable(typeId)` flow — same path as any other consumable. Resource
+packs still add resources directly. Fixed `onDemolishFortress` to use
+`canDemolishFortress` (founder OR officer) instead of `canDisband`
+(founder-only), matching the actual fortress-management rule.
+
+**Language/announcement/rally target
+(`shared/constants/crew.js`, `shared/utils/crewRules.js`,
+`src/components/game/crew/CrewCreate.jsx`, `CrewHQ.jsx`, `CrewScreen.jsx`):**
+crew creation has a language picker (`CREW_LANGUAGES`); `CrewHQ`'s header
+shows crew size, founder name and language; founder can edit the
+announcement/description banner in place (`canEditAnnouncement`,
+founder-only); founder/officer can pin a short rally-target text label
+("No tasks" when clear). **Known simplification:** the target is text
+only — not yet tied to an actual map tile, since `CrewHQ` doesn't have
+access to the map's tile-selection state. Wire that up if/when it matters.
+
+**Verified:** full test suite (`npm test`, 352/352) and production build
 (`npm run build`) both pass.
 
 - Add a new dated entry above (don't overwrite prior entries).
