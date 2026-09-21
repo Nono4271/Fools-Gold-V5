@@ -3,6 +3,7 @@ import { aiDisplayName } from "../../../shared/utils/aiChatter.js";
 import { aiFactionOf } from "../../../shared/utils/chatRules.js";
 import { censorText } from "../../../shared/utils/profanity.js";
 import { useTranslatedText } from "../../hooks/useTranslatedText.js";
+import { useRelativeTime } from "../../hooks/useRelativeTime.js";
 import {
   subchannelsOf, subchannelId, canManageSubchannels, canPostInSubchannel,
 } from "../../../shared/utils/subchannels.js";
@@ -40,6 +41,11 @@ const EMOJI_SET = [
   "🐉", "🦅", "🏴‍☠️", "🧙", "⚓", "🏰", "💰", "💎", "🍺", "⏳",
   "✅", "❌", "❓", "❗", "🎉", "💯",
 ];
+
+// Small quick-react set for the long-press message menu — player-only (no
+// AI/Nyro auto-reacting, per the owner), so this stays a short fixed list
+// rather than the full EMOJI_SET above.
+const REACTION_SET = ["👍", "❤️", "😂", "🔥", "😮"];
 
 const PANEL_BG   = "rgba(5,7,11,.97)";
 const BORDER_COL = "#1a2030";
@@ -95,6 +101,35 @@ function taggedName(name, abbr) {
   return abbr ? `[${abbr}] ${name}` : name;
 }
 
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Highlights "@<ownName>" (case-insensitive) inside message text — used so
+// the player notices being mentioned. No AI chatter mentions anyone today
+// (the flavor pools are canned lines), so in practice this mainly lights up
+// when the player mentions themself or another player types it in a future
+// multiplayer server, but the highlighting logic doesn't care who wrote it.
+function renderWithMentions(text, ownName) {
+  if (!ownName || !ownName.trim()) return text;
+  const re = new RegExp(`@${escapeRegExp(ownName)}\\b`, "gi");
+  const parts = text.split(re);
+  if (parts.length === 1) return text;
+  const matches = text.match(re);
+  const out = [];
+  parts.forEach((part, i) => {
+    out.push(<span key={`t${i}`}>{part}</span>);
+    if (matches && matches[i] != null) {
+      out.push(
+        <span key={`m${i}`} style={{ color: "#f0c878", fontWeight: 700, background: "rgba(200,160,96,.18)", borderRadius: 3, padding: "0 2px" }}>
+          {matches[i]}
+        </span>
+      );
+    }
+  });
+  return out;
+}
+
 function channelLabel(channel, playerId, playerName) {
   if (channel.type === "world") return "🌍 World";
   if (channel.type === "faction") return `⚑ ${channel.name}`;
@@ -130,31 +165,151 @@ function SubchannelRows({ subChannels, activeSubId, onSelect }) {
   );
 }
 
+const LONG_PRESS_MS = 480;
+
 // One message row. Pulled out of the message-list `.map()` so it can call
-// useTranslatedText (a hook) per-message without breaking the rules of
-// hooks — a variable-length `.map()` can't call hooks directly inline.
-function MessageBubble({ m, mine, crews, profanityFilterEnabled, translateEnabled, onNameClick }) {
+// hooks (useTranslatedText, useRelativeTime) per-message without breaking
+// the rules of hooks — a variable-length `.map()` can't call hooks directly
+// inline. Long-press (or right-click on desktop) opens the message menu
+// (React/Reply/Copy — see MessageMenu below).
+function MessageBubble({
+  m, mine, crews, profanityFilterEnabled, translateEnabled, ownName,
+  reactionSummary, onReact, onNameClick, onLongPress,
+}) {
   const filtered = profanityFilterEnabled ? censorText(m.text) : m.text;
   const text = useTranslatedText(filtered, translateEnabled);
+  const relTime = useRelativeTime(m.ts);
+  const pressTimer = useRef(null);
+
+  function startPress() {
+    clearTimeout(pressTimer.current);
+    pressTimer.current = setTimeout(() => onLongPress(m), LONG_PRESS_MS);
+  }
+  function cancelPress() {
+    clearTimeout(pressTimer.current);
+  }
+
+  const reactionEntries = Object.entries(reactionSummary || {}).filter(([, ids]) => ids.length > 0);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
-      <div
-        onClick={onNameClick}
-        style={{
-          ...TEXT_NAME, color: mine ? "#40cc80" : "#6a8aa0", marginBottom: 2,
-          cursor: mine ? "default" : "pointer",
-          textDecoration: mine ? "none" : "underline", textDecorationColor: "transparent",
-        }}
-      >
-        {taggedName(mine ? "You" : m.senderName, crewAbbrFor(m.senderId, crews))}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+        <div
+          onClick={onNameClick}
+          style={{
+            ...TEXT_NAME, color: mine ? "#40cc80" : "#6a8aa0",
+            cursor: mine ? "default" : "pointer",
+            textDecoration: mine ? "none" : "underline", textDecorationColor: "transparent",
+          }}
+        >
+          {taggedName(mine ? "You" : m.senderName, crewAbbrFor(m.senderId, crews))}
+        </div>
+        <span style={{ ...TEXT_XS, fontSize: 8, color: "#4a5a6a" }}>{relTime}</span>
       </div>
-      <div style={{
-        maxWidth: "85%", padding: "6px 9px", borderRadius: 6,
-        background: mine ? "rgba(40,160,80,.12)" : "rgba(255,255,255,.04)",
-        border: `1px solid ${mine ? "#40aa6040" : "#1e2028"}`,
-        color: "#c8c0b0", fontSize: 16, fontFamily: "'Crimson Pro',serif", lineHeight: 1.4,
-        wordBreak: "break-word",
-      }}>{text}</div>
+
+      {m.replyTo && (
+        <div style={{
+          maxWidth: "85%", padding: "3px 8px", marginBottom: 2, borderRadius: 4,
+          borderLeft: "2px solid #c8a06060", background: "rgba(255,255,255,.03)",
+          ...TEXT_XS, fontSize: 9, color: "#7a8a9a", overflow: "hidden",
+        }}>
+          ↩ <span style={{ color: "#9aa8b8" }}>{m.replyTo.senderName}:</span> {m.replyTo.text}
+        </div>
+      )}
+
+      <div
+        onPointerDown={startPress}
+        onPointerUp={cancelPress}
+        onPointerLeave={cancelPress}
+        onPointerCancel={cancelPress}
+        onContextMenu={e => { e.preventDefault(); onLongPress(m); }}
+        style={{
+          maxWidth: "85%", padding: "6px 9px", borderRadius: 6,
+          background: mine ? "rgba(40,160,80,.12)" : "rgba(255,255,255,.04)",
+          border: `1px solid ${mine ? "#40aa6040" : "#1e2028"}`,
+          color: "#c8c0b0", fontSize: 16, fontFamily: "'Crimson Pro',serif", lineHeight: 1.4,
+          wordBreak: "break-word", userSelect: "none", touchAction: "manipulation", cursor: "pointer",
+        }}
+      >{renderWithMentions(text, ownName)}</div>
+
+      {reactionEntries.length > 0 && (
+        <div style={{ display: "flex", gap: 3, marginTop: 3, flexWrap: "wrap" }}>
+          {reactionEntries.map(([emoji, ids]) => (
+            <button key={emoji} onClick={() => onReact(m.id, emoji)} style={{
+              ...BTN_RESET, padding: "1px 6px", borderRadius: 10, fontSize: 11,
+              background: "rgba(200,160,96,.12)", border: "1px solid #c8a06040",
+              display: "flex", alignItems: "center", gap: 3,
+            }}>
+              <span>{emoji}</span>
+              <span style={{ ...TEXT_XS, fontSize: 8, color: GOLD }}>{ids.length}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Left-column row (World/Faction/Guild/Group/DM) — the button itself opens
+// the channel; a separate small bell button beside it (not nested — a
+// <button> can't contain another <button>) toggles mute for that top-level
+// channel. Shared by every row kind below to avoid repeating this markup.
+function ChannelRow({ label, active, muted, onOpen, onToggleMute }) {
+  return (
+    <div style={{ display: "flex", alignItems: "stretch", gap: 3 }}>
+      <button onClick={onOpen} style={{
+        ...BTN_RESET, flex: 1, minWidth: 0, padding: "7px 6px", borderRadius: 4, textAlign: "left",
+        background: active ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
+        border: `1px solid ${active ? "#c8a06050" : "#1e2028"}`,
+        color: active ? GOLD : "#6a7a8a", ...TEXT_LEFT, opacity: muted ? .55 : 1,
+        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+      }}>{label}</button>
+      <button
+        onClick={e => { e.stopPropagation(); onToggleMute(); }}
+        title={muted ? "Unmute" : "Mute"}
+        style={{
+          ...BTN_RESET, width: 22, flexShrink: 0, borderRadius: 4,
+          background: "rgba(255,255,255,.03)", border: "1px solid #1e2028",
+          color: muted ? "#4a5a6a" : "#8a9aaa", fontSize: 10,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >{muted ? "🔕" : "🔔"}</button>
+    </div>
+  );
+}
+
+// Long-press (or right-click) popup on a message — React / Reply / Copy.
+function MessageMenu({ message, view, onReact, onReply, onCopy, onClose }) {
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 9700, background: "rgba(0,0,0,.55)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: 240, background: PANEL_BG, border: `1px solid ${BORDER_COL}`,
+        borderRadius: 8, padding: 14, boxShadow: "0 8px 30px rgba(0,0,0,.7)",
+      }}>
+        {view === "react" ? (
+          <>
+            <div style={{ ...TEXT_SM, fontSize: 11, color: GOLD, marginBottom: 10, textAlign: "center" }}>React</div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+              {REACTION_SET.map(e => (
+                <button key={e} onClick={() => onReact(e)} style={{
+                  ...BTN_RESET, fontSize: 22, padding: 4, borderRadius: 6,
+                }}>{e}</button>
+              ))}
+            </div>
+            <NameMenuBtn onClick={onClose}>Cancel</NameMenuBtn>
+          </>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <NameMenuBtn tone="gold" onClick={() => onReact(null)}>😀 React</NameMenuBtn>
+            <NameMenuBtn onClick={onReply}>↩ Reply</NameMenuBtn>
+            <NameMenuBtn onClick={onCopy}>📋 Copy</NameMenuBtn>
+            <NameMenuBtn onClick={onClose}>Cancel</NameMenuBtn>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -217,6 +372,10 @@ export default memo(function ChatPanel({
   // reopening — see useChat.js. Defaults to World if nothing was passed.
   activeDisplay = "chats", setActiveDisplay, activeChannelId = "world", setActiveChannelId,
   activeSubId = null, setActiveSubId,
+  // Round 6 additions — unread tracking, mute, reactions, typing indicators,
+  // reply-to, and leaving a group — all implemented in useChat.js.
+  mutedChannelIds, toggleMute, reactions, toggleReaction, typingByChannel,
+  markRead, leaveGroup,
 }) {
   const display = activeDisplay, setDisplay = setActiveDisplay;
   const selectedId = activeChannelId, setSelected = setActiveChannelId;
@@ -237,6 +396,20 @@ export default memo(function ChatPanel({
   // "Aa" header button — translates message text into the device's own
   // language (src/hooks/useTranslatedText.js / src/utils/translate.js).
   const [translateEnabled, setTranslateEnabled] = useState(false);
+  // Long-press message menu (React / Reply / Copy) — see MessageMenu above.
+  const [messageMenu, setMessageMenu] = useState(null); // { message } | null
+  // Reply-to draft — a small dismissible preview strip above the compose bar;
+  // cleared on send or on the "×" button.
+  const [replyTo, setReplyTo] = useState(null); // { id, senderName, text } | null
+  // "@partial" mention autocomplete dropdown above the compose bar.
+  const [mentionOpen, setMentionOpen] = useState(false);
+  // Scroll-lock / jump-to-latest — only auto-scroll while the reader is
+  // already at the bottom; otherwise surface a "New messages" pill.
+  const [atBottom, setAtBottom] = useState(true);
+  const [hasNewBelow, setHasNewBelow] = useState(false);
+  // In-channel text search — 🔍 toggle reveals a filter input.
+  const [msgSearchOpen, setMsgSearchOpen] = useState(false);
+  const [msgSearchQuery, setMsgSearchQuery] = useState("");
 
   const worldCh  = channels.filter(c => c.type === "world");
   const factionCh = channels.filter(c => c.type === "faction");
@@ -273,22 +446,81 @@ export default memo(function ChatPanel({
   const msgListRef = useRef(null);
   useEffect(() => {
     const el = msgListRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    if (atBottom) {
+      el.scrollTop = el.scrollHeight;
+    } else {
+      setHasNewBelow(true);
+    }
   }, [msgs.length, msgChannelId]);
+
+  // Switching channels always lands back at the bottom, unread-message pill
+  // cleared, regardless of where the previous channel was scrolled to.
+  useEffect(() => {
+    const el = msgListRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    setAtBottom(true);
+    setHasNewBelow(false);
+  }, [msgChannelId]);
+
+  function handleMsgListScroll() {
+    const el = msgListRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    setAtBottom(nearBottom);
+    if (nearBottom) setHasNewBelow(false);
+  }
+
+  function scrollToLatest() {
+    const el = msgListRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    setAtBottom(true);
+    setHasNewBelow(false);
+  }
+
+  // Viewing a channel clears its unread badge.
+  useEffect(() => {
+    if (msgChannelId) markRead?.(msgChannelId);
+  }, [msgChannelId, msgs, markRead]);
+
+  const visibleMsgs = msgSearchQuery.trim()
+    ? msgs.filter(m => m.text?.toLowerCase().includes(msgSearchQuery.trim().toLowerCase()))
+    : msgs;
+
+  // "@partial" trailing token in the compose draft, for the mention
+  // autocomplete dropdown.
+  const mentionMatch = draft.match(/@(\w*)$/);
+  const mentionQuery = mentionMatch ? mentionMatch[1] : null;
+  const mentionCandidates = mentionQuery != null
+    ? otherKnownIds
+      .map(id => resolveName(id))
+      .filter(name => name && name.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+      .slice(0, 5)
+    : [];
+  const mentionDropdownOpen = mentionOpen && mentionCandidates.length > 0;
+
+  function pickMention(name) {
+    setDraft(prev => prev.replace(/@(\w*)$/, `@${name} `));
+    setMentionOpen(false);
+  }
 
   function switchDisplay(id) {
     setDisplay(id); setSelected(null); setSelectedSub(null);
     setPicking(false); setRelationsOpen(false); setSubManagerOpen(false); setEmojiOpen(false);
+    setReplyTo(null); setMsgSearchOpen(false); setMsgSearchQuery("");
   }
 
   function openChannel(id) {
     setSelected(id); setSelectedSub(null); setRelationsOpen(false); setSubManagerOpen(false); setEmojiOpen(false);
+    setReplyTo(null); setMsgSearchOpen(false); setMsgSearchQuery("");
   }
 
   function handleSend() {
     if (!msgChannelId || !canPostHere || !draft.trim()) return;
-    sendMessage(msgChannelId, draft);
+    sendMessage(msgChannelId, draft, { replyTo });
     setDraft("");
+    setReplyTo(null);
+    setMentionOpen(false);
   }
 
   function insertEmoji(e) {
@@ -300,6 +532,15 @@ export default memo(function ChatPanel({
     setNameMenuId(id); setNameMenuView("menu");
   }
   function closeNameMenu() { setNameMenuId(null); }
+
+  function openMessageMenu(m) { setMessageMenu({ message: m }); }
+  function closeMessageMenu() { setMessageMenu(null); }
+
+  function handleLeaveGroup() {
+    if (!active || active.type !== "group") return;
+    leaveGroup?.(active.id);
+    setSelected("world"); setSelectedSub(null);
+  }
 
   function handleAddSub(name) {
     if (active.type === "crew") onManageCrewSubchannels?.(active.crewId, { type: "add", name });
@@ -431,35 +672,35 @@ export default memo(function ChatPanel({
           {display === "chats" && (
             <>
               {worldCh.map(ch => (
-                <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
-                  ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
-                  background: !relationsOpen && active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
-                  border: `1px solid ${!relationsOpen && active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                  color: !relationsOpen && active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_LEFT,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}>{channelLabel(ch, playerId, playerName)}</button>
+                <ChannelRow key={ch.id}
+                  label={channelLabel(ch, playerId, playerName)}
+                  active={!relationsOpen && active?.id === ch.id}
+                  muted={!!mutedChannelIds?.has?.(ch.id)}
+                  onOpen={() => openChannel(ch.id)}
+                  onToggleMute={() => toggleMute?.(ch.id)}
+                />
               ))}
               {factionCh.map(ch => (
-                <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
-                  ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
-                  background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
-                  border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                  color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_LEFT,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}>{channelLabel(ch, playerId, playerName)}</button>
+                <ChannelRow key={ch.id}
+                  label={channelLabel(ch, playerId, playerName)}
+                  active={active?.id === ch.id}
+                  muted={!!mutedChannelIds?.has?.(ch.id)}
+                  onOpen={() => openChannel(ch.id)}
+                  onToggleMute={() => toggleMute?.(ch.id)}
+                />
               ))}
               {crewCh.length === 0 && (
                 <div style={{ ...TEXT_LEFT, color: "#3a4050", padding: "10px 4px" }}>No guild yet</div>
               )}
               {crewCh.map(ch => (
                 <div key={ch.id}>
-                  <button onClick={() => openChannel(ch.id)} style={{
-                    ...BTN_RESET, width: "100%", padding: "7px 6px", borderRadius: 4, textAlign: "left",
-                    background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
-                    border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                    color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_LEFT,
-                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                  }}>{channelLabel(ch, playerId, playerName)}</button>
+                  <ChannelRow
+                    label={channelLabel(ch, playerId, playerName)}
+                    active={active?.id === ch.id}
+                    muted={!!mutedChannelIds?.has?.(ch.id)}
+                    onOpen={() => openChannel(ch.id)}
+                    onToggleMute={() => toggleMute?.(ch.id)}
+                  />
                   {active?.id === ch.id && (
                     <SubchannelRows
                       subChannels={subchannelsOf(ch, { crews })}
@@ -476,13 +717,13 @@ export default memo(function ChatPanel({
               }}>+ New Group</button>
               {groupCh.map(ch => (
                 <div key={ch.id}>
-                  <button onClick={() => openChannel(ch.id)} style={{
-                    ...BTN_RESET, width: "100%", padding: "7px 6px", borderRadius: 4, textAlign: "left",
-                    background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
-                    border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                    color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_LEFT,
-                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                  }}>{channelLabel(ch, playerId, playerName)}</button>
+                  <ChannelRow
+                    label={channelLabel(ch, playerId, playerName)}
+                    active={active?.id === ch.id}
+                    muted={!!mutedChannelIds?.has?.(ch.id)}
+                    onOpen={() => openChannel(ch.id)}
+                    onToggleMute={() => toggleMute?.(ch.id)}
+                  />
                   {active?.id === ch.id && (
                     <SubchannelRows
                       subChannels={subchannelsOf(ch, { crews })}
@@ -506,13 +747,13 @@ export default memo(function ChatPanel({
                 <div style={{ ...TEXT_LEFT, color: "#3a4050", padding: "10px 4px" }}>No DMs yet</div>
               )}
               {dmCh.map(ch => (
-                <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
-                  ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
-                  background: !relationsOpen && active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
-                  border: `1px solid ${!relationsOpen && active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                  color: !relationsOpen && active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_LEFT,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}>{channelLabel(ch, playerId, playerName)}</button>
+                <ChannelRow key={ch.id}
+                  label={channelLabel(ch, playerId, playerName)}
+                  active={!relationsOpen && active?.id === ch.id}
+                  muted={!!mutedChannelIds?.has?.(ch.id)}
+                  onOpen={() => openChannel(ch.id)}
+                  onToggleMute={() => toggleMute?.(ch.id)}
+                />
               ))}
             </>
           )}
@@ -580,32 +821,119 @@ export default memo(function ChatPanel({
             </div>
           ) : (
             <>
-              {isSubbed && activeSub && (
+              {(isSubbed && activeSub || active.type === "group") && (
                 <div style={{
-                  display: "flex", alignItems: "center", gap: 6, padding: "7px 10px",
+                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, padding: "7px 10px",
                   borderBottom: `1px solid ${BORDER_COL}`, flexShrink: 0,
                 }}>
-                  <span style={{ ...TEXT_XS, color: GOLD }}># {activeSub.name}</span>
-                  {activeSub.leaderOnly && <span style={{ fontSize: 9 }}>🔒</span>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                    {isSubbed && activeSub && (
+                      <>
+                        <span style={{ ...TEXT_XS, color: GOLD }}># {activeSub.name}</span>
+                        {activeSub.leaderOnly && <span style={{ fontSize: 9 }}>🔒</span>}
+                      </>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                    <button
+                      onClick={() => { setMsgSearchOpen(v => !v); if (msgSearchOpen) setMsgSearchQuery(""); }}
+                      title="Search this channel"
+                      style={{
+                        ...BTN_RESET, width: 22, height: 22, borderRadius: 4,
+                        background: msgSearchOpen ? "rgba(200,160,96,.15)" : "rgba(255,255,255,.03)",
+                        border: `1px solid ${msgSearchOpen ? "#c8a06050" : "#1e2028"}`,
+                        color: msgSearchOpen ? GOLD : "#8a9aaa", fontSize: 10,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >🔍</button>
+                    {active.type === "group" && (
+                      <button onClick={handleLeaveGroup} style={{
+                        ...BTN_RESET, padding: "3px 7px", borderRadius: 4,
+                        background: "rgba(160,40,40,.12)", border: "1px solid #602020",
+                        color: "#cc6060", ...TEXT_XS, whiteSpace: "nowrap",
+                      }}>Leave Group</button>
+                    )}
+                  </div>
                 </div>
               )}
-              <div ref={msgListRef} className="scr chat-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-                {msgs.length === 0 && (
-                  <div style={{ ...TEXT_XS, color: "#3a4050", textAlign: "center", padding: "20px 0" }}>
-                    No messages yet.
-                  </div>
-                )}
-                {msgs.map(m => (
-                  <MessageBubble
-                    key={m.id} m={m} mine={m.senderId === playerId} crews={crews}
-                    profanityFilterEnabled={profanityFilterEnabled}
-                    translateEnabled={translateEnabled}
-                    onNameClick={() => openNameMenu(m.senderId)}
+              {msgSearchOpen && (
+                <div style={{ padding: "6px 10px", borderBottom: `1px solid ${BORDER_COL}`, flexShrink: 0 }}>
+                  <input
+                    autoFocus
+                    value={msgSearchQuery} onChange={e => setMsgSearchQuery(e.target.value)}
+                    placeholder="Search messages…"
+                    style={{
+                      width: "100%", background: "rgba(255,255,255,.05)", border: "1px solid #2a3040",
+                      borderRadius: 4, padding: "6px 8px", color: "#c8c0b0",
+                      fontFamily: "'Crimson Pro',serif", fontSize: 11, outline: "none", boxSizing: "border-box",
+                    }}
                   />
-                ))}
+                </div>
+              )}
+              <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
+                <div ref={msgListRef} onScroll={handleMsgListScroll} className="scr chat-scroll" style={{ height: "100%", minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6, boxSizing: "border-box" }}>
+                  {visibleMsgs.length === 0 && (
+                    <div style={{ ...TEXT_XS, color: "#3a4050", textAlign: "center", padding: "20px 0" }}>
+                      {msgSearchQuery.trim() ? "No matches." : "No messages yet."}
+                    </div>
+                  )}
+                  {visibleMsgs.map(m => (
+                    <MessageBubble
+                      key={m.id} m={m} mine={m.senderId === playerId} crews={crews}
+                      profanityFilterEnabled={profanityFilterEnabled}
+                      translateEnabled={translateEnabled}
+                      ownName={playerName}
+                      reactionSummary={reactions?.[m.id]}
+                      onReact={(id, emoji) => toggleReaction?.(id, emoji)}
+                      onNameClick={() => openNameMenu(m.senderId)}
+                      onLongPress={() => openMessageMenu(m)}
+                    />
+                  ))}
+                </div>
+                {hasNewBelow && (
+                  <button onClick={scrollToLatest} style={{
+                    ...BTN_RESET, position: "absolute", left: "50%", bottom: 10, transform: "translateX(-50%)",
+                    padding: "5px 12px", borderRadius: 12, background: "rgba(200,160,96,.9)",
+                    border: "1px solid #c8a060", color: "#1a1006", ...TEXT_XS, fontWeight: 700,
+                    boxShadow: "0 2px 10px rgba(0,0,0,.5)",
+                  }}>↓ New messages</button>
+                )}
               </div>
+              {typingByChannel?.[msgChannelId] && (
+                <div style={{ padding: "3px 12px", flexShrink: 0, ...TEXT_XS, fontSize: 9, color: "#6a7a8a", fontStyle: "italic" }}>
+                  {typingByChannel[msgChannelId]} is typing…
+                </div>
+              )}
+              {replyTo && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "5px 10px",
+                  borderTop: `1px solid ${BORDER_COL}`, background: "rgba(255,255,255,.02)", flexShrink: 0,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0, ...TEXT_XS, fontSize: 9, color: "#7a8a9a", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                    ↩ Replying to <span style={{ color: GOLD }}>{replyTo.senderName}</span>: {replyTo.text}
+                  </div>
+                  <button onClick={() => setReplyTo(null)} style={{
+                    ...BTN_RESET, flexShrink: 0, color: "#8a9aaa", fontSize: 13, padding: "0 4px",
+                  }}>×</button>
+                </div>
+              )}
               {canPostHere ? (
                 <div style={{ position: "relative", flexShrink: 0 }}>
+                  {mentionDropdownOpen && (
+                    <div style={{
+                      position: "absolute", left: 10, right: 10, bottom: "100%", marginBottom: 6,
+                      background: PANEL_BG, border: `1px solid ${BORDER_COL}`, borderRadius: 6,
+                      padding: 4, boxShadow: "0 -4px 18px rgba(0,0,0,.6)",
+                      display: "flex", flexDirection: "column", gap: 2,
+                    }}>
+                      {mentionCandidates.map(name => (
+                        <button key={name} onClick={() => pickMention(name)} style={{
+                          ...BTN_RESET, padding: "6px 8px", borderRadius: 4, textAlign: "left",
+                          ...TEXT_XS, color: "#c8c0b0",
+                        }}>@{name}</button>
+                      ))}
+                    </div>
+                  )}
                   {emojiOpen && (
                     <div className="scr chat-scroll" style={{
                       position: "absolute", left: 10, right: 10, bottom: "100%", marginBottom: 6,
@@ -634,9 +962,10 @@ export default memo(function ChatPanel({
                       }}
                     >🙂</button>
                     <input
-                      value={draft} onChange={e => setDraft(e.target.value)}
+                      value={draft}
+                      onChange={e => { setDraft(e.target.value); setMentionOpen(/@(\w*)$/.test(e.target.value)); }}
                       onFocus={() => setEmojiOpen(false)}
-                      onKeyDown={e => { if (e.key === "Enter") handleSend(); }}
+                      onKeyDown={e => { if (e.key === "Enter") handleSend(); else if (e.key === "Escape") setMentionOpen(false); }}
                       placeholder="Message…" maxLength={280}
                       style={{
                         flex: 1, background: "rgba(255,255,255,.05)", border: "1px solid #2a3040",
@@ -726,6 +1055,28 @@ export default memo(function ChatPanel({
             )}
           </div>
         </div>
+      )}
+
+      {/* Long-press (or right-click) message menu — React / Reply / Copy. */}
+      {messageMenu && (
+        <MessageMenu
+          message={messageMenu.message}
+          view={messageMenu.view || "menu"}
+          onReact={(emoji) => {
+            if (emoji == null) { setMessageMenu(m => m ? { ...m, view: "react" } : m); return; }
+            toggleReaction?.(messageMenu.message.id, emoji);
+            closeMessageMenu();
+          }}
+          onReply={() => {
+            setReplyTo({ id: messageMenu.message.id, senderName: messageMenu.message.senderName, text: messageMenu.message.text });
+            closeMessageMenu();
+          }}
+          onCopy={() => {
+            navigator.clipboard?.writeText(messageMenu.message.text);
+            closeMessageMenu();
+          }}
+          onClose={closeMessageMenu}
+        />
       )}
     </div>
   );

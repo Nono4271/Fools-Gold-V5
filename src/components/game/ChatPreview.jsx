@@ -28,6 +28,7 @@ function taggedName(name, abbr) {
 
 export default memo(function ChatPreview({
   onOpen, playerId = "player", messages = [], crews = [], profanityFilterEnabled = true,
+  unreadCount = 0,
 }) {
   return (
     <button
@@ -47,6 +48,14 @@ export default memo(function ChatPreview({
         boxShadow: "0 2px 12px rgba(0,0,0,.6)",
       }}
     >
+      {unreadCount > 0 && (
+        <span style={{
+          position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 9,
+          background: "#cc4040", border: "1px solid #1a2030", color: "#fff",
+          fontFamily: "'Crimson Pro',serif", fontSize: 10, fontWeight: 700,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px",
+        }}>{unreadCount > 99 ? "99+" : unreadCount}</span>
+      )}
       {messages.length === 0 ? (
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ fontSize: 11 }}>💬</span>
