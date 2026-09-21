@@ -9,6 +9,60 @@ Branch: codex/core-fixes-20260919
 ---
 
 ## 2026-09-20 — Claude (Sonnet 5)
+### Bug fix: AI commanders attacking tiles way above their level
+
+Reported: a fresh server had an AI commander capture a P9 tile (defended by
+a level-28-ish garrison commander) within minutes — a level-5 AI commander
+had no business touching that fight.
+
+Root cause: AI target selection (`tickAiMarch`, worker picks nearest
+frontier tile in `src/workers/gameLoop.worker.js`; main thread dispatches
+in `src/hooks/useAI.js`) had **no concept of tile difficulty at all** — it
+only ever picked the geometrically nearest unowned tile next to the AI's
+territory, regardless of that tile's power level or garrison strength.
+Combined with the AI's economy tick being able to hand a fresh level-5
+commander ~1,800 troops in its very first tick (a separate, not-yet-fixed
+issue — see the troop-burst note below), a low-level commander could reach
+and fight a P9 tile almost immediately.
+
+Fix (`src/hooks/useAI.js`): added `aiCanChallenge(cmdLvl, tile)`, gating a
+dispatch by the tile's `powerLevel` against a minimum commander level table
+that mirrors the actual defender levels `factionDefCmdForTile`/
+`FACTION_CMD_CONFIG` assign per power level (P4=lvl8 ... P13=lvl50; P0-P3
+have no elite defender and stay unrestricted). `tickAiMarch` now drops any
+worker-proposed dispatch that fails this check — the commander just stays
+idle and gets reconsidered next march-check cycle instead of marching in.
+
+Scoped where the fix lives: the check runs on the **main thread**, not in
+the worker's `tickAiMarch`, because the worker's tile snapshot is
+deliberately a lightweight "defeated tiles only" index (kept small so it
+doesn't scan/serialize the full ~490k-tile map every tick) — it doesn't
+carry `powerLevel` for untouched tiles. The main thread's `tilesRef` has
+the real tile data, so the gate runs there instead, after the worker
+proposes a target but before a march is actually dispatched.
+
+**Known trade-off, not fixed here:** if a commander's nearest (or only)
+frontier tile is above what it can challenge, it'll just sit idle near that
+tile every march-check cycle until either it levels up or a weaker
+frontier tile opens up elsewhere — it doesn't yet route *around* a blocked
+tile to the next-nearest one it could actually take. Acceptable for now
+(an idle AI commander is a much smaller problem than one steamrolling
+overleveled tiles), but worth revisiting if AI expansion looks too passive
+near power clusters.
+
+**Not fixed in this pass** (flagged, not addressed): the troop-burst issue
+mentioned above — a fresh AI commander can get handed close to its full
+troop capacity (~1,800 for a level-5 commander) in a single 5-second
+economy tick right after server start, instead of building up gradually.
+The level gate above stops it from *reaching* tiles it can't handle, but
+the troop number itself is still unrealistically fast for a "fresh
+account." Left for a follow-up if wanted.
+
+`npm test` (275/275) and `npm run build` both pass.
+
+---
+
+## 2026-09-20 — Claude (Sonnet 5)
 ### Session continuity: progress now survives a reload, and follows a login
 
 Follow-up to round 4 (login system). Two gaps that would have bitten during
