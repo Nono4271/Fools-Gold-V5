@@ -40,6 +40,7 @@ import { useAiCrews } from "./hooks/useAiCrews.js";
 import { useChat } from "./hooks/useChat.js";
 import { useRelations } from "./hooks/useRelations.js";
 import { aiDisplayName } from "../shared/utils/aiChatter.js";
+import { NYRO_ID } from "../shared/constants/nyro.js";
 import { useReinforcements } from "./hooks/useReinforcements.js";
 import { useTactics } from "./hooks/useTactics.js";
 import { useMapInit } from "./hooks/useMapInit.js";
@@ -733,6 +734,12 @@ export default function RiseToWar() {
   // ── Chat — World/Faction/Crew/DM/Group; rules in shared/utils/chatRules.js
   // + shared/utils/aiChatter.js. Local-only (see useChat.js), not yet persisted.
   const chatKnownPlayerIds = useMemo(() => [...aiPlayerIdMapRef.current.values()], [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Nyro (shared/constants/nyro.js) isn't one of the ambient per-faction AI
+  // ids and must stay out of useChat's aiPlayerIds (which drives the ambient
+  // multi-AI chatter/World-chat eligibility, with no shape filter) — but he
+  // still needs to show up wherever the game surfaces "known players" to add
+  // as a friend or invite to a group, hence this second list.
+  const chatKnownPlayerIdsWithNyro = useMemo(() => [NYRO_ID, ...chatKnownPlayerIds], [chatKnownPlayerIds]);
   const {
     channels: chatChannels, sendMessage: sendChatMessage, startDm: startChatDm,
     startGroup: startChatGroup, getMessages: getChatMessages, getRecentMessages: getChatRecentMessages,
@@ -760,7 +767,7 @@ export default function RiseToWar() {
     addFriend: relAddFriend, declineIncoming: relDeclineIncoming, cancelOutgoing: relCancelOutgoing,
     unfriend: relUnfriend, blockPlayer: relBlockPlayer, unblockPlayer: relUnblockPlayer,
     search: relSearch,
-  } = useRelations({ playerId: "player", knownPlayerIds: chatKnownPlayerIds, nameOf: relationsNameOf });
+  } = useRelations({ playerId: "player", knownPlayerIds: chatKnownPlayerIdsWithNyro, nameOf: relationsNameOf });
 
   // ── Server sync — authoritative tile state ──
   const { emitTileCapture, emitTileSiege, emitFortUpdate, connected: serverConnected } = useServerSync({
@@ -1456,7 +1463,7 @@ export default function RiseToWar() {
     ZOOM_LEVELS, abandonFort, startFortRemoval, cancelFortRemoval, aiFaction, aiHqKeys, aiHqKeysRef, aiLastActionRef,
     aiPlayerIdMapRef, assignTroops, atkKey, autoHeal, bLog, barracksPool, battles, bldgs,
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
-    chatChannels, chatKnownPlayerIds, chatOpen, chatProfanityFilterEnabled, chatNormalizedCrews,
+    chatChannels, chatKnownPlayerIds: chatKnownPlayerIdsWithNyro, chatOpen, chatProfanityFilterEnabled, chatNormalizedCrews,
     chatRecentMessages, addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,

@@ -5,6 +5,7 @@ import { CSS } from "./constants/css.js";
 import { validateRelocationPad, allHqKeyList } from "../shared/utils/relocation.js";
 import { defaultCrewSubchannels } from "../shared/constants/chat.js";
 import { addSubchannel, removeSubchannel, moveSubchannel } from "../shared/utils/subchannels.js";
+import { NYRO_ID } from "../shared/constants/nyro.js";
 import { GameContext } from "./GameContext.js";
 import HUD from "./components/game/HUD.jsx";
 import TilePopup from "./components/game/TilePopup.jsx";
@@ -597,23 +598,27 @@ export default function GameView(props) {
             const id = `crew_${Date.now()}`;
             // members stores faction keys for AI, player's facKey for the human
             // (see normalizeCrewsForPlayer in useChat.js — chat swaps facKey ->
-            // "player" for the local player, founder included).
+            // "player" for the local player, founder included). Nyro — a
+            // named companion, always in the player's faction — always joins
+            // the player's crew too (shared/constants/nyro.js).
             setCrews(prev => [...prev, {
-              id, name, abbr, faction: facKey, members: [facKey], cap: 40,
+              id, name, abbr, faction: facKey, members: [facKey, NYRO_ID], cap: 100,
               founder: facKey, subChannels: defaultCrewSubchannels(),
             }]);
             setPlayerCrewId(id);
           }}
           onJoinRequest={(crewId) => {
-            // Auto-accept for local play — add player's faction to the crew
+            // Auto-accept for local play — add player's faction (and Nyro) to the crew
             setCrews(prev => prev.map(c =>
-              c.id === crewId ? { ...c, members: [...(c.members||[]), facKey] } : c
+              c.id === crewId ? { ...c, members: [...new Set([...(c.members||[]), facKey, NYRO_ID])] } : c
             ));
             setPlayerCrewId(crewId);
           }}
           onLeaveCrew={() => {
             setCrews(prev => prev.map(c =>
-              c.id === playerCrewId ? { ...c, members: (c.members||[]).filter(m => m !== facKey) } : c
+              c.id === playerCrewId
+                ? { ...c, members: (c.members||[]).filter(m => m !== facKey && m !== NYRO_ID) }
+                : c
             ));
             setPlayerCrewId(null); setPendingCrewId(null);
           }}
