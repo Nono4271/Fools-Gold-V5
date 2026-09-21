@@ -174,6 +174,26 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
     return all.slice(-n);
   }, [messages, channels, ctx]);
 
+  // Most recent messages in whichever channel/sub-channel is currently
+  // "active" (see activeChannelId/activeSubId above) — for the closed-state
+  // mini preview (ChatPreview.jsx), which the owner wants to mirror whatever
+  // chat was open/last viewed, not just whatever channel happened to get a
+  // message most recently. Mirrors ChatPanel.jsx's own #General-fallback
+  // logic for crew/group so the preview always matches what reopening chat
+  // would show.
+  const getActiveChannelMessages = useCallback((n = 2) => {
+    const channel = channels.find(c => c.id === activeChannelId);
+    if (!channel) return [];
+    let msgChannelId = channel.id;
+    if (channel.type === "crew" || channel.type === "group") {
+      const subs = subchannelsOf(channel, ctx);
+      const sub = subs.find(s => s.id === activeSubId) || subs.find(s => s.id === "general") || subs[0];
+      if (!sub) return [];
+      msgChannelId = subchannelId(channel.id, sub.id);
+    }
+    return (messages[msgChannelId] || []).slice(-n);
+  }, [channels, ctx, activeChannelId, activeSubId, messages]);
+
   // ── Occasional AI flavor chatter so World/Faction/Crew don't feel dead ──────
   useEffect(() => {
     if (screen !== "game") return;
@@ -227,7 +247,7 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
   }, [screen, appendMessage]);
 
   return {
-    channels, sendMessage, startDm, startGroup, getMessages, getRecentMessages,
+    channels, sendMessage, startDm, startGroup, getMessages, getRecentMessages, getActiveChannelMessages,
     addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     profanityFilterEnabled, setProfanityFilterEnabled,
     activeDisplay, setActiveDisplay, activeChannelId, setActiveChannelId, activeSubId, setActiveSubId,
