@@ -20,6 +20,7 @@ export default memo(function CrewScreen({
   onRequestBuildFortress, onDemolishFortress,
   onBuyStoreItem,
   crewHallLvl, helpsUsed, onHelpMember, canHelp,
+  onUpdateAnnouncement, onSetTarget, onClearTarget,
 }) {
   const myCrew = crews.find(c => c.id === playerCrewId);
   const [view, setView] = useState(myCrew ? "hq" : "landing");
@@ -108,6 +109,7 @@ export default memo(function CrewScreen({
             onRequestBuildFortress={onRequestBuildFortress} onDemolishFortress={onDemolishFortress}
             onBuyStoreItem={onBuyStoreItem}
             crewHallLvl={crewHallLvl} helpsUsed={helpsUsed} onHelpMember={onHelpMember} canHelp={canHelp}
+            onUpdateAnnouncement={onUpdateAnnouncement} onSetTarget={onSetTarget} onClearTarget={onClearTarget}
           />
         )}
       </div>

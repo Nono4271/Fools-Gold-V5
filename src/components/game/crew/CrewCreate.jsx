@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   CREW_PRIVACY, DEFAULT_CREW_PRIVACY, DEFAULT_EMBLEM, CREW_DESCRIPTION_MAX_LEN,
+  CREW_LANGUAGES, DEFAULT_CREW_LANGUAGE,
 } from "../../../../shared/constants/crew.js";
 import { validateCrewCreation } from "../../../../shared/utils/crewRules.js";
 import { EmblemPicker } from "./Emblem.jsx";
@@ -18,14 +19,15 @@ export default function CrewCreate({ playerGems, crewCreationCost, onCreate, onC
   const [description, setDescription]  = useState("");
   const [emblem, setEmblem]            = useState(DEFAULT_EMBLEM);
   const [privacy, setPrivacy]          = useState(DEFAULT_CREW_PRIVACY);
+  const [language, setLanguage]        = useState(DEFAULT_CREW_LANGUAGE);
   const [errs, setErrs]                = useState([]);
 
   const canAfford = (playerGems ?? 0) >= (crewCreationCost ?? 500);
 
   function handleSubmit() {
-    const validationErrs = validateCrewCreation({ name, abbr, description, emblem, privacy });
+    const validationErrs = validateCrewCreation({ name, abbr, description, emblem, privacy, language });
     if (validationErrs.length) { setErrs(validationErrs); return; }
-    onCreate({ name: name.trim(), abbr: abbr.trim().toUpperCase(), description: description.trim(), emblem, privacy });
+    onCreate({ name: name.trim(), abbr: abbr.trim().toUpperCase(), description: description.trim(), emblem, privacy, language });
   }
 
   if (!canAfford) {
@@ -76,6 +78,13 @@ export default function CrewCreate({ playerGems, crewCreationCost, onCreate, onC
         <textarea value={description} onChange={e => setDescription(e.target.value.slice(0, CREW_DESCRIPTION_MAX_LEN))}
           placeholder="What is this crew about? What are you looking for?" rows={3}
           style={{ ...inputStyle(), resize: "vertical", fontFamily: "'Crimson Pro',serif", fontSize: 11 }} />
+      </div>
+
+      <div>
+        <div style={{ ...TEXT_XS, color: "#5a6a7a", marginBottom: 4, letterSpacing: ".06em" }}>LANGUAGE</div>
+        <select value={language} onChange={e => setLanguage(e.target.value)} style={inputStyle()}>
+          {CREW_LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
       </div>
 
       <div>
