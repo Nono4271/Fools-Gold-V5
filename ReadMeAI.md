@@ -1614,6 +1614,29 @@ on channel switch or when the input is refocused.
 **Verified:** full test suite (`npm test`, 304/304) and production build
 (`npm run build`) both pass.
 
+## 2026-09-21 — Claude (Sonnet), session 11
+
+### Bigger/clickable names, bigger message text, restyled Chats/Direct tabs
+**File:** `src/components/game/ChatPanel.jsx` / `ChatPreview.jsx`:
+- Sender name + `[ABBR]` crew tag: 7px → 10.5px (1.5x), new shared
+  `TEXT_NAME` style.
+- Message bubble text: 10.5px → 16px (1.5x, `ChatPanel.jsx` only — the
+  preview's message text also went 10px → 15px for the same reason: small
+  and hard to read).
+- "Chats"/"Direct" tab toggle: was 7px Cinzel small-caps in blue-gray
+  (`#4a5a6a`) — hard to read per the owner. New `TAB_FONT` (13px
+  'Crimson Pro', bold) and a warm amber/parchment scheme (`#f0c878` active /
+  `#a89878` inactive) instead of the blue-gray.
+- Sender names in the message list are now clickable (own messages/"You"
+  excluded) — opens a popup: **View Profile** (a lightweight read-only card:
+  name, crew, faction, relation status — there's no dedicated profile screen
+  elsewhere in the game yet, so this is a minimal stand-in), **Add/Remove
+  Friend**, **Block/Unblock** (wired to the existing `useRelations.js`
+  actions already passed into `ChatPanel`).
+
+**Verified:** full test suite (`npm test`, 304/304) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
