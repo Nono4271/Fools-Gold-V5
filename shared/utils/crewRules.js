@@ -7,7 +7,7 @@ import {
   CREW_DESCRIPTION_MAX_LEN, DEFAULT_EMBLEM, isValidEmblem,
   CREW_LANGUAGES, DEFAULT_CREW_LANGUAGE, CREW_TARGET_LABEL_MAX_LEN,
   crewMemberCapForLevel, crewFortressSlotsForLevel, applyCrewXp,
-  CREW_HELP_CONTRIBUTION,
+  CREW_HELP_CONTRIBUTION, CREW_DIPLOMACY_STATUS, CREW_DIPLOMACY_STATUSES,
 } from "../constants/crew.js";
 import { defaultCrewSubchannels } from "../constants/chat.js";
 
@@ -55,6 +55,9 @@ export function canManageFortress(crew, actorId) { return isFounderOrOfficer(cre
 // tool, same tier as fortress management.
 export function canEditAnnouncement(crew, actorId) { return isFounder(crew, actorId); }
 export function canSetTarget(crew, actorId) { return isFounderOrOfficer(crew, actorId); }
+// Diplomacy (Ally/Neutral/Enemy standing toward another crew) is a
+// founder/officer tool, same tier as rally target.
+export function canSetDiplomacy(crew, actorId) { return isFounderOrOfficer(crew, actorId); }
 
 // ── Creation ─────────────────────────────────────────────────────────────
 export function validateCrewCreation({ name, abbr, description, emblem, privacy, language }) {
@@ -105,6 +108,7 @@ export function createCrew({
     subChannels: defaultCrewSubchannels(),
     fortresses: [],
     target: null,          // { tileKey, label, setBy, setAt } | null — see setCrewTarget
+    diplomacy: {},         // { [otherCrewId]: "ally"|"enemy" } — see setDiplomacyStatus
   };
 }
 
@@ -126,6 +130,53 @@ export function setCrewTarget(crew, actorId, { tileKey, label }) {
 export function clearCrewTarget(crew, actorId) {
   if (!canSetTarget(crew, actorId)) return crew;
   return { ...crew, target: null };
+}
+
+// ── Diplomacy ─────────────────────────────────────────────────────────────
+// One-way and cosmetic — see the constants/crew.js note above `crew.diplomacy`
+// for the full rules. `status` is "ally", "enemy", or null/"neutral" (clears
+// the entry — neutral is never stored explicitly).
+export function setDiplomacyStatus(crew, actorId, targetCrewId, status) {
+  if (!canSetDiplomacy(crew, actorId)) return crew;
+  if (!targetCrewId || targetCrewId === crew.id) return crew;
+  const diplomacy = { ...(crew.diplomacy || {}) };
+  if (CREW_DIPLOMACY_STATUSES.includes(status)) {
+    diplomacy[targetCrewId] = status;
+  } else {
+    delete diplomacy[targetCrewId];
+  }
+  return { ...crew, diplomacy };
+}
+
+export function diplomacyStatusOf(crew, targetCrewId) {
+  return crew?.diplomacy?.[targetCrewId] || "neutral";
+}
+
+// Every crew this crew has flagged ally/enemy, resolved against the full
+// crews list, as { crew, status }[] — used by both the member-facing read
+// -only Diplomacy view and (indirectly) tile-color resolution below.
+export function flaggedDiplomacyCrews(crew, allCrews) {
+  const diplomacy = crew?.diplomacy || {};
+  return Object.keys(diplomacy)
+    .map(id => ({ crew: (allCrews || []).find(c => c.id === id), status: diplomacy[id] }))
+    .filter(entry => !!entry.crew);
+}
+
+// Resolves this crew's diplomacy map into player-id Sets for map/tile-color
+// use (a crew's `members` array holds the playerIds — mostly AI ids for any
+// crew that isn't the local player's own — that own that crew's tiles).
+// Pure and framework-free on purpose so MapRenderer.jsx's ownerTint (also
+// pure) can stay a plain function call, no React/Pixi dependency here.
+export function diplomacyPlayerIdSets(crew, allCrews) {
+  const allyIds = new Set();
+  const enemyIds = new Set();
+  for (const { crew: other, status } of flaggedDiplomacyCrews(crew, allCrews)) {
+    const target = status === CREW_DIPLOMACY_STATUS.ALLY ? allyIds
+      : status === CREW_DIPLOMACY_STATUS.ENEMY ? enemyIds : null;
+    if (!target) continue;
+    for (const pid of other.members || []) target.add(pid);
+  }
+  return { allyIds, enemyIds };
 }
 
 // ── Search visibility ────────────────────────────────────────────────────
