@@ -36,7 +36,7 @@ export default function GameView(props) {
     chatActiveDisplay, setChatActiveDisplay, chatActiveChannelId, setChatActiveChannelId,
     chatActiveSubId, setChatActiveSubId,
     chatMutedChannelIds, chatToggleMute, chatReactions, chatToggleReaction, chatTypingByChannel,
-    chatUnreadCount, chatMarkRead,
+    chatUnreadCount, chatMarkRead, chatUnreadLeafIds, chatUnreadTopIds,
     getChatMessages, sendChatMessage, setChatOpen, setChatProfanityFilterEnabled,
     startChatDm, startChatGroup, leaveChatGroup,
     addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
@@ -689,6 +689,8 @@ export default function GameView(props) {
           reactions={chatReactions} toggleReaction={chatToggleReaction}
           typingByChannel={chatTypingByChannel}
           markRead={chatMarkRead}
+          unreadLeafIds={chatUnreadLeafIds}
+          unreadTopIds={chatUnreadTopIds}
         />
       )}
 

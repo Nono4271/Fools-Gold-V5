@@ -755,6 +755,7 @@ export default function RiseToWar() {
     reactions: chatReactions, toggleReaction: chatToggleReaction,
     typingByChannel: chatTypingByChannel,
     unreadCount: chatUnreadCount, markRead: chatMarkRead,
+    unreadLeafIds: chatUnreadLeafIds, unreadTopIds: chatUnreadTopIds,
   } = useChat({
     screen, playerId: "player", playerName: facName, playerFacKey: facKey,
     crews, aiPlayerIds: chatKnownPlayerIds,
@@ -1477,7 +1478,7 @@ export default function RiseToWar() {
     chatActiveDisplay, setChatActiveDisplay, chatActiveChannelId, setChatActiveChannelId,
     chatActiveSubId, setChatActiveSubId,
     chatMutedChannelIds, chatToggleMute, chatReactions, chatToggleReaction, chatTypingByChannel,
-    chatUnreadCount, chatMarkRead,
+    chatUnreadCount, chatMarkRead, chatUnreadLeafIds, chatUnreadTopIds,
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
