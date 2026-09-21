@@ -44,6 +44,7 @@ export default defineConfig({
    host: "0.0.0.0",
    proxy: {
      '/ws': { target: 'ws://localhost:3001', ws: true, rewrite: (p) => p.replace(/^\/ws/, '') },
+     '/api': { target: 'http://localhost:3001' },
    },
  },
  preview: {

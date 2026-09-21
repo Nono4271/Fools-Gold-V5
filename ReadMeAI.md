@@ -8,6 +8,65 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5)
+### Pre-multiplayer prep, round 4: username/password accounts + TILE_PATCH viewport filtering
+
+Two of the previously-flagged gaps, closed:
+
+**1. Username/password accounts (server/auth.js, new)**
+- `POST /api/register` / `POST /api/login` on the same HTTP server the WS
+  upgrade already runs on (server/index.js now creates an `http.Server` and
+  passes it to `WebSocketServer({ server })` instead of listening on a bare
+  port itself). Vite's dev proxy gained a matching `/api` → `localhost:3001`
+  entry (vite.config.ts).
+- One JSON file per account under `server/data/accounts/<username>.json`
+  (gitignored, like `server/data/sessions/`), password salted+hashed with
+  scrypt, compared with `crypto.timingSafeEqual`. No sessions/tokens — a
+  successful login/register just returns `{ accountId, username }`.
+- **Not a real identity provider**: no email verification, no password
+  reset, no rate limiting, no HTTPS enforcement (that's the deploy
+  environment's job). Good enough to give a player a stable identity across
+  browsers/devices; scoped no further than that.
+- Client side (`src/utils/playerIdentity.js`): `loginAccount`/
+  `registerAccount` POST to those endpoints and, on success, overwrite the
+  same `localStorage` key `getOrCreatePlayerId()` already used — so logging
+  in doesn't add a second identity system, it just replaces the per-browser
+  guest id with the account's id going forward. `getAccountUsername()` reads
+  back the stored username for display.
+- UI: `src/components/screens/LoginModal.jsx` (new), opened from a "Log In /
+  Register" link on `TitleScreen.jsx`. Fully skippable — declining leaves
+  the existing per-browser guest id in place, same behavior as before this.
+
+**2. TILE_PATCH viewport filtering (server/index.js)**
+- This was the explicitly-flagged gap from round 3: `VIEWPORT_SUB` already
+  narrowed a client's *snapshot* re-syncs, but the live `TILE_PATCH`
+  broadcast still went to every client in the session regardless of what
+  they could see.
+- `applyAndBroadcast` now checks each connection's last-known `ws._viewport`
+  (set on `GAME_INIT`/`VIEWPORT_SUB`) and only forwards the patches for
+  tiles inside it; a connection with no known viewport yet still gets
+  everything (safe fallback — same behavior as before this change).
+- If none of a batch's patches fall inside a given client's viewport, that
+  client isn't sent a message at all for that broadcast.
+
+Live-verified against a running server (temporary script, not committed):
+two clients joined the same session with viewports on opposite sides of the
+map; a capture on a tile inside client A's viewport but far outside client
+B's was NOT delivered to B as a TILE_PATCH, while A (the sender, already
+applied optimistically) and the server's own tile state both updated
+correctly. Register/login/duplicate-username/wrong-password all verified
+against the real HTTP endpoints with curl.
+
+`npm test` (275/275) and `npm run build` both pass.
+
+**Still not done** (unchanged from before, not addressed this round): no
+faction/commander identity verification on a capture (WHAT is attacking is
+still trusted from the client, only WHO — via playerId/accountId — and the
+siege math are verified); no audit of other possibly-missing mutable tile
+fields beyond the `isGate` fix from round 2.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Pre-multiplayer prep, round 3: player identity binding, live viewport tracking, session persistence/reconnect
 
 Follow-up to the two entries directly below. Owner picked the item flagged as still-open last round
