@@ -8,6 +8,52 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Pre-multiplayer prep, round 2: server independently verifies captures + isGate fix
+
+Follow-up to the entry directly below. Owner picked 2 more items from the pre-multiplayer punch
+list: closing the biggest gap flagged as NOT done last round (server still trusted the client's
+claimed siege/garrison numbers), and the small `isGate` fix that was also flagged as a known
+limitation there.
+
+**1. Server now independently recomputes siegePower and decides the real outcome**
+- `src/hooks/useMarch.js` — new `attackerComposition(cmd, boostedCmd)` builds the troop composition
+  (`{ troopSlots }` or `{ troops, troopBranch }` + `armySiegeBonus`) behind a `cmdSiegePower` call, in
+  the exact wire shape the server can recompute from. Threaded through all 3 player-attacking
+  capture/siege-decision sites (the same 3 refactored to use `resolveSiegeOutcome` last round). AI
+  captures still don't emit to the server at all — pre-existing behavior, unchanged, out of scope.
+- `src/hooks/useServerSync.js` — `emitTileCapture`/`emitTileSiege` take an optional 3rd `attacker` arg
+  and include it on the wire. Omitting it (older client) falls back to the old trust-the-client
+  behavior, so this is backwards compatible.
+- `server/index.js` — new `computeSiegePower(attacker)` calls the same shared `calcSiegePower`
+  (`shared/constants/map.js`) + `FACTION_TROOPS` (`shared/constants/troops.js`) the client uses, then
+  feeds the result into `resolveSiegeOutcome` to get the actual authoritative outcome. When the
+  server disagrees with what the client optimistically applied (claimed a capture the numbers don't
+  support, or understated one that should have landed), it applies its own outcome and broadcasts it
+  to **every** client, including the one that sent the wrong claim — `applyAndBroadcast`'s "skip the
+  sender" optimization is only used when the server agrees.
+  Deliberately mirrors a client quirk rather than fixing it: `cmdSiegePower`'s legacy (non-`troopSlots`,
+  AI-commander-shaped) branch never actually passes tier data into `calcSiegePower`, so it silently
+  falls back to a flat 0.5-per-troop rate regardless of `troopBranch`. The server's `computeSiegePower`
+  reproduces that exactly — the goal here is validating against what the client itself would compute,
+  not a "more correct" formula, since that would be an unrequested balance change.
+  Live-verified against a running server with real multi-client tests (temporary scripts, not
+  committed): a legitimate large army correctly captured; a claimed capture from a tiny force was
+  rejected and downgraded to real chip damage; a second, honest client connected to the same session
+  confirmed it saw the server's correction (owner stayed unclaimed), not the first client's dishonest
+  claim.
+- Still NOT done: player identity/ownership isn't verified — the server takes `owner`/`defCmd` (who is
+  attacking) from the client's claim as-is. That's a separate, bigger auth item.
+
+**2. `isGate` added to the mutable tile state sent to the server**
+`src/hooks/useServerSync.js`'s `extractMutableState` was missing `isGate` entirely, so the server's
+`garrisonResetMs` (added last round) could never tell a gate's 1-hour garrison reset from a regular
+tile's 15-min one — it silently used the 15-min default for every gate. One-line fix: `isGate` is now
+part of the mutable tile shape, same as `isHQ`/`isKeep`.
+
+`npm test` 275/275, `npm run build` clean.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Pre-multiplayer prep: shared capture rule, server validation/idempotency, chunked initial sync
 
 Owner picked 3 of the pre-multiplayer punch-list items from "5. Technical debt to fix before
