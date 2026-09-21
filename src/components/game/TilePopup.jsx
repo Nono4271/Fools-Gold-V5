@@ -6,6 +6,9 @@ import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
 import { isTileInRange } from "../../hooks/useForts.js";
 import { spawnDisplayName } from "../../utils/spawnUtils.js";
 import { getTileOwnership } from "./popup/TileInfoPanel.jsx";
+import { FORTRESS_COST, FORTRESS_MIN_POWER_LEVEL } from "../../../shared/constants/crew.js";
+import { canBuildFortressOnTile, canStartFortressBuild, isFortressBuilt } from "../../../shared/utils/crewFortress.js";
+import { canManageFortress } from "../../../shared/utils/crewRules.js";
 import CommanderCard from "./popup/CommanderCard.jsx";
 import FortPanel from "./popup/FortPanel.jsx";
 import HQPopup from "./popup/HQPopup.jsx";
@@ -79,6 +82,8 @@ export default memo(function TilePopup({
   relocationTokens,
   allHqKeys,
   isValidRelocPad,
+  myCrew, crewFortressAtTile, rss,
+  onBuildCrewFortress, onDemolishCrewFortressHere,
 }) {
   const [quickGatherConfirm, setQuickGatherConfirm] = useState(false);
   const [tacticsOpen,        setTacticsOpen]        = useState(false);
@@ -294,6 +299,14 @@ export default memo(function TilePopup({
   const marchingCmdsOnSel = cmdsOnSel.filter(c => c.march);
 
   const borderColor = ownership==="player"?"#3a6a3a":ownership==="crew"?"#204080":ownership==="faction"?"#804010":ownership==="ally"?"#602080":"#802020";
+
+  // ── Crew Fortress ────────────────────────────────────────────────────────
+  const fortressBuildCheck = (isNeutral && myCrew) ? canStartFortressBuild(myCrew, facKey, selTile, rss) : { ok:false };
+  const canBuildFortressHere = fortressBuildCheck.ok;
+  const fortressBuilt = crewFortressAtTile && isFortressBuilt(crewFortressAtTile, nowTick ?? Date.now());
+  const fortressUnderConstruction = crewFortressAtTile && !fortressBuilt;
+  const canSiegeFortressNow = crewFortressAtTile && fortressBuilt && canAtkNow;
+  const canDemolishThisFortress = crewFortressAtTile && myCrew && canManageFortress(myCrew, facKey);
 
   // Commander card goes on the OPPOSITE side from the tile info popup
   const sw = window.innerWidth, sh = window.innerHeight;
@@ -791,6 +804,40 @@ export default memo(function TilePopup({
               style={{ flex:1, padding:"6px 0", background:"linear-gradient(160deg,#3a2808,#1e1004)", border:"1px solid #a07020", borderRadius:5, color:"#f0c060", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:"pointer" }}>
               BUILD FORT · 🥚×3
             </button>
+          )}
+          {/* Build Crew Fortress — unclaimed p10+ tile, founder/officer only */}
+          {!crewFortressAtTile && isNeutral && myCrew && (selTile.powerLevel||1)>=FORTRESS_MIN_POWER_LEVEL && (
+            <button onClick={()=>canBuildFortressHere && onBuildCrewFortress?.(selKey, selTile)}
+              disabled={!canBuildFortressHere}
+              title={fortressBuildCheck.reason || ""}
+              style={{ flex:1, padding:"6px 0", background:canBuildFortressHere?"linear-gradient(160deg,#3a1808,#1e0c04)":"rgba(60,30,20,.3)", border:`1px solid ${canBuildFortressHere?"#c86020":"#553530"}`, borderRadius:5, color:canBuildFortressHere?"#f0a060":"#7a5545", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canBuildFortressHere?"pointer":"not-allowed", opacity:canBuildFortressHere?1:.6 }}>
+              🏰 BUILD CREW FORTRESS
+            </button>
+          )}
+          {/* Crew Fortress present — under construction, siege, or demolish */}
+          {crewFortressAtTile && fortressUnderConstruction && (
+            <div style={{ flex:1, fontSize:9, color:"#c8a060", fontFamily:"'Cinzel',serif", textAlign:"center", padding:"6px 0" }}>
+              🏗 Fortress under construction — {Math.max(0, Math.ceil((crewFortressAtTile.buildEndsAt - (nowTick ?? Date.now()))/60000))}m left
+            </div>
+          )}
+          {crewFortressAtTile && fortressBuilt && (
+            <>
+              <div style={{ flex:1, fontSize:9, color:"#e0a0a0", fontFamily:"'Cinzel',serif", textAlign:"center", padding:"6px 0" }}>
+                🏰 Siege: {crewFortressAtTile.siege.toLocaleString()}/{crewFortressAtTile.siegeMax.toLocaleString()}
+              </div>
+              {ownership!=="player"&&ownership!=="crew"&&canAtk&&(
+                <button onClick={()=>canSiegeFortressNow?(setAtkKey(selKey),setMode("pickSiegeCmd"),setPick(null)):null}
+                  style={{ flex:1, padding:"6px 0", background:canSiegeFortressNow?"linear-gradient(160deg,#6a0808,#3a0404)":"rgba(60,20,20,.3)", border:`1px solid ${canSiegeFortressNow?"#cc2020":"#553030"}`, borderRadius:5, color:canSiegeFortressNow?"#ff8080":"#7a5050", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canSiegeFortressNow?"pointer":"not-allowed", opacity:canSiegeFortressNow?1:.6 }}>
+                  ATTACK FORTRESS
+                </button>
+              )}
+              {canDemolishThisFortress&&(
+                <button onClick={()=>onDemolishCrewFortressHere?.(crewFortressAtTile)}
+                  style={{ flex:1, padding:"6px 0", background:"rgba(60,20,20,.25)", border:"1px solid #7a3030", borderRadius:5, color:"#cc8080", fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, letterSpacing:".05em", cursor:"pointer" }}>
+                  DEMOLISH
+                </button>
+              )}
+            </>
           )}
           {/* Notes */}
           {(ownership==="crew"||ownership==="faction")&&<div style={{ fontSize:7, color:ownership==="faction"?"#e87830":"#2299ff", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>{ownership==="faction"?"🟠 Faction territory — you can move here freely":"🤝 Crew territory — you can move here freely"}</div>}
