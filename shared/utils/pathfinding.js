@@ -33,6 +33,24 @@ export function adj(c, r) {
     .map(([tc,tr]) => `${tc},${tr}`);
 }
 
+// Same as adj(), but also includes the 4 diagonal neighbors. Used only for
+// attack-adjacency (owning a tile diagonal to a target should be enough to
+// attack it) — movement/capture-spread/HQ-lookup callers should keep using
+// the orthogonal-only adj() above so those mechanics stay unchanged.
+export function adj8(c, r) {
+  const nbrs = [
+    [c-1,r],[c+1,r],[c,r-1],[c,r+1],
+    [c-1,r-1],[c+1,r-1],[c-1,r+1],[c+1,r+1],
+  ];
+  return nbrs
+    .filter(([tc,tr]) => {
+      if (tc < 0 || tr < 0 || tc >= COLS || tr >= ROWS) return false;
+      if (IMPASSABLE.has(`${tc},${tr}`)) return false;
+      return true;
+    })
+    .map(([tc,tr]) => `${tc},${tr}`);
+}
+
 const MARCH_DIRS = [
   [-1,0,1],[1,0,1],[0,-1,1],[0,1,1],
   [-1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[1,-1,Math.SQRT2],[1,1,Math.SQRT2],
