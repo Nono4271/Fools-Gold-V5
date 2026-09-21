@@ -742,7 +742,8 @@ export default function RiseToWar() {
   const chatKnownPlayerIdsWithNyro = useMemo(() => [NYRO_ID, ...chatKnownPlayerIds], [chatKnownPlayerIds]);
   const {
     channels: chatChannels, sendMessage: sendChatMessage, startDm: startChatDm,
-    startGroup: startChatGroup, getMessages: getChatMessages, getRecentMessages: getChatRecentMessages,
+    startGroup: startChatGroup, getMessages: getChatMessages,
+    getActiveChannelMessages: getChatActiveChannelMessages,
     addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     profanityFilterEnabled: chatProfanityFilterEnabled,
     setProfanityFilterEnabled: setChatProfanityFilterEnabled,
@@ -755,9 +756,10 @@ export default function RiseToWar() {
     crews, aiPlayerIds: chatKnownPlayerIds,
   });
 
-  // Last couple of messages across every chat channel, for the closed-state
-  // mini preview (ChatPreview.jsx) — recomputed whenever chat messages change.
-  const chatRecentMessages = getChatRecentMessages(2);
+  // Last couple of messages in whichever chat was last open, for the
+  // closed-state mini preview (ChatPreview.jsx) — recomputed whenever chat
+  // messages (or the active channel) change.
+  const chatRecentMessages = getChatActiveChannelMessages(2);
 
   // ── Relations — friends/blacklist, reached from ChatPanel's Direct display;
   // rules in shared/utils/relationsRules.js. Local-only (see useRelations.js).
