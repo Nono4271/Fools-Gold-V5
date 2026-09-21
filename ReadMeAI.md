@@ -1562,6 +1562,28 @@ but never eligible for World chat or the ambient per-faction chatter.
 **Verified:** full test suite (`npm test`, 304/304) and production build
 (`npm run build`) both pass.
 
+## 2026-09-20 — Claude (Sonnet), session 9
+
+### Chat: hidden behind other menus, wider preview, remembers last-open chat
+**File:** `src/GameView.jsx` — new `chatBlocked` (World Map/HQ/Commander/Gear
+screens, Battle Log, Wizard's Tomes, Crew, Leaderboard, win screen — same set
+already checked for `GameBar`'s `hidden` prop). Both `ChatPreview` and
+`ChatPanel` are now gated on `!chatBlocked`, so chat never overlaps another
+full-screen menu.
+
+**File:** `src/components/game/ChatPreview.jsx` — width `190` → `285` (1.5x).
+
+**Default channel + remembers last chat:** `selectedId`/`selectedSubId`/
+`display` used to be local `useState` in `ChatPanel.jsx`, reset (and
+defaulting to nothing selected) every time the panel unmounted on close.
+Moved that state up into `useChat.js` (`activeChannelId`/`activeSubId`/
+`activeDisplay`, defaulting to World/`"chats"`) and threaded it down as
+controlled props (`src/Game.jsx` → `GameView.jsx` → `ChatPanel.jsx`), so it
+now survives close/reopen and opens on World the first time.
+
+**Verified:** full test suite (`npm test`, 304/304) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
