@@ -7,7 +7,7 @@ import {
   createFortress, isFortressBuilt, completeFortressBuild,
   commanderSlotCapFor, stationedCount, canStationCommander, stationCommander,
   unstationCommander, isClearToSiege, applySiegeDamage, removeFortress,
-  canDemolishFortress,
+  canDemolishFortress, nextDefender,
 } from '../shared/utils/crewFortress.js';
 
 function crewWith(overrides) {
@@ -102,4 +102,20 @@ test('removeFortress drops it from the crew list; canDemolishFortress matches ca
   assert.equal(canDemolishFortress(crew, 'f'), true);
   assert.equal(canDemolishFortress(crew, 'o'), true);
   assert.equal(canDemolishFortress(crew, 'someone_else'), false);
+});
+
+test('nextDefender: deterministic order, null once clear', () => {
+  let fortress = createFortress({ id: 'ft1', crewId: 'c1', tileKey: '5,5', now: 0 });
+  assert.equal(nextDefender(fortress), null);
+
+  fortress = stationCommander(fortress, 'ai_pirates_2', 'cmdA');
+  fortress = stationCommander(fortress, 'ai_pirates_1', 'cmdB');
+  // 'ai_pirates_1' sorts before 'ai_pirates_2'
+  assert.deepEqual(nextDefender(fortress), { playerId: 'ai_pirates_1', commanderUid: 'cmdB' });
+
+  fortress = unstationCommander(fortress, 'ai_pirates_1', 'cmdB');
+  assert.deepEqual(nextDefender(fortress), { playerId: 'ai_pirates_2', commanderUid: 'cmdA' });
+
+  fortress = unstationCommander(fortress, 'ai_pirates_2', 'cmdA');
+  assert.equal(nextDefender(fortress), null);
 });

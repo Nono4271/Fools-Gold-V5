@@ -9,7 +9,9 @@ import {
   canInviteOrAccept, canManageFortress, validateCrewCreation, createCrew,
   isSearchable, joinModeFor, addCrewXp, fortressSlotsAvailable,
   addContribution, contributionOf, spendContribution,
+  canEditAnnouncement, canSetTarget, updateAnnouncement, setCrewTarget, clearCrewTarget,
 } from '../shared/utils/crewRules.js';
+import { CREW_LANGUAGES, DEFAULT_CREW_LANGUAGE } from '../shared/constants/crew.js';
 
 test('crewMemberCapForLevel: +5 every 2 levels, caps at 100 by level 20', () => {
   assert.equal(crewMemberCapForLevel(1), 50);
@@ -131,4 +133,39 @@ test('contribution points: add/read/spend, insufficient balance returns null', (
 test('EMBLEM catalogs are non-empty and DEFAULT_EMBLEM is drawn from them', () => {
   assert.ok(EMBLEM_SHAPES.length > 0 && EMBLEM_ICONS.length > 0 && EMBLEM_COLORS.length > 0);
   assert.ok(EMBLEM_SHAPES.includes(DEFAULT_EMBLEM.shape));
+});
+
+test('createCrew defaults language and validateCrewCreation rejects a bogus one', () => {
+  const crew = createCrew({ id: 'c1', name: 'Iron Tide', abbr: 'IRON', faction: 'pirates', founderId: 'f' });
+  assert.equal(crew.language, DEFAULT_CREW_LANGUAGE);
+  assert.equal(crew.target, null);
+  assert.deepEqual(validateCrewCreation({ name: 'Iron Tide', abbr: 'IRON', language: 'Klingon' }), ['Invalid language selection']);
+  assert.deepEqual(validateCrewCreation({ name: 'Iron Tide', abbr: 'IRON', language: CREW_LANGUAGES[1] }), []);
+});
+
+test('announcement: founder-only edit', () => {
+  let crew = createCrew({ id: 'c1', name: 'Iron Tide', abbr: 'IRON', faction: 'pirates', founderId: 'f' });
+  crew = { ...crew, members: ['f', 'o', 'm'], officers: ['o'] };
+  assert.equal(canEditAnnouncement(crew, 'f'), true);
+  assert.equal(canEditAnnouncement(crew, 'o'), false);
+  const updated = updateAnnouncement(crew, 'f', 'For glory and gold!');
+  assert.equal(updated.description, 'For glory and gold!');
+  const rejected = updateAnnouncement(crew, 'o', 'Sneaky edit');
+  assert.equal(rejected.description, crew.description); // officer's edit is a no-op
+});
+
+test('rally target: founder/officer can set and clear, member cannot', () => {
+  let crew = createCrew({ id: 'c1', name: 'Iron Tide', abbr: 'IRON', faction: 'pirates', founderId: 'f' });
+  crew = { ...crew, members: ['f', 'o', 'm'], officers: ['o'] };
+  assert.equal(canSetTarget(crew, 'o'), true);
+  assert.equal(canSetTarget(crew, 'm'), false);
+
+  const withTarget = setCrewTarget(crew, 'o', { tileKey: '5,7', label: 'Rally here!' });
+  assert.deepEqual(withTarget.target, { tileKey: '5,7', label: 'Rally here!', setBy: 'o', setAt: withTarget.target.setAt });
+
+  const memberAttempt = setCrewTarget(crew, 'm', { tileKey: '1,1', label: 'nope' });
+  assert.equal(memberAttempt.target, null); // no-op
+
+  const cleared = clearCrewTarget(withTarget, 'f');
+  assert.equal(cleared.target, null);
 });
