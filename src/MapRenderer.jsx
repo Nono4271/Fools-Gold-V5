@@ -1403,6 +1403,24 @@ const DARK_HQ_SPRITES = {
   "hq_holyknights.webp":    "hq_holyknights_dark_v2.webp",
 };
 
+// Measured from each dark-v2 sprite's actual alpha content (not the full
+// square canvas, which has large transparent padding on these assets).
+// x = horizontal centroid of the visible art, y = fraction down the canvas
+// where the castle's visible base sits. Using these as the PIXI anchor
+// point (instead of a blanket 0.5/0.905 guess) is what keeps the building
+// grounded in the middle of the 3x3 footprint instead of drifting toward
+// the top-right. Pirates are excluded — that art is full-bleed and uses
+// its own approved anchor.
+const TRUE_HQ_ANCHOR = {
+  "hq_orcs_dark_v2.webp":           { x: 0.5000, y: 0.8213 },
+  "hq_dragons_dark_v2.webp":        { x: 0.4956, y: 0.8154 },
+  "hq_arcane_dark_v2.webp":         { x: 0.4907, y: 0.8154 },
+  "hq_holyknights_dark_v2.webp":    { x: 0.4888, y: 0.9395 },
+  "hq_nightcreatures_dark_v2.webp": { x: 0.4956, y: 0.8193 },
+  "hq_coldborns_dark_v2.webp":      { x: 0.4961, y: 0.8193 },
+  "hq_ashen_dead_dark_v2.webp":     { x: 0.4946, y: 0.8184 },
+};
+
 const FORT_SPRITES = {
   1: "/forts/fort_l1.webp",
   2: "/forts/fort_l2.webp",
@@ -1574,17 +1592,20 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const HQ_OFFSETS = {
     pirates:        { xOff:  0,  yOff:  0, scale: 1.0,  yScale: 1.00 },
     player:         { xOff:  0,  yOff:  0, scale: 1.0,  yScale: 1.00 },
-    // Dark-v2 HQs: slightly larger than the previous pass, with small anchor
-    // corrections so the visible building sits naturally inside the existing
-    // 3x3 footprint.  The footprint/selection diamond itself is unchanged.
-    orcs:           { xOff:  0,  yOff: -1, scale: 1.20, yScale: 1.00 },
-    ai:             { xOff:  0,  yOff: -1, scale: 1.20, yScale: 1.00 },
-    dragons:        { xOff:  2,  yOff:  3, scale: 1.16, yScale: 1.00 },
-    wizards:        { xOff:  0,  yOff: -1, scale: 1.18, yScale: 1.16 },
-    holyknights:    { xOff: -2,  yOff:  3, scale: 1.14, yScale: 1.00 },
-    nightcreatures: { xOff:  0,  yOff:  3, scale: 1.16, yScale: 1.00 },
-    coldborns:      { xOff:  0,  yOff:  5, scale: 1.16, yScale: 1.00 },
-    ashen_dead:     { xOff:  0,  yOff:  3, scale: 1.16, yScale: 1.00 },
+    // Dark-v2 HQs: positioning now comes from TRUE_HQ_ANCHOR (measured from
+    // each sprite's real content), so these no longer need manual xOff/yOff
+    // fudges to fake centering. scale/yScale stay for deliberate sizing only.
+    orcs:           { xOff:  0,  yOff:  0, scale: 1.20, yScale: 1.00 },
+    ai:             { xOff:  0,  yOff:  0, scale: 1.20, yScale: 1.00 },
+    dragons:        { xOff:  0,  yOff:  0, scale: 1.16, yScale: 1.00 },
+    // Wizard art has ~37% dead transparent space top+bottom, which is what
+    // made it read as short/squished — yScale stretches the visible castle
+    // back to a proper height; scale bumps overall size slightly per request.
+    wizards:        { xOff:  0,  yOff:  0, scale: 1.24, yScale: 1.34 },
+    holyknights:    { xOff:  0,  yOff:  0, scale: 1.14, yScale: 1.00 },
+    nightcreatures: { xOff:  0,  yOff:  0, scale: 1.16, yScale: 1.00 },
+    coldborns:      { xOff:  0,  yOff:  0, scale: 1.16, yScale: 1.00 },
+    ashen_dead:     { xOff:  0,  yOff:  0, scale: 1.16, yScale: 1.00 },
   };
   const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0, yScale: 1.0 };
 
@@ -1601,7 +1622,9 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     : targetW * 0.80;
 
   const spriteX = bx + off.xOff;
-  const spriteAnchorY = useApprovedPirateArt ? 0.97 : 0.905;
+  const measuredAnchor = TRUE_HQ_ANCHOR[spriteName];
+  const spriteAnchorX = useApprovedPirateArt ? 0.5 : (measuredAnchor ? measuredAnchor.x : 0.5);
+  const spriteAnchorY = useApprovedPirateArt ? 0.97 : (measuredAnchor ? measuredAnchor.y : 0.905);
   // Keep the visible base on the same map-ground line when a faction gets
   // enlarged or vertically corrected.  Previously spriteY was fixed while
   // height changed, which made larger HQs drift downward and look off-center.
@@ -1622,7 +1645,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   }
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, spriteAnchorY);
+    sp.anchor.set(spriteAnchorX, spriteAnchorY);
     sp.width  = targetW;
     // Preserve the approved sprite proportions; other factions keep their existing fit.
     sp.height = useApprovedPirateArt ? targetW * sp.texture.height / sp.texture.width : targetH;
