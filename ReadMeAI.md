@@ -9,6 +9,26 @@ Branch: codex/core-fixes-20260919
 ---
 
 ## 2026-09-20 — Claude (Sonnet 5)
+### Register/login "Request failed": the client could never reach the game server on a deployed site
+
+**Root cause (deployment, not the server):** `playerIdentity.js` `postAuth` fetched the relative path `/api/register`. That only works in dev (Vite proxies `/api` -> `localhost:3001`). On a static host (the Cloudflare Pages build in the deploy log; Netlify/Vercel behave the same) `/api/register` is answered by the static site itself (404/405, or the SPA fallback's HTML), never by `server/index.js`. The reply isn't JSON, so the old code fell through to the generic "Request failed". The websocket already had the right escape hatch (`VITE_WS_URL`); the HTTP auth calls didn't. The "Offline" badge in the game HUD is the same cause: no game server reachable from the deployed site.
+Verified the server itself is fine: ran `server/index.js` locally and exercised `POST /api/register` (creates), duplicate register ("Username already taken"), `/api/login`, bad body (400) and `OPTIONS` (204, CORS `*`) with curl.
+
+**Fix:**
+- `src/utils/apiBase.js` (new, pure) `resolveApiBase({ apiUrl, wsUrl })`: `VITE_API_URL` if set, else the origin derived from `VITE_WS_URL` (`wss://host[/path]` -> `https://host`, `ws://` -> `http://`), else same-origin (dev proxy keeps working unchanged). So setting the one variable the websocket already needs also fixes accounts.
+- `playerIdentity.js` `postAuth` uses that base and now distinguishes failures: network/CORS/mixed-content -> "Can't reach the game server..."; non-JSON reply (static host 404/405 or SPA HTML) -> "The account server isn't reachable from this site (HTTP nnn)..."; server errors pass through; a success without `accountId`/`username` is rejected instead of silently storing `undefined`.
+- `server/index.js`: an exception inside register/login (e.g. unwritable `server/data/accounts` on a read-only host) now returns a JSON 500 ("Account server error") instead of killing the request.
+
+**What you have to do to make accounts work in production (not code):**
+1. Host `server/` somewhere that runs Node (Render, Railway, Fly, a VPS...). It needs a **persistent disk** for `server/data/` (accounts, sessions) or accounts vanish on redeploy. `npm run start:server` (reads `PORT`).
+2. Serve it over **HTTPS/WSS** (an https page can't call an http server or ws://).
+3. In the Cloudflare Pages project add build variable `VITE_WS_URL=wss://<your-server-host>` (or `VITE_API_URL=https://<your-server-host>` for just the API), then **redeploy** - Vite bakes these in at build time. If a reverse proxy puts the server under a path prefix, use `VITE_API_URL` explicitly.
+
+**Tests:** `tests/apiBase.test.js` (3) and `tests/authClient.test.js` (5: static-host 405, SPA HTML 200, network failure, server errors pass through, success adopts the account). Suite: 283 pass; 3 fail = the `esbuild`/`pixi.js` missing-package tests. `npm run build` not run here.
+
+---
+
+## 2026-09-20 — Claude (Sonnet 5)
 ### AI stamina (matches the player) + AI barracks no longer refills every tick
 
 **1. AI stamina, same rules as the player.** New shared rules in `shared/utils/tactics.js`: `AI_STAMINA_MAX` (= `STAMINA_BASE`, 150, no tome bonus), `MARCH_STAMINA_COST` (`attack` 20, `move` 10), `marchStaminaCost`, `canAffordMarch`, `spendMarchStamina` (missing stamina counts as full, same as `regenStamina`). `Game.jsx` now uses `marchStaminaCost(type)` instead of the inline `type === "attack" ? 20 : 10` (behavior unchanged).
