@@ -25,7 +25,7 @@ import { useUpgrades } from "./hooks/useUpgrades.js";
 import { useGameLoop } from "./hooks/useGameLoop.js";
 import { usePathfinding } from "./hooks/usePathfinding.js";
 import { useServerSync } from "./hooks/useServerSync.js";
-import { getOrCreatePlayerId } from "./utils/playerIdentity.js";
+import { getOrCreatePlayerId, getOrCreateSessionId } from "./utils/playerIdentity.js";
 import { useBattle } from "./hooks/useBattle.js";
 import { useGacha } from "./hooks/useGacha.js";
 import { useTomes } from "./hooks/useTomes.js";
@@ -170,8 +170,11 @@ export default function RiseToWar() {
   }, []);
 
   const [mapReady, setMapReady] = useState(false);
-  // Stable session ID — generated once per browser session
-  const [sessionId] = useState(() => `fg-${Math.random().toString(36).slice(2,10)}`);
+  // Stable session ID — persisted (localStorage), or the logged-in account's
+  // last known session (see playerIdentity.js), so reloading — or logging in
+  // from another browser — resumes the same in-progress game instead of
+  // starting a fresh random session every load.
+  const [sessionId] = useState(() => getOrCreateSessionId());
   const [loadPct,  setLoadPct]  = useState(0);
   const [loadLabel,setLoadLabel]= useState("Generating world...");
   const [playerHqKey, setPlayerHqKey] = useState(null);
