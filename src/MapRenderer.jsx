@@ -1574,20 +1574,27 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const HQ_OFFSETS = {
     pirates:        { xOff:  0,    yOff:  0,    scale: 1.0  },
     player:         { xOff:  0,    yOff:  0,    scale: 1.0  },
-    orcs:           { xOff:  0,    yOff:  0,    scale: 1.0  },
-    ai:             { xOff:  0,    yOff:  0,    scale: 1.0  },
-    wizards:        { xOff:  5,    yOff: -5,    scale: 1.0  },
-    dragons:        { xOff:  5,    yOff:  10,   scale: 1.0  },
-    holyknights:    { xOff: -5,    yOff:  10,   scale: 1.0  },
-    nightcreatures: { xOff:  0,    yOff:  10,   scale: 1.0  },
-    coldborns:      { xOff:  0,    yOff:  15,   scale: 1.0  },
-    ashen_dead:     { xOff:  0,    yOff:  15,   scale: 1.0  },
+    // Dark-v2 HQs were authored with a taller visible silhouette than the
+    // legacy 0.80 height clamp below.  Slightly enlarge them and let the
+    // dark assets keep their square/native presentation so their towers do
+    // not look flattened in-game.
+    orcs:           { xOff:  0,    yOff:  0,    scale: 1.12 },
+    ai:             { xOff:  0,    yOff:  0,    scale: 1.12 },
+    wizards:        { xOff:  5,    yOff: -3,    scale: 1.10 },
+    dragons:        { xOff:  5,    yOff:  7,    scale: 1.08 },
+    holyknights:    { xOff: -5,    yOff:  7,    scale: 1.05 },
+    nightcreatures: { xOff:  0,    yOff:  7,    scale: 1.10 },
+    coldborns:      { xOff:  0,    yOff:  10,   scale: 1.08 },
+    ashen_dead:     { xOff:  0,    yOff:  10,   scale: 1.10 },
   };
   const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0 };
 
   const baseW = TW * 2.2;
   const targetW = baseW * (off.scale || 1.0);
-  const targetH = targetW * 0.80;
+  // Preserve the legacy fit for original HQs, but do not squash the new
+  // dark-v2 artwork. The dark assets are square and their internal transparent
+  // framing already controls the visible silhouette.
+  const targetH = useDarkHQArt ? targetW : targetW * 0.80;
 
   const spriteX = bx + off.xOff;
   // The approved square Pirate sprite uses its visible base as the ground
