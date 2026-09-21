@@ -5,18 +5,15 @@ import { GOLD, BTN_RESET, TEXT_XS } from "./crewStyles.js";
    war-room scene (CSS only — no image asset) with a table silhouette,
    flavor text, and Join/Create actions.
 ───────────────────────────────────────────────────────────────────────── */
-// CREW_BG_URL: swap in a real painted scene (people gathering around a war
-// table) once the owner has one from the art queue — drop the file at
-// public/crew/war-table-bg.jpg and set this to "/crew/war-table-bg.jpg".
-// Until then this renders null and the CSS scene below is the only backdrop.
-const CREW_BG_URL = null;
+// The owner-supplied war-council scene — public/crew/war-table-bg.jpg.
+const CREW_BG_URL = "/crew/war-table-bg.jpg";
 
 export default function CrewLanding({ onBrowse, onCreate, crewCount }) {
   return (
     <div style={{
       position: "absolute", inset: 0,
       backgroundImage: CREW_BG_URL
-        ? `linear-gradient(180deg, rgba(5,7,10,.55), rgba(3,4,5,.85)), url(${CREW_BG_URL})`
+        ? `linear-gradient(180deg, rgba(5,7,10,.35) 0%, rgba(5,7,10,.45) 55%, rgba(3,4,5,.85) 100%), url(${CREW_BG_URL})`
         : `
           radial-gradient(ellipse 70% 55% at 50% 55%, rgba(120,90,40,.16), transparent 70%),
           radial-gradient(ellipse 90% 60% at 50% 100%, rgba(40,30,15,.25), transparent 70%),
@@ -26,7 +23,12 @@ export default function CrewLanding({ onBrowse, onCreate, crewCount }) {
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       padding: "24px 20px", overflow: "hidden",
     }}>
-      <div style={{ position: "relative", textAlign: "center", maxWidth: 380 }}>
+      <div style={{
+        position: "relative", textAlign: "center", maxWidth: 380,
+        padding: CREW_BG_URL ? "22px 24px" : 0,
+        borderRadius: CREW_BG_URL ? 10 : 0,
+        background: CREW_BG_URL ? "radial-gradient(ellipse 90% 100% at 50% 50%, rgba(4,5,7,.7) 0%, rgba(4,5,7,.35) 70%, transparent 100%)" : "none",
+      }}>
         <div style={{ fontSize: 34, marginBottom: 10 }}>⚔️</div>
         <div style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: 18, color: GOLD, letterSpacing: ".04em" }}>
           RALLY YOUR CREW
