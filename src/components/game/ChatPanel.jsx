@@ -26,6 +26,19 @@ const BTN_RESET = {
   touchAction: "manipulation",
 };
 
+// A curated, fixed emoji set for the compose bar's picker — deliberately NOT
+// the device's full native emoji set, since that varies by phone/OS and
+// there's no way to guarantee every glyph renders the same everywhere. This
+// list renders consistently and covers ordinary chat + the game's own
+// fantasy-strategy flavor (swords, shields, crowns, etc).
+const EMOJI_SET = [
+  "😀", "😂", "😅", "😉", "😎", "🥳", "😭", "😡", "🤔", "👀",
+  "👍", "👎", "👏", "🙏", "💪", "🤝", "✋", "🫡",
+  "❤️", "🔥", "⭐", "✨", "💀", "😈", "👑", "🛡️", "⚔️", "🏹",
+  "🐉", "🦅", "🏴‍☠️", "🧙", "⚓", "🏰", "💰", "💎", "🍺", "⏳",
+  "✅", "❌", "❓", "❗", "🎉", "💯",
+];
+
 const PANEL_BG   = "rgba(5,7,11,.97)";
 const BORDER_COL = "#1a2030";
 const GOLD       = "#c8a060";
@@ -136,6 +149,7 @@ export default memo(function ChatPanel({
   const [pickSel, setPickSel]     = useState([]);
   const [groupName, setGroupName] = useState("");
   const [relationsOpen, setRelationsOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const worldCh  = channels.filter(c => c.type === "world");
   const factionCh = channels.filter(c => c.type === "faction");
@@ -177,17 +191,21 @@ export default memo(function ChatPanel({
 
   function switchDisplay(id) {
     setDisplay(id); setSelected(null); setSelectedSub(null);
-    setPicking(false); setRelationsOpen(false); setSubManagerOpen(false);
+    setPicking(false); setRelationsOpen(false); setSubManagerOpen(false); setEmojiOpen(false);
   }
 
   function openChannel(id) {
-    setSelected(id); setSelectedSub(null); setRelationsOpen(false); setSubManagerOpen(false);
+    setSelected(id); setSelectedSub(null); setRelationsOpen(false); setSubManagerOpen(false); setEmojiOpen(false);
   }
 
   function handleSend() {
     if (!msgChannelId || !canPostHere || !draft.trim()) return;
     sendMessage(msgChannelId, draft);
     setDraft("");
+  }
+
+  function insertEmoji(e) {
+    setDraft(prev => (prev.length + e.length > 280 ? prev : prev + e));
   }
 
   function handleAddSub(name) {
@@ -492,22 +510,51 @@ export default memo(function ChatPanel({
                 })}
               </div>
               {canPostHere ? (
-                <div style={{ display: "flex", gap: 6, padding: "8px 10px", borderTop: `1px solid ${BORDER_COL}` }}>
-                  <input
-                    value={draft} onChange={e => setDraft(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") handleSend(); }}
-                    placeholder="Message…" maxLength={280}
-                    style={{
-                      flex: 1, background: "rgba(255,255,255,.05)", border: "1px solid #2a3040",
-                      borderRadius: 4, padding: "8px 10px", color: "#c8c0b0",
-                      fontFamily: "'Crimson Pro',serif", fontSize: 11, outline: "none",
-                    }}
-                  />
-                  <button onClick={handleSend} disabled={!draft.trim()} style={{
-                    ...BTN_RESET, padding: "0 14px", borderRadius: 4,
-                    background: "linear-gradient(160deg,#1a3a2a,#0e2018)", border: "1px solid #306050",
-                    color: "#50c090", ...TEXT_XS, opacity: draft.trim() ? 1 : .4,
-                  }}>Send</button>
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  {emojiOpen && (
+                    <div className="scr chat-scroll" style={{
+                      position: "absolute", left: 10, right: 10, bottom: "100%", marginBottom: 6,
+                      maxHeight: 150, overflowY: "auto",
+                      background: PANEL_BG, border: `1px solid ${BORDER_COL}`, borderRadius: 6,
+                      padding: 8, boxShadow: "0 -4px 18px rgba(0,0,0,.6)",
+                      display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 2,
+                    }}>
+                      {EMOJI_SET.map(e => (
+                        <button key={e} onClick={() => insertEmoji(e)} style={{
+                          ...BTN_RESET, fontSize: 17, padding: "5px 0", borderRadius: 4,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>{e}</button>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 6, padding: "8px 10px", borderTop: `1px solid ${BORDER_COL}` }}>
+                    <button
+                      onClick={() => setEmojiOpen(v => !v)}
+                      title="Emoji"
+                      style={{
+                        ...BTN_RESET, minWidth: 36, borderRadius: 4,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: emojiOpen ? "rgba(200,160,96,.15)" : "rgba(255,255,255,.05)",
+                        border: `1px solid ${emojiOpen ? "#c8a06050" : "#2a3040"}`, fontSize: 15,
+                      }}
+                    >🙂</button>
+                    <input
+                      value={draft} onChange={e => setDraft(e.target.value)}
+                      onFocus={() => setEmojiOpen(false)}
+                      onKeyDown={e => { if (e.key === "Enter") handleSend(); }}
+                      placeholder="Message…" maxLength={280}
+                      style={{
+                        flex: 1, background: "rgba(255,255,255,.05)", border: "1px solid #2a3040",
+                        borderRadius: 4, padding: "8px 10px", color: "#c8c0b0",
+                        fontFamily: "'Crimson Pro',serif", fontSize: 11, outline: "none",
+                      }}
+                    />
+                    <button onClick={handleSend} disabled={!draft.trim()} style={{
+                      ...BTN_RESET, padding: "0 14px", borderRadius: 4,
+                      background: "linear-gradient(160deg,#1a3a2a,#0e2018)", border: "1px solid #306050",
+                      color: "#50c090", ...TEXT_XS, opacity: draft.trim() ? 1 : .4,
+                    }}>Send</button>
+                  </div>
                 </div>
               ) : (
                 <div style={{
