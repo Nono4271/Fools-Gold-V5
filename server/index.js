@@ -12,7 +12,7 @@
  *   • VIEWPORT_SUB  → client narrows patch delivery to its visible window.
  *
  * Client → Server messages:
- *   { type:"GAME_INIT",   sessionId, facKey, tiles:{[key]:Tile}, viewport?:{minC,maxC,minR,maxR} }
+ *   { type:"GAME_INIT",   sessionId, facKey, tiles:{[key]:Tile}, viewport?:{minC,maxC,minR,maxR}, playerId? }
  *   { type:"TILE_CAPTURE",sessionId, key, owner, garrison, siege, siegeMax, defCmd, msgId, attacker? }
  *   { type:"TILE_SIEGE",  sessionId, key, siege, garrisonDefeated, garrison, siegeMax, msgId, attacker? }
  *   { type:"VIEWPORT_SUB",sessionId, minC, maxC, minR, maxR }
@@ -21,9 +21,11 @@
  * `msgId` (TILE_CAPTURE/TILE_SIEGE) lets the server dedupe a resent message
  * instead of re-applying it. `viewport` (GAME_INIT) lets a joining client's
  * SESSION_STATE be filtered to its starting region instead of every mutable
- * tile in the session. `resetAt`/`protectedUntil` are no longer read from
- * the client — the server computes both itself (see handleTileCapture/
- * handleTileSiege) so a client's clock skew (or tampering) can't set them.
+ * tile in the session; VIEWPORT_SUB does the same again as the player pans
+ * (see src/hooks/useServerSync.js). `resetAt`/`protectedUntil` are no longer
+ * read from the client — the server computes both itself (see
+ * handleTileCapture/handleTileSiege) so a client's clock skew (or tampering)
+ * can't set them.
  * `attacker` (`{ troopSlots }` or `{ troops, troopBranch }` + `armySiegeBonus`,
  * see attackerComposition() in src/hooks/useMarch.js) lets the server
  * recompute siegePower itself (shared calcSiegePower + FACTION_TROOPS) and
@@ -32,6 +34,10 @@
  * it applies and broadcasts its own outcome to EVERY client, including the
  * one that sent the (wrong) optimistic update. Omitting `attacker` (an older
  * client) falls back to trusting the client's claim, same as before this.
+ * `playerId` (a stable per-browser id, NOT real auth — see
+ * src/utils/playerIdentity.js) is stored as `ws._playerId` and used to stamp
+ * `ownerPlayerId` on a "player" capture, instead of trusting anything the
+ * client puts in the capture message for who is attacking.
  *
  * Server → Client messages:
  *   { type:"GAME_READY",     sessionId }
@@ -39,9 +45,19 @@
  *   { type:"SESSION_STATE",  tiles:{[key]:Tile} }
  *   { type:"PONG" }
  *   { type:"ERROR",          message }
+ *
+ * Persistence: each session's tile state is periodically snapshotted to
+ * server/data/sessions/<id>.json (see saveSessionToDisk/loadSessionFromDisk)
+ * so a server restart or crash doesn't wipe an in-progress session, and a
+ * client reconnecting with the same sessionId resumes it — see
+ * getOrCreateSession. Still not a real database: single JSON file per
+ * session, no migrations, no multi-server scaling.
  */
 
 import { WebSocketServer } from 'ws';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 // Roadmap item 2/4: use the same deterministic rule the client uses (moved to
 // shared/ specifically so the server could import it) so garrison-reset/
 // protection timestamps are computed authoritatively here, not trusted from
@@ -105,7 +121,48 @@ function seenRecently(session, msgId) {
 
 console.log("Fool's Gold server  ws://localhost:" + PORT);
 
-// sessions: Map<sessionId, { tiles: Map<key,Tile>, clients: Set<WS> }>
+// ─── Persistence ────────────────────────────────────────────────────────────
+// Roadmap item 4 (scoped): survive a server restart/crash and let a client
+// reconnect into the same session, without building a real database. One
+// JSON file per session, periodically flushed, plus a save-on-exit hook.
+// Not durable accounts — there's still no login, just a session id the
+// client already generates and a locally-stored playerId (playerIdentity.js).
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DATA_DIR  = path.join(__dirname, 'data', 'sessions');
+fs.mkdirSync(DATA_DIR, { recursive: true });
+const AUTOSAVE_MS = 30_000;
+
+function sessionFilePath(id) {
+  // sessionId comes from the client; keep it out of the path traversal risk
+  // by stripping anything that isn't alphanumeric/dash/underscore.
+  const safe = String(id).replace(/[^a-zA-Z0-9_-]/g, '_');
+  return path.join(DATA_DIR, safe + '.json');
+}
+
+function saveSessionToDisk(id, session) {
+  try {
+    const data = { tiles: Object.fromEntries(session.tiles), savedAt: Date.now() };
+    fs.writeFileSync(sessionFilePath(id), JSON.stringify(data));
+    session.dirty = false;
+  } catch (e) {
+    console.warn('Failed to persist session ' + id + ':', e.message);
+  }
+}
+
+function loadSessionFromDisk(id) {
+  try {
+    const raw = fs.readFileSync(sessionFilePath(id), 'utf8');
+    const data = JSON.parse(raw);
+    const tiles = new Map(Object.entries(data.tiles || {}));
+    console.log('Loaded session ' + id + ' from disk — tiles=' + tiles.size +
+      ' savedAt=' + new Date(data.savedAt || 0).toISOString());
+    return { tiles, clients: new Set(), seenMsgIds: new Map(), dirty: false };
+  } catch {
+    return null; // no saved file — not an error, most sessions are new
+  }
+}
+
+// sessions: Map<sessionId, { tiles: Map<key,Tile>, clients: Set<WS>, dirty }>
 const sessions   = new Map();
 // garrison reset timers: Map<"sessionId::tileKey", timeoutId>
 const resetTimers = new Map();
@@ -113,8 +170,23 @@ const resetTimers = new Map();
 // ─── Session helpers ──────────────────────────────────────────────────────────
 
 function getOrCreateSession(id) {
-  if (!sessions.has(id)) sessions.set(id, { tiles: new Map(), clients: new Set(), seenMsgIds: new Map() });
-  return sessions.get(id);
+  if (sessions.has(id)) return sessions.get(id);
+
+  const loaded = loadSessionFromDisk(id);
+  const session = loaded || { tiles: new Map(), clients: new Set(), seenMsgIds: new Map(), dirty: false };
+  sessions.set(id, session);
+
+  if (loaded) {
+    // Timers don't survive a process restart — rearm any garrison reset that
+    // was still pending when this session was last saved (mirrors the
+    // rearm loop that already ran for a fresh first-client GAME_INIT).
+    for (const [key, tile] of session.tiles) {
+      if (tile.garrisonDefeated && tile.resetAt && tile.resetAt > Date.now()) {
+        scheduleGarrisonReset(id, key, tile.resetAt, tile.garrison, tile.siegeMax);
+      }
+    }
+  }
+  return session;
 }
 
 function applyAndBroadcast(session, patches, senderWs = null) {
@@ -122,6 +194,7 @@ function applyAndBroadcast(session, patches, senderWs = null) {
     const prev = session.tiles.get(key) || {};
     session.tiles.set(key, { ...prev, ...patch, k: key });
   }
+  session.dirty = true;
   const msg = JSON.stringify({ type: 'TILE_PATCH', patches });
   for (const client of session.clients) {
     // Skip the originating client — it already applied optimistically
@@ -177,11 +250,16 @@ function scheduleGarrisonReset(sessionId, tileKey, resetAt, garrison, siegeMax) 
 // ─── Message handlers ─────────────────────────────────────────────────────────
 
 function handleGameInit(ws, msg) {
-  const { sessionId, facKey, tiles: clientTiles, viewport } = msg;
+  const { sessionId, facKey, tiles: clientTiles, viewport, playerId } = msg;
   if (!sessionId) return sendError(ws, 'GAME_INIT missing sessionId');
 
   const session = getOrCreateSession(sessionId);
   session.clients.add(ws);
+  // Roadmap item: bind this connection to its claimed playerId (a stable
+  // per-browser id, not real auth — see src/utils/playerIdentity.js) so a
+  // later TILE_CAPTURE can be attributed to the connection that actually
+  // sent it, instead of whatever ownerPlayerId the client puts in the patch.
+  ws._playerId = typeof playerId === 'string' && playerId ? playerId : null;
   ws._sessionId = sessionId;
   // Roadmap item 5: use the client's starting region, if it sent one, so a
   // joining client isn't handed the whole session's mutable tile set —
@@ -228,6 +306,11 @@ function handleTileCapture(ws, msg) {
   if (!VALID_OWNERS.has(owner)) return sendError(ws, 'Invalid owner: ' + owner);
   if (garrison != null && (typeof garrison !== 'number' || garrison < 0)) return sendError(ws, 'Invalid garrison: ' + garrison);
   if (siege != null && siegeMax != null && siege > siegeMax) return sendError(ws, 'siege cannot exceed siegeMax');
+  // Roadmap item: a "player" capture must come from a connection that
+  // registered an identity on GAME_INIT — otherwise there's nothing to
+  // attribute the capture to (and nothing stopping one connection from
+  // claiming a capture as if it were a different player).
+  if (owner === 'player' && !ws._playerId) return sendError(ws, 'No player identity registered for this connection — reconnect');
 
   // Idempotency: a resent/duplicate capture (retry after a dropped ack, a
   // double-fire client bug) must not be re-applied or re-broadcast.
@@ -244,8 +327,10 @@ function handleTileCapture(ws, msg) {
   // recompute siegePower ourselves and let resolveSiegeOutcome (the exact
   // same rule the client used) decide the real outcome, instead of trusting
   // the client's owner/garrison/siege numbers outright. `owner`/`defCmd`
-  // (who is attacking) are still taken from the client's claim — verifying
-  // player identity is a separate, bigger auth item, not done here.
+  // (WHAT is attacking) are still taken from the client's claim — this game
+  // has no faction-identity auth. WHO is attacking (for "player" captures)
+  // is now bound to the connection's own registered playerId below, not to
+  // anything the client puts in the message.
   const siegePower = computeSiegePower(attacker);
   let patch, captured = true;
 
@@ -275,6 +360,13 @@ function handleTileCapture(ws, msg) {
       protectedUntil:   Date.now() + TILE_PROTECTION_MS,
     };
   }
+
+  // Identity binding: a captured "player" tile is attributed to THIS
+  // connection's own registered playerId, never to a value the client sent
+  // — closes the gap where one connection could claim a capture on behalf
+  // of a different player. Non-player owners (ai/faction values) carry no
+  // player identity, same as before.
+  if (captured && owner === 'player') patch.ownerPlayerId = ws._playerId;
 
   // If the server disagrees with the client's optimistic capture, the
   // sender needs the correction too — don't skip it in the broadcast.
@@ -384,9 +476,14 @@ wss.on('connection', (ws) => {
       if (session.clients.size === 0) {
         // Clean up after 5 min grace period
         setTimeout(() => {
-          if (sessions.get(sessionId)?.clients.size === 0) {
+          const s = sessions.get(sessionId);
+          if (s?.clients.size === 0) {
+            // Flush to disk before dropping the in-memory copy — a
+            // reconnect after this point loads it back via
+            // getOrCreateSession/loadSessionFromDisk instead of losing it.
+            if (s.dirty) saveSessionToDisk(sessionId, s);
             sessions.delete(sessionId);
-            console.log('Session ' + sessionId + ' cleaned up');
+            console.log('Session ' + sessionId + ' cleaned up (persisted to disk)');
           }
         }, 5 * 60 * 1000);
       }
@@ -395,3 +492,25 @@ wss.on('connection', (ws) => {
 
   ws.on('error', (err) => console.error('WS error:', err.message));
 });
+
+// ─── Autosave + graceful shutdown ──────────────────────────────────────────
+// Periodic flush covers a crash (no clean shutdown hook runs); the
+// SIGINT/SIGTERM handlers cover a normal restart/deploy so nothing since the
+// last autosave tick is lost.
+function saveAllDirtySessions(reason) {
+  let count = 0;
+  for (const [id, session] of sessions) {
+    if (session.dirty) { saveSessionToDisk(id, session); count++; }
+  }
+  if (count) console.log('Autosave (' + reason + '): persisted ' + count + ' session(s)');
+}
+
+setInterval(() => saveAllDirtySessions('interval'), AUTOSAVE_MS);
+
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    console.log(sig + ' received — saving sessions before exit');
+    saveAllDirtySessions(sig);
+    process.exit(0);
+  });
+}
