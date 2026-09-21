@@ -736,6 +736,7 @@ export default function RiseToWar() {
   const {
     channels: chatChannels, sendMessage: sendChatMessage, startDm: startChatDm,
     startGroup: startChatGroup, getMessages: getChatMessages, getRecentMessages: getChatRecentMessages,
+    addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     profanityFilterEnabled: chatProfanityFilterEnabled,
     setProfanityFilterEnabled: setChatProfanityFilterEnabled,
     normalizedCrews: chatNormalizedCrews,
@@ -1456,7 +1457,7 @@ export default function RiseToWar() {
     aiPlayerIdMapRef, assignTroops, atkKey, autoHeal, bLog, barracksPool, battles, bldgs,
     buildFortWithCost, canAfford, canAtk, cancelGuard, centerOnHQ, cmdPathLengths,
     chatChannels, chatKnownPlayerIds, chatOpen, chatProfanityFilterEnabled, chatNormalizedCrews,
-    chatRecentMessages,
+    chatRecentMessages, addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,

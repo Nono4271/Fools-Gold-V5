@@ -3,6 +3,8 @@
 import { MapRenderer } from "./MapRenderer";
 import { CSS } from "./constants/css.js";
 import { validateRelocationPad, allHqKeyList } from "../shared/utils/relocation.js";
+import { defaultCrewSubchannels } from "../shared/constants/chat.js";
+import { addSubchannel, removeSubchannel, moveSubchannel } from "../shared/utils/subchannels.js";
 import { GameContext } from "./GameContext.js";
 import HUD from "./components/game/HUD.jsx";
 import TilePopup from "./components/game/TilePopup.jsx";
@@ -32,6 +34,7 @@ export default function GameView(props) {
     chatRecentMessages,
     getChatMessages, sendChatMessage, setChatOpen, setChatProfanityFilterEnabled,
     startChatDm, startChatGroup,
+    addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
@@ -67,6 +70,20 @@ export default function GameView(props) {
     voidTapCooldown, voidTapLvl, voidTapReady, winner, worldMapOpen, worldMapPrompt,
     woundedQueue, woundedTroops, zoomRef, zoomState,
   } = props;
+
+  // Crew sub-channel add/remove/reorder — gear icon in ChatPanel's header,
+  // only shown to a crew's founder (see shared/utils/subchannels.js).
+  // Groups manage their own (src/hooks/useChat.js owns `groups` state).
+  function manageCrewSubchannels(crewId, action) {
+    setCrews(prev => prev.map(c => {
+      if (c.id !== crewId) return c;
+      const subChannels = c.subChannels?.length ? c.subChannels : defaultCrewSubchannels();
+      if (action.type === "add") return { ...c, subChannels: addSubchannel(subChannels, action.name) };
+      if (action.type === "remove") return { ...c, subChannels: removeSubchannel(subChannels, action.id) };
+      if (action.type === "move") return { ...c, subChannels: moveSubchannel(subChannels, action.id, action.direction) };
+      return c;
+    }));
+  }
 
   return (
     <GameContext.Provider value={{ staminaMax }}>
@@ -579,7 +596,12 @@ export default function GameView(props) {
           onCreateCrew={(name, abbr) => {
             const id = `crew_${Date.now()}`;
             // members stores faction keys for AI, player's facKey for the human
-            setCrews(prev => [...prev, { id, name, abbr, faction: facKey, members: [facKey], cap: 40 }]);
+            // (see normalizeCrewsForPlayer in useChat.js — chat swaps facKey ->
+            // "player" for the local player, founder included).
+            setCrews(prev => [...prev, {
+              id, name, abbr, faction: facKey, members: [facKey], cap: 40,
+              founder: facKey, subChannels: defaultCrewSubchannels(),
+            }]);
             setPlayerCrewId(id);
           }}
           onJoinRequest={(crewId) => {
@@ -634,6 +656,10 @@ export default function GameView(props) {
           blockPlayer={relBlockPlayer}
           unblockPlayer={relUnblockPlayer}
           search={relSearch}
+          onManageCrewSubchannels={manageCrewSubchannels}
+          addGroupSubchannel={addGroupSubchannel}
+          removeGroupSubchannel={removeGroupSubchannel}
+          moveGroupSubchannel={moveGroupSubchannel}
         />
       )}
 
