@@ -124,12 +124,28 @@ export default function CrewHQ({
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <div className="scr" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12, position: "relative" }}>
           {tab === null ? (
-            <div style={{ position: "relative", height: "100%", minHeight: 220, display: "flex", flexDirection: "column", gap: 10 }}>
-              {/* Diplomacy/Boosts/Target hotspots sit ABOVE the table image */}
-              <div style={{ position: "relative", display: "flex", justifyContent: "center", gap: 40, flexShrink: 0 }}>
+            <div style={{ position: "absolute", inset: 0 }}>
+              {/* The war table itself — owner-supplied scene. Fills the whole
+                  pane (not just a shrunk-to-content box), so it reaches every
+                  edge instead of leaving bare space above/below it. */}
+              <div style={{
+                position: "absolute", inset: 0,
+                backgroundImage: `url(${TABLE_BG_URL})`, backgroundSize: "cover", backgroundPosition: "center",
+                border: "1px solid #3a2a18", overflow: "hidden",
+              }} />
+
+              {/* Diplomacy/Boosts/Target hotspots float ON TOP of the table,
+                  staggered at different heights near the top edge (like
+                  pieces set down on a map) rather than lined up in a single
+                  straight row. */}
+              <div style={{ position: "absolute", top: "5%", left: "8%" }}>
                 <TableHotspot icon="🕊️" label="Diplomacy" onClick={() => setTab("diplomacy")} />
+              </div>
+              <div style={{ position: "absolute", top: "2%", left: "43%" }}>
                 <TableHotspot icon="🧪" label="Boosts" onClick={() => setTab("boosts")} />
-                <TableHotspot icon="🎯" label={crew.target ? crew.target.label || "Target set" : "No tasks"}
+              </div>
+              <div style={{ position: "absolute", top: "9%", right: "7%" }}>
+                <TableHotspot icon="🎯" label={crew.target ? crew.target.label || "Target set" : "Tasks"}
                   onClick={() => canPinTarget && setSettingTarget(v => !v)} />
 
                 {settingTarget && canPinTarget && (
@@ -153,13 +169,6 @@ export default function CrewHQ({
                   </div>
                 )}
               </div>
-
-              {/* The war table itself — owner-supplied scene */}
-              <div style={{
-                position: "relative", flex: 1, minHeight: 160, borderRadius: 8,
-                backgroundImage: `url(${TABLE_BG_URL})`, backgroundSize: "cover", backgroundPosition: "center",
-                border: "1px solid #3a2a18", overflow: "hidden",
-              }} />
             </div>
           ) : (
             <div>
