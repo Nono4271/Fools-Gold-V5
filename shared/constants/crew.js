@@ -29,6 +29,17 @@ export const CREW_LANGUAGES = [
 ];
 export const DEFAULT_CREW_LANGUAGE = CREW_LANGUAGES[0];
 
+// ── Diplomacy ───────────────────────────────────────────────────────────
+// One-way: crew.diplomacy = { [otherCrewId]: "ally" | "enemy" }. No entry =
+// neutral (the default for every crew, never stored explicitly). Setting
+// crew A's diplomacy toward crew B does NOT change crew B's diplomacy
+// toward crew A — each crew keeps its own map. Cosmetic only: an "ally" can
+// still be attacked, this only changes tile/structure outline color (see
+// ownerTint in MapRenderer.jsx). No real gameplay effect until real
+// multiplayer/War Declaration exists.
+export const CREW_DIPLOMACY_STATUS = { ALLY: "ally", ENEMY: "enemy" };
+export const CREW_DIPLOMACY_STATUSES = Object.values(CREW_DIPLOMACY_STATUS);
+
 // ── Rally target ─────────────────────────────────────────────────────────
 // A single pinned target the founder/an officer sets for the whole crew to
 // see and rally on (shows in CrewHQ's header area). Not a queue — setting a
@@ -166,7 +177,7 @@ export const CREW_HELP_CONTRIBUTION = 10;
 
 // crew: { id, name, abbr, description, emblem, privacy, faction, members[],
 //         officers[], founder, cap, level, xp, subChannels, fortresses[],
-//         diplomacy? }
+//         diplomacy: { [otherCrewId]: "ally"|"enemy" } }
 // This mirrors/extends the pre-2.0 shape (id/name/abbr/faction/members/cap/
 // founder/subChannels) — see shared/utils/aiCrews.js and CrewPanel.jsx for
 // the fields already in use. crewRules.js's createCrew() is the one place
