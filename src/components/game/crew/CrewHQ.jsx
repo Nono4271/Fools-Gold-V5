@@ -245,17 +245,17 @@ function TableHotspot({ icon, label, onClick }) {
   return (
     <button onClick={onClick} style={{
       ...BTN_RESET, position: "relative", display: "flex", flexDirection: "column",
-      alignItems: "center", gap: 3, padding: "8px 10px", borderRadius: "50%",
+      alignItems: "center", gap: 3, padding: "10px 12px", borderRadius: "50%",
       background: "radial-gradient(circle at 35% 30%, rgba(60,44,20,.85), rgba(20,14,6,.75))",
       border: "1.5px solid #c8a060", boxShadow: "0 0 8px rgba(0,0,0,.6), inset 0 0 6px rgba(200,160,96,.15)",
-      width: 46, height: 46, justifyContent: "center",
+      width: 58, height: 58, justifyContent: "center",
     }}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e0c080" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e0c080" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
         <path d={HOTSPOT_ICON_PATHS[icon]} />
       </svg>
       <span style={{
-        position: "absolute", top: "100%", marginTop: 3, whiteSpace: "nowrap",
-        ...TEXT_XS, color: "#e0c080", fontSize: 7, letterSpacing: ".04em",
+        position: "absolute", top: "100%", marginTop: 4, whiteSpace: "nowrap",
+        ...TEXT_XS, color: "#e0c080", fontSize: 10, fontWeight: 700, letterSpacing: ".04em",
         textShadow: "0 1px 2px rgba(0,0,0,.9)",
       }}>{label}</span>
     </button>
