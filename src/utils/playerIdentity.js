@@ -8,6 +8,8 @@
 //  account system would replace this; this is scoped to close the
 //  "client can claim to be anyone" gap for now, not to build auth.
 // ─────────────────────────────────────────────────────────────────────────────
+import { resolveApiBase } from "./apiBase.js";
+
 const STORAGE_KEY = "foolsgold_player_id";
 const SESSION_KEY = "foolsgold_session_id";
 
@@ -81,14 +83,32 @@ function adoptAccount({ accountId, username, lastSessionId }) {
   return accountId;
 }
 
+// Base URL of the game server's HTTP API (see apiBase.js). Empty = same origin.
+const API_BASE = resolveApiBase({
+  apiUrl: import.meta.env?.VITE_API_URL,
+  wsUrl:  import.meta.env?.VITE_WS_URL,
+});
+
 async function postAuth(path, username, password) {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) throw new Error(data.error || "Request failed");
+  let res;
+  try {
+    res = await fetch(API_BASE + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+  } catch {
+    // Network error / CORS / mixed content (https page -> http server).
+    throw new Error("Can't reach the game server. Check your connection and try again.");
+  }
+  const data = await res.json().catch(() => null);
+  if (!data || typeof data !== "object") {
+    // A static host answered (404/405, or the SPA fallback returning HTML):
+    // there is no game server behind /api at this address.
+    throw new Error(`The account server isn't reachable from this site (HTTP ${res.status}). The game server address isn't configured.`);
+  }
+  if (!res.ok || data.error) throw new Error(data.error || `Request failed (HTTP ${res.status})`);
+  if (!data.accountId || !data.username) throw new Error("Unexpected response from the account server.");
   return data;
 }
 
