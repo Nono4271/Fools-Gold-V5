@@ -284,13 +284,10 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId, i
   // up on its *starting* region. Polled + throttled rather than wired to
   // every pan event: panning fires on every pointer-move frame, and a tile
   // region doesn't need sub-second freshness the way rendering does.
-  // Scope note: this only re-requests a snapshot for the newly visible area
-  // (what VIEWPORT_SUB already did) — it does NOT filter the ongoing
-  // TILE_PATCH broadcast, which still goes to every client regardless of
-  // their viewport. Filtering live patches by viewport is a bigger change
-  // (risk of a client missing an update to a tile it cares about for reasons
-  // beyond "currently on screen" — minimap, leaderboard, etc.) and is left
-  // for a follow-up, not done here.
+  // This also feeds server-side TILE_PATCH filtering: the server remembers
+  // each connection's last VIEWPORT_SUB (see server/index.js's ws._viewport)
+  // and only forwards an ongoing patch for a tile inside it, falling back to
+  // sending everything to a client it has no viewport for yet.
   useEffect(() => {
     if (!panRef || !zoomRef) return; // caller didn't wire pan/zoom tracking
 
