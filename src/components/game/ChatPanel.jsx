@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect, memo } from "react";
 import { aiDisplayName } from "../../../shared/utils/aiChatter.js";
 import { censorText } from "../../../shared/utils/profanity.js";
+import {
+  subchannelsOf, subchannelId, canManageSubchannels, canPostInSubchannel,
+} from "../../../shared/utils/subchannels.js";
 import RelationsPanel from "./RelationsPanel.jsx";
+import SubchannelManager from "./SubchannelManager.jsx";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    ChatPanel — World / Faction / Crew / DM / Group chat
@@ -87,9 +91,17 @@ export default memo(function ChatPanel({
   // display's "Relations Management" entry.
   nameOf, friends = [], blocked = [], incoming = [], outgoing = [],
   addFriend, declineIncoming, cancelOutgoing, unfriend, blockPlayer, unblockPlayer, search,
+  // Sub-channels (crew + group only) — rules in shared/utils/subchannels.js.
+  // Crew sub-channels live on the crew object itself (GameView.jsx owns
+  // `crews`), so adding/removing/reordering them goes through a callback;
+  // group sub-channels live in useChat.js's own `groups` state, so those get
+  // direct mutators.
+  onManageCrewSubchannels, addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
 }) {
   const [display, setDisplay]     = useState("chats"); // "chats" | "direct"
   const [selectedId, setSelected] = useState(null);
+  const [selectedSubId, setSelectedSub] = useState(null);
+  const [subManagerOpen, setSubManagerOpen] = useState(false);
   const [draft, setDraft]         = useState("");
   const [picking, setPicking]     = useState(false); // group-creation picker
   const [pickSel, setPickSel]     = useState([]);
@@ -104,7 +116,17 @@ export default memo(function ChatPanel({
 
   const list = display === "chats" ? [...worldCh, ...factionCh, ...crewCh, ...groupCh] : dmCh;
   const active = list.find(c => c.id === selectedId) || null;
-  const msgs = active ? getMessages(active.id) : [];
+
+  // Crew/group channels are containers — you post into one of their
+  // sub-channels (#Announcement/#General, or a custom one), never the
+  // container itself. World/Faction/DM stay flat, unaffected.
+  const isSubbed = !!active && (active.type === "crew" || active.type === "group");
+  const subChannels = isSubbed ? subchannelsOf(active, { crews }) : [];
+  const activeSub = isSubbed ? (subChannels.find(s => s.id === selectedSubId) || null) : null;
+  const msgChannelId = isSubbed ? (activeSub ? subchannelId(active.id, activeSub.id) : null) : active?.id;
+  const msgs = msgChannelId ? getMessages(msgChannelId) : [];
+  const canManage = isSubbed && canManageSubchannels(playerId, active, { crews });
+  const canPostHere = activeSub ? canPostInSubchannel(playerId, active, activeSub, { crews }) : true;
 
   const otherKnownIds = knownPlayerIds.filter(id => id !== playerId);
   const resolveName = nameOf || (id => displayName(id, playerId, playerName, crews));
@@ -116,18 +138,35 @@ export default memo(function ChatPanel({
   useEffect(() => {
     const el = msgListRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [msgs.length, active?.id]);
+  }, [msgs.length, msgChannelId]);
 
   function switchDisplay(id) {
-    setDisplay(id); setSelected(null); setPicking(false); setRelationsOpen(false);
+    setDisplay(id); setSelected(null); setSelectedSub(null);
+    setPicking(false); setRelationsOpen(false); setSubManagerOpen(false);
   }
 
-  function openChannel(id) { setSelected(id); setRelationsOpen(false); }
+  function openChannel(id) {
+    setSelected(id); setSelectedSub(null); setRelationsOpen(false); setSubManagerOpen(false);
+  }
 
   function handleSend() {
-    if (!active || !draft.trim()) return;
-    sendMessage(active.id, draft);
+    if (!msgChannelId || !canPostHere || !draft.trim()) return;
+    sendMessage(msgChannelId, draft);
     setDraft("");
+  }
+
+  function handleAddSub(name) {
+    if (active.type === "crew") onManageCrewSubchannels?.(active.crewId, { type: "add", name });
+    else addGroupSubchannel?.(active.id, name);
+  }
+  function handleRemoveSub(id) {
+    if (active.type === "crew") onManageCrewSubchannels?.(active.crewId, { type: "remove", id });
+    else removeGroupSubchannel?.(active.id, id);
+    if (selectedSubId === id) setSelectedSub(null);
+  }
+  function handleMoveSub(id, direction) {
+    if (active.type === "crew") onManageCrewSubchannels?.(active.crewId, { type: "move", id, direction });
+    else moveGroupSubchannel?.(active.id, id, direction);
   }
 
   function togglePick(id) {
@@ -169,6 +208,19 @@ export default memo(function ChatPanel({
           💬 CHAT
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {canManage && (
+            <button
+              onClick={() => setSubManagerOpen(v => !v)}
+              title="Add or manage channels"
+              style={{
+                ...BTN_RESET, minWidth: 36, minHeight: 36, borderRadius: 4,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: subManagerOpen ? "rgba(200,160,96,.15)" : "rgba(255,255,255,.03)",
+                border: `1px solid ${subManagerOpen ? "#c8a06050" : "#2a2a2a"}`,
+                color: subManagerOpen ? GOLD : "#8a9aaa", fontSize: 15,
+              }}
+            >⚙</button>
+          )}
           <button
             onClick={() => setProfanityFilterEnabled?.(v => !v)}
             title={profanityFilterEnabled ? "Profanity filter: on" : "Profanity filter: off"}
@@ -188,6 +240,16 @@ export default memo(function ChatPanel({
           }}>✕</button>
         </div>
       </div>
+
+      {subManagerOpen && canManage && (
+        <SubchannelManager
+          subChannels={subChannels}
+          onAdd={handleAddSub}
+          onRemove={handleRemoveSub}
+          onMove={handleMoveSub}
+          onClose={() => setSubManagerOpen(false)}
+        />
+      )}
 
       {/* Display toggle — "Chats" (World/Faction/Guild/Groups) vs "Direct"
           (Relations Management + DMs) */}
@@ -340,8 +402,32 @@ export default memo(function ChatPanel({
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div style={{ ...TEXT_XS, color: "#3a4050" }}>Select a channel</div>
             </div>
+          ) : isSubbed && !activeSub ? (
+            <div className="scr chat-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ ...TEXT_SM, color: GOLD, marginBottom: 2 }}>{channelLabel(active, playerId, playerName)}</div>
+              {subChannels.map(s => (
+                <button key={s.id} onClick={() => setSelectedSub(s.id)} style={{
+                  ...BTN_RESET, padding: "9px 10px", borderRadius: 4, textAlign: "left",
+                  background: "rgba(255,255,255,.03)", border: `1px solid #1e2028`,
+                  color: "#c8c0b0", ...TEXT_XS, fontSize: 9,
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                }}>
+                  <span># {s.name}</span>
+                  {s.leaderOnly && <span style={{ fontSize: 9 }}>🔒</span>}
+                </button>
+              ))}
+            </div>
           ) : (
             <>
+              {isSubbed && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 10px",
+                  borderBottom: `1px solid ${BORDER_COL}`, flexShrink: 0,
+                }}>
+                  <button onClick={() => setSelectedSub(null)} style={{ ...BTN_RESET, color: "#8a9aaa", fontSize: 14, padding: "2px 4px" }}>‹</button>
+                  <span style={{ ...TEXT_XS, color: GOLD }}># {activeSub.name}</span>
+                </div>
+              )}
               <div ref={msgListRef} className="scr chat-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
                 {msgs.length === 0 && (
                   <div style={{ ...TEXT_XS, color: "#3a4050", textAlign: "center", padding: "20px 0" }}>
@@ -367,23 +453,30 @@ export default memo(function ChatPanel({
                   );
                 })}
               </div>
-              <div style={{ display: "flex", gap: 6, padding: "8px 10px", borderTop: `1px solid ${BORDER_COL}` }}>
-                <input
-                  value={draft} onChange={e => setDraft(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") handleSend(); }}
-                  placeholder="Message…" maxLength={280}
-                  style={{
-                    flex: 1, background: "rgba(255,255,255,.05)", border: "1px solid #2a3040",
-                    borderRadius: 4, padding: "8px 10px", color: "#c8c0b0",
-                    fontFamily: "'Crimson Pro',serif", fontSize: 11, outline: "none",
-                  }}
-                />
-                <button onClick={handleSend} disabled={!draft.trim()} style={{
-                  ...BTN_RESET, padding: "0 14px", borderRadius: 4,
-                  background: "linear-gradient(160deg,#1a3a2a,#0e2018)", border: "1px solid #306050",
-                  color: "#50c090", ...TEXT_XS, opacity: draft.trim() ? 1 : .4,
-                }}>Send</button>
-              </div>
+              {canPostHere ? (
+                <div style={{ display: "flex", gap: 6, padding: "8px 10px", borderTop: `1px solid ${BORDER_COL}` }}>
+                  <input
+                    value={draft} onChange={e => setDraft(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") handleSend(); }}
+                    placeholder="Message…" maxLength={280}
+                    style={{
+                      flex: 1, background: "rgba(255,255,255,.05)", border: "1px solid #2a3040",
+                      borderRadius: 4, padding: "8px 10px", color: "#c8c0b0",
+                      fontFamily: "'Crimson Pro',serif", fontSize: 11, outline: "none",
+                    }}
+                  />
+                  <button onClick={handleSend} disabled={!draft.trim()} style={{
+                    ...BTN_RESET, padding: "0 14px", borderRadius: 4,
+                    background: "linear-gradient(160deg,#1a3a2a,#0e2018)", border: "1px solid #306050",
+                    color: "#50c090", ...TEXT_XS, opacity: draft.trim() ? 1 : .4,
+                  }}>Send</button>
+                </div>
+              ) : (
+                <div style={{
+                  padding: "9px 12px", borderTop: `1px solid ${BORDER_COL}`, textAlign: "center",
+                  ...TEXT_XS, color: "#5a6a7a", flexShrink: 0,
+                }}>🔒 Only the leader can post here</div>
+              )}
             </>
           )}
         </div>
