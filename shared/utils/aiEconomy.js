@@ -12,7 +12,7 @@
 // Prices/time are the player's tier-0 small-branch quote (shared/utils/training.js
 // BASE_COST[0], SMALL_MINUTES[0]); the worker has no FACTION_TROOPS so it can't
 // quote a specific branch.
-import { barracksCapacity, trainingQueueCount, CMD_SIZE } from "../constants/buildings.js";
+import { barracksCapacity, trainingQueueCount, CMD_SIZE, cmdCommand } from "../constants/buildings.js";
 
 export const AI_TRAIN_COMMAND = Object.freeze({
   size: CMD_SIZE.small,
@@ -55,4 +55,38 @@ export function aiTrainingTick({ pool, rss, queue = [], trainingLvl = 0, barrack
     started++;
   }
   return { pool: nextPool, rss: nextRss, queue: remaining, delivered, started };
+}
+
+// ── Troop hand-out cap ───────────────────────────────────────────────────────
+// How many troops one AI commander may be handed. Same rule as the player: a
+// commander has cmdCommand(level, command-centre level) command points and every
+// troop of a small branch costs COMMAND_COST.small (0.01) of them, so a lvl-5
+// commander with no command centre holds 500 troops. (The worker used to index the
+// command-centre bonus table by the COMMANDER's level - 18 points, i.e. 1,800
+// troops, for a lvl-5 commander - and ignored the faction's real command centre.)
+// AI troops are a single small-branch stack; the worker can't import COMMAND_COST
+// without pulling in all troop data, so tests/aiEconomy.test.js pins this value.
+export const AI_TROOP_COMMAND_COST = 0.01;
+export function aiTroopCap(cmdLvl, commandCenterLvl = 0) {
+  return Math.floor(cmdCommand(cmdLvl || 1, commandCenterLvl || 0, 0) / AI_TROOP_COMMAND_COST + 1e-9);
+}
+
+// ── Resource spending as a delta ────────────────────────────────────────────
+// The economy pass decides from a snapshot of the faction's resources. It used to
+// send back the absolute post-spend amounts, which overwrote whatever income had
+// been credited since the snapshot. It now sends only what was spent, and the
+// main thread subtracts that from the live amounts.
+const RSS_KEYS = ["stone", "wood", "gas", "food"];
+export function rssSpent(before, after) {
+  const out = {};
+  for (const k of RSS_KEYS) {
+    const d = (before?.[k] ?? 0) - (after?.[k] ?? 0);
+    if (d > 0) out[k] = d;
+  }
+  return out;
+}
+export function applyRssSpent(current, spent) {
+  const next = { ...current };
+  for (const k of RSS_KEYS) if (spent?.[k] > 0) next[k] = Math.max(0, (next[k] ?? 0) - spent[k]);
+  return next;
 }
