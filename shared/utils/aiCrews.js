@@ -1,4 +1,5 @@
 // Pure rules for AI players founding and joining crews (moved from Game.jsx).
+import { defaultCrewSubchannels } from "../constants/chat.js";
 
 export const AI_CREW_COST = 500; // gems to found a crew
 export const AI_CREW_CAP = 40;
@@ -27,6 +28,7 @@ export function aiCrewTick({ crews, aiPlayerIds, founders, gemsOf, now }) {
           id: `crew_ai_${playerId}_${now}`,
           name: `${fk.charAt(0).toUpperCase() + fk.slice(1)} ${["Vanguard","Legion","Order"][sameFaction] || "Band"}`,
           abbr: fk.slice(0, 4).toUpperCase(), faction: fk, members: [playerId], cap: AI_CREW_CAP,
+          founder: playerId, subChannels: defaultCrewSubchannels(),
         };
         byId.set(crew.id, crew); order.push(crew.id);
         gems[playerId] = have - AI_CREW_COST;

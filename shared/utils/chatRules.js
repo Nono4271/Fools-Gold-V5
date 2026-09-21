@@ -7,7 +7,7 @@
 // read straight off its id. The real (local) player has no such id shape, so
 // its faction comes from ctx.factions (a { [playerId]: factionKey } map) —
 // today that's just { player: <the local player's facKey> }.
-import { CHANNEL_TYPES, MESSAGE_MAX_LEN } from "../constants/chat.js";
+import { CHANNEL_TYPES, MESSAGE_MAX_LEN, defaultGroupSubchannels } from "../constants/chat.js";
 
 // "ai_pirates_3" -> "pirates"; "ai_ashen_dead_0" -> "ashen_dead" (faction keys
 // can contain an underscore, so everything between the leading "ai_" and the
@@ -49,17 +49,25 @@ export function createDmChannel(a, b) {
   return { id: `dm_${participants.join("__")}`, type: CHANNEL_TYPES.dm, participants };
 }
 
-export function createGroupChannel(name, participantIds, { id, now } = {}) {
+// `ownerId` is whoever started the group — the only one allowed to add or
+// manage its sub-channels later (shared/utils/subchannels.js). Seeded with
+// one sub-channel, #General (unlocked custom ones can be added up to
+// MAX_SUBCHANNELS — see subchannels.js).
+export function createGroupChannel(name, participantIds, { id, now, ownerId } = {}) {
   const participants = [...new Set(participantIds || [])];
   return {
     id: id ?? `group_${now ?? Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     type: CHANNEL_TYPES.group,
     name: (name || "").trim() || "Group",
     participants,
+    ownerId: ownerId ?? null,
+    subChannels: defaultGroupSubchannels(),
   };
 }
 
-function findCrew(channel, ctx) {
+// Exported for shared/utils/subchannels.js (crew sub-channel rules need the
+// same "which crew does this channel belong to" lookup canPost uses below).
+export function findCrew(channel, ctx) {
   if (channel.crew) return channel.crew; // pre-resolved, e.g. by the caller
   return (ctx?.crews || []).find(c => c.id === channel.crewId) || null;
 }
