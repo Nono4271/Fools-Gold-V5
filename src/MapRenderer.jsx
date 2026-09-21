@@ -1572,36 +1572,43 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   // Per-faction fine-tuning offsets (xOff/yOff in pixels, positive = right/down)
   // scale multiplier (default 1.0) for factions that need larger sprites
   const HQ_OFFSETS = {
-    pirates:        { xOff:  0,    yOff:  0,    scale: 1.0  },
-    player:         { xOff:  0,    yOff:  0,    scale: 1.0  },
-    // Dark-v2 HQs were authored with a taller visible silhouette than the
-    // legacy 0.80 height clamp below.  Slightly enlarge them and let the
-    // dark assets keep their square/native presentation so their towers do
-    // not look flattened in-game.
-    orcs:           { xOff:  0,    yOff:  0,    scale: 1.12 },
-    ai:             { xOff:  0,    yOff:  0,    scale: 1.12 },
-    wizards:        { xOff:  5,    yOff: -3,    scale: 1.10 },
-    dragons:        { xOff:  5,    yOff:  7,    scale: 1.08 },
-    holyknights:    { xOff: -5,    yOff:  7,    scale: 1.05 },
-    nightcreatures: { xOff:  0,    yOff:  7,    scale: 1.10 },
-    coldborns:      { xOff:  0,    yOff:  10,   scale: 1.08 },
-    ashen_dead:     { xOff:  0,    yOff:  10,   scale: 1.10 },
+    pirates:        { xOff:  0,  yOff:  0, scale: 1.0,  yScale: 1.00 },
+    player:         { xOff:  0,  yOff:  0, scale: 1.0,  yScale: 1.00 },
+    // Dark-v2 HQs: slightly larger than the previous pass, with small anchor
+    // corrections so the visible building sits naturally inside the existing
+    // 3x3 footprint.  The footprint/selection diamond itself is unchanged.
+    orcs:           { xOff:  0,  yOff: -1, scale: 1.20, yScale: 1.00 },
+    ai:             { xOff:  0,  yOff: -1, scale: 1.20, yScale: 1.00 },
+    dragons:        { xOff:  2,  yOff:  3, scale: 1.16, yScale: 1.00 },
+    wizards:        { xOff:  0,  yOff: -1, scale: 1.18, yScale: 1.16 },
+    holyknights:    { xOff: -2,  yOff:  3, scale: 1.14, yScale: 1.00 },
+    nightcreatures: { xOff:  0,  yOff:  3, scale: 1.16, yScale: 1.00 },
+    coldborns:      { xOff:  0,  yOff:  5, scale: 1.16, yScale: 1.00 },
+    ashen_dead:     { xOff:  0,  yOff:  3, scale: 1.16, yScale: 1.00 },
   };
-  const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0 };
+  const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0, yScale: 1.0 };
 
   const baseW = TW * 2.2;
   const targetW = baseW * (off.scale || 1.0);
-  // Preserve the legacy fit for original HQs, but do not squash the new
-  // dark-v2 artwork. The dark assets are square and their internal transparent
-  // framing already controls the visible silhouette.
-  const targetH = useDarkHQArt ? targetW : targetW * 0.80;
+  // Original HQ art keeps its historical 0.80 height fit. Dark-v2 art is
+  // rendered from its native square frame so it is no longer flattened.
+  // Wizards additionally receive a controlled vertical correction because
+  // the supplied Arcane artwork has unusually wide/low transparent framing;
+  // this restores a taller fortress silhouette without changing the map angle
+  // or the selection footprint.
+  const targetH = useDarkHQArt
+    ? targetW * (off.yScale || 1.0)
+    : targetW * 0.80;
 
   const spriteX = bx + off.xOff;
-  // The approved square Pirate sprite uses its visible base as the ground
-  // anchor. Align that base with the south point of the 3x3 footprint.
-  const spriteY = useApprovedPirateArt
+  const spriteAnchorY = useApprovedPirateArt ? 0.97 : 0.905;
+  // Keep the visible base on the same map-ground line when a faction gets
+  // enlarged or vertically corrected.  Previously spriteY was fixed while
+  // height changed, which made larger HQs drift downward and look off-center.
+  const groundY = useApprovedPirateArt
     ? worldCY + TH * 1.55 + off.yOff
     : sPt.cy - elev + TH * 0.60 + off.yOff;
+  const spriteY = groundY - (1 - spriteAnchorY) * targetH;
 
   if (blendWithTerrain) {
     const shadow = new PIXI.Graphics();
@@ -1615,7 +1622,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   }
 
   const applySprite = (sp) => {
-    sp.anchor.set(0.5, useApprovedPirateArt ? 0.97 : 0.905);
+    sp.anchor.set(0.5, spriteAnchorY);
     sp.width  = targetW;
     // Preserve the approved sprite proportions; other factions keep their existing fit.
     sp.height = useApprovedPirateArt ? targetW * sp.texture.height / sp.texture.width : targetH;
