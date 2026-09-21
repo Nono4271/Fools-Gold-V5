@@ -136,8 +136,21 @@ onForcedRelocate,
 }) {
 
 // Server-sync helpers — no-op if server not connected yet
-const _emitCapture = (key, patch) => emitTileCapture?.(key, patch);
-const _emitSiege   = (key, patch) => emitTileSiege?.(key, patch);
+const _emitCapture = (key, patch, attacker) => emitTileCapture?.(key, patch, attacker);
+const _emitSiege   = (key, patch, attacker) => emitTileSiege?.(key, patch, attacker);
+
+// The troop composition behind a siegePower number, in a shape the server
+// can independently recompute from (shared calcSiegePower + FACTION_TROOPS)
+// instead of trusting the client's claimed outcome. Roadmap item 1: give the
+// server enough army data to verify a capture itself.
+function attackerComposition(cmd, boostedCmd) {
+  const slots = cmdSlots(cmd);
+  const armySiegeBonus = boostedCmd?.gearBonuses?.armySiege || 0;
+  if (slots.length > 0) {
+    return { troopSlots: slots.map(sl => ({ troops: sl.troops, branch: sl.branch })), armySiegeBonus };
+  }
+  return { troops: cmd.troops || 0, troopBranch: cmd.troopBranch || null, armySiegeBonus };
+}
 const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
 
 // Gate A ↔ Gate B foothold: a commander on gateA is treated as adjacent to
@@ -247,16 +260,17 @@ arrivedAttackers.forEach(async staleCmd => {
   const allWavesDefeated = (defTile.defeatedWaves?.length ?? 0) >= garrisonWaveCount(defTile);
   if (allWavesDefeated) {
     const siegePower = cmdSiegePower(cmd, boostedCmd);
+    const attacker = attackerComposition(cmd, boostedCmd);
     const { captured: siegeCaptured, patch: outcomePatch } = resolveSiegeOutcome({ tile: defTile, siegePower });
     if (siegeCaptured) {
       patchTile(destKey, outcomePatch);
-      _emitCapture(destKey, outcomePatch);
+      _emitCapture(destKey, outcomePatch, attacker);
       registerProtection?.(destKey);
       floaty("⚔ CAPTURED!", "#3daa60", destKey);
       if (destKey === WIN_KEY) setWinner("player");
     } else {
       patchTile(destKey, outcomePatch);
-      _emitSiege(destKey, outcomePatch);
+      _emitSiege(destKey, outcomePatch, attacker);
       floaty(`🔨 SIEGE ${outcomePatch.siege}/${outcomePatch.siegeMax}`, "#d0a030", destKey);
     }
     setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null, tk:siegeCaptured?destKey:originKey } : c));
@@ -502,8 +516,10 @@ arrivedAttackers.forEach(async staleCmd => {
   }
 
   // All waves cleared — siege phase
-  const siegePower   = cmdSiegePower({ ...cmd, troops:remainingTroops,
-    troopSlots: cmd.troopSlots ? applySlotLosses(cmd, cmdTroops(cmd)-remainingTroops).troopSlots : undefined }, boostedCmd);
+  const postLossCmd = { ...cmd, troops:remainingTroops,
+    troopSlots: cmd.troopSlots ? applySlotLosses(cmd, cmdTroops(cmd)-remainingTroops).troopSlots : undefined };
+  const siegePower = cmdSiegePower(postLossCmd, boostedCmd);
+  const attacker   = attackerComposition(postLossCmd, boostedCmd);
   const { captured: tileCaptured, patch: outcomePatch } = resolveSiegeOutcome({
     tile: defTile, siegePower, defeatedWaves: newlyDefeated,
     capture: { defCmd: null, hasAiCommander: false },
@@ -511,13 +527,13 @@ arrivedAttackers.forEach(async staleCmd => {
 
   if (tileCaptured) {
     patchTile(destKey, outcomePatch);
-    _emitCapture(destKey, outcomePatch);
+    _emitCapture(destKey, outcomePatch, attacker);
     registerProtection?.(destKey);
     floaty("⚔ CAPTURED!", "#3daa60", destKey);
     if (destKey === WIN_KEY) setWinner("player");
   } else {
     patchTile(destKey, outcomePatch);
-    _emitSiege(destKey, outcomePatch);
+    _emitSiege(destKey, outcomePatch, attacker);
     floaty(`🔨 SIEGE ${outcomePatch.siege}/${outcomePatch.siegeMax}`, "#d0a030", destKey);
   }
 
@@ -723,7 +739,9 @@ useEffect(() => {
       }
 
       // Player won all fights — attempt siege/capture
-      const siegePower = cmdSiegePower({ ...cmd, troops: remainingTroops }, boostedCmd);
+      const rematchCmd = { ...cmd, troops: remainingTroops };
+      const siegePower = cmdSiegePower(rematchCmd, boostedCmd);
+      const attacker   = attackerComposition(rematchCmd, boostedCmd);
       const outcome = resolveSiegeOutcome({
         tile: defTile, siegePower, defeatedWaves: defTile.defeatedWaves ?? [],
         capture: { defCmd: null, hasAiCommander: false },
@@ -731,13 +749,13 @@ useEffect(() => {
       tileCaptured = outcome.captured;
       if (tileCaptured) {
         patchTile(destKey, outcome.patch);
-        _emitCapture(destKey, outcome.patch);
+        _emitCapture(destKey, outcome.patch, attacker);
         registerProtection?.(destKey);
         floaty("⚔ CAPTURED!", "#3daa60", destKey);
         if (destKey === WIN_KEY) setWinner("player");
       } else {
         patchTile(destKey, outcome.patch);
-        _emitSiege(destKey, outcome.patch);
+        _emitSiege(destKey, outcome.patch, attacker);
         floaty(`⚔ SIEGE ${outcome.patch.siege}/${outcome.patch.siegeMax}`, "#d0a030", destKey);
       }
 

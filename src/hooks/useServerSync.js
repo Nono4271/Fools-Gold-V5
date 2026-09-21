@@ -44,7 +44,7 @@ function extractMutableState(tiles) {
     if (key === '__ready') continue;
     // Skip tiles that are in their default neutral state
     const isDefault = !t.owner && !(t.defeatedWaves?.length) && !t.isHQ && !t.isHQPart &&
-                      !t.isKeep && !t.isWin && !t.hasAiCommander;
+                      !t.isKeep && !t.isGate && !t.isWin && !t.hasAiCommander;
     if (isDefault) continue;
     // Store only the fields the server actually uses for authoritative state
     mutable[key] = {
@@ -59,6 +59,11 @@ function extractMutableState(tiles) {
       isHQ:             t.isHQ             ?? false,
       isHQPart:         t.isHQPart         ?? false,
       isKeep:           t.isKeep           ?? false,
+      // Added so the server's garrisonResetMs (shared/utils/captureRules.js)
+      // can tell a gate's 1-hour reset from a regular tile's 15-min one —
+      // this field was missing entirely before, so the server always fell
+      // through to the 15-min default for gates (see ReadMeAI).
+      isGate:           t.isGate           ?? false,
       isWin:            t.isWin            ?? false,
       hasAiCommander:   t.hasAiCommander   ?? false,
       defCmd:           t.defCmd           ?? null,
@@ -102,7 +107,7 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId, i
    * Call when a tile is captured (owner changes).
    * Optimistic: patchTile fires immediately; server echo is ignored.
    */
-  const emitTileCapture = useCallback((key, patch) => {
+  const emitTileCapture = useCallback((key, patch, attacker) => {
     safeSend({
       type: 'TILE_CAPTURE',
       sessionId,
@@ -110,6 +115,11 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId, i
       // Roadmap item 4: lets the server dedupe a resent/duplicate message
       // (dropped ack, double-fire) instead of re-applying it.
       msgId: `${sessionId}:${key}:cap:${Date.now()}:${Math.random().toString(36).slice(2)}`,
+      // Roadmap item 1: the troop composition behind this claim's siegePower,
+      // so the server can recompute it itself (shared calcSiegePower) instead
+      // of trusting owner/garrison/siege verbatim. Optional — an older client
+      // omitting this still works, just without server-side verification.
+      attacker,
       ...patch,
     });
   }, [safeSend, sessionId]);
@@ -118,12 +128,13 @@ export function useServerSync({ screen, tiles, mapReady, patchTile, sessionId, i
    * Call when siege damage is applied (garrison defeated, siege reduced).
    * Optimistic: caller already called patchTile; this syncs the server.
    */
-  const emitTileSiege = useCallback((key, patch) => {
+  const emitTileSiege = useCallback((key, patch, attacker) => {
     safeSend({
       type: 'TILE_SIEGE',
       sessionId,
       key,
       msgId: `${sessionId}:${key}:siege:${Date.now()}:${Math.random().toString(36).slice(2)}`,
+      attacker,
       ...patch,
     });
   }, [safeSend, sessionId]);
