@@ -9,6 +9,18 @@ export const SWEEP_STAMINA = 10;
 export const STAMINA_BASE = 150;
 export const STAMINA_REGEN_MS = 3 * 60 * 1000; // +1 stamina every 3 min (= 20/hr)
 export const STAMINA_PER_REGEN = 1;
+// AI commanders use the player's base pool (no tome bonus) and the same regen.
+export const AI_STAMINA_MAX = STAMINA_BASE;
+// Stamina a march costs, deducted when it is dispatched: attacks 20, moves 10.
+export const MARCH_STAMINA_COST = { attack: 20, move: 10 };
+export const marchStaminaCost = (type) => (type === "attack" ? MARCH_STAMINA_COST.attack : MARCH_STAMINA_COST.move);
+// Missing stamina counts as full (same rule as regenStamina).
+export function canAffordMarch(cmd, type, max) {
+  return (cmd.stamina ?? max) >= marchStaminaCost(type);
+}
+export function spendMarchStamina(cmd, type, max) {
+  return { ...cmd, stamina: Math.max(0, (cmd.stamina ?? max) - marchStaminaCost(type)) };
+}
 export const EGG_REGEN_MS = 60 * 1000;          // eggs refill the full cap in 24h, ticked each minute
 
 // Command budget per tile power, used for training XP.
