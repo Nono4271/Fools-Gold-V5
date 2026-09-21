@@ -71,3 +71,41 @@ test('a late tick (throttled/backgrounded worker) delivers everything that finis
   assert.equal(late.delivered, 4 * AI_TRAIN_COMMAND.size);
   assert.equal(late.pool, 4 * AI_TRAIN_COMMAND.size);
 });
+
+// ── Troop hand-out cap ───────────────────────────────────────────────────────
+import { aiTroopCap, AI_TROOP_COMMAND_COST, rssSpent, applyRssSpent } from '../shared/utils/aiEconomy.js';
+import { cmdCommand } from '../shared/constants/buildings.js';
+import { COMMAND_COST } from '../shared/constants/troops.js';
+
+test('AI troop hand-out cap uses the player rule: (level + command-centre bonus) points at 0.01 per small troop', () => {
+  assert.equal(AI_TROOP_COMMAND_COST, COMMAND_COST.small, 'pinned to the real small-troop command cost');
+  assert.equal(aiTroopCap(5, 0), 500);      // was 1,800
+  assert.equal(aiTroopCap(1, 0), 100);
+  assert.equal(aiTroopCap(50, 0), 5000);
+  // A faction's command centre raises the cap exactly like the player's
+  for (const [lvl, cc] of [[5, 3], [20, 10], [30, 5]]) {
+    assert.equal(aiTroopCap(lvl, cc), Math.round(cmdCommand(lvl, cc, 0) * 100));
+  }
+  assert.ok(aiTroopCap(5, 10) > aiTroopCap(5, 0));
+  assert.equal(aiTroopCap(undefined, undefined), 100); // level defaults to 1
+});
+
+test('a lvl-5 AI commander can no longer swallow 1,800 troops from the pool in one go', () => {
+  assert.ok(aiTroopCap(5, 0) < 1800);
+  // 2,000-troop starting pool now spreads over four lvl-5 commanders
+  assert.equal(Math.floor(2000 / aiTroopCap(5, 0)), 4);
+});
+
+// ── Resource spending as a delta ─────────────────────────────────────────────
+test('rssSpent reports only what was spent and applyRssSpent subtracts it from the LIVE totals', () => {
+  const snapshot = { stone: 5000, wood: 5000, gas: 5000, food: 5000 };
+  const afterSpend = { stone: 5000, wood: 4100, gas: 4300, food: 3600 };
+  const spent = rssSpent(snapshot, afterSpend);
+  assert.deepEqual(spent, { wood: 900, gas: 700, food: 1400 });
+  // Income credited between the snapshot and now is kept
+  const live = { stone: 5010, wood: 5020, gas: 5030, food: 5040 };
+  assert.deepEqual(applyRssSpent(live, spent), { stone: 5010, wood: 4120, gas: 4330, food: 3640 });
+  // Never negative
+  assert.equal(applyRssSpent({ wood: 100 }, { wood: 900 }).wood, 0);
+  assert.deepEqual(rssSpent(snapshot, snapshot), {});
+});
