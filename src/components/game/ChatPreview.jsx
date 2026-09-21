@@ -33,9 +33,12 @@ export default memo(function ChatPreview({
     <button
       onClick={onOpen}
       style={{
-        position: "fixed", left: "50%", transform: "translateX(-50%)",
+        // Anchored by its right edge (pinned to where the old, narrower
+        // box's right edge sat) rather than centered, so the extra width
+        // grows mostly leftward instead of pushing out both sides evenly.
+        position: "fixed", right: "calc(50% - 142.5px)",
         bottom: "calc(env(safe-area-inset-bottom, 8px) + 8px)",
-        zIndex: 9050, width: 285, minHeight: 30,
+        zIndex: 9050, width: 428, minHeight: 30,
         background: "rgba(5,7,11,.9)", border: "1px solid #1a2030", borderRadius: 6,
         padding: "6px 8px", display: "flex", flexDirection: "column", gap: 3,
         justifyContent: "center",

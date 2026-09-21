@@ -45,6 +45,9 @@ const BORDER_COL = "#1a2030";
 const GOLD       = "#c8a060";
 const TEXT_SM    = { fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: ".04em" };
 const TEXT_XS    = { fontFamily: "'Cinzel',serif", fontSize: 7, letterSpacing: ".04em" };
+// Left column (World/Faction/Guild/Group/DM rows + sub-channels) — 1.5x
+// TEXT_XS, same reasoning as TEXT_NAME below.
+const TEXT_LEFT  = { fontFamily: "'Cinzel',serif", fontSize: 10.5, letterSpacing: ".04em" };
 // Message sender name + "[ABBR] Name" crew tag — 1.5x TEXT_XS, and a hair
 // bolder so it holds up at the bigger size.
 const TEXT_NAME  = { fontFamily: "'Cinzel',serif", fontSize: 10.5, letterSpacing: ".03em", fontWeight: 600 };
@@ -114,7 +117,7 @@ function SubchannelRows({ subChannels, activeSubId, onSelect }) {
           background: activeSubId === s.id ? "rgba(200,160,96,.12)" : "rgba(255,255,255,.02)",
           border: `1px solid ${activeSubId === s.id ? "#c8a06040" : "#1a2028"}`,
           color: activeSubId === s.id ? GOLD : "#5a6a7a",
-          fontFamily: "'Cinzel',serif", fontSize: 7, letterSpacing: ".04em",
+          fontFamily: "'Cinzel',serif", fontSize: 10.5, letterSpacing: ".04em",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
         }}>
@@ -201,6 +204,9 @@ export default memo(function ChatPanel({
   // there's no dedicated profile screen elsewhere in the game yet).
   const [nameMenuId, setNameMenuId] = useState(null);
   const [nameMenuView, setNameMenuView] = useState("menu");
+  // "Aa" header button — placeholder toggle for a future message-translate
+  // feature (not implemented yet: no translation call is wired up here).
+  const [translateEnabled, setTranslateEnabled] = useState(false);
 
   const worldCh  = channels.filter(c => c.type === "world");
   const factionCh = channels.filter(c => c.type === "faction");
@@ -332,6 +338,18 @@ export default memo(function ChatPanel({
             >⚙</button>
           )}
           <button
+            onClick={() => setTranslateEnabled(v => !v)}
+            title={translateEnabled ? "Translate: on (coming soon)" : "Translate messages"}
+            style={{
+              ...BTN_RESET, minWidth: 36, minHeight: 36, borderRadius: 4,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: translateEnabled ? "rgba(200,160,96,.15)" : "rgba(255,255,255,.03)",
+              border: `1px solid ${translateEnabled ? "#c8a06050" : "#2a2a2a"}`,
+              color: translateEnabled ? GOLD : "#8a9aaa", fontSize: 13, fontWeight: 700,
+              fontFamily: "'Crimson Pro',serif",
+            }}
+          >Aa</button>
+          <button
             onClick={() => setProfanityFilterEnabled?.(v => !v)}
             title={profanityFilterEnabled ? "Profanity filter: on" : "Profanity filter: off"}
             style={{
@@ -377,7 +395,7 @@ export default memo(function ChatPanel({
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
         {/* Channel list */}
         <div className="scr chat-scroll" style={{
-          width: 128, flexShrink: 0, minHeight: 0, overflowY: "auto", borderRight: `1px solid ${BORDER_COL}`,
+          width: 160, flexShrink: 0, minHeight: 0, overflowY: "auto", borderRight: `1px solid ${BORDER_COL}`,
           padding: 6, display: "flex", flexDirection: "column", gap: 4,
         }}>
           {display === "chats" && (
@@ -387,7 +405,7 @@ export default memo(function ChatPanel({
                   ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
                   background: !relationsOpen && active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
                   border: `1px solid ${!relationsOpen && active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                  color: !relationsOpen && active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                  color: !relationsOpen && active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_LEFT,
                   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 }}>{channelLabel(ch, playerId, playerName)}</button>
               ))}
@@ -396,12 +414,12 @@ export default memo(function ChatPanel({
                   ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
                   background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
                   border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                  color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                  color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_LEFT,
                   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 }}>{channelLabel(ch, playerId, playerName)}</button>
               ))}
               {crewCh.length === 0 && (
-                <div style={{ ...TEXT_XS, color: "#3a4050", padding: "10px 4px" }}>No guild yet</div>
+                <div style={{ ...TEXT_LEFT, color: "#3a4050", padding: "10px 4px" }}>No guild yet</div>
               )}
               {crewCh.map(ch => (
                 <div key={ch.id}>
@@ -409,7 +427,7 @@ export default memo(function ChatPanel({
                     ...BTN_RESET, width: "100%", padding: "7px 6px", borderRadius: 4, textAlign: "left",
                     background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
                     border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                    color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                    color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_LEFT,
                     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                   }}>{channelLabel(ch, playerId, playerName)}</button>
                   {active?.id === ch.id && (
@@ -424,7 +442,7 @@ export default memo(function ChatPanel({
               <button onClick={() => { setPicking(true); setPickSel([]); setGroupName(""); setSelected(null); }} style={{
                 ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
                 background: "rgba(200,160,64,.12)", border: "1px solid #c8a06040",
-                color: GOLD, ...TEXT_XS,
+                color: GOLD, ...TEXT_LEFT,
               }}>+ New Group</button>
               {groupCh.map(ch => (
                 <div key={ch.id}>
@@ -432,7 +450,7 @@ export default memo(function ChatPanel({
                     ...BTN_RESET, width: "100%", padding: "7px 6px", borderRadius: 4, textAlign: "left",
                     background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
                     border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                    color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                    color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_LEFT,
                     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                   }}>{channelLabel(ch, playerId, playerName)}</button>
                   {active?.id === ch.id && (
@@ -452,17 +470,17 @@ export default memo(function ChatPanel({
                 ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
                 background: relationsOpen ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
                 border: `1px solid ${relationsOpen ? "#c8a06050" : "#1e2028"}`,
-                color: relationsOpen ? GOLD : "#6a7a8a", ...TEXT_XS,
+                color: relationsOpen ? GOLD : "#6a7a8a", ...TEXT_LEFT,
               }}>⚙ Relations</button>
               {dmCh.length === 0 && (
-                <div style={{ ...TEXT_XS, color: "#3a4050", padding: "10px 4px" }}>No DMs yet</div>
+                <div style={{ ...TEXT_LEFT, color: "#3a4050", padding: "10px 4px" }}>No DMs yet</div>
               )}
               {dmCh.map(ch => (
                 <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
                   ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
                   background: !relationsOpen && active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
                   border: `1px solid ${!relationsOpen && active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                  color: !relationsOpen && active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                  color: !relationsOpen && active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_LEFT,
                   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 }}>{channelLabel(ch, playerId, playerName)}</button>
               ))}
