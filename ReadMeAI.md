@@ -8,6 +8,73 @@ Branch: codex/core-fixes-20260919
 
 ---
 
+## 2026-09-20 — Claude (Sonnet 5) — Pre-multiplayer prep, round 3: player identity binding, live viewport tracking, session persistence/reconnect
+
+Follow-up to the two entries directly below. Owner picked the item flagged as still-open last round
+(player identity wasn't verified) plus items 3 and 4 from the original 10-item pre-multiplayer list
+(wire VIEWPORT_SUB as the player pans; durable accounts/reconnect), scoped down first via two
+questions: identity binds captures to the connection's own id (not just logged), and persistence
+covers disk snapshots + clean reconnect (not a full account/login system — there still isn't one).
+
+**1. Player identity binding**
+- New `src/utils/playerIdentity.js` — `getOrCreatePlayerId()` returns a stable id stored in
+  `localStorage` (falls back to a session-only id if storage is unavailable). Explicitly NOT real
+  authentication — no login, no server secret — just enough for the server to tell one connection
+  from another, which is what was actually missing.
+- `Game.jsx` generates this once and passes it into `useServerSync`.
+- `useServerSync.js` sends it as `playerId` on `GAME_INIT`.
+- `server/index.js` stores it as `ws._playerId`. `handleTileCapture` now rejects a "player"-owned
+  capture from a connection with no registered identity, and stamps `ownerPlayerId` on a successful
+  capture from `ws._playerId` — never from anything the client puts in the capture message. This
+  closes the "one connection could claim a capture as if it were a different player" gap.
+  `owner`/`defCmd` (WHAT is attacking — which faction/commander) are still taken from the client's
+  claim as before; this only binds WHO (which player) gets credited.
+
+**2. Live viewport tracking (VIEWPORT_SUB wired from the client)**
+Last round only sent a starting viewport once, on `GAME_INIT` (roadmap item 5). The server already
+supported re-filtering via `VIEWPORT_SUB`, but nothing sent updates as the player panned afterward.
+- `shared/constants/geometry.js` — added `worldToTile` (inverse of `isoXY`) and `viewBoundsCR`
+  (pan/zoom → tile-coordinate box), as pure, importable functions. Deliberately NOT wired into
+  `MapRenderer.jsx`'s own (render-critical, already-correct) `getViewBounds` — that stays untouched;
+  these are additions for `useServerSync` to reuse the same transform, not a refactor of rendering.
+- `useServerSync.js` polls `panRef`/`zoomRef` (now passed in from `Game.jsx`, which already owned
+  them) every 3s, and sends `VIEWPORT_SUB` when the view has moved more than ~20 tiles since the
+  last one sent (throttled — panning fires every pointer-move frame, a tile region doesn't need
+  sub-second freshness).
+- Scope note, not fixed here: this only re-requests a snapshot for newly-visible tiles. It does NOT
+  filter the ongoing `TILE_PATCH` broadcast, which still goes to every client regardless of their
+  current viewport — filtering live patches is a bigger change (risk of a client missing an update
+  to a tile it cares about for a non-viewport reason — minimap, leaderboard) and is left for a
+  follow-up.
+
+**3. Session persistence + reconnect (`server/index.js`)**
+- Each session's tile Map is periodically snapshotted to `server/data/sessions/<id>.json` (added to
+  `.gitignore`) — every 30s if the session has unsaved changes (`session.dirty`), on `SIGINT`/
+  `SIGTERM` before exit, and right before the existing 5-minute empty-session cleanup deletes a
+  session from memory.
+- `getOrCreateSession` now checks disk before creating a fresh in-memory session, so a session
+  outlives both a server restart and the 5-minute idle-cleanup window. Any garrison reset that was
+  still pending when a session was saved is rearmed on load (timers don't survive a process
+  restart, same reasoning as the original GAME_INIT rearm logic this mirrors).
+- A reconnecting client sending the same `sessionId` falls into the existing "subsequent client —
+  push current state" branch of `handleGameInit`, so it gets its own persisted state back rather
+  than the server accepting whatever (possibly stale) tiles the reconnecting client's browser still
+  has locally.
+- Still not a real account system: single JSON file per session, no migrations, no multi-server
+  scaling, and a session id is still just whatever the client already generates — there's no login
+  tying a session to a person across devices/browsers. `playerId` (above) identifies a connection
+  within a session, not a durable account.
+
+Live-verified against a running server (temporary scripts, not committed): a capture attempt with no
+registered identity was rejected; a real capture correctly stamped `ownerPlayerId` to the attacking
+connection's id, confirmed by a 4th, uninvolved client reading the tile back; a session was captured,
+the server process was sent `SIGTERM`, restarted, and a fresh client reconnecting to the same
+`sessionId` received the exact same tile state (including `ownerPlayerId`) back from disk.
+
+`npm test` 275/275, `npm run build` clean.
+
+---
+
 ## 2026-09-20 — Claude (Sonnet 5) — Pre-multiplayer prep, round 2: server independently verifies captures + isGate fix
 
 Follow-up to the entry directly below. Owner picked 2 more items from the pre-multiplayer punch
