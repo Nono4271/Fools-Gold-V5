@@ -3,6 +3,8 @@ import {
   resolveChannelsFor, canPost, createMessage, createDmChannel, createGroupChannel,
 } from "../../shared/utils/chatRules.js";
 import { generateAiChatter } from "../../shared/utils/aiChatter.js";
+import { nyroEligible, generateNyroChatter } from "../../shared/utils/nyroChatter.js";
+import { NYRO_ID, NYRO_ACCEPT_DELAY_MS } from "../../shared/constants/nyro.js";
 import {
   subchannelId, parseSubchannelId, subchannelsOf, canPostInSubchannel,
   addSubchannel, removeSubchannel, moveSubchannel,
@@ -106,10 +108,26 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
   // ── Start a group chat with several known players ───────────────────────────
   // The starter becomes the group's owner — the only one who can later
   // add/manage its sub-channels (createGroupChannel seeds it with #General).
+  // Nyro (shared/constants/nyro.js) is a special case: left out of the
+  // initial participant list and added a short, jittered delay later, so
+  // joining the group reads as Nyro actually accepting the invite rather
+  // than being instantly added like every other AI id.
   const startGroup = useCallback((name, participantIds) => {
-    const participants = [...new Set([playerId, ...(participantIds || [])])];
+    const invitedNyro = (participantIds || []).includes(NYRO_ID);
+    const initialIds = invitedNyro ? participantIds.filter(id => id !== NYRO_ID) : participantIds;
+    const participants = [...new Set([playerId, ...(initialIds || [])])];
     const channel = createGroupChannel(name, participants, { ownerId: playerId });
     setGroups(prev => [...prev, channel]);
+    if (invitedNyro) {
+      const jitter = Math.floor(Math.random() * 1500);
+      setTimeout(() => {
+        setGroups(prev => prev.map(g => (
+          g.id === channel.id && !g.participants.includes(NYRO_ID)
+            ? { ...g, participants: [...g.participants, NYRO_ID] }
+            : g
+        )));
+      }, NYRO_ACCEPT_DELAY_MS + jitter);
+    }
     return channel;
   }, [playerId]);
 
@@ -155,10 +173,10 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
     const tick = () => {
       const { crews, aiPlayerIds, dms, groups, playerFacKey, playerId } = latest.current;
       const normalizedCrews = normalizeCrewsForPlayer(crews, playerId, playerFacKey);
-      const chattyChannels = resolveChannelsFor(playerId, {
+      const allChannels = resolveChannelsFor(playerId, {
         crews: normalizedCrews, dms, groups, factions: { [playerId]: playerFacKey },
-      }).filter(c => c.type !== "dm" && c.type !== "group"); // AI doesn't join player DMs/groups
-      if (!chattyChannels.length) return;
+      });
+      const chattyChannels = allChannels.filter(c => c.type !== "dm" && c.type !== "group"); // ambient AI doesn't join player DMs/groups
       const seedBase = Date.now();
       const chatterCtx = { crews: normalizedCrews, aiPlayerIds: aiPlayerIds || [], now: Date.now() };
       // One shot at flavor chatter per channel per tick, silently skipped when
@@ -167,6 +185,25 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
       // a leader-only #Announcement, and there's no "AI officer" concept.
       chattyChannels.forEach((channel, i) => {
         const msg = generateAiChatter(channel, chatterCtx, seedBase + i);
+        if (!msg) return;
+        if (channel.type === "crew") {
+          const subs = subchannelsOf(channel, { crews: normalizedCrews });
+          const general = subs.find(s => s.id === "general") || subs[0];
+          if (!general) return;
+          appendMessage({ ...msg, channelId: subchannelId(channel.id, general.id) });
+        } else {
+          appendMessage(msg);
+        }
+      });
+
+      // Nyro's own chatter — separate from the ambient roster above (see
+      // shared/utils/nyroChatter.js), since Nyro is eligible in Faction/crew
+      // chat AND in any DM/group the player has invited them into (the
+      // ambient system above never touches DMs/groups). Never World.
+      const nyroCtx = { crews: normalizedCrews, playerFacKey, now: Date.now() };
+      allChannels.forEach((channel, i) => {
+        if (!nyroEligible(channel, nyroCtx)) return;
+        const msg = generateNyroChatter(channel, nyroCtx, seedBase + i + 1000);
         if (!msg) return;
         if (channel.type === "crew") {
           const subs = subchannelsOf(channel, { crews: normalizedCrews });

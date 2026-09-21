@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   sendRequest, confirmRequest, declineRequest, cancelRequest, removeFriend,
   block, unblock, listByStatus, searchCandidates,
 } from "../../shared/utils/relationsRules.js";
+import { NYRO_ID, NYRO_ACCEPT_DELAY_MS } from "../../shared/constants/nyro.js";
 
 // LOCAL PERSISTENCE ONLY, same as useChat.js — relations live in memory for
 // the tab's lifetime and don't survive a reload. See useChat.js for why (no
@@ -30,10 +31,28 @@ export function useRelations({ playerId = "player", knownPlayerIds, nameOf }) {
 
   // Sends a request and resolves it to a friend in the same tick — auto-
   // accepted for local play, same pattern as CrewPanel's crew-join request
-  // (there's no other real player who could actually decline it).
+  // (there's no other real player who could actually decline it). Nyro
+  // (shared/constants/nyro.js) is the one exception: a real pending window,
+  // resolved by the effect below, so it reads as someone actually accepting.
   const addFriend = useCallback((id) => {
+    if (id === NYRO_ID) {
+      setRelations(prev => sendRequest(prev, id));
+      return;
+    }
     setRelations(prev => confirmRequest(sendRequest(prev, id), id));
   }, []);
+
+  // Nyro accepts a pending friend request after a short, jittered delay
+  // instead of instantly — see addFriend above.
+  const nyroAcceptTimer = useRef(null);
+  useEffect(() => {
+    if (relations[NYRO_ID] !== "pendingOut") return;
+    const jitter = Math.floor(Math.random() * 1500);
+    nyroAcceptTimer.current = setTimeout(() => {
+      setRelations(prev => prev[NYRO_ID] === "pendingOut" ? confirmRequest(prev, NYRO_ID) : prev);
+    }, NYRO_ACCEPT_DELAY_MS + jitter);
+    return () => clearTimeout(nyroAcceptTimer.current);
+  }, [relations[NYRO_ID]]);
 
   const declineIncoming = useCallback((id) => setRelations(prev => declineRequest(prev, id)), []);
   const cancelOutgoing = useCallback((id) => setRelations(prev => cancelRequest(prev, id)), []);
