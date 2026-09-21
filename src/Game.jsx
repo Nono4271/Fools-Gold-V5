@@ -25,6 +25,7 @@ import { useUpgrades } from "./hooks/useUpgrades.js";
 import { useGameLoop } from "./hooks/useGameLoop.js";
 import { usePathfinding } from "./hooks/usePathfinding.js";
 import { useServerSync } from "./hooks/useServerSync.js";
+import { getOrCreatePlayerId } from "./utils/playerIdentity.js";
 import { useBattle } from "./hooks/useBattle.js";
 import { useGacha } from "./hooks/useGacha.js";
 import { useTomes } from "./hooks/useTomes.js";
@@ -747,12 +748,19 @@ export default function RiseToWar() {
   // client — see useServerSync's GAME_INIT `viewport` field and
   // server/index.js's handleGameInit/sendSessionState.
   const INITIAL_VIEWPORT_RADIUS = 50;
+  // A stable per-browser id so the server can tell this connection apart
+  // from another one in the same session — see src/utils/playerIdentity.js.
+  const playerId = useMemo(() => getOrCreatePlayerId(), []);
   const { emitTileCapture, emitTileSiege, emitFortUpdate, connected: serverConnected } = useServerSync({
     screen,
     tiles,
     mapReady,
     patchTile,
     sessionId,
+    playerId,
+    // Roadmap item 3: lets useServerSync track the player's pan/zoom and
+    // send VIEWPORT_SUB as they move, instead of only once at the start.
+    panRef, zoomRef,
     initialViewport: {
       minC: HQP.player.c - INITIAL_VIEWPORT_RADIUS, maxC: HQP.player.c + INITIAL_VIEWPORT_RADIUS,
       minR: HQP.player.r - INITIAL_VIEWPORT_RADIUS, maxR: HQP.player.r + INITIAL_VIEWPORT_RADIUS,
