@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { FACTION_TROOPS, FACTION_KEYS, CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
 import { POWER_DEFS, HQP, AI_HQ_KEY, WIN_KEY, SIEGE_BASE, KEEP_GARRISON_RESET_MS, GATE_GARRISON_RESET_MS, FORT_LEVELS, calcSiegePower } from "../../shared/constants/map.js";
 import { barracksCapacity } from "../../shared/constants/buildings.js";
-import { adj, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
+import { adj, adj8, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
 import { isTileInRange } from "./useForts.js";
 import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/garrisonUtils.js";
 import { resolveSiegeOutcome, garrisonResetMs } from "../../shared/utils/captureRules.js";
@@ -158,7 +158,8 @@ const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
 // any other tiles near the border.
 const hasPlayerFoothold = (destKey, originKey, tileMap) => {
   const [dc, dr] = destKey.split(",").map(Number);
-  if (adj(dc, dr).some(k => {
+  // adj8: attacks are allowed from a diagonally-owned tile, not just orthogonal.
+  if (adj8(dc, dr).some(k => {
     const t = tileMap[k];
     if (!t) return false;
     if (t.owner === "player") return true;
@@ -172,7 +173,8 @@ const hasPlayerFoothold = (destKey, originKey, tileMap) => {
 };
 const hasAiFoothold = (destKey, originKey, tileMap) => {
   const [dc, dr] = destKey.split(",").map(Number);
-  if (adj(dc, dr).some(k => {
+  // adj8: kept symmetric with hasPlayerFoothold above.
+  if (adj8(dc, dr).some(k => {
     const t = tileMap[k];
     return t?.owner === "ai" || (t?.owner && t.owner !== "player" && t.owner !== null);
   })) return true;
