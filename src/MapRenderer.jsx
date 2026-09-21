@@ -1631,7 +1631,17 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const groundY = useApprovedPirateArt
     ? worldCY + TH * 1.55 + off.yOff
     : sPt.cy - elev + TH * 0.60 + off.yOff;
-  const spriteY = groundY - (1 - spriteAnchorY) * targetH;
+  // BUG FIXED: this used to be `groundY - (1 - spriteAnchorY) * targetH`,
+  // which is mathematically identical to groundY for ANY anchor value
+  // (the two terms cancel out — anchor.y ends up having no effect on
+  // position at all). That's why raising the wizard's anchor last round
+  // didn't move it. When the anchor point IS the sprite's true visible
+  // base (measuredAnchor, measured from real pixel content), the correct
+  // placement is simply spriteY = groundY — no extra offset needed.
+  // Pirates and any faction without a measured anchor keep the old formula.
+  const spriteY = (measuredAnchor && !useApprovedPirateArt)
+    ? groundY
+    : groundY - (1 - spriteAnchorY) * targetH;
 
   if (blendWithTerrain) {
     const shadow = new PIXI.Graphics();
