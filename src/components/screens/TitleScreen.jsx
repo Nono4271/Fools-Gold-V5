@@ -1,7 +1,12 @@
+import { useState } from "react";
 import { CSS } from "../../constants/css.js";
 import { PLAYABLE_FACTIONS } from "../../../shared/constants/factions.js";
+import { getAccountUsername } from "../../utils/playerIdentity.js";
+import LoginModal from "./LoginModal.jsx";
 
 export default function TitleScreen({ setScreen }) {
+  const [showLogin, setShowLogin] = useState(false);
+  const [username, setUsername] = useState(getAccountUsername());
   return (
     <div style={{position:"relative",width:"100vw",height:"100vh",background:"radial-gradient(ellipse at 50% 45%, #3a1a08 0%, #1a0a04 55%, #0a0502 100%)",overflow:"hidden"}}>
       <style>{CSS}</style>
@@ -243,8 +248,16 @@ export default function TitleScreen({ setScreen }) {
             style={{padding:"13px",background:"linear-gradient(135deg,#7a1010,#c03030)",border:"1px solid #e04040",color:"#f0c040",fontSize:14,fontWeight:700,boxShadow:"0 4px 18px rgba(0,0,0,.6)"}}>
             ⚔ BEGIN CAMPAIGN
           </button>
+          <button type="button" onClick={() => setShowLogin(true)}
+            style={{background:"none",border:"none",color:"#d8a868",fontSize:12,cursor:"pointer",padding:4}}>
+            {username ? `Logged in as ${username}` : "Log In / Register"}
+          </button>
         </div>
       </div>
+
+      {showLogin && (
+        <LoginModal onClose={() => { setShowLogin(false); setUsername(getAccountUsername()); }} />
+      )}
     </div>
   );
 }
