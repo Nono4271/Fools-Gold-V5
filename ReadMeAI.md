@@ -2139,6 +2139,67 @@ change — confirmed by the diff being exactly this one block, nothing more.
 **Verified:** full test suite (`npm test`, 361/361) and production build
 (`npm run build`, 609 modules) both pass.
 
+## 2026-09-21 — Claude (Sonnet), session 22
+
+### Build fix: `shared/utils/crewRules.js` was missing session 20's Diplomacy exports
+
+Owner's Cloudflare deploy failed: `"canSetDiplomacy" is not exported by
+"shared/utils/crewRules.js", imported by
+"src/components/game/crew/CrewDiplomacy.jsx"`. Checked the owner's deployed
+repo zip against everything delivered for Diplomacy (session 20) — every
+other file had the changes (`crew.js`, `CrewDiplomacy.jsx`, `CrewHQ.jsx`,
+`CrewScreen.jsx`, `GameView.jsx`, `Game.jsx`, `MapRenderer.jsx`, the test
+file); only `shared/utils/crewRules.js` was still the pre-Diplomacy version
+— it never got applied from that delivery. Re-applied the same edits from
+session 20 (`canSetDiplomacy`, `setDiplomacyStatus`, `diplomacyStatusOf`,
+`flaggedDiplomacyCrews`, `diplomacyPlayerIdSets`, `diplomacy: {}` default in
+`createCrew()`) verbatim, nothing new invented.
+
+**Verified:** ran `npm install && npm test && npm run build` against the
+owner's exact repo zip with just this one file swapped in — 361/361 tests,
+build succeeds (no more Rollup export error).
+
+## 2026-09-21 — Claude (Sonnet), session 23
+
+### Diplomacy: touch-scroll bug on Crew screens (Diplomacy list + crew creation) + flavor text moved behind an info icon
+
+Owner reported the Diplomacy crew list wasn't scrollable and the crew-
+creation screen's scroll was "extremely unresponsive." Same root cause
+flagged as a follow-up back in the 2026-09-20 chat touch-scroll fix entry
+above: `src/main.tsx` has a document-level `touchstart` listener that calls
+`preventDefault()` on any touch outside an interactive element or a small
+class allowlist (`.gear-picker-list`, `.roster-scroll`, `.battle-popup`,
+`.find-tiles-popup`, `.chat-scroll`). `CrewHQ.jsx`'s two scrollable regions
+(left identity column, main tab/table content area — this is where the
+Diplomacy list renders) and `CrewScreen.jsx`'s Browse/Create views all used
+a bare `.scr` class, not on that allowlist, so touch-drag scrolling was
+blocked at the document level before it ever reached them — worked fine
+with a mouse wheel (why it wasn't caught before), broken on touch.
+
+**Fix:** added `"crew-scroll"` to `src/main.tsx`'s allowlist
+(`e.target.closest(".crew-scroll")`, same pattern as `"chat-scroll"`) and
+tagged all 4 of those scrollable containers with `className="scr crew-scroll"`
+(`CrewHQ.jsx` left column + main tab area; `CrewScreen.jsx` Browse + Create
+views). Also gave `CrewScreen.jsx`'s Browse/Create containers the
+`minHeight: 0` flex-clipping fix (same flexbox gotcha as the very first
+2026-09-20 chat entry — a flex item's default `min-height: auto` lets it
+overflow its column instead of clipping/scrolling) since they didn't have
+it; `CrewHQ.jsx`'s equivalent container already did. Left a note for future
+crew screens to use `crew-scroll` too — any other panel still on bare `.scr`
+(the old, now-unused `CrewPanel.jsx` included) likely has this same latent
+bug but is out of scope here.
+
+**Diplomacy flavor text → info icon** (`src/components/game/crew/CrewDiplomacy.jsx`):
+added a small header row ("Diplomacy" + a round "i" button) above both the
+founder/officer and member views; the existing "cosmetic only, one-way..."
+note now only shows when that button is toggled on (starts collapsed),
+instead of always taking up space at the top of the list.
+
+**Verified:** full test suite (`npm test`, 361/361) and production build
+(`npm run build`, 609 modules) both pass. Touch-scroll behavior itself
+can't be asserted by the `node:test` pure-function suite (same caveat as
+the original chat fix) — needs an on-device/touch check.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
