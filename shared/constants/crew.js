@@ -130,6 +130,30 @@ export function crewXpToNextLevel(level) {
   return Math.round(1000 * Math.pow(lvl, 1.55));
 }
 
+// crew.level → the perk(s) that unlock AT exactly that level (not
+// cumulative — crewMemberCapForLevel/crewFortressSlotsForLevel above give
+// the running total). Backs the Level tab (CrewLevel.jsx): every level 1–50
+// gets a row, real perk if one lands there, a placeholder otherwise, so the
+// full climb to CREW_MAX_LEVEL always has something to look at even before
+// more perks are designed. Add a new real perk here as one gets built rather
+// than inventing UI-only copy elsewhere.
+export function crewLevelPerks(level) {
+  const perks = [];
+  if (level >= CREW_CAP_STEP_LEVELS && level <= 20 && level % CREW_CAP_STEP_LEVELS === 0) {
+    perks.push({
+      id: "member_cap", icon: "👥", label: "Member Cap",
+      detail: `+${CREW_CAP_STEP_AMOUNT} (now ${crewMemberCapForLevel(level)})`,
+    });
+  }
+  if (CREW_FORTRESS_SLOT_LEVELS.includes(level)) {
+    perks.push({
+      id: "fortress_slot", icon: "🏰", label: "Fortress Slot",
+      detail: `+1 (now ${crewFortressSlotsForLevel(level)})`,
+    });
+  }
+  return perks;
+}
+
 // Applies earned XP, rolling over multiple level-ups in one call (e.g. a big
 // batch of AI-tick contributions). Returns { level, xp } — xp is progress
 // into the current level, never the cumulative total.
