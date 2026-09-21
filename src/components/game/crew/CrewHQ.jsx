@@ -56,7 +56,7 @@ export default function CrewHQ({
       {/* Left column — identity, level, size/founder/language, announcement */}
       <div style={{
         width: 190, flexShrink: 0, borderRight: `1px solid ${BORDER_COL}`,
-        padding: "10px 10px 12px", display: "flex", flexDirection: "column", gap: 10,
+        padding: "16px 10px 16px", display: "flex", flexDirection: "column", gap: 22,
         overflowY: "auto",
       }} className="scr">
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, textAlign: "center" }}>
@@ -129,20 +129,21 @@ export default function CrewHQ({
                 position: "absolute", inset: 0,
                 background: "radial-gradient(ellipse 60% 80% at 60% 40%, rgba(200,160,96,.10), transparent 70%)",
               }} />
-              {/* Hotspots clustered middle-right of the table, per reference */}
-              <div style={{
-                position: "absolute", top: "50%", right: "8%", transform: "translateY(-50%)",
-                display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
-              }}>
+              {/* Hotspots spread out across the table rather than clustered together */}
+              <div style={{ position: "absolute", top: "18%", left: "42%" }}>
                 <TableHotspot icon="🕊️" label="Diplomacy" onClick={() => setTab("diplomacy")} />
+              </div>
+              <div style={{ position: "absolute", top: "48%", left: "18%" }}>
                 <TableHotspot icon="🧪" label="Boosts" onClick={() => setTab("boosts")} />
+              </div>
+              <div style={{ position: "absolute", top: "68%", left: "66%" }}>
                 <TableHotspot icon="🎯" label={crew.target ? crew.target.label || "Target set" : "No tasks"}
                   onClick={() => canPinTarget && setSettingTarget(v => !v)} />
               </div>
 
               {settingTarget && canPinTarget && (
                 <div style={{
-                  position: "absolute", top: "50%", right: "26%", transform: "translateY(-50%)", width: 220,
+                  position: "absolute", top: "68%", left: "66%", marginTop: 64, width: 220,
                   padding: "8px 10px", borderRadius: 6, background: "rgba(20,10,10,.92)", border: "1px solid #6a2a2a",
                   display: "flex", flexDirection: "column", gap: 6,
                 }}>
@@ -199,8 +200,8 @@ export default function CrewHQ({
           )}
         </div>
 
-        {/* Bottom icon row */}
-        <div style={{ display: "flex", justifyContent: "center", gap: 8, padding: "8px 12px", borderTop: `1px solid ${BORDER_COL}`, flexShrink: 0 }}>
+        {/* Bottom icon row — right-aligned so Help lands in the bottom-right corner */}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "8px 14px", borderTop: `1px solid ${BORDER_COL}`, flexShrink: 0 }}>
           {BOTTOM_TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
               ...BTN_RESET, display: "flex", flexDirection: "column",
