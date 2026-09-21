@@ -1600,10 +1600,10 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     // Dragons: sized up again, plus nudged toward the diamond's bottom-left
     // corner like the others below.
     dragons:        { xOff: -10, yOff:  8, scale: 1.42, yScale: 1.00 },
-    // Wizard: was reading too big and overhanging on the left after the
-    // xScale widen — pulled scale/xScale back down and shifted right to
-    // pull the left edge in.
-    wizards:        { xOff:  6,  yOff:  0, scale: 1.18, yScale: 1.34, xScale: 1.14 },
+    // Wizard: still reading stretched with too much empty space on its
+    // left inside the footprint — dropped xScale back to neutral (no more
+    // horizontal widening) and shifted further right to close the left gap.
+    wizards:        { xOff:  14, yOff:  0, scale: 1.18, yScale: 1.34, xScale: 1.00 },
     // Coldborns: confirmed good, untouched.
     coldborns:      { xOff: -8,  yOff:  6, scale: 1.16, yScale: 1.00 },
     // Holyknights: still needs to sit further toward the bottom-left corner
