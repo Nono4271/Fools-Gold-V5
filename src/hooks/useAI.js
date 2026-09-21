@@ -48,17 +48,38 @@ const tickAiRss = useCallback(() => {
   }
 }, [aiFactionKeys, tilesRef, aiBldgsMapRef, aiTileKeysMapRef, setAiRssMap]);
 
+// Minimum commander level to pick a fight with a tile of a given power
+// level — mirrors the defender level factionDefCmdForTile/FACTION_CMD_CONFIG
+// assigns per power level (shared/constants/heroes.js: P4=lvl8 ... P13=lvl50),
+// so the AI doesn't march into a garrison miles above what it can realistically
+// beat just because it's the nearest frontier tile. Power levels 0-3 have no
+// elite defender and are always fair game. The worker that picks destKey only
+// sees a lightweight "defeated tiles" index (not full powerLevel data, to keep
+// its snapshot small) — this check runs here instead, where tilesRef has the
+// real tile.
+const MIN_CMD_LVL_FOR_POWER = { 4:8, 5:10, 6:15, 7:18, 8:22, 9:25, 10:35, 11:40, 12:45, 13:50 };
+function aiCanChallenge(cmdLvl, tile) {
+  const pl = tile?.powerLevel || 0;
+  const need = MIN_CMD_LVL_FOR_POWER[pl];
+  return !need || (cmdLvl || 1) >= need;
+}
+
 // ── March dispatch — called when worker sends aiMarchReady ───────────────────
 // Worker computed frontier + target. Main thread resolves BFS path and dispatches.
 const tickAiMarch = useCallback((dispatches) => {
   if (!dispatches?.length) return;
   const now = Date.now();
-  const curCmds = cmdsRef.current;
+  const curCmds  = cmdsRef.current;
+  const curTiles = tilesRef.current;
 
-  // Filter to eligible commanders first
-  const eligible = dispatches.filter(({ uid }) => {
+  // Filter to eligible commanders first, and drop any dispatch that would
+  // send a commander at a tile it has no business challenging (see
+  // aiCanChallenge above) — it just stays idle and gets reconsidered on the
+  // next march-check pass instead.
+  const eligible = dispatches.filter(({ uid, destKey }) => {
     const cmd = curCmds.find(c => c.uid === uid);
-    return cmd && !cmd.march;
+    if (!cmd || cmd.march) return false;
+    return aiCanChallenge(cmd.lvl, curTiles?.[destKey]);
   });
   if (!eligible.length) return;
 
