@@ -13,8 +13,8 @@
  *
  * Client → Server messages:
  *   { type:"GAME_INIT",   sessionId, facKey, tiles:{[key]:Tile}, viewport?:{minC,maxC,minR,maxR} }
- *   { type:"TILE_CAPTURE",sessionId, key, owner, garrison, siege, siegeMax, defCmd, msgId }
- *   { type:"TILE_SIEGE",  sessionId, key, siege, garrisonDefeated, garrison, siegeMax, msgId }
+ *   { type:"TILE_CAPTURE",sessionId, key, owner, garrison, siege, siegeMax, defCmd, msgId, attacker? }
+ *   { type:"TILE_SIEGE",  sessionId, key, siege, garrisonDefeated, garrison, siegeMax, msgId, attacker? }
  *   { type:"VIEWPORT_SUB",sessionId, minC, maxC, minR, maxR }
  *   { type:"PING" }
  *
@@ -24,6 +24,14 @@
  * tile in the session. `resetAt`/`protectedUntil` are no longer read from
  * the client — the server computes both itself (see handleTileCapture/
  * handleTileSiege) so a client's clock skew (or tampering) can't set them.
+ * `attacker` (`{ troopSlots }` or `{ troops, troopBranch }` + `armySiegeBonus`,
+ * see attackerComposition() in src/hooks/useMarch.js) lets the server
+ * recompute siegePower itself (shared calcSiegePower + FACTION_TROOPS) and
+ * decide the real outcome via resolveSiegeOutcome, instead of trusting the
+ * client's claimed owner/garrison/siege numbers. When the server disagrees,
+ * it applies and broadcasts its own outcome to EVERY client, including the
+ * one that sent the (wrong) optimistic update. Omitting `attacker` (an older
+ * client) falls back to trusting the client's claim, same as before this.
  *
  * Server → Client messages:
  *   { type:"GAME_READY",     sessionId }
@@ -39,8 +47,42 @@ import { WebSocketServer } from 'ws';
 // protection timestamps are computed authoritatively here, not trusted from
 // whatever the client sent (clock skew, or a malicious client just claiming
 // a huge protectedUntil).
-import { garrisonResetMs } from '../shared/utils/captureRules.js';
+import { garrisonResetMs, resolveSiegeOutcome } from '../shared/utils/captureRules.js';
 import { TILE_PROTECTION_MS } from '../shared/utils/tileTimers.js';
+// Roadmap item 1: the server's own copy of troop siege values, so it can
+// recompute an attacking army's siegePower from its composition instead of
+// trusting the client's claimed capture/siege outcome outright. Pure data +
+// pure function — safe to import into a Node server (no browser/React deps).
+import { calcSiegePower } from '../shared/constants/map.js';
+import { FACTION_TROOPS } from '../shared/constants/troops.js';
+
+// Recompute siegePower server-side from an attacker's reported composition.
+// `attacker` is `{ troopSlots }` (player armies) or `{ troops, troopBranch }`
+// (legacy/AI-shaped commands), plus `armySiegeBonus` from gear — see
+// attackerComposition() in src/hooks/useMarch.js, which builds this exact
+// shape. Returns null when no composition was sent (older client), so
+// callers can fall back to trusting the client's claim rather than reject it.
+function computeSiegePower(attacker) {
+  if (!attacker) return null;
+  const bonus = attacker.armySiegeBonus || 0;
+  if (Array.isArray(attacker.troopSlots) && attacker.troopSlots.length > 0) {
+    return calcSiegePower(attacker.troopSlots, null, bonus, FACTION_TROOPS);
+  }
+  if (attacker.troops) {
+    // Mirrors src/hooks/useMarch.js's cmdSiegePower exactly, including its
+    // own quirk: it calls calcSiegePower(troops, cmd.troopBranch, bonus) with
+    // no 4th arg, so calcSiegePower's legacy branch never actually receives
+    // troopTierData and always falls back to a flat 0.5-per-troop rate —
+    // troopBranch is effectively unused for siege purposes on this path.
+    // The point of this server-side check is to validate against what the
+    // client itself would compute, not against a "more correct" formula, so
+    // that quirk is intentionally reproduced rather than fixed here — fixing
+    // it would be a balance change (this legacy path is AI-commander-shaped;
+    // player attacks always go through the troopSlots branch above).
+    return calcSiegePower(attacker.troops, attacker.troopBranch, bonus);
+  }
+  return 0;
+}
 
 const PORT = process.env.PORT || 3001;
 const wss  = new WebSocketServer({ port: PORT });
@@ -172,7 +214,7 @@ function handleGameInit(ws, msg) {
 }
 
 function handleTileCapture(ws, msg) {
-  const { sessionId, key, owner, garrison, siege, siegeMax, defCmd, msgId } = msg;
+  const { sessionId, key, owner, garrison, siege, siegeMax, defCmd, msgId, attacker } = msg;
   const session = sessions.get(sessionId);
   if (!session) return sendError(ws, 'Unknown session');
   if (!key)     return sendError(ws, 'TILE_CAPTURE missing key');
@@ -198,27 +240,50 @@ function handleTileCapture(ws, msg) {
   const tk = sessionId + '::' + key;
   if (resetTimers.has(tk)) { clearTimeout(resetTimers.get(tk)); resetTimers.delete(tk); }
 
-  const patch = {
-    owner,
-    garrison:         garrison  ?? 0,
-    siege:            siege     ?? tile.siegeMax ?? 50,
-    siegeMax:         siegeMax  ?? tile.siegeMax ?? 50,
-    garrisonDefeated: false,
-    resetAt:          null,
-    defCmd:           defCmd    ?? null,
-    hasAiCommander:   false,
-    // Server timestamp, not the client's: a client's Date.now() is subject
-    // to clock skew (or tampering), and this is exactly the kind of
-    // multiplayer-sensitive value the server should own.
-    protectedUntil:   Date.now() + TILE_PROTECTION_MS,
-  };
+  // Roadmap item 1: when the client reported its attacking composition,
+  // recompute siegePower ourselves and let resolveSiegeOutcome (the exact
+  // same rule the client used) decide the real outcome, instead of trusting
+  // the client's owner/garrison/siege numbers outright. `owner`/`defCmd`
+  // (who is attacking) are still taken from the client's claim — verifying
+  // player identity is a separate, bigger auth item, not done here.
+  const siegePower = computeSiegePower(attacker);
+  let patch, captured = true;
 
-  applyAndBroadcast(session, { [key]: patch }, ws);
-  console.log('TILE_CAPTURE ' + key + ' owner=' + owner + ' session=' + sessionId);
+  if (siegePower != null) {
+    const outcome = resolveSiegeOutcome({ tile, siegePower, capture: { owner, defCmd: defCmd ?? null } });
+    captured = outcome.captured;
+    patch = outcome.patch; // the authoritative patch either way
+    if (!captured) {
+      console.warn('TILE_CAPTURE REJECTED (siegePower ' + siegePower + ' < tile siege) key=' + key +
+        ' session=' + sessionId + ' — applying siege-damage instead, correcting sender');
+    }
+  } else {
+    // No attacker composition sent (older client) — fall back to the
+    // previous behavior of trusting the client's claimed outcome.
+    patch = {
+      owner,
+      garrison:         garrison  ?? 0,
+      siege:            siege     ?? tile.siegeMax ?? 50,
+      siegeMax:         siegeMax  ?? tile.siegeMax ?? 50,
+      garrisonDefeated: false,
+      resetAt:          null,
+      defCmd:           defCmd    ?? null,
+      hasAiCommander:   false,
+      // Server timestamp, not the client's: a client's Date.now() is subject
+      // to clock skew (or tampering), and this is exactly the kind of
+      // multiplayer-sensitive value the server should own.
+      protectedUntil:   Date.now() + TILE_PROTECTION_MS,
+    };
+  }
+
+  // If the server disagrees with the client's optimistic capture, the
+  // sender needs the correction too — don't skip it in the broadcast.
+  applyAndBroadcast(session, { [key]: patch }, captured ? ws : null);
+  console.log('TILE_CAPTURE ' + key + ' owner=' + owner + ' captured=' + captured + ' session=' + sessionId);
 }
 
 function handleTileSiege(ws, msg) {
-  const { sessionId, key, siege, garrisonDefeated, garrison, siegeMax, msgId } = msg;
+  const { sessionId, key, siege, garrisonDefeated, garrison, siegeMax, msgId, attacker } = msg;
   const session = sessions.get(sessionId);
   if (!session) return sendError(ws, 'Unknown session');
   if (!key)     return sendError(ws, 'TILE_SIEGE missing key');
@@ -234,16 +299,36 @@ function handleTileSiege(ws, msg) {
 
   // Server-computed reset delay (shared/utils/captureRules.js), not the
   // client's claimed `resetAt` timestamp — same clock-skew/tamper concern
-  // as protectedUntil above. Known limitation: the mutable tile shape sent
-  // to the server doesn't currently carry `isGate`, so a gate's 1-hour reset
-  // isn't distinguishable here yet from a regular tile's 15-min reset — not
-  // new to this change, just now visible because the server computes this
-  // itself instead of trusting the client's already-correct value.
+  // as protectedUntil above. `isGate` is now part of the mutable tile shape
+  // (see useServerSync.js), so this correctly distinguishes a gate's 1-hour
+  // reset from a regular tile's 15-min one.
   const now = Date.now();
   const nextResetAt = garrisonDefeated ? now + garrisonResetMs(tile) : null;
 
+  // Roadmap item 1: when this siege ping came with an attacker composition
+  // (the "not captured" branch of a capture-decision site, not a bare
+  // defeated-waves ping), recompute the actual siege value ourselves rather
+  // than trust the client's number — same reasoning as handleTileCapture.
+  const siegePower = computeSiegePower(attacker);
+  let resultingSiege = siege ?? tile.siege;
+  if (siegePower != null) {
+    const outcome = resolveSiegeOutcome({ tile, siegePower });
+    if (outcome.captured) {
+      // Server thinks this should actually have been a capture — correct
+      // the sender by applying the capture outcome instead of the siege-chip
+      // patch it optimistically sent.
+      console.warn('TILE_SIEGE understated a capture (siegePower ' + siegePower +
+        ' >= tile siege) key=' + key + ' session=' + sessionId + ' — correcting sender');
+      const tk = sessionId + '::' + key;
+      if (resetTimers.has(tk)) { clearTimeout(resetTimers.get(tk)); resetTimers.delete(tk); }
+      applyAndBroadcast(session, { [key]: outcome.patch }, null);
+      return;
+    }
+    resultingSiege = outcome.patch.siege;
+  }
+
   const patch = {
-    siege:            siege            ?? tile.siege,
+    siege:            resultingSiege,
     garrisonDefeated: garrisonDefeated ?? tile.garrisonDefeated,
     resetAt:          nextResetAt,
   };
