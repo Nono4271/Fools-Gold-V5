@@ -13,6 +13,10 @@ import { BTN_RESET, BORDER_COL, GOLD, TEXT_SM, TEXT_XS, dangerBtn } from "./crew
 // row of icons along the bottom edge. Diplomacy and Boosts are NOT in this
 // row — in the reference they're hotspots ON the table itself (see
 // TableHotspot below), not duplicated at the bottom.
+// The owner-supplied war-table scene for the in-crew HQ (distinct from
+// CrewLanding's not-in-crew backdrop) — public/crew/hq-table-bg.jpg.
+const TABLE_BG_URL = "/crew/hq-table-bg.jpg";
+
 const BOTTOM_TABS = [
   { id: "records",     label: "Records",     icon: "📜" },
   { id: "structures",  label: "Structures",  icon: "🏰" },
@@ -120,47 +124,42 @@ export default function CrewHQ({
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <div className="scr" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 12, position: "relative" }}>
           {tab === null ? (
-            <div style={{
-              position: "relative", height: "100%", minHeight: 220, borderRadius: 8,
-              background: "linear-gradient(180deg, #241a10, #120c07)",
-              border: "1px solid #3a2a18", overflow: "hidden",
-            }}>
-              <div style={{
-                position: "absolute", inset: 0,
-                background: "radial-gradient(ellipse 60% 80% at 60% 40%, rgba(200,160,96,.10), transparent 70%)",
-              }} />
-              {/* Hotspots spread out across the table rather than clustered together */}
-              <div style={{ position: "absolute", top: "18%", left: "42%" }}>
+            <div style={{ position: "relative", height: "100%", minHeight: 220, display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* Diplomacy/Boosts/Target hotspots sit ABOVE the table image */}
+              <div style={{ position: "relative", display: "flex", justifyContent: "center", gap: 40, flexShrink: 0 }}>
                 <TableHotspot icon="🕊️" label="Diplomacy" onClick={() => setTab("diplomacy")} />
-              </div>
-              <div style={{ position: "absolute", top: "48%", left: "18%" }}>
                 <TableHotspot icon="🧪" label="Boosts" onClick={() => setTab("boosts")} />
-              </div>
-              <div style={{ position: "absolute", top: "68%", left: "66%" }}>
                 <TableHotspot icon="🎯" label={crew.target ? crew.target.label || "Target set" : "No tasks"}
                   onClick={() => canPinTarget && setSettingTarget(v => !v)} />
+
+                {settingTarget && canPinTarget && (
+                  <div style={{
+                    position: "absolute", top: "100%", right: 0, marginTop: 8, width: 220, zIndex: 2,
+                    padding: "8px 10px", borderRadius: 6, background: "rgba(20,10,10,.94)", border: "1px solid #6a2a2a",
+                    display: "flex", flexDirection: "column", gap: 6,
+                  }}>
+                    <div style={{ ...TEXT_XS, color: "#c88080", letterSpacing: ".05em" }}>RALLY TARGET</div>
+                    <input value={targetDraft} onChange={e => setTargetDraft(e.target.value.slice(0, 40))} placeholder="e.g. Push the western fortress"
+                      style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,.05)", border: "1px solid #2a3040", borderRadius: 4, padding: "6px 8px", color: "#c8c0b0", fontFamily: "'Cinzel',serif", fontSize: 10 }} />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => { onSetTarget?.(targetDraft); setSettingTarget(false); setTargetDraft(""); }}
+                        disabled={!targetDraft.trim()}
+                        style={{ ...BTN_RESET, ...TEXT_XS, color: "#ff9090", border: "1px solid #cc4040", borderRadius: 4, padding: "4px 10px", opacity: targetDraft.trim() ? 1 : .5 }}>Pin</button>
+                      {crew.target && (
+                        <button onClick={() => { onClearTarget?.(); setSettingTarget(false); }}
+                          style={{ ...BTN_RESET, ...TEXT_XS, color: "#5a6a7a", padding: "4px 10px" }}>Clear</button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {settingTarget && canPinTarget && (
-                <div style={{
-                  position: "absolute", top: "68%", left: "66%", marginTop: 64, width: 220,
-                  padding: "8px 10px", borderRadius: 6, background: "rgba(20,10,10,.92)", border: "1px solid #6a2a2a",
-                  display: "flex", flexDirection: "column", gap: 6,
-                }}>
-                  <div style={{ ...TEXT_XS, color: "#c88080", letterSpacing: ".05em" }}>RALLY TARGET</div>
-                  <input value={targetDraft} onChange={e => setTargetDraft(e.target.value.slice(0, 40))} placeholder="e.g. Push the western fortress"
-                    style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,.05)", border: "1px solid #2a3040", borderRadius: 4, padding: "6px 8px", color: "#c8c0b0", fontFamily: "'Cinzel',serif", fontSize: 10 }} />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => { onSetTarget?.(targetDraft); setSettingTarget(false); setTargetDraft(""); }}
-                      disabled={!targetDraft.trim()}
-                      style={{ ...BTN_RESET, ...TEXT_XS, color: "#ff9090", border: "1px solid #cc4040", borderRadius: 4, padding: "4px 10px", opacity: targetDraft.trim() ? 1 : .5 }}>Pin</button>
-                    {crew.target && (
-                      <button onClick={() => { onClearTarget?.(); setSettingTarget(false); }}
-                        style={{ ...BTN_RESET, ...TEXT_XS, color: "#5a6a7a", padding: "4px 10px" }}>Clear</button>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* The war table itself — owner-supplied scene */}
+              <div style={{
+                position: "relative", flex: 1, minHeight: 160, borderRadius: 8,
+                backgroundImage: `url(${TABLE_BG_URL})`, backgroundSize: "cover", backgroundPosition: "center",
+                border: "1px solid #3a2a18", overflow: "hidden",
+              }} />
             </div>
           ) : (
             <div>
