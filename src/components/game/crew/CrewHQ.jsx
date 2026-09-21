@@ -7,11 +7,12 @@ import CrewStructures from "./CrewStructures.jsx";
 import CrewStore from "./CrewStore.jsx";
 import CrewHelp from "./CrewHelp.jsx";
 import CrewDiplomacy from "./CrewDiplomacy.jsx";
+import CrewLevel from "./CrewLevel.jsx";
 import CrewComingSoon from "./CrewComingSoon.jsx";
 import { BTN_RESET, BORDER_COL, GOLD, TEXT_SM, TEXT_XS, dangerBtn } from "./crewStyles.js";
 
 // Bottom icon row — matches the LOTR: Rise to War reference screenshot's
-// row of icons along the bottom edge. Diplomacy and Boosts are NOT in this
+// row of icons along the bottom edge. Diplomacy and Level are NOT in this
 // row — in the reference they're hotspots ON the table itself (see
 // TableHotspot below), not duplicated at the bottom.
 // The owner-supplied war-table scene for the in-crew HQ (distinct from
@@ -32,7 +33,7 @@ const BOTTOM_TABS = [
    Layout matches the LOTR: Rise to War reference: identity/level/founder/
    language/announcement live in a fixed LEFT column; Members/Structures/
    Store/Help/Cooperation/Records sit in a row along the BOTTOM edge; the
-   table itself (Diplomacy/Boosts/Target hotspots) fills the remaining
+   table itself (Diplomacy/Level/Target hotspots) fills the remaining
    middle-right area. Selecting a bottom-row or table hotspot swaps the
    table view for that tab's content, with a "Back to table" affordance.
 ───────────────────────────────────────────────────────────────────────── */
@@ -140,14 +141,14 @@ export default function CrewHQ({
                 border: "1px solid #3a2a18", overflow: "hidden",
               }} />
 
-              {/* Diplomacy/Boosts/Target hotspots float ON TOP of the table
+              {/* Diplomacy/Level/Target hotspots float ON TOP of the table
                   surface itself — down among the map/pieces, staggered at
                   different heights, not pinned along the top edge. */}
               <div style={{ position: "absolute", top: "42%", left: "29%" }}>
                 <TableHotspot icon="diplomacy" label="Diplomacy" onClick={() => setTab("diplomacy")} />
               </div>
               <div style={{ position: "absolute", top: "30%", left: "50%" }}>
-                <TableHotspot icon="boosts" label="Boosts" onClick={() => setTab("boosts")} />
+                <TableHotspot icon="level" label={`Level ${crew.level}`} onClick={() => setTab("level")} />
               </div>
               <div style={{ position: "absolute", top: "55%", left: "70%" }}>
                 <TableHotspot icon="tasks" label={crew.target ? crew.target.label || "Target set" : "Tasks"}
@@ -196,10 +197,7 @@ export default function CrewHQ({
               {tab === "diplomacy" && (
                 <CrewDiplomacy crew={crew} crews={crews} playerId={playerId} onSetDiplomacy={onSetDiplomacy} />
               )}
-              {tab === "boosts" && (
-                <CrewComingSoon icon="🧪" title="Boosts"
-                  note="Crew-wide temporary buffs, funded by the Store — coming in a follow-up pass." />
-              )}
+              {tab === "level" && <CrewLevel crew={crew} />}
               {tab === "cooperation" && (
                 <CrewComingSoon icon="🛡️" title="Cooperation"
                   note="Coordinated crew actions — coming in a follow-up pass." />
@@ -237,7 +235,7 @@ export default function CrewHQ({
 // (a wax-seal medallion) sitting on the table instead of a UI sticker.
 const HOTSPOT_ICON_PATHS = {
   diplomacy: "M12 4c-1 2-3 3-5 3 0 4 2 7 5 9 3-2 5-5 5-9-2 0-4-1-5-3z M9 9c1 1 2 1.5 3 1.5s2-.5 3-1.5",
-  boosts: "M10 3h4v3l2.4 6.2c.6 1.6-.6 3.3-2.3 3.3H9.9c-1.7 0-2.9-1.7-2.3-3.3L10 6V3z M9 15h6",
+  level: "M12 2l2.9 6.6 7.1.7-5.5 4.7 1.7 7-6.2-3.7-6.2 3.7 1.7-7L2 9.3l7.1-.7z",
   tasks: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
 };
 

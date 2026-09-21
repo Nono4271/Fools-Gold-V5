@@ -1,7 +1,7 @@
 import { GOLD, TEXT_SM, TEXT_XS } from "./crewStyles.js";
 
 // Shared placeholder for the panels not designed yet this pass (Records,
-// Cooperation, Diplomacy, Boosts). Kept as one component so swapping any of
+// Cooperation). Kept as one component so swapping any of
 // them for a real build later is a one-file change.
 export default function CrewComingSoon({ icon, title, note }) {
   return (
