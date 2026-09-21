@@ -144,7 +144,7 @@ function channelLabel(channel, playerId, playerName) {
 // Nested under a crew/group row in the left column, only while that row is
 // the open one — smaller than the parent rows, indented, per the owner's
 // spec. Clicking a row switches the active sub-channel within this parent.
-function SubchannelRows({ subChannels, activeSubId, onSelect }) {
+function SubchannelRows({ subChannels, activeSubId, onSelect, unreadIds }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3, margin: "2px 0 4px" }}>
       {subChannels.map(s => (
@@ -157,7 +157,14 @@ function SubchannelRows({ subChannels, activeSubId, onSelect }) {
           display: "flex", alignItems: "center", justifyContent: "space-between",
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
         }}>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}># {s.name}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 5, overflow: "hidden" }}>
+            {unreadIds?.has?.(s.id) && (
+              <span style={{
+                flexShrink: 0, width: 6, height: 6, borderRadius: "50%", background: "#cc4040",
+              }} />
+            )}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}># {s.name}</span>
+          </span>
           {s.leaderOnly && <span style={{ flexShrink: 0, marginLeft: 4 }}>🔒</span>}
         </button>
       ))}
@@ -254,7 +261,7 @@ function MessageBubble({
 // the channel; a separate small bell button beside it (not nested — a
 // <button> can't contain another <button>) toggles mute for that top-level
 // channel. Shared by every row kind below to avoid repeating this markup.
-function ChannelRow({ label, active, muted, onOpen, onToggleMute }) {
+function ChannelRow({ label, active, muted, unread, onOpen, onToggleMute }) {
   return (
     <div style={{ display: "flex", alignItems: "stretch", gap: 3 }}>
       <button onClick={onOpen} style={{
@@ -262,8 +269,15 @@ function ChannelRow({ label, active, muted, onOpen, onToggleMute }) {
         background: active ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
         border: `1px solid ${active ? "#c8a06050" : "#1e2028"}`,
         color: active ? GOLD : "#6a7a8a", ...TEXT_LEFT, opacity: muted ? .55 : 1,
-        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-      }}>{label}</button>
+        display: "flex", alignItems: "center", gap: 5,
+      }}>
+        {unread && (
+          <span style={{
+            flexShrink: 0, width: 7, height: 7, borderRadius: "50%", background: "#cc4040",
+          }} />
+        )}
+        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+      </button>
       <button
         onClick={e => { e.stopPropagation(); onToggleMute(); }}
         title={muted ? "Unmute" : "Mute"}
@@ -375,7 +389,7 @@ export default memo(function ChatPanel({
   // Round 6 additions — unread tracking, mute, reactions, typing indicators,
   // reply-to, and leaving a group — all implemented in useChat.js.
   mutedChannelIds, toggleMute, reactions, toggleReaction, typingByChannel,
-  markRead, leaveGroup,
+  markRead, leaveGroup, unreadLeafIds, unreadTopIds,
 }) {
   const display = activeDisplay, setDisplay = setActiveDisplay;
   const selectedId = activeChannelId, setSelected = setActiveChannelId;
@@ -676,6 +690,7 @@ export default memo(function ChatPanel({
                   label={channelLabel(ch, playerId, playerName)}
                   active={!relationsOpen && active?.id === ch.id}
                   muted={!!mutedChannelIds?.has?.(ch.id)}
+                  unread={!!unreadTopIds?.has?.(ch.id)}
                   onOpen={() => openChannel(ch.id)}
                   onToggleMute={() => toggleMute?.(ch.id)}
                 />
@@ -685,6 +700,7 @@ export default memo(function ChatPanel({
                   label={channelLabel(ch, playerId, playerName)}
                   active={active?.id === ch.id}
                   muted={!!mutedChannelIds?.has?.(ch.id)}
+                  unread={!!unreadTopIds?.has?.(ch.id)}
                   onOpen={() => openChannel(ch.id)}
                   onToggleMute={() => toggleMute?.(ch.id)}
                 />
@@ -698,6 +714,7 @@ export default memo(function ChatPanel({
                     label={channelLabel(ch, playerId, playerName)}
                     active={active?.id === ch.id}
                     muted={!!mutedChannelIds?.has?.(ch.id)}
+                    unread={!!unreadTopIds?.has?.(ch.id)}
                     onOpen={() => openChannel(ch.id)}
                     onToggleMute={() => toggleMute?.(ch.id)}
                   />
@@ -706,6 +723,7 @@ export default memo(function ChatPanel({
                       subChannels={subchannelsOf(ch, { crews })}
                       activeSubId={activeSub?.id}
                       onSelect={setSelectedSub}
+                      unreadIds={unreadLeafIds}
                     />
                   )}
                 </div>
@@ -721,6 +739,7 @@ export default memo(function ChatPanel({
                     label={channelLabel(ch, playerId, playerName)}
                     active={active?.id === ch.id}
                     muted={!!mutedChannelIds?.has?.(ch.id)}
+                    unread={!!unreadTopIds?.has?.(ch.id)}
                     onOpen={() => openChannel(ch.id)}
                     onToggleMute={() => toggleMute?.(ch.id)}
                   />
@@ -729,6 +748,7 @@ export default memo(function ChatPanel({
                       subChannels={subchannelsOf(ch, { crews })}
                       activeSubId={activeSub?.id}
                       onSelect={setSelectedSub}
+                      unreadIds={unreadLeafIds}
                     />
                   )}
                 </div>
@@ -751,6 +771,7 @@ export default memo(function ChatPanel({
                   label={channelLabel(ch, playerId, playerName)}
                   active={!relationsOpen && active?.id === ch.id}
                   muted={!!mutedChannelIds?.has?.(ch.id)}
+                  unread={!!unreadTopIds?.has?.(ch.id)}
                   onOpen={() => openChannel(ch.id)}
                   onToggleMute={() => toggleMute?.(ch.id)}
                 />
