@@ -51,6 +51,13 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
   // today; the same censorText() will run server-side unchanged once the
   // multiplayer server exists.
   const [profanityFilterEnabled, setProfanityFilterEnabled] = useState(true);
+  // Which channel/sub-channel/display-tab ChatPanel.jsx has open — lifted up
+  // here (rather than local useState in ChatPanel) so it survives the panel
+  // unmounting on close: reopening chat lands back on whichever chat was
+  // open before, per the owner's spec. Defaults to World.
+  const [activeDisplay, setActiveDisplay] = useState("chats");
+  const [activeChannelId, setActiveChannelId] = useState("world");
+  const [activeSubId, setActiveSubId] = useState(null);
 
   const latest = useRef({ crews, aiPlayerIds, dms, groups, playerFacKey, playerId });
   latest.current = { crews, aiPlayerIds, dms, groups, playerFacKey, playerId };
@@ -223,6 +230,7 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
     channels, sendMessage, startDm, startGroup, getMessages, getRecentMessages,
     addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     profanityFilterEnabled, setProfanityFilterEnabled,
+    activeDisplay, setActiveDisplay, activeChannelId, setActiveChannelId, activeSubId, setActiveSubId,
     // Local player's membership normalized to their playerId (see
     // normalizeCrewsForPlayer above) — ChatPanel.jsx needs this, not the raw
     // `crews` prop, to correctly tag "player" messages with their crew abbr.
