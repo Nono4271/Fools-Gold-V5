@@ -2100,6 +2100,45 @@ no-throw case). `ownerTint`/`MapRenderer.jsx` itself has no direct unit test
 only. Full suite: 361/361 (352 prior + 9 new). `npm run build` clean, 609
 modules transformed (import graph resolves, `CrewDiplomacy.jsx` included).
 
+## 2026-09-21 — Claude (Sonnet), session 21
+
+### Merged an external "Phase 1 HQ dark-v2" MapRenderer patch (owner-supplied) onto the live MapRenderer.jsx
+
+Owner supplied a standalone drop-in `src/MapRenderer.jsx` from another AI
+tool/session, packaged as a full-file replacement with a README saying
+"replace your existing file." Did NOT do a blind overwrite — that file was
+built from an older snapshot and would have silently reverted this
+session's Diplomacy tile-coloring work (session 20, `ownerTint`'s new
+`diplomacyPids` param threaded through `drawAllTiles`/`_buildOneHQ`/
+`buildHQLayer`/the main component). Instead: diffed the supplied file
+against the exact pre-Diplomacy baseline to isolate only the intended
+patch, confirmed it touched a single, unrelated 24-line block (`_buildOneHQ`'s
+`HQ_OFFSETS` table + `targetH` calc, faction HQ sizing only — nowhere near
+`ownerTint`/tile-coloring), and applied that isolated delta onto the current
+file so both features coexist.
+
+**`src/MapRenderer.jsx`, `_buildOneHQ`'s `HQ_OFFSETS` table:** dark-v2 HQ
+scale bumped per faction (orcs/ai 1.12, wizards/nightcreatures/ashen_dead
+1.10, dragons/coldborns 1.08, holyknights 1.05 — pirates/player unchanged
+at 1.0) with matching yOff reductions so the taller dark-v2 silhouettes stay
+grounded on the same terrain. `targetH` (the HQ sprite's target height) is
+now `useDarkHQArt ? targetW : targetW * 0.80` instead of always
+`targetW * 0.80` — the old flat 0.80 clamp squashed the dark-v2 art's
+native square/vertical presentation; original (non-dark) HQ art keeps the
+old clamp unchanged. The asset-swap table (`hq_*.webp` → `hq_*_dark_v2.webp`)
+and `useDarkHQArt`/`useApprovedPirateArt` logic this reads were already
+in the codebase from an earlier session (Pirate HQ dark-v2 art) — this
+patch only extended the sizing to the other 7 factions once their dark-v2
+art existed. All 8 `public/hq/hq_*_dark_v2.webp` assets the README asked
+for were already present in `public/hq/` — nothing to add there.
+
+**Not touched:** HQ footprint/selection diamond, terrain, commander
+systems, or anything else the supplied README explicitly said it wouldn't
+change — confirmed by the diff being exactly this one block, nothing more.
+
+**Verified:** full test suite (`npm test`, 361/361) and production build
+(`npm run build`, 609 modules) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
