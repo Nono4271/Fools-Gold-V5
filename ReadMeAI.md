@@ -1584,6 +1584,36 @@ now survives close/reopen and opens on World the first time.
 **Verified:** full test suite (`npm test`, 304/304) and production build
 (`npm run build`) both pass.
 
+## 2026-09-21 — Claude (Sonnet), session 10
+
+### Chat preview fix (was global-latest, not last-open-channel) + emoji picker
+**Bug:** the closed-state preview (`ChatPreview.jsx`) was still calling
+`useChat.js`'s old `getRecentMessages(n)`, which returns the newest messages
+across *every* channel — so it showed whatever channel happened to get a
+message most recently (often crew/Nyro chatter), not the channel the owner
+actually had open when they closed chat.
+
+**Fix — `src/hooks/useChat.js`:** new `getActiveChannelMessages(n)`, which
+resolves messages the same way `ChatPanel.jsx` does (using the lifted
+`activeChannelId`/`activeSubId` from session 9, with the same
+#General-fallback for crew/group). `src/Game.jsx`'s `chatRecentMessages` now
+calls this instead of the old global one.
+
+### Emoji picker
+Native emoji keyboards vary by phone/OS with no way to guarantee a given
+glyph renders the same everywhere, so this adds a small in-panel picker
+instead of relying on the device's own keyboard.
+
+**File:** `src/components/game/ChatPanel.jsx` — new `EMOJI_SET` (a fixed,
+curated ~44-emoji list: everyday reactions + the game's own fantasy-strategy
+flavor — swords, shields, crowns, etc). A 🙂 button next to the message
+input toggles a small grid popover above the compose bar; tapping an emoji
+appends it to the draft (respecting the 280-char cap). Closes automatically
+on channel switch or when the input is refocused.
+
+**Verified:** full test suite (`npm test`, 304/304) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
