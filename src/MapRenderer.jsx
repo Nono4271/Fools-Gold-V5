@@ -1600,10 +1600,12 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     // Dragons: sized up again, plus nudged toward the diamond's bottom-left
     // corner like the others below.
     dragons:        { xOff: -10, yOff:  8, scale: 1.42, yScale: 1.00 },
-    // Wizard: still reading stretched with too much empty space on its
-    // left inside the footprint — dropped xScale back to neutral (no more
-    // horizontal widening) and shifted further right to close the left gap.
-    wizards:        { xOff:  14, yOff:  0, scale: 1.18, yScale: 1.34, xScale: 1.00 },
+    // Wizard: previous two passes moved this the WRONG direction — a gap
+    // on the LEFT means the castle sits too far right, so it needs to move
+    // LEFT (negative xOff) to close that gap, not right. Also restoring the
+    // xScale widen, since dropping it to 1.00 is what brought the squished
+    // look back.
+    wizards:        { xOff: -18, yOff:  0, scale: 1.18, yScale: 1.34, xScale: 1.16 },
     // Coldborns: confirmed good, untouched.
     coldborns:      { xOff: -8,  yOff:  6, scale: 1.16, yScale: 1.00 },
     // Holyknights: still needs to sit further toward the bottom-left corner
