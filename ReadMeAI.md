@@ -2200,6 +2200,31 @@ instead of always taking up space at the top of the list.
 can't be asserted by the `node:test` pure-function suite (same caveat as
 the original chat fix) — needs an on-device/touch check.
 
+## 2026-09-21 — Claude (Sonnet), session 24
+
+### Crew HQ: "Boosts" tab → "Level" tab (real perks + placeholders)
+
+Renamed the Boosts table hotspot to Level and gave it a real build instead
+of the `CrewComingSoon` stub. New `crewLevelPerks(level)` in
+`shared/constants/crew.js` returns the perk(s) that unlock at exactly a
+given level, built from data already in the file: `+5 Member Cap` every 2
+levels up to 20 (matches `crewMemberCapForLevel`'s own ceiling) and `+1
+Fortress Slot` at levels 15/30/45 (`CREW_FORTRESS_SLOT_LEVELS`). New
+`src/components/game/crew/CrewLevel.jsx` renders the crew's current
+level/XP progress bar plus a scrollable row for every level 1–50 — a real
+perk badge where one exists, a "Placeholder — perk TBD" row otherwise, with
+reached levels checked off and the current level highlighted. `CrewHQ.jsx`:
+swapped the "Boosts" hotspot/icon for "Level {crew.level}", wired the new
+`level` tab to `CrewLevel`, updated stale "Boosts" comments.
+`CrewComingSoon.jsx`'s header comment updated to drop Boosts/Diplomacy
+(neither uses it anymore). New `tests/crewLevelPerks.test.js` covers the
+member-cap schedule, the fortress-slot levels, the 20-level cap ceiling,
+and that every level 1–50 resolves without throwing.
+
+**Verified:** full test suite (`npm test`, 367/367) and production build
+(`npm run build`, 610 modules — up from 609, confirming `CrewLevel.jsx` is
+bundled) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
