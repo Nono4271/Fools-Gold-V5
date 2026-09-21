@@ -1513,6 +1513,55 @@ in the left nav, not a right-pane picker screen.
 (`npm run build`) both pass. No rules changes — this is UI-placement only,
 `shared/utils/subchannels.js` from session 6 is untouched.
 
+## 2026-09-20 — Claude (Sonnet), session 8
+
+### Nyro — a named AI companion, always in the player's faction and crew; crew cap 40 → 100
+New always-present AI companion, distinct from the ambient per-faction AI
+roster. Nyro has no map/tile/HQ presence — a pure social-layer entity.
+
+**New files:**
+- `shared/constants/nyro.js` — `NYRO_ID = "ai_nyro"` (deliberately doesn't
+  match the `ai_<faction>_<i>` shape, so the ambient multi-AI systems never
+  pick Nyro up by accident), `NYRO_NAME`, `NYRO_ACCEPT_DELAY_MS`.
+- `shared/utils/nyroChatter.js` + `tests/nyroChatter.test.js` (7 tests) —
+  Nyro's own flavor chatter (separate pool for DMs/groups; reuses the
+  per-faction pools in Faction/crew chat; never World).
+
+**Faction:** Nyro always speaks with the player's faction's voice — handled
+via `shared/utils/aiChatter.js`'s exported `FACTION_LINES`/`GENERIC_LINES`
+and a `NYRO_ID` special-case added to `aiDisplayName`.
+
+**Crew:** `src/GameView.jsx`'s `onCreateCrew`/`onJoinRequest`/`onLeaveCrew`
+add/remove `NYRO_ID` alongside the player's own membership. `AI_CREW_CAP`
+(`shared/utils/aiCrews.js`) raised 40 → 100; `CrewPanel.jsx`'s member lists
+now render AI ids (including Nyro) through `aiDisplayName` instead of the
+raw id.
+
+**Friend requests / group invites — real accept, not instant-add:** every
+other AI id still auto-accepts instantly (unchanged). Nyro is the one
+exception:
+- `src/hooks/useRelations.js` — `addFriend(NYRO_ID)` only sends the
+  request (`pendingOut`); a new effect resolves it to `friend` after
+  `NYRO_ACCEPT_DELAY_MS` + jitter.
+- `src/hooks/useChat.js`'s `startGroup` — if `NYRO_ID` is among the invited
+  participants, he's left out of the group's initial `participants` and
+  added the same delay later.
+
+**Chatter tick:** `src/hooks/useChat.js`'s existing AI-chatter interval now
+also resolves Nyro-eligible channels each tick (Faction/crew + any DM/group
+Nyro is actually in) and posts via `generateNyroChatter`, alongside the
+existing ambient roster.
+
+**Discoverability without ambient leakage:** `src/Game.jsx` derives
+`chatKnownPlayerIdsWithNyro` (prepends `NYRO_ID`) for `useRelations` and
+for the `chatKnownPlayerIds` prop handed to `GameView`/`ChatPanel`, while
+`useChat`'s `aiPlayerIds` argument keeps using the original Nyro-free list
+— so Nyro is addable/inviteable everywhere the UI lists "known players",
+but never eligible for World chat or the ambient per-faction chatter.
+
+**Verified:** full test suite (`npm test`, 304/304) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
