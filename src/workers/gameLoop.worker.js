@@ -1,5 +1,5 @@
 import { advanceMarch } from '../../shared/utils/marchMotion.js';
-import { aiTrainingTick } from '../../shared/utils/aiEconomy.js';
+import { aiTrainingTick, aiTroopCap, rssSpent } from '../../shared/utils/aiEconomy.js';
 import { barracksCapacity } from '../../shared/constants/buildings.js';
 import { AI_STAMINA_MAX, canAffordMarch } from '../../shared/utils/tactics.js';
 // ── Game Loop Web Worker ──────────────────────────────────────────────────────
@@ -286,7 +286,6 @@ const BLDG_MAX = {hq:10,quarry:20,lumber:20,forge:20,refinery:20,barracks:10,tra
 const RSS_BLDGS = new Set(["quarry","lumber","forge","refinery","storage"]);
 // Same barracks capacity curve as the player (was a steeper /9 curve: ~7x the player's at lvl 10).
 const _barrCap = barracksCapacity;
-function _cmdCap(lvl)   { const CC=[0,2,4,7,10,13,17,21,25,30,35]; return (lvl||1)+(CC[Math.min(10,lvl||0)]||0); }
 function _upgCost(type,lvl) { const b=BLDG_COST[type]; if(!b) return {}; const m=Math.pow(1.8,lvl); return Object.fromEntries(Object.entries(b).map(([k,v])=>[k,Math.round(v*m)])); }
 function _maxLvl(type,hqLvl) { const abs=BLDG_MAX[type]||10; if(type==="hq") return abs; return Math.min(abs, RSS_BLDGS.has(type)?hqLvl*2:hqLvl); }
 
@@ -317,7 +316,7 @@ function tickAiEcon() {
 
   const cmdUpdates   = []; // { uid, troops, troopBranch, unspentSkillPoints, skillPoints }
   const poolUpdates  = {}; // { fk: newPool }
-  const rssUpdates   = {}; // { fk: { stone, wood, gas, food } }
+  const rssSpentBy   = {}; // { fk: { wood, gas, ... } } amounts SPENT (main subtracts them from live totals)
   const bldgUpdates  = {}; // { fk: { ...bldgs } }
 
   for (const fk of aiFactionKeys) {
@@ -342,9 +341,9 @@ function tickAiEcon() {
     }
     for (const cmd of idleNoTroops) {
       if (newPool <= 0) break;
-      const commandSlots = _cmdCap(cmd.lvl || 5);
-      const troopsPerCommand = 0.01; // small troop rate — most troops per command
-      const cap = Math.floor(commandSlots / troopsPerCommand); // e.g. 18 slots / 0.01 = 1800
+      // Player rule: (level + command-centre bonus) command points, 0.01 each per
+      // small troop (see aiTroopCap in shared/utils/aiEconomy.js).
+      const cap = aiTroopCap(cmd.lvl || 5, curBldgs.commandcenter || 0);
       const assign = Math.min(cap, newPool);
       const branches = FALLBACK_BRANCHES[fk] || ['soldiers'];
       const brKey  = branches[Math.floor(Math.random() * branches.length)];
@@ -381,12 +380,12 @@ function tickAiEcon() {
 
     local.pool = newPool;
     if (newPool !== curPool)  poolUpdates[fk] = newPool;
-    if (JSON.stringify(newRss)   !== JSON.stringify(curRss))   rssUpdates[fk]  = newRss;
+    { const sp = rssSpent(curRss, newRss); if (Object.keys(sp).length) rssSpentBy[fk] = sp; }
     if (JSON.stringify(newBldgs) !== JSON.stringify(curBldgs)) bldgUpdates[fk] = newBldgs;
   }
 
-  if (cmdUpdates.length || Object.keys(poolUpdates).length || Object.keys(rssUpdates).length || Object.keys(bldgUpdates).length) {
-    self.postMessage({ type: 'aiEconReady', updates: { cmdUpdates, poolUpdates, rssUpdates, bldgUpdates }, now: Date.now() });
+  if (cmdUpdates.length || Object.keys(poolUpdates).length || Object.keys(rssSpentBy).length || Object.keys(bldgUpdates).length) {
+    self.postMessage({ type: 'aiEconReady', updates: { cmdUpdates, poolUpdates, rssSpent: rssSpentBy, bldgUpdates }, now: Date.now() });
   }
 }
 
