@@ -9,6 +9,30 @@ Branch: codex/core-fixes-20260919
 ---
 
 ## 2026-09-20 — Claude (Sonnet 5)
+### AI stamina (matches the player) + AI barracks no longer refills every tick
+
+**1. AI stamina, same rules as the player.** New shared rules in `shared/utils/tactics.js`: `AI_STAMINA_MAX` (= `STAMINA_BASE`, 150, no tome bonus), `MARCH_STAMINA_COST` (`attack` 20, `move` 10), `marchStaminaCost`, `canAffordMarch`, `spendMarchStamina` (missing stamina counts as full, same as `regenStamina`). `Game.jsx` now uses `marchStaminaCost(type)` instead of the inline `type === "attack" ? 20 : 10` (behavior unchanged).
+- **Spend:** `useAI.js` `tickAiMarch` drops a dispatch when the commander can't afford an attack, re-checks against the live commander when the path comes back, and deducts 20 on dispatch (like the player). AI marches are attacks; retreats/recalls stay free, as for the player.
+- **Regen:** `useTacticTicks.js` takes `setAiCmds` and regens AI commanders in the same +1-per-3-min tick as the player's, using the same real-elapsed-time catch-up and `visibilitychange` behavior (+20/hr, capped at `AI_STAMINA_MAX`).
+- **Worker:** `useGameLoop.js` puts `stamina` in the AI commander snapshot, and `gameLoop.worker.js` `tickAiMarch` skips exhausted commanders before the cooldown (they don't burn the 15 s march cooldown). The main-thread check stays authoritative.
+
+**2. AI barracks refill fixed.** Root cause: the "Train troops" step in the worker's `tickAiEcon` (every 5 s) added up to 500 troops to the faction pool for a flat 500 wood / 500 gas / 1000 food whenever the pool was below its cap, i.e. ~6,000 troops/minute, instantly, forever.
+Now `shared/utils/aiEconomy.js` `aiTrainingTick` models it like the player's training queues: troops come in commands of 100 (small branch), each command is **paid when training starts** at the player's tier-0 small price (900 wood / 700 gas / 1400 food) and **takes 12 real minutes** (player tier-0 small time), and lands in the pool only when it finishes. Concurrent commands = `trainingQueueCount(training level)` per AI commander in the faction (each AI commander stands in for a player), and it never trains past the barracks cap counting troops still in training (same rule as the player's `train` reducer). Finish times are real timestamps, so a throttled worker still delivers everything that finished. The worker now keeps each faction's queue and pool locally (`aiEconLocal`, reset on `init`) instead of rebuilding the pool from the 2 s snapshot; it still posts `poolUpdates` to the main thread as before.
+- **Also changed:** the worker's barracks capacity curve was `2000*45^((lvl-1)/9)` (about 7x the player's at lvl 10); it now uses the player's `barracksCapacity` from `shared/constants/buildings.js`.
+- Sanity run of the real worker for two ticks (2 troopless commanders at HQ, pool 2000): tick 1 hands out 1800 + 200 and starts training; tick 2 leaves the pool alone (before: +500 every tick).
+
+**Behavior change to expect:** AI factions rebuild troops slowly now (12 min per batch, resource-limited), so after the starting pool is handed out, AI commanders wait for training. Tune with `AI_TRAIN_COMMAND` / `aiTrainingSlots` in `shared/utils/aiEconomy.js` if they feel too passive.
+
+**Not fixed, flagged (found while in here):**
+- **AI resource income is per SECOND, the player's is per HOUR.** `useAI.js` `tickAiRss` runs every 1 s and adds +5 of each resource plus `rssRate(building level)` per owned resource tile per tick; the player's `resourceIncomeTick` uses 200 base + `rssRate` per **hour**. That is 90x the player's base and thousands of times the tile income. It doesn't cause the barracks refill anymore (training is time-gated), but AI resources are effectively unlimited. Fix when wanted: divide by 3600 / use elapsed-time scaling like `resourceIncomeTick`.
+- **Troop hand-out cap** (`troopsPerCommand = 0.01` => 100 troops per command slot, ~1,800 for a lvl-5 commander) is unchanged, so the starting pool can still go to one or two commanders in the first tick (the "troop-burst" note below).
+- AI `walls`/other building upgrade costs use a separate cost table from the player's; not touched.
+
+**Tests:** `tests/aiEconomy.test.js` (5: cost/time/delivery, no refill every tick over a simulated hour, slot/cap/money limits, more queues with level/commanders, late-tick catch-up) and `tests/aiStamina.test.js` (4: shared costs/max, spend on dispatch, runs dry after 7 attacks, regen +20/hr with cap and catch-up). Suite: 275 pass; 3 fail = the `esbuild`/`pixi.js` missing-package tests (no `node_modules` in the sandbox). `npm run build` not run here.
+
+---
+
+## 2026-09-20 — Claude (Sonnet 5)
 ### Bug fix: AI commanders attacking tiles way above their level
 
 Reported: a fresh server had an AI commander capture a P9 tile (defended by
