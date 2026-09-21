@@ -1975,6 +1975,11 @@ still slow after this, the remaining time is almost certainly the network
 itself (e.g. testing over a remote/streamed device, per the owner's other
 screenshots) rather than anything in this code path.
 
+**Follow-up 3 (same session):** hotspot badges/icons/labels sized up —
+badge 46px→58px, icon 20px→26px, label 7px→10px and bolded (`fontWeight:
+700`), per owner feedback that they read too small against the table
+photo.
+
 **Verified:** full test suite (`npm test`, 352/352) and production build
 (`npm run build`) both pass.
 
