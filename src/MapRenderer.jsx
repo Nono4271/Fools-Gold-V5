@@ -1592,33 +1592,38 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const HQ_OFFSETS = {
     pirates:        { xOff:  0,  yOff:  0, scale: 1.0,  yScale: 1.00 },
     player:         { xOff:  0,  yOff:  0, scale: 1.0,  yScale: 1.00 },
-    // Dark-v2 HQs: positioning now comes from TRUE_HQ_ANCHOR (measured from
-    // each sprite's real content), so these no longer need manual xOff/yOff
-    // fudges to fake centering. scale/yScale stay for deliberate sizing only.
+    // Dark-v2 HQs: positioning comes from TRUE_HQ_ANCHOR (measured from each
+    // sprite's real content); xOff/yOff below are now small deliberate nudges,
+    // not fudges to fake centering. scale/yScale/xScale are for sizing only.
     orcs:           { xOff:  0,  yOff:  0, scale: 1.20, yScale: 1.00 },
     ai:             { xOff:  0,  yOff:  0, scale: 1.20, yScale: 1.00 },
-    dragons:        { xOff:  0,  yOff:  0, scale: 1.16, yScale: 1.00 },
-    // Wizard art has ~37% dead transparent space top+bottom, which is what
-    // made it read as short/squished — yScale stretches the visible castle
-    // back to a proper height; scale bumps overall size slightly per request.
-    wizards:        { xOff:  0,  yOff:  0, scale: 1.24, yScale: 1.34 },
-    holyknights:    { xOff:  0,  yOff:  0, scale: 1.14, yScale: 1.00 },
-    nightcreatures: { xOff:  0,  yOff:  0, scale: 1.16, yScale: 1.00 },
-    coldborns:      { xOff:  0,  yOff:  0, scale: 1.16, yScale: 1.00 },
-    ashen_dead:     { xOff:  0,  yOff:  0, scale: 1.16, yScale: 1.00 },
+    // Dragons/nightcreatures/ashen dead: bumped up a size step.
+    dragons:        { xOff:  0,  yOff:  0, scale: 1.30, yScale: 1.00 },
+    // Wizard art has ~37% dead transparent space top+bottom, which made it
+    // read as short/squished — yScale stretches it back to a proper height;
+    // xScale widens it independently since the silhouette was reading too
+    // narrow/tall after the vertical stretch.
+    wizards:        { xOff:  0,  yOff:  0, scale: 1.24, yScale: 1.34, xScale: 1.22 },
+    // Holyknights/coldborns: nudged down-left (toward the diamond's
+    // bottom-left corner) a smidge, no size change.
+    holyknights:    { xOff: -8,  yOff:  6, scale: 1.14, yScale: 1.00 },
+    nightcreatures: { xOff:  0,  yOff:  0, scale: 1.30, yScale: 1.00 },
+    coldborns:      { xOff: -8,  yOff:  6, scale: 1.16, yScale: 1.00 },
+    ashen_dead:     { xOff:  0,  yOff:  0, scale: 1.30, yScale: 1.00 },
   };
   const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0, yScale: 1.0 };
 
   const baseW = TW * 2.2;
-  const targetW = baseW * (off.scale || 1.0);
+  // xScale is an independent horizontal-only multiplier layered on top of
+  // `scale`, for factions whose silhouette needs widening without changing
+  // height (see wizards above). Height never depends on it.
+  const targetW = baseW * (off.scale || 1.0) * (off.xScale || 1.0);
   // Original HQ art keeps its historical 0.80 height fit. Dark-v2 art is
   // rendered from its native square frame so it is no longer flattened.
-  // Wizards additionally receive a controlled vertical correction because
-  // the supplied Arcane artwork has unusually wide/low transparent framing;
-  // this restores a taller fortress silhouette without changing the map angle
-  // or the selection footprint.
+  // Height is derived from baseW*scale (NOT targetW) so xScale never leaks
+  // into vertical sizing.
   const targetH = useDarkHQArt
-    ? targetW * (off.yScale || 1.0)
+    ? baseW * (off.scale || 1.0) * (off.yScale || 1.0)
     : targetW * 0.80;
 
   const spriteX = bx + off.xOff;
