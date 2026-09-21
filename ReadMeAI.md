@@ -1750,6 +1750,44 @@ since there's no backend to act on reports.
 **Verified:** full test suite (`npm test`, 304/304) and production build
 (`npm run build`) both pass.
 
+## 2026-09-21 — Claude (Sonnet), session 15
+
+### Fixed: typing-indicator crash, then per-tab unread dots in the panel
+
+**Bug fix — `src/components/game/ChatPanel.jsx`:** the typing-indicator line
+rendered `typingByChannel[msgChannelId]` (an object, `{ name, until }`)
+directly as a child instead of its `.name` field. React refuses to render a
+raw object as a child, which crashed the chat panel the moment any AI
+player started "typing". One-line fix: render `.name`.
+
+### Per-tab unread red dots inside the panel
+
+Per the owner: the closed-state preview already shows a total unread badge
+(session 14); now each open tab in the panel itself — World, Faction,
+Guild, Group (and its sub-channels), DM — gets its own small red dot when
+it has unread messages, clearing only once that specific tab is viewed.
+
+**File:** `src/hooks/useChat.js` — two new memoized selectors alongside the
+existing `unreadCount`:
+- `unreadLeafIds` — Set of every leaf/sub-channel id with an unread
+  message (muted channels excluded, same as the total badge).
+- `unreadTopIds` — the above folded up to each leaf's top-level container,
+  for the 5 main row kinds.
+Both returned from the hook.
+
+**File:** `src/Game.jsx`, `src/GameView.jsx` — plumbed both sets through to
+`ChatPanel` as `unreadLeafIds`/`unreadTopIds` props.
+
+**File:** `src/components/game/ChatPanel.jsx` — `ChannelRow` grew a
+`unread` prop (small red dot next to the label); `SubchannelRows` grew an
+`unreadIds` prop (dot per sub-channel row). Wired at all 5 top-level rows
+(World/Faction/Guild/Group/DM) and both sub-channel lists (Guild/Group).
+Clearing reuses the existing `markRead` effect that already fires whenever
+the active channel/sub-channel changes — no new clearing logic needed.
+
+**Verified:** full test suite (`npm test`, 304/304) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
