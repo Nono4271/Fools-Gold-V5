@@ -6,7 +6,7 @@ import { validateRelocationPad, allHqKeyList } from "../shared/utils/relocation.
 import { defaultCrewSubchannels } from "../shared/constants/chat.js";
 import { addSubchannel, removeSubchannel, moveSubchannel } from "../shared/utils/subchannels.js";
 import { NYRO_ID } from "../shared/constants/nyro.js";
-import { createCrew, roleOf, canPromote, canDemote, canKick, canDisband, spendContribution, updateAnnouncement, setCrewTarget, clearCrewTarget } from "../shared/utils/crewRules.js";
+import { createCrew, roleOf, canPromote, canDemote, canKick, canDisband, spendContribution, updateAnnouncement, setCrewTarget, clearCrewTarget, setDiplomacyStatus } from "../shared/utils/crewRules.js";
 import { removeFortress, canDemolishFortress } from "../shared/utils/crewFortress.js";
 import { CREW_STORE_ITEMS } from "../shared/constants/crew.js";
 import { createConsumable } from "../shared/constants/consumables.js";
@@ -48,7 +48,7 @@ export default function GameView(props) {
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
-    crewOpen, crewmatePlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
+    crewOpen, crewmatePlayerIds, diplomacyPlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
     startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
     facKey, facName, floats, forts, gearInventory, gearScreenOpen, gems, getFortAtTile,
@@ -213,6 +213,7 @@ export default function GameView(props) {
         playerFacKey={facKey}
         playerName={facName}
         crewmatePlayerIds={crewmatePlayerIds}
+        diplomacyPlayerIds={diplomacyPlayerIds}
         allHqKeys={Object.values(aiHqKeysRef.current).flat().concat(playerHqKey ? [playerHqKey] : [])}
         aiPlayerIdMap={aiPlayerIdMapRef.current}
         forts={forts}
@@ -750,6 +751,9 @@ export default function GameView(props) {
           ))}
           onClearTarget={() => setCrews(prev => prev.map(c =>
             c.id === playerCrewId ? clearCrewTarget(c, facKey) : c
+          ))}
+          onSetDiplomacy={(targetCrewId, status) => setCrews(prev => prev.map(c =>
+            c.id === playerCrewId ? setDiplomacyStatus(c, facKey, targetCrewId, status) : c
           ))}
         />
       )}

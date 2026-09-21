@@ -43,6 +43,7 @@ import {
   canStartFortressBuild, createFortress, completeFortressBuild,
   isFortressBuilt, canDemolishFortress, removeFortress,
 } from "../shared/utils/crewFortress.js";
+import { diplomacyPlayerIdSets } from "../shared/utils/crewRules.js";
 import { useChat } from "./hooks/useChat.js";
 import { useRelations } from "./hooks/useRelations.js";
 import { aiDisplayName } from "../shared/utils/aiChatter.js";
@@ -734,6 +735,15 @@ export default function RiseToWar() {
 
     return ids;
   }, [playerCrewId, crews, myCrew]);
+
+  // Ally/enemy tile coloring (Diplomacy) — resolves myCrew.diplomacy into
+  // playerId Sets the same shape as crewmatePlayerIds, so MapRenderer's
+  // ownerTint can check them the same way. Pure logic lives in
+  // shared/utils/crewRules.js (diplomacyPlayerIdSets) — this just memoizes it.
+  const diplomacyPlayerIds = useMemo(
+    () => diplomacyPlayerIdSets(myCrew, crews),
+    [myCrew, crews]
+  );
 
   // ── AI crew ticker — rules in shared/utils/aiCrews.js ──
   useAiCrews({ screen, mapReady, setCrews, aiPlayerIdMapRef, aiFoundersRef, aiGemsRef });
@@ -1565,7 +1575,7 @@ export default function RiseToWar() {
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
-    crewOpen, crewmatePlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
+    crewOpen, crewmatePlayerIds, diplomacyPlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
     startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
     facKey, facName, floats, forts, gearInventory, gearScreenOpen, gems, getFortAtTile,

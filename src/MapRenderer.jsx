@@ -160,20 +160,34 @@ function buildCByTile(cmds) {
 }
 
 /* ─── Tile ownership tint colors ─────────────────────────────────────────────
-   player    → green  0x22cc55  (your tiles)
-   crewmate  → blue   0x2299ff  (AI in your crew — tile.ownerPlayerId in crewmatePlayerIds)
-   faction   → purple 0xaa44ff  (same faction, not your crew)
-   enemy     → red    0xdc3c28
+   player      → green        0x22cc55  (your tiles)
+   crewmate    → blue         0x2299ff  (AI in your crew — tile.ownerPlayerId in crewmatePlayerIds)
+   ally crew   → orange       0xe87830  (owned by a crew YOUR crew flagged "ally" in Diplomacy)
+   enemy crew  → darker red   0x8a1414  (owned by a crew YOUR crew flagged "enemy" in Diplomacy)
+   faction     → purple       0xaa44ff  (same faction, not your crew, no diplomacy flag)
+   enemy       → red          0xdc3c28  (default fallback)
+   Diplomacy is cosmetic-only (shared/constants/crew.js) and one-way, so this
+   only ever reads the LOCAL player's own crew's diplomacy map (passed in as
+   diplomacyPids = { allyIds, enemyIds }, built by
+   shared/utils/crewRules.js's diplomacyPlayerIdSets) — never the other
+   crew's standing toward the player, which may differ or not exist at all.
    ────────────────────────────────────────────────────────────────────────── */
-function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId) {
+const EMPTY_DIPLOMACY_PIDS = { allyIds: null, enemyIds: null };
+function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId, diplomacyPids) {
   if (owner === "player") return 0x22cc55; // green — player owned
   if (!owner) return null;
   const isAiOwned = owner === "ai" || (owner !== "player" && owner !== null);
   // Blue: crewmate-owned tile
   const isCrew = isAiOwned && ownerPlayerId && crewPids?.has(ownerPlayerId);
   if (isCrew) return 0x2299ff;
-  // Orange: same faction (keeps, gates, AI ally tiles)
-  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xe87830;
+  // Orange/darker-red: owned by a crew flagged ally/enemy via Diplomacy —
+  // takes priority over the plain same-faction purple below.
+  if (isAiOwned && ownerPlayerId) {
+    if (diplomacyPids?.enemyIds?.has(ownerPlayerId)) return 0x8a1414;
+    if (diplomacyPids?.allyIds?.has(ownerPlayerId)) return 0xe87830;
+  }
+  // Purple: same faction (keeps, gates, AI ally tiles), no diplomacy flag
+  if (tileFaction && playerFacKey && tileFaction === playerFacKey) return 0xaa44ff;
   return 0xdc3c28; // red: enemy
 }
 
@@ -231,7 +245,7 @@ function drawJoinedTerritoryEdges(gfx, tiles, c, r, tile, points, color) {
    No per-tile scene graph nodes. Camera moves = zero draw calls.
 ══════════════════════════════════════════════════════════════════════════ */
 
-function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null, groundTexture = null) {
+function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile, mvCmdUid, zoom = 1, playerFacKey = null, crewPids = null, groundTexture = null, diplomacyPids = null) {
   if (!window.__rangeLogged) {
 
     window.__rangeLogged = true;
@@ -286,7 +300,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
         if (!isKeep) {
           gfx.beginFill(getTileBaseColor(c, r, terrain)); gfx.drawPolygon(TOP); gfx.endFill();
           if (owner) {
-            const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+            const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId, diplomacyPids) ?? 0xdc3c28;
             // No fill - just border
             if (!isSel) { 
               // Black backing for contrast
@@ -477,7 +491,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
 
         // Owner tint (same as regular tiles)
         if (owner) {
-          const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+          const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId, diplomacyPids) ?? 0xdc3c28;
           // NO FILL for owned crossings/tunnels
           if (!isSel) { gfx.lineStyle(2, ot, 1.0); gfx.drawPolygon(TOP); gfx.lineStyle(0); }
         }
@@ -523,7 +537,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       }
 
       if (owner) {
-        const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+        const ot = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId, diplomacyPids) ?? 0xdc3c28;
         // Don't draw fill on HQ tiles - just the outer border (drawn in renderHQSpriteGroup)
         // Regular tiles: no fill, just 1px border
         if (!drawAsHQ) {
@@ -574,7 +588,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // Owner tint
       const owner2 = tile.owner || null;
       if (owner2) {
-        const ot = ownerTint(owner2, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+        const ot = ownerTint(owner2, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId, diplomacyPids) ?? 0xdc3c28;
         gfx.lineStyle(2, ot, 1.0);
         gfx.drawPolygon(MERGED);
         gfx.lineStyle(0);
@@ -607,7 +621,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // Owner tint
       const owner3 = tile.owner || null;
       if (owner3) {
-        const ot = ownerTint(owner3, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+        const ot = ownerTint(owner3, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId, diplomacyPids) ?? 0xdc3c28;
         gfx.lineStyle(2, ot, 1.0);
         gfx.drawPolygon(KEEP5);
         gfx.lineStyle(0);
@@ -636,7 +650,7 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       gfx.beginFill(0xf0c040, 0.45); gfx.drawPolygon(KEEP5); gfx.endFill();
       gfx.lineStyle(2, 0xf0c040, 0.9); gfx.drawPolygon(KEEP5); gfx.lineStyle(0);
       if (tile.owner) {
-        const ot = ownerTint(tile.owner, tile.faction, playerFacKey, crewPids, tile.ownerPlayerId) ?? 0xdc3c28;
+        const ot = ownerTint(tile.owner, tile.faction, playerFacKey, crewPids, tile.ownerPlayerId, diplomacyPids) ?? 0xdc3c28;
         gfx.lineStyle(2.5, ot, 1.0); gfx.drawPolygon(KEEP5); gfx.lineStyle(0);
       }
     }
@@ -1459,7 +1473,7 @@ function removeFortSprite(tileKey, fortLayer) {
   }
 }
 
-function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerFacKey, crewPids, groundTexture, tiles) {
+function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerFacKey, crewPids, groundTexture, tiles, diplomacyPids) {
   const [pc, pr] = tileKey.split(",").map(Number);
   const blendWithTerrain = usesNewWorldVisuals(pc,pr);
   // tileKey is the CENTER tile. Top-left of the 3×3 is one step back.
@@ -1507,7 +1521,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
   // ── Border (draw before sprite so sprite renders on top) ──
   const borderGfx = new PIXI.Graphics();
-  const borderTint = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId) ?? 0xdc3c28;
+  const borderTint = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId, diplomacyPids) ?? 0xdc3c28;
   
   const borderPath = [];
   borderPath.push(isoXY(tlc, tlr).cx, isoXY(tlc, tlr).cy - elev);
@@ -1560,27 +1574,20 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const HQ_OFFSETS = {
     pirates:        { xOff:  0,    yOff:  0,    scale: 1.0  },
     player:         { xOff:  0,    yOff:  0,    scale: 1.0  },
-    // Dark-v2 HQs were authored with a taller visible silhouette than the
-    // legacy 0.80 height clamp below.  Slightly enlarge them and let the
-    // dark assets keep their square/native presentation so their towers do
-    // not look flattened in-game.
-    orcs:           { xOff:  0,    yOff:  0,    scale: 1.12 },
-    ai:             { xOff:  0,    yOff:  0,    scale: 1.12 },
-    wizards:        { xOff:  5,    yOff: -3,    scale: 1.10 },
-    dragons:        { xOff:  5,    yOff:  7,    scale: 1.08 },
-    holyknights:    { xOff: -5,    yOff:  7,    scale: 1.05 },
-    nightcreatures: { xOff:  0,    yOff:  7,    scale: 1.10 },
-    coldborns:      { xOff:  0,    yOff:  10,   scale: 1.08 },
-    ashen_dead:     { xOff:  0,    yOff:  10,   scale: 1.10 },
+    orcs:           { xOff:  0,    yOff:  0,    scale: 1.0  },
+    ai:             { xOff:  0,    yOff:  0,    scale: 1.0  },
+    wizards:        { xOff:  5,    yOff: -5,    scale: 1.0  },
+    dragons:        { xOff:  5,    yOff:  10,   scale: 1.0  },
+    holyknights:    { xOff: -5,    yOff:  10,   scale: 1.0  },
+    nightcreatures: { xOff:  0,    yOff:  10,   scale: 1.0  },
+    coldborns:      { xOff:  0,    yOff:  15,   scale: 1.0  },
+    ashen_dead:     { xOff:  0,    yOff:  15,   scale: 1.0  },
   };
   const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0 };
 
   const baseW = TW * 2.2;
   const targetW = baseW * (off.scale || 1.0);
-  // Preserve the legacy fit for original HQs, but do not squash the new
-  // dark-v2 artwork. The dark assets are square and their internal transparent
-  // framing already controls the visible silhouette.
-  const targetH = useDarkHQArt ? targetW : targetW * 0.80;
+  const targetH = targetW * 0.80;
 
   const spriteX = bx + off.xOff;
   // The approved square Pirate sprite uses its visible base as the ground
@@ -1704,7 +1711,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
-function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerFacKey, crewPids, vb, allHqKeys, aiPlayerIdMap, groundTexture) {
+function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerFacKey, crewPids, vb, allHqKeys, aiPlayerIdMap, groundTexture, diplomacyPids) {
   if (_hqKeyIndex.size === 0 || !vb) {
     if (!vb) _hqKeyIndex.clear();
     // Seed from patched tiles
@@ -1765,7 +1772,7 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
     }
 
     const tileWithPid = ownerPlayerId && !tile.ownerPlayerId ? { ...tile, ownerPlayerId } : tile;
-    hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerFacKey, crewPids, groundTexture, tiles));
+    hqCont.addChild(_buildOneHQ(tileKey, tileWithPid, selKey, onHQClick, PIXI, isPanningRef, _hqTexCache, playerName, playerFacKey, crewPids, groundTexture, tiles, diplomacyPids));
     _hqStateCache.set(tileKey, { faction, owner, isSelected, playerName: owner === "player" ? playerName : null, isCrew, blendWithTerrain, borderSignature });
 
     // Count tint changes for summary log
@@ -1830,7 +1837,7 @@ function drawMarchLines(gfx, cmds, reinMarches, tiles) {
   (reinMarches || []).forEach(rm => drawPath(rm.path.slice(rm.step), 0x2299ff)); // blue for reinforcements
 }
 
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles, guardedTileKeys, spawns, protectedTileKeys }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, diplomacyPlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles, guardedTileKeys, spawns, protectedTileKeys }, ref) {
 
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
@@ -1934,6 +1941,15 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     redrawRef.current?.redraw?.();
     redrawRef.current?.redrawAllHQs?.();
   }, [crewmatePlayerIds]);
+
+  // Diplomacy (Ally/Enemy) tint — same ref pattern as crewPidsRef above.
+  const diplomacyPidsRef = useRef(diplomacyPlayerIds ?? EMPTY_DIPLOMACY_PIDS);
+  useEffect(() => {
+    diplomacyPidsRef.current = diplomacyPlayerIds ?? EMPTY_DIPLOMACY_PIDS;
+    clearHQCache();
+    redrawRef.current?.redraw?.();
+    redrawRef.current?.redrawAllHQs?.();
+  }, [diplomacyPlayerIds]);
 
   useImperativeHandle(ref, () => ({
     teleport(px, py) {
@@ -2411,7 +2427,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const tg = tileFrontRef.current;
       tg.clear();
       drawAllTiles(tg, curTiles, b.rMin, b.rMax, b.cMin, b.cMax,
-        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z, playerFacKeyRef.current, crewPidsRef.current, groundTexture);
+        selRef.current, modeRef.current, cByTile, mvCmdRef.current?.uid, z, playerFacKeyRef.current, crewPidsRef.current, groundTexture, diplomacyPidsRef.current);
 
       // ── Props layer: only redraw when state changed OR viewport moved outside
       // the previously rendered props buffer. Never block synchronously — always
@@ -2477,7 +2493,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current, aiPlayerIdMapRef_.current, groundTexture);
+      }, PIXI, isPanning, playerName, playerFacKeyRef.current, crewPidsRef.current, vb, allHqKeysRef.current, aiPlayerIdMapRef_.current, groundTexture, diplomacyPidsRef.current);
     }
 
     function redrawAllHQs() {
@@ -2488,7 +2504,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         drawSelection(key);
         lastBoundsRef.current = null;
         onTileClickRef.current(key, e);
-      }, PIXI, isPanning, playerName, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current, aiPlayerIdMapRef_.current, groundTexture);
+      }, PIXI, isPanning, playerName, playerFacKeyRef.current, crewPidsRef.current, null, allHqKeysRef.current, aiPlayerIdMapRef_.current, groundTexture, diplomacyPidsRef.current);
     }
 
     redrawRef.current = {
