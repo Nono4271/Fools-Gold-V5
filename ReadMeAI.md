@@ -1490,6 +1490,29 @@ three new `useChat.js` group-subchannel mutators down to `ChatPanel`.
 **Verified:** full test suite (`npm test`, 297/297) and production build
 (`npm run build`) both pass.
 
+## 2026-09-20 — Claude (Sonnet), session 7
+
+### Sub-channels moved into the left column (nested under Guild/Group), default to #General
+Follow-up to session 6's crew/group sub-channels — the owner wanted them
+in the left nav, not a right-pane picker screen.
+
+**File:** `src/components/game/ChatPanel.jsx`:
+- New `SubchannelRows` component — renders directly under a crew or group
+  row in the left column, only while that row is the open one; smaller/
+  indented buttons than the World/Faction/Guild rows, 🔒 marks a
+  leader-only one (#Announcement).
+- Removed the old right-pane "pick a sub-channel" screen entirely.
+  `activeSub` now falls back to `#General` (then the first sub-channel) any
+  time nothing more specific is selected — opening Guild or a Group lands
+  straight in #General, per the owner's spec, and picking a different
+  sub-channel is just a click in the left column. Dropped the now-unneeded
+  `‹` back button from the message view; it keeps a small header showing
+  which sub-channel you're in.
+
+**Verified:** full test suite (`npm test`, 297/297) and production build
+(`npm run build`) both pass. No rules changes — this is UI-placement only,
+`shared/utils/subchannels.js` from session 6 is untouched.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
