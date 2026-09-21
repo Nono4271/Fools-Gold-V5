@@ -48,12 +48,12 @@ test('validateCrewCreation enforces name/abbr/description/emblem/privacy', () =>
   assert.equal(errs.length, 5);
 });
 
-test('createCrew defaults: founder is sole member, locked privacy, level 1, empty officers/fortresses', () => {
+test('createCrew defaults: founder is sole member, open privacy, level 1, empty officers/fortresses', () => {
   const crew = createCrew({ id: 'crew_1', name: 'Iron Tide', abbr: 'IRON', faction: 'pirates', founderId: 'player' });
   assert.deepEqual(crew.members, ['player']);
   assert.equal(crew.founder, 'player');
   assert.deepEqual(crew.officers, []);
-  assert.equal(crew.privacy, CREW_PRIVACY.LOCKED);
+  assert.equal(crew.privacy, CREW_PRIVACY.OPEN);
   assert.equal(crew.level, 1);
   assert.equal(crew.cap, 50);
   assert.deepEqual(crew.fortresses, []);
