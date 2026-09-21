@@ -30,3 +30,44 @@ export function getOrCreatePlayerId() {
     return randomId();
   }
 }
+
+// ─── Optional username/password accounts (server/auth.js) ─────────────────
+// Logging in doesn't replace this file's whole scheme — it just overwrites
+// the stored id with the server-issued accountId, so the same playerId
+// (and everything server-side attributed to it) now follows the player to
+// any browser/device they log into, instead of staying pinned to one
+// browser's localStorage.
+const USERNAME_KEY = "foolsgold_username";
+
+export function getAccountUsername() {
+  try { return localStorage.getItem(USERNAME_KEY); } catch { return null; }
+}
+
+function adoptAccount({ accountId, username }) {
+  try {
+    localStorage.setItem(STORAGE_KEY, accountId);
+    localStorage.setItem(USERNAME_KEY, username);
+  } catch { /* best-effort — still return the id below */ }
+  return accountId;
+}
+
+async function postAuth(path, username, password) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+export async function registerAccount(username, password) {
+  const data = await postAuth("/api/register", username, password);
+  return adoptAccount(data);
+}
+
+export async function loginAccount(username, password) {
+  const data = await postAuth("/api/login", username, password);
+  return adoptAccount(data);
+}
