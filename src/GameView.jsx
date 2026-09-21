@@ -557,7 +557,6 @@ export default function GameView(props) {
         mapRendererRef={mapRendererRef}
         voidTapReady={voidTapReady}
         crewOpen={crewOpen} setCrewOpen={setCrewOpen} playerCrewId={playerCrewId}
-        chatOpen={chatOpen} setChatOpen={setChatOpen}
         searchOpen={searchOpen} setSearchOpen={setSearchOpen}
         forts={forts}
         spawns={spawns}
