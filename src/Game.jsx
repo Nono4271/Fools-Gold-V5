@@ -10,7 +10,7 @@ import { barracksCapacity, upgCost, upgDuration, maxAvailLevel, tierFromBranchLe
 import { isoXY } from "../shared/constants/geometry.js";
 
 // Utils
-import { adj, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../shared/utils/pathfinding.js";
+import { adj, adj8, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../shared/utils/pathfinding.js";
 import { applyGearToCmd } from "../shared/utils/gearStats.js";
 import { capstoneTrainDiscount } from "../shared/utils/training.js";
 
@@ -1148,7 +1148,8 @@ export default function RiseToWar() {
 
   const selAdjToPlayer = useMemo(() => {
     if (!selTile || selTile.owner==="player") return false;
-    const result = adj(selTile.c, selTile.r).some(ak => {
+    // adj8: attack adjacency includes diagonals, unlike movement/capture adj().
+    const result = adj8(selTile.c, selTile.r).some(ak => {
       const t = tiles[ak];
       if (!t) return false;
       if (t.owner === "player") return true;
