@@ -69,6 +69,30 @@ function channelLabel(channel, playerId, playerName) {
   return `👥 ${channel.name}`;
 }
 
+// Nested under a crew/group row in the left column, only while that row is
+// the open one — smaller than the parent rows, indented, per the owner's
+// spec. Clicking a row switches the active sub-channel within this parent.
+function SubchannelRows({ subChannels, activeSubId, onSelect }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, margin: "2px 0 4px" }}>
+      {subChannels.map(s => (
+        <button key={s.id} onClick={() => onSelect(s.id)} style={{
+          ...BTN_RESET, padding: "5px 6px 5px 18px", borderRadius: 4, textAlign: "left",
+          background: activeSubId === s.id ? "rgba(200,160,96,.12)" : "rgba(255,255,255,.02)",
+          border: `1px solid ${activeSubId === s.id ? "#c8a06040" : "#1a2028"}`,
+          color: activeSubId === s.id ? GOLD : "#5a6a7a",
+          fontFamily: "'Cinzel',serif", fontSize: 7, letterSpacing: ".04em",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}># {s.name}</span>
+          {s.leaderOnly && <span style={{ flexShrink: 0, marginLeft: 4 }}>🔒</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function PickerRow({ id, label, checked, onToggle }) {
   return (
     <label style={{
@@ -122,7 +146,13 @@ export default memo(function ChatPanel({
   // container itself. World/Faction/DM stay flat, unaffected.
   const isSubbed = !!active && (active.type === "crew" || active.type === "group");
   const subChannels = isSubbed ? subchannelsOf(active, { crews }) : [];
-  const activeSub = isSubbed ? (subChannels.find(s => s.id === selectedSubId) || null) : null;
+  // Defaults to #General — opening Guild/a Group always lands there, per the
+  // owner's spec, rather than a separate "pick a channel" step.
+  const activeSub = isSubbed
+    ? (subChannels.find(s => s.id === selectedSubId)
+      || subChannels.find(s => s.id === "general")
+      || subChannels[0] || null)
+    : null;
   const msgChannelId = isSubbed ? (activeSub ? subchannelId(active.id, activeSub.id) : null) : active?.id;
   const msgs = msgChannelId ? getMessages(msgChannelId) : [];
   const canManage = isSubbed && canManageSubchannels(playerId, active, { crews });
@@ -294,13 +324,22 @@ export default memo(function ChatPanel({
                 <div style={{ ...TEXT_XS, color: "#3a4050", padding: "10px 4px" }}>No guild yet</div>
               )}
               {crewCh.map(ch => (
-                <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
-                  ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
-                  background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
-                  border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                  color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}>{channelLabel(ch, playerId, playerName)}</button>
+                <div key={ch.id}>
+                  <button onClick={() => openChannel(ch.id)} style={{
+                    ...BTN_RESET, width: "100%", padding: "7px 6px", borderRadius: 4, textAlign: "left",
+                    background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
+                    border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
+                    color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  }}>{channelLabel(ch, playerId, playerName)}</button>
+                  {active?.id === ch.id && (
+                    <SubchannelRows
+                      subChannels={subchannelsOf(ch, { crews })}
+                      activeSubId={activeSub?.id}
+                      onSelect={setSelectedSub}
+                    />
+                  )}
+                </div>
               ))}
               <button onClick={() => { setPicking(true); setPickSel([]); setGroupName(""); setSelected(null); }} style={{
                 ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
@@ -308,13 +347,22 @@ export default memo(function ChatPanel({
                 color: GOLD, ...TEXT_XS,
               }}>+ New Group</button>
               {groupCh.map(ch => (
-                <button key={ch.id} onClick={() => openChannel(ch.id)} style={{
-                  ...BTN_RESET, padding: "7px 6px", borderRadius: 4, textAlign: "left",
-                  background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
-                  border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
-                  color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}>{channelLabel(ch, playerId, playerName)}</button>
+                <div key={ch.id}>
+                  <button onClick={() => openChannel(ch.id)} style={{
+                    ...BTN_RESET, width: "100%", padding: "7px 6px", borderRadius: 4, textAlign: "left",
+                    background: active?.id === ch.id ? "rgba(200,160,96,.1)" : "rgba(255,255,255,.03)",
+                    border: `1px solid ${active?.id === ch.id ? "#c8a06050" : "#1e2028"}`,
+                    color: active?.id === ch.id ? GOLD : "#6a7a8a", ...TEXT_XS,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  }}>{channelLabel(ch, playerId, playerName)}</button>
+                  {active?.id === ch.id && (
+                    <SubchannelRows
+                      subChannels={subchannelsOf(ch, { crews })}
+                      activeSubId={activeSub?.id}
+                      onSelect={setSelectedSub}
+                    />
+                  )}
+                </div>
               ))}
             </>
           )}
@@ -402,30 +450,15 @@ export default memo(function ChatPanel({
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div style={{ ...TEXT_XS, color: "#3a4050" }}>Select a channel</div>
             </div>
-          ) : isSubbed && !activeSub ? (
-            <div className="scr chat-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ ...TEXT_SM, color: GOLD, marginBottom: 2 }}>{channelLabel(active, playerId, playerName)}</div>
-              {subChannels.map(s => (
-                <button key={s.id} onClick={() => setSelectedSub(s.id)} style={{
-                  ...BTN_RESET, padding: "9px 10px", borderRadius: 4, textAlign: "left",
-                  background: "rgba(255,255,255,.03)", border: `1px solid #1e2028`,
-                  color: "#c8c0b0", ...TEXT_XS, fontSize: 9,
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                }}>
-                  <span># {s.name}</span>
-                  {s.leaderOnly && <span style={{ fontSize: 9 }}>🔒</span>}
-                </button>
-              ))}
-            </div>
           ) : (
             <>
-              {isSubbed && (
+              {isSubbed && activeSub && (
                 <div style={{
-                  display: "flex", alignItems: "center", gap: 6, padding: "6px 10px",
+                  display: "flex", alignItems: "center", gap: 6, padding: "7px 10px",
                   borderBottom: `1px solid ${BORDER_COL}`, flexShrink: 0,
                 }}>
-                  <button onClick={() => setSelectedSub(null)} style={{ ...BTN_RESET, color: "#8a9aaa", fontSize: 14, padding: "2px 4px" }}>‹</button>
                   <span style={{ ...TEXT_XS, color: GOLD }}># {activeSub.name}</span>
+                  {activeSub.leaderOnly && <span style={{ fontSize: 9 }}>🔒</span>}
                 </div>
               )}
               <div ref={msgListRef} className="scr chat-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
