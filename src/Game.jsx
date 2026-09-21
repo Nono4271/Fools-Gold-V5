@@ -30,6 +30,7 @@ import { useBattle } from "./hooks/useBattle.js";
 import { useGacha } from "./hooks/useGacha.js";
 import { useTomes } from "./hooks/useTomes.js";
 import { useFortRemovals } from "./hooks/useFortRemovals.js";
+import { marchStaminaCost } from "../shared/utils/tactics.js";
 import { isDoubleTap } from "../shared/utils/doubleTap.js";
 import { useVoidTap } from "./hooks/useVoidTap.js";
 import { useTroopSlots } from "./hooks/useTroopSlots.js";
@@ -695,7 +696,7 @@ export default function RiseToWar() {
 
   // ── Dragon eggs, training/gather orders, stamina — rules in shared/utils/tactics.js ──
   useTacticTicks({
-    screen, dragonEggsCap, setDragonEggs, setCmds, setPlayerCmds, setRss,
+    screen, dragonEggsCap, setDragonEggs, setCmds, setPlayerCmds, setAiCmds, setRss,
     tilesMapRef, trainingXpMult, staminaMaxRef, floaty,
   });
 
@@ -1126,7 +1127,7 @@ export default function RiseToWar() {
     }
 
     // Stamina check: moves cost 10, attacks cost 20
-    const staminaCost = type === "attack" ? 20 : 10;
+    const staminaCost = marchStaminaCost(type);
     const curStamina = freshCmd.stamina ?? staminaMax;
     if (curStamina < staminaCost) {
       floaty(`⚡ Not enough stamina! (${curStamina}/${staminaMax})`, "#cc8030", freshCmd.tk);
