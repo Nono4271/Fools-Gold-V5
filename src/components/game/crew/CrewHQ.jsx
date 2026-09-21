@@ -127,10 +127,15 @@ export default function CrewHQ({
             <div style={{ position: "absolute", inset: 0 }}>
               {/* The war table itself — owner-supplied scene. Fills the whole
                   pane (not just a shrunk-to-content box), so it reaches every
-                  edge instead of leaving bare space above/below it. */}
+                  edge instead of leaving bare space above/below it. A dark
+                  gradient sits underneath the image (same layered-background
+                  trick as CrewLanding) so the pane reads as "loading", not
+                  broken/blank, on a slow connection before the JPG arrives —
+                  the JPG itself was also cut from ~380KB to ~110KB. */}
               <div style={{
                 position: "absolute", inset: 0,
-                backgroundImage: `url(${TABLE_BG_URL})`, backgroundSize: "cover", backgroundPosition: "center",
+                backgroundImage: `url(${TABLE_BG_URL}), linear-gradient(160deg, #241a10, #120c07)`,
+                backgroundSize: "cover, cover", backgroundPosition: "center, center",
                 border: "1px solid #3a2a18", overflow: "hidden",
               }} />
 
@@ -138,13 +143,13 @@ export default function CrewHQ({
                   surface itself — down among the map/pieces, staggered at
                   different heights, not pinned along the top edge. */}
               <div style={{ position: "absolute", top: "42%", left: "29%" }}>
-                <TableHotspot icon="🕊️" label="Diplomacy" onClick={() => setTab("diplomacy")} />
+                <TableHotspot icon="diplomacy" label="Diplomacy" onClick={() => setTab("diplomacy")} />
               </div>
               <div style={{ position: "absolute", top: "30%", left: "50%" }}>
-                <TableHotspot icon="🧪" label="Boosts" onClick={() => setTab("boosts")} />
+                <TableHotspot icon="boosts" label="Boosts" onClick={() => setTab("boosts")} />
               </div>
               <div style={{ position: "absolute", top: "55%", left: "70%" }}>
-                <TableHotspot icon="🎯" label={crew.target ? crew.target.label || "Target set" : "Tasks"}
+                <TableHotspot icon="tasks" label={crew.target ? crew.target.label || "Target set" : "Tasks"}
                   onClick={() => canPinTarget && setSettingTarget(v => !v)} />
 
                 {settingTarget && canPinTarget && (
@@ -227,15 +232,32 @@ export default function CrewHQ({
   );
 }
 
+// Single-color gold seals — the old green boxes + full-color emoji clashed
+// hard against the warm candlelit table photo. These read as one object
+// (a wax-seal medallion) sitting on the table instead of a UI sticker.
+const HOTSPOT_ICON_PATHS = {
+  diplomacy: "M12 4c-1 2-3 3-5 3 0 4 2 7 5 9 3-2 5-5 5-9-2 0-4-1-5-3z M9 9c1 1 2 1.5 3 1.5s2-.5 3-1.5",
+  boosts: "M10 3h4v3l2.4 6.2c.6 1.6-.6 3.3-2.3 3.3H9.9c-1.7 0-2.9-1.7-2.3-3.3L10 6V3z M9 15h6",
+  tasks: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
+};
+
 function TableHotspot({ icon, label, onClick }) {
   return (
     <button onClick={onClick} style={{
       ...BTN_RESET, position: "relative", display: "flex", flexDirection: "column",
-      alignItems: "center", gap: 3, padding: "6px 12px", borderRadius: 6,
-      background: "rgba(40,160,80,.1)", border: "1px solid #40aa6040",
+      alignItems: "center", gap: 3, padding: "8px 10px", borderRadius: "50%",
+      background: "radial-gradient(circle at 35% 30%, rgba(60,44,20,.85), rgba(20,14,6,.75))",
+      border: "1.5px solid #c8a060", boxShadow: "0 0 8px rgba(0,0,0,.6), inset 0 0 6px rgba(200,160,96,.15)",
+      width: 46, height: 46, justifyContent: "center",
     }}>
-      <span style={{ fontSize: 18 }}>{icon}</span>
-      <span style={{ ...TEXT_XS, color: "#a0d0b0", fontSize: 7 }}>{label}</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e0c080" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <path d={HOTSPOT_ICON_PATHS[icon]} />
+      </svg>
+      <span style={{
+        position: "absolute", top: "100%", marginTop: 3, whiteSpace: "nowrap",
+        ...TEXT_XS, color: "#e0c080", fontSize: 7, letterSpacing: ".04em",
+        textShadow: "0 1px 2px rgba(0,0,0,.9)",
+      }}>{label}</span>
     </button>
   );
 }
