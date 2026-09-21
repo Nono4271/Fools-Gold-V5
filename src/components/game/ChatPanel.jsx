@@ -901,7 +901,7 @@ export default memo(function ChatPanel({
               </div>
               {typingByChannel?.[msgChannelId] && (
                 <div style={{ padding: "3px 12px", flexShrink: 0, ...TEXT_XS, fontSize: 9, color: "#6a7a8a", fontStyle: "italic" }}>
-                  {typingByChannel[msgChannelId]} is typing…
+                  {typingByChannel[msgChannelId].name} is typing…
                 </div>
               )}
               {replyTo && (
