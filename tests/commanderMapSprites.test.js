@@ -4,6 +4,8 @@ import {commanderAtlas,commanderInsideHQ,facingRow,animationColumn} from '../src
 test('both pirates use atlases, including AI instances with replaced IDs',()=>{
   assert.match(commanderAtlas({id:'h1'}),/-v3\.png$/);assert.match(commanderAtlas({id:'h13'}),/-v3\.png$/);
   assert.match(commanderAtlas({id:'ai_cmd1',bust:'/commanders/h13_admiral_brine_bust.webp'}),/-v3\.png$/);
+  assert.match(commanderAtlas({id:'h43'}),/-v1\.png$/);
+  assert.match(commanderAtlas({id:'ai_fang',bust:'/commanders/h45_fang_groth_bust.webp'}),/-v1\.png$/);
   assert.equal(commanderAtlas({id:'h14'}),null);
 });
 test('HQ hides only undeployed commanders; every active march remains visible',()=>{
