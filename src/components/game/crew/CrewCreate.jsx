@@ -60,15 +60,15 @@ export default function CrewCreate({ playerGems, crewCreationCost, onCreate, onC
       <EmblemPicker value={emblem} onChange={setEmblem} />
 
       <div>
-        <div style={{ ...TEXT_XS, color: "#5a6a7a", marginBottom: 4, letterSpacing: ".06em" }}>CREW NAME (4–20 chars)</div>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Iron Tide" maxLength={20}
-          style={inputStyle()} />
-      </div>
-
-      <div>
         <div style={{ ...TEXT_XS, color: "#5a6a7a", marginBottom: 4, letterSpacing: ".06em" }}>ABBREVIATION (4 chars)</div>
         <input value={abbr} onChange={e => setAbbr(e.target.value.toUpperCase())} placeholder="e.g. IRON" maxLength={4}
           style={{ ...inputStyle(), fontSize: 13, letterSpacing: ".15em", textTransform: "uppercase" }} />
+      </div>
+
+      <div>
+        <div style={{ ...TEXT_XS, color: "#5a6a7a", marginBottom: 4, letterSpacing: ".06em" }}>CREW NAME (4–20 chars)</div>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Iron Tide" maxLength={20}
+          style={inputStyle()} />
       </div>
 
       <div>
