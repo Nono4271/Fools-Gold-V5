@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, memo } from "react";
 import { aiDisplayName } from "../../../shared/utils/aiChatter.js";
 import { aiFactionOf } from "../../../shared/utils/chatRules.js";
 import { censorText } from "../../../shared/utils/profanity.js";
+import { useTranslatedText } from "../../hooks/useTranslatedText.js";
 import {
   subchannelsOf, subchannelId, canManageSubchannels, canPostInSubchannel,
 } from "../../../shared/utils/subchannels.js";
@@ -129,6 +130,35 @@ function SubchannelRows({ subChannels, activeSubId, onSelect }) {
   );
 }
 
+// One message row. Pulled out of the message-list `.map()` so it can call
+// useTranslatedText (a hook) per-message without breaking the rules of
+// hooks — a variable-length `.map()` can't call hooks directly inline.
+function MessageBubble({ m, mine, crews, profanityFilterEnabled, translateEnabled, onNameClick }) {
+  const filtered = profanityFilterEnabled ? censorText(m.text) : m.text;
+  const text = useTranslatedText(filtered, translateEnabled);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
+      <div
+        onClick={onNameClick}
+        style={{
+          ...TEXT_NAME, color: mine ? "#40cc80" : "#6a8aa0", marginBottom: 2,
+          cursor: mine ? "default" : "pointer",
+          textDecoration: mine ? "none" : "underline", textDecorationColor: "transparent",
+        }}
+      >
+        {taggedName(mine ? "You" : m.senderName, crewAbbrFor(m.senderId, crews))}
+      </div>
+      <div style={{
+        maxWidth: "85%", padding: "6px 9px", borderRadius: 6,
+        background: mine ? "rgba(40,160,80,.12)" : "rgba(255,255,255,.04)",
+        border: `1px solid ${mine ? "#40aa6040" : "#1e2028"}`,
+        color: "#c8c0b0", fontSize: 16, fontFamily: "'Crimson Pro',serif", lineHeight: 1.4,
+        wordBreak: "break-word",
+      }}>{text}</div>
+    </div>
+  );
+}
+
 function NameMenuBtn({ onClick, tone = "neutral", children }) {
   const palette = {
     neutral: { bg: "rgba(255,255,255,.04)", border: "#2a3040", color: "#c8c0b0" },
@@ -204,8 +234,8 @@ export default memo(function ChatPanel({
   // there's no dedicated profile screen elsewhere in the game yet).
   const [nameMenuId, setNameMenuId] = useState(null);
   const [nameMenuView, setNameMenuView] = useState("menu");
-  // "Aa" header button — placeholder toggle for a future message-translate
-  // feature (not implemented yet: no translation call is wired up here).
+  // "Aa" header button — translates message text into the device's own
+  // language (src/hooks/useTranslatedText.js / src/utils/translate.js).
   const [translateEnabled, setTranslateEnabled] = useState(false);
 
   const worldCh  = channels.filter(c => c.type === "world");
@@ -339,7 +369,7 @@ export default memo(function ChatPanel({
           )}
           <button
             onClick={() => setTranslateEnabled(v => !v)}
-            title={translateEnabled ? "Translate: on (coming soon)" : "Translate messages"}
+            title={translateEnabled ? "Translate: on" : "Translate messages to your language"}
             style={{
               ...BTN_RESET, minWidth: 36, minHeight: 36, borderRadius: 4,
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -565,31 +595,14 @@ export default memo(function ChatPanel({
                     No messages yet.
                   </div>
                 )}
-                {msgs.map(m => {
-                  const mine = m.senderId === playerId;
-                  const text = profanityFilterEnabled ? censorText(m.text) : m.text;
-                  return (
-                    <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
-                      <div
-                        onClick={() => openNameMenu(m.senderId)}
-                        style={{
-                          ...TEXT_NAME, color: mine ? "#40cc80" : "#6a8aa0", marginBottom: 2,
-                          cursor: mine ? "default" : "pointer",
-                          textDecoration: mine ? "none" : "underline", textDecorationColor: "transparent",
-                        }}
-                      >
-                        {taggedName(mine ? "You" : m.senderName, crewAbbrFor(m.senderId, crews))}
-                      </div>
-                      <div style={{
-                        maxWidth: "85%", padding: "6px 9px", borderRadius: 6,
-                        background: mine ? "rgba(40,160,80,.12)" : "rgba(255,255,255,.04)",
-                        border: `1px solid ${mine ? "#40aa6040" : "#1e2028"}`,
-                        color: "#c8c0b0", fontSize: 16, fontFamily: "'Crimson Pro',serif", lineHeight: 1.4,
-                        wordBreak: "break-word",
-                      }}>{text}</div>
-                    </div>
-                  );
-                })}
+                {msgs.map(m => (
+                  <MessageBubble
+                    key={m.id} m={m} mine={m.senderId === playerId} crews={crews}
+                    profanityFilterEnabled={profanityFilterEnabled}
+                    translateEnabled={translateEnabled}
+                    onNameClick={() => openNameMenu(m.senderId)}
+                  />
+                ))}
               </div>
               {canPostHere ? (
                 <div style={{ position: "relative", flexShrink: 0 }}>
