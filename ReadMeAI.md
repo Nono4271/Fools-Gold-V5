@@ -1660,6 +1660,41 @@ isn't one wired up in this codebase).
 **Verified:** full test suite (`npm test`, 304/304) and production build
 (`npm run build`) both pass.
 
+## 2026-09-21 — Claude (Sonnet), session 13
+
+### Message translation ("Aa" button) — now actually translates
+Per the owner: free/keyless provider, target language auto-detected from
+the device — no language picker.
+
+**New files:**
+- `src/utils/translate.js` — `translateText(text, targetLang)` calls the
+  unofficial, key-free Google Translate "gtx" web endpoint (no server of
+  our own exists to do this from — chat is local-only, see earlier
+  entries). Module-level cache by `${targetLang}:${text}` since the AI
+  flavor-chatter pools repeat lines a lot. English targets are a deliberate
+  no-op (the game's own text is authored in English). Best-effort: any
+  failure (network, rate-limit, shape change) falls back to the original
+  text — translation should never be able to break chat.
+- `src/hooks/useTranslatedText.js` — `useTranslatedText(text, enabled)`,
+  resolves the device's language once via `navigator.language` and re-runs
+  the translation whenever `text`/`enabled` change.
+
+**File:** `src/components/game/ChatPanel.jsx` — pulled the per-message JSX
+out into a new `MessageBubble` component (a `.map()` can't call a hook
+directly per iteration) and wired `useTranslatedText` in there, gated on
+the existing `translateEnabled` state from the "Aa" button.
+
+**Known caveat:** this is an *unofficial* Google endpoint — it can
+rate-limit or block traffic from some networks (a same-endpoint spot-check
+from this dev environment got HTTP 429, though that's this sandbox's shared
+IP, not necessarily how it behaves for players' own browsers). If it turns
+out unreliable in practice, swapping to a real provider (DeepL/Google Cloud
+Translate) means adding an API key in `src/utils/translate.js` only — the
+hook and `MessageBubble` wiring don't change.
+
+**Verified:** full test suite (`npm test`, 304/304) and production build
+(`npm run build`) both pass.
+
 - Add a new dated entry above (don't overwrite prior entries).
 - Note: file changed, function/line, what was broken, what the fix does,
   and any follow-up/known issues.
