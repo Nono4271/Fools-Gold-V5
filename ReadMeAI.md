@@ -1947,6 +1947,13 @@ table rather than in a lined-up row floating separately above it.
 Renamed the rally-target hotspot's empty-state label from "No tasks" to
 "Tasks".
 
+**Follow-up (same session):** owner marked up a screenshot showing the
+three hotspots should sit down on the table surface itself, near where
+the map/pieces are, not pinned along the top edge. Repositioned to
+`top:42%/left:29%` (Diplomacy), `top:30%/left:50%` (Boosts),
+`top:55%/left:70%` (Tasks) — percentages of the table pane, matching the
+marked-up positions.
+
 **Verified:** full test suite (`npm test`, 352/352) and production build
 (`npm run build`) both pass.
 
