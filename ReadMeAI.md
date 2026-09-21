@@ -9,6 +9,43 @@ Branch: codex/core-fixes-20260919
 ---
 
 ## 2026-09-20 — Claude (Sonnet 5)
+### Session continuity: progress now survives a reload, and follows a login
+
+Follow-up to round 4 (login system). Two gaps that would have bitten during
+a deep testing pass, closed:
+
+**1. sessionId is no longer regenerated every load.** `Game.jsx` used to do
+`useState(() => "fg-" + random())` — a brand-new session every time the page
+loaded, even in the same browser, so the server's disk-persisted session
+(round 3) never actually got reconnected to in practice. Now
+`getOrCreateSessionId()` (`src/utils/playerIdentity.js`) persists it in
+`localStorage`, same pattern as the existing `playerId`.
+
+**2. Logging in resumes the account's last session, anywhere.** `server/auth.js`
+now keeps a small `server/data/account-sessions/<accountId>.json` mapping
+each account to the last `sessionId` it was seen on — written on every
+`GAME_INIT` from a connection whose `playerId` is an account id
+(`server/index.js`, `if (ws._playerId?.startsWith('acct_'))`). `/api/login`
+and `/api/register` now return `lastSessionId` alongside `accountId`, and
+the client's `loginAccount`/`registerAccount` (`playerIdentity.js`)
+overwrite the local sessionId with it when present — so logging in on a
+different browser/device picks up the same in-progress game instead of
+starting fresh.
+
+Live-verified: registered an account (`lastSessionId: null`), sent a
+`GAME_INIT` for a session under that account's id, then logged in again —
+the response correctly returned that same `sessionId`.
+
+`npm test` (275/275) and `npm run build` both pass.
+
+**Still not done:** this only tracks the *last* session an account touched
+— no list of multiple in-progress games per account, no way to explicitly
+switch sessions from the UI. Fine for one save slot per account, which is
+what solo testing needs right now.
+
+---
+
+## 2026-09-20 — Claude (Sonnet 5)
 ### Pre-multiplayer prep, round 4: username/password accounts + TILE_PATCH viewport filtering
 
 Two of the previously-flagged gaps, closed:
