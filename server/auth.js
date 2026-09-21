@@ -32,6 +32,26 @@ function verifyPassword(password, salt, hash) {
 export function makeAuth(accountsDir) {
   fs.mkdirSync(accountsDir, { recursive: true });
 
+  // Roadmap item: so a login can resume the player's in-progress game
+  // instead of always starting a fresh session — one small file per
+  // account mapping accountId -> last sessionId it was seen on. Kept
+  // separate from the account record itself (which is keyed by username,
+  // not accountId) to avoid a username->accountId lookup on every GAME_INIT.
+  const sessionsDir = path.join(path.dirname(accountsDir), 'account-sessions');
+  fs.mkdirSync(sessionsDir, { recursive: true });
+  function sessionFile(accountId) {
+    const safe = String(accountId).replace(/[^a-zA-Z0-9_-]/g, '_');
+    return path.join(sessionsDir, safe + '.json');
+  }
+  function recordSession(accountId, sessionId) {
+    try { fs.writeFileSync(sessionFile(accountId), JSON.stringify({ sessionId, updatedAt: Date.now() })); }
+    catch (e) { console.warn('Failed to record session for account ' + accountId + ':', e.message); }
+  }
+  function getLastSession(accountId) {
+    try { return JSON.parse(fs.readFileSync(sessionFile(accountId), 'utf8')).sessionId || null; }
+    catch { return null; }
+  }
+
   function register(username, password) {
     if (typeof username !== 'string' || username.length < 3 || username.length > 20)
       return { error: 'Username must be 3-20 characters' };
@@ -46,7 +66,7 @@ export function makeAuth(accountsDir) {
     const { salt, hash } = hashPassword(password);
     const accountId = 'acct_' + crypto.randomBytes(8).toString('hex');
     fs.writeFileSync(file, JSON.stringify({ accountId, username, salt, hash, createdAt: Date.now() }));
-    return { accountId, username };
+    return { accountId, username, lastSessionId: null };
   }
 
   function login(username, password) {
@@ -57,8 +77,8 @@ export function makeAuth(accountsDir) {
     let account;
     try { account = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return { error: 'Invalid username or password' }; }
     if (!verifyPassword(password, account.salt, account.hash)) return { error: 'Invalid username or password' };
-    return { accountId: account.accountId, username: account.username };
+    return { accountId: account.accountId, username: account.username, lastSessionId: getLastSession(account.accountId) };
   }
 
-  return { register, login };
+  return { register, login, recordSession };
 }

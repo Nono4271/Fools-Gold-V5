@@ -347,6 +347,11 @@ function handleGameInit(ws, msg) {
   // sent it, instead of whatever ownerPlayerId the client puts in the patch.
   ws._playerId = typeof playerId === 'string' && playerId ? playerId : null;
   ws._sessionId = sessionId;
+  // Roadmap item: remember which session a logged-in account was last seen
+  // on, so a login from any browser resumes it (see auth.recordSession /
+  // getLastSession, returned to the client from /api/login) instead of
+  // always starting the account fresh.
+  if (ws._playerId && ws._playerId.startsWith('acct_')) auth.recordSession(ws._playerId, sessionId);
   // Roadmap item 5: use the client's starting region, if it sent one, so a
   // joining client isn't handed the whole session's mutable tile set —
   // VIEWPORT_SUB narrows this further once the client starts panning.
