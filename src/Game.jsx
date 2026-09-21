@@ -20,6 +20,7 @@ import { useAI } from "./hooks/useAI.js";
 import { useArmyEconomy } from "./hooks/useArmyEconomy.js";
 import { useTraining } from "./hooks/useTraining.js";
 import { useMarch } from "./hooks/useMarch.js";
+import { useFortressSiege } from "./hooks/useFortressSiege.js";
 import { useForts } from "./hooks/useForts.js";
 import { useUpgrades } from "./hooks/useUpgrades.js";
 import { useGameLoop } from "./hooks/useGameLoop.js";
@@ -37,6 +38,11 @@ import { useConsumables } from "./hooks/useConsumables.js";
 import { useTileTimers } from "./hooks/useTileTimers.js";
 import { useTacticTicks } from "./hooks/useTacticTicks.js";
 import { useAiCrews } from "./hooks/useAiCrews.js";
+import { FORTRESS_COST } from "../shared/constants/crew.js";
+import {
+  canStartFortressBuild, createFortress, completeFortressBuild,
+  isFortressBuilt, canDemolishFortress, removeFortress,
+} from "../shared/utils/crewFortress.js";
 import { useChat } from "./hooks/useChat.js";
 import { useRelations } from "./hooks/useRelations.js";
 import { aiDisplayName } from "../shared/utils/aiChatter.js";
@@ -712,10 +718,11 @@ export default function RiseToWar() {
   lazySpawnRef.current = lazySpawnAiCmds;
 
   // ── Crew coloring — crewmatePlayerIds ───────────────────────────────────
+  const myCrew = useMemo(() => crews.find(c => c.id === playerCrewId) || null, [crews, playerCrewId]);
+
   // Set of ownerPlayerIds belonging to AI factions in the player's crew.
   const crewmatePlayerIds = useMemo(() => {
     if (!playerCrewId || !crews.length) return new Set();
-    const myCrew = crews.find(c => c.id === playerCrewId);
     if (!myCrew) return new Set();
     const members = new Set(myCrew.members || []);
     const ids = new Set();
@@ -726,7 +733,7 @@ export default function RiseToWar() {
     }
 
     return ids;
-  }, [playerCrewId, crews]);
+  }, [playerCrewId, crews, myCrew]);
 
   // ── AI crew ticker — rules in shared/utils/aiCrews.js ──
   useAiCrews({ screen, mapReady, setCrews, aiPlayerIdMapRef, aiFoundersRef, aiGemsRef });
@@ -947,6 +954,82 @@ export default function RiseToWar() {
     onForcedRelocate: (...args) => onForcedRelocateRef.current?.(...args),
   });
 
+  useFortressSiege({
+    screen,
+    cmds: cmdsRef.current,
+    setCmds: setPlayerCmds,
+    tiles, patchTile, floaty, gearInventory,
+    combatXpMult, facKey, troopSkillLevels, runBattle,
+    crews, setCrews, setBattles, setBLog, setUnseenBattles,
+    playerHqKey: playerHqKey || playerHqRef.current || `${HQP.player.c},${HQP.player.r}`,
+  });
+
+  // ── Crew Fortress: build-timer ticker — mirrors useForts.js's own
+  // completesAt-polling interval, just for the crew-owned fortress list.
+  useEffect(() => {
+    if (screen !== "game") return;
+    const id = setInterval(() => {
+      const now = Date.now();
+      setCrews(prev => prev.map(crew => {
+        if (!crew.fortresses?.some(f => f.buildEndsAt && now >= f.buildEndsAt)) return crew;
+        return { ...crew, fortresses: crew.fortresses.map(f =>
+          (f.buildEndsAt && now >= f.buildEndsAt) ? completeFortressBuild(f) : f
+        ) };
+      }));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [screen]);
+
+  // Build a Crew Fortress on the selected (unclaimed p10+) tile.
+  const buildCrewFortress = useCallback((tileKey, tile) => {
+    if (!myCrew) return { ok: false, reason: "Not in a crew" };
+    const check = canStartFortressBuild(myCrew, facKey, tile, rss);
+    if (!check.ok) { floaty(`⚠ ${check.reason}`, "#cc8030", tileKey); return check; }
+    setRss(p => ({ ...p, wood: p.wood - FORTRESS_COST.wood, stone: p.stone - FORTRESS_COST.stone, gas: p.gas - FORTRESS_COST.gas }));
+    const fortress = createFortress({ id: `ft_${Date.now()}_${Math.random().toString(36).slice(2,7)}`, crewId: myCrew.id, tileKey, now: Date.now() });
+    setCrews(prev => prev.map(c => c.id === myCrew.id ? { ...c, fortresses: [...(c.fortresses||[]), fortress] } : c));
+    floaty("🏰 Fortress construction started!", "#f0c040", tileKey);
+    return { ok: true };
+  }, [myCrew, facKey, rss, floaty]);
+
+  // Demolish a fortress the player's crew owns on the given tile.
+  const demolishCrewFortressHere = useCallback((fortress) => {
+    if (!myCrew || !fortress) return;
+    if (!canDemolishFortress(myCrew, facKey)) { floaty("⚠ Only the founder or an officer can demolish", "#cc8030", fortress.tileKey); return; }
+    setCrews(prev => prev.map(c => c.id === myCrew.id ? removeFortress(c, fortress.id) : c));
+    floaty("🏰 Fortress demolished", "#cc8030", fortress.tileKey);
+  }, [myCrew, facKey, floaty]);
+
+  // Dispatch a march against a crew fortress — a distinct march.type
+  // ("siegeFortress") so it's only ever picked up by useFortressSiege above,
+  // never by useMarch.js's own generic "attack" arrival handler.
+  const startFortressSiegeMarch = useCallback((cmd, destKey) => {
+    if (!cmd || !destKey) return;
+    const freshCmd = cmdsRef.current?.find(c => c.uid === cmd.uid) ?? cmd;
+    if (freshCmd.march) return;
+    const freshCmdTroops = normaliseTroopSlots(freshCmd).reduce((s,sl)=>s+(sl.troops||0),0) || freshCmd.troops || 0;
+    if (!freshCmdTroops || freshCmdTroops < 1) { floaty("⚠ Assign troops first!", "#cc8030", freshCmd.tk); return; }
+    const staminaCost = 20;
+    const curStamina = freshCmd.stamina ?? staminaMax;
+    if (curStamina < staminaCost) { floaty(`⚡ Not enough stamina! (${curStamina}/${staminaMax})`, "#cc8030", freshCmd.tk); return; }
+    const boostedSpd = applyAllBonuses(freshCmd, gearInventory).spd || 60;
+    const slots0 = normaliseTroopSlots(freshCmd);
+    const baseStepMs = marchStepMs(effectiveMarchSpd(boostedSpd, slots0.length ? slots0.map(sl=>sl.branch) : freshCmd.troopBranch));
+    const quickBonus = quickMarchReady ? 0.5 : 1;
+    const stepMs = Math.max(50, Math.round(baseStepMs * marchSpeedMult * quickBonus));
+    if (quickMarchReady) setQuickMarchReady(false);
+    if (longMarchReady) setLongMarchReady(false);
+    setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null); setTileScreenX(null); setTileScreenY(null);
+    findPath(freshCmd.tk, destKey).then(path => {
+      if (!path || path.length < 2) { floaty("⚠ No path to target!", "#cc4040", freshCmd.tk); return; }
+      setCmds(p => p.map(c => c.uid===freshCmd.uid ? {
+        ...c,
+        stamina: Math.max(0, (c.stamina ?? staminaMax) - staminaCost),
+        march:{ type:"siegeFortress", path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }
+      } : c));
+    });
+  }, [floaty, gearInventory, findPath]);
+
   useGameLoop({
     screen,
     cmds,
@@ -1088,7 +1171,7 @@ export default function RiseToWar() {
   // Batch-compute path lengths from each commander to atkKey via pathfinding worker
   useEffect(() => {
     if (!atkKey) { setCmdPathLengths(new Map()); return; }
-    const cmds = mode === "pickAttackCmd" ? cmdsAdjToSel : cmdsForMove;
+    const cmds = (mode === "pickAttackCmd" || mode === "pickSiegeCmd") ? cmdsAdjToSel : cmdsForMove;
     if (!cmds.length) { setCmdPathLengths(new Map()); return; }
     const requests = cmds.map(cmd => ({ requestId: cmd.uid, from: cmd.tk, to: atkKey }));
     findPathBatch(requests).then(results => {
@@ -1482,7 +1565,8 @@ export default function RiseToWar() {
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
-    crewOpen, crewmatePlayerIds, crews, crossingsState, deletingSecsLeft, deletingTiles,
+    crewOpen, crewmatePlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
+    startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
     facKey, facName, floats, forts, gearInventory, gearScreenOpen, gems, getFortAtTile,
     guardedTiles, handleZoomChange, hasCmdTraining, hasGather, hasLongMarch, hasQuickGather,
@@ -1498,7 +1582,7 @@ export default function RiseToWar() {
     sendChatMessage, serverConnected, setAiBarracksPool, setAiBldgs, setAiHqKeys, setAiRss, setArmySlots,
     setAtkKey, setAutoHeal, setBLog, setBarracks, setBattles, setBldgs, setChatOpen,
     setChatProfanityFilterEnabled, setCmdScreenOpen,
-    setCmdScreenUid, setCmds, setCrewOpen, setCrews, setDeletingSecsLeft, setDeletingTiles,
+    setCmdScreenUid, setCmds, setConsumables, setCrewOpen, setCrews, setDeletingSecsLeft, setDeletingTiles,
     startChatDm, startChatGroup,
     setEditArmyCmd, setGearInventory, setGearScreenOpen, setGems, setHealQueue, setHqOpen,
     setHqTab, setLeaderboardOpen, setMode, setMvCmd, setMysticOrbs, setPendingCrewId, setPick,

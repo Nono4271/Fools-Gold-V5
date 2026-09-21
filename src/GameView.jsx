@@ -6,9 +6,11 @@ import { validateRelocationPad, allHqKeyList } from "../shared/utils/relocation.
 import { defaultCrewSubchannels } from "../shared/constants/chat.js";
 import { addSubchannel, removeSubchannel, moveSubchannel } from "../shared/utils/subchannels.js";
 import { NYRO_ID } from "../shared/constants/nyro.js";
-import { createCrew, roleOf, canPromote, canDemote, canKick, canDisband, spendContribution } from "../shared/utils/crewRules.js";
-import { removeFortress } from "../shared/utils/crewFortress.js";
+import { createCrew, roleOf, canPromote, canDemote, canKick, canDisband, spendContribution, updateAnnouncement, setCrewTarget, clearCrewTarget } from "../shared/utils/crewRules.js";
+import { removeFortress, canDemolishFortress } from "../shared/utils/crewFortress.js";
 import { CREW_STORE_ITEMS } from "../shared/constants/crew.js";
+import { createConsumable } from "../shared/constants/consumables.js";
+import { crewHallStats, crewHelpAmount } from "../shared/constants/buildings.js";
 import { GameContext } from "./GameContext.js";
 import HUD from "./components/game/HUD.jsx";
 import TilePopup from "./components/game/TilePopup.jsx";
@@ -46,7 +48,8 @@ export default function GameView(props) {
     relFriends, relBlocked, relIncoming, relOutgoing, relAddFriend, relDeclineIncoming,
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
-    crewOpen, crewmatePlayerIds, crews, crossingsState, deletingSecsLeft, deletingTiles,
+    crewOpen, crewmatePlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
+    startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
     facKey, facName, floats, forts, gearInventory, gearScreenOpen, gems, getFortAtTile,
     guardedTiles, handleZoomChange, hasCmdTraining, hasGather, hasLongMarch, hasQuickGather,
@@ -276,6 +279,10 @@ export default function GameView(props) {
         isValidRelocPad={selKey && selTile?.owner === "player" && !selTile?.isHQ && !selTile?.isHQPart
           ? validateRelocationPad(selKey, tiles, allHqKeyList(aiHqKeys, playerHqKey), playerHqKey).valid
           : false}
+        myCrew={myCrew} rss={rss}
+        crewFortressAtTile={selKey ? crews.flatMap(c => c.fortresses||[]).find(f => f.tileKey === selKey) : null}
+        onBuildCrewFortress={buildCrewFortress}
+        onDemolishCrewFortressHere={demolishCrewFortressHere}
       />
 
       {showBattleLog && (
@@ -303,6 +310,17 @@ export default function GameView(props) {
           setMode={setMode} setAtkKey={setAtkKey}
           setSelKey={setSelKey} setPopupPos={setPopupPos}
           startMarch={startMarch}
+          cmdPathLengths={cmdPathLengths}
+        />
+      )}
+
+      {mode==="pickSiegeCmd" && (
+        <CommanderPicker
+          mode="pickAttackCmd" atkKey={atkKey} tiles={tiles} cmdsAdjToSel={cmdsAdjToSel}
+          pickCmd={pickCmd} setPick={setPick}
+          setMode={setMode} setAtkKey={setAtkKey}
+          setSelKey={setSelKey} setPopupPos={setPopupPos}
+          startMarch={startFortressSiegeMarch}
           cmdPathLengths={cmdPathLengths}
         />
       )}
@@ -614,9 +632,9 @@ export default function GameView(props) {
           // swaps facKey -> "player" for the local player, founder included).
           // Nyro — a named companion, always in the player's faction — always
           // joins the player's crew too (shared/constants/nyro.js).
-          onCreateCrew={({ name, abbr, description, emblem, privacy }) => {
+          onCreateCrew={({ name, abbr, description, emblem, privacy, language }) => {
             const id = `crew_${Date.now()}`;
-            const crew = createCrew({ id, name, abbr, description, emblem, privacy, faction: facKey, founderId: facKey });
+            const crew = createCrew({ id, name, abbr, description, emblem, privacy, language, faction: facKey, founderId: facKey });
             setCrews(prev => [...prev, { ...crew, members: [...crew.members, NYRO_ID] }]);
             setGems(g => (g || 0) - 500);
             setPlayerCrewId(id);
@@ -669,37 +687,70 @@ export default function GameView(props) {
               officers: (c.officers || []).filter(o => o !== targetId),
             };
           }))}
-          // Fortress placement needs a tile picked on the world map — that
-          // cross-screen flow isn't wired yet, so this just closes the crew
-          // screen for now. Left as an explicit follow-up (see the Crew 2.0
-          // foundation README), same as ChatPanel shipping "not yet wired"
-          // in an earlier pass.
+          // Fortress placement happens on the world map (click an unclaimed
+          // p10+ tile → "BUILD CREW FORTRESS" in TilePopup.jsx), so this just
+          // closes the crew screen so the player can go pick a tile.
           onRequestBuildFortress={() => setCrewOpen(false)}
           onDemolishFortress={(fortressId) => setCrews(prev => prev.map(c =>
-            c.id === playerCrewId && canDisband(c, facKey) ? removeFortress(c, fortressId) : c
+            c.id === playerCrewId && canDemolishFortress(c, facKey) ? removeFortress(c, fortressId) : c
           ))}
-          onBuyStoreItem={(itemId) => setCrews(prev => prev.map(c => {
-            if (c.id !== playerCrewId) return c;
+          onBuyStoreItem={(itemId) => {
+            const crew = crews.find(c => c.id === playerCrewId);
             const item = CREW_STORE_ITEMS.find(i => i.id === itemId);
-            if (!item) return c;
-            const spent = spendContribution(c, facKey, item.cost);
-            if (!spent) return c; // can't afford
-            // Only resource-pack effects apply directly to game state today —
-            // relocation/speedup items deduct points but don't grant their
-            // effect yet (needs wiring into the relocation/build-queue
-            // systems, out of scope for this pass).
+            if (!crew || !item) return;
+            const spent = spendContribution(crew, facKey, item.cost);
+            if (!spent) return; // can't afford
+            setCrews(prev => prev.map(c => c.id === playerCrewId ? spent : c));
             if (item.effect?.type === "resource") {
               setRss(prev2 => ({ ...prev2, [item.effect.res]: (prev2[item.effect.res] || 0) + item.effect.amount }));
+            } else if (item.effect?.type === "consumable") {
+              // Grants a real bag item, redeemed later via the existing
+              // useConsumable(typeId) flow (src/hooks/useConsumables.js) —
+              // same path as any other su_bldg_*/relocation consumable.
+              setConsumables(prev => {
+                const existing = prev.find(c2 => c2.typeId === item.effect.typeId);
+                return existing
+                  ? prev.map(c2 => c2.typeId === item.effect.typeId ? { ...c2, quantity: c2.quantity + 1 } : c2)
+                  : [...prev, createConsumable(item.effect.typeId, 1)];
+              });
             }
-            return spent;
-          }))}
-          // Crew Hall level exists (shared/constants/buildings.js) but
-          // per-upgrade "helps used" tracking doesn't yet — canHelp stays
-          // false until that's wired into the build-queue/timer system.
-          crewHallLvl={bldgs.crewhall || 0}
-          helpsUsed={0}
-          canHelp={false}
-          onHelpMember={() => {}}
+          }}
+          // Crew Help: speeds up the player's own currently-active building
+          // upgrade (shared/constants/buildings.js's crewHallStats/
+          // crewHelpAmount), tracked per-upgrade via a helpsUsed field added
+          // straight onto its upgQueue entry.
+          crewHallLvl={bldgs.crewhall || 1}
+          helpsUsed={(() => {
+            const key = Object.keys(upgQueue || {})[0];
+            return key ? (upgQueue[key].helpsUsed || 0) : 0;
+          })()}
+          canHelp={(() => {
+            const key = Object.keys(upgQueue || {})[0];
+            if (!key) return false;
+            const stats = crewHallStats(bldgs.crewhall || 1);
+            return (upgQueue[key].helpsUsed || 0) < stats.maxHelps;
+          })()}
+          onHelpMember={() => {
+            const key = Object.keys(upgQueue || {})[0];
+            if (!key) return;
+            const crewHallLvl = bldgs.crewhall || 1;
+            const stats = crewHallStats(crewHallLvl);
+            setUpgQueue(q => {
+              const entry = q[key];
+              if (!entry || (entry.helpsUsed || 0) >= stats.maxHelps) return q;
+              const reduceMs = crewHelpAmount(entry.dur, crewHallLvl);
+              return { ...q, [key]: { ...entry, endsAt: Math.max(Date.now(), entry.endsAt - reduceMs), helpsUsed: (entry.helpsUsed || 0) + 1 } };
+            });
+          }}
+          onUpdateAnnouncement={(text) => setCrews(prev => prev.map(c =>
+            c.id === playerCrewId ? updateAnnouncement(c, facKey, text) : c
+          ))}
+          onSetTarget={(label) => setCrews(prev => prev.map(c =>
+            c.id === playerCrewId ? setCrewTarget(c, facKey, { tileKey: "manual", label }) : c
+          ))}
+          onClearTarget={() => setCrews(prev => prev.map(c =>
+            c.id === playerCrewId ? clearCrewTarget(c, facKey) : c
+          ))}
         />
       )}
 
