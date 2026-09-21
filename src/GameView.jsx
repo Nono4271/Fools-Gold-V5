@@ -6,6 +6,9 @@ import { validateRelocationPad, allHqKeyList } from "../shared/utils/relocation.
 import { defaultCrewSubchannels } from "../shared/constants/chat.js";
 import { addSubchannel, removeSubchannel, moveSubchannel } from "../shared/utils/subchannels.js";
 import { NYRO_ID } from "../shared/constants/nyro.js";
+import { createCrew, roleOf, canPromote, canDemote, canKick, canDisband, spendContribution } from "../shared/utils/crewRules.js";
+import { removeFortress } from "../shared/utils/crewFortress.js";
+import { CREW_STORE_ITEMS } from "../shared/constants/crew.js";
 import { GameContext } from "./GameContext.js";
 import HUD from "./components/game/HUD.jsx";
 import TilePopup from "./components/game/TilePopup.jsx";
@@ -19,7 +22,7 @@ import Minimap from "./components/game/Minimap.jsx";
 import WizardsTomes, { ScrollStackIcon } from "./components/game/WizardsTomes.jsx";
 import GameBar from "./components/game/GameBar.jsx";
 import Leaderboard from "./components/game/Leaderboard.jsx";
-import CrewPanel from "./components/game/CrewPanel.jsx";
+import CrewScreen from "./components/game/crew/CrewScreen.jsx";
 import ChatPanel from "./components/game/ChatPanel.jsx";
 import ChatPreview from "./components/game/ChatPreview.jsx";
 import CommanderScreen from "./components/screens/CommanderScreen.jsx";
@@ -596,7 +599,7 @@ export default function GameView(props) {
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
 
       {crewOpen && (
-        <CrewPanel
+        <CrewScreen
           onClose={() => setCrewOpen(false)}
           crews={crews}
           playerCrewId={playerCrewId}
@@ -605,34 +608,98 @@ export default function GameView(props) {
           facKey={facKey}
           playerGems={gems}
           crewCreationCost={500}
-          onCreateCrew={(name, abbr) => {
+          now={Date.now()}
+          // members/officers/founder store faction keys for AI, player's facKey
+          // for the human (see normalizeCrewsForPlayer in useChat.js — chat
+          // swaps facKey -> "player" for the local player, founder included).
+          // Nyro — a named companion, always in the player's faction — always
+          // joins the player's crew too (shared/constants/nyro.js).
+          onCreateCrew={({ name, abbr, description, emblem, privacy }) => {
             const id = `crew_${Date.now()}`;
-            // members stores faction keys for AI, player's facKey for the human
-            // (see normalizeCrewsForPlayer in useChat.js — chat swaps facKey ->
-            // "player" for the local player, founder included). Nyro — a
-            // named companion, always in the player's faction — always joins
-            // the player's crew too (shared/constants/nyro.js).
-            setCrews(prev => [...prev, {
-              id, name, abbr, faction: facKey, members: [facKey, NYRO_ID], cap: 100,
-              founder: facKey, subChannels: defaultCrewSubchannels(),
-            }]);
+            const crew = createCrew({ id, name, abbr, description, emblem, privacy, faction: facKey, founderId: facKey });
+            setCrews(prev => [...prev, { ...crew, members: [...crew.members, NYRO_ID] }]);
+            setGems(g => (g || 0) - 500);
             setPlayerCrewId(id);
           }}
-          onJoinRequest={(crewId) => {
-            // Auto-accept for local play — add player's faction (and Nyro) to the crew
-            setCrews(prev => prev.map(c =>
-              c.id === crewId ? { ...c, members: [...new Set([...(c.members||[]), facKey, NYRO_ID])] } : c
-            ));
-            setPlayerCrewId(crewId);
+          onJoinRequest={(crewId, mode) => {
+            const join = () => {
+              setCrews(prev => prev.map(c =>
+                c.id === crewId ? { ...c, members: [...new Set([...(c.members || []), facKey, NYRO_ID])] } : c
+              ));
+              setPlayerCrewId(crewId);
+              setPendingCrewId(null);
+            };
+            if (mode === "request") {
+              // Locked crews go through a real (if short) pending window
+              // instead of an instant join — same "reads as someone actually
+              // responding" pattern as Nyro's friend-request delay
+              // (useRelations.js) — there's no other real player to decline it.
+              setPendingCrewId(crewId);
+              setTimeout(join, 2500);
+            } else {
+              join();
+            }
           }}
           onLeaveCrew={() => {
             setCrews(prev => prev.map(c =>
               c.id === playerCrewId
-                ? { ...c, members: (c.members||[]).filter(m => m !== facKey && m !== NYRO_ID) }
+                ? { ...c, members: (c.members || []).filter(m => m !== facKey && m !== NYRO_ID),
+                    officers: (c.officers || []).filter(m => m !== facKey) }
                 : c
             ));
             setPlayerCrewId(null); setPendingCrewId(null);
           }}
+          onDisbandCrew={() => {
+            setCrews(prev => prev.filter(c => c.id !== playerCrewId));
+            setPlayerCrewId(null); setPendingCrewId(null);
+          }}
+          onPromote={(targetId) => setCrews(prev => prev.map(c => {
+            if (c.id !== playerCrewId || !canPromote(c, facKey)) return c;
+            return { ...c, officers: [...new Set([...(c.officers || []), targetId])] };
+          }))}
+          onDemote={(targetId) => setCrews(prev => prev.map(c => {
+            if (c.id !== playerCrewId || !canDemote(c, facKey)) return c;
+            return { ...c, officers: (c.officers || []).filter(o => o !== targetId) };
+          }))}
+          onKick={(targetId) => setCrews(prev => prev.map(c => {
+            if (c.id !== playerCrewId || !canKick(c, facKey, targetId)) return c;
+            return {
+              ...c,
+              members: (c.members || []).filter(m => m !== targetId),
+              officers: (c.officers || []).filter(o => o !== targetId),
+            };
+          }))}
+          // Fortress placement needs a tile picked on the world map — that
+          // cross-screen flow isn't wired yet, so this just closes the crew
+          // screen for now. Left as an explicit follow-up (see the Crew 2.0
+          // foundation README), same as ChatPanel shipping "not yet wired"
+          // in an earlier pass.
+          onRequestBuildFortress={() => setCrewOpen(false)}
+          onDemolishFortress={(fortressId) => setCrews(prev => prev.map(c =>
+            c.id === playerCrewId && canDisband(c, facKey) ? removeFortress(c, fortressId) : c
+          ))}
+          onBuyStoreItem={(itemId) => setCrews(prev => prev.map(c => {
+            if (c.id !== playerCrewId) return c;
+            const item = CREW_STORE_ITEMS.find(i => i.id === itemId);
+            if (!item) return c;
+            const spent = spendContribution(c, facKey, item.cost);
+            if (!spent) return c; // can't afford
+            // Only resource-pack effects apply directly to game state today —
+            // relocation/speedup items deduct points but don't grant their
+            // effect yet (needs wiring into the relocation/build-queue
+            // systems, out of scope for this pass).
+            if (item.effect?.type === "resource") {
+              setRss(prev2 => ({ ...prev2, [item.effect.res]: (prev2[item.effect.res] || 0) + item.effect.amount }));
+            }
+            return spent;
+          }))}
+          // Crew Hall level exists (shared/constants/buildings.js) but
+          // per-upgrade "helps used" tracking doesn't yet — canHelp stays
+          // false until that's wired into the build-queue/timer system.
+          crewHallLvl={bldgs.crewhall || 0}
+          helpsUsed={0}
+          canHelp={false}
+          onHelpMember={() => {}}
         />
       )}
 
