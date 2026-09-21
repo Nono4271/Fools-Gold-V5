@@ -58,6 +58,26 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
   const [activeDisplay, setActiveDisplay] = useState("chats");
   const [activeChannelId, setActiveChannelId] = useState("world");
   const [activeSubId, setActiveSubId] = useState(null);
+  // Per-(leaf) channel "last viewed" timestamp, for the unread badge on the
+  // closed-state preview (ChatPreview.jsx). Starts empty — since chat state
+  // itself resets every session (see the LOCAL PERSISTENCE ONLY note above),
+  // "unread" effectively means "posted since this session started and not
+  // yet viewed", which is the correct behavior given there's no history to
+  // have already read.
+  const [lastReadAt, setLastReadAt] = useState({});
+  // Top-level channel ids (world/faction_.../crew_.../dm_.../group_...) the
+  // player has muted — excluded from the unread badge and the closed-state
+  // preview, but AI/Nyro chatter still posts there same as ever (mute only
+  // affects notification, not simulation).
+  const [mutedChannelIds, setMutedChannelIds] = useState(() => new Set());
+  // messageId -> { [emoji]: playerId[] } — player-only reactions (no AI
+  // auto-reacting, per the owner), so in practice each emoji's array is
+  // just [] or [playerId], but this shape is ready for real multiplayer.
+  const [reactions, setReactions] = useState({});
+  // Leaf channel id -> { name, until } — a transient "X is typing…" shown
+  // just before the ambient/Nyro chatter tick actually posts a message
+  // (see the tick below). Cleared automatically once that message lands.
+  const [typingByChannel, setTypingByChannel] = useState({});
 
   const latest = useRef({ crews, aiPlayerIds, dms, groups, playerFacKey, playerId });
   latest.current = { crews, aiPlayerIds, dms, groups, playerFacKey, playerId };
@@ -80,7 +100,12 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
   // targets a composite "<parentId>::<subId>" id (shared/utils/subchannels.js)
   // instead, gated by canPostInSubchannel (container membership + a
   // leader-only sub-channel's own check, e.g. #Announcement).
-  const sendMessage = useCallback((channelId, text) => {
+  // `replyTo` (optional) is a small snapshot — { id, senderName, text } — of
+  // the message being replied to, taken by ChatPanel.jsx at reply time and
+  // stamped straight onto the new message. A snapshot rather than just an id
+  // keeps the quote showing correctly even if the original is ever removed,
+  // and needs no separate lookup at render time.
+  const sendMessage = useCallback((channelId, text, { replyTo } = {}) => {
     const parsed = parseSubchannelId(channelId);
     if (parsed) {
       const parentChannel = channels.find(c => c.id === parsed.parentId);
@@ -92,7 +117,7 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
       }
       const msg = createMessage({ channelId, senderId: playerId, senderName: playerName, text, now: Date.now() });
       if (!msg) return { ok: false, reason: "Empty message" };
-      appendMessage(msg);
+      appendMessage(replyTo ? { ...msg, replyTo } : msg);
       return { ok: true, message: msg };
     }
     const channel = channels.find(c => c.id === channelId);
@@ -100,7 +125,7 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
     if (!canPost(playerId, channel, ctx)) return { ok: false, reason: "Not allowed to post here" };
     const msg = createMessage({ channelId, senderId: playerId, senderName: playerName, text, now: Date.now() });
     if (!msg) return { ok: false, reason: "Empty message" };
-    appendMessage(msg);
+    appendMessage(replyTo ? { ...msg, replyTo } : msg);
     return { ok: true, message: msg };
   }, [channels, ctx, playerId, playerName, appendMessage]);
 
@@ -153,26 +178,92 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
     setGroups(prev => prev.map(g => g.id === groupId ? { ...g, subChannels: moveSubchannel(g.subChannels, subId, direction) } : g));
   }, []);
 
+  // Removing the player from a group's own participants list is enough —
+  // resolveChannelsFor (shared/utils/chatRules.js) only returns a group to
+  // players still in its `participants`, so it drops off their channel list
+  // on its own. There's no equivalent for World/Faction (can't leave those)
+  // or crews (already handled by GameView.jsx's onLeaveCrew, which owns
+  // crew data) or DMs (nothing to "leave" — just stop replying).
+  const leaveGroup = useCallback((groupId) => {
+    setGroups(prev => prev.map(g => (
+      g.id === groupId ? { ...g, participants: g.participants.filter(p => p !== playerId) } : g
+    )));
+  }, [playerId]);
+
   const getMessages = useCallback((channelId) => messages[channelId] || [], [messages]);
+
+  // ── Mute — per top-level channel (world/faction/crew/dm/group), not per
+  // sub-channel, to keep the mute control to one icon per left-column row.
+  const toggleMute = useCallback((channelId) => {
+    setMutedChannelIds(prev => {
+      const next = new Set(prev);
+      next.has(channelId) ? next.delete(channelId) : next.add(channelId);
+      return next;
+    });
+  }, []);
+
+  // ── Reactions — player-only (see the `reactions` state comment above):
+  // tapping an emoji on a message toggles the player's own reaction on it.
+  const toggleReaction = useCallback((messageId, emoji) => {
+    setReactions(prev => {
+      const forMsg = prev[messageId] || {};
+      const ids = forMsg[emoji] || [];
+      const nextIds = ids.includes(playerId) ? ids.filter(id => id !== playerId) : [...ids, playerId];
+      const nextForMsg = { ...forMsg, [emoji]: nextIds };
+      if (nextIds.length === 0) delete nextForMsg[emoji];
+      return { ...prev, [messageId]: nextForMsg };
+    });
+  }, [playerId]);
+
+  // ── Unread — every leaf (postable) channel id the player currently sees,
+  // including each crew/group's own sub-channels. Shared by the unread
+  // count below and by getRecentMessages/getActiveChannelMessages above.
+  const leafChannelIds = useMemo(() => {
+    const ids = new Set();
+    for (const c of channels) {
+      ids.add(c.id);
+      if (c.type === "crew" || c.type === "group") {
+        for (const sub of subchannelsOf(c, ctx)) ids.add(subchannelId(c.id, sub.id));
+      }
+    }
+    return ids;
+  }, [channels, ctx]);
+
+  // A leaf id's own top-level/container id, for mute checks (mute is
+  // per-container, unread is tracked per-leaf).
+  const topIdFor = useCallback((leafId) => parseSubchannelId(leafId)?.parentId ?? leafId, []);
+
+  const markRead = useCallback((channelId) => {
+    if (!channelId) return;
+    setLastReadAt(prev => ({ ...prev, [channelId]: Date.now() }));
+  }, []);
+
+  const unreadCount = useMemo(() => {
+    let total = 0;
+    for (const id of leafChannelIds) {
+      if (mutedChannelIds.has(topIdFor(id))) continue;
+      const since = lastReadAt[id] || 0;
+      const msgs = messages[id];
+      if (!msgs) continue;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].ts <= since) break; // messages are appended in order, so this is the first read one
+        total++;
+      }
+    }
+    return total;
+  }, [leafChannelIds, mutedChannelIds, topIdFor, lastReadAt, messages]);
 
   // Most recent messages across every channel the player sees (including
   // every crew/group's sub-channels), newest last — for the closed-state
   // mini preview (ChatPreview.jsx) shown even while the chat panel itself
   // is closed.
   const getRecentMessages = useCallback((n = 2) => {
-    const channelIds = new Set();
-    for (const c of channels) {
-      channelIds.add(c.id);
-      if (c.type === "crew" || c.type === "group") {
-        for (const sub of subchannelsOf(c, ctx)) channelIds.add(subchannelId(c.id, sub.id));
-      }
-    }
     const all = Object.entries(messages)
-      .filter(([channelId]) => channelIds.has(channelId))
+      .filter(([channelId]) => leafChannelIds.has(channelId))
       .flatMap(([, msgs]) => msgs);
     all.sort((a, b) => a.ts - b.ts);
     return all.slice(-n);
-  }, [messages, channels, ctx]);
+  }, [messages, leafChannelIds]);
 
   // Most recent messages in whichever channel/sub-channel is currently
   // "active" (see activeChannelId/activeSubId above) — for the closed-state
@@ -195,8 +286,26 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
   }, [channels, ctx, activeChannelId, activeSubId, messages]);
 
   // ── Occasional AI flavor chatter so World/Faction/Crew don't feel dead ──────
+  // Each line now shows a brief "X is typing…" (typingByChannel) before it
+  // actually lands, instead of appearing instantly — scheduleTypingThenSend
+  // below handles the delay for both the ambient roster and Nyro.
   useEffect(() => {
     if (screen !== "game") return;
+    const timeouts = [];
+    const scheduleTypingThenSend = (channelId, name, msg) => {
+      const delay = 1000 + Math.floor(Math.random() * 900);
+      setTypingByChannel(prev => ({ ...prev, [channelId]: { name, until: Date.now() + delay } }));
+      const t = setTimeout(() => {
+        appendMessage(msg);
+        setTypingByChannel(prev => {
+          if (prev[channelId]?.name !== name) return prev; // something else is now typing there — leave it
+          const next = { ...prev };
+          delete next[channelId];
+          return next;
+        });
+      }, delay);
+      timeouts.push(t);
+    };
     const tick = () => {
       const { crews, aiPlayerIds, dms, groups, playerFacKey, playerId } = latest.current;
       const normalizedCrews = normalizeCrewsForPlayer(crews, playerId, playerFacKey);
@@ -217,9 +326,10 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
           const subs = subchannelsOf(channel, { crews: normalizedCrews });
           const general = subs.find(s => s.id === "general") || subs[0];
           if (!general) return;
-          appendMessage({ ...msg, channelId: subchannelId(channel.id, general.id) });
+          const leafId = subchannelId(channel.id, general.id);
+          scheduleTypingThenSend(leafId, msg.senderName, { ...msg, channelId: leafId });
         } else {
-          appendMessage(msg);
+          scheduleTypingThenSend(channel.id, msg.senderName, msg);
         }
       });
 
@@ -236,21 +346,24 @@ export function useChat({ screen, playerId = "player", playerName, playerFacKey,
           const subs = subchannelsOf(channel, { crews: normalizedCrews });
           const general = subs.find(s => s.id === "general") || subs[0];
           if (!general) return;
-          appendMessage({ ...msg, channelId: subchannelId(channel.id, general.id) });
+          const leafId = subchannelId(channel.id, general.id);
+          scheduleTypingThenSend(leafId, msg.senderName, { ...msg, channelId: leafId });
         } else {
-          appendMessage(msg);
+          scheduleTypingThenSend(channel.id, msg.senderName, msg);
         }
       });
     };
     const id = setInterval(tick, AI_CHATTER_INTERVAL_MS);
-    return () => clearInterval(id);
+    return () => { clearInterval(id); timeouts.forEach(clearTimeout); };
   }, [screen, appendMessage]);
 
   return {
-    channels, sendMessage, startDm, startGroup, getMessages, getRecentMessages, getActiveChannelMessages,
+    channels, sendMessage, startDm, startGroup, leaveGroup, getMessages, getRecentMessages, getActiveChannelMessages,
     addGroupSubchannel, removeGroupSubchannel, moveGroupSubchannel,
     profanityFilterEnabled, setProfanityFilterEnabled,
     activeDisplay, setActiveDisplay, activeChannelId, setActiveChannelId, activeSubId, setActiveSubId,
+    mutedChannelIds, toggleMute, reactions, toggleReaction, typingByChannel,
+    unreadCount, markRead,
     // Local player's membership normalized to their playerId (see
     // normalizeCrewsForPlayer above) — ChatPanel.jsx needs this, not the raw
     // `crews` prop, to correctly tag "player" messages with their crew abbr.
