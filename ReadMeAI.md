@@ -9,6 +9,24 @@ Branch: codex/core-fixes-20260919
 ---
 
 ## 2026-09-20 — Claude (Sonnet 5)
+### AI income now matches the player; AI troop hand-out cap fixed (both flagged in the previous AI entry)
+
+**1. AI income (was per SECOND, player's is per HOUR).**
+- Before: `useAI.js` `tickAiRss` (every 1 s) added +5 of each resource and `rssRate(building level)` **per owned resource tile** each tick. The player's `resourceIncomeTick` gives 200 base + `rssRate` per hour, plus per-tile hourly rates by power level. So AI base income was 90x the player's and its tile income thousands of times.
+- Now: `shared/utils/resourceIncome.js` `aiResourceIncomeTick(previous, tiles, tileKeys, buildings, elapsedMs)` uses the **same** rules as the player (the base-income, per-tile and storage-cap math was extracted into shared helpers that `resourceIncomeTick` also uses; its behavior is unchanged, existing tests pass). It credits real elapsed time (`useAI.js` keeps `lastRssTickRef`, the worker's `aiRssTick` carries `now`), so a throttled/backgrounded worker catches up on the next tick instead of losing time. The AI's cap is now `storageMax(storage level)` (200k at level 0) instead of 9,990,000. AI has no forts or tome bonuses, so those parts are skipped.
+- **Also fixed while here (income was being lost):** the worker used to send back the ABSOLUTE post-spend resource totals (computed from a snapshot up to a few seconds old), overwriting income credited since. It now sends only what was **spent** (`rssSpent` in the `aiEconReady` message; helpers `rssSpent`/`applyRssSpent` in `shared/utils/aiEconomy.js`) and the main thread subtracts it from the live totals (clamped at 0). `useGameLoop.js` also builds `aiRss`/`aiBldgs` in the snapshot from the live maps at send time instead of the render-synced copies. The old `rssUpdates` field is gone.
+
+**2. AI troop hand-out cap.** Before: worker `_cmdCap(lvl)` did `lvl + CC[lvl]` where `CC` is the **command-centre** bonus table indexed by the **commander's level**, so a lvl-5 commander had 18 command points = 1,800 troops (and the faction's real command centre was ignored). Now `aiTroopCap(cmdLvl, commandCenterLvl)` (`shared/utils/aiEconomy.js`) = `cmdCommand(level, command-centre level, 0) / 0.01`, the player's rule: lvl 5 with no command centre = **500** troops, and it grows as the AI upgrades its command centre. `AI_TROOP_COMMAND_COST` (0.01) is a mirror of `COMMAND_COST.small` (the worker can't import troops.js without bundling all troop data); a test pins them together. Real-worker check: a lvl-20 commander gets 2,000, a lvl-5 gets 500.
+
+**Behavior changes to expect:** AI factions are now genuinely resource-limited (a faction with no tiles earns 200/hour of each resource), so training (900 wood / 700 gas / 1400 food per 100 troops, from the previous entry) and building upgrades will be slow until it owns resource tiles. If AI feels too passive now, tune the AI-specific numbers (`AI_TRAIN_COMMAND`, starting `aiRss` of 5,000 each in the worker fallback, starting pool) rather than income.
+
+**Still not touched:** the AI building-upgrade cost table in the worker (`BLDG_COST`, `_upgCost`) is separate from the player's real costs; and the starting pool is still handed out on the first tick (now 500 per lvl-5 commander instead of 1,800).
+
+**Tests:** `tests/aiIncome.test.js` (5: 200/h base, tile rates, equals the player's tick for identical holdings, per-second ticks sum to an hour and late ticks catch up, storage cap and no-ops); `tests/aiEconomy.test.js` +3 (troop cap incl. pin to `COMMAND_COST.small`, no 1,800 swallow, spend-delta helpers). Suite: 291 pass; 3 fail = the `esbuild`/`pixi.js` missing-package tests. `npm run build` not run here.
+
+---
+
+## 2026-09-20 — Claude (Sonnet 5)
 ### Register/login "Request failed": the client could never reach the game server on a deployed site
 
 **Root cause (deployment, not the server):** `playerIdentity.js` `postAuth` fetched the relative path `/api/register`. That only works in dev (Vite proxies `/api` -> `localhost:3001`). On a static host (the Cloudflare Pages build in the deploy log; Netlify/Vercel behave the same) `/api/register` is answered by the static site itself (404/405, or the SPA fallback's HTML), never by `server/index.js`. The reply isn't JSON, so the old code fell through to the generic "Request failed". The websocket already had the right escape hatch (`VITE_WS_URL`); the HTTP auth calls didn't. The "Offline" badge in the game HUD is the same cause: no game server reachable from the deployed site.
