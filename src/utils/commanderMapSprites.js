@@ -5,6 +5,10 @@ export function commanderAtlas(cmd) {
   if (cmd.id === 'h13' || cmd.bust?.includes('h13_admiral_brine')) return '/commanders/map/h13-walk-v3.png';
   if (cmd.id === 'h43' || cmd.bust?.includes('h43_countess_serava')) return '/commanders/map/h43-walk-v2.png';
   if (cmd.id === 'h45' || cmd.bust?.includes('h45_fang_groth')) return '/commanders/map/h45-walk-v2.png';
+  if (cmd.id === 'h37' || cmd.bust?.includes('h37_brother_aldric')) return '/commanders/map/h37-walk-v1.png';
+  if (cmd.id === 'h38' || cmd.bust?.includes('h38_commander_vayne')) return '/commanders/map/h38-walk-v1.png';
+  if (cmd.id === 'h50' || cmd.bust?.includes('h50_valdris_the_unmoved')) return '/commanders/map/h50-walk-v1.png';
+  if (cmd.id === 'h52' || cmd.bust?.includes('h52_eira_coldmantle')) return '/commanders/map/h52-walk-v1.png';
   if (cmd.id === 'h57' || cmd.bust?.includes('h57_ser_dreadmourne')) return '/commanders/map/h57-walk-v1.png';
   if (cmd.id === 'h59' || cmd.bust?.includes('h59_fallen_lord_mordwyn')) return '/commanders/map/h59-walk-v1.png';
   return null;
