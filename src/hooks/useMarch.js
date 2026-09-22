@@ -13,6 +13,9 @@ import { factionBonusValue } from "../../shared/constants/factionBonuses.js";
 import { siegeTerritoryMultiplier, recordRegionCapture } from "../../shared/utils/warRules.js";
 import { isWarActive } from "../../shared/utils/crewRules.js";
 import { TROOP_FACTIONS } from "../../shared/constants/allTroops.js";
+import { structureDefenderQueue } from "../../shared/utils/structureDefense.js";
+import { crewStructureTileKeys } from "../../shared/utils/crewStructures.js";
+import { woundedPatch } from "../../shared/utils/commanderStatus.js";
 
 // Per-class stat growth per level
 export const CLASS_GROWTH = {
@@ -225,6 +228,41 @@ const hasAiFoothold = (destKey, originKey, tileMap) => {
 const cmdsRef = useRef(cmds);
 useEffect(() => { cmdsRef.current = cmds; }, [cmds]);
 // Resolve AI HQ key: for retreating AI commanders, find their faction's HQ
+// ── Once-only guard for async battle resolution ─────────────────────────────
+// The arrival effects below re-run on every cmds/tiles change, and a battle
+// is awaited (worker round-trip) before the commander's march is cleared. Any
+// re-render in that window used to start the SAME battle again — which is why
+// one attack could produce 2-3 battle reports (and double XP / captures).
+// Each march (uid + startedAt) or draw rematch (uid + drawTimer) is now
+// claimed exactly once.
+const marchStamp = m => m?.startedAt ?? `${m?.dest}:${m?.origin}:${m?.path?.length}:${m?.lastStepTime}`;
+const claimedBattlesRef = useRef(new Set());
+const claimBattle = (key) => {
+  const set = claimedBattlesRef.current;
+  if (set.has(key)) return false;
+  set.add(key);
+  if (set.size > 500) set.delete(set.values().next().value); // keep it small
+  return true;
+};
+// A player commander that loses a battle is Wounded for 10 min
+// (shared/utils/commanderStatus.js) — queued after the defeat's own setCmds.
+const markWounded = (uid) => setCmds(p => p.map(c => c.uid === uid ? { ...c, ...woundedPatch() } : c));
+
+// Defeated AI defenders lose their army and march home (same eviction the
+// draw-rematch loop below already does).
+const evictDefeatedAi = (uids, fromKey) => {
+  if (!uids?.length) return;
+  setAiCmds?.(p => p.map(c => {
+    if (!uids.includes(c.uid)) return c;
+    const home = getAiHqKey(c);
+    const retreatPath = bfsPath(fromKey, home);
+    const stepMs = marchStepMs(effectiveMarchSpd(c.spd||60, null));
+    const base = { ...c, troops: 0, ...(c.troopSlots ? { troopSlots: [] } : {}) };
+    return retreatPath && retreatPath.length >= 2
+      ? { ...base, march:{ type:"move", path:retreatPath, step:0, dest:home, origin:fromKey, stepMs, startedAt:Date.now(), lastStepTime:Date.now() } }
+      : { ...base, tk: home, march: null };
+  }));
+};
 const getAiHqKey = (cmd) => {
   if (aiHqKeys && cmd?.faction && aiHqKeys[cmd.faction]) {
     const val = aiHqKeys[cmd.faction];
@@ -244,6 +282,7 @@ const arrivedAttackers = cmds.filter(c => c.owner === "player" && c.march?.arriv
 if (!arrivedAttackers.length) return;
 
 arrivedAttackers.forEach(async staleCmd => {
+  if (!claimBattle(`atk:${staleCmd.uid}:${marchStamp(staleCmd.march)}`)) return;
   // staleCmd comes from cmds.filter() — cmds is the current state in this effect closure.
   // If reinforcement happened before this render, staleCmd already has updated troops.
   // Use it directly; also check cmdsRef for any same-tick updates not yet in cmds.
@@ -299,8 +338,11 @@ arrivedAttackers.forEach(async staleCmd => {
   };
 
   // ── All-garrison-defeated: siege only ────────────────────────────────────
+  // ...unless hostile commanders are standing on the tile: they always fight
+  // before siege (structureDefense.js order), so fall through to Stage 1.
   const allWavesDefeated = (defTile.defeatedWaves?.length ?? 0) >= garrisonWaveCount(defTile);
-  if (allWavesDefeated) {
+  const standingPresent = structureDefenderQueue({ kind: defTile.isKeep ? "keep" : null, tileKey: destKey, cmds, isHostile: c => c.owner === "ai" }).length > 0;
+  if (allWavesDefeated && !standingPresent) {
     const siegePower = playerSiegePower(cmdSiegePower(cmd, boostedCmd), defTile);
     const attacker = attackerComposition(cmd, boostedCmd);
     const { captured: siegeCaptured, patch: outcomePatch } = resolveSiegeOutcome({ tile: defTile, siegePower });
@@ -357,6 +399,7 @@ arrivedAttackers.forEach(async staleCmd => {
               return c;
             }));
             floaty("💀 Defeated by fort defenders!", "#cc3030", destKey);
+            markWounded(cmd.uid);
             return;
           }
           // Won — reduce attacker troops, continue to next defender
@@ -381,18 +424,34 @@ arrivedAttackers.forEach(async staleCmd => {
     }
   }
 
-  // ── Live AI commander check (fight them first, then waves) ────────────────
-  const hasAiCmd = cmds.some(c => c.owner === "ai" && c.tk === destKey && !c.march);
-  if (hasAiCmd) {
-    // Stage 1: fight AI commander
-    const res = await runBattle(boostedCmd, cmdTroops(cmd), defTile, wallLvl);
+  // ── Stage 1: commanders STANDING on the tile (shared/utils/structureDefense.js)
+  // Every hostile commander that has moved onto this tile — keep or plain
+  // tile — is fought one at a time, newest arrival first, BEFORE any keep
+  // garrison wave or siege. (Previously one combined fight against the tile's
+  // defCmd, and the attacker's losses weren't carried into the wave loop.)
+  const standingQueue = structureDefenderQueue({
+    kind: defTile.isKeep ? "keep" : null, tileKey: destKey, cmds,
+    isHostile: c => c.owner === "ai",
+  });
+  const hasAiCmd = standingQueue.length > 0;
+  let preWaveLost = 0;
+  const defeatedStandingUids = [];
+  for (const [qi, entry] of standingQueue.entries()) {
+    const aiCmd = cmds.find(c => c.uid === entry.uid);
+    const troopsNow = Math.max(0, cmdTroops(cmd) - preWaveLost);
+    if (!aiCmd || troopsNow <= 0) break;
+    const fightTile = { ...defTile, defCmd: { ...aiCmd } };
+    const res = await runBattle({ ...boostedCmd, troops: troopsNow }, troopsNow, fightTile, wallLvl);
     if (res.report) {
       const enriched = { ...res.report, timestamp: Date.now(), cmdCls: cmd.cls,
-        passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot, atkBaseStats, atkBaseStats };
+        passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot, atkBaseStats,
+        stageLabel: `Defender ${qi + 1}/${standingQueue.length}` };
       setBattles(p => [enriched, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
     }
     if (!res.won && !res.isDraw) {
+      evictDefeatedAi(defeatedStandingUids, destKey);
       floaty("💀 DEFEATED — retreating", "#cc3030", destKey);
+      markWounded(cmd.uid);
       const wl = Math.floor(res.lost * 0.30);
       if (wl > 0) { addWounded(cmd, wl); floaty(`🏥 +${wl} wounded`, "#88aaff", destKey); }
       setCmds(p => p.map(c => {
@@ -404,61 +463,41 @@ arrivedAttackers.forEach(async staleCmd => {
         else u = { ...u, tk:hqKey };
         return { ...u, ...applyXp(u, Math.round(res.xpGain * (combatXpMult ?? 1)), floaty) };
       }));
-      setBLog(p => [`❌ ${cmd.n} Lv${cmd.lvl||5} defeated — retreating · ${res.modLabel}`, ...p].slice(0, 99));
+      setBLog(p => [`❌ ${cmd.n} Lv${cmd.lvl||5} defeated by ${aiCmd.n} — retreating · ${res.modLabel}`, ...p].slice(0, 99));
       return;
     }
     if (res.isDraw) {
+      evictDefeatedAi(defeatedStandingUids, destKey);
+      const lostTotal = preWaveLost + res.lost;
       addWounded(cmd, Math.floor(res.lost * 0.30));
       floaty("⚔ DRAW — rematch in 5 min", "#c0a020", destKey);
       setCmds(p => p.map(c => {
         if (c.uid !== cmd.uid) return c;
-        return { ...c, troops: Math.max(1, cmdTroops(cmd) - res.lost), ...applySlotLosses(c, res.lost),
+        return { ...c, troops: Math.max(1, cmdTroops(cmd) - lostTotal), ...applySlotLosses(c, lostTotal),
           tk:destKey, march:null, drawTimer:Date.now()+5*60*1000, drawOrigin:originKey, drawTile:destKey };
       }));
       setBLog(p => [`⚔ DRAW — ${cmd.n} holds position, rematch in 5min · ${res.modLabel}`, ...p].slice(0, 99));
       return;
     }
-    // Won vs AI commander — continue to garrison waves below with remaining troops
-    const troopsAfterAi = Math.max(0, cmdTroops(cmd) - res.lost);
+    // Won vs this standing commander — next one, with what's left.
+    preWaveLost += res.lost;
+    defeatedStandingUids.push(aiCmd.uid);
     const wcAi = Math.floor(res.lost * 0.30);
-    if (wcAi > 0) { addWounded(cmd, wcAi); floaty(`🏥 +${wcAi} wounded`, "#88aaff", destKey); }
-    floaty("⚔ Commander routed — garrison defends!", "#d0a030", destKey);
-    setCmds(p => p.map(c => c.uid === cmd.uid
-      ? { ...c, troops:troopsAfterAi, ...applySlotLosses(c, res.lost), ...applyXp(c, Math.round(res.xpGain * (combatXpMult ?? 1)), floaty) }
-      : c));
-    // Fall through to wave loop with updated troops
+    if (wcAi > 0) addWounded(cmd, wcAi);
+    setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, ...applyXp(c, Math.round(res.xpGain * (combatXpMult ?? 1)), floaty) } : c));
+    setBLog(p => [`⚔ ${cmd.n} defeated ${aiCmd.n}`, ...p].slice(0, 99));
+  }
+  if (defeatedStandingUids.length) {
+    evictDefeatedAi(defeatedStandingUids, destKey);
+    floaty("⚔ Defenders routed!", "#d0a030", destKey);
+    // Troop losses are NOT applied here: the wave loop below starts from
+    // cmdTroops(cmd) - preWaveLost and its final commit writes the total.
   }
 
-  // ── Guardian combat — fight guarding commanders before garrison ─────────
-  if (guardedTiles && guardedTiles.has(destKey)) {
-    const guardians = guardedTiles.get(destKey); // sorted most recent first
-    for (const guardian of guardians) {
-      if (!guardian.isGuarding) continue;
-      const gres = await runBattle(boostedCmd, cmdTroops(cmd), defTile, wallLvl);
-      if (gres.report) {
-        const enriched = { ...gres.report, timestamp: Date.now(), cmdCls: cmd.cls,
-          passiveSummary: getPassiveBonuses(boostedCmd), atkGearSnapshot, atkSkillsSnapshot, atkBaseStats };
-        setBattles(p => [enriched, ...p].slice(0, 99)); setUnseenBattles(n => n + 1);
-      }
-      if (!gres.won && !gres.isDraw) {
-        // Attacker defeated by guardian — retreat using bfsPath
-        const stepMs2 = marchStepMs(cmdMarchSpd(cmd, boostedCmd));
-        const rp = bfsPath(destKey, hqKey);
-        setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c,
-          march: rp && rp.length > 1
-            ? { type:"retreat", path:rp, step:0, dest:hqKey, origin:destKey, stepMs:stepMs2, startedAt:Date.now(), lastStepTime:Date.now() }
-            : null,
-          tk: rp && rp.length > 1 ? c.tk : hqKey,
-        } : c));
-        floaty("💀 Repelled by guardian!", "#cc3030", destKey);
-        return;
-      }
-      // Won — guardian is defeated, remove their guard status
-      setCmds(p => p.map(c => c.uid === guardian.uid ? { ...c, isGuarding: false, guardedAt: null } : c));
-      floaty(`⚔ Guardian defeated!`, "#d0a030", destKey);
-      // remainingTroops is declared below; track losses via a local var for now
-    }
-  }
+  // (Removed: an old "guardian combat" block here fought the tile's own
+  // garrison while un-guarding the PLAYER's own guards. guardedTiles only
+  // holds the player's/crew's tiles, which the player never attacks, so it
+  // could only misfire. Guards now defend in the AI-attack arrival below.)
 
   // ── Multi-wave garrison loop ──────────────────────────────────────────────
   // Re-read cmd after potential setCmds above (use snapshot value for troop count).
@@ -473,7 +512,7 @@ arrivedAttackers.forEach(async staleCmd => {
   // Simpler: just use cmdTroops(cmd) and subtract AI losses inline
   // Re-derive: if hasAiCmd, we already applied slot losses to cmd state; use defTile snapshot troops
   // Actually safest: track remaining separately from cmd state
-  let remainingTroops = cmdTroops(cmd); // will track across waves
+  let remainingTroops = Math.max(0, cmdTroops(cmd) - preWaveLost); // will track across waves (after standing-commander losses)
   const newlyDefeated = [...alreadyDone];
   let totalXp = 0;
   let totalWounded = 0;
@@ -535,6 +574,7 @@ arrivedAttackers.forEach(async staleCmd => {
 
   if (playerDefeated) {
     floaty("💀 DEFEATED — retreating", "#cc3030", destKey);
+    markWounded(cmd.uid);
     setCmds(p => p.map(c => {
       if (c.uid !== cmd.uid) return c;
       const rp = bfsPath(originKey, hqKey);
@@ -632,6 +672,8 @@ useEffect(() => {
 
       // Timer not yet expired
       if (now < cmd.drawTimer) return;
+      // Interval fires every second but the rematch is awaited — run it once.
+      if (!claimBattle(`draw:${cmd.uid}:${cmd.drawTimer}`)) return;
 
       // ── Timer expired: run rematch inline ────────────────────────────────
       // Guard: if player returned troops between draw and rematch, cancel silently
@@ -758,6 +800,7 @@ useEffect(() => {
       }
 
       if (playerDefeated) {
+        markWounded(cmd.uid);
         // Player retreats
         setCmds(p => p.map(c => {
           if (c.uid !== cmd.uid) return c;
@@ -828,6 +871,7 @@ const marchingAI = cmds.filter(c => c.owner === "ai" && c.march && !c.march.arri
 if (!arrivedAI.length) return;
 
 arrivedAI.forEach(async cmd => {
+  if (!claimBattle(`ai:${cmd.uid}:${marchStamp(cmd.march)}`)) return;
   const destKey = cmd.tk;
   const defTile = tiles[destKey];
   // Skip if tile is friendly — same owner faction or crewmate player
@@ -837,7 +881,11 @@ arrivedAI.forEach(async cmd => {
     || defTile.owner === "player"                              // never attack player tiles
     || defTile.owner === "ai" && defTile.faction === cmd.faction  // same AI faction
     || (defOwnerPid && crewmatePlayerIds?.has(defOwnerPid))   // crewmate
-    || isProtected;                                            // tile under protection window
+    || isProtected                                             // tile under protection window
+    // Crew Fortress/Well/Outpost tiles are only taken by sieging the structure
+    // (useFortressSiege.js). The AI has no structure-siege path yet, so it
+    // leaves them alone rather than capturing the tile out from under one.
+    || crewStructureTileKeys(crews).has(destKey);
   if (isFriendlyTile) {
     setAiCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, march:null } : c));
     return;
@@ -850,6 +898,49 @@ arrivedAI.forEach(async cmd => {
 
   const originKey = aiOriginKey;
   const boostedCmd2 = applyGearToCmd(cmd, gearInventory);
+
+  // ── Guard: player guards covering this tile fight first, newest post first
+  // (Rise-to-War style Guard — shared/utils/commanderStatus.js). The guard is
+  // resolved as the attacker in simBattle so its own losses come back in
+  // res.lost; the AI's remaining troops come from report.defTroopsEnd.
+  // NOTE: today the AI never targets player/crew/structure tiles (see
+  // isFriendlyTile above), so this only runs once something can attack them.
+  const guards = (guardedTiles?.get(destKey) || []).filter(g => g.isGuarding && !g.march && cmdTroops(g) > 0);
+  let aiTroopsLeft = cmd.troops || cmdTroops(cmd);
+  for (const g of guards) {
+    const gBoost = { ...applyGearToCmd(g, gearInventory), troopSkillLevels: troopSkillLevels || {} };
+    const gTroops = cmdTroops(g);
+    const gTile = { ...defTile, owner: "guard", defCmd: { ...cmd, troops: aiTroopsLeft } };
+    const gres = await runBattle(gBoost, gTroops, gTile, 0);
+    if (gres.report) {
+      setBattles(p => [{ ...gres.report, timestamp: Date.now(), cmdCls: g.cls, stageLabel: "Guard defense",
+        passiveSummary: getPassiveBonuses(gBoost) }, ...p].slice(0, 99));
+      setUnseenBattles(n => n + 1);
+    }
+    const gWounded = Math.floor(gres.lost * 0.30);
+    if (gWounded > 0) addWounded(g, gWounded);
+    if (gres.won || gres.isDraw) {
+      // Guard held: attacker is repelled and loses its army.
+      setCmds(p => p.map(c => c.uid !== g.uid ? c
+        : { ...c, troops: Math.max(0, gTroops - gres.lost), ...applySlotLosses(c, gres.lost),
+            ...applyXp(c, Math.round((gres.xpGain || 0) * (combatXpMult ?? 1)), floaty) }));
+      evictDefeatedAi([cmd.uid], destKey);
+      floaty(`🛡 ${g.n} held the line!`, "#80a0ff", destKey);
+      setBLog(p => [`🛡 ${g.n} (guard) repelled ENEMY ${cmd.n}`, ...p].slice(0, 99));
+      return;
+    }
+    // Guard fell: loses its army, is Wounded, guard ends. Attacker carries on.
+    aiTroopsLeft = Math.max(0, gres.report?.defTroopsEnd ?? aiTroopsLeft);
+    setCmds(p => p.map(c => c.uid !== g.uid ? c
+      : { ...c, ...clearSlots(c), isGuarding: false, guardedAt: null, ...woundedPatch() }));
+    floaty(`💀 Guard ${g.n} fell`, "#cc3030", destKey);
+    setBLog(p => [`💀 ${g.n} (guard) was defeated by ENEMY ${cmd.n}`, ...p].slice(0, 99));
+    if (aiTroopsLeft <= 0) { evictDefeatedAi([cmd.uid], destKey); return; }
+  }
+  if (guards.length) {
+    // Attacker continues against the tile with what survived the guards.
+    cmd = { ...cmd, troops: aiTroopsLeft };
+  }
 
   if ((defTile.defeatedWaves?.length ?? 0) >= garrisonWaveCount(defTile)) {
     const siegePower = cmdSiegePower(cmd, boostedCmd2);

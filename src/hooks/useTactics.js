@@ -5,6 +5,7 @@ import { generateSpawnCommander, rollSpawnRssRewards, rollRareDrop, spawnDisplay
 import { EGG_COST, SWEEP_STAMINA, quickGatherReward, gatherOrder, reconReport, spawnSeed, spawnDefTile, sweepTroopLosses } from "../../shared/utils/tactics.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
+import { canCommanderAct, woundedPatch } from "../../shared/utils/commanderStatus.js";
 
 // Remove `lost` troops proportionally across a commander's slots (same rule
 // useMarch.js's applySlotLosses uses), or from its legacy single troop count.
@@ -41,7 +42,9 @@ export function useTactics({
   const onGather = useCallback((tileKey, tile, cmdUid, ticks, isTraining = false) => {
     if ((dragonEggs ?? 0) < (isTraining ? EGG_COST.training : EGG_COST.gather)) return;
     const order = gatherOrder(tileKey, ticks, isTraining, Date.now());
-    setCmds(prev => prev.map(c => c.uid === cmdUid ? { ...c, ...order } : c));
+    // Wounded commanders can't gather or train (shared/utils/commanderStatus.js);
+    // TilePopup already hides them from the pickers, this is the backstop.
+    setCmds(prev => prev.map(c => c.uid === cmdUid && canCommanderAct(c).ok ? { ...c, ...order } : c));
   }, [dragonEggs, setCmds]);
 
   // Sweep a Spawn army. Previously called runBattle({ atkCmd, defCmd, ... })
@@ -54,6 +57,8 @@ export function useTactics({
     const spawn = spawns[spawnKey];
     if (!spawn || spawn.defeated) return;
     if (!cmd || (cmd.stamina ?? staminaMax) < SWEEP_STAMINA) return;
+    const act = canCommanderAct(cmd);
+    if (!act.ok) { floaty?.(`⚠ ${act.reason}`, "#cc8030", cmd.tk); return; }
     const slots = normaliseTroopSlots(cmd);
     const troops = slots.length ? slots.reduce((n, sl) => n + (sl.troops || 0), 0) : (cmd.troops || 0);
     if (troops < 1) { floaty?.("⚠ Assign troops first!", "#cc8030", cmd.tk); return; }
@@ -78,7 +83,7 @@ export function useTactics({
     setCmds(prev => prev.map(c => {
       if (c.uid !== cmd.uid) return c;
       const next = sweepApplyLosses(c, lost);
-      return res.won ? { ...next, ...applyXp(next, spawn.xpReward, floaty) } : next;
+      return res.won ? { ...next, ...applyXp(next, spawn.xpReward, floaty) } : { ...next, ...woundedPatch() };
     }));
     if (res.won) {
       spawnWorkerRef.current?.postMessage({ type: "defeated", spawnKey });

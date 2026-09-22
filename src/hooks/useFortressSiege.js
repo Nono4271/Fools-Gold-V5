@@ -1,30 +1,32 @@
-// Crew 2.0 — resolves a player march that arrives at a crew fortress with
-// march.type === "siegeFortress" (dispatched by src/Game.jsx's
-// startFortressSiegeMarch, kept deliberately separate from the ordinary
-// "attack" march type so this never collides with useMarch.js's own
-// arrival handling — see the design note in ReadMeAI.md's Crew 2.0 entry).
+// Crew 2.0 — resolves a player march that arrives at a crew structure
+// (Fortress, Well or Contract Outpost) with march.type === "siegeFortress"
+// (dispatched by src/Game.jsx's startFortressSiegeMarch; the type name is
+// kept from when only Fortresses existed). Kept separate from the ordinary
+// "attack" march so it never collides with useMarch.js's arrival handling.
 //
-// Fight order, mirrors the existing "fight each AI commander on a contested
-// tile" loop in useMarch.js almost exactly (same runBattle call, same
-// defCmd-from-a-real-commander-object pattern):
-//   1. If the fortress still has stationed commanders, fight the next one
-//      (shared/utils/crewFortress.js's nextDefender — deterministic order).
-//      Losing sends the attacker home empty-handed; winning removes that
-//      defender and, if troops remain, the SAME march keeps fighting the
-//      next defender in the same arrival tick.
-//   2. Once clear, the remaining troops' siege stat is applied to the
-//      fortress's HP (shared/utils/crewFortress.js's applySiegeDamage).
-//      Hitting 0 destroys it: the tile reverts to a bare tile and the
-//      attacker claims it outright, no further fight needed (per the
-//      owner's spec).
-import { useEffect } from "react";
+// Fight order (owner spec, shared/utils/structureDefense.js):
+//   1. Commanders STANDING on the tile (moved there, not stationed), newest
+//      arrival first.
+//   2. Commanders STATIONED inside — Fortress and Well only (an Outpost can't
+//      hold stationed armies).
+//   3. Siege: the remaining troops' siege stat comes off the structure's HP
+//      (shared/utils/crewFortress.js applySiegeDamage). At 0 the structure is
+//      destroyed, the tile reverts to a plain p10+ tile and the attacker who
+//      landed the last hit claims it.
+// Losing any fight sends the attacker home; winning keeps the SAME march
+// fighting the next defender with what's left, in the same arrival tick.
+import { useEffect, useRef } from "react";
 import { calcSiegePower } from "../../shared/constants/map.js";
 import { FACTION_TROOPS } from "../../shared/constants/troops.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { getPassiveBonuses } from "../../shared/constants/skills.js";
 import { normaliseTroopSlots, bfsPath, marchStepMs } from "../../shared/utils/pathfinding.js";
 import { applyXp } from "./useMarch.js";
-import { nextDefender, unstationCommander, applySiegeDamage, removeFortress, isFortressBuilt } from "../../shared/utils/crewFortress.js";
+import { unstationCommander, applySiegeDamage } from "../../shared/utils/crewFortress.js";
+import { findCrewStructureAt, updateCrewStructure, isStructureBuilt, structureSiege } from "../../shared/utils/crewStructures.js";
+import { structureDefenderQueue } from "../../shared/utils/structureDefense.js";
+import { woundedPatch } from "../../shared/utils/commanderStatus.js";
+import { AI_HQ_KEY } from "../../shared/constants/map.js";
 import { siegeTerritoryMultiplier } from "../../shared/utils/warRules.js";
 import { isWarActive } from "../../shared/utils/crewRules.js";
 import { TROOP_FACTIONS } from "../../shared/constants/allTroops.js";
@@ -56,21 +58,46 @@ export function useFortressSiege({
   combatXpMult, facKey, troopSkillLevels, runBattle,
   crews, setCrews, setBattles, setBLog, setUnseenBattles, playerHqKey,
   playerCrewId, regionOwners,
+  setAiCmds, aiHqKeys, crewmatePlayerIds,
 }) {
+  const KIND_LABEL = { fortress: "fortress", well: "Well", outpost: "Contract Outpost" };
+  const aiHome = c => {
+    const v = aiHqKeys?.[c.faction];
+    return (Array.isArray(v) ? v[0] : v) || AI_HQ_KEY;
+  };
+  // Defeated AI defenders lose their army and march home (same as useMarch.js).
+  const evictAi = (uids, fromKey) => {
+    if (!uids.length) return;
+    setAiCmds?.(p => p.map(c => {
+      if (!uids.includes(c.uid)) return c;
+      const home = aiHome(c), rp = bfsPath(fromKey, home);
+      const base = { ...c, troops: 0, ...(c.troopSlots ? { troopSlots: [] } : {}), stationedWellId: null };
+      return rp?.length > 1
+        ? { ...base, march: { type: "move", path: rp, step: 0, dest: home, origin: fromKey, stepMs: marchStepMs(60), startedAt: Date.now(), lastStepTime: Date.now() } }
+        : { ...base, tk: home, march: null };
+    }));
+  };
+  // Each siege march is resolved exactly once — the effect re-runs on every
+  // cmds change while the battle is awaited (see useMarch.js claimBattle).
+  const claimedRef = useRef(new Set());
   useEffect(() => {
     if (screen !== "game") return;
     const arrived = cmds.filter(c => c.owner === "player" && c.march?.arrived && c.march?.type === "siegeFortress");
     if (!arrived.length) return;
 
     arrived.forEach(async (cmd) => {
+      const claimKey = `${cmd.uid}:${cmd.march.startedAt ?? `${cmd.march.dest}:${cmd.march.lastStepTime}`}`;
+      if (claimedRef.current.has(claimKey)) return;
+      claimedRef.current.add(claimKey);
       const destKey = cmd.tk;
       const defTile = tiles[destKey];
-      const crew = crews.find(c => (c.fortresses || []).some(f => f.tileKey === destKey));
-      const fortress = crew?.fortresses?.find(f => f.tileKey === destKey);
+      const found = findCrewStructureAt(crews, destKey);
+      const crew = found?.crew, kind = found?.kind, structure = found?.structure;
+      const label = KIND_LABEL[kind] || "structure";
 
-      // Fortress gone (already destroyed by someone else, or never existed) —
+      // Structure gone (already destroyed by someone else, or never existed) —
       // send the army home with nothing to fight.
-      if (!crew || !fortress || !isFortressBuilt(fortress, Date.now())) {
+      if (!found || !isStructureBuilt(structure, Date.now())) {
         const rp = bfsPath(destKey, playerHqKey);
         setCmds(p => p.map(c => c.uid === cmd.uid ? {
           ...c, march: rp?.length > 1
@@ -78,7 +105,7 @@ export function useFortressSiege({
             : null,
           tk: rp?.length > 1 ? c.tk : playerHqKey,
         } : c));
-        floaty("⚠ No fortress here anymore", "#cc8030", destKey);
+        floaty("⚠ Nothing to siege here anymore", "#cc8030", destKey);
         return;
       }
 
@@ -86,72 +113,72 @@ export function useFortressSiege({
       let remainingTroops = cmdTroops(cmd);
       let totalXp = 0;
       let attackerDefeated = false;
-      let workingFortress = fortress;
+      let working = { ...structure, ...structureSiege(structure) };
+      const defeatedAiUids = [];
 
-      // ── Phase 1: clear stationed defenders, one at a time ──────────────
-      let defender = nextDefender(workingFortress);
-      while (defender && remainingTroops > 0) {
-        const defCmdObj = cmds.find(c => c.uid === defender.commanderUid);
-        if (!defCmdObj) {
-          // Stale reference (defender no longer exists) — just drop it and move on.
-          workingFortress = unstationCommander(workingFortress, defender.playerId, defender.commanderUid);
-          defender = nextDefender(workingFortress);
-          continue;
-        }
+      // ── Phases 1-2: standing commanders, then stationed ones ────────────
+      const queue = structureDefenderQueue({
+        kind, tileKey: destKey, cmds, structure,
+        isHostile: c => c.uid !== cmd.uid && c.owner !== "player" && !(c.ownerPlayerId && crewmatePlayerIds?.has?.(c.ownerPlayerId)),
+      });
+      for (const entry of queue) {
+        if (remainingTroops <= 0) break;
+        const defCmdObj = cmds.find(c => c.uid === entry.uid);
+        if (!defCmdObj) continue;
         const fightTile = { ...defTile, defCmd: { ...defCmdObj } };
         const res = await runBattle({ ...boostedCmd, troops: remainingTroops }, remainingTroops, fightTile, 0);
         if (res.report) {
           const enriched = { ...res.report, timestamp: Date.now(), cmdCls: cmd.cls,
-            passiveSummary: getPassiveBonuses(boostedCmd), isFortressSiege: true };
+            passiveSummary: getPassiveBonuses(boostedCmd), isFortressSiege: true, structureKind: kind,
+            stageLabel: entry.phase === "standing" ? "Standing defender" : "Stationed defender" };
           setBattles(p => [enriched, ...p].slice(0, 99));
           setUnseenBattles(n => n + 1);
         }
         if (!res.won) {
           remainingTroops = 0;
           attackerDefeated = true;
-          setBLog(p => [`❌ ${cmd.n} was repelled at [${crew.abbr}]'s fortress`, ...p].slice(0, 99));
+          setBLog(p => [`❌ ${cmd.n} was repelled at [${crew.abbr}]'s ${label}`, ...p].slice(0, 99));
           break;
         }
         remainingTroops = Math.max(0, remainingTroops - res.lost);
         totalXp += res.xpGain || 0;
-        workingFortress = unstationCommander(workingFortress, defender.playerId, defender.commanderUid);
-        setBLog(p => [`⚔ ${cmd.n} defeated a defender at [${crew.abbr}]'s fortress`, ...p].slice(0, 99));
-        defender = nextDefender(workingFortress);
+        if (defCmdObj.owner === "ai") defeatedAiUids.push(defCmdObj.uid);
+        if (entry.phase === "stationed" && kind === "fortress") working = unstationCommander(working, entry.playerId, entry.uid);
+        setBLog(p => [`⚔ ${cmd.n} defeated ${entry.phase === "standing" ? "a commander on" : "a defender in"} [${crew.abbr}]'s ${label}`, ...p].slice(0, 99));
       }
+      evictAi(defeatedAiUids, destKey);
 
       let destroyed = false, claimed = false;
-      // ── Phase 2: siege the now-undefended fortress ─────────────────────
+      // ── Phase 3: siege the now-undefended structure ─────────────────────
       if (!attackerDefeated && remainingTroops > 0) {
         const rawSiegePower = cmdSiegePower({ ...cmd, troops: remainingTroops }, boostedCmd);
-        // War: -70% debuff on an enemy-territory fortress, lifted while the
+        // War: -70% debuff on an enemy-territory structure, lifted while the
         // player's own crew is at war — see shared/utils/warRules.js.
         const playerCrew = (crews || []).find(c => c.id === playerCrewId) || null;
         const siegePower = rawSiegePower * siegeTerritoryMultiplier({
           tile: defTile, regionOwners, attackerFaction: facKey, atWar: isWarActive(playerCrew, Date.now()),
         });
-        const outcome = applySiegeDamage(workingFortress, "player", siegePower);
-        workingFortress = outcome.fortress;
+        const outcome = applySiegeDamage(working, "player", siegePower);
+        working = outcome.fortress;
         destroyed = outcome.destroyed;
         if (destroyed) {
-          setBLog(p => [`💥 [${crew.abbr}]'s fortress destroyed! Tile claimed.`, ...p].slice(0, 99));
+          setBLog(p => [`💥 [${crew.abbr}]'s ${label} destroyed! Tile claimed.`, ...p].slice(0, 99));
         } else {
-          setBLog(p => [`🏰 ${cmd.n} sieges [${crew.abbr}]'s fortress (${workingFortress.siege.toLocaleString()}/${workingFortress.siegeMax.toLocaleString()})`, ...p].slice(0, 99));
+          setBLog(p => [`🏰 ${cmd.n} sieges [${crew.abbr}]'s ${label} (${working.siege.toLocaleString()}/${working.siegeMax.toLocaleString()})`, ...p].slice(0, 99));
         }
       }
 
-      // ── Commit crew/fortress state ──────────────────────────────────────
-      setCrews(prev => prev.map(c => {
-        if (c.id !== crew.id) return c;
-        const updated = { ...c, fortresses: c.fortresses.map(f => f.id === fortress.id ? workingFortress : f) };
-        return destroyed ? removeFortress(updated, fortress.id) : updated;
-      }));
+      // ── Commit crew/structure state ─────────────────────────────────────
+      setCrews(prev => prev.map(c => c.id !== crew.id ? c
+        : updateCrewStructure(c, kind, structure.id, destroyed ? null : working)));
 
-      // ── Commit tile state (only changes on destruction) ─────────────────
+      // ── Commit tile state (only changes on destruction): plain p10+ tile,
+      // owned by the player who landed the last hit. ──────────────────────
       if (destroyed) {
         claimed = true;
         patchTile(destKey, {
           owner: "player", faction: facKey, ownerPlayerId: "player",
-          garrison: 0, siege: workingFortress.siegeMax, siegeMax: workingFortress.siegeMax,
+          garrison: 0, siege: working.siegeMax, siegeMax: working.siegeMax,
           defeatedWaves: [], resetAt: null, defCmd: null, hasAiCommander: false,
         });
       }
@@ -171,8 +198,11 @@ export function useFortressSiege({
         return { ...updated, ...applyXp(updated, Math.round(totalXp * (combatXpMult ?? 1)), floaty) };
       }));
 
-      if (claimed) floaty(`🏰 Fortress claimed! [${crew.abbr}] lost their hold here.`, "#f0c040", destKey);
-      else if (attackerDefeated) floaty("💀 Repelled!", "#cc3030", destKey);
+      if (claimed) floaty(`🏰 ${label[0].toUpperCase() + label.slice(1)} destroyed — tile claimed! [${crew.abbr}] lost their hold here.`, "#f0c040", destKey);
+      else if (attackerDefeated) {
+        floaty("💀 Repelled!", "#cc3030", destKey);
+        setCmds(p => p.map(c => c.uid === cmd.uid ? { ...c, ...woundedPatch() } : c)); // Wounded 10 min
+      }
     });
   }, [screen, cmds, tiles, crews]); // eslint-disable-line react-hooks/exhaustive-deps
 }
