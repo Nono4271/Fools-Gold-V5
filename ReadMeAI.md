@@ -763,9 +763,9 @@ change.
   owner-approved and wired** (see the two 2026-09-22 "Crew level rewards"
   changelog entries below), including the two new crew structures they
   unlock — the **Well** (lvl 31/40) and **Contract Outpost** (lvl 35/42/50).
-  Every level 2-50 has at least one real perk; level 1 is the default. Wells
-  and Outposts (like Crew Fortresses) have no map sprite yet — they only show
-  in the tile popup. Two further items are waiting on real multiplayer
+  Every level 2-50 has at least one real perk; level 1 is the default. Crew
+  Fortresses, Wells and Outposts now have vector map markers (placeholder until
+  real art — see the "Map markers" entry below). Two further items are waiting on real multiplayer
   identity: (1) Crew Help is self-serve, not crewmate-to-crewmate; (2)
   Records and Cooperation/Rally are fully spec'd (sessions 25-27 below) but
   still literal "coming soon" stubs in `CrewHQ.jsx` — zero code. Rally
@@ -1362,6 +1362,28 @@ Sweeper affects Spawn fights only); `crewLevelPerks.test.js` extended.
 CrewStructurePanel smoke-rendered in all states. Not yet playtested in a
 live browser session — worth a pass building a Well/Outpost with a crew
 forced to level 50.
+
+---
+
+## 2026-09-22 — Claude — Map markers for Crew Fortress / Well / Contract Outpost
+
+These three structures used to show only in the tile popup. `src/MapRenderer.jsx` now draws a
+vector marker for each (same approach as `drawCampMarker`; no art assets):
+a stone keep with a banner (Fortress), a round stone well with water and an
+A-frame roof (Well), and a timber notice board with contracts and a banner
+(Contract Outpost). The ring and banner colour show the relationship to the player's crew:
+blue = yours, purple = ally, red = enemy, tan = other crews. While a structure
+is under construction its marker is faded with a dashed ring.
+
+Wiring: `GameView.jsx` builds a `crewStructures` list
+(`[{ tileKey, kind, built, rel }]`, memoised on crews/myCrew/nowTick) and
+passes it to `<MapRenderer crewStructures>`. `syncCrewStructures()` keeps one
+`PIXI.Graphics` per tile on the existing fort layer and only redraws a marker
+when its kind/built/rel signature changes. It also syncs once when the Pixi app
+initialises, and its cache is cleared on init/unmount alongside the fort cache.
+Checked by rendering all 3 kinds × 4 relationships plus the under-construction
+state in headless Chromium (no console errors). Real sprites can replace the
+draw functions later without touching the wiring.
 
 ---
 
