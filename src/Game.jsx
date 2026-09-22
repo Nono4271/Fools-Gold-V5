@@ -192,6 +192,9 @@ export default function RiseToWar() {
   const [playerCrewId,  setPlayerCrewId]  = useState(null);
   const [pendingCrewId, setPendingCrewId] = useState(null);
   const [crews,         setCrews]         = useState([]);
+  // War territory control: { [regionKey]: factionKey } — which faction's
+  // crew last captured that region's Keep. See shared/utils/warRules.js.
+  const [regionOwners,  setRegionOwners]  = useState({});
 
   const [playerCmds, setPlayerCmds] = useState([]);
   const aiCmdsRef = useRef([]);
@@ -962,6 +965,7 @@ export default function RiseToWar() {
     emitFortUpdate,
     guardedTiles,
     onForcedRelocate: (...args) => onForcedRelocateRef.current?.(...args),
+    crews, playerCrewId, regionOwners, setRegionOwners,
   });
 
   useFortressSiege({
@@ -972,6 +976,7 @@ export default function RiseToWar() {
     combatXpMult, facKey, troopSkillLevels, runBattle,
     crews, setCrews, setBattles, setBLog, setUnseenBattles,
     playerHqKey: playerHqKey || playerHqRef.current || `${HQP.player.c},${HQP.player.r}`,
+    playerCrewId, regionOwners,
   });
 
   // ── Crew Fortress: build-timer ticker — mirrors useForts.js's own

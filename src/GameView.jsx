@@ -6,7 +6,7 @@ import { validateRelocationPad, allHqKeyList } from "../shared/utils/relocation.
 import { defaultCrewSubchannels } from "../shared/constants/chat.js";
 import { addSubchannel, removeSubchannel, moveSubchannel } from "../shared/utils/subchannels.js";
 import { NYRO_ID } from "../shared/constants/nyro.js";
-import { createCrew, roleOf, canPromote, canDemote, canKick, canDisband, spendContribution, updateAnnouncement, setCrewTarget, clearCrewTarget, setDiplomacyStatus } from "../shared/utils/crewRules.js";
+import { createCrew, roleOf, canPromote, canDemote, canKick, canDisband, spendContribution, updateAnnouncement, setCrewTarget, clearCrewTarget, setDiplomacyStatus, declareWar, cancelWar } from "../shared/utils/crewRules.js";
 import { removeFortress, canDemolishFortress } from "../shared/utils/crewFortress.js";
 import { CREW_STORE_ITEMS } from "../shared/constants/crew.js";
 import { createConsumable } from "../shared/constants/consumables.js";
@@ -754,6 +754,12 @@ export default function GameView(props) {
           ))}
           onSetDiplomacy={(targetCrewId, status) => setCrews(prev => prev.map(c =>
             c.id === playerCrewId ? setDiplomacyStatus(c, facKey, targetCrewId, status) : c
+          ))}
+          onDeclareWar={() => setCrews(prev => prev.map(c =>
+            c.id === playerCrewId ? declareWar(c, facKey) : c
+          ))}
+          onCancelWar={() => setCrews(prev => prev.map(c =>
+            c.id === playerCrewId ? cancelWar(c, facKey) : c
           ))}
         />
       )}
