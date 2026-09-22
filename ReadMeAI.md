@@ -821,21 +821,35 @@ change.
   sharing at all — see section 1).
 - Full map art conversion and final mobile graphics/UI polish (see art
   inventory below for the current asset gap in detail).
-- **Small loose ends found in this audit, not yet fixed or tracked
-  elsewhere** (low priority, but real):
-  - `src/components/game/HUD.jsx` — `rssRate` display is hardcoded
-    (`{stone:200, wood:200, gas:200, food:2400}`, commented `// TODO: wire`)
-    instead of reading the player's real resource rates.
+- **Small loose ends found in this audit:**
+  - **FIXED (2026-09-22, Claude):** `src/components/game/HUD.jsx`'s `rssRate`
+    display used to be hardcoded. New `hourlyRssRate()` in
+    `shared/utils/resourceIncome.js` computes the player's real per-hour
+    stone/wood/gas/food rate from owned tiles + buildings + active resource
+    bonuses (same rule the real income tick already uses); threaded through
+    as new `bldgs`/`forts`/`rssBonus` props on `HUD`, `GameView.jsx`, and
+    `Game.jsx`'s `<GameView>` spread.
+  - **FIXED (2026-09-22, Claude):** the 2 orc + 2 nightcreature "Coming
+    Soon" passives (Orc March/Scurrier march-speed, both Supply Specialist
+    gathering-bonus) are real, intentional PvE (non-combat) skills, not
+    stubs — owner confirmed not every commander skill needs to be a battle
+    effect. Removed their `notImplemented` flag and wired the actual
+    effect: `getPassiveBonuses()` now exposes `marchSpeedBonus`/
+    `gatheringBonus`, applied in `useMarch.js`'s `cmdMarchSpd()` (real march
+    time reduction) and `tactics.js`'s `gatherTick()` (real extra resources
+    while gathering). See the 2026-09-22 "PvE passives" changelog entry
+    below for the full breakdown. `CommanderScreen.jsx` still has the ⏳/
+    "not yet implemented" UI support built in (harmless, currently unused)
+    for a future skill that's genuinely a stub.
+  - **FIXED (2026-09-22, Claude):** `src/components/screens/FactionScreen.jsx`'s
+    literal `Placeholder` string in the "Faction Bonus" box is gone. Owner
+    supplied 8 "vanilla" bonuses, randomly assigned one-per-faction (see the
+    2026-09-22 "Faction bonuses" changelog entry below) and wired into real
+    systems via new `shared/constants/factionBonuses.js`. The screen now
+    shows the real label per faction.
   - `src/components/screens/Leaderboard.jsx` — a separate "War Ranking"
     panel on the same screen is a "coming soon" stub unrelated to the real,
     working main leaderboard above it.
-  - `src/components/screens/FactionScreen.jsx` — a literal `Placeholder`
-    string is visible in the rendered UI.
-  - `shared/constants/orcs_skills.js` and
-    `shared/constants/nightcreatures_skills.js` — a few passive skills are
-    selectable but their own description says "(Non-Combat Passive — Coming
-    Soon)"; either finish them or grey them out so players can't pick a
-    passive that does nothing.
   - `src/components/game/WizardsTomes.jsx` — two skill nodes ("Spawn
     Slayer", "Faction Mastery") are stubs pending the mob/faction-mastery
     systems they depend on; one `// TODO` notes daily-cooldown reset needs a
@@ -1011,6 +1025,194 @@ Builds on Phase A's shared server.
 - Create sprites for the 15 neutral units, 4 Ancients, and neutral/Ancient
   camp structures — logic/data is complete, art is not (art-queue item).
 - Create sprites for keeps and blend them with the new map style.
+
+---
+
+## 2026-09-22 — Claude (Sonnet 5) — HUD resource rate + skipped "not implemented" skills, plus roadmap corrections
+
+Follow-up to the 2026-09-22 audit/rewrite above. Owner flagged three things
+in that audit for immediate action; two were code fixes, one needs owner
+input rather than a guess.
+
+**1. HUD resource-rate display was fake.** `src/components/game/HUD.jsx`
+showed a hardcoded `{stone:200, wood:200, gas:200, food:2400}` per-hour rate
+regardless of the player's real tiles/buildings. New `hourlyRssRate(tiles,
+pKeys, buildings, forts, bonuses)` in `shared/utils/resourceIncome.js`
+mirrors the real income-tick math (`baseGains` + per-tile `addTileIncome`,
+same 200-base-plus-building-rate and per-power-level tile rates) but returns
+an hourly rate for display instead of an applied/capped total. Threaded
+`bldgs`/`forts`/`rssBonus` as new HUD props, added `rssBonus` to
+`GameView.jsx`'s destructure and to `Game.jsx`'s `<GameView>` prop spread
+(both already had `bldgs`/`forts` in scope; `rssBonus` did not previously
+reach `GameView.jsx` at all).
+
+**2. Two factions have skill passives that silently did nothing — CORRECTED,
+now actually implemented (see item 5), not just blocked.** Initial pass
+(same session, superseded within the hour): `shared/constants/orcs_skills.js`
+(Orc March, Supply Specialist) and `shared/constants/nightcreatures_skills.js`
+(2 more) self-flagged `notImplemented: true`, and nothing in the UI read
+that flag — a player could spend a real skill point on a passive with zero
+effect. First fix made `src/components/screens/CommanderScreen.jsx` show a
+⏳ and block spending on them. **Owner correction: these are real,
+intentional PvE (non-combat) skills, not stubs — not every commander skill
+needs to be a damage/battle effect.** They needed to be wired to a real
+effect, not walled off. See item 5 for the actual fix; the
+`notImplemented`/⏳ UI support in `CommanderScreen.jsx` was left in place
+as general-purpose infrastructure (it now simply doesn't trigger for these
+4, since their data no longer sets the flag) in case a genuinely
+unfinished skill needs it later.
+
+**3. FactionScreen's "Placeholder" text — NOT fixed, needs owner input.**
+`src/components/screens/FactionScreen.jsx`'s "Faction Bonus" box literally
+renders the word "Placeholder". There is no per-faction gameplay bonus
+defined anywhere in `shared/constants/` to put there instead — training
+cost/time already vary "modestly by faction/branch" per the locked
+decisions, but that's not itself an explicit "faction bonus" stat. Per Rule
+4 (don't invent requirements), this needs the owner to say what each of the
+8 factions' bonus actually is — or confirm the box should say "None yet" /
+be hidden — before a collaborator fills it in. **Resolved later the same
+day — see the "Faction bonuses" changelog entry below.**
+
+**4. Roadmap corrections (owner-reported, not previously caught):**
+Crew 2.0 is NOT fully complete — moved the "Complete" claim back to
+"Partial" in section 2/3 above. `crewLevelPerks()` only defines real
+rewards at the member-cap steps (every 2 levels) and the 3 fortress-slot
+levels (15/30/45); every other level 1-50 renders as an empty placeholder
+row in the "Level" tab. Needs an owner-approved reward table for the
+remaining levels. Also added explicit GPT-art-review flags in sections 3/4
+above: the 14 non-Fynn/Brine commander map sprites (h5, h9, h11, h17, h21,
+h23, h37, h38, h43, h45, h50, h52, h57, h59) haven't been checked against
+the v3 quality pass, and the 7 non-Pirate faction HQ redesigns are wired in
+code but still unapproved per `public/hq/ART.md`.
+
+**5. The 4 "PvE passive" skills now actually work (owner clarification,
+same session).** These are real, intentional world-map (non-combat)
+commander passives — March Speed and Gathering — not every skill needs to
+be a battle effect. Wired for real instead of just gated:
+- `shared/constants/skills.js` `getPassiveBonuses(cmd)`: added
+  `marchSpeedBonus`/`gatheringBonus` fields, summed from any of the
+  commander's leveled passive skills whose `effect.type` is
+  `"march_speed_bonus"` / `"gathering_bonus"` (these 4 skills don't use the
+  existing `passiveXxx` boolean-flag pattern since they're non-combat, so
+  they needed their own small branch here).
+- `src/hooks/useMarch.js` `cmdMarchSpd(cmd, boostedCmd)`: now multiplies the
+  gear-boosted effective speed by `(1 + marchSpeedBonus)` before returning
+  it, so Orc March / Scurrier genuinely shorten march time for that
+  commander's own marches (both outgoing and retreat/recall paths that go
+  through this function). AI-side march speed paths are untouched (separate
+  code, same "AI-side pacing" exclusion used elsewhere in this file).
+- `shared/utils/tactics.js` `gatherTick(cmd, tile, now, gatheringBonusPct)`:
+  new 4th param multiplies the per-tick resource amount by
+  `(1 + gatheringBonusPct)`. `src/hooks/useTacticTicks.js` computes that
+  from `getPassiveBonuses(cmd).gatheringBonus` and passes it through, so
+  Supply Specialist genuinely gives more resources while that commander is
+  parked gathering on a tile. **Scope note:** the instant "Quick Gather"
+  tactic (`onQuickGather`/`quickGatherReward`) is a Wizard's Tomes action
+  with no commander attached, so it isn't eligible for a commander passive
+  — only the timed, commander-parked gather order is affected, which
+  matches what "Supply Specialist" (a commander skill) should mean.
+- Removed `notImplemented: true` and the "— Coming Soon" wording from all 4
+  skill definitions now that they have a real effect. Descriptions now read
+  "(Non-Combat Passive)".
+- Moved to section 2 (Complete) below: real commander PvE passives (march
+  speed, gathering bonus).
+
+**Tests:** not run in this sandbox (no `node_modules`/`npm install` — same
+constraint earlier entries note). All 8 touched files were syntax-checked
+individually with `esbuild` (no bundling, no type errors) and compiled
+clean. Re-run `npm install && npm test && npm run build` before merging;
+worth a manual playtest of a march with Orc March/Scurrier leveled and a
+gather order with Supply Specialist leveled to confirm the numbers feel
+right, since no automated test yet covers this path — add one to
+`tests/splitRules.test.js` or a new `tests/skillPassives.test.js` next.
+
+---
+
+## 2026-09-22 — Claude (Sonnet 5) — Faction bonuses (owner-specified, all 8 wired) + FactionScreen fix
+
+Follow-up to the entry above. Owner supplied 8 "vanilla" per-faction bonuses
+(deliberately modest — no faction is strictly better, each leans slightly
+toward one part of the game) and asked for them assigned randomly, wired
+into real systems, and shown on `FactionScreen.jsx` in place of the old
+"Placeholder" text.
+
+**New file `shared/constants/factionBonuses.js`.** One `FACTION_BONUSES`
+map, one entry per faction, each `{ key, kind, value, label }`. `kind` says
+how a consumer applies it (`reduceTime`, `reduceCost`, `addRate`,
+`addFlat`). Two helpers: `factionBonus(facKey)` (for display) and
+`factionBonusValue(facKey, bonusKey, neutral=0)` (for wiring — returns the
+faction's value only if its bonus matches `bonusKey`, else a neutral
+default, so every call site can unconditionally ask "does my faction have
+this bonus?" without a branch).
+
+**Random assignment (Fisher-Yates, generated once, not to be re-rolled):**
+- pirates → -10% Training Time
+- nightcreatures → -10% Training Cost
+- ashen_dead → +10% March Speed
+- dragons → +10% Resources from Gathering
+- holyknights → +5% Resource Production (owned-tile income)
+- wizards → +5% Damage in PvE Battles
+- orcs → +5 Max Dragon Eggs
+- coldborns → -10% Healing Time
+
+**Wiring, one bonus at a time:**
+- **Training time/cost** (`shared/utils/training.js` `trainingQuote`): new
+  5th param `costMult` applies only to `perCommandCost` (wood/gas/food), kept
+  separate from the existing capstone `discMult` which also affects time —
+  otherwise the "cost" bonus would've silently also cut training time.
+  `Game.jsx` computes `trainingCostMult = 1 - factionBonusValue(facKey,
+  "trainCost")` and `trainingSpeedMult` now also folds in `trainTime`.
+  Threaded through `armyEconomy.js`'s `train` action and `HQMenu.jsx`'s
+  training-quote preview so the UI shows the same number that gets charged.
+- **March speed** (`src/hooks/useMarch.js` `cmdMarchSpd`): adds
+  `factionBonusValue(cmd.faction, "marchSpeed")` on top of the existing
+  skill-passive march bonus (additive stacking, one `pct` applied once).
+- **Gathering yield** (`src/hooks/useTacticTicks.js`): adds
+  `factionBonusValue(cmd.faction, "gatherYield")` on top of the Supply
+  Specialist skill bonus before calling `gatherTick`.
+- **Resource production / tile income** (`shared/utils/resourceIncome.js`):
+  `addTileIncome` takes a new `facBonus` param, added to the existing Tomes
+  `bonuses[tile.rss]` inside the per-power-level tile-rate multiplier (does
+  NOT touch the flat power-1 tiles or the base 200/building income, since
+  the bonus is "resource production" from owned tiles specifically).
+  Threaded through `hourlyRssRate` (HUD display) and `resourceIncomeTick`
+  (the real tick). `Game.jsx` computes `facTileYield =
+  factionBonusValue(facKey, "tileYield")` and passes it into `useResources`
+  and down through `GameView.jsx` into `HUD.jsx`.
+- **Damage in PvE battles** (`shared/utils/battle.js` `simBattle`): new
+  `isPveBattle = defTile?.owner === "neutral" || defTile?.owner === "ai"`
+  check (same ownership test the existing `neutral_tile_dmg_bonus` skill
+  effect already used to mean "not a real player"). When true,
+  `facPveDmgMult = 1 + factionBonusValue(cmd.faction, "pveDmg")` seeds both
+  `rs.cmdMult` and `rs.troopAtkMult` at the top of each round, so it stacks
+  multiplicatively with every other in-battle bonus. Never applies to PvP
+  (defTile.owner === "player").
+- **Max Dragon Eggs** (`Game.jsx`): `dragonEggsCap = 20 + tomeNodeLv("tr") +
+  factionBonusValue(facKey, "eggCap")` — flat add, same pattern as the
+  existing Tomes egg-cap node.
+- **Healing speed** (`shared/utils/armyEconomy.js` `healingRate`): new
+  `healSpeedMult` param (>1 heals faster) multiplies the existing rate
+  formula. `Game.jsx` computes `healSpeedMult = 1 / (1 -
+  factionBonusValue(facKey, "healSpeed"))` so "-10% healing time" reads as
+  the rate going up ~11%. Threaded through `startHealing`, the `tick()`
+  auto-heal path, `useTraining.js`, and `HQMenu.jsx`'s Repair Bay screen.
+
+**FactionScreen fix:** `src/components/screens/FactionScreen.jsx` imports
+`factionBonus` and replaces the literal `Placeholder` span with
+`factionBonus(faction.key)?.label`, so each faction's card now shows its
+real bonus text.
+
+**Tests:** not run in this sandbox (no `node_modules`). All touched files
+(`factionBonuses.js`, `resourceIncome.js`, `battle.js`, `training.js`,
+`armyEconomy.js`, `useMarch.js`, `useTacticTicks.js`, `useResources.js`,
+`useTraining.js`, `HQMenu.jsx`, `HUD.jsx`, `GameView.jsx`, `Game.jsx`,
+`FactionScreen.jsx`) syntax-checked individually with `esbuild` and compiled
+clean (one pre-existing, unrelated duplicate-case warning in `battle.js`
+around `frostbitten_enemy_spd_down`/`per_round_frostbite_aoe_chance`, not
+touched by this change). Re-run `npm install && npm test && npm run build`
+before merging; worth a manual playtest per faction to confirm each bonus
+feels right at these modest values — no automated test yet covers this
+path.
 
 ---
 
