@@ -15,7 +15,7 @@ test('All wired commanders resolve to their map atlases, including AI instances'
   assert.match(commanderAtlas({id:'ai_dread',bust:'/commanders/h57_ser_dreadmourne_bust.webp'}),/h57-walk-v1\.png$/);
   assert.match(commanderAtlas({id:'h59'}),/h59-walk-v1\.png$/);
   assert.match(commanderAtlas({id:'ai_mord',bust:'/commanders/h59_fallen_lord_mordwyn_bust.webp'}),/h59-walk-v1\.png$/);
-  for (const [id,bust] of [['h37','h37_brother_aldric'],['h38','h38_commander_vayne'],['h50','h50_valdris_the_unmoved'],['h52','h52_eira_coldmantle']]) {
+  for (const [id,bust] of [['h5','h5_solarius_vex'],['h9','h9_grimtusk'],['h11','h11_emberclaw'],['h17','h17_runekeeper_dov'],['h21','h21_warcroak'],['h23','h23_ashen_kraul'],['h37','h37_brother_aldric'],['h38','h38_commander_vayne'],['h50','h50_valdris_the_unmoved'],['h52','h52_eira_coldmantle']]) {
     assert.match(commanderAtlas({id}),new RegExp(`${id}-walk-v1\\.png$`));
     assert.match(commanderAtlas({id:'ai_x',bust:`/commanders/${bust}_bust.webp`}),new RegExp(`${id}-walk-v1\\.png$`));
   }
@@ -40,7 +40,7 @@ test('walking changes frames, arrival returns to standing, facing remains stable
 
 test('Every wired walking atlas uses the established 33x4 sheet structure',()=>{
   const root = path.resolve('public/commanders/map');
-  const wired = ['h1','h13','h37','h38','h43','h45','h50','h52','h57','h59'].map(id => path.basename(commanderAtlas({id})));
+  const wired = ['h1','h5','h9','h11','h13','h17','h21','h23','h37','h38','h43','h45','h50','h52','h57','h59'].map(id => path.basename(commanderAtlas({id})));
   for (const file of wired) {
     const buf = fs.readFileSync(path.join(root,file));
     assert.equal(buf.toString('ascii',1,4),'PNG');
