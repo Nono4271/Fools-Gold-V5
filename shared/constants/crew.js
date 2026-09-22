@@ -114,16 +114,16 @@ export function isValidEmblem(e) {
 
 // ── Level / XP / member-cap / fortress-slot schedule ───────────────────────
 // Levels 1–50. Member cap starts at 50 and gains +5 every 2 levels (2, 4, 6,
-// … 20) until it hits the 100 hard cap. Fortress slots start at 2 and gain
-// +1 at levels 15, 30 and 45, capping at 5.
+// … 20) until it hits the 100 hard cap. Fortress slots start at 1 and gain
+// +1 at levels 5, 15, 30 and 45, capping at 5.
 export const CREW_MAX_LEVEL = 50;
 export const CREW_BASE_MEMBER_CAP = 50;
 export const CREW_MAX_MEMBER_CAP = 100;
 export const CREW_CAP_STEP_LEVELS = 2;   // a +5 lands every 2 levels...
 export const CREW_CAP_STEP_AMOUNT = 5;   // ...until CREW_MAX_MEMBER_CAP is reached
-export const CREW_BASE_FORTRESS_SLOTS = 2;
+export const CREW_BASE_FORTRESS_SLOTS = 1;
 export const CREW_MAX_FORTRESS_SLOTS = 5;
-export const CREW_FORTRESS_SLOT_LEVELS = [15, 30, 45];
+export const CREW_FORTRESS_SLOT_LEVELS = [5, 15, 30, 45];
 
 // crew.level → member cap. Reaches CREW_MAX_MEMBER_CAP at level 20 and stays
 // there through 50.
@@ -149,13 +149,177 @@ export function crewXpToNextLevel(level) {
   return Math.round(1000 * Math.pow(lvl, 1.55));
 }
 
+// ── Per-resource production perks (levels 3-26) ────────────────────────────
+// Each grants a flat +N/hr of one resource to every crew member (applied to
+// the player's own resource income for now, same as the faction bonuses in
+// resourceIncome.js — real crew-wide multiplayer sharing lands once a server
+// exists, per the roadmap). Three tiers per resource, staggered so no two
+// unlock on the exact same level.
+const RES_ICON = { wood: "🪵", stone: "🪨", gas: "⚗", food: "🌾" };
+const RES_LABEL = { wood: "Woodworking", stone: "Stone Masonry", gas: "Gas Collector", food: "Food Farmer" };
+const ROMAN = { 1: "I", 2: "II", 3: "III", 4: "IV" };
+export const CREW_LEVEL_RESOURCE_PERKS = [
+  { level: 3,  id: "woodworking_1",   res: "wood",  tier: 1, amount: 500 },
+  { level: 7,  id: "stone_masonry_1", res: "stone", tier: 1, amount: 500 },
+  { level: 9,  id: "gas_collector_1", res: "gas",   tier: 1, amount: 500 },
+  { level: 11, id: "food_farmer_1",   res: "food",  tier: 1, amount: 500 },
+  { level: 13, id: "woodworking_2",   res: "wood",  tier: 2, amount: 750 },
+  { level: 17, id: "stone_masonry_2", res: "stone", tier: 2, amount: 750 },
+  { level: 19, id: "gas_collector_2", res: "gas",   tier: 2, amount: 750 },
+  { level: 21, id: "food_farmer_2",   res: "food",  tier: 2, amount: 750 },
+  { level: 22, id: "woodworking_3",   res: "wood",  tier: 3, amount: 1000 },
+  { level: 23, id: "stone_masonry_3", res: "stone", tier: 3, amount: 1000 },
+  { level: 24, id: "gas_collector_3", res: "gas",   tier: 3, amount: 1000 },
+  { level: 26, id: "food_farmer_3",   res: "food",  tier: 3, amount: 1000 },
+  { level: 29, id: "woodworking_4",   res: "wood",  tier: 4, amount: 1250 },
+  { level: 32, id: "stone_masonry_4", res: "stone", tier: 4, amount: 1250 },
+  { level: 33, id: "gas_collector_4", res: "gas",   tier: 4, amount: 1250 },
+  { level: 34, id: "food_farmer_4",   res: "food",  tier: 4, amount: 1250 },
+];
+
+// ── March speed perk ────────────────────────────────────────────────────────
+export const CREW_LEVEL_MARCH_PERKS = [
+  { level: 25, id: "faster_together_1", tier: 1, pct: 0.05 },
+  { level: 38, id: "faster_together_2", tier: 2, pct: 0.075 },
+];
+
+// ── All-resource perk ───────────────────────────────────────────────────────
+// Level 27 ("Resource Trove I") and level 39 ("Treasure Trove II") are the
+// same mechanic under the name the owner gave each tier.
+export const CREW_LEVEL_ALLRES_PERKS = [
+  { level: 27, id: "resource_trove_1", tier: 1, label: "Resource Trove I", amount: 1200 },
+  { level: 39, id: "treasure_trove_2", tier: 2, label: "Treasure Trove II", amount: 2000 },
+];
+
+// ── Heal-speed perk (Healer) ────────────────────────────────────────────────
+export const CREW_LEVEL_HEAL_PERKS = [
+  { level: 28, id: "healer_1", tier: 1, pct: 0.05 },
+  { level: 41, id: "healer_2", tier: 2, pct: 0.10 },
+];
+
+// ── Training XP perk (Scholars — the egg/training-tick feature) ────────────
+export const CREW_LEVEL_XP_PERKS = [
+  { level: 36, id: "scholars_1", tier: 1, pct: 0.05 },
+  { level: 47, id: "scholars_2", tier: 2, pct: 0.10 },
+];
+
+// ── Gathering-yield perk (Gatherers) ────────────────────────────────────────
+export const CREW_LEVEL_GATHER_PERKS = [
+  { level: 37, id: "gatherers_1", tier: 1, pct: 0.05 },
+  { level: 46, id: "gatherers_2", tier: 2, pct: 0.10 },
+];
+
+// ── PvE-tile damage perk ────────────────────────────────────────────────────
+export const CREW_LEVEL_PVE_DMG_PERKS = [
+  { level: 44, id: "pve_dmg_1", pct: 0.10 },
+];
+
+// ── Spawn-army damage perk (Spawn Sweeper) ──────────────────────────────────
+// Applied in shared/utils/battle.js to Sweep fights (defCmd.isSpawn).
+export const CREW_LEVEL_SPAWN_DMG_PERKS = [
+  { level: 43, id: "spawn_sweeper_1", pct: 0.10 },
+];
+
+// ── Training time/cost perks ────────────────────────────────────────────────
+export const CREW_LEVEL_TRAIN_TIME_PERKS = [
+  { level: 48, id: "efficient_trainer", pct: 0.05 },
+];
+export const CREW_LEVEL_TRAIN_COST_PERKS = [
+  { level: 49, id: "cost_effective", pct: 0.10 },
+];
+
+// ── Structures unlocked by crew level: Well + Contract Board/Outpost ─────
+// Rules live in shared/utils/crewStructures.js. `kind`/`count` drive the
+// slot helpers below so the Level tab and the real limits can't drift apart.
+export const CREW_LEVEL_STRUCTURE_PERKS = [
+  { level: 31, id: "well_1",           kind: "well",     count: 1, icon: "💧", label: "Well I",             detail: "Founder can build a Well" },
+  { level: 35, id: "contract_board_1", kind: "outpost",  count: 1, icon: "📜", label: "Contract Board I",   detail: "Founder can build a Contract Outpost (1 neutral unit)" },
+  { level: 40, id: "well_2",           kind: "well",     count: 2, icon: "💧", label: "Well II",            detail: "Founder can build a 2nd Well" },
+  { level: 42, id: "contract_board_2", kind: "hireTime", pct: 0.10, icon: "📜", label: "Contract Board II",  detail: "-10% hire time at the Contract Outpost" },
+  { level: 50, id: "contract_board_3", kind: "outpostUnits", count: 2, icon: "📜", label: "Contract Board III", detail: "Contract Outpost offers a 2nd neutral unit" },
+];
+
+function crewLvl(level) { return Math.max(1, Math.min(CREW_MAX_LEVEL, level || 1)); }
+// Wells a crew may have at this level (0 before 31, 1 at 31, 2 at 40).
+export function crewWellSlotsForLevel(level) {
+  const lvl = crewLvl(level);
+  return CREW_LEVEL_STRUCTURE_PERKS.filter(p => p.kind === "well" && lvl >= p.level)
+    .reduce((n, p) => Math.max(n, p.count), 0);
+}
+// Contract Outpost unlocked (level 35+) — one per crew.
+export function crewOutpostUnlocked(level) {
+  return crewLvl(level) >= (CREW_LEVEL_STRUCTURE_PERKS.find(p => p.kind === "outpost")?.level ?? Infinity);
+}
+// Neutral units the founder may pick for the Outpost (0 / 1 at 35 / 2 at 50).
+export function crewOutpostUnitSlots(level) {
+  const lvl = crewLvl(level);
+  return CREW_LEVEL_STRUCTURE_PERKS.filter(p => (p.kind === "outpost" || p.kind === "outpostUnits") && lvl >= p.level)
+    .reduce((n, p) => Math.max(n, p.count), 0);
+}
+// Contract Board II: -N% hire (training) time for Outpost-sourced units.
+export function crewOutpostHireTimeBonus(level) {
+  const lvl = crewLvl(level);
+  return CREW_LEVEL_STRUCTURE_PERKS.filter(p => p.kind === "hireTime" && lvl >= p.level)
+    .reduce((n, p) => n + p.pct, 0);
+}
+
+// Build rules. Cost/time are PLACEHOLDERS matching the Fortress (owner said
+// "similar to a fortress" but gave no numbers) — tune here.
+export const WELL_MIN_POWER_LEVEL = 10;
+export const WELL_BUILD_MS = 3 * 60 * 60_000;
+export const WELL_COST = { wood: 150_000, stone: 250_000, gas: 175_000 };
+export const OUTPOST_MIN_POWER_LEVEL = 10;
+export const OUTPOST_BUILD_MS = 3 * 60 * 60_000;
+export const OUTPOST_COST = { wood: 150_000, stone: 250_000, gas: 175_000 };
+// Per-player, per-day cap on Outpost-sourced training, in training COMMANDS
+// (trainingQuote's `commands` = amount / command size). Resets daily.
+export const OUTPOST_DAILY_COMMAND_LIMIT = 100;
+
+// Generic "sum every unlocked tier's pct" helper — same shape as
+// crewMarchSpeedBonus, reused for heal/xp/gather/pve/spawn/train perks.
+function sumCrewPct(level, perks) {
+  const lvl = Math.max(1, Math.min(CREW_MAX_LEVEL, level || 1));
+  let pct = 0;
+  for (const p of perks) if (lvl >= p.level) pct += p.pct;
+  return pct;
+}
+export function crewHealSpeedBonus(level)  { return sumCrewPct(level, CREW_LEVEL_HEAL_PERKS); }
+export function crewXpBonus(level)         { return sumCrewPct(level, CREW_LEVEL_XP_PERKS); }
+export function crewGatherYieldBonus(level){ return sumCrewPct(level, CREW_LEVEL_GATHER_PERKS); }
+export function crewPveDmgBonus(level)     { return sumCrewPct(level, CREW_LEVEL_PVE_DMG_PERKS); }
+export function crewSpawnDmgBonus(level)   { return sumCrewPct(level, CREW_LEVEL_SPAWN_DMG_PERKS); }
+export function crewTrainTimeBonus(level)  { return sumCrewPct(level, CREW_LEVEL_TRAIN_TIME_PERKS); }
+export function crewTrainCostBonus(level)  { return sumCrewPct(level, CREW_LEVEL_TRAIN_COST_PERKS); }
+
+// crew.level → cumulative flat +N/hr per resource from every unlocked
+// resource perk (per-resource ones above + the all-resource ones), for
+// wiring into resourceIncome.js the same way the faction tile bonus is.
+export function crewResourceRateBonus(level) {
+  const lvl = Math.max(1, Math.min(CREW_MAX_LEVEL, level || 1));
+  const bonus = { stone: 0, wood: 0, gas: 0, food: 0 };
+  for (const p of CREW_LEVEL_RESOURCE_PERKS) if (lvl >= p.level) bonus[p.res] += p.amount;
+  for (const p of CREW_LEVEL_ALLRES_PERKS) if (lvl >= p.level) {
+    bonus.stone += p.amount; bonus.wood += p.amount; bonus.gas += p.amount; bonus.food += p.amount;
+  }
+  return bonus;
+}
+
+// crew.level → cumulative march-speed % bonus from every unlocked march perk.
+export function crewMarchSpeedBonus(level) {
+  const lvl = Math.max(1, Math.min(CREW_MAX_LEVEL, level || 1));
+  let pct = 0;
+  for (const p of CREW_LEVEL_MARCH_PERKS) if (lvl >= p.level) pct += p.pct;
+  return pct;
+}
+
 // crew.level → the perk(s) that unlock AT exactly that level (not
-// cumulative — crewMemberCapForLevel/crewFortressSlotsForLevel above give
-// the running total). Backs the Level tab (CrewLevel.jsx): every level 1–50
-// gets a row, real perk if one lands there, a placeholder otherwise, so the
-// full climb to CREW_MAX_LEVEL always has something to look at even before
-// more perks are designed. Add a new real perk here as one gets built rather
-// than inventing UI-only copy elsewhere.
+// cumulative — crewMemberCapForLevel/crewFortressSlotsForLevel/
+// crewResourceRateBonus/crewMarchSpeedBonus above give the running total).
+// Backs the Level tab (CrewLevel.jsx): every level 1–50 gets a row, real
+// perk if one lands there, a placeholder otherwise, so the full climb to
+// CREW_MAX_LEVEL always has something to look at even before more perks are
+// designed. Add a new real perk here as one gets built rather than
+// inventing UI-only copy elsewhere.
 export function crewLevelPerks(level) {
   const perks = [];
   if (level >= CREW_CAP_STEP_LEVELS && level <= 20 && level % CREW_CAP_STEP_LEVELS === 0) {
@@ -168,6 +332,83 @@ export function crewLevelPerks(level) {
     perks.push({
       id: "fortress_slot", icon: "🏰", label: "Fortress Slot",
       detail: `+1 (now ${crewFortressSlotsForLevel(level)})`,
+    });
+  }
+  const resPerk = CREW_LEVEL_RESOURCE_PERKS.find(p => p.level === level);
+  if (resPerk) {
+    perks.push({
+      id: resPerk.id, icon: RES_ICON[resPerk.res], label: `${RES_LABEL[resPerk.res]} ${ROMAN[resPerk.tier]}`,
+      detail: `+${resPerk.amount}/hr ${resPerk.res} (crew)`,
+    });
+  }
+  const marchPerk = CREW_LEVEL_MARCH_PERKS.find(p => p.level === level);
+  if (marchPerk) {
+    perks.push({
+      id: marchPerk.id, icon: "🐎", label: `Faster Together ${ROMAN[marchPerk.tier]}`,
+      detail: `+${Math.round(marchPerk.pct * 100)}% march speed (crew)`,
+    });
+  }
+  const allResPerk = CREW_LEVEL_ALLRES_PERKS.find(p => p.level === level);
+  if (allResPerk) {
+    perks.push({
+      id: allResPerk.id, icon: "💰", label: allResPerk.label,
+      detail: `+${allResPerk.amount}/hr all resources (crew)`,
+    });
+  }
+  const healPerk = CREW_LEVEL_HEAL_PERKS.find(p => p.level === level);
+  if (healPerk) {
+    perks.push({
+      id: healPerk.id, icon: "✚", label: `Healer ${ROMAN[healPerk.tier]}`,
+      detail: `-${Math.round(healPerk.pct * 100)}% recovery time (crew)`,
+    });
+  }
+  const xpPerk = CREW_LEVEL_XP_PERKS.find(p => p.level === level);
+  if (xpPerk) {
+    perks.push({
+      id: xpPerk.id, icon: "📚", label: `Scholars ${ROMAN[xpPerk.tier]}`,
+      detail: `+${Math.round(xpPerk.pct * 100)}% training XP (crew)`,
+    });
+  }
+  const gatherPerk = CREW_LEVEL_GATHER_PERKS.find(p => p.level === level);
+  if (gatherPerk) {
+    perks.push({
+      id: gatherPerk.id, icon: "⛏", label: `Gatherers ${ROMAN[gatherPerk.tier]}`,
+      detail: `+${Math.round(gatherPerk.pct * 100)}% resources from gathering (crew)`,
+    });
+  }
+  const pvePerk = CREW_LEVEL_PVE_DMG_PERKS.find(p => p.level === level);
+  if (pvePerk) {
+    perks.push({
+      id: pvePerk.id, icon: "💥", label: "PvE",
+      detail: `+${Math.round(pvePerk.pct * 100)}% damage to PvE tiles (crew)`,
+    });
+  }
+  const spawnPerk = CREW_LEVEL_SPAWN_DMG_PERKS.find(p => p.level === level);
+  if (spawnPerk) {
+    perks.push({
+      id: spawnPerk.id, icon: "💀", label: "Spawn Sweeper",
+      detail: `+${Math.round(spawnPerk.pct * 100)}% damage to Spawn armies (crew)`,
+    });
+  }
+  const trainTimePerk = CREW_LEVEL_TRAIN_TIME_PERKS.find(p => p.level === level);
+  if (trainTimePerk) {
+    perks.push({
+      id: trainTimePerk.id, icon: "⏱", label: "Efficient Trainer",
+      detail: `-${Math.round(trainTimePerk.pct * 100)}% training time (crew)`,
+    });
+  }
+  const trainCostPerk = CREW_LEVEL_TRAIN_COST_PERKS.find(p => p.level === level);
+  if (trainCostPerk) {
+    perks.push({
+      id: trainCostPerk.id, icon: "💵", label: "Cost Effective",
+      detail: `-${Math.round(trainCostPerk.pct * 100)}% training cost (crew)`,
+    });
+  }
+  const structPerk = CREW_LEVEL_STRUCTURE_PERKS.find(p => p.level === level);
+  if (structPerk) {
+    perks.push({
+      id: structPerk.id, icon: structPerk.icon, label: structPerk.label,
+      detail: structPerk.detail,
     });
   }
   return perks;

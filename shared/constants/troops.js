@@ -36,6 +36,7 @@
 // other way around) so ancientTroops.js stays a self-contained data file
 // with no dependency back on this one.
 import { ANCIENT_FACTIONS } from "./ancientTroops.js";
+import { NEUTRAL_FACTIONS } from "./neutralTroops.js";
 
 // ── Damage triangle modifier ──────────────────────────────────────────────────
 export function troopSizeModifier(atkSize, defSize) {
@@ -1179,7 +1180,7 @@ export const FACTION_KEYS = Object.keys(FACTION_TROOPS);
 // Resolve a { faction, branch, tier } ref to a branch object
 export function resolveTroopBranch(troopRef) {
   if (!troopRef?.faction || !troopRef?.branch) return null;
-  const faction = FACTION_TROOPS[troopRef.faction] || ANCIENT_FACTIONS[troopRef.faction];
+  const faction = FACTION_TROOPS[troopRef.faction] || ANCIENT_FACTIONS[troopRef.faction] || NEUTRAL_FACTIONS[troopRef.faction];
   if (!faction) return null;
   return faction.branches.find(b => b.key === troopRef.branch) ?? null;
 }
@@ -1188,13 +1189,14 @@ export function resolveTroopBranch(troopRef) {
 export function resolveTroopTier(troopRef) {
   const branch = resolveTroopBranch(troopRef);
   if (!branch) return null;
-  if (branch.capstone) return branch.tiers[0] ?? null;
+  if (branch.capstone || branch.singleTier) return branch.tiers[0] ?? null;
   const idx = (troopRef?.tier ?? 1) - 1;
   return branch.tiers[Math.min(idx, 2)] ?? null;
 }
 
 // Get skills for a tier (0=lv1, 1=lv2, 2=lv3). Capstone branches always field all 3.
 export function getTierSkills(branch, tierIndex) {
+  if (branch.singleTier) return [branch.skills.a].filter(Boolean); // neutral units (see neutralTroops.js)
   if (branch.capstone) return [branch.skills.a, branch.skills.b, branch.skills.c];
   if (tierIndex === 0) return [branch.skills.a];
   if (tierIndex === 1) return [branch.skills.b];

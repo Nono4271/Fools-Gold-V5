@@ -497,3 +497,42 @@ export function neutralPortraitPath(key) {
   if (!key) return null;
   return `/troops/neutral_${key}_portrait.webp`;
 }
+
+// ── Trainable wrapper (Contract Outpost / owned camps) ────────────────────
+// Same trick ancientTroops.js uses: a synthetic "faction" whose `branches`
+// are shaped like a normal troop branch, so the shared resolvers
+// (troops.js resolveTroopBranch/resolveTroopTier/getTierSkills, battle.js
+// resolveBranch/getTierSkillsForBattle, troopSlots.js, pathfinding.js,
+// training.js trainingQuote) can resolve `{ faction: "neutrals", branch:
+// "<unitKey>", tier: 0 }` — and a barracks pool key "neutrals:<unitKey>:0" —
+// with only an additive fallback lookup in each. Kept OUT of FACTION_TROOPS
+// so nothing that assumes "8 real factions" is affected.
+//   - `singleTier: true`: one fixed stat block at tiers[0], skills = [a]
+//     only (resolvers special-case this flag; see troops.js).
+//   - `costTier`: the unit's own T1/T2/T3 bracket, used by trainingQuote
+//     for cost/time instead of the branch-tier index (always 0 here).
+export const NEUTRAL_FACTION_KEY = "neutrals";
+
+export const NEUTRAL_FACTIONS = {
+  [NEUTRAL_FACTION_KEY]: {
+    quarters: "The Wilds",
+    branches: NEUTRAL_TROOPS.map(u => ({
+      key: u.key,
+      label: u.label,
+      race: u.race,
+      size: u.size,
+      dmgType: u.dmgType,
+      role: u.role,
+      tags: u.tags,
+      desc: u.desc,
+      singleTier: true,
+      costTier: u.tier,
+      tiers: [{ label: u.label, desc: u.desc, ...u.stats }],
+      skills: u.skills,
+    })),
+  },
+};
+
+export function isNeutralBranch(branch) {
+  return !!(branch && branch.faction === NEUTRAL_FACTION_KEY);
+}
