@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import { RKEYS, RSS, POWER_DEFS } from "../../../shared/constants/map.js";
 import { PLAYABLE_FACTIONS } from "../../../shared/constants/factions.js";
+import { hourlyRssRate } from "../../../shared/utils/resourceIncome.js";
 
 /*
   HUD — landscape top bar
@@ -111,6 +112,7 @@ function fmtNum(n) {
 /* ── HUD ─────────────────────────────────────────────────────────────────── */
 export default memo(function HUD({
   facName, facKey, pKeys, rss, gems, tiles,
+  bldgs = {}, forts = [], rssBonus = {}, facTileYield = 0,
   dragonEggs    = 20,
   dragonEggsCap = 20,
   tileCap       = 60,
@@ -142,7 +144,10 @@ export default memo(function HUD({
     }
     return n;
   }, [tiles, pKeys]);
-  const rssRate   = { stone: 200, wood: 200, gas: 200, food: 2400 }; // TODO: wire
+  const rssRate = useMemo(
+    () => hourlyRssRate(tiles, pKeys, bldgs, forts, rssBonus, facTileYield),
+    [tiles, pKeys, bldgs, forts, rssBonus, facTileYield]
+  );
 
   // Dragon Egg regen: capacity fills in 24 hrs regardless of cap size
   const eggRegen = (dragonEggsCap / 24).toFixed(2).replace(/\.?0+$/, "");

@@ -1392,7 +1392,7 @@ function TrainingListScreen({ bldgs, barracksPool, troopCards, trainingQueues, r
 }
 
 // ── Screen 2: Train / Scrap queue builder ──────────────────────────────────────
-function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQueues, setTrainingQueues, trainingSpeedMult,
+function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQueues, setTrainingQueues, trainingSpeedMult, trainingCostMult = 1,
   canAfford, queueTraining, rss, discardTroops, onBack }) {
 
   const isScrap   = mode === "scrap";
@@ -1414,7 +1414,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
   const sv = snapVal(sliderVal);
   const numCmds = sv / CMD_SIZE[cmdLabel];
   const capstoneDiscount = card?.branch?.capstone ? capstoneTrainDiscount(bldgs[`b_${card.fKey}_${card.branch.key}`]) : 0;
-  const quote = isScrap ? null : trainingQuote(card?.bKey,sv,trainingSpeedMult,capstoneDiscount);
+  const quote = isScrap ? null : trainingQuote(card?.bKey,sv,trainingSpeedMult,capstoneDiscount,trainingCostMult);
   const trainCost = quote?.cost ?? null;
   const timeSecs = quote?.totalSeconds || 0;
 
@@ -1697,7 +1697,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
 
 // ── Root two-screen wrapper ────────────────────────────────────────────────────
 function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, setTrainingQueues,
-  canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches, trainingSpeedMult }) {
+  canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches, trainingSpeedMult, trainingCostMult = 1 }) {
 
   const [subScreen, setSubScreen] = useState("list"); // "list" | "train" | "scrap"
   const troopCards = useTroopCards({ unlockedBranches, troopCounts, cmds });
@@ -1720,7 +1720,7 @@ function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, s
       setTrainingQueues={setTrainingQueues}
       canAfford={canAfford} queueTraining={queueTraining}
       rss={rss} discardTroops={discardTroops}
-      trainingSpeedMult={trainingSpeedMult}
+      trainingSpeedMult={trainingSpeedMult} trainingCostMult={trainingCostMult}
       onBack={() => setSubScreen("list")}/>
   );
 }
@@ -2908,12 +2908,12 @@ function BattleGroupsScreen({
 // -----------------------------------------------------------------------------
 //  HEALING TENT
 // -----------------------------------------------------------------------------
-function RepairBayScreen({ bldgs, woundedTroops, woundedQueue, bLog, healQueue, queueHealing, autoHeal, setAutoHeal, rss, canAfford, unlockedBranches, troopCounts, barracksPool }) {
+function RepairBayScreen({ bldgs, woundedTroops, woundedQueue, bLog, healQueue, queueHealing, autoHeal, setAutoHeal, rss, canAfford, unlockedBranches, troopCounts, barracksPool, healSpeedMult = 1 }) {
 const [tab,     setTab]     = useState("wounded");
 const [healAmt, setHealAmt] = useState(0);
 const tentLvl  = bldgs.healingtent || 0;
 const tentCap  = tentLvl * 200;
-const healRate = healingRate(bldgs);
+const healRate = healingRate(bldgs, healSpeedMult);
 const wounded  = woundedTroops || 0;
 const maxHeal = Math.min(wounded,Math.max(0,tentCap-(healQueue||[]).reduce((sum,q)=>sum+q.remaining,0)));
 const sv       = Math.min(healAmt, maxHeal);
@@ -3294,6 +3294,7 @@ cmds, setCmds, tiles, rss, setRss, gems, pKeys,
 bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
 trainingQueues, setTrainingQueues, trainSlider, setTrainSlider,
 healQueue, setHealQueue, setWounded, setWoundedQueue, queueHealing, autoHeal, setAutoHeal, trainingSpeedMult,
+trainingCostMult = 1, healSpeedMult = 1,
 upgQueue, sliderVals, setSliderVals, bLog,
 upgrade, canAfford, assignTroops, returnTroops, queueTraining, troopCounts, setTroopCounts, setTroopSlot, setArmySlots,
 recallMarch, setScreen, gearInventory, playerHqKey,
@@ -3423,7 +3424,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             trainingQueues={trainingQueues} setTrainingQueues={setTrainingQueues} canAfford={canAfford}
             queueTraining={queueTraining} rss={rss} cmds={cmds}
             unlockedBranches={unlockedBranches}
-            trainingSpeedMult={trainingSpeedMult}
+            trainingSpeedMult={trainingSpeedMult} trainingCostMult={trainingCostMult}
             discardTroops={(bKey, n) => {
               if (bKey) setTroopCounts(prev => ({ ...prev, [bKey]: Math.max(0, (prev[bKey]||0) - n) }));
             }}/>
@@ -3443,7 +3444,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             healQueue={healQueue} queueHealing={queueHealing} autoHeal={autoHeal} setAutoHeal={setAutoHeal}
             rss={rss} setRss={setRss} canAfford={canAfford}
             unlockedBranches={unlockedBranches} troopCounts={troopCounts}
-            barracksPool={barracksPool}
+            barracksPool={barracksPool} healSpeedMult={healSpeedMult}
           />
         )}
         {hqTab === "marketplace" && (
