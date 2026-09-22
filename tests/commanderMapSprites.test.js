@@ -4,13 +4,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {commanderAtlas,commanderInsideHQ,facingRow,animationColumn} from '../src/utils/commanderMapSprites.js';
-test('Fynn, Brine, Serava and Fang resolve to their map atlases, including AI instances',()=>{
+test('Fynn, Brine, Serava, Fang, Dreadmourne and Mordwyn resolve to their map atlases, including AI instances',()=>{
   assert.match(commanderAtlas({id:'h1'}),/-v3\.png$/);assert.match(commanderAtlas({id:'h13'}),/-v3\.png$/);
   assert.match(commanderAtlas({id:'ai_cmd1',bust:'/commanders/h13_admiral_brine_bust.webp'}),/-v3\.png$/);
-  assert.match(commanderAtlas({id:'h43'}),/-v1\.png$/);
-  assert.match(commanderAtlas({id:'ai_serava',bust:'/commanders/h43_countess_serava_bust.webp'}),/-v1\.png$/);
-  assert.match(commanderAtlas({id:'h45'}),/-v1\.png$/);
-  assert.match(commanderAtlas({id:'ai_fang',bust:'/commanders/h45_fang_groth_bust.webp'}),/-v1\.png$/);
+  assert.match(commanderAtlas({id:'h43'}),/h43-walk-v2\.png$/);
+  assert.match(commanderAtlas({id:'ai_serava',bust:'/commanders/h43_countess_serava_bust.webp'}),/h43-walk-v2\.png$/);
+  assert.match(commanderAtlas({id:'h45'}),/h45-walk-v2\.png$/);
+  assert.match(commanderAtlas({id:'ai_fang',bust:'/commanders/h45_fang_groth_bust.webp'}),/h45-walk-v2\.png$/);
+  assert.match(commanderAtlas({id:'h57'}),/h57-walk-v1\.png$/);
+  assert.match(commanderAtlas({id:'ai_dread',bust:'/commanders/h57_ser_dreadmourne_bust.webp'}),/h57-walk-v1\.png$/);
+  assert.match(commanderAtlas({id:'h59'}),/h59-walk-v1\.png$/);
+  assert.match(commanderAtlas({id:'ai_mord',bust:'/commanders/h59_fallen_lord_mordwyn_bust.webp'}),/h59-walk-v1\.png$/);
   assert.equal(commanderAtlas({id:'h14'}),null);
 });
 test('HQ hides only undeployed commanders; every active march remains visible',()=>{
@@ -30,9 +34,10 @@ test('walking changes frames, arrival returns to standing, facing remains stable
 });
 
 
-test('H43/H45 walking atlases use the established 33x4 sheet structure',()=>{
+test('Every wired walking atlas uses the established 33x4 sheet structure',()=>{
   const root = path.resolve('public/commanders/map');
-  for (const file of ['h43-walk-v1.png','h45-walk-v1.png']) {
+  const wired = ['h1','h13','h43','h45','h57','h59'].map(id => path.basename(commanderAtlas({id})));
+  for (const file of wired) {
     const buf = fs.readFileSync(path.join(root,file));
     assert.equal(buf.toString('ascii',1,4),'PNG');
     // PNG IHDR: width at byte 16, height at byte 20.
