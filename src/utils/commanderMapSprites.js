@@ -3,6 +3,12 @@ export const ATLAS_COLUMNS = WALK_FRAMES + 1;
 export function commanderAtlas(cmd) {
   if (cmd.id === 'h1' || cmd.bust?.includes('h1_redwake_fynn')) return '/commanders/map/h1-walk-v3.png';
   if (cmd.id === 'h13' || cmd.bust?.includes('h13_admiral_brine')) return '/commanders/map/h13-walk-v3.png';
+  if (cmd.id === 'h5' || cmd.bust?.includes('h5_solarius_vex')) return '/commanders/map/h5-walk-v1.png';
+  if (cmd.id === 'h9' || cmd.bust?.includes('h9_grimtusk')) return '/commanders/map/h9-walk-v1.png';
+  if (cmd.id === 'h11' || cmd.bust?.includes('h11_emberclaw')) return '/commanders/map/h11-walk-v1.png';
+  if (cmd.id === 'h17' || cmd.bust?.includes('h17_runekeeper_dov')) return '/commanders/map/h17-walk-v1.png';
+  if (cmd.id === 'h21' || cmd.bust?.includes('h21_warcroak')) return '/commanders/map/h21-walk-v1.png';
+  if (cmd.id === 'h23' || cmd.bust?.includes('h23_ashen_kraul')) return '/commanders/map/h23-walk-v1.png';
   if (cmd.id === 'h43' || cmd.bust?.includes('h43_countess_serava')) return '/commanders/map/h43-walk-v2.png';
   if (cmd.id === 'h45' || cmd.bust?.includes('h45_fang_groth')) return '/commanders/map/h45-walk-v2.png';
   if (cmd.id === 'h37' || cmd.bust?.includes('h37_brother_aldric')) return '/commanders/map/h37-walk-v1.png';
