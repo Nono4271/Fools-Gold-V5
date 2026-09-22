@@ -1,5 +1,6 @@
 // Main in-game screen layout (map, HUD, popups, menus, overlays).
 // Pure presentation: every value and handler comes from Game.jsx as a prop.
+import { useMemo } from "react";
 import { MapRenderer } from "./MapRenderer";
 import { CSS } from "./constants/css.js";
 import { validateRelocationPad, allHqKeyList } from "../shared/utils/relocation.js";
@@ -83,6 +84,24 @@ export default function GameView(props) {
     voidTapCooldown, voidTapLvl, voidTapReady, winner, worldMapOpen, worldMapPrompt,
     woundedQueue, woundedTroops, zoomRef, zoomState,
   } = props;
+
+  // Map markers for every crew's Fortresses / Wells / Contract Outpost —
+  // colour by relationship to the player's crew (see MapRenderer's
+  // syncCrewStructures). `built` flips when the build timer passes.
+  const crewStructures = useMemo(() => {
+    const now = nowTick ?? Date.now();
+    const out = [];
+    for (const c of crews || []) {
+      const rel = c.id === myCrew?.id ? "mine"
+        : myCrew?.diplomacy?.[c.id] === "ally" ? "ally"
+        : myCrew?.diplomacy?.[c.id] === "enemy" ? "enemy" : "other";
+      const built = s => !s.buildEndsAt || now >= s.buildEndsAt;
+      for (const f of c.fortresses || []) out.push({ tileKey: f.tileKey, kind: "fortress", built: built(f), rel });
+      for (const w of c.wells || []) out.push({ tileKey: w.tileKey, kind: "well", built: built(w), rel });
+      if (c.outpost) out.push({ tileKey: c.outpost.tileKey, kind: "outpost", built: built(c.outpost), rel });
+    }
+    return out;
+  }, [crews, myCrew, nowTick]);
 
   // Crew sub-channel add/remove/reorder — gear icon in ChatPanel's header,
   // only shown to a crew's founder (see shared/utils/subchannels.js).
@@ -224,6 +243,7 @@ export default function GameView(props) {
         guardedTileKeys={[...guardedTiles.keys()].sort().join("|")}
         spawns={spawns}
         protectedTileKeys={Object.entries(protectedTiles).filter(([,u])=>Date.now()<u).map(([k])=>k).join("|")}
+        crewStructures={crewStructures}
       />
 
       {/* Zoom controls removed — use pinch / mouse wheel */}

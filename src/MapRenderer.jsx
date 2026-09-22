@@ -1491,6 +1491,115 @@ function removeFortSprite(tileKey, fortLayer) {
   }
 }
 
+/* ─── Crew structures: Fortress / Well / Contract Outpost ──────────────────
+   Vector markers (no art yet) drawn on the fort layer, one Graphics per tile.
+   `crewStructures` prop: [{ tileKey, kind: "fortress"|"well"|"outpost",
+   built, rel: "mine"|"ally"|"enemy"|"other" }] (built in GameView.jsx).
+   Ring/banner colour = relationship; unbuilt = faded + dashed ring. */
+const CREW_STRUCT_COLOR = { mine: 0x2299ff, ally: 0xa060e0, enemy: 0xe04040, other: 0xc8a060 };
+const _crewStructMap = new Map(); // tileKey → Graphics (with __sig)
+export function clearCrewStructCache() { _crewStructMap.clear(); }
+
+function drawStructRing(g, cx, base, color, built) {
+  const rx = TW * 0.32, ry = TH * 0.32;
+  g.beginFill(0x000000, 0.30); g.drawEllipse(cx, base, rx, ry); g.endFill();
+  if (built) {
+    g.lineStyle(2.5, color, 0.95); g.drawEllipse(cx, base, rx, ry); g.lineStyle(0);
+    return;
+  }
+  // dashed ring = under construction
+  g.lineStyle(2.5, color, 0.95);
+  const n = 16;
+  for (let i = 0; i < n; i += 2) {
+    const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1) / n) * Math.PI * 2;
+    g.moveTo(cx + Math.cos(a0) * rx, base + Math.sin(a0) * ry);
+    g.lineTo(cx + Math.cos(a1) * rx, base + Math.sin(a1) * ry);
+  }
+  g.lineStyle(0);
+}
+
+function drawBanner(g, x, topY, color) {
+  g.lineStyle(2, 0x2a1e10, 1); g.moveTo(x, topY + 16); g.lineTo(x, topY); g.lineStyle(0);
+  g.beginFill(color); g.drawPolygon([x, topY, x + 13, topY + 4, x, topY + 9]); g.endFill();
+}
+
+// Stone keep with crenellations + banner.
+function drawFortressIcon(g, cx, base, color) {
+  const w = 22, h = 26, top = base - h;
+  g.lineStyle(1.5, 0x2a2622, 1);
+  g.beginFill(0x8a8478); g.drawRect(cx - w, top, w * 2, h); g.endFill();          // wall
+  g.beginFill(0x6e695f); g.drawRect(cx + w * 0.15, top, w * 0.85, h); g.endFill(); // shaded side
+  for (let i = 0; i < 5; i++) {                                                     // merlons
+    g.beginFill(i % 2 ? 0x6e695f : 0x8a8478);
+    g.drawRect(cx - w + i * (w * 2 / 5), top - 6, w * 2 / 5 - 2, 6); g.endFill();
+  }
+  g.beginFill(0x7c766a); g.drawRect(cx - 8, top - 16, 16, 12); g.endFill();          // tower
+  g.lineStyle(0);
+  g.beginFill(0x1e1a14); g.drawRoundedRect(cx - 5, base - 12, 10, 12, 4); g.endFill(); // gate
+  drawBanner(g, cx, top - 32, color);
+}
+
+// Round stone well, blue water, little A-frame roof.
+function drawWellIcon(g, cx, base, color) {
+  const rx = 18, ry = 8, h = 12;
+  g.lineStyle(1.5, 0x2a2622, 1);
+  g.beginFill(0x7e786c); g.drawRect(cx - rx, base - h, rx * 2, h); g.endFill();     // well wall
+  g.beginFill(0x8e887c); g.drawEllipse(cx, base, rx, ry); g.endFill();               // front curve
+  g.beginFill(0x9a9488); g.drawEllipse(cx, base - h, rx, ry); g.endFill();           // rim
+  g.lineStyle(0);
+  g.beginFill(0x3a9ad8); g.drawEllipse(cx, base - h, rx - 5, ry - 3); g.endFill();   // water
+  g.beginFill(0x9fd8ff, 0.8); g.drawEllipse(cx - 4, base - h - 1, 4, 1.5); g.endFill(); // glint
+  g.lineStyle(2.5, 0x4a3420, 1);                                                      // posts
+  g.moveTo(cx - rx + 3, base - h); g.lineTo(cx - rx + 3, base - h - 20);
+  g.moveTo(cx + rx - 3, base - h); g.lineTo(cx + rx - 3, base - h - 20);
+  g.lineStyle(1.5, 0x2a1e10, 1);
+  g.beginFill(0x7a4a28); g.drawPolygon([cx - rx - 2, base - h - 18, cx, base - h - 32, cx + rx + 2, base - h - 18]); g.endFill();
+  g.lineStyle(0);
+  g.beginFill(color); g.drawCircle(cx, base - h - 22, 3); g.endFill();              // owner gem
+}
+
+// Timber post with a parchment contract board + banner.
+function drawOutpostIcon(g, cx, base, color) {
+  g.lineStyle(3, 0x4a3420, 1);
+  g.moveTo(cx - 12, base); g.lineTo(cx - 12, base - 30);
+  g.moveTo(cx + 12, base); g.lineTo(cx + 12, base - 30);
+  g.lineStyle(1.5, 0x3a2810, 1);
+  g.beginFill(0x6e4a28); g.drawRect(cx - 18, base - 34, 36, 22); g.endFill();        // board
+  g.lineStyle(0);
+  g.beginFill(0xe8dcb0); g.drawRect(cx - 13, base - 31, 12, 15); g.endFill();        // notices
+  g.beginFill(0xd8c890); g.drawRect(cx + 1, base - 30, 12, 12); g.endFill();
+  g.beginFill(0xb03020); g.drawCircle(cx - 7, base - 18, 2); g.drawCircle(cx + 7, base - 20, 2); g.endFill(); // wax seals
+  g.beginFill(0x5a3a1e); g.drawPolygon([cx - 22, base - 34, cx, base - 44, cx + 22, base - 34]); g.endFill(); // roof
+  drawBanner(g, cx, base - 60, color);
+}
+
+export function syncCrewStructures(list, layer) {
+  if (!layer || layer.destroyed) return;
+  const want = new Map((list || []).map(s => [s.tileKey, s]));
+  for (const [key, g] of _crewStructMap) {
+    if (!want.has(key)) { g.parent?.removeChild(g); g.destroy(); _crewStructMap.delete(key); }
+  }
+  for (const s of want.values()) {
+    const sig = `${s.kind}|${s.built ? 1 : 0}|${s.rel}`;
+    const old = _crewStructMap.get(s.tileKey);
+    if (old && old.__sig === sig) continue;
+    if (old) { old.parent?.removeChild(old); old.destroy(); }
+    const [c, r] = s.tileKey.split(",").map(Number);
+    const { cx, cy } = isoXY(c, r);
+    const base = cy + TH / 2;
+    const color = CREW_STRUCT_COLOR[s.rel] ?? CREW_STRUCT_COLOR.other;
+    const g = new PIXI.Graphics();
+    drawStructRing(g, cx, base, color, s.built);
+    if (s.kind === "well") drawWellIcon(g, cx, base, color);
+    else if (s.kind === "outpost") drawOutpostIcon(g, cx, base, color);
+    else drawFortressIcon(g, cx, base, color);
+    g.alpha = s.built ? 1 : 0.6;
+    g.__sig = sig;
+    _crewStructMap.set(s.tileKey, g);
+    layer.addChild(g);
+  }
+}
+
 function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerFacKey, crewPids, groundTexture, tiles, diplomacyPids) {
   const [pc, pr] = tileKey.split(",").map(Number);
   const blendWithTerrain = usesNewWorldVisuals(pc,pr);
@@ -1894,7 +2003,7 @@ function drawMarchLines(gfx, cmds, reinMarches, tiles) {
   (reinMarches || []).forEach(rm => drawPath(rm.path.slice(rm.step), 0x2299ff)); // blue for reinforcements
 }
 
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, diplomacyPlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles, guardedTileKeys, spawns, protectedTileKeys }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, diplomacyPlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles, guardedTileKeys, spawns, protectedTileKeys, crewStructures }, ref) {
 
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
@@ -1990,6 +2099,13 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     }
   }, [forts]);
 
+  // ── Crew structure layer sync (Fortress / Well / Contract Outpost) ─────────
+  const crewStructsRef = useRef(crewStructures || []);
+  useEffect(() => {
+    crewStructsRef.current = crewStructures || [];
+    syncCrewStructures(crewStructsRef.current, fortContRef.current);
+  }, [crewStructures]);
+
   // Keep crewmatePlayerIds in a ref for tile coloring
   const crewPidsRef = useRef(crewmatePlayerIds ?? new Set());
   useEffect(() => {
@@ -2068,6 +2184,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     appRef.current = app;
     clearHQCache();
     clearFortCache();
+    clearCrewStructCache();
 
     // Detect iOS early — needed for both props-sprite setup and phase-2 skip.
     // iOS 16+ has requestIdleCallback so we can't use its presence as a proxy.
@@ -2159,6 +2276,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const fortCont = new PIXI.Container();
     world.addChildAt(fortCont, world.children.indexOf(hqCont));
     fortContRef.current = fortCont;
+    syncCrewStructures(crewStructsRef.current, fortCont);
     // Selection belongs to the ground: trees, rocks, forts and bases occlude it.
     const selGfx = new PIXI.Graphics();
     world.addChildAt(selGfx, world.children.indexOf(propsGfx));
@@ -2992,6 +3110,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       marchPosRef.current.clear();
       clearHQCache();
       clearFortCache();
+      clearCrewStructCache();
       cancelIdle();
       cancelPropsIdle();
       _iosTmpGfx?.destroy(); _iosTmpGfx = null;
