@@ -12,6 +12,7 @@ import { getPassiveBonuses, getActiveSkills, MAIN_SKILLS } from "../../shared/co
 import { factionBonusValue } from "../../shared/constants/factionBonuses.js";
 import { siegeTerritoryMultiplier, recordRegionCapture } from "../../shared/utils/warRules.js";
 import { isWarActive } from "../../shared/utils/crewRules.js";
+import { TROOP_FACTIONS } from "../../shared/constants/allTroops.js";
 
 // Per-class stat growth per level
 export const CLASS_GROWTH = {
@@ -33,7 +34,7 @@ function cmdSlots(cmd) {
 function cmdSiegePower(cmd, boostedCmd) {
   const slots = cmdSlots(cmd);
   const bonus = boostedCmd?.gearBonuses?.armySiege || 0;
-  if (slots.length > 0) return calcSiegePower(slots, null, bonus, FACTION_TROOPS);
+  if (slots.length > 0) return calcSiegePower(slots, null, bonus, TROOP_FACTIONS);
   // AI commanders use cmd.troops directly (no slot system)
   const troops = cmd.troops || 0;
   return calcSiegePower(troops, cmd.troopBranch, bonus);
@@ -145,6 +146,7 @@ facMasterySiegeMult = 1,
 registerProtection,
 onForcedRelocate,
 crews, playerCrewId, regionOwners, setRegionOwners,
+crewPveDmgMult = 0, crewSpawnDmgMult = 0,
 }) {
 
 // Server-sync helpers — no-op if server not connected yet
@@ -272,7 +274,10 @@ arrivedAttackers.forEach(async staleCmd => {
   }
 
   const wallLvl = bldgs.walls || 0;
-  const boostedCmd = { ...applyGearToCmd(cmd, gearInventory), troopSkillLevels: troopSkillLevels || {} };
+  // crewPveDmgMult/crewSpawnDmgMult ride along on the commander object (like
+  // cmd.faction already does) so battle.js can read them without a new
+  // worker-message field — see shared/utils/battle.js's isPveBattle/isSpawn checks.
+  const boostedCmd = { ...applyGearToCmd(cmd, gearInventory), troopSkillLevels: troopSkillLevels || {}, crewPveDmgMult, crewSpawnDmgMult };
   const SLOT_KEYS = ["helmet", "armor", "bracers", "accessory"];
   const atkGearSnapshot = SLOT_KEYS.map(slot => {
     const instanceId = cmd.gear?.[slot];
@@ -639,7 +644,7 @@ useEffect(() => {
       floaty("⚔ REMATCH!", "#c0a020", destKey);
 
       const wallLvl    = bldgs.walls || 0;
-      const boostedCmd = { ...applyGearToCmd(cmd, gearInventory), troopSkillLevels: troopSkillLevels || {} };
+      const boostedCmd = { ...applyGearToCmd(cmd, gearInventory), troopSkillLevels: troopSkillLevels || {}, crewPveDmgMult, crewSpawnDmgMult };
 
       // Build ordered enemy list: AI commanders newest-first, then NPC garrison
       const aiCmdsOnTile = cmdsRef.current

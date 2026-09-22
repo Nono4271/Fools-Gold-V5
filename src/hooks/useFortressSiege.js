@@ -27,6 +27,7 @@ import { applyXp } from "./useMarch.js";
 import { nextDefender, unstationCommander, applySiegeDamage, removeFortress, isFortressBuilt } from "../../shared/utils/crewFortress.js";
 import { siegeTerritoryMultiplier } from "../../shared/utils/warRules.js";
 import { isWarActive } from "../../shared/utils/crewRules.js";
+import { TROOP_FACTIONS } from "../../shared/constants/allTroops.js";
 
 // Small local duplicates of useMarch.js's unexported per-cmd helpers — same
 // "cheap, duplicated rather than exported for one caller" choice already
@@ -39,7 +40,7 @@ function cmdTroops(cmd) {
 function cmdSiegePower(cmd, boostedCmd) {
   const slots = normaliseTroopSlots(cmd);
   const bonus = boostedCmd?.gearBonuses?.armySiege || 0;
-  if (slots.length > 0) return calcSiegePower(slots, null, bonus, FACTION_TROOPS);
+  if (slots.length > 0) return calcSiegePower(slots, null, bonus, TROOP_FACTIONS);
   return calcSiegePower(cmd.troops || 0, cmd.troopBranch, bonus);
 }
 function applySlotLosses(cmd, lost) {
