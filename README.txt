@@ -1,24 +1,25 @@
-Ashen Dead starters -- walk sprites
------------------------------------
-Added:
-  public/commanders/map/h57-walk-v1.png   Ser Dreadmourne
-  public/commanders/map/h59-walk-v1.png   Fallen Lord Mordwyn
+Coldborns + Holy Knights starters -- walk sprites
+-------------------------------------------------
+Added (public/commanders/map/):
+  h50-walk-v1.png   Valdris the Unmoved  (Coldborns soldier starter)
+  h52-walk-v1.png   Eira Coldmantle      (Coldborns veteran starter)
+  h37-walk-v1.png   Brother Aldric       (Holy Knights soldier starter)
+  h38-walk-v1.png   Commander Vayne      (Holy Knights veteran starter)
 
 Changed:
-  src/utils/commanderMapSprites.js  (+2 lines)
-    h57 and h59 now resolve to their new atlases (AI copies too, via bust).
-  tests/commanderMapSprites.test.js
-    The test still expected Serava's and Fang's OLD v1 atlases, so it was
-    already failing after the earlier deliveries. Updated to the v2 files,
-    added h57/h59, and the sheet-size check now covers every wired atlas.
-    npm test: 4/4 passing.
+  src/utils/commanderMapSprites.js  (+4 lines, AI copies match by bust too)
+  tests/commanderMapSprites.test.js (covers the 4 new ones; npm test 4/4)
 
-Mordwyn (h59) -- cloak type
-  Cloak stays planted and sways from the waist; both boots step under
-  the hem; the hanging arm swings (from behind, with the lantern).
-  Both views mirrored to face the same way as Fynn.
+Per character:
+  Eira     - gown type: skirt planted + sways, both boots step, arm swings.
+  Valdris  - walking legs; axe on shoulder and fur cape stay still;
+             both arms swing.
+  Vayne    - walking legs; sword and its hand stay still; free arm swings.
+  Aldric   - walking legs; shield stays still; free arm swings.
+  Vayne/Aldric back view: the cape hides the far leg, so that leg stays
+  under the cape and the visible leg steps (same as Dreadmourne).
 
-Dreadmourne (h57) -- walking legs, same gait math as Fynn/Fang
-  Legs stride; the greatsword and its hand stay still (a swinging
-  greatsword looks wrong); the free arm swings. Cape hangs behind his
-  legs from the front and over them from behind. Front view mirrored.
+Facing: fronts of Valdris, Vayne and Aldric, and Eira's back, were
+mirrored to face the same way as Fynn -- so weapons/shields switch hands
+compared to the art.
+All backgrounds cut with the AI remover (no holes in white hair/silver).
