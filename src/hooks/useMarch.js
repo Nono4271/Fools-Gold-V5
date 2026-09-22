@@ -9,6 +9,7 @@ import { resolveSiegeOutcome, garrisonResetMs } from "../../shared/utils/capture
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
 import { getPassiveBonuses, getActiveSkills, MAIN_SKILLS } from "../../shared/constants/skills.js";
+import { factionBonusValue } from "../../shared/constants/factionBonuses.js";
 import { siegeTerritoryMultiplier, recordRegionCapture } from "../../shared/utils/warRules.js";
 import { isWarActive } from "../../shared/utils/crewRules.js";
 
@@ -40,8 +41,16 @@ function cmdSiegePower(cmd, boostedCmd) {
 function cmdMarchSpd(cmd, boostedCmd) {
   const slots = cmdSlots(cmd);
   const bonus = boostedCmd?.gearBonuses?.armySpd || 0;
-  if (slots.length > 0) return effectiveMarchSpd(boostedCmd?.spd || cmd.spd || 60, slots.map(sl => sl.branch), bonus);
-  return effectiveMarchSpd(boostedCmd?.spd || cmd.spd || 60, cmd.troopBranch, bonus);
+  const base = slots.length > 0
+    ? effectiveMarchSpd(boostedCmd?.spd || cmd.spd || 60, slots.map(sl => sl.branch), bonus)
+    : effectiveMarchSpd(boostedCmd?.spd || cmd.spd || 60, cmd.troopBranch, bonus);
+  // Real "March Speed +N%" skill passives (e.g. Orc March) — non-combat,
+  // so not folded into getPassiveBonuses' other cmdAtkMult-style fields —
+  // plus the commander's faction bonus (e.g. Ashen Dead), if it has one.
+  const skillPct = getPassiveBonuses(boostedCmd || cmd).marchSpeedBonus || 0;
+  const facPct = factionBonusValue((boostedCmd || cmd)?.faction, "marchSpeed");
+  const pct = skillPct + facPct;
+  return pct > 0 ? Math.round(base * (1 + pct)) : base;
 }
 // Apply proportional losses to slots after battle
 function applySlotLosses(cmd, lost) {

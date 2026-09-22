@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { resourceIncomeTick } from '../../shared/utils/resourceIncome.js';
-export function useResources({screen, tilesRef, setRss, bldgs, fortsRef, rssBonus}) {
-  const inputs = useRef({bldgs, rssBonus});
-  useEffect(() => { inputs.current = {bldgs, rssBonus}; }, [bldgs, rssBonus]);
+export function useResources({screen, tilesRef, setRss, bldgs, fortsRef, rssBonus, facTileYield = 0}) {
+  const inputs = useRef({bldgs, rssBonus, facTileYield});
+  useEffect(() => { inputs.current = {bldgs, rssBonus, facTileYield}; }, [bldgs, rssBonus, facTileYield]);
   const lastTickRef = useRef(Date.now());
   useEffect(() => {
     if (screen !== 'game') return;
@@ -12,8 +12,8 @@ export function useResources({screen, tilesRef, setRss, bldgs, fortsRef, rssBonu
       const elapsed = now - lastTickRef.current;
       lastTickRef.current = now;
       if (elapsed <= 0) return;
-      const {bldgs, rssBonus} = inputs.current;
-      setRss(previous => resourceIncomeTick(previous, tilesRef.current, bldgs, fortsRef?.current || [], rssBonus, elapsed));
+      const {bldgs, rssBonus, facTileYield} = inputs.current;
+      setRss(previous => resourceIncomeTick(previous, tilesRef.current, bldgs, fortsRef?.current || [], rssBonus, elapsed, facTileYield));
     };
     const id = setInterval(doTick, 60000);
     // Credit the full gap immediately on foreground instead of waiting for

@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { applyXp } from "./useMarch.js";
 import { regenEggs, regenStamina, gatherTick, trainingTick, EGG_REGEN_MS, STAMINA_REGEN_MS, AI_STAMINA_MAX } from "../../shared/utils/tactics.js";
+import { getPassiveBonuses } from "../../shared/constants/skills.js";
+import { factionBonusValue } from "../../shared/constants/factionBonuses.js";
 
 // Timed ticks: dragon-egg regen, training/gather orders, stamina regen.
 // Rules live in shared/utils/tactics.js.
@@ -56,7 +58,9 @@ export function useTacticTicks({
     if (screen !== "game") return;
     const id = setInterval(() => {
       setCmds(prev => prev.map(cmd => {
-        const r = gatherTick(cmd, tilesMapRef.current?.[cmd.gatherTileKey], Date.now());
+        // Commander skill bonus (e.g. Supply Specialist) + faction bonus (e.g. Dragons) stack.
+        const gatheringBonusPct = (getPassiveBonuses(cmd).gatheringBonus || 0) + factionBonusValue(cmd.faction, "gatherYield");
+        const r = gatherTick(cmd, tilesMapRef.current?.[cmd.gatherTileKey], Date.now(), gatheringBonusPct);
         if (!r) return cmd;
         if (r.stop) return { ...cmd, gathering: false };
         if (r.rss) setRss(p => ({ ...p, [r.rss]: p[r.rss] + r.amount }));
