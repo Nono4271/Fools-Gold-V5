@@ -8,6 +8,7 @@ import {
   CREW_LANGUAGES, DEFAULT_CREW_LANGUAGE, CREW_TARGET_LABEL_MAX_LEN,
   crewMemberCapForLevel, crewFortressSlotsForLevel, applyCrewXp,
   CREW_HELP_CONTRIBUTION, CREW_DIPLOMACY_STATUS, CREW_DIPLOMACY_STATUSES,
+  WAR_DECLARE_TO_START_MS, WAR_DURATION_MS, WAR_COOLDOWN_MS,
 } from "../constants/crew.js";
 import { defaultCrewSubchannels } from "../constants/chat.js";
 
@@ -58,6 +59,9 @@ export function canSetTarget(crew, actorId) { return isFounderOrOfficer(crew, ac
 // Diplomacy (Ally/Neutral/Enemy standing toward another crew) is a
 // founder/officer tool, same tier as rally target.
 export function canSetDiplomacy(crew, actorId) { return isFounderOrOfficer(crew, actorId); }
+// War — same tier as everything else here (founder/officer).
+export function canDeclareWar(crew, actorId) { return isFounderOrOfficer(crew, actorId); }
+export function canCancelWar(crew, actorId) { return isFounderOrOfficer(crew, actorId); }
 
 // ── Creation ─────────────────────────────────────────────────────────────
 export function validateCrewCreation({ name, abbr, description, emblem, privacy, language }) {
@@ -109,6 +113,7 @@ export function createCrew({
     fortresses: [],
     target: null,          // { tileKey, label, setBy, setAt } | null — see setCrewTarget
     diplomacy: {},         // { [otherCrewId]: "ally"|"enemy" } — see setDiplomacyStatus
+    war: null,             // null | { declaredAt, startsAt, endsAt, cooldownEndsAt, declaredBy } — see declareWar/crewWarPhase
   };
 }
 
@@ -177,6 +182,44 @@ export function diplomacyPlayerIdSets(crew, allCrews) {
     for (const pid of other.members || []) target.add(pid);
   }
   return { allyIds, enemyIds };
+}
+
+// ── War ─────────────────────────────────────────────────────────────────
+// See the crew.war shape comment in constants/crew.js. Phase is always
+// derived from the stored timestamps against `now`, never cached, so it's
+// correct on every check without a ticker updating crew.war itself.
+export function crewWarPhase(crew, now = Date.now()) {
+  const war = crew?.war;
+  if (!war) return "peace";
+  if (now < war.startsAt) return "declared";
+  if (now < war.endsAt) return "active";
+  if (now < war.cooldownEndsAt) return "cooldown";
+  return "peace";
+}
+
+export function isWarActive(crew, now = Date.now()) {
+  return crewWarPhase(crew, now) === "active";
+}
+
+// Declares war for the whole crew (not targeted at a specific enemy — see
+// constants/crew.js). No-op (returns crew unchanged) if the actor lacks
+// permission or the crew isn't currently at peace (already declared/
+// active/cooling down).
+export function declareWar(crew, actorId, now = Date.now()) {
+  if (!canDeclareWar(crew, actorId)) return crew;
+  if (crewWarPhase(crew, now) !== "peace") return crew;
+  const startsAt = now + WAR_DECLARE_TO_START_MS;
+  const endsAt = startsAt + WAR_DURATION_MS;
+  const cooldownEndsAt = endsAt + WAR_COOLDOWN_MS;
+  return { ...crew, war: { declaredAt: now, startsAt, endsAt, cooldownEndsAt, declaredBy: actorId } };
+}
+
+// Only cancelable during the "declared" window (before war actually
+// starts) — once active, it has to run its course. No-op otherwise.
+export function cancelWar(crew, actorId, now = Date.now()) {
+  if (!canCancelWar(crew, actorId)) return crew;
+  if (crewWarPhase(crew, now) !== "declared") return crew;
+  return { ...crew, war: null };
 }
 
 // ── Search visibility ────────────────────────────────────────────────────
