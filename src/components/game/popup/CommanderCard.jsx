@@ -1,10 +1,11 @@
 import { memo, useState } from "react";
 import { useGameContext } from "../../../GameContext.js";
 import { FACTION_TROOPS } from "../../../../shared/constants/troops.js";
+import { TROOP_FACTIONS } from "../../../../shared/constants/allTroops.js";
 
 function tbInfo(tb) {
   if (!tb) return null;
-  const f = FACTION_TROOPS[tb.faction];
+  const f = TROOP_FACTIONS[tb.faction];
   const b = f?.branches.find(b => b.key === tb.branch);
   const t = b?.tiers[tb.tier ?? 0];
   if (!b || !t) return null;
