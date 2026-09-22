@@ -5,6 +5,12 @@ import { unstable_batchedUpdates } from "react-dom";
 // Constants
 import { getFactionAlignment } from "../shared/constants/factions.js";
 import { factionBonusValue } from "../shared/constants/factionBonuses.js";
+import {
+  crewStructureTileKeys, isStructureBuilt, completeStructureBuild,
+  canStartWellBuild, createWell, removeWell, canStationAtWell,
+  canStartOutpostBuild, createOutpost, canSetOutpostUnits, setOutpostUnits,
+  neutralTrainingSources, dayKey, outpostCommandsLeft,
+} from "../shared/utils/crewStructures.js";
 import { HQP, POWER_DEFS, hqSiegeValue, FORT_LEVELS } from "../shared/constants/map.js";
 import { FACTION_TROOPS } from "../shared/constants/troops.js";
 import { barracksCapacity, upgCost, upgDuration, maxAvailLevel, tierFromBranchLevel } from "../shared/constants/buildings.js";
@@ -13,7 +19,7 @@ import { isoXY } from "../shared/constants/geometry.js";
 // Utils
 import { adj, adj8, effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../shared/utils/pathfinding.js";
 import { applyGearToCmd } from "../shared/utils/gearStats.js";
-import { capstoneTrainDiscount } from "../shared/utils/training.js";
+import { capstoneTrainDiscount, trainingQuote } from "../shared/utils/training.js";
 
 // Hooks
 import { useResources } from "./hooks/useResources.js";
@@ -39,7 +45,12 @@ import { useConsumables } from "./hooks/useConsumables.js";
 import { useTileTimers } from "./hooks/useTileTimers.js";
 import { useTacticTicks } from "./hooks/useTacticTicks.js";
 import { useAiCrews } from "./hooks/useAiCrews.js";
-import { FORTRESS_COST } from "../shared/constants/crew.js";
+import {
+  FORTRESS_COST, WELL_COST, OUTPOST_COST, OUTPOST_DAILY_COMMAND_LIMIT, crewOutpostHireTimeBonus,
+  crewResourceRateBonus, crewMarchSpeedBonus, crewHealSpeedBonus,
+  crewXpBonus, crewGatherYieldBonus, crewPveDmgBonus, crewSpawnDmgBonus,
+  crewTrainTimeBonus, crewTrainCostBonus,
+} from "../shared/constants/crew.js";
 import {
   canStartFortressBuild, createFortress, completeFortressBuild,
   isFortressBuilt, canDemolishFortress, removeFortress,
@@ -185,7 +196,7 @@ export default function RiseToWar() {
   const [loadPct,  setLoadPct]  = useState(0);
   const [loadLabel,setLoadLabel]= useState("Generating world...");
   const [playerHqKey, setPlayerHqKey] = useState(null);
-  const {rss,setRss,troopCounts,setTroopCounts,trainingQueues,setTrainingQueues,healQueue,setHealQueue,woundedTroops,setWounded,addWounded,autoHeal,setAutoHeal,dispatch:dispatchArmy} = useArmyEconomy();
+  const {rss,setRss,troopCounts,setTroopCounts,trainingQueues,setTrainingQueues,healQueue,setHealQueue,woundedTroops,setWounded,addWounded,autoHeal,setAutoHeal,contractDaily,dispatch:dispatchArmy} = useArmyEconomy();
   const [gems,   setGems]    = useState(20000);
   const [crewOpen,      setCrewOpen]      = useState(false);
   const [chatOpen,      setChatOpen]      = useState(false);
@@ -443,6 +454,31 @@ export default function RiseToWar() {
   const [longMarchReady,  setLongMarchReady]  = useState(false);
   const [quickMarchReady, setQuickMarchReady] = useState(false);
 
+  // ── Crew Level perks (Woodworking/Stone Masonry/Gas Collector/Food Farmer,
+  // Resource/Treasure Trove, Faster Together, Healer, Scholars, Gatherers,
+  // PvE/Spawn damage, Efficient Trainer, Cost Effective) — real bonuses from
+  // shared/constants/crew.js, applied to the player's own income/march
+  // speed/etc the same way the faction bonuses are (real crew-wide sharing
+  // lands once a server exists, per the roadmap). Declared before the
+  // Tome-derived block below since several of those multipliers fold a crew
+  // bonus in alongside the existing faction one.
+  const myCrew = useMemo(() => crews.find(c => c.id === playerCrewId) || null, [crews, playerCrewId]);
+  const crewLevel = myCrew?.level || 1;
+  const crewRssBonus = useMemo(() => crewResourceRateBonus(crewLevel), [crewLevel]);
+  const crewMarchBonus = crewMarchSpeedBonus(crewLevel);
+  const crewHealBonus = crewHealSpeedBonus(crewLevel);
+  const crewXpMult = crewXpBonus(crewLevel);
+  const crewGatherBonus = crewGatherYieldBonus(crewLevel);
+  const crewPveDmgMult = crewPveDmgBonus(crewLevel);
+  const crewSpawnDmgMult = crewSpawnDmgBonus(crewLevel);
+  const crewTrainTimeMult = crewTrainTimeBonus(crewLevel);
+  const crewTrainCostMult = crewTrainCostBonus(crewLevel);
+
+  // Crew Well / Contract Outpost derived state (shared/utils/crewStructures.js).
+  const crewStructureKeys = useMemo(() => crewStructureTileKeys(crews), [crews]);
+  const myWellTileKeys = useMemo(() => new Set((myCrew?.wells || []).map(w => w.tileKey)), [myCrew]);
+  const outpostHireBonus = crewOutpostHireTimeBonus(crewLevel);
+
   // ── Tome-derived constants ────────────────────────────────────────────────
   const tomeNodeLv = (id) => tomesNodeLevels[id] ?? 0;
   const tileCap        = 60 + tomeNodeLv("tl") * 15;          // Adventurer's Trek
@@ -466,7 +502,8 @@ export default function RiseToWar() {
   const staminaMax     = 150 + tomeNodeLv("bl")    * 5;   // Easily Winded: base 150, +5/lv → 200
   staminaMaxRef.current = staminaMax; // keep ref in sync for useGacha
   const combatXpMult   = 1   + tomeNodeLv("bl_t")  * 0.015; // Combat Hardened: +1.5%/lv
-  const trainingXpMult = 1   + tomeNodeLv("bl_b1") * 0.02;  // Training Specialist: +2%/lv
+  // Training Specialist (Tomes) stacks with the crew "Scholars" XP bonus.
+  const trainingXpMult = (1  + tomeNodeLv("bl_b1") * 0.02) * (1 + crewXpMult);
   // PVE Power — stubbed until mobs are implemented
   // const pvePowerBonus = tomeNodeLv("bl_b2") * 0.03;  // TODO: wire when mobs built
   // Col 4 — Command
@@ -475,10 +512,13 @@ export default function RiseToWar() {
   // Marching Efficiency (Tomes) stacks with the faction "+N% March Speed" bonus, if this faction has it.
   const marchSpeedMult     = (1 - tomeNodeLv("br_t1") * 0.01) * (1 - factionBonusValue(facKey, "marchSpeed")); // reduces stepMs
   const hasQuickMarch      = tomeNodeLv("br_m")   >= 1;             // Quick March tactic
-  // Troop Training (Tomes) stacks with the faction "-N% Training Time" bonus.
-  const trainingSpeedMult  = (1  + tomeNodeLv("br_b")  * 0.02) * (1 + factionBonusValue(facKey, "trainTime"));
-  const trainingCostMult   = 1  - factionBonusValue(facKey, "trainCost");      // faction "-N% Training Cost" bonus
-  const healSpeedMult      = 1  / (1 - factionBonusValue(facKey, "healSpeed")); // faction "-N% Healing Time" bonus, as a rate multiplier
+  // Troop Training (Tomes) stacks with the faction "-N% Training Time" bonus
+  // and the crew "Efficient Trainer" bonus.
+  const trainingSpeedMult  = (1  + tomeNodeLv("br_b")  * 0.02) * (1 + factionBonusValue(facKey, "trainTime")) * (1 + crewTrainTimeMult);
+  // Faction "-N% Training Cost" bonus stacks with the crew "Cost Effective" bonus.
+  const trainingCostMult   = (1  - factionBonusValue(facKey, "trainCost")) * (1 - crewTrainCostMult);
+  // Faction "-N% Healing Time" bonus stacks with the crew "Healer" bonus, both as a rate multiplier.
+  const healSpeedMult      = 1  / ((1 - factionBonusValue(facKey, "healSpeed")) * (1 - crewHealBonus));
   const facTileYield       = factionBonusValue(facKey, "tileYield");             // faction "+N% Resource Production" bonus (owned tile income)
   const reinSpeedMult      = 1  - tomeNodeLv("br_b1") * 0.015;      // Reins (reduces stepMs)
 
@@ -607,7 +647,7 @@ export default function RiseToWar() {
   const [lastRelocateAt, setLastRelocateAt] = useState(null); // timestamp ms
 
   // ── Hooks ──
-  useResources({ screen, tilesRef, setRss, bldgs, fortsRef: _fortsRef, rssBonus, facTileYield });
+  useResources({ screen, tilesRef, setRss, bldgs, fortsRef: _fortsRef, rssBonus, facTileYield, crewRssBonus });
 
   // Compute leaderboard entries safely — only iterates patched (owned) tiles
   useEffect(() => {
@@ -711,7 +751,7 @@ export default function RiseToWar() {
   // ── Dragon eggs, training/gather orders, stamina — rules in shared/utils/tactics.js ──
   useTacticTicks({
     screen, dragonEggsCap, setDragonEggs, setCmds, setPlayerCmds, setRss,
-    tilesMapRef, trainingXpMult, staminaMaxRef, floaty,
+    tilesMapRef, trainingXpMult, staminaMaxRef, floaty, crewGatherBonus, myWellTileKeys,
   });
 
   // ── Tile protection + abandonment timers — rules in shared/utils/tileTimers.js ──
@@ -728,8 +768,6 @@ export default function RiseToWar() {
   lazySpawnRef.current = lazySpawnAiCmds;
 
   // ── Crew coloring — crewmatePlayerIds ───────────────────────────────────
-  const myCrew = useMemo(() => crews.find(c => c.id === playerCrewId) || null, [crews, playerCrewId]);
-
   // Set of ownerPlayerIds belonging to AI factions in the player's crew.
   const crewmatePlayerIds = useMemo(() => {
     if (!playerCrewId || !crews.length) return new Set();
@@ -962,6 +1000,7 @@ export default function RiseToWar() {
     crewmatePlayerIds,
     aiPlayerIdMap: aiPlayerIdMapRef.current,
     registerProtection,
+    crewPveDmgMult, crewSpawnDmgMult,
     forts,
     getAnchors,
     getFortAtTile,
@@ -991,11 +1030,14 @@ export default function RiseToWar() {
     if (screen !== "game") return;
     const id = setInterval(() => {
       const now = Date.now();
+      const due = x => x && x.buildEndsAt && now >= x.buildEndsAt;
       setCrews(prev => prev.map(crew => {
-        if (!crew.fortresses?.some(f => f.buildEndsAt && now >= f.buildEndsAt)) return crew;
-        return { ...crew, fortresses: crew.fortresses.map(f =>
-          (f.buildEndsAt && now >= f.buildEndsAt) ? completeFortressBuild(f) : f
-        ) };
+        if (!crew.fortresses?.some(due) && !crew.wells?.some(due) && !due(crew.outpost)) return crew;
+        return { ...crew,
+          fortresses: (crew.fortresses || []).map(f => due(f) ? completeFortressBuild(f) : f),
+          wells: (crew.wells || []).map(w => due(w) ? completeStructureBuild(w) : w),
+          outpost: due(crew.outpost) ? completeStructureBuild(crew.outpost) : crew.outpost,
+        };
       }));
     }, 1000);
     return () => clearInterval(id);
@@ -1004,14 +1046,14 @@ export default function RiseToWar() {
   // Build a Crew Fortress on the selected (unclaimed p10+) tile.
   const buildCrewFortress = useCallback((tileKey, tile) => {
     if (!myCrew) return { ok: false, reason: "Not in a crew" };
-    const check = canStartFortressBuild(myCrew, facKey, tile, rss);
+    const check = crewStructureKeys.has(tileKey) ? { ok: false, reason: "Tile already has a structure" } : canStartFortressBuild(myCrew, facKey, tile, rss);
     if (!check.ok) { floaty(`⚠ ${check.reason}`, "#cc8030", tileKey); return check; }
     setRss(p => ({ ...p, wood: p.wood - FORTRESS_COST.wood, stone: p.stone - FORTRESS_COST.stone, gas: p.gas - FORTRESS_COST.gas }));
     const fortress = createFortress({ id: `ft_${Date.now()}_${Math.random().toString(36).slice(2,7)}`, crewId: myCrew.id, tileKey, now: Date.now() });
     setCrews(prev => prev.map(c => c.id === myCrew.id ? { ...c, fortresses: [...(c.fortresses||[]), fortress] } : c));
     floaty("🏰 Fortress construction started!", "#f0c040", tileKey);
     return { ok: true };
-  }, [myCrew, facKey, rss, floaty]);
+  }, [myCrew, facKey, rss, floaty, crewStructureKeys]);
 
   // Demolish a fortress the player's crew owns on the given tile.
   const demolishCrewFortressHere = useCallback((fortress) => {
@@ -1020,6 +1062,68 @@ export default function RiseToWar() {
     setCrews(prev => prev.map(c => c.id === myCrew.id ? removeFortress(c, fortress.id) : c));
     floaty("🏰 Fortress demolished", "#cc8030", fortress.tileKey);
   }, [myCrew, facKey, floaty]);
+
+  // ── Crew Well + Contract Outpost (shared/utils/crewStructures.js) ─────────
+  const spendCost = cost => setRss(p => { const n = { ...p }; for (const [k, v] of Object.entries(cost)) n[k] = (n[k] || 0) - v; return n; });
+  const newStructId = prefix => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
+  const updateMyCrew = fn => setCrews(prev => prev.map(c => c.id === myCrew?.id ? fn(c) : c));
+
+  const buildCrewWell = useCallback((tileKey, tile) => {
+    if (!myCrew) return { ok: false, reason: "Not in a crew" };
+    const check = canStartWellBuild(myCrew, facKey, tile, tileKey, rss, crewStructureKeys);
+    if (!check.ok) { floaty(`⚠ ${check.reason}`, "#cc8030", tileKey); return check; }
+    spendCost(WELL_COST);
+    const well = createWell({ id: newStructId("well"), crewId: myCrew.id, tileKey, now: Date.now() });
+    updateMyCrew(c => ({ ...c, wells: [...(c.wells || []), well] }));
+    floaty("💧 Well construction started!", "#60c0f0", tileKey);
+    return { ok: true };
+  }, [myCrew, facKey, rss, crewStructureKeys, floaty]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const demolishCrewWell = useCallback((well) => {
+    if (!myCrew || !well || myCrew.founder !== facKey) { floaty("⚠ Only the founder can demolish a Well", "#cc8030", well?.tileKey); return; }
+    updateMyCrew(c => removeWell(c, well.id));
+    // Anyone gathering there stops; stationed commanders stay put and can be recalled.
+    setPlayerCmds(prev => prev.map(c => c.stationedWellId === well.id ? { ...c, stationedWellId: null, gathering: c.gatherTileKey === well.tileKey ? false : c.gathering } : c));
+    floaty("💧 Well demolished", "#cc8030", well.tileKey);
+  }, [myCrew, facKey, floaty]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Station a commander at the crew Well — from anywhere (the Well has no range).
+  const stationAtWell = useCallback((cmdUid, well) => {
+    const cmd = cmdsRef.current?.find(c => c.uid === cmdUid);
+    const check = canStationAtWell(myCrew, well, facKey, cmd, Date.now());
+    if (!check.ok) { floaty(`⚠ ${check.reason}`, "#cc8030", well?.tileKey); return check; }
+    if (cmd.stationedFortId) unstationCmd(cmd.uid);
+    setPlayerCmds(prev => prev.map(c => c.uid === cmdUid
+      ? { ...c, tk: well.tileKey, stationedWellId: well.id, stationedFortId: null, stranded: false, drawTimer: null, drawTile: null, drawOrigin: null }
+      : c));
+    floaty(`📍 ${cmd.n} stationed at the Well`, "#60c0f0", well.tileKey);
+    return { ok: true };
+  }, [myCrew, facKey, floaty, unstationCmd]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const buildCrewOutpost = useCallback((tileKey, tile) => {
+    if (!myCrew) return { ok: false, reason: "Not in a crew" };
+    const check = canStartOutpostBuild(myCrew, facKey, tile, tileKey, rss, crewStructureKeys);
+    if (!check.ok) { floaty(`⚠ ${check.reason}`, "#cc8030", tileKey); return check; }
+    spendCost(OUTPOST_COST);
+    const outpost = createOutpost({ id: newStructId("outpost"), crewId: myCrew.id, tileKey, now: Date.now() });
+    updateMyCrew(c => ({ ...c, outpost }));
+    floaty("📜 Contract Outpost construction started!", "#e0c080", tileKey);
+    return { ok: true };
+  }, [myCrew, facKey, rss, crewStructureKeys, floaty]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const demolishCrewOutpost = useCallback(() => {
+    if (!myCrew?.outpost || myCrew.founder !== facKey) { floaty("⚠ Only the founder can demolish the Outpost", "#cc8030", myCrew?.outpost?.tileKey); return; }
+    const key = myCrew.outpost.tileKey;
+    updateMyCrew(c => ({ ...c, outpost: null }));
+    floaty("📜 Contract Outpost demolished", "#cc8030", key);
+  }, [myCrew, facKey, floaty]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const chooseOutpostUnits = useCallback((units) => {
+    const check = canSetOutpostUnits(myCrew, facKey, units);
+    if (!check.ok) { floaty(`⚠ ${check.reason}`, "#cc8030", myCrew?.outpost?.tileKey); return check; }
+    updateMyCrew(c => setOutpostUnits(c, units));
+    return { ok: true };
+  }, [myCrew, facKey, floaty]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dispatch a march against a crew fortress — a distinct march.type
   // ("siegeFortress") so it's only ever picked up by useFortressSiege above,
@@ -1037,7 +1141,7 @@ export default function RiseToWar() {
     const slots0 = normaliseTroopSlots(freshCmd);
     const baseStepMs = marchStepMs(effectiveMarchSpd(boostedSpd, slots0.length ? slots0.map(sl=>sl.branch) : freshCmd.troopBranch));
     const quickBonus = quickMarchReady ? 0.5 : 1;
-    const stepMs = Math.max(50, Math.round(baseStepMs * marchSpeedMult * quickBonus));
+    const stepMs = Math.max(50, Math.round(baseStepMs * marchSpeedMult * (1 - crewMarchBonus) * quickBonus));
     if (quickMarchReady) setQuickMarchReady(false);
     if (longMarchReady) setLongMarchReady(false);
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null); setTileScreenX(null); setTileScreenY(null);
@@ -1259,7 +1363,7 @@ export default function RiseToWar() {
     const slots0 = normaliseTroopSlots(freshCmd);
     const baseStepMs = marchStepMs(effectiveMarchSpd(boostedSpd, slots0.length ? slots0.map(sl=>sl.branch) : freshCmd.troopBranch));
     const quickBonus = quickMarchReady ? 0.5 : 1;
-    const stepMs = Math.max(50, Math.round(baseStepMs * marchSpeedMult * quickBonus));
+    const stepMs = Math.max(50, Math.round(baseStepMs * marchSpeedMult * (1 - crewMarchBonus) * quickBonus));
     if (quickMarchReady) setQuickMarchReady(false);
     if (longMarchReady) setLongMarchReady(false);
     setMode("view"); setMvCmd(null); setSelKey(null); setPopupPos(null); setTileScreenX(null); setTileScreenY(null);
@@ -1390,6 +1494,7 @@ export default function RiseToWar() {
     dragonEggs, setDragonEggs, setRss, setCmds, setBattles, facKey,
     spawns, spawnWorkerRef, staminaMax, runBattle, setMysticOrbs, mysticOrbsCap,
     hasLongMarch, hasQuickMarch, setLongMarchReady, setQuickMarchReady, floaty,
+    gearInventory, troopSkillLevels, tilesMapRef, addWounded, crewPveDmgMult, crewSpawnDmgMult,
   });
 
   // Bag items + Expedience — rules in shared/utils/consumables.js
@@ -1407,12 +1512,44 @@ export default function RiseToWar() {
   // queueTraining(branchKey, amount)
   // branchKey: "faction:branch:tier" e.g. "pirates:swashbucklers:0"
   // Multiple queues allowed (even same branchKey). Max slots = trainingQueueCount(training lvl).
+  // Neutral/Ancient units this player can train right now, and the
+  // unlockedBranches map extended with them (plus any already in the
+  // barracks, so trained troops stay assignable if a camp is lost).
+  const neutralSources = useMemo(
+    () => neutralTrainingSources({ tiles, ownedKeys: pKeys, crew: myCrew, now: nowTick }),
+    [tiles, pKeys, myCrew, nowTick]
+  );
+  const trainableUnlocked = useMemo(() => {
+    const ub = { ...unlockedBranches };
+    for (const bKey of [...Object.keys(neutralSources), ...Object.keys(troopCounts || {})]) {
+      const [f, k] = bKey.split(":");
+      if ((f === "neutrals" || f === "ancients") && k) ub[`${f}:${k}`] = 0;
+    }
+    return ub;
+  }, [unlockedBranches, neutralSources, troopCounts]);
+  const contractCommandsLeft = outpostCommandsLeft(contractDaily, nowTick);
+
   const queueTraining = useCallback((branchKey, amount) => {
     const [f, key] = String(branchKey).split(":");
     const branchDef = FACTION_TROOPS[f]?.branches.find(b => b.key === key);
     const costTimeDiscount = branchDef?.capstone ? capstoneTrainDiscount(bldgs[`b_${f}_${key}`]) : 0;
-    dispatchArmy({type:"train",branchKey,amount,buildings:bldgs,unlocked:unlockedBranches,speedMult:trainingSpeedMult,costTimeDiscount,costMult:trainingCostMult,now:Date.now(),id:crypto.randomUUID()});
-  }, [bldgs,unlockedBranches,trainingSpeedMult,trainingCostMult,dispatchArmy]);
+    const now = Date.now();
+    let speedMult = trainingSpeedMult, dailyLimit = null;
+    // Neutral / Ancient units: need an owned camp (no daily cap) or the crew
+    // Contract Outpost (daily cap + Contract Board II hire-time bonus).
+    const src = neutralSources[branchKey];
+    if (f === "neutrals" || f === "ancients") {
+      if (!src) { floaty("⚠ Own a camp or contract this unit at your crew's Outpost", "#cc8030", playerHqRef.current); return; }
+      if (!src.camp) {
+        const quote = trainingQuote(branchKey, amount, 1);
+        const left = outpostCommandsLeft(contractDaily, now);
+        if (quote && quote.commands > left) { floaty(`⚠ Outpost limit: ${left}/${OUTPOST_DAILY_COMMAND_LIMIT} commands left today`, "#cc8030", playerHqRef.current); return; }
+        dailyLimit = { day: dayKey(now), limit: OUTPOST_DAILY_COMMAND_LIMIT };
+        speedMult = trainingSpeedMult / Math.max(0.01, 1 - outpostHireBonus);
+      }
+    }
+    dispatchArmy({type:"train",branchKey,amount,buildings:bldgs,unlocked:trainableUnlocked,speedMult,costTimeDiscount,costMult:trainingCostMult,dailyLimit,now,id:crypto.randomUUID()});
+  }, [bldgs,trainableUnlocked,trainingSpeedMult,trainingCostMult,dispatchArmy,neutralSources,contractDaily,outpostHireBonus,floaty]);
   const queueHealing = useCallback(amount => {
     dispatchArmy({type:"heal",amount,buildings:bldgs,now:Date.now(),id:crypto.randomUUID(),healSpeedMult});
   }, [bldgs,dispatchArmy,healSpeedMult]);
@@ -1588,6 +1725,8 @@ export default function RiseToWar() {
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, diplomacyPlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
+    buildCrewWell, demolishCrewWell, stationAtWell, buildCrewOutpost, demolishCrewOutpost, chooseOutpostUnits,
+    crewStructureKeys, trainableUnlocked, neutralSources, contractCommandsLeft,
     startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
     facKey, facName, floats, forts, gearInventory, gearScreenOpen, gems, getFortAtTile,
@@ -1600,7 +1739,7 @@ export default function RiseToWar() {
     pickCmd, playerAlignment, playerCrewId, playerEntries, playerHqKey, popupMode, powerPerHr,
     powerPool, protectedTiles, quarterLevels, queueHealing, queueTraining, quickMarchReady,
     recallMarch, recallPopup, recallStationary, recallToFort, recallToHQ, reinCmd, reinMarches,
-    reinMarchesRef, respectSchematics, returnTroops, rss, rssBonus, facTileYield, searchOpen, selKey, selTile,
+    reinMarchesRef, respectSchematics, returnTroops, rss, rssBonus, facTileYield, crewRssBonus, searchOpen, selKey, selTile,
     sendChatMessage, serverConnected, setAiBarracksPool, setAiBldgs, setAiHqKeys, setAiRss, setArmySlots,
     setAtkKey, setAutoHeal, setBLog, setBarracks, setBattles, setBldgs, setChatOpen,
     setChatProfanityFilterEnabled, setCmdScreenOpen,

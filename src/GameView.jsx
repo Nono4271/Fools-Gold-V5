@@ -49,6 +49,8 @@ export default function GameView(props) {
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, diplomacyPlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
+    buildCrewWell, demolishCrewWell, stationAtWell, buildCrewOutpost, demolishCrewOutpost, chooseOutpostUnits,
+    crewStructureKeys, trainableUnlocked, neutralSources, contractCommandsLeft,
     startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
     facKey, facName, floats, forts, gearInventory, gearScreenOpen, gems, getFortAtTile,
@@ -61,7 +63,7 @@ export default function GameView(props) {
     pickCmd, playerAlignment, playerCrewId, playerEntries, playerHqKey, popupMode, powerPerHr,
     powerPool, protectedTiles, quarterLevels, queueHealing, queueTraining, quickMarchReady,
     recallMarch, recallPopup, recallStationary, recallToFort, recallToHQ, reinCmd, reinMarches,
-    reinMarchesRef, respectSchematics, returnTroops, rss, rssBonus, facTileYield, searchOpen, selKey, selTile,
+    reinMarchesRef, respectSchematics, returnTroops, rss, rssBonus, facTileYield, crewRssBonus, searchOpen, selKey, selTile,
     serverConnected, setAiBarracksPool, setAiBldgs, setAiHqKeys, setAiRss, setArmySlots,
     setAtkKey, setAutoHeal, setBLog, setBarracks, setBattles, setBldgs, setCmdScreenOpen,
     setCmdScreenUid, setCmds, setCrewOpen, setCrews, setDeletingSecsLeft, setDeletingTiles,
@@ -183,7 +185,7 @@ export default function GameView(props) {
       )}
 
       <HUD facName={facName} facKey={facKey} pKeys={pKeys} rss={rss} gems={gems} tiles={tiles}
-        bldgs={bldgs} forts={forts} rssBonus={rssBonus} facTileYield={facTileYield}
+        bldgs={bldgs} forts={forts} rssBonus={rssBonus} facTileYield={facTileYield} crewRssBonus={crewRssBonus}
         mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap} voidTapReady={voidTapReady}
         dragonEggs={dragonEggs} dragonEggsCap={dragonEggsCap} tileCap={tileCap} />
 
@@ -285,6 +287,18 @@ export default function GameView(props) {
         crewFortressAtTile={selKey ? crews.flatMap(c => c.fortresses||[]).find(f => f.tileKey === selKey) : null}
         onBuildCrewFortress={buildCrewFortress}
         onDemolishCrewFortressHere={demolishCrewFortressHere}
+        {...(() => {
+          if (!selKey) return {};
+          const wellCrew = crews.find(c => (c.wells || []).some(w => w.tileKey === selKey)) || null;
+          const outpostCrew = crews.find(c => c.outpost?.tileKey === selKey) || null;
+          return {
+            wellAtTile: wellCrew?.wells.find(w => w.tileKey === selKey) || null, wellCrew,
+            outpostAtTile: outpostCrew?.outpost || null, outpostCrew,
+          };
+        })()}
+        crewStructureKeys={crewStructureKeys} contractCommandsLeft={contractCommandsLeft}
+        onBuildWell={buildCrewWell} onDemolishWell={demolishCrewWell} onStationAtWell={stationAtWell}
+        onBuildOutpost={buildCrewOutpost} onDemolishOutpost={demolishCrewOutpost} onChooseOutpostUnits={chooseOutpostUnits}
       />
 
       {showBattleLog && (
@@ -359,7 +373,8 @@ export default function GameView(props) {
         gearInventory={gearInventory}
         playerHqKey={playerHqKey}
         facKey={facKey}
-        unlockedBranches={unlockedBranches} setUnlockedBranches={setUnlockedBranches}
+        unlockedBranches={trainableUnlocked || unlockedBranches} setUnlockedBranches={setUnlockedBranches}
+        neutralSources={neutralSources} contractCommandsLeft={contractCommandsLeft}
         quarterLevels={quarterLevels} setQuarterLevels={setQuarterLevels}
         mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap}
         voidTapLvl={voidTapLvl} voidTapReady={voidTapReady}
