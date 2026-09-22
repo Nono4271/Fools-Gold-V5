@@ -1,19 +1,16 @@
-Robe characters -- stronger stride pass
----------------------------------------
-Replaces (same paths, no code changes -- all already wired in):
-  public/commanders/map/h43-walk-v2.png   Serava
-  public/commanders/map/h52-walk-v1.png   Eira
-  public/commanders/map/h59-walk-v1.png   Mordwyn
+Vayne (h38) + Aldric (h37) walk sprites -- facing + back-view legs
+------------------------------------------------------------------
+Replaces (same paths, no code changes):
+  public/commanders/map/h37-walk-v1.png
+  public/commanders/map/h38-walk-v1.png
 
-Why robes didn't read as walking: their feet only tilted a few degrees
-in place with a 3px lift. The leg characters' feet travel a full stride
-(plant, push back, lift 11px, swing forward).
+1. Walking backwards: their front art was mirrored the wrong way, so
+   they faced away from the direction they walked. Mirror removed.
+   (Weapon/shield are back in the hands shown in your art.)
 
-Now the robe characters' feet use the same gait as the leg characters:
-same timing, same 11px lift, same forward/back travel. Sideways travel
-is 12px instead of 18px so the boots stay under the hem instead of
-stepping out past it. The hem also sways a bit more with each step.
-
-Cleanups: the skirt no longer shows a notch where a boot was, and the
-boots take their ground shadow with them instead of leaving specks.
-All three stay on the ground line in every frame.
+2. Back view -- only one leg moved + odd shape: I'd kept the far leg
+   frozen under the cape, but on these two that boot is visible below
+   the hem, and the frozen cape piece showed up as a hard-edged shape.
+   Rebuilt from measured boot positions: the cape now ends at its real
+   hem, both legs step, and a still copy of the hip area sits behind the
+   legs so no gaps open when a thigh swings.
