@@ -526,7 +526,16 @@ same as the rest of the roster).
 
 # CURRENT AUDIT AND ROADMAP — READ THIS FIRST
 
-## 2026-09-20 — Separate 3D demo polish v2
+**Rewritten 2026-09-22 (Claude, Sonnet 5) — full re-audit against the actual
+repository, reconciling the prior "consolidated 2026-09-20" audit with
+everything built in sessions 4-27 below (chat, Relations, Nyro, Crew 2.0
+Fortress/Diplomacy/Level, and the Records/Rally scoping docs), which had
+drifted out of sync with that audit. History below this section is
+unchanged. Items confirmed complete and working have been removed from the
+active lists below rather than re-described; see "Complete systems" for
+what that covers.**
+
+## Separate 3D demo polish v2
 
 - Updated only demo visuals/controls plus an early touch-handler exemption in
   `src/main.tsx` for `?demo3d=1`. Normal game rules/rendering are unchanged.
@@ -577,9 +586,17 @@ claims are superseded: timing/alignment alone did not fix the same-leg artwork.
   both atlases have transparent frame edges (no clipped feet). Cloud browser previously
   lacked a usable Pixi renderer; final phone playtest still needed. Do not
   claim automated tests prove on-device animation quality.
+- **Correction (2026-09-22 audit):** only **16 of 60 commanders** have real
+  map-walk sprites today (`public/commanders/map/`: h1, h5, h9, h11, h13,
+  h17, h21, h23, h37, h38, h43, h45, h50, h52, h57, h59). The prior
+  "Fynn/Brine only" framing in older entries below is out of date — do not
+  assume only 2 exist. **44 commanders still need map-walk sprites.**
 
-Last consolidated: 2026-09-20. The repository is the source of truth. The
-dated entries below are history and may describe bugs that were fixed later.
+The repository is the source of truth. The dated entries below (from
+"2026-09-20 — Codex — Full-world map graphics rollout" onward) are history
+and may describe bugs that were fixed later or systems later completed or
+scoped by sessions 4-27 — cross-check against this section, not against an
+individual historical entry.
 
 ## Rules for AI collaborators
 
@@ -596,6 +613,11 @@ dated entries below are history and may describe bugs that were fixed later.
 5. Work on `codex/core-fixes-20260919`. Do not merge to main or deploy to the
    production branch without the owner's instruction. Update this file after
    every change.
+6. **This file is periodically re-consolidated.** When you finish a change,
+   add a dated entry to the log below as always, but also check whether it
+   should move an item between "Complete," "Partial," "Missing," or the
+   phase roadmap sections above — an accurate top section matters more than
+   an exhaustive log.
 
 ## Locked owner decisions
 
@@ -620,6 +642,10 @@ dated entries below are history and may describe bugs that were fixed later.
 - Captures occur immediately on arrival. A captured tile receives three minutes
   of protection. Deleting/abandoning a tile takes five minutes.
 - Background/offline timer progress is required in the finished game.
+- Diplomacy is deliberately cosmetic-only (tile-color/UI signal). It does not
+  gate attacks or combat. This is a design decision, not an unfinished state
+  — do not "finish" it into a real alliance-enforcement system without the
+  owner asking for that.
 
 ## 1. Current architecture
 
@@ -627,17 +653,23 @@ dated entries below are history and may describe bugs that were fixed later.
 - **World renderer:** PixiJS in `src/MapRenderer.jsx`; map, HQ, fort, prop,
   selection, commander and march visuals are separate display layers.
 - **Game systems:** hooks in `src/hooks/` handle AI, battle, marches,
-  pathfinding, resources, forts, gacha, training, upgrades and server sync.
+  pathfinding, resources, forts, gacha, training, upgrades, chat, relations,
+  crew/fortress siege and server sync.
 - **Heavy work:** browser workers in `src/workers/` run map generation,
   pathfinding, marching, battle, spawning, forts and the game loop.
 - **Shared rules/data:** `shared/constants/` and `shared/utils/` hold troops,
   factions, commanders, skills, buildings, items, gear, map values, battle,
-  economy, relocation, income and movement rules.
+  economy, relocation, income, movement, chat, relations, crew and diplomacy
+  rules.
 - **Server prototype:** `server/index.js` is a Node WebSocket session server.
   It accepts initialization and broadcasts selected world changes. It is not a
-  complete authoritative multiplayer server or durable database.
+  complete authoritative multiplayer server or durable database. **Chat,
+  Relations, crews and diplomacy are all local/in-memory to one browser tab
+  today — nothing about them is actually shared between two real players
+  yet**, even though the rule-functions are written server-portable.
 - **Tests:** `tests/` covers troop economy, healing, battle roster execution,
-  resources, march motion, commander sprite lifecycle and current map visuals.
+  resources, march motion, commander sprite lifecycle, chat/relations rules,
+  crew/fortress rules and current map visuals.
 - **Current persistence:** primarily client/session state. Durable accounts,
   cross-device saves and authoritative world recovery are not complete.
 
@@ -661,205 +693,323 @@ change.
 - **COMPLETE — DO NOT RECHECK:** battle initialization/confusion crash fixes and
   execution coverage for the existing 72 T1–T3 faction troops.
 - **COMPLETE — DO NOT RECHECK:** five-minute tile deletion and three-minute
-  post-capture protection. (Deletion was actually 15 s in code until Claude's
-  2026-09-20 split fix; now `TILE_DELETE_MS` in `shared/utils/tileTimers.js`.)
+  post-capture protection.
 - **COMPLETE — DO NOT RECHECK:** item definitions, Bag replacing the old Gear
-  shortcut, building/healing/universal timer speedups and resource boosts.
+  shortcut, building/healing/recall/universal timer speedups and resource
+  boosts.
 - **COMPLETE — DO NOT RECHECK:** voluntary and forced HQ relocation behavior.
-  Relocation gameplay is entered through the HQ flow; the Bag token message is
-  a separate UI cleanup item.
 - **COMPLETE — DO NOT RECHECK:** fort construction/upgrade timers and existing
-  fort build, station, recall, demolish and abandon flow.
-- **COMPLETE — DO NOT RECHECK:** leaderboard UI and calculation.
+  fort build, station, recall, demolish and abandon flow, including the
+  removal countdown surviving popup close and offline catch-up.
+- **COMPLETE — DO NOT RECHECK:** leaderboard UI and calculation (the separate
+  "War Ranking" panel on the same screen is its own unbuilt stub — see
+  section 4).
 - **COMPLETE — DO NOT RECHECK:** Commander detail `staminaMax` crash, Gacha/map
   Pixi sprite-destruction crash, troop-slot Confirm bug and crew state-mutation
   bug.
 - **COMPLETE — DO NOT RECHECK:** Pirate HQ redesign, HQ centering, adjacent
   prop/selection presentation, and full-world rollout of the approved dark
   terrain and two-family resource art.
+- **COMPLETE — DO NOT RECHECK:** neutral camp placement, spread, terrain/road/
+  HQ avoidance, 2-wave garrisons, map icon and name popup (art is still a
+  vector placeholder — see section 4/art inventory).
+- **COMPLETE — DO NOT RECHECK:** Tier 4 capstone troops (data/battle-engine/
+  training discount) for all 8 factions; the 15 neutral units and 4 Ancients
+  (data/battle-engine/unique-slot rule) — all art-blocked, not logic-blocked
+  (see art inventory below).
+- **COMPLETE — DO NOT RECHECK:** the full chat system — World/Faction/Crew/
+  DM/Group channels, sub-channels (#Announcement + #General, cap 5),
+  auto-scroll/touch-scroll, profanity filter, Relations (friends/blacklist),
+  Nyro AI companion, emoji picker, translation ("Aa" button — works, but see
+  the reliability caveat in section 4), unread badges, replies, reactions,
+  @mentions, mute, typing indicator, scroll-lock and in-channel search. All
+  wired into `Game.jsx`/`GameView.jsx` and confirmed present, not just
+  described. Still local-only, no real backend — that's Crew/Chat's shared
+  multiplayer dependency, not a bug (see section 6/Phase A).
+- **COMPLETE — DO NOT RECHECK:** Crew create/browse/join/leave, 3-tier roles
+  with permission matrix, Contribution Points, Crew Store (real item
+  grants), founder-editable announcement, 24-icon recolorable emblem
+  system, Crew Fortress (build, station, and full multi-defender siege
+  combat via `shared/utils/crewFortress.js` + `src/hooks/useFortressSiege.js`),
+  and Diplomacy (Ally/Neutral/Enemy, real UI + data + map tile-tinting —
+  deliberately cosmetic-only, see Locked owner decisions). Crew Help is real
+  but still self-serve, not crewmate-to-crewmate (see section 4). **Crew
+  level/XP itself (the mechanism) is complete — the level REWARDS are not,
+  see section 3.**
 
 ## 3. Partially implemented systems
 
 - **Gacha/shop:** Summon Gate pulls, gems/medallions, commander rewards,
   duplicates/respect, schematics and gear rewards exist. The original roadmap
-  phrase “shop integration” is not defined in the repository. Do not invent a
+  phrase "shop integration" is not defined in the repository. Do not invent a
   store or monetization design; ask the owner or locate the original design
   source before expanding it.
-- **Troop roster:** Eight factions have T1–T3 branches, art and battle data.
-  Tier 4 and neutral-unit roster integration remain unfinished.
-- **Neutral PvE:** tile garrisons, defender commanders and spawn encounters
-  exist. A complete neutral unit roster with its own integrated data/art is not
-  present.
-- **Crew 2.0:** create (emblem, privacy, language), browse, join/request, leave,
-  member list, 3-tier roles (founder/officer/member) with full permission
-  matrix, level/XP with member-cap and fortress-slot growth, Contribution
-  Points, a Crew Store (real resource/consumable grants), founder-editable
-  announcement, and a founder/officer rally-target label are all implemented
-  and tested (`shared/utils/crewRules.js`, `shared/constants/crew.js`,
-  `tests/crewRules.test.js`). Crew Fortress structures are fully wired: build
-  from the map (unclaimed p10+ tile), a real build timer, stationing, and full
-  siege combat that fights every stationed defender then sieges the fortress
-  itself (`shared/utils/crewFortress.js`, `src/hooks/useFortressSiege.js`,
-  `tests/crewFortress.test.js`). Crew Help really reduces the player's own
-  active building-upgrade timer today, but is still self-serve (you click it
-  for yourself) rather than crewmate-to-crewmate — see the TODO in the
-  2026-09-21 session 16 entry below; fix this once real multiplayer exists.
-  Diplomacy and Level are real, built tabs now — see the 2026-09-21 session
-  20 and 24 entries below. Cooperation and Records tabs are still "coming
-  soon" stubs; both are scoped (not built) as of sessions 25/26 below —
-  Records is a Keep-capture log/leaderboard, Cooperation is a Rally (join a
-  crewmate's march on a Keep) — blocked on real multiplayer the same way
-  Crew Help is.
-  The rally target is a text label only — not yet tied to an actual map tile.
+- **Troop roster:** all 8 factions have T1-T4 (capstone) branches, art and
+  battle data; the 15 neutrals and 4 Ancients have full data/battle-engine
+  support. What's missing across all of these is portrait/map art (art-queue
+  item, see art inventory), not implementation.
+- **Neutral PvE:** camps are placed, garrisoned, named and searchable on the
+  live map; combat/capture reuses the existing generic garrison/siege system.
+  Camp and neutral-unit art is a placeholder (vector marker), not final.
+- **Crew 2.0:** NOT 100% done — **Crew level rewards for levels 1-50 are not
+  fully laid out.** `crewLevelPerks()` only defines real perks at the
+  member-cap steps (every 2 levels) and the 3 fortress-slot levels
+  (15/30/45); every other level in the 1-50 range renders as an empty
+  placeholder row in the "Level" tab with no reward defined. This needs an
+  owner-approved reward table for the remaining levels before Crew 2.0 can
+  be called finished. Two further items are waiting on real multiplayer
+  identity: (1) Crew Help is self-serve, not crewmate-to-crewmate; (2)
+  Records and Cooperation/Rally are fully spec'd (sessions 25-27 below) but
+  still literal "coming soon" stubs in `CrewHQ.jsx` — zero code. Rally
+  Target is a free-text label, not yet wired to the Objectives/map-pin
+  system session 19 said it needs.
 - **Gear:** inventory, slots, rarity, rolled stats, equipping, gacha drops and
   battle/stat application exist. The planned gear rework still needs an
   owner-approved design and balance pass.
 - **Map graphics:** the dark grass, joined territory treatment and two
-  resource-art families now cover the full world. More terrain/prop variation,
-  crossings, gates, keeps and seven faction bases remain.
-- **Commander map visuals:** Redwake Fynn and Admiral Brine have purpose-built
-  walking/standing map sprites. Other commanders still use circular portraits and
-  need their own sprites.
+  resource-art families now cover the full world. Only the Pirate HQ's
+  dark-v2 art is owner-approved. **FLAGGED FOR GPT/ChatGPT ART REVIEW:** the
+  other **7 faction HQ redesigns (Wizards, Orcs, Dragons, Holy Knights,
+  Creatures of the Night, Coldborns, Ashen Dead)** — files exist in
+  `public/hq/` and are already wired in code, but `public/hq/ART.md` still
+  lists all 7 as unapproved/pending review. GPT should review each against
+  the Pirate HQ's approved look (darker natural stone, weathered timber,
+  desaturated roofs, softer light, reduced cartoon outlines) and edit any
+  that don't match before the owner signs off. More terrain/prop variation,
+  crossings, gates, keep sprites and mob/camp sprites remain (see art
+  inventory).
+- **Commander map visuals:** 16 of 60 commanders have purpose-built walking/
+  standing map sprites (see the v3 entry above for the exact list). The other
+  44 still use circular portraits on the map.
+  **FLAGGED FOR GPT/ChatGPT ART REVIEW:** of those 16, only Fynn (h1) and
+  Brine (h13) went through the full owner-approved v3 pipeline (separate-limb
+  rig, fixed boot facing, size correction — see "Commander walking revision
+  v3" above). The other **14 (h5, h9, h11, h17, h21, h23, h37, h38, h43, h45,
+  h50, h52, h57, h59)** were generated earlier and have NOT been confirmed
+  against the same v3 quality bar. GPT should review and, where needed,
+  re-edit these 14 to match the v3 standard before treating "16 commanders
+  done" as final.
 - **Multiplayer:** WebSocket sessions and broadcasts exist for selected tile,
-  siege and fort changes. Authority, persistence, identity, reconnect recovery
-  and scaling are incomplete.
-- **Mobile/UI:** landscape safe-area work and touch fixes exist, but all screens
-  still need device testing and a consistent visual polish pass.
-- **Offline progression:** timer data uses deadlines in several systems, but
-  durable background/offline recovery is not complete across the whole game.
+  siege and fort changes. Authority, persistence, identity, reconnect
+  recovery and scaling are incomplete. Chat/Relations/Crew/Diplomacy state
+  is entirely client-local — nothing is actually shared between two players'
+  browsers yet.
+- **Mobile/UI:** landscape safe-area work and touch fixes exist, but all
+  screens still need device testing and a consistent visual polish pass.
+- **Offline progression:** timer data uses deadlines and catch-up logic in
+  resources, egg/stamina regen, marches, reinforcements, Tomes power and fort
+  countdowns. Durable save-across-reload (not just background/lock catch-up)
+  is not implemented anywhere in the app — closing the tab loses all
+  session state.
 
 ## 4. Missing systems and content
 
-- Tier 4 troops built through the existing faction branch/tier architecture.
-- Neutral units built through the same troop/battle architecture, not a
-  disconnected combat system.
-- Remaining troop roster additions and corresponding balance/art.
 - Season Chapters framework and chapter data.
 - Chapter locks for map crossings/gates, the Holy Grail/endgame area, war
   declarations, major systems, objectives and events.
-- Crew 2.0 remaining: Boosts, Diplomacy (currently simulated-only, no real
-  gameplay effect), War Declaration, records/logs, and true crewmate-to-
-  crewmate Crew Help (today it's self-serve — see the Crew 2.0 note under
-  section 3). Roles, levels/XP, Store, Structures (Crew Fortress build + full
-  siege combat) and the headquarters/table screen are done — see session 16
-  below.
-- Rally Target, owner decision (session 19): NOT a bare map-tile pin. It
-  should point at a real Objectives/map-pin system that crew leadership
-  (founder/officer) sets — that system does not exist yet and must be built
-  first (objective data shape, who can set one, how it's placed on the map);
-  Rally Target then just displays/links to whatever leadership currently has
-  pinned. Do not wire Rally Target to raw tile-selection state as a shortcut.
-- World, faction and Crew chat.
+- The Objectives/map-pin system Rally Target depends on (owner decision,
+  session 19) — build this before wiring Rally Target to anything real.
+- Crew Records tab (Keep-capture log/leaderboard) and Crew Cooperation/Rally
+  tab (join a crewmate's march on a Keep) — both fully spec'd in sessions
+  25-27 below, zero code written, intentionally held until real multiplayer
+  gives crews actual other-player members to rally or rank against.
+- True crewmate-to-crewmate Crew Help (today it only speeds your own timer).
 - Tutorial and task/progression framework.
 - Remaining gear rework decisions and implementation.
-- Full map art conversion and final mobile graphics/UI polish.
-- Durable, server-authoritative seasons and real multiplayer infrastructure.
+- Durable, server-authoritative seasons and real multiplayer infrastructure
+  (chat, relations, crews and diplomacy currently have no cross-player
+  sharing at all — see section 1).
+- Full map art conversion and final mobile graphics/UI polish (see art
+  inventory below for the current asset gap in detail).
+- **Small loose ends found in this audit, not yet fixed or tracked
+  elsewhere** (low priority, but real):
+  - `src/components/game/HUD.jsx` — `rssRate` display is hardcoded
+    (`{stone:200, wood:200, gas:200, food:2400}`, commented `// TODO: wire`)
+    instead of reading the player's real resource rates.
+  - `src/components/screens/Leaderboard.jsx` — a separate "War Ranking"
+    panel on the same screen is a "coming soon" stub unrelated to the real,
+    working main leaderboard above it.
+  - `src/components/screens/FactionScreen.jsx` — a literal `Placeholder`
+    string is visible in the rendered UI.
+  - `shared/constants/orcs_skills.js` and
+    `shared/constants/nightcreatures_skills.js` — a few passive skills are
+    selectable but their own description says "(Non-Combat Passive — Coming
+    Soon)"; either finish them or grey them out so players can't pick a
+    passive that does nothing.
+  - `src/components/game/WizardsTomes.jsx` — two skill nodes ("Spawn
+    Slayer", "Faction Mastery") are stubs pending the mob/faction-mastery
+    systems they depend on; one `// TODO` notes daily-cooldown reset needs a
+    real UTC day boundary once multiplayer exists (currently client-local).
+  - `src/components/game/CrewPanel.jsx` — appears to be dead code (not
+    imported anywhere; superseded by `CrewHQ.jsx`). Safe to delete once
+    confirmed, to stop it from misleading the next collaborator who greps
+    for "Crew Help."
+  - `src/utils/translate.js` — message translation uses an unofficial,
+    keyless Google Translate endpoint that can rate-limit (HTTP 429) under
+    load. Fine for solo/small-group testing; needs a real translation API
+    key/quota before Alpha-scale traffic.
 
 ## 5. Technical debt to fix before multiplayer
 
 - `src/Game.jsx` owns too many unrelated systems and large mutable/ref-backed
-  maps. Split domain state before adding server authority.
-  **Done (Claude):** 10-step split — see the dated entries below. Background
-  timer catch-up (resources, egg/stamina regen, marches, reinforcements) is
-  also done — see the 2026-09-20 entry. State still lives in `Game.jsx`.
+  maps. **Done:** 10-step split into `shared/utils/` + `src/hooks/` (see the
+  dated entry below) plus background timer catch-up. State still lives in
+  `Game.jsx`.
 - Game rules are divided between React callbacks, hooks and workers. Move every
   multiplayer-sensitive rule into shared deterministic functions callable by
-  the server.
+  the server. Chat/Relations/Crew/Diplomacy rules already follow this split
+  (`shared/utils/chatRules.js`, `relationsRules.js`, `crewRules.js`,
+  `crewFortress.js`) and are ready for a server to adopt; they just aren't
+  connected to one yet.
 - The client currently creates/holds too much world truth. The server must own
   captures, combat results, resources, timers, inventory, troops, relocation,
-  chapters, crews and diplomacy.
+  chapters, crews, chat and diplomacy.
 - Replace session-only state with durable storage, migrations, account/player
-  IDs, world/season IDs and reconnect snapshots.
+  IDs, world/season IDs and reconnect snapshots. This is the single biggest
+  gap for Phase A (see roadmap below) — right now closing the tab erases
+  everything, including crew membership and chat history.
 - Add command validation, idempotency and server timestamps so duplicate or
   delayed messages cannot spend/capture twice.
 - Replace full-map client/server transfers with region/chunk snapshots and
-  small validated updates suitable for thousands of players.
-- ~~Remove temporary `?debug`/mobile diagnostics after the related phone tests
-  are complete.~~ **Done (Claude)** — see the 2026-09-20 "tech-debt cleanup" entry.
-- ~~Resolve the Bag relocation-token “coming soon” message so it directs players
-  to the existing HQ relocation flow or opens it.~~ **Done (Claude)** — same entry.
-- ~~Add the required recall-specific speedup; keep training and forts excluded.~~
-  **Done (Claude)** — same entry.
+  small validated updates suitable for thousands of players (needed by Beta/
+  Launch scale, not Phase A/B).
 
 ## 6. Current Alpha/Beta launch blockers
 
-- Tier 4 and neutral units are required before multiplayer conversion.
+- No durable authoritative server, account persistence, identity or reconnect
+  recovery — chat, relations, crews and diplomacy are invisible to anyone
+  but the local browser tab today. This blocks even a 5-15 person pre-alpha
+  test, since testers can't see each other.
+- Tier 4 and neutral units are logic-complete but need final art before a
+  real playtest looks finished.
 - Season Chapters and their progression gates do not exist.
-- Crew 2.0's Boosts/Diplomacy/War Declaration/records and Crew chat do not
-  exist yet (core Crew 2.0 — roles, levels, Store, Fortress structures/siege —
-  is done, see session 16 below).
-- The remaining seven faction bases, keep/mob/commander map sprites, added
-  terrain variation, gate/crossing polish and mobile UI polish are incomplete.
-- No durable authoritative server, account persistence or reconnect recovery.
-- Battle execution tests pass for the current roster, but balance, mixed armies,
-  long wars, wounded/healing loops and large-scale regression playtests remain.
-- Offline progression is incomplete across all timers.
+- Crew Records and Cooperation/Rally are spec'd but unbuilt; Crew Help is
+  still self-serve.
+- The remaining 7 faction HQ art approvals, 44 commander map sprites, camp/
+  mob sprites, added terrain variation, gate/crossing polish and mobile UI
+  polish are incomplete.
+- Battle execution tests pass for the current roster, but balance, mixed
+  armies, long wars, wounded/healing loops and large-scale regression
+  playtests remain.
+- No save-across-reload; only background/lock catch-up exists.
 - No currently reproduced Gacha/Commander/map-freeze crash remains after the
-  fixes above. Treat a new occurrence as a regression and collect the exact
+  fixes below. Treat a new occurrence as a regression and collect the exact
   phone console error before re-auditing those systems.
 
 ## 7. Dependencies
 
-- Finish T4 + neutral roster/data before final battle balancing and before
-  generating all missing troop/mob art.
 - **Art still needed from the owner's ChatGPT-art queue (blocked on weekly
-  usage reset, per owner):** the 4 Ancients (T4), the 15 neutral units, AND
-  now the neutral/Ancient camp structures (map sprite — small/medium/large
-  footprint, per-tier or per-unit visual). Camps are new to this list as of
-  the live map wiring above; everything else was already known.
+  usage reset, per owner):** the 4 Ancients (T4), the 15 neutral units, the
+  neutral/Ancient camp structures, 44 remaining commander map sprites, and
+  final sign-off on the 7 non-Pirate faction HQ dark-v2 redesigns.
 - Define Season Chapters before gates, crossings, Holy Grail access, war
   declarations, seasonal objectives and server APIs.
-- Define Crew 2.0 roles/data before Crew chat permissions, diplomacy, wars,
-  structures, logs and the table UI.
-- Finalize deterministic shared battle/economy rules before making the server
-  authoritative.
-- Full-world terrain/resource rules are complete. Finish keep/gate/base
-  placement polish before the final performance pass.
-- Complete server identity/persistence before real chat, Crew ownership,
-  diplomacy and season progression.
+- Build the Objectives/map-pin system before Rally Target can point at
+  anything real; define real multiplayer identity before Records, Rally and
+  crewmate-to-crewmate Crew Help can be built.
+- Finalize deterministic shared battle/economy/chat/crew rules (already
+  mostly done, see section 5) before making the server authoritative.
+- Complete server identity/persistence before real chat, crew ownership,
+  diplomacy and season progression actually work between two different
+  players.
 
-## 8. Recommended Alpha/Beta implementation order
+## 8. Roadmap — Pre-Alpha through Launch
 
-1. Finish the current map-art direction: seven faction bases, keep sprites,
-   gate/crossing tuning, mob sprites and remaining commander sprites.
-2. Add T4 troops and neutral units through existing troop/branch/battle data.
-3. Run focused battle balance/playtests with all tiers and neutral encounters.
-4. Build the Season Chapters data model and unlock checks in shared code, then
-   connect gates, Holy Grail, war declarations, objectives and events.
-5. Build Crew 2.0 data/functions, then the headquarters/table UI.
-6. Add world/faction/Crew chat using the future player/server identity model.
-7. Complete gear rework, tutorial and task progression.
-8. Finish offline/background recovery and remaining mobile UI/graphics polish.
-9. Stabilize all systems in the browser Alpha/Beta before converting authority
-   to the real multiplayer server.
+This replaces the old single "recommended implementation order." Each phase
+lists what must be true to call that phase reached; items already marked
+**COMPLETE — DO NOT RECHECK** above aren't repeated here even when they're a
+prerequisite.
 
-## 9. Must be complete before real multiplayer conversion
+### Phase A — Pre-Alpha: basic multiplayer testing (5-15 people, one shared session)
 
-- T4 troops, neutral units and roster completion.
-- Final deterministic battle, march, healing, training, item, fort, relocation
-  and resource rules shared by client and server.
-- Season Chapters with server-owned unlock state.
-- Crew 2.0 rules, chat permissions, diplomacy and war declaration rules.
-- Stable map/gate/crossing/keep/Holy Grail data and IDs.
-- Offline timer semantics and reconnect behavior.
-- Tutorial/task state that can be stored server-side.
-- Full Alpha/Beta regression playtest and mobile performance pass.
-- A migration plan from browser state to accounts and persistent worlds.
+Goal: a handful of testers can be in the same world at once and see each
+other's actions. This is the single largest gap in the project today — every
+system below is logic-complete but invisible across browsers.
+
+1. Stand up a minimal authoritative server (extend `server/index.js` or
+   replace it): stable player identity across reconnect, server-held world
+   state for tiles/captures/crews/chat/diplomacy, broadcasting changes to
+   all connected clients. In-memory/non-durable is acceptable for this
+   phase — durability is a Phase B requirement, not A.
+2. Move chat, Relations, Crew membership/roles/diplomacy and Crew Fortress
+   siege state onto that server so a message, friend request, crew join or
+   diplomacy change one tester makes is visible to the others. The pure
+   rule functions for all of these already exist in `shared/utils/` and are
+   written to be server-portable — this is a wiring task, not a redesign.
+3. Add basic command validation (reject a capture/spend from a player who
+   doesn't own the source, reject a duplicate message id) so simultaneous
+   testers can't desync or double-spend each other.
+4. Fix the small wiring/stub issues in section 4 that a live multiplayer
+   playtest would otherwise surface as bugs: HUD's hardcoded `rssRate`,
+   the passive skills that don't do anything yet, and delete the dead
+   `CrewPanel.jsx`.
+5. Get the owner's sign-off on the 7 pending faction HQ redesigns (assets
+   already exist, code already wires them — this is a review step, not a
+   build step).
+6. Playtest the full core loop (spawn, build, train, march, capture, chat,
+   crew up, fortress siege) with 5-15 real concurrent testers and fix
+   whatever that surfaces.
+
+### Phase B — Alpha (1 server, ~100-200 concurrent)
+
+Builds on Phase A's shared server.
+
+1. Durable persistence: accounts, migrations, reconnect snapshots — state
+   survives a server restart and a player closing their browser.
+2. Finish the art queue enough that T4/neutral/Ancient units and camps don't
+   look like placeholders (owner's ChatGPT-art queue, section 7).
+3. Run focused battle balance/playtests with all tiers, neutral camps and
+   Ancients in the mix.
+4. Build Crew Records and Cooperation/Rally for real now that there are
+   actual other players to rank against and rally with (specs already
+   written, sessions 25-27 below); wire Rally Target to a real Objectives/
+   map-pin system; upgrade Crew Help to crewmate-to-crewmate.
+5. Finish offline/background recovery gaps and a real mobile UI/graphics
+   polish pass across all screens.
+6. Add server-side command idempotency/timestamps (section 5) now that
+   100-200 concurrent players can actually collide.
+7. Swap the unofficial translate endpoint for a real, quota-backed
+   translation API before message volume grows.
+
+### Phase C — Beta (1 server, ~1000 concurrent)
+
+1. Replace full-map client/server transfers with region/chunk snapshots and
+   validated incremental updates (section 5) — required at this scale, not
+   before.
+2. Build the Season Chapters data model and unlock checks in shared code,
+   then connect gates, crossings, Holy Grail access, war declarations,
+   objectives and events.
+3. Complete the gear rework, tutorial and task/progression framework.
+4. Full regression + load playtest at Beta scale; finish any remaining
+   commander/mob/keep art and terrain variation.
+
+### Phase D — Launch (multiple servers, ~2000 cap per server)
+
+1. Multi-world/server provisioning and a server-select/matchmaking flow.
+2. A migration plan from any earlier Alpha/Beta world state to permanent
+   Launch worlds/accounts.
+3. Monitoring, ops runbooks and capacity headroom for the 2000-per-server
+   target.
+4. Final balance pass and launch-readiness polish across every system above.
 
 ## Approved graphics/map backlog
 
 - **DONE:** Pirate HQ redesign and placement.
-- Redesign faction bases for Wizards, Orcs, Dragons, Holy Knights, Creatures of
-  the Night, Coldborns and Ashen Dead. Show each design for owner approval.
+- **PENDING OWNER SIGN-OFF (assets + code already exist):** the other 7
+  faction HQ dark-v2 redesigns — `public/hq/ART.md` still lists them as
+  unapproved even though the files are in the repo and wired in code.
 - **DONE:** Expanded the approved terrain/resource tile and prop treatment
   across the whole map while keeping drawing limited to the visible area.
 - Monitor and tweak gates/crossings to match the owner's desired Rise to War
   style, chapter locks and play flow.
 - **DONE:** March routes use dotted lines, repeated directional arrows and a
   clear target endpoint.
-- **IN PROGRESS:** Redwake Fynn and Admiral Brine map sprites are complete;
-  create purpose-built sprites for the remaining commanders.
-- Create sprites for all remaining mobs/neutral encounters.
+- **IN PROGRESS:** 16 of 60 commanders have purpose-built map sprites
+  (listed above); the other 44 still use circular portraits on the map.
+- Create sprites for all remaining mobs/neutral encounters — currently only
+  1 spawn sprite exists in `public/spawns/`.
+- Create sprites for the 15 neutral units, 4 Ancients, and neutral/Ancient
+  camp structures — logic/data is complete, art is not (art-queue item).
 - Create sprites for keeps and blend them with the new map style.
 
 ---
