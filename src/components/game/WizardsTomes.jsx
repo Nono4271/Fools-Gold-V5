@@ -382,7 +382,7 @@ export default memo(function WizardsTomes({
           )}
           <button onClick={onClose} style={{
             background:"none", border:"1px solid #331166", color:"#9966ff",
-            fontSize:16, cursor:"pointer", width:28, height:28, borderRadius:4,
+            fontSize:18, cursor:"pointer", width:40, height:40, borderRadius:6, touchAction:"manipulation",
             display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"sans-serif",
           }}>✕</button>
         </div>

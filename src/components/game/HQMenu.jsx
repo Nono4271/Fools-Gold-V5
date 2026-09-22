@@ -1461,7 +1461,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
         display:"flex", alignItems:"center", gap:10 }}>
         <button className="btn" onClick={onBack}
           style={{ background:"none", border:"none", cursor:"pointer",
-            color:P.dim, fontSize:20, padding:"0 2px", lineHeight:1 }}>‹</button>
+            color:P.dim, fontSize:22, lineHeight:1, minWidth:36, minHeight:36,
+            display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
         <div style={{ fontFamily:P.ff, fontSize:13, fontWeight:700,
           color:isScrap?"#ff7755":P.gold, letterSpacing:".07em" }}>
           {isScrap ? "⚠ SCRAP TROOPS" : "⚔ TRAINING QUEUE"}
@@ -1561,8 +1562,17 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
                 </div>
               </div>
 
+              {/* Why the slider can't move (it used to just sit at 0 with no explanation) */}
+              {!isScrap && maxAmount <= 0 && (
+                <div style={{ fontSize:8, color:"#d08050", fontFamily:P.ff, marginBottom:4 }}>
+                  {room <= 0 ? "Barracks full — upgrade Barracks or assign troops to commanders"
+                    : maxBatch <= 0 ? "Build Training Grounds to train"
+                    : `Not enough room for one ${cmdLabel} command (${cmdStep})`}
+                </div>
+              )}
               {/* Slider */}
               <input type="range" min={0} max={Math.max(cmdStep,maxAmount)} step={cmdStep} value={sv}
+                disabled={!isScrap && maxAmount <= 0}
                 onChange={e => { const v=+e.target.value; setSliderVal(v===maxAmount?v:Math.round(v/cmdStep)*cmdStep); }}
                 onInput={e => { const v=+e.target.value; setSliderVal(v===maxAmount?v:Math.round(v/cmdStep)*cmdStep); }}
                 style={{ width:"100%", accentColor:isScrap?"#cc3030":"#c8903a",
@@ -1951,7 +1961,7 @@ function ManageShipScreen({
       }}>
         {/* Back */}
         <button className="btn" onClick={onBack} style={{
-          fontSize: 8, padding: "3px 10px",
+          fontSize: 10, padding: "6px 12px", minHeight: 34,
           background: "rgba(255,255,255,.04)",
           border: `1px solid ${P.border}`,
           color: P.dim, borderRadius: 3, flexShrink: 0,
@@ -2949,7 +2959,7 @@ const confirmHeal = () => {
 return (
 <div>
 <label style={{display:"flex",alignItems:"center",gap:10,minHeight:44,marginBottom:10}}>
-  <input type="checkbox" role="switch" aria-label="Automatic healing" checked={!!autoHeal} onChange={e=>setAutoHeal(e.target.checked)} style={{width:24,height:24}} />
+  <input type="checkbox" role="switch" aria-label="Automatic healing" checked={!!autoHeal} onChange={e=>setAutoHeal(e.target.checked)} style={{width:30,height:30}} />
   <span>Automatic healing — uses food at the manual healing price</span>
 </label>
 {/* Capacity row */}
@@ -3370,9 +3380,9 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
     {/* Back button */}
     {hqTab !== "hub" && (
       <button onClick={() => setHqTab("hub")}
-        style={{ position:"absolute", left:24,
+        style={{ position:"absolute", left:24, minHeight:36, minWidth:72,
           background:"rgba(255,255,255,.06)", border:`1px solid ${P.border}`,
-          color:P.sub, fontSize:11, padding:"4px 12px", borderRadius:4, cursor:"pointer" }}>
+          color:P.sub, fontSize:12, padding:"6px 14px", borderRadius:5, cursor:"pointer", touchAction:"manipulation" }}>
         ← Back
       </button>
     )}
@@ -3404,7 +3414,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
         background: isHub ? "radial-gradient(ellipse at 40% 35%, #d8c080, #b89050)" : "rgba(200,50,50,.15)",
         border: isHub ? "2px solid #7a5028" : "1px solid rgba(200,50,50,.4)",
         color: isHub ? "#3a1a05" : "#dd6060",
-        fontSize:12, padding:"4px 14px", borderRadius:4, cursor:"pointer" }}>
+        fontSize:13, padding:"6px 14px", minHeight:36, minWidth:44, borderRadius:5, cursor:"pointer", touchAction:"manipulation" }}>
       {isHub ? "✕" : "✕ Close"}
     </button>
   </div>

@@ -942,6 +942,14 @@ function BattleListItem({ b, selected, onClick }) {
             fontSize:7, fontWeight:700, color:oc.color, fontFamily:"'Cinzel',serif",
             letterSpacing:".06em",
           }}>{oc.text}</span>
+          {/* One attack can be several fights (standing defenders, garrison
+              waves) — label each so they don't read as duplicate reports. */}
+          {(b.isWaveBattle || b.stageLabel) && (
+            <span style={{ fontSize:6.5, color:"#8a7a5a", fontFamily:"'Cinzel',serif", letterSpacing:".04em",
+              padding:"0 4px", border:"1px solid #3a3020", borderRadius:3 }}>
+              {b.isWaveBattle ? `Wave ${(b.waveIndex ?? 0) + 1}/${b.totalWaves ?? "?"}` : b.stageLabel}
+            </span>
+          )}
         </div>
         <div style={{
           fontSize:7, color:"#9a8060", fontFamily:"'Cinzel',serif",
@@ -1741,7 +1749,7 @@ export default memo(function BattleLog({ battles, bLog, onClose, playerName }) {
               </button>
             ))}
             <button onClick={onClose} style={{
-              width:30, height:30, borderRadius:"50%",
+              width:40, height:40, borderRadius:"50%", touchAction:"manipulation",
               background:"rgba(255,255,255,.04)", border:"1px solid #2a1e08",
               color:"#6a5a4a", fontSize:14, cursor:"pointer",
               display:"flex", alignItems:"center", justifyContent:"center",

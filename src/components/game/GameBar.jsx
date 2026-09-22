@@ -4,6 +4,7 @@ import { CSS } from "../../constants/css.js";
 import { HQP, POWER_DEFS } from "../../../shared/constants/map.js";
 import { isoXY, COLS, ROWS } from "../../../shared/constants/geometry.js";
 import { CAMP_TIERS, campTierForPowerLevel, findCamps } from "../../../shared/utils/campSearch.js";
+import { isWounded } from "../../../shared/utils/commanderStatus.js";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    GameBar — persistent bottom action bar + left commander portraits + right reports
@@ -178,9 +179,9 @@ function ActionButton({ icon, label, color = "#c8a060", onClick, badge, accent }
       </div>
 
       <div style={{
-        fontFamily: "'Cinzel',serif", fontSize: 6.5, color,
-        letterSpacing: ".04em", textAlign: "center",
-        textShadow: `0 0 6px ${color}44`,
+        fontFamily: "'Cinzel',serif", fontSize: 8.5, fontWeight: 700, color: "#f0dcb0",
+        letterSpacing: ".04em", textAlign: "center", lineHeight: 1.1,
+        textShadow: `0 1px 2px #000, 0 0 3px #000, 0 0 6px ${color}88`,
       }}>{label}</div>
     </button>
   );
@@ -597,7 +598,7 @@ export default memo(function GameBar({
         {playerCmds.length > 0 ? playerCmds.map(cmd => {
           const stationedFort = (forts || []).find(f => f.stationedCmdUids?.includes(cmd.uid));
           const isAtHQ = !cmd.stationedFortId && !cmd.stranded;
-          const badge = cmd.stranded ? "⚠" : stationedFort ? "📍" : isAtHQ ? "🏰" : null;
+          const badge = isWounded(cmd) ? "🩸" : cmd.isGuarding ? "🛡" : cmd.stranded ? "⚠" : stationedFort ? "📍" : isAtHQ ? "🏰" : null;
           return (
           <div key={cmd.uid} style={{ position: "relative" }}>
             <PortraitButton

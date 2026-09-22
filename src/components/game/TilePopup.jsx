@@ -12,6 +12,7 @@ import { canManageFortress } from "../../../shared/utils/crewRules.js";
 import CommanderCard from "./popup/CommanderCard.jsx";
 import FortPanel from "./popup/FortPanel.jsx";
 import CrewStructurePanel from "./popup/CrewStructurePanel.jsx";
+import { isWounded } from "../../../shared/utils/commanderStatus.js";
 import HQPopup from "./popup/HQPopup.jsx";
 
 // Smart positioning hook — places popup on the opposite side of screen from the tile
@@ -87,7 +88,7 @@ export default memo(function TilePopup({
   onBuildCrewFortress, onDemolishCrewFortressHere,
   // Crew Well / Contract Outpost (see popup/CrewStructurePanel.jsx)
   wellAtTile = null, wellCrew = null, outpostAtTile = null, outpostCrew = null,
-  crewStructureKeys = null, contractCommandsLeft,
+  crewStructureKeys = null, myCrewStructureKeys = null, contractCommandsLeft,
   onBuildWell, onDemolishWell, onStationAtWell,
   onBuildOutpost, onDemolishOutpost, onChooseOutpostUnits,
 }) {
@@ -201,7 +202,7 @@ export default memo(function TilePopup({
   if (popupMode === "repositionPick") {
     const pos = posReposition;
     if (!pos) return null;
-    const idleCmds = cmds.filter(c => c.owner==="player" && !c.march && c.tk !== selKey && !c.stranded);
+    const idleCmds = cmds.filter(c => c.owner==="player" && !c.march && c.tk !== selKey && !c.stranded && !isWounded(c));
     return (
       <div style={{ position:"fixed", left:pos.x, top:pos.y, zIndex:500, pointerEvents:"auto", width:200, background:"rgba(5,7,11,.97)", border:"1px solid #3a5a6a", borderRadius:8, overflow:"hidden", boxShadow:"0 8px 32px rgba(0,0,0,.9)" }}>
         <div style={{ padding:"8px 10px", borderBottom:"1px solid #1e2a2e", display:"flex", alignItems:"center", gap:6 }}>
@@ -287,6 +288,10 @@ export default memo(function TilePopup({
   const isNeutral = !selTile.owner;
   // Gathering at your own crew's Well reuses the normal gather drawer below.
   const isMyWellTile = !!wellAtTile && !!myCrew && wellCrew?.id === myCrew.id;
+  // Crew structure tiles (Fortress/Well/Outpost) stay unowned underneath:
+  // they're taken by sieging the structure, never by the plain ATTACK below.
+  const hasCrewStructure = !!(crewFortressAtTile || wellAtTile || outpostAtTile);
+  const isMyStructureTile = !!myCrewStructureKeys?.has(selKey);
   const liveAiCmd = isAiOwned ? cmds.find(c => c.owner==="ai" && c.tk===selKey && !c.march) : null;
   const garrisonCmd = (isAiOwned||isNeutral) ? garrisonDefCmd(selTile, facKey) : selTile.defCmd;
   const totalWaves = selTile.garrisonWaves ?? ((selTile.powerLevel>=10||selTile.isGate||selTile.isKeep)?2:1);
@@ -549,7 +554,8 @@ export default memo(function TilePopup({
 
           // Gather: pick commander + ticks
           if (gatherOpen) {
-            const idleCmdsOnTile = (cmdsOnSel||[]).filter(c=>!c.march&&!c.gathering);
+            // At a Well only STATIONED commanders gather (not ones that just moved on).
+            const idleCmdsOnTile = (cmdsOnSel||[]).filter(c=>!c.march&&!c.gathering&&!isWounded(c)&&(!isMyWellTile||c.stationedWellId===wellAtTile.id));
             return (
               <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(8,5,2,.97)", border:"1px solid #a07040", borderRadius:8, zIndex:20, display:"flex", flexDirection:"column", gap:6, padding:10, overflowY:"auto" }}>
                 <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#e0a060", textAlign:"center" }}>⛏ Gather</div>
@@ -596,7 +602,7 @@ export default memo(function TilePopup({
 
           // Commander Training picker
           if (trainingOpen) {
-            const idleCmdsOnTile = (cmdsOnSel||[]).filter(c=>!c.march&&!c.gathering&&!c.training);
+            const idleCmdsOnTile = (cmdsOnSel||[]).filter(c=>!c.march&&!c.gathering&&!c.training&&!isWounded(c));
             const POWER_COMMAND = { 1:0.3,2:2.5,3:4,4:8,5:10,6:15,7:18,8:30,9:35,10:55,11:65,12:75,13:90 };
             const tilePl = selTile?.powerLevel ?? 1;
             const xpPerTick = Math.round((POWER_COMMAND[tilePl] ?? 0.3) * (XP_PER_COMMAND[2] ?? 850) * 0.25 * (trainingXpMult ?? 1));
@@ -709,7 +715,7 @@ export default memo(function TilePopup({
               </div>
               <button
                 onClick={() => {
-                  const idleCmd = (cmdsOnSel||[]).find(c => !c.march && !c.gathering && !c.training && (c.stamina ?? 150) >= 10);
+                  const idleCmd = (cmdsOnSel||[]).find(c => !c.march && !c.gathering && !c.training && !isWounded(c) && (c.stamina ?? 150) >= 10);
                   if (idleCmd) onSweep?.(selKey, idleCmd);
                 }}
                 style={{ padding:"5px 12px", background:"rgba(160,40,40,.3)", border:"1px solid #cc4040", color:"#ff9090", fontFamily:"'Cinzel',serif", fontSize:8, borderRadius:4, cursor:"pointer" }}>
@@ -786,7 +792,7 @@ export default memo(function TilePopup({
           )}
           <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
           {/* Attack */}
-          {(ownership==="enemy"||isNeutral)&&canAtk&&(
+          {(ownership==="enemy"||isNeutral)&&canAtk&&!hasCrewStructure&&(
             <button onClick={()=>canAtkNow?(setAtkKey(selKey),setMode("pickAttackCmd"),setPick(null)):null}
               style={{ flex:1, padding:"6px 0", background:canAtkNow?"linear-gradient(160deg,#6a0808,#3a0404)":"rgba(60,20,20,.3)", border:`1px solid ${canAtkNow?"#cc2020":"#553030"}`, borderRadius:5, color:canAtkNow?"#ff8080":"#7a5050", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canAtkNow?"pointer":"not-allowed", opacity:canAtkNow?1:.6 }}>
               ATTACK
@@ -796,6 +802,14 @@ export default memo(function TilePopup({
           {ownership==="player"&&!isHqTile&&!fort&&(
             <button onClick={()=>canMoveNow?(setAtkKey(selKey),setMode("pickMoveCmd"),setPick(null)):null}
               style={{ flex:1, padding:"6px 0", background:canMoveNow?"linear-gradient(160deg,#083a18,#041e0a)":"rgba(20,40,20,.3)", border:`1px solid ${canMoveNow?"#2a8040":"#2a4a2a"}`, borderRadius:5, color:canMoveNow?"#80d090":"#507050", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canMoveNow?"pointer":"not-allowed", opacity:canMoveNow?1:.6 }}>
+              MOVE
+            </button>
+          )}
+          {/* Move — onto your own crew's Fortress/Well/Outpost: the commander
+              stands on the tile (not stationed) and defends it first. */}
+          {isMyStructureTile&&ownership!=="player"&&ownership!=="crew"&&(
+            <button onClick={()=>canMoveNow?(setAtkKey(selKey),setMode("pickMoveCmd"),setPick(null)):null}
+              style={{ flex:1, padding:"6px 0", background:canMoveNow?"linear-gradient(160deg,#082038,#041020)":"rgba(20,30,50,.3)", border:`1px solid ${canMoveNow?"#2060a0":"#204060"}`, borderRadius:5, color:canMoveNow?"#60a0e0":"#405060", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canMoveNow?"pointer":"not-allowed" }}>
               MOVE
             </button>
           )}
@@ -840,7 +854,7 @@ export default memo(function TilePopup({
               <div style={{ flex:1, fontSize:9, color:"#e0a0a0", fontFamily:"'Cinzel',serif", textAlign:"center", padding:"6px 0" }}>
                 🏰 Siege: {crewFortressAtTile.siege.toLocaleString()}/{crewFortressAtTile.siegeMax.toLocaleString()}
               </div>
-              {ownership!=="player"&&ownership!=="crew"&&canAtk&&(
+              {ownership!=="player"&&ownership!=="crew"&&!isMyStructureTile&&canAtk&&(
                 <button onClick={()=>canSiegeFortressNow?(setAtkKey(selKey),setMode("pickSiegeCmd"),setPick(null)):null}
                   style={{ flex:1, padding:"6px 0", background:canSiegeFortressNow?"linear-gradient(160deg,#6a0808,#3a0404)":"rgba(60,20,20,.3)", border:`1px solid ${canSiegeFortressNow?"#cc2020":"#553030"}`, borderRadius:5, color:canSiegeFortressNow?"#ff8080":"#7a5050", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canSiegeFortressNow?"pointer":"not-allowed", opacity:canSiegeFortressNow?1:.6 }}>
                   ATTACK FORTRESS
@@ -862,6 +876,7 @@ export default memo(function TilePopup({
               rss={rss} nowTick={nowTick} cmds={cmds} crewFortressAtTile={crewFortressAtTile}
               wellAtTile={wellAtTile} wellCrew={wellCrew} outpostAtTile={outpostAtTile} outpostCrew={outpostCrew}
               crewStructureKeys={crewStructureKeys} contractCommandsLeft={contractCommandsLeft}
+              canAtk={canAtk} canAtkNow={canAtkNow} onAttackStructure={()=>{ setAtkKey(selKey); setMode("pickSiegeCmd"); setPick(null); }}
               onBuildWell={onBuildWell} onDemolishWell={onDemolishWell} onStationAtWell={onStationAtWell}
               onOpenWellGather={()=>{ setTacticsOpen(true); setGatherOpen(true); setQuickGatherConfirm(false); setReconConfirm(false); setTrainingOpen(false); }}
               onBuildOutpost={onBuildOutpost} onDemolishOutpost={onDemolishOutpost} onChooseOutpostUnits={onChooseOutpostUnits}

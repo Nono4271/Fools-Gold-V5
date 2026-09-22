@@ -112,7 +112,7 @@ function fmtNum(n) {
 /* ── HUD ─────────────────────────────────────────────────────────────────── */
 export default memo(function HUD({
   facName, facKey, pKeys, rss, gems, tiles,
-  bldgs = {}, forts = [], rssBonus = {}, facTileYield = 0,
+  bldgs = {}, forts = [], rssBonus = {}, facTileYield = 0, crewRssBonus = {},
   dragonEggs    = 20,
   dragonEggsCap = 20,
   tileCap       = 60,
@@ -145,8 +145,8 @@ export default memo(function HUD({
     return n;
   }, [tiles, pKeys]);
   const rssRate = useMemo(
-    () => hourlyRssRate(tiles, pKeys, bldgs, forts, rssBonus, facTileYield),
-    [tiles, pKeys, bldgs, forts, rssBonus, facTileYield]
+    () => hourlyRssRate(tiles, pKeys, bldgs, forts, rssBonus, facTileYield, crewRssBonus),
+    [tiles, pKeys, bldgs, forts, rssBonus, facTileYield, crewRssBonus]
   );
 
   // Dragon Egg regen: capacity fills in 24 hrs regardless of cap size
@@ -314,7 +314,7 @@ export default memo(function HUD({
             {/* Settings */}
             <button style={{
               background:"rgba(20,16,8,.6)", border:"1px solid rgba(200,160,64,.18)",
-              borderRadius:4, width:24, height:24,
+              borderRadius:5, width:32, height:32,
               display:"flex", alignItems:"center", justifyContent:"center",
               cursor:"pointer", padding:0, flexShrink:0,
               boxShadow:"inset 0 1px 0 rgba(255,255,255,.05)",
