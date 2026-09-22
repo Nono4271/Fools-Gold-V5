@@ -1,25 +1,19 @@
-Coldborns + Holy Knights starters -- walk sprites
--------------------------------------------------
-Added (public/commanders/map/):
-  h50-walk-v1.png   Valdris the Unmoved  (Coldborns soldier starter)
-  h52-walk-v1.png   Eira Coldmantle      (Coldborns veteran starter)
-  h37-walk-v1.png   Brother Aldric       (Holy Knights soldier starter)
-  h38-walk-v1.png   Commander Vayne      (Holy Knights veteran starter)
+Robe characters -- stronger stride pass
+---------------------------------------
+Replaces (same paths, no code changes -- all already wired in):
+  public/commanders/map/h43-walk-v2.png   Serava
+  public/commanders/map/h52-walk-v1.png   Eira
+  public/commanders/map/h59-walk-v1.png   Mordwyn
 
-Changed:
-  src/utils/commanderMapSprites.js  (+4 lines, AI copies match by bust too)
-  tests/commanderMapSprites.test.js (covers the 4 new ones; npm test 4/4)
+Why robes didn't read as walking: their feet only tilted a few degrees
+in place with a 3px lift. The leg characters' feet travel a full stride
+(plant, push back, lift 11px, swing forward).
 
-Per character:
-  Eira     - gown type: skirt planted + sways, both boots step, arm swings.
-  Valdris  - walking legs; axe on shoulder and fur cape stay still;
-             both arms swing.
-  Vayne    - walking legs; sword and its hand stay still; free arm swings.
-  Aldric   - walking legs; shield stays still; free arm swings.
-  Vayne/Aldric back view: the cape hides the far leg, so that leg stays
-  under the cape and the visible leg steps (same as Dreadmourne).
+Now the robe characters' feet use the same gait as the leg characters:
+same timing, same 11px lift, same forward/back travel. Sideways travel
+is 12px instead of 18px so the boots stay under the hem instead of
+stepping out past it. The hem also sways a bit more with each step.
 
-Facing: fronts of Valdris, Vayne and Aldric, and Eira's back, were
-mirrored to face the same way as Fynn -- so weapons/shields switch hands
-compared to the art.
-All backgrounds cut with the AI remover (no holes in white hair/silver).
+Cleanups: the skirt no longer shows a notch where a boot was, and the
+boots take their ground shadow with them instead of leaving specks.
+All three stay on the ground line in every frame.
