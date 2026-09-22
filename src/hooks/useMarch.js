@@ -9,6 +9,8 @@ import { resolveSiegeOutcome, garrisonResetMs } from "../../shared/utils/capture
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
 import { getPassiveBonuses, getActiveSkills, MAIN_SKILLS } from "../../shared/constants/skills.js";
+import { siegeTerritoryMultiplier, recordRegionCapture } from "../../shared/utils/warRules.js";
+import { isWarActive } from "../../shared/utils/crewRules.js";
 
 // Per-class stat growth per level
 export const CLASS_GROWTH = {
@@ -133,11 +135,35 @@ guardedTiles,
 facMasterySiegeMult = 1,
 registerProtection,
 onForcedRelocate,
+crews, playerCrewId, regionOwners, setRegionOwners,
 }) {
 
 // Server-sync helpers — no-op if server not connected yet
 const _emitCapture = (key, patch, attacker) => emitTileCapture?.(key, patch, attacker);
 const _emitSiege   = (key, patch, attacker) => emitTileSiege?.(key, patch, attacker);
+
+// War: -70% siege-power debuff on enemy-territory tiles, lifted while the
+// attacker's own crew is at war — see shared/utils/warRules.js. Resolved
+// fresh at each siege attempt (war phase advances purely from elapsed time,
+// not a state change that would otherwise retrigger these effects).
+// Player-siege call sites only (forts/fortress/keeps/tile-flips the human
+// player's armies do) — never applied to AI-vs-AI or AI-vs-player fights.
+function playerSiegePower(rawSiegePower, defTile) {
+  const playerCrew = (crews || []).find(c => c.id === playerCrewId) || null;
+  const mult = siegeTerritoryMultiplier({
+    tile: defTile, regionOwners, attackerFaction: facKey, atWar: isWarActive(playerCrew, Date.now()),
+  });
+  return rawSiegePower * mult;
+}
+
+// Records the capturing faction's control of the whole region when a Keep
+// tile is captured — see shared/utils/warRules.js's recordRegionCapture.
+// Called for every capture (player or AI) so regionOwners stays accurate
+// regardless of who's fighting whom.
+function trackRegionCapture(tile, faction) {
+  if (!tile?.isKeep || !faction || !setRegionOwners) return;
+  setRegionOwners(prev => recordRegionCapture(prev, tile.regionKey, faction));
+}
 
 // The troop composition behind a siegePower number, in a shape the server
 // can independently recompute from (shared calcSiegePower + FACTION_TROOPS)
@@ -261,13 +287,14 @@ arrivedAttackers.forEach(async staleCmd => {
   // ── All-garrison-defeated: siege only ────────────────────────────────────
   const allWavesDefeated = (defTile.defeatedWaves?.length ?? 0) >= garrisonWaveCount(defTile);
   if (allWavesDefeated) {
-    const siegePower = cmdSiegePower(cmd, boostedCmd);
+    const siegePower = playerSiegePower(cmdSiegePower(cmd, boostedCmd), defTile);
     const attacker = attackerComposition(cmd, boostedCmd);
     const { captured: siegeCaptured, patch: outcomePatch } = resolveSiegeOutcome({ tile: defTile, siegePower });
     if (siegeCaptured) {
       patchTile(destKey, outcomePatch);
       _emitCapture(destKey, outcomePatch, attacker);
       registerProtection?.(destKey);
+      trackRegionCapture(defTile, facKey);
       floaty("⚔ CAPTURED!", "#3daa60", destKey);
       if (destKey === WIN_KEY) setWinner("player");
     } else {
@@ -324,7 +351,7 @@ arrivedAttackers.forEach(async staleCmd => {
         }
         // All defenders beaten — now siege the fort structure itself
         const fortSiege = fort.siege ?? FORT_LEVELS[fort.level - 1].siege;
-        const siegePower = cmdSiegePower(cmd, boostedCmd);
+        const siegePower = playerSiegePower(cmdSiegePower(cmd, boostedCmd), defTile);
         if (siegePower >= fortSiege) {
           // Fort destroyed
           floaty("🏯 Fort Destroyed!", "#f0c040", destKey);
@@ -520,7 +547,7 @@ arrivedAttackers.forEach(async staleCmd => {
   // All waves cleared — siege phase
   const postLossCmd = { ...cmd, troops:remainingTroops,
     troopSlots: cmd.troopSlots ? applySlotLosses(cmd, cmdTroops(cmd)-remainingTroops).troopSlots : undefined };
-  const siegePower = cmdSiegePower(postLossCmd, boostedCmd);
+  const siegePower = playerSiegePower(cmdSiegePower(postLossCmd, boostedCmd), defTile);
   const attacker   = attackerComposition(postLossCmd, boostedCmd);
   const { captured: tileCaptured, patch: outcomePatch } = resolveSiegeOutcome({
     tile: defTile, siegePower, defeatedWaves: newlyDefeated,
@@ -531,6 +558,7 @@ arrivedAttackers.forEach(async staleCmd => {
     patchTile(destKey, outcomePatch);
     _emitCapture(destKey, outcomePatch, attacker);
     registerProtection?.(destKey);
+    trackRegionCapture(defTile, facKey);
     floaty("⚔ CAPTURED!", "#3daa60", destKey);
     if (destKey === WIN_KEY) setWinner("player");
   } else {
@@ -742,7 +770,7 @@ useEffect(() => {
 
       // Player won all fights — attempt siege/capture
       const rematchCmd = { ...cmd, troops: remainingTroops };
-      const siegePower = cmdSiegePower(rematchCmd, boostedCmd);
+      const siegePower = playerSiegePower(cmdSiegePower(rematchCmd, boostedCmd), defTile);
       const attacker   = attackerComposition(rematchCmd, boostedCmd);
       const outcome = resolveSiegeOutcome({
         tile: defTile, siegePower, defeatedWaves: defTile.defeatedWaves ?? [],
@@ -753,6 +781,7 @@ useEffect(() => {
         patchTile(destKey, outcome.patch);
         _emitCapture(destKey, outcome.patch, attacker);
         registerProtection?.(destKey);
+        trackRegionCapture(defTile, facKey);
         floaty("⚔ CAPTURED!", "#3daa60", destKey);
         if (destKey === WIN_KEY) setWinner("player");
       } else {
@@ -821,6 +850,7 @@ arrivedAI.forEach(async cmd => {
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
       const isFriendly = cmd.faction === facKey;
       patchTile(destKey, outcome.patch);
+      trackRegionCapture(defTile, cmd.faction);
       floaty(isFriendly ? "🤝 Ally captured tile!" : "⚠ ENEMY CAPTURED TILE!", isFriendly ? "#2299ff" : "#dd3322", destKey);
       if (destKey === WIN_KEY) setWinner("ai");
       else if (isPlayerHQ) { if (onForcedRelocate) onForcedRelocate(); else setWinner("ai"); }
@@ -853,6 +883,7 @@ arrivedAI.forEach(async cmd => {
     if (tileCaptured) {
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
       const isFriendly = cmd.faction === facKey;
+      trackRegionCapture(defTile, cmd.faction);
       floaty(isFriendly ? "🤝 Ally captured tile!" : "⚠ ENEMY CAPTURED TILE!", isFriendly ? "#2299ff" : "#dd3322", destKey);
       if (destKey === WIN_KEY) setWinner("ai");
       else if (isPlayerHQ) { if (onForcedRelocate) onForcedRelocate(); else setWinner("ai"); }

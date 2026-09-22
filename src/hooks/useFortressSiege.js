@@ -25,6 +25,8 @@ import { getPassiveBonuses } from "../../shared/constants/skills.js";
 import { normaliseTroopSlots, bfsPath, marchStepMs } from "../../shared/utils/pathfinding.js";
 import { applyXp } from "./useMarch.js";
 import { nextDefender, unstationCommander, applySiegeDamage, removeFortress, isFortressBuilt } from "../../shared/utils/crewFortress.js";
+import { siegeTerritoryMultiplier } from "../../shared/utils/warRules.js";
+import { isWarActive } from "../../shared/utils/crewRules.js";
 
 // Small local duplicates of useMarch.js's unexported per-cmd helpers — same
 // "cheap, duplicated rather than exported for one caller" choice already
@@ -52,6 +54,7 @@ export function useFortressSiege({
   screen, cmds, setCmds, tiles, patchTile, floaty, gearInventory,
   combatXpMult, facKey, troopSkillLevels, runBattle,
   crews, setCrews, setBattles, setBLog, setUnseenBattles, playerHqKey,
+  playerCrewId, regionOwners,
 }) {
   useEffect(() => {
     if (screen !== "game") return;
@@ -118,7 +121,13 @@ export function useFortressSiege({
       let destroyed = false, claimed = false;
       // ── Phase 2: siege the now-undefended fortress ─────────────────────
       if (!attackerDefeated && remainingTroops > 0) {
-        const siegePower = cmdSiegePower({ ...cmd, troops: remainingTroops }, boostedCmd);
+        const rawSiegePower = cmdSiegePower({ ...cmd, troops: remainingTroops }, boostedCmd);
+        // War: -70% debuff on an enemy-territory fortress, lifted while the
+        // player's own crew is at war — see shared/utils/warRules.js.
+        const playerCrew = (crews || []).find(c => c.id === playerCrewId) || null;
+        const siegePower = rawSiegePower * siegeTerritoryMultiplier({
+          tile: defTile, regionOwners, attackerFaction: facKey, atWar: isWarActive(playerCrew, Date.now()),
+        });
         const outcome = applySiegeDamage(workingFortress, "player", siegePower);
         workingFortress = outcome.fortress;
         destroyed = outcome.destroyed;
