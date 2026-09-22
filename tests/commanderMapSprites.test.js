@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {commanderAtlas,commanderInsideHQ,facingRow,animationColumn} from '../src/utils/commanderMapSprites.js';
-test('Fynn, Brine, Serava, Fang, Dreadmourne and Mordwyn resolve to their map atlases, including AI instances',()=>{
+test('All wired commanders resolve to their map atlases, including AI instances',()=>{
   assert.match(commanderAtlas({id:'h1'}),/-v3\.png$/);assert.match(commanderAtlas({id:'h13'}),/-v3\.png$/);
   assert.match(commanderAtlas({id:'ai_cmd1',bust:'/commanders/h13_admiral_brine_bust.webp'}),/-v3\.png$/);
   assert.match(commanderAtlas({id:'h43'}),/h43-walk-v2\.png$/);
@@ -15,6 +15,10 @@ test('Fynn, Brine, Serava, Fang, Dreadmourne and Mordwyn resolve to their map at
   assert.match(commanderAtlas({id:'ai_dread',bust:'/commanders/h57_ser_dreadmourne_bust.webp'}),/h57-walk-v1\.png$/);
   assert.match(commanderAtlas({id:'h59'}),/h59-walk-v1\.png$/);
   assert.match(commanderAtlas({id:'ai_mord',bust:'/commanders/h59_fallen_lord_mordwyn_bust.webp'}),/h59-walk-v1\.png$/);
+  for (const [id,bust] of [['h37','h37_brother_aldric'],['h38','h38_commander_vayne'],['h50','h50_valdris_the_unmoved'],['h52','h52_eira_coldmantle']]) {
+    assert.match(commanderAtlas({id}),new RegExp(`${id}-walk-v1\\.png$`));
+    assert.match(commanderAtlas({id:'ai_x',bust:`/commanders/${bust}_bust.webp`}),new RegExp(`${id}-walk-v1\\.png$`));
+  }
   assert.equal(commanderAtlas({id:'h14'}),null);
 });
 test('HQ hides only undeployed commanders; every active march remains visible',()=>{
@@ -36,7 +40,7 @@ test('walking changes frames, arrival returns to standing, facing remains stable
 
 test('Every wired walking atlas uses the established 33x4 sheet structure',()=>{
   const root = path.resolve('public/commanders/map');
-  const wired = ['h1','h13','h43','h45','h57','h59'].map(id => path.basename(commanderAtlas({id})));
+  const wired = ['h1','h13','h37','h38','h43','h45','h50','h52','h57','h59'].map(id => path.basename(commanderAtlas({id})));
   for (const file of wired) {
     const buf = fs.readFileSync(path.join(root,file));
     assert.equal(buf.toString('ascii',1,4),'PNG');
