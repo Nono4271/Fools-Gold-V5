@@ -240,6 +240,21 @@ function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canL
       <div style={{ fontSize: 9, color: "#7a6a50", fontFamily: "'Crimson Pro',serif",
         lineHeight: 1.5, marginBottom: 8 }}>{skillDef.desc}</div>
 
+      {/* Not-yet-implemented notice — this skill's own data flags it as inert */}
+      {skillDef.notImplemented && (
+        <div style={{
+          padding: "5px 8px", marginBottom: 8,
+          background: "rgba(200,120,40,.08)",
+          border: "1px solid rgba(200,120,40,.3)",
+          borderRadius: 5,
+          fontSize: 8, color: "#c07830", fontFamily: "'Cinzel',serif",
+          letterSpacing: ".04em",
+        }}>
+          ⏳ NOT YET IMPLEMENTED — this passive has no effect in battle yet.
+          Points spent here are wasted until it ships.
+        </div>
+      )}
+
       {/* Max Level Effect — always visible if it exists */}
       {maxEffStr && (
         <div style={{
@@ -302,14 +317,16 @@ function SkillInfoPanel({ skillDef, isMain, level, maxLevel, color, accent, canL
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             transition: "all .15s", opacity: canLevelUp ? 1 : 0.7,
           }}>
-          <span style={{ fontSize: 12 }}>{branchLocked ? "🔒" : gateLocked ? "🔒" : "✦"}</span>
-          {canLevelUp
-            ? "Upgrade (1 point)"
-            : branchLocked
-              ? "Locked — earn Respect"
-              : gateLocked
-                ? "Level up main skill first"
-                : "No skill points"}
+          <span style={{ fontSize: 12 }}>{skillDef.notImplemented ? "⏳" : branchLocked ? "🔒" : gateLocked ? "🔒" : "✦"}</span>
+          {skillDef.notImplemented
+            ? "Not yet implemented"
+            : canLevelUp
+              ? "Upgrade (1 point)"
+              : branchLocked
+                ? "Locked — earn Respect"
+                : gateLocked
+                  ? "Level up main skill first"
+                  : "No skill points"}
         </button>
       )}
     </div>
@@ -434,7 +451,7 @@ function BranchRow({
                 <>
                   <text x={sideSz / 2} y={-8} textAnchor="middle"
                     fontSize={6} fill={lvl > 0 ? accent : "#3a2a18"}
-                    fontFamily="'Cinzel',serif" letterSpacing=".03em">{sk.name}</text>
+                    fontFamily="'Cinzel',serif" letterSpacing=".03em">{sk.notImplemented ? `⏳ ${sk.name}` : sk.name}</text>
                   <text x={sideSz / 2} y={sideSz + 11} textAnchor="middle"
                     fontSize={7} fill={lvl > 0 ? color : "#2a2018"}
                     fontFamily="'Cinzel',serif">{lvl}/7</text>
@@ -468,7 +485,7 @@ function BranchRow({
                 <>
                   <text x={sideSz / 2} y={-8} textAnchor="middle"
                     fontSize={6} fill={lvl > 0 ? accent : "#3a2a18"}
-                    fontFamily="'Cinzel',serif" letterSpacing=".03em">{sk.name}</text>
+                    fontFamily="'Cinzel',serif" letterSpacing=".03em">{sk.notImplemented ? `⏳ ${sk.name}` : sk.name}</text>
                   <text x={sideSz / 2} y={sideSz + 11} textAnchor="middle"
                     fontSize={7} fill={lvl > 0 ? color : "#2a2018"}
                     fontFamily="'Cinzel',serif">{lvl}/7</text>
@@ -638,7 +655,8 @@ function SkillTreeOverlay({ cmd, setCmds, gems, setGems, onClose, readOnly }) {
   // selected node's live data
   const selLevel   = selectedNode ? (liveSkillPts[selectedNode.skillKey] ?? 0) : 0;
   const selMaxLvl  = selectedNode?.isMain ? 15 : 7;
-  const selCanUp   = liveUnspent > 0 && selLevel < selMaxLvl && !selectedNode?.gateLocked && !selectedNode?.branchLocked;
+  const selCanUp   = liveUnspent > 0 && selLevel < selMaxLvl && !selectedNode?.gateLocked && !selectedNode?.branchLocked
+    && !selectedNode?.skillDef?.notImplemented;
 
   return (
     <div onClick={() => setSelectedNode(null)} style={{

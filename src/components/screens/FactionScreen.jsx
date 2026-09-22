@@ -18,6 +18,7 @@ import { ALIGNMENT, PLAYABLE_FACTIONS, getFactionAlignment } from "../../../shar
 import { HDEFS, SC, SS } from "../../../shared/constants/heroes.js";
 import { barracksCapacity, BRANCH_UNLOCK_Q, tierFromBranchLevel } from "../../../shared/constants/buildings.js";
 import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
+import { factionBonus } from "../../../shared/constants/factionBonuses.js";
 
 const LEGENDARY_BY_FACTION = {
   pirates:        { n: "Ironjaw Reck",             portrait: "/commanders/h25_ironjaw_reck_portrait.webp" },
@@ -592,7 +593,7 @@ export default function FactionScreen({
               borderRadius:4,
             }}>
               <span style={{color:"#3ddc84",fontSize:9}}>▲</span>
-              <span style={{fontFamily:"'Crimson Pro',serif",fontSize:11,color:"#9a8a7a"}}>Placeholder</span>
+              <span style={{fontFamily:"'Crimson Pro',serif",fontSize:11,color:"#c9bfae"}}>{factionBonus(faction.key)?.label ?? "—"}</span>
             </div>
           </div>
 
