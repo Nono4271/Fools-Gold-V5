@@ -569,6 +569,10 @@ export function getPassiveBonuses(cmd) {
   const bonuses = {
     cmdAtkMult:1, critChance:0, dmgReduce:0, enemyAtkReduce:0,
     troopAtkMult:1, troopDefMult:1, healPerRound:0, garrisonIgnore:0,
+    // Non-combat, world-map passives (march speed / gathering yield) — these
+    // skills have no passiveXxx flag; they're picked up below by effect.type
+    // instead, since they act outside battle resolution.
+    marchSpeedBonus:0, gatheringBonus:0,
   };
   if (!cmd?.skillLevels) return bonuses;
   const map = resolveBranchMap(cmd, cmd.cls ?? "attacker");
@@ -588,6 +592,8 @@ export function getPassiveBonuses(cmd) {
       if (def.passiveTroopDef)         bonuses.troopDefMult   *= (1 + v);
       if (def.passiveHealPerRound)     bonuses.healPerRound   += v;
       if (def.passiveGarrisonIgnore)   bonuses.garrisonIgnore += v;
+      if (def.effect?.type === "march_speed_bonus") bonuses.marchSpeedBonus += v;
+      if (def.effect?.type === "gathering_bonus")   bonuses.gatheringBonus  += v;
     }
   }
   return bonuses;
