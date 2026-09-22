@@ -21,6 +21,7 @@ export default memo(function CrewScreen({
   onBuyStoreItem,
   crewHallLvl, helpsUsed, onHelpMember, canHelp,
   onUpdateAnnouncement, onSetTarget, onClearTarget, onSetDiplomacy,
+  onDeclareWar, onCancelWar,
 }) {
   const myCrew = crews.find(c => c.id === playerCrewId);
   const [view, setView] = useState(myCrew ? "hq" : "landing");
@@ -111,6 +112,7 @@ export default memo(function CrewScreen({
             crewHallLvl={crewHallLvl} helpsUsed={helpsUsed} onHelpMember={onHelpMember} canHelp={canHelp}
             onUpdateAnnouncement={onUpdateAnnouncement} onSetTarget={onSetTarget} onClearTarget={onClearTarget}
             onSetDiplomacy={onSetDiplomacy}
+            onDeclareWar={onDeclareWar} onCancelWar={onCancelWar}
           />
         )}
       </div>

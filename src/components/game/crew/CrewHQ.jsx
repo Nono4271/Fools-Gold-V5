@@ -8,6 +8,7 @@ import CrewStore from "./CrewStore.jsx";
 import CrewHelp from "./CrewHelp.jsx";
 import CrewDiplomacy from "./CrewDiplomacy.jsx";
 import CrewLevel from "./CrewLevel.jsx";
+import CrewWar from "./CrewWar.jsx";
 import CrewComingSoon from "./CrewComingSoon.jsx";
 import { BTN_RESET, BORDER_COL, GOLD, TEXT_SM, TEXT_XS, dangerBtn } from "./crewStyles.js";
 
@@ -20,6 +21,7 @@ import { BTN_RESET, BORDER_COL, GOLD, TEXT_SM, TEXT_XS, dangerBtn } from "./crew
 const TABLE_BG_URL = "/crew/hq-table-bg.jpg";
 
 const BOTTOM_TABS = [
+  { id: "war",         label: "War",         icon: "⚔️" },
   { id: "records",     label: "Records",     icon: "📜" },
   { id: "structures",  label: "Structures",  icon: "🏰" },
   { id: "cooperation", label: "Cooperation", icon: "🛡️" },
@@ -45,6 +47,7 @@ export default function CrewHQ({
   onBuyStoreItem,
   crewHallLvl, helpsUsed, onHelpMember, canHelp,
   onUpdateAnnouncement, onSetTarget, onClearTarget, onSetDiplomacy,
+  onDeclareWar, onCancelWar,
 }) {
   const [tab, setTab] = useState(null); // null = show the table; otherwise a tab id
   const [editingAnnouncement, setEditingAnnouncement] = useState(false);
@@ -198,6 +201,9 @@ export default function CrewHQ({
                 <CrewDiplomacy crew={crew} crews={crews} playerId={playerId} onSetDiplomacy={onSetDiplomacy} />
               )}
               {tab === "level" && <CrewLevel crew={crew} />}
+              {tab === "war" && (
+                <CrewWar crew={crew} playerId={playerId} now={now} onDeclareWar={onDeclareWar} onCancelWar={onCancelWar} />
+              )}
               {tab === "cooperation" && (
                 <CrewComingSoon icon="🛡️" title="Cooperation"
                   note="Coordinated crew actions — coming in a follow-up pass." />
