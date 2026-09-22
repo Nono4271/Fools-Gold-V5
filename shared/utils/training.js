@@ -16,7 +16,11 @@ export function capstoneTrainDiscount(branchLevel) {
   return Math.min(0.5, Math.max(0, (Number(branchLevel)||0) - 1) * 0.10);
 }
 // One shared quote for the menu and the payment/delivery system.
-export function trainingQuote(branchKey,amount,speedMult=1,costTimeDiscount=0) {
+// `costMult` is a separate multiplier from `costTimeDiscount` (which is the
+// capstone branch-level discount, capstone-only) — it's the faction training-
+// cost bonus (e.g. -10% for the faction whose FACTION_BONUSES entry is
+// "trainCost"), which applies to every tier/branch, not just capstones.
+export function trainingQuote(branchKey,amount,speedMult=1,costTimeDiscount=0,costMult=1) {
   if(typeof branchKey !== 'string') return null;
   const [faction,key,tierText,...extra] = branchKey.split(':');
   const tier = Number(tierText), branches = FACTION_TROOPS[faction]?.branches;
@@ -28,8 +32,9 @@ export function trainingQuote(branchKey,amount,speedMult=1,costTimeDiscount=0) {
   const [wood,gas,time] = FACTION_TUNING[faction] || [1,1,1];
   const variation = [.97,1,1.03][index] ?? 1, sizeCost=SIZE_COST[branch.size];
   const discMult = branch.capstone ? 1-Math.min(0.5,Math.max(0,costTimeDiscount)) : 1;
+  const realCostMult = discMult * (Number.isFinite(costMult) ? costMult : 1);
   const base=branch.capstone ? CAPSTONE_BASE_COST : BASE_COST[tier];
-  const perCommandCost={stone:0,wood:round10(base[0]*wood*variation*sizeCost*discMult),gas:round10(base[1]*gas/variation*sizeCost*discMult),food:round10(base[2]*variation*sizeCost*discMult)};
+  const perCommandCost={stone:0,wood:round10(base[0]*wood*variation*sizeCost*realCostMult),gas:round10(base[1]*gas/variation*sizeCost*realCostMult),food:round10(base[2]*variation*sizeCost*realCostMult)};
   const baseMinutes = branch.capstone ? CAPSTONE_BASE_MINUTES : SMALL_MINUTES[tier];
   const baseSeconds=Math.round((baseMinutes+SIZE_MINUTES[branch.size])*time*variation*60*discMult);
   const commandMs=Math.round(baseSeconds*1000/Math.max(1,Number.isFinite(speedMult)?speedMult:1));

@@ -75,7 +75,9 @@ function ticksOwed(startMs, total, done, now) {
 }
 
 // Gather tick. Returns null (nothing due), {stop:true} (tile gone) or the result.
-export function gatherTick(cmd, tile, now) {
+// `gatheringBonusPct` is the commander's own real skill bonus (e.g. Supply
+// Specialist, "+N% extra resources from gathering") — 0 if they don't have it.
+export function gatherTick(cmd, tile, now, gatheringBonusPct = 0) {
   if (!cmd.gathering || !cmd.gatherTileKey) return null;
   if (!tile) return { stop: true };
   const done = cmd.gatherTicksDone ?? 0;
@@ -84,7 +86,8 @@ export function gatherTick(cmd, tile, now) {
   const nextDone = done + newTicks;
   return {
     newTicks, eggs: newTicks * EGG_COST.gather,
-    rss: tile.rss || null, amount: Math.floor(tileRate(tile.powerLevel ?? 2) * 4 * newTicks),
+    rss: tile.rss || null,
+    amount: Math.floor(tileRate(tile.powerLevel ?? 2) * 4 * newTicks * (1 + gatheringBonusPct)),
     patch: { gatherTicksDone: nextDone, gathering: nextDone < (cmd.gatherTicks ?? 1) },
   };
 }

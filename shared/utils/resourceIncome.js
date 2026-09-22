@@ -12,10 +12,10 @@ function baseGains(buildings, mins) {
   return Object.fromEntries(KEYS.map(key => [key, (200 + (buildings[BUILDINGS[key]] > 0 ? rssRate(buildings[BUILDINGS[key]]) : 0)) * mins / 60]));
 }
 // Adds one owned resource tile's hourly income to `gains`.
-function addTileIncome(gains, tile, bonuses, mins) {
+function addTileIncome(gains, tile, bonuses, mins, facBonus = 0) {
   const power = tile.powerLevel || 1;
   if (power === 1) for (const resource of KEYS) gains[resource] += 50 * mins / 60;
-  else gains[tile.rss] += (TILE_RATE_BY_PL[power] ?? TILE_RATE_BY_PL[2]) * (1 + (bonuses[tile.rss] ?? 0)) * mins / 60;
+  else gains[tile.rss] += (TILE_RATE_BY_PL[power] ?? TILE_RATE_BY_PL[2]) * (1 + (bonuses[tile.rss] ?? 0) + facBonus) * mins / 60;
 }
 function applyGains(previous, gains, buildings) {
   const cap = storageMax(buildings.storage || 0);
@@ -23,13 +23,28 @@ function applyGains(previous, gains, buildings) {
   return KEYS.every(key => next[key] === previous[key]) ? previous : next;
 }
 
-export function resourceIncomeTick(previous, tiles, buildings = {}, forts = [], bonuses = {}, elapsedMs = 60000) {
+// Real per-hour income rate for display (e.g. the HUD's "+N/h" labels).
+// Same base+tile rules as resourceIncomeTick, just returned as an hourly
+// rate instead of applied/capped against a stored total. `pKeys` are the
+// player's owned tile keys (HUD already computes this for tileCount/power).
+export function hourlyRssRate(tiles, pKeys = [], buildings = {}, forts = [], bonuses = {}, facBonus = 0) {
+  const gains = baseGains(buildings, 60);
+  const fortKeys = new Set(forts.map(fort => fort.tileKey));
+  for (const key of pKeys) {
+    const tile = tiles?.[key];
+    if (!tile || !KEYS.includes(tile.rss) || fortKeys.has(key)) continue;
+    addTileIncome(gains, tile, bonuses, 60, facBonus);
+  }
+  return Object.fromEntries(KEYS.map(key => [key, Math.floor(gains[key])]));
+}
+
+export function resourceIncomeTick(previous, tiles, buildings = {}, forts = [], bonuses = {}, elapsedMs = 60000, facBonus = 0) {
   const mins = elapsedMs / 60000;
   const gains = baseGains(buildings, mins);
   const fortKeys = new Set(forts.map(fort => fort.tileKey));
   for (const [key, tile] of Object.entries(tiles)) {
     if (tile.owner !== 'player' || !KEYS.includes(tile.rss) || fortKeys.has(key)) continue;
-    addTileIncome(gains, tile, bonuses, mins);
+    addTileIncome(gains, tile, bonuses, mins, facBonus);
   }
   return applyGains(previous, gains, buildings);
 }
