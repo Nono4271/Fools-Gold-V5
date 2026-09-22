@@ -1,11 +1,12 @@
 import { memo } from "react";
 import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
-function tbInfo(tb) { if (!tb) return null; const f = FACTION_TROOPS[tb.faction]; const b = f?.branches.find(b => b.key === tb.branch); const t = b?.tiers[tb.tier ?? 0]; if (!b || !t) return null; return { label: `${b.label} — ${t.label}`, color: "#c8a060" }; }
+function tbInfo(tb) { if (!tb) return null; const f = TROOP_FACTIONS[tb.faction]; const b = f?.branches.find(b => b.key === tb.branch); const t = b?.tiers[tb.tier ?? 0]; if (!b || !t) return null; return { label: `${b.label} — ${t.label}`, color: "#c8a060" }; }
 import { HQP } from "../../../shared/constants/map.js";
 import { cmdCommand } from "../../../shared/constants/buildings.js";
 import { bfsPath, effectiveMarchSpd, marchStepMs } from "../../../shared/utils/pathfinding.js";
 import { applyGearToCmd } from "../../../shared/utils/gearStats.js";
 import { reinforcementRoom } from "../../../shared/utils/reinforcements.js";
+import { TROOP_FACTIONS } from "../../../shared/constants/allTroops.js";
 
 export default memo(function BottomPanel({
   mode, mvCmd, setMvCmd, reinCmd, setReinCmd,

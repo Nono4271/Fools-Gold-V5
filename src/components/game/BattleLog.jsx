@@ -1,11 +1,12 @@
 import { useState, memo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { FACTION_TROOPS, troopPortraitPath } from "../../../shared/constants/troops.js";
+import { TROOP_FACTIONS } from "../../../shared/constants/allTroops.js";
 
 // Resolve a troopBranch descriptor to { branchDef, tierData }
 function resolveTroopBranch(tb) {
   if (!tb) return null;
-  const f = FACTION_TROOPS[tb.faction];
+  const f = TROOP_FACTIONS[tb.faction];
   if (!f) return null;
   const b = f.branches.find(b => b.key === tb.branch);
   if (!b) return null;

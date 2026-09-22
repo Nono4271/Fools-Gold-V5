@@ -4,6 +4,10 @@ import { useState, useEffect, memo, useMemo } from "react";
 import { useGameContext } from "../../GameContext.js";
 import { createPortal } from "react-dom";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel, troopPortraitPath } from "../../../shared/constants/troops.js";
+// Lookups for a player's troop branch go through TROOP_FACTIONS so trained
+// Neutral/Ancient units (camps + Contract Outpost) resolve like any troop.
+import { TROOP_FACTIONS } from "../../../shared/constants/allTroops.js";
+import { OUTPOST_DAILY_COMMAND_LIMIT } from "../../../shared/constants/crew.js";
 import { RSS, RKEYS, HQP } from "../../../shared/constants/map.js";
 import { BLDG, barracksCapacity, barracksCommandPool, maxAvailLevel, upgCost, upgDuration, upgCostQuarter, upgDurationQuarter, upgCostBranch, upgDurationBranch, hqUpgradeBlocker, barracksUpgradeBlocker, trainingUpgradeBlocker, cmdCommand, trainRate, CMD_SIZE, maxTrainBatch, trainingQueueCount, quarterMaxLevel, branchMaxLevel, BRANCH_UNLOCK_Q, tierFromBranchLevel, storageMax, rssRate, marketplaceRate, voidTapCapacity, voidTapCooldownMs, voidTapYield, fmtCooldown, crewHallStats, crewHelpAmount, hqSiegeHP, wallsSiegeHP, SHAKY_ALLIANCE_BONUS } from "../../../shared/constants/buildings.js";
 import { RC, RARITY, CLASS, respectCost, RESPECT_MAX, SS } from "../../../shared/constants/heroes.js";
@@ -959,7 +963,7 @@ slot:   i,
 const isBuildings = leftSel === "buildings";
 const isUnknown   = leftSel === "unknown";
 const quarterFKey = (!isBuildings && !isUnknown) ? leftSel.slice(2) : null;
-const fDef        = quarterFKey ? { ...FACTION_TROOPS[quarterFKey], ...FACTION_META[quarterFKey] } : null;
+const fDef        = quarterFKey ? { ...TROOP_FACTIONS[quarterFKey], ...FACTION_META[quarterFKey] } : null;
 
 return (
 <div style={{ display:"flex", height:"100%", gap:0 }}>
@@ -1214,7 +1218,7 @@ function useTroopCards({ unlockedBranches, troopCounts, cmds }) {
   const ub = unlockedBranches || {};
   return useMemo(() => {
     const cards = [];
-    Object.entries(FACTION_TROOPS).forEach(([fKey, fDef]) => {
+    Object.entries(TROOP_FACTIONS).forEach(([fKey, fDef]) => {
       fDef.branches.forEach(branch => {
         const ubKey = `${fKey}:${branch.key}`;
         if (!(ubKey in ub)) return;
@@ -1393,6 +1397,7 @@ function TrainingListScreen({ bldgs, barracksPool, troopCards, trainingQueues, r
 
 // ── Screen 2: Train / Scrap queue builder ──────────────────────────────────────
 function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQueues, setTrainingQueues, trainingSpeedMult, trainingCostMult = 1,
+  neutralSources = {}, contractCommandsLeft,
   canAfford, queueTraining, rss, discardTroops, onBack }) {
 
   const isScrap   = mode === "scrap";
@@ -1573,6 +1578,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
                   <span style={{ fontSize:7, color:"#88aacc", fontFamily:P.ff }}>⏱ {fmtTime(timeSecs)}</span>
                 </div>
               )}
+              {!isScrap && neutralSources[card?.bKey] && (
+                <div style={{ fontSize:7, color: neutralSources[card.bKey].camp ? "#7ac070" : "#d0b060", fontFamily:P.ff, marginBottom:6 }}>
+                  {neutralSources[card.bKey].camp
+                    ? "🏕 Owned camp — no daily limit"
+                    : `📜 Contract Outpost — ${contractCommandsLeft ?? OUTPOST_DAILY_COMMAND_LIMIT}/${OUTPOST_DAILY_COMMAND_LIMIT} commands left today`}
+                </div>
+              )}
               {isScrap && sv > 0 && (
                 <div style={{ fontSize:7.5, color:"#dd7755", fontFamily:P.ffb,
                   fontStyle:"italic", marginBottom:6 }}>
@@ -1625,7 +1637,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
               const qFIcon   = qFKey ? (FACTION_META[qFKey]?.s || "⚑") : null;
               const qLabel   = q ? (() => {
                 const parts = q.branchKey?.split(":") || [];
-                const fDef  = parts[0] ? FACTION_TROOPS[parts[0]] : null;
+                const fDef  = parts[0] ? TROOP_FACTIONS[parts[0]] : null;
                 const brDef = fDef?.branches?.find(b=>b.key===parts[1]);
                 const tier  = brDef?.tiers?.[parseInt(parts[2]||0)];
                 return tier?.label || parts[1] || q.branchKey;
@@ -1697,7 +1709,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCards, trainingQu
 
 // ── Root two-screen wrapper ────────────────────────────────────────────────────
 function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, setTrainingQueues,
-  canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches, trainingSpeedMult, trainingCostMult = 1 }) {
+  canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches, trainingSpeedMult, trainingCostMult = 1,
+  neutralSources = {}, contractCommandsLeft }) {
 
   const [subScreen, setSubScreen] = useState("list"); // "list" | "train" | "scrap"
   const troopCards = useTroopCards({ unlockedBranches, troopCounts, cmds });
@@ -1721,6 +1734,7 @@ function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, s
       canAfford={canAfford} queueTraining={queueTraining}
       rss={rss} discardTroops={discardTroops}
       trainingSpeedMult={trainingSpeedMult} trainingCostMult={trainingCostMult}
+      neutralSources={neutralSources} contractCommandsLeft={contractCommandsLeft}
       onBack={() => setSubScreen("list")}/>
   );
 }
@@ -1780,7 +1794,7 @@ function ManageShipScreen({
 
   function resolveSlotData(sl) {
     if (!sl?.branch) return null;
-    const fDef  = FACTION_TROOPS[sl.branch.faction];
+    const fDef  = TROOP_FACTIONS[sl.branch.faction];
     const brDef = fDef?.branches?.find(b => b.key === sl.branch.branch);
     const tierData = brDef?.tiers[sl.branch.tier ?? 0] ?? null;
     return brDef ? { brDef, tierData, tierIdx: sl.branch.tier ?? 0 } : null;
@@ -1788,7 +1802,7 @@ function ManageShipScreen({
 
   const cmdUsed = slots.reduce((s, sl) => {
     if (!sl) return s;
-    const brDef = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(b => b.key === sl.branch?.branch);
+    const brDef = TROOP_FACTIONS[sl.branch?.faction]?.branches?.find(b => b.key === sl.branch?.branch);
     return s + (sl.troops || 0) * (COMMAND_COST[brDef?.size] ?? 1);
   }, 0);
 
@@ -1806,7 +1820,7 @@ function ManageShipScreen({
   // ── All available troop types (flat list for the bottom tray) ────────────
   const availTroopList = useMemo(() => {
     const list = [];
-    for (const [fKey, fDef] of Object.entries(FACTION_TROOPS)) {
+    for (const [fKey, fDef] of Object.entries(TROOP_FACTIONS)) {
       for (const br of fDef.branches) {
         const ubKey = `${fKey}:${br.key}`;
         if (!(ubKey in ub)) continue;
@@ -1829,7 +1843,7 @@ function ManageShipScreen({
   // ── Active-slot derived ────────────────────────────────────────────────────
   const activeSlotData = activeSlot !== null ? slots[activeSlot] : null;
   const activeBrDef = activeSlotData
-    ? FACTION_TROOPS[activeSlotData.branch?.faction]?.branches?.find(
+    ? TROOP_FACTIONS[activeSlotData.branch?.faction]?.branches?.find(
         b => b.key === activeSlotData.branch?.branch,
       )
     : null;
@@ -1850,7 +1864,7 @@ function ManageShipScreen({
   // Command headroom for active slot
   const otherCmdUsed = slots.reduce((s, sl, i) => {
     if (i === activeSlot || !sl) return s;
-    const br = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(b => b.key === sl.branch?.branch);
+    const br = TROOP_FACTIONS[sl.branch?.faction]?.branches?.find(b => b.key === sl.branch?.branch);
     return s + (sl.troops || 0) * (COMMAND_COST[br?.size] ?? 1);
   }, 0);
   const slCmdCost   = COMMAND_COST[activeBrDef?.size] ?? 1;
@@ -2381,7 +2395,7 @@ function BattleGroupsScreen({
 
   function cmdUsedFor(cmd) {
     return (cmd.troopSlots ?? []).reduce((s, sl) => {
-      const slBr = FACTION_TROOPS[sl.branch?.faction]?.branches?.find(
+      const slBr = TROOP_FACTIONS[sl.branch?.faction]?.branches?.find(
         b => b.key === sl.branch?.branch,
       );
       return s + (sl.troops || 0) * (COMMAND_COST[slBr?.size] ?? 1);
@@ -2394,7 +2408,7 @@ function BattleGroupsScreen({
 
   function resolveSlot(sl) {
     if (!sl?.branch) return null;
-    const fDef = FACTION_TROOPS[sl.branch.faction];
+    const fDef = TROOP_FACTIONS[sl.branch.faction];
     if (!fDef) return null;
     const brDef = fDef.branches.find(b => b.key === sl.branch.branch);
     if (!brDef) return null;
@@ -3295,6 +3309,7 @@ bldgs, setBldgs, barracksPool, setBarracks, woundedTroops, woundedQueue,
 trainingQueues, setTrainingQueues, trainSlider, setTrainSlider,
 healQueue, setHealQueue, setWounded, setWoundedQueue, queueHealing, autoHeal, setAutoHeal, trainingSpeedMult,
 trainingCostMult = 1, healSpeedMult = 1,
+neutralSources = {}, contractCommandsLeft,
 upgQueue, sliderVals, setSliderVals, bLog,
 upgrade, canAfford, assignTroops, returnTroops, queueTraining, troopCounts, setTroopCounts, setTroopSlot, setArmySlots,
 recallMarch, setScreen, gearInventory, playerHqKey,
@@ -3425,6 +3440,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             queueTraining={queueTraining} rss={rss} cmds={cmds}
             unlockedBranches={unlockedBranches}
             trainingSpeedMult={trainingSpeedMult} trainingCostMult={trainingCostMult}
+            neutralSources={neutralSources} contractCommandsLeft={contractCommandsLeft}
             discardTroops={(bKey, n) => {
               if (bKey) setTroopCounts(prev => ({ ...prev, [bKey]: Math.max(0, (prev[bKey]||0) - n) }));
             }}/>

@@ -11,6 +11,7 @@ import { canBuildFortressOnTile, canStartFortressBuild, isFortressBuilt } from "
 import { canManageFortress } from "../../../shared/utils/crewRules.js";
 import CommanderCard from "./popup/CommanderCard.jsx";
 import FortPanel from "./popup/FortPanel.jsx";
+import CrewStructurePanel from "./popup/CrewStructurePanel.jsx";
 import HQPopup from "./popup/HQPopup.jsx";
 
 // Smart positioning hook — places popup on the opposite side of screen from the tile
@@ -84,6 +85,11 @@ export default memo(function TilePopup({
   isValidRelocPad,
   myCrew, crewFortressAtTile, rss,
   onBuildCrewFortress, onDemolishCrewFortressHere,
+  // Crew Well / Contract Outpost (see popup/CrewStructurePanel.jsx)
+  wellAtTile = null, wellCrew = null, outpostAtTile = null, outpostCrew = null,
+  crewStructureKeys = null, contractCommandsLeft,
+  onBuildWell, onDemolishWell, onStationAtWell,
+  onBuildOutpost, onDemolishOutpost, onChooseOutpostUnits,
 }) {
   const [quickGatherConfirm, setQuickGatherConfirm] = useState(false);
   const [tacticsOpen,        setTacticsOpen]        = useState(false);
@@ -279,6 +285,8 @@ export default memo(function TilePopup({
 
   const isAiOwned = selTile.owner === "ai";
   const isNeutral = !selTile.owner;
+  // Gathering at your own crew's Well reuses the normal gather drawer below.
+  const isMyWellTile = !!wellAtTile && !!myCrew && wellCrew?.id === myCrew.id;
   const liveAiCmd = isAiOwned ? cmds.find(c => c.owner==="ai" && c.tk===selKey && !c.march) : null;
   const garrisonCmd = (isAiOwned||isNeutral) ? garrisonDefCmd(selTile, facKey) : selTile.defCmd;
   const totalWaves = selTile.garrisonWaves ?? ((selTile.powerLevel>=10||selTile.isGate||selTile.isKeep)?2:1);
@@ -512,7 +520,7 @@ export default memo(function TilePopup({
         )}
 
         {/* Tactics drawer — inline confirm states */}
-        {tacticsOpen&&ownership==="player"&&!selTile.isHQ&&(()=>{
+        {tacticsOpen&&((ownership==="player"&&!selTile.isHQ)||isMyWellTile)&&(()=>{
           // Harvest Pulse confirm
           if (quickGatherConfirm) return (
             <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, background:"rgba(4,8,4,.97)", border:"1px solid #44aa44", borderRadius:8, zIndex:20, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:12 }}>
@@ -580,7 +588,7 @@ export default memo(function TilePopup({
                     style={{ flex:1, padding:"6px 0", background:gatherCmdUid?"rgba(160,80,20,.4)":"rgba(40,30,20,.3)", border:`1px solid ${gatherCmdUid?"#c07030":"#2a1e10"}`, color:gatherCmdUid?"#e0a060":"#3a2a18", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:gatherCmdUid?"pointer":"not-allowed" }}>
                     START
                   </button>
-                  <button onClick={()=>setGatherOpen(false)} style={{ padding:"6px 12px", background:"rgba(80,20,20,.3)", border:"1px solid #aa4444", color:"#ff9090", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:"pointer" }}>BACK</button>
+                  <button onClick={()=>{ setGatherOpen(false); if (isMyWellTile) setTacticsOpen(false); }} style={{ padding:"6px 12px", background:"rgba(80,20,20,.3)", border:"1px solid #aa4444", color:"#ff9090", fontFamily:"'Cinzel',serif", fontSize:9, borderRadius:4, cursor:"pointer" }}>BACK</button>
                 </div>
               </div>
             );
@@ -776,7 +784,7 @@ export default memo(function TilePopup({
               </button>
             )
           )}
-          <div style={{ display:"flex", gap:5 }}>
+          <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
           {/* Attack */}
           {(ownership==="enemy"||isNeutral)&&canAtk&&(
             <button onClick={()=>canAtkNow?(setAtkKey(selKey),setMode("pickAttackCmd"),setPick(null)):null}
@@ -811,7 +819,7 @@ export default memo(function TilePopup({
               their own ATTACK button and wave/siege rules just above; a
               fortress can never be built on them (canBuildFortressOnTile
               already rejects them), so the button shouldn't even show. */}
-          {!crewFortressAtTile && isNeutral && myCrew
+          {!crewFortressAtTile && !wellAtTile && !outpostAtTile && isNeutral && myCrew
             && !selTile.isCamp && !selTile.campType && !selTile.isKeep && !selTile.isGate && !selTile.isRuin && !selTile.isWin
             && (selTile.powerLevel||1)>=FORTRESS_MIN_POWER_LEVEL && (
             <button onClick={()=>canBuildFortressHere && onBuildCrewFortress?.(selKey, selTile)}
@@ -845,6 +853,20 @@ export default memo(function TilePopup({
                 </button>
               )}
             </>
+          )}
+          {/* Crew Well / Contract Outpost */}
+          {(wellAtTile || outpostAtTile || (isNeutral && !crewFortressAtTile && myCrew?.founder === facKey && (selTile.powerLevel||1) >= 10)) && (
+          <div style={{ display:"flex", flexWrap:"wrap", gap:5, flex:"1 1 100%" }}>
+            <CrewStructurePanel
+              selKey={selKey} selTile={selTile} isNeutral={isNeutral} myCrew={myCrew} facKey={facKey}
+              rss={rss} nowTick={nowTick} cmds={cmds} crewFortressAtTile={crewFortressAtTile}
+              wellAtTile={wellAtTile} wellCrew={wellCrew} outpostAtTile={outpostAtTile} outpostCrew={outpostCrew}
+              crewStructureKeys={crewStructureKeys} contractCommandsLeft={contractCommandsLeft}
+              onBuildWell={onBuildWell} onDemolishWell={onDemolishWell} onStationAtWell={onStationAtWell}
+              onOpenWellGather={()=>{ setTacticsOpen(true); setGatherOpen(true); setQuickGatherConfirm(false); setReconConfirm(false); setTrainingOpen(false); }}
+              onBuildOutpost={onBuildOutpost} onDemolishOutpost={onDemolishOutpost} onChooseOutpostUnits={onChooseOutpostUnits}
+            />
+          </div>
           )}
           {/* Notes */}
           {(ownership==="crew"||ownership==="faction")&&<div style={{ fontSize:7, color:ownership==="faction"?"#e87830":"#2299ff", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>{ownership==="faction"?"🟠 Faction territory — you can move here freely":"🤝 Crew territory — you can move here freely"}</div>}

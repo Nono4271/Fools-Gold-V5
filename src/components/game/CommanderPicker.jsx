@@ -4,11 +4,12 @@ import { FACTION_TROOPS, troopSizeModifier } from "../../../shared/constants/tro
 import { TERR } from "../../../shared/constants/terrain.js";
 import { RC, RARITY, CLASS, SS } from "../../../shared/constants/heroes.js";
 import { effectiveMarchSpd, marchStepMs } from "../../../shared/utils/pathfinding.js";
+import { TROOP_FACTIONS } from "../../../shared/constants/allTroops.js";
 const SC = RC;
 
 function tbInfo(tb) {
   if (!tb) return null;
-  const f = FACTION_TROOPS[tb.faction];
+  const f = TROOP_FACTIONS[tb.faction];
   const b = f?.branches.find(b => b.key === tb.branch);
   const t = b?.tiers[tb.tier ?? 0];
   if (!b || !t) return null;
@@ -62,8 +63,8 @@ export default memo(function CommanderPicker({
             {cmdsAdjToSel.map(cmd => {
               const picked = pickCmd?.uid===cmd.uid;
               const tt = tbInfo(cmd.troopBranch);
-              const atkSize = cmd.troopBranch ? (FACTION_TROOPS[cmd.troopBranch.faction]?.branches.find(b=>b.key===cmd.troopBranch.branch)?.size ?? null) : null;
-              const defSize = atkTile?.defCmd?.troopBranch ? (FACTION_TROOPS[atkTile.defCmd.troopBranch.faction]?.branches.find(b=>b.key===atkTile.defCmd.troopBranch.branch)?.size ?? null) : null;
+              const atkSize = cmd.troopBranch ? (TROOP_FACTIONS[cmd.troopBranch.faction]?.branches.find(b=>b.key===cmd.troopBranch.branch)?.size ?? null) : null;
+              const defSize = atkTile?.defCmd?.troopBranch ? (TROOP_FACTIONS[atkTile.defCmd.troopBranch.faction]?.branches.find(b=>b.key===atkTile.defCmd.troopBranch.branch)?.size ?? null) : null;
               const mod = troopSizeModifier(atkSize, defSize);
               const modColor = mod===1.1?"#3daa60":mod===0.9?"#cc3030":"#8a8a9a";
               const modLabel = mod===1.1?"⚔ STRONG":mod===0.9?"🛡 WEAK":"◆ NEUTRAL";
@@ -71,7 +72,7 @@ export default memo(function CommanderPicker({
                 // Use per-troop tier stats (hp × avg_dmg geometric mean) so large
                 // troops with high individual stats aren't under-rated vs small counts.
                 const atkBranch = cmd.troopBranch
-                  ? FACTION_TROOPS[cmd.troopBranch.faction]?.branches.find(b => b.key === cmd.troopBranch.branch)
+                  ? TROOP_FACTIONS[cmd.troopBranch.faction]?.branches.find(b => b.key === cmd.troopBranch.branch)
                   : null;
                 const atkTier = atkBranch?.tiers[cmd.troopBranch?.tier ?? 0];
                 const atkStatMult = atkTier
@@ -91,7 +92,7 @@ export default memo(function CommanderPicker({
                       : (dc.troops || 0))
                   : (atkTile?.garrison || 30);
                 const defBranch = dc?.troopBranch
-                  ? FACTION_TROOPS[dc.troopBranch.faction]?.branches.find(b => b.key === dc.troopBranch.branch)
+                  ? TROOP_FACTIONS[dc.troopBranch.faction]?.branches.find(b => b.key === dc.troopBranch.branch)
                   : null;
                 const defTier = defBranch?.tiers[dc?.troopBranch?.tier ?? 0];
                 const defStatMult = defTier
