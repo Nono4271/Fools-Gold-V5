@@ -61,7 +61,7 @@ export default function GameView(props) {
     pickCmd, playerAlignment, playerCrewId, playerEntries, playerHqKey, popupMode, powerPerHr,
     powerPool, protectedTiles, quarterLevels, queueHealing, queueTraining, quickMarchReady,
     recallMarch, recallPopup, recallStationary, recallToFort, recallToHQ, reinCmd, reinMarches,
-    reinMarchesRef, respectSchematics, returnTroops, rss, searchOpen, selKey, selTile,
+    reinMarchesRef, respectSchematics, returnTroops, rss, rssBonus, facTileYield, searchOpen, selKey, selTile,
     serverConnected, setAiBarracksPool, setAiBldgs, setAiHqKeys, setAiRss, setArmySlots,
     setAtkKey, setAutoHeal, setBLog, setBarracks, setBattles, setBldgs, setCmdScreenOpen,
     setCmdScreenUid, setCmds, setCrewOpen, setCrews, setDeletingSecsLeft, setDeletingTiles,
@@ -76,7 +76,7 @@ export default function GameView(props) {
     setWoundedQueue, showBattleLog, showPerf, sliderVals, spawnWorkerRef, spawns, staminaMax,
     startGuard, startMarch, startReinforcement, startReposition, teleportTo, tileCap,
     tileScreenX, tileScreenY, tiles, tomesLevel, tomesOpen, tomesUnspentPoints, trainSlider,
-    trainingQueues, trainingSpeedMult, trainingXpMult, troopCounts, troopSkillLevels,
+    trainingQueues, trainingSpeedMult, trainingCostMult, healSpeedMult, trainingXpMult, troopCounts, troopSkillLevels,
     unlockedBranches, unseenBattles, upgQueue, upgrade, upgradeFort, useConsumable,
     voidTapCooldown, voidTapLvl, voidTapReady, winner, worldMapOpen, worldMapPrompt,
     woundedQueue, woundedTroops, zoomRef, zoomState,
@@ -183,6 +183,7 @@ export default function GameView(props) {
       )}
 
       <HUD facName={facName} facKey={facKey} pKeys={pKeys} rss={rss} gems={gems} tiles={tiles}
+        bldgs={bldgs} forts={forts} rssBonus={rssBonus} facTileYield={facTileYield}
         mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap} voidTapReady={voidTapReady}
         dragonEggs={dragonEggs} dragonEggsCap={dragonEggsCap} tileCap={tileCap} />
 
@@ -348,6 +349,7 @@ export default function GameView(props) {
         woundedTroops={woundedTroops} woundedQueue={woundedQueue} trainingQueues={trainingQueues}
         healQueue={healQueue} setHealQueue={setHealQueue}
         queueHealing={queueHealing} autoHeal={autoHeal} setAutoHeal={setAutoHeal} trainingSpeedMult={trainingSpeedMult}
+        trainingCostMult={trainingCostMult} healSpeedMult={healSpeedMult}
         setWounded={setWounded} setWoundedQueue={setWoundedQueue}
         trainSlider={trainSlider} setTrainSlider={setTrainSlider} setTrainingQueues={setTrainingQueues}
         upgQueue={upgQueue} sliderVals={sliderVals} setSliderVals={setSliderVals}

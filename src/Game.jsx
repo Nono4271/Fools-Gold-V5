@@ -4,6 +4,7 @@ import { unstable_batchedUpdates } from "react-dom";
 
 // Constants
 import { getFactionAlignment } from "../shared/constants/factions.js";
+import { factionBonusValue } from "../shared/constants/factionBonuses.js";
 import { HQP, POWER_DEFS, hqSiegeValue, FORT_LEVELS } from "../shared/constants/map.js";
 import { FACTION_TROOPS } from "../shared/constants/troops.js";
 import { barracksCapacity, upgCost, upgDuration, maxAvailLevel, tierFromBranchLevel } from "../shared/constants/buildings.js";
@@ -446,7 +447,7 @@ export default function RiseToWar() {
   const tomeNodeLv = (id) => tomesNodeLevels[id] ?? 0;
   const tileCap        = 60 + tomeNodeLv("tl") * 15;          // Adventurer's Trek
   tileCapRef.current   = tileCap; // keep ref in sync for patchTile callback
-  const dragonEggsCap  = 20 + tomeNodeLv("tr");               // Unlimited Eggs (max 30)
+  const dragonEggsCap  = 20 + tomeNodeLv("tr") + factionBonusValue(facKey, "eggCap"); // Unlimited Eggs (max 30) + faction bonus
   const tomeSpdBonus   = tomeNodeLv("tl_t1") * 2;             // Speedster
   const tomeFocBonus   = tomeNodeLv("tl_b1") * 2;             // Willpower
   const tomeAtkBonus   = tomeNodeLv("tl_b2") * 2;             // Overpower
@@ -471,9 +472,14 @@ export default function RiseToWar() {
   // Col 4 — Command
   const fortMax            = 10 + tomeNodeLv("br");                  // Numerous Forts
   const hasLongMarch       = tomeNodeLv("br_t")   >= 1;             // Long March tactic
-  const marchSpeedMult     = 1  - tomeNodeLv("br_t1") * 0.01;       // Marching Efficiency (reduces stepMs)
+  // Marching Efficiency (Tomes) stacks with the faction "+N% March Speed" bonus, if this faction has it.
+  const marchSpeedMult     = (1 - tomeNodeLv("br_t1") * 0.01) * (1 - factionBonusValue(facKey, "marchSpeed")); // reduces stepMs
   const hasQuickMarch      = tomeNodeLv("br_m")   >= 1;             // Quick March tactic
-  const trainingSpeedMult  = 1  + tomeNodeLv("br_b")  * 0.02;       // Troop Training
+  // Troop Training (Tomes) stacks with the faction "-N% Training Time" bonus.
+  const trainingSpeedMult  = (1  + tomeNodeLv("br_b")  * 0.02) * (1 + factionBonusValue(facKey, "trainTime"));
+  const trainingCostMult   = 1  - factionBonusValue(facKey, "trainCost");      // faction "-N% Training Cost" bonus
+  const healSpeedMult      = 1  / (1 - factionBonusValue(facKey, "healSpeed")); // faction "-N% Healing Time" bonus, as a rate multiplier
+  const facTileYield       = factionBonusValue(facKey, "tileYield");             // faction "+N% Resource Production" bonus (owned tile income)
   const reinSpeedMult      = 1  - tomeNodeLv("br_b1") * 0.015;      // Reins (reduces stepMs)
 
   // Apply gear + tome stat bonuses to a commander
@@ -601,7 +607,7 @@ export default function RiseToWar() {
   const [lastRelocateAt, setLastRelocateAt] = useState(null); // timestamp ms
 
   // ── Hooks ──
-  useResources({ screen, tilesRef, setRss, bldgs, fortsRef: _fortsRef, rssBonus });
+  useResources({ screen, tilesRef, setRss, bldgs, fortsRef: _fortsRef, rssBonus, facTileYield });
 
   // Compute leaderboard entries safely — only iterates patched (owned) tiles
   useEffect(() => {
@@ -816,7 +822,7 @@ export default function RiseToWar() {
     findPathBatch,
   });
 
-  useTraining({screen,bldgs,dispatchArmy});
+  useTraining({screen,bldgs,dispatchArmy,healSpeedMult});
 
   useUpgrades({ screen, setUpgQueue, setBldgs, setBarracks });
 
@@ -1405,11 +1411,11 @@ export default function RiseToWar() {
     const [f, key] = String(branchKey).split(":");
     const branchDef = FACTION_TROOPS[f]?.branches.find(b => b.key === key);
     const costTimeDiscount = branchDef?.capstone ? capstoneTrainDiscount(bldgs[`b_${f}_${key}`]) : 0;
-    dispatchArmy({type:"train",branchKey,amount,buildings:bldgs,unlocked:unlockedBranches,speedMult:trainingSpeedMult,costTimeDiscount,now:Date.now(),id:crypto.randomUUID()});
-  }, [bldgs,unlockedBranches,trainingSpeedMult,dispatchArmy]);
+    dispatchArmy({type:"train",branchKey,amount,buildings:bldgs,unlocked:unlockedBranches,speedMult:trainingSpeedMult,costTimeDiscount,costMult:trainingCostMult,now:Date.now(),id:crypto.randomUUID()});
+  }, [bldgs,unlockedBranches,trainingSpeedMult,trainingCostMult,dispatchArmy]);
   const queueHealing = useCallback(amount => {
-    dispatchArmy({type:"heal",amount,buildings:bldgs,now:Date.now(),id:crypto.randomUUID()});
-  }, [bldgs,dispatchArmy]);
+    dispatchArmy({type:"heal",amount,buildings:bldgs,now:Date.now(),id:crypto.randomUUID(),healSpeedMult});
+  }, [bldgs,dispatchArmy,healSpeedMult]);
 
   // Troop slot actions — rules in shared/utils/troopSlots.js
   const { setTroopSlot, setArmySlots, assignTroops, returnTroops } = useTroopSlots({
@@ -1594,7 +1600,7 @@ export default function RiseToWar() {
     pickCmd, playerAlignment, playerCrewId, playerEntries, playerHqKey, popupMode, powerPerHr,
     powerPool, protectedTiles, quarterLevels, queueHealing, queueTraining, quickMarchReady,
     recallMarch, recallPopup, recallStationary, recallToFort, recallToHQ, reinCmd, reinMarches,
-    reinMarchesRef, respectSchematics, returnTroops, rss, searchOpen, selKey, selTile,
+    reinMarchesRef, respectSchematics, returnTroops, rss, rssBonus, facTileYield, searchOpen, selKey, selTile,
     sendChatMessage, serverConnected, setAiBarracksPool, setAiBldgs, setAiHqKeys, setAiRss, setArmySlots,
     setAtkKey, setAutoHeal, setBLog, setBarracks, setBattles, setBldgs, setChatOpen,
     setChatProfanityFilterEnabled, setCmdScreenOpen,
@@ -1611,7 +1617,7 @@ export default function RiseToWar() {
     setWoundedQueue, showBattleLog, showPerf, sliderVals, spawnWorkerRef, spawns, staminaMax,
     startGuard, startMarch, startReinforcement, startReposition, teleportTo, tileCap,
     tileScreenX, tileScreenY, tiles, tomesLevel, tomesOpen, tomesUnspentPoints, trainSlider,
-    trainingQueues, trainingSpeedMult, trainingXpMult, troopCounts, troopSkillLevels,
+    trainingQueues, trainingSpeedMult, trainingCostMult, healSpeedMult, trainingXpMult, troopCounts, troopSkillLevels,
     unlockedBranches, unseenBattles, upgQueue, upgrade, upgradeFort, useConsumable,
     voidTapCooldown, voidTapLvl, voidTapReady, winner, worldMapOpen, worldMapPrompt,
     woundedQueue, woundedTroops, zoomRef, zoomState,
