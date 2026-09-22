@@ -4,7 +4,7 @@ export function commanderAtlas(cmd) {
   if (cmd.id === 'h1' || cmd.bust?.includes('h1_redwake_fynn')) return '/commanders/map/h1-walk-v3.png';
   if (cmd.id === 'h13' || cmd.bust?.includes('h13_admiral_brine')) return '/commanders/map/h13-walk-v3.png';
   if (cmd.id === 'h43' || cmd.bust?.includes('h43_countess_serava')) return '/commanders/map/h43-walk-v2.png';
-  if (cmd.id === 'h45' || cmd.bust?.includes('h45_fang_groth')) return '/commanders/map/h45-walk-v1.png';
+  if (cmd.id === 'h45' || cmd.bust?.includes('h45_fang_groth')) return '/commanders/map/h45-walk-v2.png';
   return null;
 }
 
