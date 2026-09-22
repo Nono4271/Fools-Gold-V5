@@ -1387,6 +1387,72 @@ draw functions later without touching the wiring.
 
 ---
 
+## 2026-09-22 — Claude — Well/Outpost combat + "standing before stationed" defense order
+
+Owner spec: Wells and Contract Outposts fight like Fortresses, and ANY tile
+defends in this order:
+**commanders standing on the tile (moved there, not stationed) → stationed
+commanders (only structures that allow it) → structure defenders (keeps'
+garrison waves only) → siege.** Siege to 0 destroys a crew structure; the tile
+reverts to a plain p10+ tile owned by whoever landed the last hit. Players can
+MOVE onto any of their crew's structures (and their own keeps) to stand guard;
+keeps and Outposts can't hold stationed armies.
+
+- **New `shared/utils/structureDefense.js`**: `STRUCTURE_RULES`
+  (fortress/well: stationing; outpost/keep: none; keep: garrison) and
+  `structureDefenderQueue()` — the ordered standing→stationed fight list
+  (standing newest arrival first, same rule the draw-rematch loop already
+  used; commanders with 0 troops or mid-march don't count).
+- **`useFortressSiege.js` now handles all three crew structures** (looked up
+  with `crewStructures.js findCrewStructureAt`; march type is still
+  `"siegeFortress"`). Before, it only fought stationed Fortress defenders.
+  Now: standing → stationed → siege. Defeated AI defenders lose their army and
+  march home. On destroy, `updateCrewStructure(..., null)` removes it and the
+  tile is patched to the player.
+- **Wells/Outposts have siege HP**: `siege`/`siegeMax` (PLACEHOLDER
+  `STRUCTURE_SIEGE_MAX` = 1,000,000, same as the Fortress default), filled
+  when the build completes. `structureSiege()` tolerates ones built before
+  this change.
+- **`useMarch.js` keep/tile attacks**: the old "one combined fight vs the tile's
+  defCmd" is replaced by fighting each standing AI commander in turn, THEN the
+  garrison waves, THEN siege. Also fixed two issues there: the attacker's
+  losses against standing commanders weren't carried into the wave loop, and
+  the "all waves already cleared → siege only" shortcut skipped standing
+  commanders.
+- **AI attacks** now skip crew-structure tiles. The AI has no structure-siege
+  path yet, so before this it could capture the bare tile out from under a
+  structure. **Follow-up for multiplayer:** give AI/other players a real
+  structure-siege path using the same `structureDefenderQueue`.
+- **UI** (`TilePopup.jsx` / `CrewStructurePanel.jsx`): Wells and Outposts show
+  siege HP. Other crews' Wells/Outposts get ATTACK (goes through the siege
+  march). You can no longer ATTACK your own crew's Fortress. The plain
+  capture ATTACK is hidden on any crew-structure tile. MOVE is available on
+  your crew's structure tiles (`Game.jsx startMarch` treats them as "move").
+  Only commanders STATIONED at a Well can gather there; a commander that just
+  moved onto it stands guard. Any completed march clears `stationedWellId`.
+- **Tests:** new `tests/structureDefense.test.js`. `npm test` 409/409,
+  `npm run build` OK, panel smoke-rendered in all states including another
+  crew's Well/Outpost with ATTACK. Note: in the current single-player build
+  no AI crew builds Fortresses/Wells/Outposts, so the enemy-structure siege
+  path can't happen in play yet. It's there for multiplayer.
+
+---
+
+## 2026-09-22 — Claude — Duplicate battle reports, Wounded, Guard, protection glow, mobile polish
+
+- **Duplicate reports fixed:** arrival effects re-ran while a battle was awaited, so one battle could fire 2-3 times. `useMarch.js` / `useFortressSiege.js` now claim each arrival once (`claimBattle` / `claimedRef`). Multi-wave or multi-defender fights now label each report (`Wave x/y`, `Defender i/n`) in BattleLog.
+- **Wounded** (`shared/utils/commanderStatus.js`): a player commander that loses a battle is wounded for 10 minutes. `canCommanderAct` blocks marches, gathering, training, sweeps, guarding and stationing while wounded. The auto-retreat home still runs. Shows 🩸 in GameBar and a banner in CommanderCard.
+- **Guard:** toggled in the commander popup. It costs 10 stamina; cancelling is free but starts a 3-minute cooldown. A guard covers its own tile plus the 8 around it (`guardCoverageKeys`), but only player-owned tiles, crewmate tiles and my crew's structures. Neutral, ally, same-faction-not-crew, HQ and keep tiles are never covered. An attack on a covered tile fights the most recently posted guard first. A guard that loses is wiped, wounded and un-guarded. Moving the commander ends the guard.
+- **Protection glow** now uses the tile's owner color (green mine / blue crew / red enemy). The shield badge is smaller.
+- **Mobile polish:**
+  - Bigger touch targets: HQ Back/Close, BattleLog ✕, Tomes ✕, HUD gear, Commander +, Bag tabs, auto-heal checkbox, GameBar labels.
+  - Range sliders are now 32px tall and jump to your finger.
+  - `main.tsx` touch guard now lets any scrollable area scroll (iOS).
+  - The offline badge no longer covers overlay close buttons.
+  - The training slider shows why it's disabled.
+- **Known limitation:** single-player AI never attacks player, crew or structure tiles (`isFriendlyTile`), so guard fights, defensive wounding and enemy structure attacks won't show up until the server/PvP work lands.
+- Tests: `tests/commanderStatus.test.js` (412/412 pass).
+
 ## 2026-09-20 — Codex
 
 ### Full-world map graphics rollout
