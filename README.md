@@ -1,68 +1,61 @@
-# Fools Gold V5 — HUD / Skills / Faction Bonuses fix bundle (2026-09-22)
+# Fools Gold V5: Crew levels 28-50, Well, Contract Outpost, Sweep fix (2026-09-22)
 
-Drop these files into your project at the same paths (they overwrite the
-matching files). `ReadMeAI.md` replaces your root changelog.
+Copy these files into your project at the same paths; they replace the existing files. Three files are new: `shared/constants/allTroops.js`, `shared/utils/crewStructures.js` and `src/components/game/popup/CrewStructurePanel.jsx`. `ReadMeAI.md` replaces your changelog.
 
-## What changed and why
+## Changes since the last zip (crew-rewards)
 
-**1. HUD resource-rate display was fake.**
-`HUD.jsx` showed a hardcoded 200/200/200/2400 per-hour rate no matter what
-you actually owned. It now computes the real rate from your tiles,
-buildings and bonuses (new `hourlyRssRate()` in `resourceIncome.js`).
+**1. Crew levels 28-50 are wired in.** Every level from 2 to 50 now has at least one real perk.
+- Healer I/II: -5% / -10% recovery time
+- Woodworking, Stone Masonry, Gas Collector and Food Farmer IV: +1250/hr each
+- Scholars I/II: +5% / +10% training XP
+- Gatherers I/II: +5% / +10% gathering
+- Faster Together II: +7.5% march speed
+- Treasure Trove II: +2000/hr of all four resources
+- Spawn Sweeper: +10% damage vs Spawns
+- PvE: +10% damage vs PvE tiles
+- Efficient Trainer: -5% training time
+- Cost Effective: -10% training cost
 
-**2. Four "Coming Soon" skill passives (Orc March, Supply Specialist x2,
-Scurrier) actually work now.** These are PvE (non-combat) skills, not
-battle stubs — per your note, not every skill needs to deal damage. Orc
-March / Scurrier now genuinely reduce march time; Supply Specialist now
-genuinely boosts resources gained while gathering. Points spent on them are
-no longer wasted.
+Tiers of the same perk add together.
 
-**3. All 8 faction bonuses are wired in and shown on the Faction screen.**
-Your 8 bonuses were randomly assigned one-per-faction and are now live:
+**2. Well (crew level 31, a 2nd at level 40).**
+- Only the founder can build it, on an unclaimed p10+ tile.
+- Any crew member can **Station** an idle commander there from anywhere (no range limit), then **Gather**.
+- Gathering at a Well gives all 4 resources, each at the p11 tile rate.
 
-| Faction | Bonus |
-|---|---|
-| Pirates | -10% Training Time |
-| Nightcreatures | -10% Training Cost |
-| Ashen Dead | +10% March Speed |
-| Dragons | +10% Resources from Gathering |
-| Holyknights | +5% Resource Production (owned tiles) |
-| Wizards | +5% Damage in PvE Battles |
-| Orcs | +5 Max Dragon Eggs |
-| Coldborns | -10% Healing Time |
+**3. Contract Outpost (crew level 35).**
+- Only the founder can build it, on a p10+ tile, one per crew.
+- The founder picks 1 neutral unit (2 at level 50). Ancients can't be picked.
+- The whole crew can then train that unit, up to **100 training commands per player per day**.
+- Contract Board II (level 42): -10% training time for units trained through the Outpost.
 
-`FactionScreen.jsx`'s "Faction Bonus" box no longer says "Placeholder" —
-it shows each faction's real bonus text.
+**4. Neutral and Ancient units can now be trained.**
+- If you own a camp, you can train that camp's unit with no daily limit.
+- Trained units appear in HQ → Training and in army slots, and fight like any other troop.
 
-## Files in this zip
+**5. Sweep (Spawns) is fixed.** Sweeping a Spawn now runs a real battle: troop losses, wounded, XP, orbs and resources all apply. Before, it only spent stamina.
 
-- `ReadMeAI.md` — full changelog, updated roadmap and audit notes
-- `shared/constants/factionBonuses.js` — **new**, the 8 bonuses + assignment
-- `shared/utils/resourceIncome.js` — real HUD rate + Holyknights tile bonus
-- `shared/utils/battle.js` — Wizards' PvE damage bonus
-- `shared/utils/training.js` — Pirates' training-time / Nightcreatures'
-  training-cost bonuses
-- `shared/utils/armyEconomy.js` — Coldborns' healing-speed bonus
-- `shared/utils/tactics.js` — gathering-bonus wiring
-- `shared/constants/skills.js` — passive-skill aggregation (march/gather)
-- `shared/constants/orcs_skills.js`, `nightcreatures_skills.js` — un-stubbed
-  the 4 PvE passives
-- `src/hooks/useMarch.js` — march-speed skill + faction bonus
-- `src/hooks/useTacticTicks.js` — gathering-yield skill + faction bonus
-- `src/hooks/useResources.js` — Holyknights tile-yield bonus feed
-- `src/hooks/useTraining.js` — heal-speed bonus feed
-- `src/components/game/HQMenu.jsx` — training/heal screens show real numbers
-- `src/components/game/HUD.jsx` — real resource-rate display
-- `src/components/screens/FactionScreen.jsx` — real bonus text, no more
-  "Placeholder"
-- `src/components/screens/CommanderScreen.jsx` — dropped the ⏳ "not
-  implemented" gate on the 4 PvE skills (kept the UI infra for future use)
-- `src/GameView.jsx`, `src/Game.jsx` — plumbing: pass all the new bonus
-  values down to the components above
+## Numbers I had to pick (easy to change in `shared/constants/crew.js`)
 
-## Not run in this sandbox
+- Well and Outpost build cost and time are the same as a Fortress: 3h, 150k wood, 250k stone and 175k gas.
+- Neutral training cost and time use the existing troop formula, priced by the unit's own tier (T1/T2/T3). Ancients use the capstone price.
+- The daily limit resets at local midnight.
 
-No `node_modules` here, so `npm test`/`npm run build` weren't run — every
-file above was syntax-checked individually with `esbuild` and compiles
-clean. Run your normal build/test before merging, and it's worth a quick
-playtest per faction to confirm the bonus values feel right.
+## Files
+
+- **shared/constants:** `crew.js`, `neutralTroops.js`, `troops.js`, `allTroops.js` (new)
+- **shared/utils:** `crewStructures.js` (new), `armyEconomy.js`, `battle.js`, `tactics.js`, `training.js`, `pathfinding.js`, `troopSlots.js`
+- **src:** `Game.jsx`, `GameView.jsx`
+- **src/hooks:** `useTactics.js` (Sweep fix), `useTacticTicks.js`, `useMarch.js`, `useFortressSiege.js`
+- **src/components/game:** `TilePopup.jsx`, `HQMenu.jsx`, `CommanderPicker.jsx`, `BottomPanel.jsx`, `BattleLog.jsx`
+- **src/components/game/popup:** `CommanderCard.jsx`, `CrewStructurePanel.jsx` (new)
+- **tests:** `crewStructures.test.js` (new), `crewLevelPerks.test.js`
+- `ReadMeAI.md`
+
+## Checked
+
+- `npm test`: 402/402 tests pass.
+- `npm run build`: succeeds.
+- The new Well/Outpost panel was rendered in every state (build buttons, under construction, built, the Outpost screen, another crew's Well, crew level too low) without errors.
+- **Not yet played in a live browser.** Worth building a Well and an Outpost with a crew set to level 50 to check the feel.
+- Wells and Outposts don't have a map icon yet (Fortresses don't either). They only show in the tile popup.

@@ -751,13 +751,21 @@ change.
 - **Neutral PvE:** camps are placed, garrisoned, named and searchable on the
   live map; combat/capture reuses the existing generic garrison/siege system.
   Camp and neutral-unit art is a placeholder (vector marker), not final.
-- **Crew 2.0:** NOT 100% done — **Crew level rewards for levels 1-50 are not
-  fully laid out.** `crewLevelPerks()` only defines real perks at the
-  member-cap steps (every 2 levels) and the 3 fortress-slot levels
-  (15/30/45); every other level in the 1-50 range renders as an empty
-  placeholder row in the "Level" tab with no reward defined. This needs an
-  owner-approved reward table for the remaining levels before Crew 2.0 can
-  be called finished. Two further items are waiting on real multiplayer
+  **Neutral/Ancient units are now trainable** (2026-09-22): owning a camp
+  unlocks its unit with no daily cap; a crew Contract Outpost unlocks up to 2
+  neutral units (Ancients excluded) at 100 training commands/player/day.
+  Trained neutrals/Ancients use the normal barracks → army slots → battle
+  pipeline. No troop portraits exist yet for them (UI falls back to an icon).
+- **Spawns (Sweep):** fixed 2026-09-22 — sweeping a Spawn now actually runs a
+  battle (it previously crashed silently in the worker and only spent
+  stamina).
+- **Crew 2.0:** **Crew level rewards for all of levels 1-50 are now
+  owner-approved and wired** (see the two 2026-09-22 "Crew level rewards"
+  changelog entries below), including the two new crew structures they
+  unlock — the **Well** (lvl 31/40) and **Contract Outpost** (lvl 35/42/50).
+  Every level 2-50 has at least one real perk; level 1 is the default. Wells
+  and Outposts (like Crew Fortresses) have no map sprite yet — they only show
+  in the tile popup. Two further items are waiting on real multiplayer
   identity: (1) Crew Help is self-serve, not crewmate-to-crewmate; (2)
   Records and Cooperation/Rally are fully spec'd (sessions 25-27 below) but
   still literal "coming soon" stubs in `CrewHQ.jsx` — zero code. Rally
@@ -775,9 +783,10 @@ change.
   lists all 7 as unapproved/pending review. GPT should review each against
   the Pirate HQ's approved look (darker natural stone, weathered timber,
   desaturated roofs, softer light, reduced cartoon outlines) and edit any
-  that don't match before the owner signs off. More terrain/prop variation,
-  crossings, gates, keep sprites and mob/camp sprites remain (see art
-  inventory).
+  that don't match before the owner signs off. **Owner (2026-09-22): good
+  enough for Pre-Alpha — not a blocker, keep the flag for a real pass before
+  Beta/Launch.** More terrain/prop variation, crossings, gates, keep sprites
+  and mob/camp sprites remain (see art inventory).
 - **Commander map visuals:** 16 of 60 commanders have purpose-built walking/
   standing map sprites (see the v3 entry above for the exact list). The other
   44 still use circular portraits on the map.
@@ -788,7 +797,8 @@ change.
   h50, h52, h57, h59)** were generated earlier and have NOT been confirmed
   against the same v3 quality bar. GPT should review and, where needed,
   re-edit these 14 to match the v3 standard before treating "16 commanders
-  done" as final.
+  done" as final. **Owner (2026-09-22): good enough for Pre-Alpha — not a
+  blocker, keep the flag for a real pass before Beta/Launch.**
 - **Multiplayer:** WebSocket sessions and broadcasts exist for selected tile,
   siege and fort changes. Authority, persistence, identity, reconnect
   recovery and scaling are incomplete. Chat/Relations/Crew/Diplomacy state
@@ -957,9 +967,10 @@ system below is logic-complete but invisible across browsers.
    playtest would otherwise surface as bugs: HUD's hardcoded `rssRate`,
    the passive skills that don't do anything yet, and delete the dead
    `CrewPanel.jsx`.
-5. Get the owner's sign-off on the 7 pending faction HQ redesigns (assets
-   already exist, code already wires them — this is a review step, not a
-   build step).
+5. ~~Get the owner's sign-off on the 7 pending faction HQ redesigns~~ —
+   **owner (2026-09-22): current art is good enough for Pre-Alpha.** Not
+   pulled from the GPT-art-review flags elsewhere in this file (still worth
+   a real pass before Beta/Launch), just no longer a Pre-Alpha blocker.
 6. Playtest the full core loop (spawn, build, train, march, capture, chat,
    crew up, fortress siege) with 5-15 real concurrent testers and fix
    whatever that surfaces.
@@ -1079,7 +1090,9 @@ Crew 2.0 is NOT fully complete — moved the "Complete" claim back to
 rewards at the member-cap steps (every 2 levels) and the 3 fortress-slot
 levels (15/30/45); every other level 1-50 renders as an empty placeholder
 row in the "Level" tab. Needs an owner-approved reward table for the
-remaining levels. Also added explicit GPT-art-review flags in sections 3/4
+remaining levels. **Levels 1-27 got that table — see the 2026-09-22 "Crew
+level rewards" changelog entry below; 28-50 are still open.** Also added
+explicit GPT-art-review flags in sections 3/4
 above: the 14 non-Fynn/Brine commander map sprites (h5, h9, h11, h17, h21,
 h23, h37, h38, h43, h45, h50, h52, h57, h59) haven't been checked against
 the v3 quality pass, and the 7 non-Pirate faction HQ redesigns are wired in
@@ -1213,6 +1226,142 @@ touched by this change). Re-run `npm install && npm test && npm run build`
 before merging; worth a manual playtest per faction to confirm each bonus
 feels right at these modest values — no automated test yet covers this
 path.
+
+---
+
+## 2026-09-22 — Claude (Sonnet 5) — Crew level rewards, levels 1-27 (owner-specified)
+
+Follow-up to the audit's "Crew 2.0 NOT 100% done" flag. Owner supplied a
+reward table for levels 1-27 and a fortress-slot schedule change; levels
+28-50 are still open (member-cap/fortress-slot milestones that land in that
+range still fire, everything else is still a placeholder row).
+
+**Fortress slots:** crews now start with **1** fortress slot (was 2), with
+the 2nd unlocking at **level 5** (new) rather than only at 15/30/45.
+`shared/constants/crew.js`: `CREW_BASE_FORTRESS_SLOTS` 2→1,
+`CREW_FORTRESS_SLOT_LEVELS` `[15,30,45]` → `[5,15,30,45]`. Max stays 5.
+
+**New resource-production perks (levels 3-26), 3 tiers each:**
+Woodworking (wood), Stone Masonry (stone), Gas Collector (gas), Food Farmer
+(food) — flat +500/hr (tier 1), +750/hr (tier 2), +1000/hr (tier 3) each,
+staggered so no two land on the same level (3/7/9/11 → 13/17/19/21 →
+22/23/24/26).
+
+**New level-25 perk:** Faster Together I — +5% march speed.
+
+**New level-27 perk:** Resource Trove I — +1200/hr to all 4 resources at
+once, stacking with the per-resource perks above.
+
+**Wiring (same pattern as the faction bonuses — applied to the player's own
+income/march speed for now; real crew-wide sharing waits on a server):**
+- `shared/constants/crew.js`: new `crewResourceRateBonus(level)` (cumulative
+  flat +N/hr per resource from every unlocked perk) and
+  `crewMarchSpeedBonus(level)` (cumulative march-speed %), both used by
+  `crewLevelPerks()` for display and by the wiring below for effect.
+- `shared/utils/resourceIncome.js`: `baseGains()` takes a new `crewBonus`
+  param, added into the flat per-resource base rate (alongside the existing
+  200 + building rate) — flat, not tile-power-scaled, unlike the faction
+  tile-yield bonus. Threaded through `hourlyRssRate()` and
+  `resourceIncomeTick()`.
+- `src/hooks/useResources.js`, `src/GameView.jsx`, `src/Game.jsx`,
+  `src/components/game/HUD.jsx`: new `crewRssBonus` prop threaded the same
+  way `facTileYield` was, computed in `Game.jsx` as
+  `crewResourceRateBonus(myCrew?.level || 1)`.
+- `Game.jsx`: `marchSpeedMult`'s consumers (the two march `stepMs`
+  calculations) now also multiply by `(1 - crewMarchBonus)`, where
+  `crewMarchBonus = crewMarchSpeedBonus(myCrew?.level || 1)` — same
+  "reduces stepMs" mechanism the Tomes/faction march bonuses already use.
+  (Not threaded into `useMarch.js`'s separate `cmdMarchSpd` spd-stat path,
+  which has no notion of the player's crew on a bare commander object —
+  the stepMs path above is what actually times a march.)
+
+**Tests:** `tests/crewRules.test.js` and `tests/crewLevelPerks.test.js`
+updated for the new fortress-slot schedule and new perks — `node --test`
+run directly (no `npm install` needed, pure `node:test`), all 25 cases
+pass. Also re-ran `tests/resources.test.js`, `tests/aiIncome.test.js`,
+`tests/backgroundCatchup.test.js` to confirm the `baseGains()` signature
+change didn't break existing income-tick behavior — all 24 pass. All
+touched files syntax-checked clean with `esbuild`. Worth a playtest to
+confirm the stacked resource numbers feel right at max level.
+
+---
+
+## 2026-09-22 — Claude — Crew level rewards 28-50, Well + Contract Outpost, neutral training, Sweep fix
+
+Owner supplied levels 28-50 and specified the two new structures. Also fixed
+the pre-existing Sweep bug at the owner's request.
+
+**Levels 28-50** (`shared/constants/crew.js`, all cumulative per tier):
+Healer I/II (28/41, -5%/-10% recovery time) · Woodworking/Stone Masonry/Gas
+Collector/Food Farmer IV (29/32/33/34, +1250/hr) · Well I/II (31/40) ·
+Contract Board I/II/III (35/42/50) · Scholars I/II (36/47, +5%/+10% training
+XP) · Gatherers I/II (37/46, +5%/+10% gathering) · Faster Together II (38,
++7.5% march) · Treasure Trove II (39, +2000/hr all) · Spawn Sweeper (43, +10%
+dmg vs Spawns) · PvE (44, +10% dmg vs neutral/AI tiles) · Efficient Trainer
+(48, -5% training time) · Cost Effective (49, -10% training cost). Every
+numeric perk is wired: heal/train-time/train-cost/XP fold into the existing
+Game.jsx multipliers next to the faction bonuses; gathering into
+`useTacticTicks.js`; PvE/Spawn damage ride on `boostedCmd.crewPveDmgMult` /
+`crewSpawnDmgMult` into `battle.js` (faction "PvE damage" applies to tiles AND
+Spawns; the crew PvE perk to tiles only; Spawn Sweeper to Spawns only).
+`myCrew` moved above the Tome block in Game.jsx so these can use it.
+
+**Well** (`shared/utils/crewStructures.js`, `crew.wells[]`): founder-only,
+unclaimed p10+ tile (same tile rules as a Fortress, plus no other crew
+structure on it). 1 at crew level 31, 2 at 40. Once built, any crew member
+can STATION an idle commander there from anywhere (interpreting "no range" as
+not limited by march range — it teleports the commander onto the Well tile,
+`stationedWellId`), then GATHER through the normal gather drawer. A Well
+yields all 4 resources, each at a p11 tile's gather rate
+(`tactics.js gatherTick(..., isWell)`); gathering stops if the commander
+leaves or the Well is demolished.
+
+**Contract Outpost** (`crew.outpost`): founder-only, p10+ tile, one per crew,
+crew level 35. Founder picks 1 neutral unit (2 at level 50; Ancients
+rejected). Every crew member can then train it. Outpost-sourced training is
+capped at `OUTPOST_DAILY_COMMAND_LIMIT` = 100 commands/player/day
+(`armyEconomy.js` 'train' `dailyLimit`, tracked in `contractDaily`, reset by
+local calendar day). Contract Board II gives -10% training time on
+Outpost-sourced units. Owning a camp for a neutral or Ancient unit trains it
+with no daily cap (per owner's neutral-unit rules); camp wins if both apply.
+
+**Placeholders to tune (owner gave no numbers):** Well/Outpost build cost and
+time = Fortress's (3h; 150k wood/250k stone/175k gas). Neutral training
+cost/time reuse `trainingQuote` — neutrals priced by their own T1/T2/T3
+bracket (`branch.costTier`), Ancients at capstone price. Daily reset is
+client-local like the Tomes reset.
+
+**Neutral/Ancient troop pipeline:** `neutralTroops.js` now exports a
+`NEUTRAL_FACTIONS` wrapper (same trick as `ANCIENT_FACTIONS`; `singleTier` +
+`costTier` flags) so pool key `neutrals:<unit>:0` resolves everywhere via
+additive fallbacks in troops.js, battle.js, troopSlots.js, pathfinding.js and
+training.js. New `shared/constants/allTroops.js` `TROOP_FACTIONS` is used for
+branch lookups in HQMenu (training + army screens), CommanderPicker,
+BottomPanel, CommanderCard, BattleLog and the siege-power calls. Game.jsx
+builds `trainableUnlocked` (normal unlocks + available/owned neutral units)
+for HQMenu and the train reducer.
+
+**Sweep fix** (`src/hooks/useTactics.js`): `onSweep` called
+`runBattle({ atkCmd, defCmd, ... })`, which doesn't match
+`runBattle(cmd, attackerTroops, defTile, wallLvl)`, and never awaited it, so
+the worker threw and nothing happened except stamina loss. It now builds a
+real defTile (`tactics.js spawnDefTile`), awaits the battle with the gear-
+boosted commander, applies troop losses + 30% wounded (`sweepTroopLosses`,
+same rule as marches), then credits XP/orbs/resources/rare drop on a win.
+
+**UI:** new `src/components/game/popup/CrewStructurePanel.jsx` mounted in
+TilePopup (build buttons, construction countdown, station/gather/demolish,
+Outpost unit picker + daily commands left). HQMenu Training shows the unit's
+source (camp = no limit / Outpost = N/100 left).
+
+**Tests:** `npm install` worked in this sandbox this time, so the full suite
+ran: `npm test` 402/402 pass, `npm run build` succeeds. New
+`tests/crewStructures.test.js` (Well/Outpost rules, neutral sources, daily
+cap, well gather, neutral/Ancient quotes, Sweep resolves via simBattle, Spawn
+Sweeper affects Spawn fights only); `crewLevelPerks.test.js` extended.
+CrewStructurePanel smoke-rendered in all states. Not yet playtested in a
+live browser session — worth a pass building a Well/Outpost with a crew
+forced to level 50.
 
 ---
 
