@@ -40,6 +40,25 @@ export const DEFAULT_CREW_LANGUAGE = CREW_LANGUAGES[0];
 export const CREW_DIPLOMACY_STATUS = { ALLY: "ally", ENEMY: "enemy" };
 export const CREW_DIPLOMACY_STATUSES = Object.values(CREW_DIPLOMACY_STATUS);
 
+// ── War ─────────────────────────────────────────────────────────────────
+// A crew-wide state, NOT targeted at a specific enemy crew — declaring puts
+// the whole crew "at war" for the duration, lifting the enemy-territory
+// siege debuff (see shared/utils/warRules.js) for every member's armies
+// against every enemy crew's territory at once, not one chosen opponent.
+// crew.war: null (peace) | { declaredAt, startsAt, endsAt, cooldownEndsAt,
+// declaredBy } — phase is derived from these timestamps by crewWarPhase()
+// in crewRules.js, never stored as its own field, so it's always correct
+// against the current clock: "declared" (before startsAt) -> "active"
+// (before endsAt) -> "cooldown" (before cooldownEndsAt) -> "peace" once
+// cooldownEndsAt passes, same lazy-deadline pattern as crewFortress.js's
+// buildEndsAt/isFortressBuilt.
+// Later chapters are meant to cut the declare delay to 3h and the cooldown
+// to 12h, but there's no "chapter" system in this codebase yet, so these
+// are the only values in effect today — revisit once chapters exist.
+export const WAR_DECLARE_TO_START_MS = 6 * 60 * 60_000;  // 6h
+export const WAR_DURATION_MS         = 24 * 60 * 60_000; // 24h
+export const WAR_COOLDOWN_MS         = 24 * 60 * 60_000; // 24h after war ends
+
 // ── Rally target ─────────────────────────────────────────────────────────
 // A single pinned target the founder/an officer sets for the whole crew to
 // see and rally on (shows in CrewHQ's header area). Not a queue — setting a
