@@ -79,3 +79,44 @@ html.gacha-open body {
 .panel { background: rgba(5,7,11,.97); border: 1px solid #221e12; }
 .scr   { overflow-y: auto; scrollbar-width: thin; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 .gear-picker-list { touch-action: pan-y !important; -webkit-overflow-scrolling: touch; }
+
+/* ── Touch-friendly range sliders (all <input type="range"> in the game) ──
+   Bigger hit area + thumb so they can be grabbed on a phone; dragging is
+   handled in main.tsx (jump-to-finger). accentColor set inline still tints
+   the fill on browsers that support it. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 32px;
+  background: transparent;
+  touch-action: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(200, 160, 64, 0.28);
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(200, 160, 64, 0.28);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: #c8903a;
+  border: 2px solid #f0d890;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #c8903a;
+  border: 2px solid #f0d890;
+}
+input[type="range"]:disabled { opacity: 0.4; }

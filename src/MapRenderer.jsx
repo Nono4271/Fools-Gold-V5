@@ -173,6 +173,13 @@ function buildCByTile(cmds) {
    crew's standing toward the player, which may differ or not exist at all.
    ────────────────────────────────────────────────────────────────────────── */
 const EMPTY_DIPLOMACY_PIDS = { allyIds: null, enemyIds: null };
+// Mix a 0xRRGGBB colour toward white by `amt` (0..1).
+function lightenHex(hex, amt) {
+  const r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+  const m = v => Math.round(v + (255 - v) * amt);
+  return (m(r) << 16) | (m(g) << 8) | m(b);
+}
+
 function ownerTint(owner, tileFaction, playerFacKey, crewPids, ownerPlayerId, diplomacyPids) {
   if (owner === "player") return 0x22cc55; // green — player owned
   if (!owner) return null;
@@ -3242,17 +3249,22 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const sy = cy - elev;
       const mid = sy + TH/2;
       const diamond=[cx,sy,cx+TW/2,mid,cx,sy+TH,cx-TW/2,mid];
+      // Glow takes the tile's own ownership colour (green = yours, blue =
+      // crewmate, red = enemy, …) — same ownerTint the territory fill uses.
+      const tint = ownerTint(tile?.owner, tile?.faction, playerFacKeyRef.current, crewPidsRef.current, tile?.ownerPlayerId, diplomacyPidsRef.current) ?? 0x73c9ff;
+      const lite = lightenHex(tint, 0.55);
       const glow=new PIXI.Graphics();
-      glow.beginFill(0x73c9ff,0.10);glow.drawPolygon(diamond);glow.endFill();
-      glow.lineStyle(7,0x73c9ff,0.07);glow.drawPolygon(diamond);
-      glow.lineStyle(3,0x73c9ff,0.16);glow.drawPolygon(diamond);
-      glow.lineStyle(1.3,0xb8e8ff,0.78);glow.drawPolygon(diamond);glow.lineStyle(0);
+      glow.beginFill(tint,0.12);glow.drawPolygon(diamond);glow.endFill();
+      glow.lineStyle(7,tint,0.08);glow.drawPolygon(diamond);
+      glow.lineStyle(3,tint,0.20);glow.drawPolygon(diamond);
+      glow.lineStyle(1.3,lite,0.85);glow.drawPolygon(diamond);glow.lineStyle(0);
       cont.addChild(glow);
+      // Smaller shield badge (was r11 / 14px).
       const badge=new PIXI.Graphics();
-      badge.beginFill(0x10243a,0.72);badge.drawCircle(cx,mid,11);badge.endFill();
-      badge.lineStyle(1.2,0x9bdcff,0.82);badge.drawCircle(cx,mid,11);badge.lineStyle(0);
+      badge.beginFill(0x0c1418,0.72);badge.drawCircle(cx,mid,8);badge.endFill();
+      badge.lineStyle(1.1,lite,0.85);badge.drawCircle(cx,mid,8);badge.lineStyle(0);
       cont.addChild(badge);
-      const txt = new PIXI.Text("🛡", { fontSize: 14, align: "center" });
+      const txt = new PIXI.Text("🛡", { fontSize: 10, align: "center" });
       txt.anchor.set(0.5, 0.5);
       txt.x = cx;
       txt.y = mid;

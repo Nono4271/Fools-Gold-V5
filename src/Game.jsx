@@ -5,6 +5,7 @@ import { unstable_batchedUpdates } from "react-dom";
 // Constants
 import { getFactionAlignment } from "../shared/constants/factions.js";
 import { factionBonusValue } from "../shared/constants/factionBonuses.js";
+import { canCommanderAct, isWounded, GUARD_STAMINA_COST, GUARD_COOLDOWN_MS, guardCooldownLeft, guardCoverageKeys, fmtMsShort } from "../shared/utils/commanderStatus.js";
 import {
   crewStructureTileKeys, isStructureBuilt, completeStructureBuild,
   canStartWellBuild, createWell, removeWell, canStationAtWell,
@@ -477,6 +478,9 @@ export default function RiseToWar() {
   // Crew Well / Contract Outpost derived state (shared/utils/crewStructures.js).
   const crewStructureKeys = useMemo(() => crewStructureTileKeys(crews), [crews]);
   const myWellTileKeys = useMemo(() => new Set((myCrew?.wells || []).map(w => w.tileKey)), [myCrew]);
+  // Every structure tile of the player's own crew — your commanders can MOVE
+  // onto these (stand there without being stationed), and you can't siege them.
+  const myCrewStructureKeys = useMemo(() => crewStructureTileKeys(myCrew ? [myCrew] : []), [myCrew]);
   const outpostHireBonus = crewOutpostHireTimeBonus(crewLevel);
 
   // ── Tome-derived constants ────────────────────────────────────────────────
@@ -942,44 +946,51 @@ export default function RiseToWar() {
     recallStationary(cmdUid);
   }, [unstationCmd]);
 
-  // ── Guard feature ─────────────────────────────────────────────────────────
+  // Wounded commanders (lost a battle < 10 min ago) can't take any player-
+  // issued action — shared/utils/commanderStatus.js. Returns true if blocked.
+  const blockIfWounded = (cmd) => {
+    const act = canCommanderAct(cmd);
+    if (act.ok) return false;
+    floaty(`🩸 ${cmd?.n || "Commander"}: ${act.reason}`, "#cc6060", cmd?.tk);
+    return true;
+  };
+
+  // ── Guard (Rise to War style) — rules in shared/utils/commanderStatus.js ──
+  // A commander standing on a tile guards it and the 8 around it (owned/crew
+  // tiles and your crew's Fortress/Well/Outpost tiles; not HQs or keeps). Any
+  // attack landing on a guarded tile fights the most recently posted guard
+  // first (useMarch.js AI-attack arrival). 10 stamina to start, free to
+  // cancel, then a 3-minute cooldown before that commander can guard again.
+  // Moving/marching ends the guard (no cooldown).
   const startGuard = useCallback((uid) => {
     const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
     if (!cmd || cmd.march) return;
-    const cost = 10;
-    if ((cmd.stamina ?? staminaMax) < cost) { floaty("⚡ Not enough stamina!", "#cc8030", cmd.tk); return; }
-    setCmds(p => p.map(c => c.uid===uid ? { ...c, isGuarding:true, guardedAt:Date.now(), stamina:Math.max(0,(c.stamina??staminaMax)-cost) } : c));
-  }, [floaty]);
+    const act = canCommanderAct(cmd);
+    if (!act.ok) { floaty(`⚠ ${act.reason}`, "#cc8030", cmd.tk); return; }
+    const cd = guardCooldownLeft(cmd);
+    if (cd > 0) { floaty(`⏳ Guard cooldown — ${fmtMsShort(cd)}`, "#cc8030", cmd.tk); return; }
+    if ((cmd.stamina ?? staminaMax) < GUARD_STAMINA_COST) { floaty("⚡ Not enough stamina!", "#cc8030", cmd.tk); return; }
+    setCmds(p => p.map(c => c.uid===uid ? { ...c, isGuarding:true, guardedAt:Date.now(), stamina:Math.max(0,(c.stamina??staminaMax)-GUARD_STAMINA_COST) } : c));
+    floaty("🛡 Guarding", "#80a0ff", cmd.tk);
+  }, [floaty, staminaMax]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cancelGuard = useCallback((uid) => {
-    setCmds(p => p.map(c => c.uid===uid ? { ...c, isGuarding:false, guardedAt:null } : c));
-  }, []);
+    setCmds(p => p.map(c => c.uid===uid ? { ...c, isGuarding:false, guardedAt:null, guardCooldownUntil: Date.now() + GUARD_COOLDOWN_MS } : c));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Set of tile keys currently being guarded (player/crew tiles in 3x3 around each guarding cmd)
+  // tileKey → guarding commanders, most recently posted first.
   const guardedTiles = useMemo(() => {
     const guarded = new Map();
     for (const cmd of playerCmds) {
       if (!cmd.isGuarding || cmd.march) continue;
-      const [cc, cr] = cmd.tk.split(",").map(Number);
-      for (let dr=-1; dr<=1; dr++) {
-        for (let dc=-1; dc<=1; dc++) {
-          const key = `${cc+dc},${cr+dr}`;
-          const tile = tiles[key];
-          if (!tile) continue;
-          if (tile.isHQ || tile.isHQPart) continue; // HQ not guardable
-          const isOwned = tile.owner === "player";
-          const isCrew = tile.ownerPlayerId && crewmatePlayerIds.has(tile.ownerPlayerId);
-          if (!isOwned && !isCrew) continue;
-          if (!guarded.has(key)) guarded.set(key, []);
-          guarded.get(key).push(cmd);
-        }
+      for (const key of guardCoverageKeys(cmd.tk, tiles, { crewmatePlayerIds, structureKeys: myCrewStructureKeys })) {
+        if (!guarded.has(key)) guarded.set(key, []);
+        guarded.get(key).push(cmd);
       }
     }
-    for (const [k, arr] of guarded) {
-      arr.sort((a,b) => (b.guardedAt??0) - (a.guardedAt??0));
-    }
+    for (const [, arr] of guarded) arr.sort((a,b) => (b.guardedAt??0) - (a.guardedAt??0));
     return guarded;
-  }, [playerCmds, tiles, facKey, crewmatePlayerIds]);
+  }, [playerCmds, tiles, crewmatePlayerIds, myCrewStructureKeys]);
 
   useMarch({
     screen, tiles, tileVersion, bldgs,
@@ -1022,6 +1033,7 @@ export default function RiseToWar() {
     crews, setCrews, setBattles, setBLog, setUnseenBattles,
     playerHqKey: playerHqKey || playerHqRef.current || `${HQP.player.c},${HQP.player.r}`,
     playerCrewId, regionOwners,
+    setAiCmds, aiHqKeys, crewmatePlayerIds,
   });
 
   // ── Crew Fortress: build-timer ticker — mirrors useForts.js's own
@@ -1090,6 +1102,7 @@ export default function RiseToWar() {
   // Station a commander at the crew Well — from anywhere (the Well has no range).
   const stationAtWell = useCallback((cmdUid, well) => {
     const cmd = cmdsRef.current?.find(c => c.uid === cmdUid);
+    if (cmd && blockIfWounded(cmd)) return { ok: false, reason: "Commander is wounded" };
     const check = canStationAtWell(myCrew, well, facKey, cmd, Date.now());
     if (!check.ok) { floaty(`⚠ ${check.reason}`, "#cc8030", well?.tileKey); return check; }
     if (cmd.stationedFortId) unstationCmd(cmd.uid);
@@ -1130,8 +1143,10 @@ export default function RiseToWar() {
   // never by useMarch.js's own generic "attack" arrival handler.
   const startFortressSiegeMarch = useCallback((cmd, destKey) => {
     if (!cmd || !destKey) return;
+    if (myCrewStructureKeys.has(destKey)) { floaty("⚠ That's your own crew's structure", "#cc8030", destKey); return; }
     const freshCmd = cmdsRef.current?.find(c => c.uid === cmd.uid) ?? cmd;
     if (freshCmd.march) return;
+    if (blockIfWounded(freshCmd)) return;
     const freshCmdTroops = normaliseTroopSlots(freshCmd).reduce((s,sl)=>s+(sl.troops||0),0) || freshCmd.troops || 0;
     if (!freshCmdTroops || freshCmdTroops < 1) { floaty("⚠ Assign troops first!", "#cc8030", freshCmd.tk); return; }
     const staminaCost = 20;
@@ -1153,7 +1168,7 @@ export default function RiseToWar() {
         march:{ type:"siegeFortress", path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }
       } : c));
     });
-  }, [floaty, gearInventory, findPath]);
+  }, [floaty, gearInventory, findPath, myCrewStructureKeys]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useGameLoop({
     screen,
@@ -1192,7 +1207,10 @@ export default function RiseToWar() {
           if (!upd) return cmd;
           changed = true;
           if (upd.clearMarch) {
-            const arrived = { ...cmd, tk: upd.tk, march: null };
+            // Any completed march means the commander left its Well (stationing
+            // is set directly by stationAtWell, never by a march).
+            // ...and a completed march also ends any Guard (moving isn't a cancel: no cooldown).
+            const arrived = { ...cmd, tk: upd.tk, march: null, stationedWellId: null, isGuarding: false, guardedAt: null };
             // Reposition arrival — station at fort
             if (cmd.march?.type === "reposition" && cmd.march?.destFortId) {
               const fortId = cmd.march.destFortId;
@@ -1283,14 +1301,16 @@ export default function RiseToWar() {
     if (!selAdjToPlayer || !selTile) return [];
     return playerCmds.filter(cmd =>
       cmd.owner === "player" && (normaliseTroopSlots(cmd).reduce((s,sl)=>s+(sl.troops||0),0) || cmd.troops || 0) > 0 && !cmd.march
+      && !isWounded(cmd, nowTick) // wounded commanders can't lead marches
     );
-  }, [selAdjToPlayer, selTile, playerCmds]);
+  }, [selAdjToPlayer, selTile, playerCmds, nowTick]);
 
   const cmdsForMove = useMemo(() =>
     playerCmds.filter(cmd =>
       cmd.owner === "player" && (normaliseTroopSlots(cmd).reduce((s,sl)=>s+(sl.troops||0),0) || cmd.troops || 0) > 0 && !cmd.march
+      && !isWounded(cmd, nowTick)
     ),
-  [playerCmds]);
+  [playerCmds, nowTick]);
 
   const canAtk = !!(selTile && selTile.owner!=="player" && (selAdjToPlayer || longMarchReady));
 
@@ -1327,6 +1347,7 @@ export default function RiseToWar() {
     // Re-read from ref to get the freshest tk (React state cmd may be one render behind)
     const freshCmd = cmdsRef.current?.find(c => c.uid === cmd.uid) ?? cmd;
     if (freshCmd.march) return;
+    if (blockIfWounded(freshCmd)) return;
     const freshCmdTroops = normaliseTroopSlots(freshCmd).reduce((s,sl)=>s+(sl.troops||0),0) || freshCmd.troops || 0;
     if (!freshCmdTroops || freshCmdTroops < 1) { floaty("⚠ Assign troops first!", "#cc8030", freshCmd.tk); return; }
     const destTile = tilesMapRef.current[destKey];
@@ -1341,8 +1362,9 @@ export default function RiseToWar() {
       || aiPlayerIdMapRef.current.get(destKey);
     const isCrewTile = crewmatePlayerIds.has(destOwnerPlayerId);
     const isCrewHQ   = isCrewTile && (destTile?.isHQ || destTile?.isHQPart);
-    const type = (destTile?.owner==="player" || isCrewTile) ? "move" : "attack";
-    if (type==="move" && destTile?.owner!=="player" && !isCrewTile) return;
+    const isMyStructureTile = myCrewStructureKeys.has(destKey);
+    const type = (destTile?.owner==="player" || isCrewTile || isMyStructureTile) ? "move" : "attack";
+    if (type==="move" && destTile?.owner!=="player" && !isCrewTile && !isMyStructureTile) return;
 
     // Protection check — block attack if tile is in protection window
     if (type === "attack" && destTile?.protectedUntil && Date.now() < destTile.protectedUntil) {
@@ -1382,9 +1404,11 @@ export default function RiseToWar() {
         march:{ type, path, step:0, dest:destKey, origin:freshCmd.tk, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }
       } : c));
     });
-  }, [floaty, gearInventory, findPath, crewmatePlayerIds]);
+  }, [floaty, gearInventory, findPath, crewmatePlayerIds, myCrewStructureKeys]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const recallMarch = useCallback((uid) => {
+    const live = cmdsRef.current.find(c => c.uid===uid);
+    if (live && blockIfWounded(live)) return;
     setCmds(prev => {
       const cmd = prev.find(c => c.uid===uid);
       if (!cmd?.march) return prev;
@@ -1401,6 +1425,7 @@ export default function RiseToWar() {
   const recallStationary = useCallback((uid) => {
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
     const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
+    if (cmd && blockIfWounded(cmd)) return;
     if (!cmd || cmd.march || cmd.tk===hqKey) return;
 
     // If stationed at a fort, show popup asking where to recall
@@ -1427,6 +1452,7 @@ export default function RiseToWar() {
   // Recall back to stationed fort
   const recallToFort = useCallback((uid, fortTileKey) => {
     const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
+    if (cmd && blockIfWounded(cmd)) return;
     if (!cmd || cmd.march) return;
     const _rSlots = normaliseTroopSlots(cmd);
     // Recall is faster than normal march — 0.65x stepMs
@@ -1446,6 +1472,7 @@ export default function RiseToWar() {
   const recallToHQ = useCallback((uid) => {
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
     const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
+    if (cmd && blockIfWounded(cmd)) return;
     if (!cmd || cmd.march) return;
     unstationCmd(uid);
     const _rSlots = normaliseTroopSlots(cmd);
@@ -1464,6 +1491,7 @@ export default function RiseToWar() {
   // Reposition — march to a fort and become stationed there
   const startReposition = useCallback((uid, fortTileKey, fortId) => {
     const cmd = cmdsRef.current.find(c => c.uid===uid && c.owner==="player");
+    if (cmd && blockIfWounded(cmd)) return { ok: false, reason: "Commander is wounded" };
     if (!cmd || cmd.march) return { ok: false, reason: "Commander is marching" };
     if (cmd.stranded) return { ok: false, reason: "Commander is stranded — recall to HQ first" };
     // Check fort capacity
@@ -1726,7 +1754,7 @@ export default function RiseToWar() {
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, diplomacyPlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
     buildCrewWell, demolishCrewWell, stationAtWell, buildCrewOutpost, demolishCrewOutpost, chooseOutpostUnits,
-    crewStructureKeys, trainableUnlocked, neutralSources, contractCommandsLeft,
+    crewStructureKeys, myCrewStructureKeys, trainableUnlocked, neutralSources, contractCommandsLeft,
     startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
     facKey, facName, floats, forts, gearInventory, gearScreenOpen, gems, getFortAtTile,

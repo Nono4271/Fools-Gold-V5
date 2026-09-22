@@ -51,7 +51,7 @@ export default function GameView(props) {
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, diplomacyPlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
     buildCrewWell, demolishCrewWell, stationAtWell, buildCrewOutpost, demolishCrewOutpost, chooseOutpostUnits,
-    crewStructureKeys, trainableUnlocked, neutralSources, contractCommandsLeft,
+    crewStructureKeys, myCrewStructureKeys, trainableUnlocked, neutralSources, contractCommandsLeft,
     startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
     facKey, facName, floats, forts, gearInventory, gearScreenOpen, gems, getFortAtTile,
@@ -145,7 +145,8 @@ export default function GameView(props) {
           [style*="position: fixed"], [style*="position:fixed"] { touch-action: auto; }
           .scr, [style*="overflow-y: auto"], [style*="overflowY: auto"] { touch-action: pan-y !important; }
           .scr * { touch-action: pan-y; }
-          .scr button, .scr .btn, .scr input[type="range"] { touch-action: manipulation !important; }
+          .scr button, .scr .btn { touch-action: manipulation !important; }
+          input[type="range"] { touch-action: none !important; } /* dragged by main.tsx, never scrolls the list */
           .gear-picker-list { touch-action: pan-y !important; }
           .gear-picker-list * { touch-action: pan-y; }
           .gear-picker-list button, .gear-picker-list .btn { touch-action: manipulation !important; }
@@ -208,8 +209,9 @@ export default function GameView(props) {
         mysticOrbs={mysticOrbs} mysticOrbsCap={mysticOrbsCap} voidTapReady={voidTapReady}
         dragonEggs={dragonEggs} dragonEggsCap={dragonEggsCap} tileCap={tileCap} />
 
-      {/* Server connection indicator */}
-      <div style={{
+      {/* Server connection indicator — map view only: it used to sit on top
+          of every overlay's ✕ Close button in the top-right corner. */}
+      {!chatBlocked && <div style={{
         position:"fixed", top:8, right:8, zIndex:9999,
         display:"flex", alignItems:"center", gap:5,
         background:"rgba(0,0,0,0.55)", borderRadius:6,
@@ -221,7 +223,7 @@ export default function GameView(props) {
           background: serverConnected ? "#4ddd88" : "#dd6644",
           boxShadow: serverConnected ? "0 0 6px #4ddd88" : "none"}} />
         {serverConnected ? "Server" : "Offline"}
-      </div>
+      </div>}
 
       <MapRenderer
         ref={mapRendererRef}
@@ -316,7 +318,7 @@ export default function GameView(props) {
             outpostAtTile: outpostCrew?.outpost || null, outpostCrew,
           };
         })()}
-        crewStructureKeys={crewStructureKeys} contractCommandsLeft={contractCommandsLeft}
+        crewStructureKeys={crewStructureKeys} myCrewStructureKeys={myCrewStructureKeys} contractCommandsLeft={contractCommandsLeft}
         onBuildWell={buildCrewWell} onDemolishWell={demolishCrewWell} onStationAtWell={stationAtWell}
         onBuildOutpost={buildCrewOutpost} onDemolishOutpost={demolishCrewOutpost} onChooseOutpostUnits={chooseOutpostUnits}
       />
