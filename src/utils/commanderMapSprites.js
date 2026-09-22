@@ -5,6 +5,8 @@ export function commanderAtlas(cmd) {
   if (cmd.id === 'h13' || cmd.bust?.includes('h13_admiral_brine')) return '/commanders/map/h13-walk-v3.png';
   if (cmd.id === 'h43' || cmd.bust?.includes('h43_countess_serava')) return '/commanders/map/h43-walk-v2.png';
   if (cmd.id === 'h45' || cmd.bust?.includes('h45_fang_groth')) return '/commanders/map/h45-walk-v2.png';
+  if (cmd.id === 'h57' || cmd.bust?.includes('h57_ser_dreadmourne')) return '/commanders/map/h57-walk-v1.png';
+  if (cmd.id === 'h59' || cmd.bust?.includes('h59_fallen_lord_mordwyn')) return '/commanders/map/h59-walk-v1.png';
   return null;
 }
 
