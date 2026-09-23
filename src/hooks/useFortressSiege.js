@@ -19,7 +19,7 @@ import { useEffect, useRef } from "react";
 import { calcSiegePower } from "../../shared/constants/map.js";
 import { FACTION_TROOPS } from "../../shared/constants/troops.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
-import { getPassiveBonuses } from "../../shared/constants/skills.js";
+import { getPassiveBonuses, skillSiegeBonus } from "../../shared/constants/skills.js";
 import { normaliseTroopSlots, bfsPath, marchStepMs } from "../../shared/utils/pathfinding.js";
 import { applyXp } from "./useMarch.js";
 import { unstationCommander, applySiegeDamage } from "../../shared/utils/crewFortress.js";
@@ -41,7 +41,7 @@ function cmdTroops(cmd) {
 }
 function cmdSiegePower(cmd, boostedCmd) {
   const slots = normaliseTroopSlots(cmd);
-  const bonus = boostedCmd?.gearBonuses?.armySiege || 0;
+  const bonus = (boostedCmd?.gearBonuses?.armySiege || 0) + skillSiegeBonus(cmd, cmdTroops(cmd));
   if (slots.length > 0) return calcSiegePower(slots, null, bonus, TROOP_FACTIONS);
   return calcSiegePower(cmd.troops || 0, cmd.troopBranch, bonus);
 }

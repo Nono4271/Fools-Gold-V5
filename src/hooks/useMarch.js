@@ -8,7 +8,7 @@ import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../sha
 import { resolveSiegeOutcome, garrisonResetMs } from "../../shared/utils/captureRules.js";
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
-import { getPassiveBonuses, getActiveSkills, MAIN_SKILLS } from "../../shared/constants/skills.js";
+import { getPassiveBonuses, getActiveSkills, MAIN_SKILLS, skillSiegeBonus } from "../../shared/constants/skills.js";
 import { factionBonusValue } from "../../shared/constants/factionBonuses.js";
 import { siegeTerritoryMultiplier, recordRegionCapture } from "../../shared/utils/warRules.js";
 import { isWarActive } from "../../shared/utils/crewRules.js";
@@ -36,7 +36,7 @@ function cmdSlots(cmd) {
 }
 function cmdSiegePower(cmd, boostedCmd) {
   const slots = cmdSlots(cmd);
-  const bonus = boostedCmd?.gearBonuses?.armySiege || 0;
+  const bonus = (boostedCmd?.gearBonuses?.armySiege || 0) + skillSiegeBonus(cmd, cmdTroops(cmd));
   if (slots.length > 0) return calcSiegePower(slots, null, bonus, TROOP_FACTIONS);
   // AI commanders use cmd.troops directly (no slot system)
   const troops = cmd.troops || 0;
@@ -186,7 +186,7 @@ function trackRegionCapture(tile, faction) {
 // server enough army data to verify a capture itself.
 function attackerComposition(cmd, boostedCmd) {
   const slots = cmdSlots(cmd);
-  const armySiegeBonus = boostedCmd?.gearBonuses?.armySiege || 0;
+  const armySiegeBonus = (boostedCmd?.gearBonuses?.armySiege || 0) + skillSiegeBonus(cmd, cmdTroops(cmd)); // server recomputes with this same bonus
   if (slots.length > 0) {
     return { troopSlots: slots.map(sl => ({ troops: sl.troops, branch: sl.branch })), armySiegeBonus };
   }
