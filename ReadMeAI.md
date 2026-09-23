@@ -1438,6 +1438,53 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Per-unit DoTs/statuses + Night Creatures fully implemented
+
+**Per-unit (owner: "fix venom/bleed ticks, %HP strikes, confused self-hits"):**
+- **DoTs:**
+  - Each side keeps `S.dots` (`{ ti, kind: venom|bleed, pct, rounds, start }`). A DoT ticks on the unit it landed on (venom = applier's FOC, bleed = applier's ATK) and ends when that unit dies.
+  - Commander skills attach DoTs to their hits (`hit.dot`, with optional per-unit `chance`, and `spread` for Bleed-spread max). Evaded hits don't apply them.
+  - `addPoison` makes a DoT-only hit on n units; `attachBleed` rides the skill's own hit.
+  - Legacy flags (`pendingVenomDmg`/`bleedApplied` from troop skills and unconverted factions) become a DoT on the enemy's frontline unit at round end.
+- %HP strikes hit one unit (frontline first) for X% of that unit's max HP. A confused commander hits one own unit.
+- **Stun / Confuse are per unit.**
+  - Commander skills set `rs.stunnedUnits` / `rs.confusedUnits` (enemy slot indexes; each unit rolls its own chance) or `rs.enemyCmdStunned` / `rs.enemyCmdConfused`. A stunned unit skips its action; the rest of the army still fights.
+  - Legacy army-wide counters remain for troop skills.
+  - Converted: `stun_chance`, `physical_damage_stun_chance`, `cmd_stun_chance`, `on_skill_stun_chance`, `aoe_multi_status` (stun max), `confusion_vs_alignment`, `cmd_stun_or_confuse_by_faction`. Orc and pirate results unchanged in the leave-one-out sweep.
+- **Other per-unit engine support:**
+  - `targetEvades` (army evasion + unit `slotEvadeNext` / `slotEvadeChance` / `invisibleSlots`; Bleed-prevents-evasion);
+  - `unitDefFlatDown`, `unitVuln`;
+  - own-slot `slotAtkMult` / `slotDmgTakenMult` / `slotMaxDmgChance` / `slotFocusResist` (focus skills, focus normal attacks, magical troops, venom);
+  - `useStat:"spd"` for "(modified by SPD)" skills;
+  - `nth` (each hit on a different unit);
+  - first-N-hits protection and Leader's Rage hooks in `damageSlot`;
+  - enemy commander FOC down;
+  - `ctx.isNight` (`defTile.isNight` override, else UTC 18:00–06:00, same rule as before).
+
+**Night Creatures:** all 6 commanders (h43 Serava, h44 Malachar, h45 Groth, h46 Korrax, h47 Skitter, h48 Thalyssa) were checked against their descriptions and implemented, with 48 handler types rewritten. Notable fixes:
+- Eight Eyes cleared the ENEMY's confusion; it now grants our immunity (rolled once, rounds 1–4).
+- Fangs Ambush dealt focus instead of physical damage.
+- Vampire's Thrall / Compulsion confused the whole enemy army; now 2 units / the enemy commander.
+- War General's FOC was applied as focus-skill damage.
+- Protect My Children / Pack Protection flat DEF was applied as %.
+- Night Terror's day penalty now shrinks with level (20% → 6% at 7/7, per its text).
+- Pack's Charge hit count = skill value, with the night max-level range.
+
+**`mal_double_tap`:** the Dragons "shared skills" copy used type `cmd_normal_atk_bonus_focus` (no handler) and overrode the NC original in `ALL_SKILLS`. It now uses the same `focus_damage` type. The key is kept so spent points aren't lost.
+
+**Coverage:** Leave-one-out shows every NC skill changes combat except:
+- Supply Specialist and Scurrier: map-only.
+- Power in Numbers: all-Spider army only; verified.
+- Thick Skin: needs focus/poison damage on mounted units; verified, losses 6,158 → 5,728.
+
+`mal_blood_transfusion` is still flat-format and works via the flat path.
+
+**Checks:**
+- Whole game: 456/576 commander skills change combat.
+- PvP mirror 92/180 attacker wins.
+- PvE unchanged vs the targeting batch.
+- Tests: 5 new. `npm test` 448/448, build OK.
+
 ## 2026-09-23 — Claude — Per-unit targeting (owner spec)
 
 The owner's rule: an AoE that hits an army with 3 different units deals 3 separate hits, one per unit, because the units have different stats and skills. Owner answers:
