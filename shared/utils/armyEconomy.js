@@ -1,4 +1,5 @@
-import {barracksCapacity,maxTrainBatch,trainingQueueCount,trainRate} from '../constants/buildings.js';
+import {barracksCommandCapacity,maxTrainBatch,trainingQueueCount,trainRate} from '../constants/buildings.js';
+import {poolCommands,queuedCommands,commandsFor,troopsThatFit} from './barracks.js';
 import {trainingQuote} from './training.js';
 export const troopTotal = counts => Object.values(counts).reduce((sum,n)=>sum+n,0);
 // Preserve the current healing price and rate; automatic healing uses these too.
@@ -29,21 +30,21 @@ function startHealing(state,requested,buildings,now,id,healSpeedMult=1) {
   return {...state,rss:{...state.rss,food:state.rss.food-healingFoodCost(amount)},woundedByBranch:wounded,healQueue:[...state.healQueue,{id,allocations,total:amount,remaining:amount,rate:healingRate(buildings,healSpeedMult),startedAt:now,lastAt:now,creditMs:0}]};
 }
 function tick(state,buildings,now,healSpeedMult=1) {
-  const troops={...state.troopCounts};let space=Math.max(0,barracksCapacity(buildings.barracks||0)-troopTotal(troops));
+  const troops={...state.troopCounts};let space=Math.max(0,barracksCommandCapacity(buildings.barracks||0)-poolCommands(troops)); // free barracks space, in commands
   const trainingQueues=state.trainingQueues.map(q=>{
     const ready=Math.max(0,1+Math.floor((now-q.nextAt)/q.commandMs));
-    const delivered=Math.min(ready,q.remaining/q.commandSize,Math.floor(space/q.commandSize))*q.commandSize;
+    const delivered=Math.min(ready,q.remaining/q.commandSize,Math.floor(space+1e-9))*q.commandSize;
     if(!delivered)return q;
-    troops[q.branchKey]=(troops[q.branchKey]||0)+delivered;space-=delivered;
+    troops[q.branchKey]=(troops[q.branchKey]||0)+delivered;space-=delivered/q.commandSize;
     return q.remaining===delivered?null:{...q,remaining:q.remaining-delivered,nextAt:q.nextAt+delivered/q.commandSize*q.commandMs};
   }).filter(Boolean);
   const healQueue=state.healQueue.map(q=>{
     const rate=Math.max(1,Math.floor(q.rate/state.healQueue.length));
     const credit=q.creditMs+Math.max(0,now-q.lastAt);
-    const delivered=Math.min(q.remaining,Math.floor(credit*rate/1000),space);
-    const allocations={...q.allocations};let left=delivered;
-    for(const [key,n] of Object.entries(allocations)){const take=Math.min(left,n);if(take){troops[key]=(troops[key]||0)+take;allocations[key]-=take;left-=take;}}
-    space-=delivered;
+    const due=Math.min(q.remaining,Math.floor(credit*rate/1000));
+    const allocations={...q.allocations};let left=due;
+    for(const [key,n] of Object.entries(allocations)){const take=Math.min(left,n,troopsThatFit(key,space));if(take){troops[key]=(troops[key]||0)+take;allocations[key]-=take;left-=take;space-=commandsFor(key,take);}}
+    const delivered=due-left;
     return q.remaining===delivered?null:{...q,allocations,remaining:q.remaining-delivered,lastAt:now,creditMs:credit-delivered*1000/rate};
   }).filter(Boolean);
   let next={...state,troopCounts:troops,trainingQueues,healQueue};
@@ -59,7 +60,7 @@ export function armyEconomyReducer(state,action) {
       if(!quote||state.trainingQueues.some(q=>q.id===action.id))return state;
       const [f,key,tier]=action.branchKey.split(':');
       const reserved=state.trainingQueues.reduce((s,q)=>s+q.remaining,0);
-      if(Number(tier)>(action.unlocked[`${f}:${key}`]??-1)||action.amount>maxTrainBatch(b.training||0)||state.trainingQueues.length>=trainingQueueCount(b.training||0)||troopTotal(state.troopCounts)+reserved+action.amount>barracksCapacity(b.barracks||0)||Object.entries(quote.cost).some(([key,n])=>!Number.isFinite(state.rss[key])||state.rss[key]<n)) return state;
+      if(Number(tier)>(action.unlocked[`${f}:${key}`]??-1)||action.amount>maxTrainBatch(b.training||0)||state.trainingQueues.length>=trainingQueueCount(b.training||0)||poolCommands(state.troopCounts)+queuedCommands(state.trainingQueues)+commandsFor(action.branchKey,action.amount)>barracksCommandCapacity(b.barracks||0)+1e-9||Object.entries(quote.cost).some(([key,n])=>!Number.isFinite(state.rss[key])||state.rss[key]<n)) return state;
       // Contract Outpost daily cap (shared/utils/crewStructures.js): action.dailyLimit = { day, limit } only for Outpost-sourced units.
       let contractDaily=state.contractDaily;
       if(action.dailyLimit){

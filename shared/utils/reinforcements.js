@@ -2,6 +2,7 @@
 // Moved from Game.jsx.
 import { troopPoolKey, branchCommandCost, withTroopSlots, MAX_TROOP_SLOTS } from "./troopSlots.js";
 import { normaliseTroopSlots } from "./pathfinding.js";
+import { poolCommands, troopsThatFit } from "./barracks.js";
 
 // Add troops back to one barracks pool, limited by free barracks space.
 export function returnToBarracks(counts, branchKey, amount, barracksCap) {
@@ -9,6 +10,13 @@ export function returnToBarracks(counts, branchKey, amount, barracksCap) {
   const total = Object.values(counts).reduce((s, n) => s + (n || 0), 0);
   const add = Math.min(amount, Math.max(0, barracksCap - total));
   return { ...counts, [branchKey]: (counts[branchKey] || 0) + add };
+}
+
+// Same, but the barracks limit is in COMMANDS (see barracks.js).
+export function returnToBarracksCmds(counts, branchKey, amount, cmdCap) {
+  if (!branchKey) return counts;
+  const add = Math.min(amount, troopsThatFit(branchKey, cmdCap - poolCommands(counts)));
+  return add > 0 ? { ...counts, [branchKey]: (counts[branchKey] || 0) + add } : counts;
 }
 
 // Pool a reinforcement draws from: the target commander's first slot type.
