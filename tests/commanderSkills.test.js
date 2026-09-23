@@ -98,3 +98,17 @@ test('orcs: Orc Explosives adds siege per troop', async () => {
   const { skillSiegeBonus } = await import('../shared/constants/skills.js');
   assert.equal(skillSiegeBonus({ id: 'h22', faction: 'orcs', cls: 'support', skillPoints: { gri_orc_explosives: 1 } }, 1000), 2000);
 });
+
+test("orcs: Leader's Plans = +N DEF/HP per 4 Command advantage (Command = troops × cost)", () => {
+  const run = (atkTroops, defTroops, sp) => {
+    const b = { faction: 'orcs', branch: 'grunts', tier: 2 }, fb = { faction: 'holyknights', branch: 'templars', tier: 2 };
+    const cmd = { id: 'h21', n: 'W', faction: 'orcs', cls: 'leader', lvl: 50, atk: 220, foc: 220, spd: 100, troops: atkTroops, troopBranch: b, troopSlots: [{ branch: b, troops: atkTroops }], skillPoints: sp };
+    const def = { id: 0, n: 'D', faction: 'holyknights', lvl: 50, atk: 220, foc: 220, spd: 100, troops: defTroops, troopBranch: fb, troopSlots: [{ branch: fb, troops: defTroops }] };
+    const r = seeded(() => simBattle(cmd, atkTroops, { defCmd: def, garrison: 100, owner: 'ai' }, 0), 9);
+    return r.report.rounds.flatMap(x => x.actions).reduce((t, x) => t + (!x.isPlayer && x.dmg > 0 ? x.dmg : 0), 0);
+  };
+  // 80 vs 55 command (small units, 0.01 each): skill reduces damage taken
+  assert.ok(run(8000, 5500, { war_leaders_plans: 7 }) < run(8000, 5500, {}));
+  // 80 vs 78: under one 4-command step → no effect
+  assert.equal(run(8000, 7800, { war_leaders_plans: 7 }), run(8000, 7800, {}));
+});
