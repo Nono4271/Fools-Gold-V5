@@ -304,7 +304,7 @@ test('HK: Divine Prayer — a stunned Seraph may cleanse it', () => {
   assert.ok(resisted > 0);
 });
 
-test('HK: Whatever It Takes can confuse allied units too (base chance), enemy chance scales', () => {
+test('HK: Whatever It Takes confuses enemy units more often than allied units (both scale)', () => {
   let own = 0, foe = 0;
   for (let s = 1; s <= 10; s++) for (const a of allActs(hkBattle('h41', { dan_whatever_it_takes: 7 }, s))) {
     const m = a.action.match(/Whatever It Takes — (\d+) enemy units? confused(?:, (\d+) allied)?/);
