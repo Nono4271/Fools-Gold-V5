@@ -1,8 +1,10 @@
+import {marchMsLeft} from '../../shared/utils/marchMotion.js';
+import {fmtMsShort} from '../../shared/utils/commanderStatus.js';
 import {commanderAtlas, commanderInsideHQ, facingRow, animationColumn, makeAtlasEntry, ATLAS_COLUMNS} from './commanderMapSprites.js';
 // One owner for commander display objects, shared by redraws and animation frames.
 export function destroyCommanderIcon(entry) {
   if (entry.base && entry.onLoaded) entry.base.off('loaded',entry.onLoaded);
-  for (const object of [entry.sprite, entry.mask, entry.text]) {
+  for (const object of [entry.sprite, entry.mask, entry.text, entry.marchLabel]) {
     if (object && !object.destroyed) object.destroy();
   }
   for (const frame of entry.frames || []) frame.destroy(false);
@@ -66,7 +68,24 @@ export function drawCommanderIcons({PIXI, gfx, textCont, cmds, tiles, byTile, sp
   for (const entry of spriteMap.values()) {
     if (entry.sprite) entry.sprite.visible = false;
     if (entry.text) entry.text.visible = false;
+    if (entry.marchLabel) entry.marchLabel.visible = false;
   }
+
+  // "MARCHING 1m 23s" under the feet of the player's marching commanders.
+  // Text only re-rasterises when the string changes (once a second).
+  const now = Date.now();
+  const setMarchLabel = (cmd, entry, x, y) => {
+    if (!entry || !textCont || !PIXI.Text || cmd.owner !== 'player' || !cmd.march) return;
+    if (!entry.marchLabel) {
+      entry.marchLabel = new PIXI.Text('', { fontFamily: 'Cinzel, serif', fontSize: 6, fontWeight: '700', fill: 0xffe6a0, stroke: 0x000000, strokeThickness: 2, align: 'center' });
+      entry.marchLabel.resolution = 4;
+      entry.marchLabel.anchor.set(0.5, 0);
+      textCont.addChild(entry.marchLabel);
+    }
+    const str = `MARCHING ${fmtMsShort(marchMsLeft(cmd.march, now))}`;
+    if (entry.marchLabel.text !== str) entry.marchLabel.text = str;
+    entry.marchLabel.x = x; entry.marchLabel.y = y; entry.marchLabel.visible = true;
+  };
 
   // Draw all commanders using worker positions for marching, tile center for static
   for (const [key, tileCmds] of Object.entries(byTile)) {
@@ -110,6 +129,7 @@ export function drawCommanderIcons({PIXI, gfx, textCont, cmds, tiles, byTile, sp
           entry.sprite.y = basePy+TH/2-gi*6;
           gfx.beginFill(0x080b08,0.3); gfx.drawEllipse(ipx,entry.sprite.y,9,3); gfx.endFill();
           gfx.lineStyle(1,col,0.55); gfx.drawEllipse(ipx,entry.sprite.y,10,3.5); gfx.lineStyle(0);
+          setMarchLabel(cmd, entry, ipx, entry.sprite.y + 4);
           return;
         }
         gfx.beginFill(0x000000, 0.45); gfx.drawCircle(ipx+1, ipy+1, 9); gfx.endFill();
@@ -117,6 +137,7 @@ export function drawCommanderIcons({PIXI, gfx, textCont, cmds, tiles, byTile, sp
         gfx.beginFill(0x000000, 0.55); gfx.drawCircle(ipx,   ipy,   7); gfx.endFill();
         if (entry?.sprite) { entry.sprite.visible = true; entry.sprite.x = ipx; entry.sprite.y = ipy; entry.mask.clear(); entry.mask.beginFill(0xffffff); entry.mask.drawCircle(ipx, ipy, 7); entry.mask.endFill(); }
         else if (entry?.text) { entry.text.visible = true; entry.text.x = ipx; entry.text.y = ipy; }
+        setMarchLabel(cmd, entry, ipx, ipy + 10);
       });
       if (grp.length > 3) { gfx.beginFill(col, 0.7); gfx.drawCircle(cx+14, ey-8, 5); gfx.endFill(); }
     });
