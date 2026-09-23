@@ -3277,11 +3277,16 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const comma = key.indexOf(",");
       const c = +key.slice(0, comma), r = +key.slice(comma + 1);
       const tile = tilesRef.current[key];
-      const { cx, cy } = isoXY(c, r);
+      // P10+ tiles are drawn at 2x size (a 2x2 block): cover the whole footprint,
+      // not just the primary grid cell (resourceFootprint = same shape as the selection outline).
+      const big = tile?.isKeep && !tile?.isGate && (tile?.powerLevel ?? 0) >= 10;
+      const fp = big ? resourceFootprint(c, r, tile) : null;
+      const { cx: cx0, cy } = isoXY(c, r);
       const elev = tile?.isWin ? 10 : 4;
       const sy = cy - elev;
-      const mid = sy + TH/2;
-      const diamond=[cx,sy,cx+TW/2,mid,cx,sy+TH,cx-TW/2,mid];
+      const cx = fp ? fp.x : cx0;
+      const mid = fp ? fp.y : sy + TH/2;
+      const diamond = fp ? fp.points : [cx,sy,cx+TW/2,mid,cx,sy+TH,cx-TW/2,mid];
       // Glow takes the tile's own ownership colour (green = yours, blue =
       // crewmate, red = enemy, …) — same ownerTint the territory fill uses.
       const tint = ownerTint(tile?.owner, tile?.faction, playerFacKeyRef.current, crewPidsRef.current, tile?.ownerPlayerId, diplomacyPidsRef.current) ?? 0x73c9ff;
