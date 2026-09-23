@@ -1438,6 +1438,14 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-22 — Claude — March countdowns + clickable march coordinates
+
+- `marchMsLeft(march, now)` in `shared/utils/marchMotion.js`: time left on a march (sum of remaining segments minus time into the current one).
+- Map: "MARCHING 1m 23s" label under the feet of the player's marching commanders (`src/utils/commanderIcons.js`, `entry.marchLabel`; text only changes once a second).
+- Left rail busts: 🥾 countdown pill under a marching commander's bust (replaces the 🏰 badge while marching). New `src/components/game/MarchTimer.jsx` (self-ticking).
+- Floating Commander card: "🥾 MARCHING · 1m 23s" plus `origin → destination` coordinates. Tapping a coordinate pans the map there (`teleportTo`).
+- Test added to `tests/marchMotion.test.js`.
+
 ## 2026-09-22 — Claude — Commander card from marching sprites + left-rail busts
 
 - Tapping one of your MARCHING commanders on the map (the moving sprite) now opens its Commander card (`CommanderCard`) instead of selecting the tile underneath. Hit test: `hitMarchingCmd` in `src/MapRenderer.jsx` (uses the march worker positions; new `onCommanderTap` prop).
