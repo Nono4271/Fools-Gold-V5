@@ -359,3 +359,43 @@ test("pirates: Burn is per unit — Hot Sauce burns each enemy unit, Soup's Hot 
   const soup = actsOver(s => pirBattle('h2', { sam_soups_hot: 7 }, s));
   assert.ok(soup.some(a => /Burned while attacking/.test(a.action)));
 });
+
+// ── Wizards ───────────────────────────────────────────────────────────────────
+function wizBattle(id, skillPoints, seed, defCmd, branches = ['spellblades', 'golems']) {
+  const slots = branches.map(b => ({ branch: { faction: 'wizards', branch: b, tier: 2 }, troops: 10000 }));
+  const cmd = { id, n: id, faction: 'wizards', cls: 'attacker', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 10000 * branches.length, troopBranch: slots[0].branch, troopSlots: slots, skillPoints };
+  return seeded(() => simBattle(cmd, cmd.troops, { defCmd: defCmd || threeUnitFoe(), garrison: 100, owner: 'ai' }, 0), seed);
+}
+const bigFoe = (n = 30000) => { const f = threeUnitFoe(); f.troopSlots = f.troopSlots.map(s => ({ ...s, troops: n })); f.troops = n * 3; return f; };
+
+test('Wizards: Riddle Me This confuses 2 units; Hourglass slows the units it hits', () => {
+  assert.ok(allActs(wizBattle('h29', { theon_riddle_me_this: 7 }, 1, bigFoe())).some(a => /Riddle Me This — 2 units Confused/.test(a.action)));
+  assert.ok(actsOver(s => wizBattle('h29', { theon_hourglass: 7 }, s, bigFoe())).some(a => /Hourglass — \d enemy units? Slowed/.test(a.action)));
+});
+
+test('Wizards: Poison Arrow puts a Poison DoT on 2 units; Hexblade makes separate hits on random units', () => {
+  assert.ok(allActs(wizBattle('h5', { vex_poison_arrow: 7 }, 1, bigFoe())).some(a => /^🐍 Venom →/.test(a.action) && a.isPlayer === true));
+  assert.ok(allActs(wizBattle('h18', { oren_hexblade: 7 }, 1, bigFoe())).filter(a => a.isSkill && /^✨ Hexblade →/.test(a.action)).length >= 3);
+});
+
+test('Wizards: Game Over hits every unit and strips our debuffs for bonus damage', () => {
+  const acts = actsOver(s => wizBattle('h30', { ryn_game_over: 7, ryn_poisoned_blade: 7, ryn_lightning_blade: 7 }, s, bigFoe(120000)), 20);
+  assert.ok(acts.filter(a => a.isSkill && /^✨ Game Over →/.test(a.action)).length >= 2); // one hit per enemy unit
+  assert.ok(acts.some(a => /Game Over — \d+ debuffs? stripped/.test(a.action)));
+});
+
+test('Wizards: Tiler lowers losses when attacking unowned land', () => {
+  let a = 0, b = 0;
+  for (let s = 1; s <= 5; s++) { a += wizBattle('h17', { dov_tiler: 7 }, s, bigFoe()).lost; b += wizBattle('h17', {}, s, bigFoe()).lost; }
+  assert.ok(a < b, `${a} vs ${b}`);
+});
+
+test("Wizards: Game Over (max) — a kill gives the next skill +20%; Testing the Water DEF 40% / DMG -9% at 7/7", () => {
+  const mk = (f, b, n) => ({ branch: { faction: f, branch: b, tier: 2 }, troops: n });
+  const slots = [mk('orcs', 'grunts', 40000), mk('orcs', 'warg_riders', 40000), mk('pirates', 'gunners', 20)]; // a near-dead unit for Game Over to finish
+  const foe = { id: 0, n: 'D', faction: 'orcs', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 80020, troopBranch: slots[0].branch, troopSlots: slots };
+  assert.ok(allActs(wizBattle('h30', { ryn_game_over: 15 }, 1, foe)).some(a => /Game Over — kill! Next skill DMG \+20%/.test(a.action)));
+  assert.ok(!allActs(wizBattle('h30', { ryn_game_over: 7 }, 1, foe)).some(a => /kill! Next skill/.test(a.action))); // max level only
+  const eff = commanderSkillEffect('mira_testing_the_water', ALL_SKILLS.mira_testing_the_water, 7);
+  assert.ok(Math.abs(eff.value - 0.40) < 1e-9 && eff.dmgDown === 0.09);
+});
