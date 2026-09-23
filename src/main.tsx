@@ -39,6 +39,10 @@ document.addEventListener(
       'button, input, select, textarea, a, [role="button"], [role="slider"], [role="checkbox"]'
     );
     if (interactive) return;
+    // Tappable <div>s (onClick rows like the fort picker) have no tag to spot,
+    // but they all use cursor:pointer (inherited by their children). Blocking
+    // their touchstart killed the click on phones.
+    if (getComputedStyle(target).cursor === "pointer") return;
     if (inScrollableArea(target)) return;
     e.preventDefault();
   },

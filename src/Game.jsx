@@ -1268,7 +1268,12 @@ export default function RiseToWar() {
             }
             return arrived;
           }
-          return { ...cmd, tk: upd.tk, march: upd.marchPatch };
+          // Merge: the worker's march snapshot only carries timing fields, so
+          // replacing the march dropped dest/origin/destFortId after the first
+          // step (reposition arrivals never stationed; recall lost its origin).
+          // Ignore a late step from a march that's since been replaced (recall, finish…).
+          if (cmd.march && upd.marchPatch?.startedAt != null && cmd.march.startedAt != null && cmd.march.startedAt !== upd.marchPatch.startedAt) return cmd;
+          return { ...cmd, tk: upd.tk, march: cmd.march ? { ...cmd.march, ...upd.marchPatch } : upd.marchPatch };
         });
         return changed ? next : prev;
       });
