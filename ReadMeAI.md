@@ -1438,6 +1438,43 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Commander skills Phase 2: Pirates fully implemented
+
+All 6 pirate commanders (h1 Fynn, h2 Samuel, h13 Brine, h14 Saltwhisper, h25 Reck, h26 Seyne), 71 unique skills (owner's custom set), were checked against their descriptions and implemented in `shared/utils/battle.js`. Leave-one-out test: full kit maxed, each skill removed in turn, 4 army mixes × 4 enemy factions × 2 seeds. Every pirate skill changes combat except:
+- Crew's Anchor and Treasure Hunter: non-combat (march / gathering), already wired;
+- Around the Block and Defense Against Dark: need an enemy that stuns or deals focus damage. Verified separately: resists stuns vs Bruk; losses 5,745 → 4,953 vs Grix.
+
+**New engine hooks (both sides, via the two-sided loop):**
+- Incoming debuffs on a commander can be resisted: `rs.cmdDebuffImmune` (Shadow's Drunken Warrior), `rs.debuffChanceReduction` (Around the Block), `rs.debuffResistChance` (Cleanse, troops too).
+- Self-confusion: Captain's Honor sets `rs.selfConfused`, going through `debuffCommander`, so it can be cleansed or trigger Retaliation. Per-round confusion immunity (`cmdConfusionImmune`/`atkConfusionImmune`) blocks it.
+- Pursuit (`rs.pursuitActive` troops, `rs.cmdPursuit` commander at Seeing Through Fog max) skips miss/evade checks.
+- `rs.evadeHits`: Fog of War evades the next N enemy hits.
+- `rs.focusDmgResist` (Defense Against Dark) reduces enemy focus-commander hits and magical-troop hits.
+- `rs.onEnemyAttackBurnChance` (Soup's Hot): an attacker can Burn itself when it hits this side.
+- `rs.healReceivedBonus` (Steady Hands) is applied to all heals at heal time.
+- **Focus skill damage for ATK commanders.** `rs.focusDmgBonus` (Burn/FOC-mod skills) used to count only when the commander's normal attack was FOC-based. It now adds its own FOC-scaled skill part, ignoring DEF, on physical commanders too. This helps every faction's focus skills.
+- Burn damage tracking (`addBurnDmg`): Used to Heat's "Burn DMG +X%" scales it, Keeping it Spicy's max adds to it, and Pirate Cook stacks DEF per burn-damage instance.
+- Drunk (`markDrunk`) lasts **the round it lands + the next round** so Reck's Whiskey Barrel (3/6/9) feeds Cat Got Your Tongue (4/8). Assumption; the skill text gives no duration.
+- `ctx.isAttacking`: "While Attacking" / "Defending" skills (I Charge, Lead the Charge, Onboarding, Leader of the Tribe defending bonus) now respect which side the commander is on.
+- Slot/group matching supports "humans"/"creatures" alignment (Protect the Weak, Gather My Crew).
+- `cs.buffs` apply functions receive `(rs, roundLog, actor)` so delayed effects can log.
+
+**Shared handlers changed (also affect other factions using the same type):**
+- `hk_triple_stat_bonus`: DEF/SPD now real, level-scaled, on own-faction units.
+- `physical_damage_faction_bonus`: bonus only vs that faction; level-scaled.
+- `physical_damage_stun_chance`: log uses the skill name.
+- `faction_def_bonus`: now applies.
+- `dmg_type_resist_all`: now applies.
+- `aoe_burn_guaranteed` / `burn` handlers no longer reduce our own damage.
+- `dmg_bonus_vs_alignment`, `dmg_bonus_vs_role`, `dmg_bonus_vs_faction_all`, `confusion_vs_alignment`, `enemy_faction_vulnerability`: now conditional.
+- `per_round_confusion_immune_chance`: sets real immunity flags.
+- `heal_all`: uses the level-scaled value.
+- Removed a dead duplicate `faction_dmg_bonus` case and the orphaned `debuff_chance_reduction` lines.
+
+**Open design question:** multi-target / AoE skills ("[2 Enemy Units] X%", "All enemies X%") deal X% once against the pooled enemy HP. "Normal attacks hit ALL enemies" (Korgath's Surprise, Sweeping Strike) is the exception and scales by enemy unit count.
+
+Tests: 3 new pirate tests. `npm test` 439/439, build OK. Mirror PvP ≈ 47% attacker wins; PvE unchanged vs last batch. 446/576 commander skills now change combat (other factions still to do).
+
 ## 2026-09-23 — Claude — Two-sided battle engine (PvP parity) + defender troop skills fixed
 
 `simBattle`'s round loop is rewritten so **both armies run through the same code** (owner: "PvP should function the same when real players are on the map; speed determines turn order"). Setup, report, XP and win-% are unchanged.
