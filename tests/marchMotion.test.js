@@ -26,3 +26,13 @@ test('march speed is increased 15 percent and diagonal time follows distance',()
  assert.equal(marchSegmentMs('0,0','1,0',1000),850);
  assert.equal(marchSegmentMs('0,0','1,1',1000),1202);
 });
+
+import { marchMsLeft as _marchMsLeft, marchSegmentMs as _seg } from '../shared/utils/marchMotion.js';
+test('marchMsLeft: remaining segments minus time into the current one', () => {
+  const m = { path: ['0,0', '1,0', '2,0', '3,0'], step: 1, stepMs: 1000, lastStepTime: 5000 };
+  const seg = _seg('1,0', '2,0', 1000);
+  assert.equal(_marchMsLeft(m, 5000), seg * 2);
+  assert.equal(_marchMsLeft(m, 5000 + 100), seg * 2 - 100);
+  assert.equal(_marchMsLeft({ ...m, step: 3 }, 9999), 0);
+  assert.equal(_marchMsLeft(null), 0);
+});
