@@ -549,13 +549,18 @@ export function getTreeDisplayNames(cmd) {
   return names[cls] ?? names.attacker;
 }
 
+// Spent skill levels live in `cmd.skillPoints` (CommanderScreen writes
+// { [skillKey]: level }); `skillLevels` is the legacy/test name — accept both.
+function cmdSkillLevels(cmd) { return cmd?.skillLevels ?? cmd?.skillPoints ?? null; }
+
 export function getActiveSkills(cmd) {
-  if (!cmd?.skillLevels) return [];
+  const lvls = cmdSkillLevels(cmd);
+  if (!lvls) return [];
   const map = resolveBranchMap(cmd, cmd.cls ?? "attacker");
   const result = [];
   for (const branch of map) {
     for (const key of [branch.main, ...branch.sides]) {
-      const level = cmd.skillLevels[key];
+      const level = lvls[key];
       if (level && level > 0) {
         const def = ALL_SKILLS[key];
         if (def) result.push({ key, def, level });
@@ -574,13 +579,16 @@ export function getPassiveBonuses(cmd) {
     // instead, since they act outside battle resolution.
     marchSpeedBonus:0, gatheringBonus:0,
   };
-  if (!cmd?.skillLevels) return bonuses;
+  const lvls = cmdSkillLevels(cmd);
+  if (!lvls) return bonuses;
   const map = resolveBranchMap(cmd, cmd.cls ?? "attacker");
   for (const branch of map) {
     for (const key of [branch.main, ...branch.sides]) {
-      const level = cmd.skillLevels[key];
+      const level = lvls[key];
       if (!level || level < 1) continue;
       const def = ALL_SKILLS[key];
+      // Max-level world-map bonus (e.g. Know Your Enemy "March Speed +15%") — any skill type.
+      if (def?.maxLevelEffect?.marchSpeedBonus && level >= (_mainKeys.has(key) ? 15 : 7)) bonuses.marchSpeedBonus += def.maxLevelEffect.marchSpeedBonus;
       if (!def || def.type !== "passive") continue;
       const lv = level - 1;
       const v  = def.base + (def.perLevel ?? 0) * lv;
