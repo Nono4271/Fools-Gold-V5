@@ -23,6 +23,7 @@ export function buildAnchors(playerHqKey, forts) {
     anchors.push({ c, r, type: "hq", key: playerHqKey });
   }
   for (const fort of (forts || [])) {
+    if (fort.isBuilding) continue; // a fort is offline (no range) until built
     const [c, r] = fort.tileKey.split(",").map(Number);
     anchors.push({ c, r, type: "fort", key: fort.tileKey, fortId: fort.id });
   }
@@ -32,8 +33,10 @@ export function buildAnchors(playerHqKey, forts) {
 export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax = 10 }) {
   // forts: array of { id, tileKey, level, stationedCmdUids, siege, siegeMax, resetAt }
   const [forts, setForts] = useState([]);
+  // Kept in sync during render (not in an effect) so lookups like
+  // getFortAtTile never return the previous state right after a change.
   const fortsRef = useRef(forts);
-  useEffect(() => { fortsRef.current = forts; }, [forts]);
+  fortsRef.current = forts;
 
   // ── Build fort ──────────────────────────────────────────────────────────────
   const buildFort = useCallback((tileKey, tile) => {
@@ -47,11 +50,8 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
     const id = `fort_${tileKey}_${Date.now()}`;
     const levelDef = FORT_LEVELS[0];
 
-    // Auto-station commanders already standing on this tile (up to capacity)
-    const cmdsOnTile = (cmds || []).filter(c =>
-      c.owner === "player" && c.tk === tileKey && !c.march && !c.stationedFortId
-    ).slice(0, levelDef.capacity);
-    const autoStationedUids = cmdsOnTile.map(c => c.uid);
+    // A fort is offline until it's built — nobody is stationed at build time.
+    const autoStationedUids = [];
 
     const buildMs = levelDef.buildMs ?? 7200000;
     const newFort = {
@@ -152,6 +152,7 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
   const stationAtFort = useCallback((cmdUid, fortId) => {
     const fort = fortsRef.current.find(f => f.id === fortId);
     if (!fort) return { ok: false, reason: "Fort not found" };
+    if (fort.isBuilding) return { ok: false, reason: "Fort is still under construction" };
     const levelDef = FORT_LEVELS[fort.level - 1];
     if (fort.stationedCmdUids.length >= levelDef.capacity) {
       return { ok: false, reason: `Fort full (max ${levelDef.capacity} at level ${fort.level})` };
