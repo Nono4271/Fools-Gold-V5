@@ -973,11 +973,21 @@ switch (eff.type) {
     rs.physDmgMultiPrioritise = { targets: eff.targets || 2, prioritise: eff.prioritise || "large" };
     break;
   // Warcroak mechanics
-  case "command_differential_bonus":
-    // PENDING OWNER DECISION: "Command" here is army command (troops × size cost), so sides differ by
-    // thousands and "+1 DEF/HP per Command" would make the army near-invulnerable. Stored, not applied.
-    rs.commandDifferentialBonus = { defPerCommand: eff.value ?? eff.defPerCommand ?? 1.0, hpPerCommand: eff.hpPerCommand || 1.0 };
-    break;
+  case "command_differential_bonus": {
+    // +N DEF and +N HP (flat, per unit) for every `commandStep` (4) Command more than the enemy.
+    // Command = troops × COMMAND_COST (57 command = 5,700 small troops), both sides alive this round.
+    // Owner example: 80 vs 55 command at max (N=7) → floor(25/4)=6 steps → +42 DEF / +42 HP.
+    const per = eff.value ?? eff.defPerCommand ?? 1.0;
+    const hpPer = (eff.hpPerCommand ?? 1.0) * (eff._lvlMul || 1);
+    rs.commandDifferentialBonus = { defPerCommand: per, hpPerCommand: hpPer };
+    if (ctx?.isCommander) {
+      const steps = Math.floor(Math.max(0, (ctx.atkCmdReal || 0) - (ctx.defCmdReal || 0)) / (eff.commandStep || 4));
+      if (steps > 0) {
+        rs.troopDefMult *= 1 + (steps * per) / armyAvg(ctx, null, "def", 20) + (steps * hpPer) / armyAvg(ctx, null, "hpPer", 25);
+        rs.commandDifferentialBonus.steps = steps;
+      }
+    }
+    break; }
   case "faction_dmg_bonus_conditional":
   { let v = eff.value || 0.01;
     if (enemyIs(ctx, eff.conditionalFaction)) v += (eff.conditionalBonus || 0.01) * (eff._lvlMul || 1);
@@ -3912,6 +3922,11 @@ applyCommanderSkillEffects(atkHeroSkills, round, rs, roundLog, cmd.n, {
   defAlignment: getFactionAlignment(primaryDefSlot?.branch?.faction ?? dc?.faction), ownFaction: cmd.faction,
   defHpPer: defTroopHpPer, defSlots: defSlotResolved, defTile, atkCmdSpd, cmdAtkStat, cmdFocStat, bleedRoundsActive,
   cs: cmdSkillState, venomTicking: prevRoundVenomDmg > 0, atkCommand, defCommand,
+  // Real Command (troops × COMMAND_COST) of what is still alive on each side this round
+  atkCmdReal: atkSlotResolved.reduce((t, sl, i) => t + Math.max(0, (atkSlotHp[i] || 0) / (sl.hpPer || 1)) * (COMMAND_COST[sl.branchDef?.size || "small"] || 0.01), 0),
+  defCmdReal: defSlotResolved.length
+    ? defSlotResolved.reduce((t, d, i) => t + Math.max(0, (defSlotHp[i] || 0) / (d.hpPer || 1)) * (COMMAND_COST[d.branchDef?.size || "small"] || 0.01), 0)
+    : (dc?.commandBudget || 0),
   defFactions: new Set([...defSlotResolved.map(d => d.branch?.faction), dc?.faction].filter(Boolean)),
   defRoles: new Set(defSlotResolved.map(d => d.branchDef?.role).filter(Boolean)),
   defSizes: new Set(defSlotResolved.map(d => d.branchDef?.size).filter(Boolean)),
