@@ -1438,6 +1438,55 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Ashen Dead fully implemented
+
+All 6 commanders (h55 Malgrath, h56 Varak, h57 Dreadmourne, h58 Veyra, h59 Mordwyn, h60 Cael) were checked against their descriptions. 44 handler types were rewritten for the per-unit commander path; the troop/legacy path is kept. Shared Coldborn types stay generic:
+- `heal_all_cleanse`, `passive_heal_per_round`, `dmg_resist_vs_alignment` ("all_coldborn" keeps the old army-wide reduce);
+- `physical_damage_frostbitten_slow`: the Coldborn version still needs Frostbite; the Ashen version slows for certain.
+
+**Life Drain (new, per unit):**
+- `drainUnits` marks enemy units in `cs.lifeDrain` (ti → last round).
+- In the heal step, the share of a side's healing that would go to its drained units (by missing HP) is lost, and 50% of it hits those units ("🩸 Life Drain — healing turned to damage").
+- Drain applications are counted per unit (`cs.drainApps`, for Death Touched) and per round (`cs.drainAppliedNow`, for The Eternal Knight).
+- `vsMult` matches `drained` units.
+
+**Other engine support:**
+- `vsTarget` entries with `foc: true` only apply to Focus damage (`vsMult(..., isFoc)`).
+- `addPoison` takes a fixed target `ti`.
+- `prioRank` supports "highestHp".
+- `cmdNormalUsesFoc`: Death Knell max makes the commander's normal attacks deal Focus damage.
+- `normalHitsAll`: Cael's Rampage, the normal attack hits every unit.
+- `cs.normalAttacks`: The Haunting.
+- `buffBlockUnits`: Bone Crusher strips that unit's per-unit buffs for 2 rounds.
+- `cleanseUnits`: Ethereal Mending / Winter's Warmth remove N debuffs from each allied unit (stun/confuse/blind/burn/min-dmg/DEF-down/slow/DoT/Life Drain).
+
+**Notable fixes:**
+- Almost every active used `cmdMult`/`focusDmgBonus` and army-wide statuses. They are now per-unit hits with per-unit Burn/Poison/Slow/Confusion/Life Drain. Covers:
+  - Malgrath: Eternal Gaze, Malgrath's Curse (highest HP, DEF -5 permanent), Necrotic Touch, Plague.
+  - Varak: Dread Surge (3 hits on every unit), Death Knell.
+  - Veyra: Poison Touch / Grave Poison, Revenant's Fury / Hollow Barrage (Coldborn bonus), Veyra's Hunt.
+  - Cael: Burning Charge, Risen Fury, Poison Sweep, Cael's Rampage (Large bonus), Death from Below.
+  - Dreadmourne: Bone Splitter / Hollow Strike / Slow Strike / Hollow Assault.
+- Varak's Verdict applied Confusion instead of Silence, and its max FOC was lost (handler-owned key); both fixed.
+- Iron Decree (and every `dmg_resist_vs_alignment`) was an empty case that fell through to the next one. It is now damage FROM Human/Creature units -X%.
+- Flat commander stats (Death's Patience, Resolve, Cael's Fury, Dominion) were applied as % or not at all.
+- Branch buffs now affect only their branches:
+  - Iron Dominion, Vanguard, Rite, Tomb's Blessing;
+  - Undead Resilience, Mordwyn's Command, Ancient Power, Death Knight's Honor.
+- Dead Man's Weight: all enemy units SPD -N for 3 rounds + per-unit Confusion. It used to add a flat +5% damage taken.
+- Stacks now persist:
+  - The Haunting: ATK per round attacked.
+  - Relentless Dead: ATK per round an enemy is slowed.
+  - Death Touched: DEF -1.5 per drain on that unit.
+- Dead Weight, Rotting Armor, Rotting Flesh and Veyra's Hunt max apply DEF-down to the slowed/poisoned units only.
+
+**Coverage:** every Ashen Dead skill changes combat in leave-one-out. In single-skill isolation, the conditional ones (drained/poisoned/slowed enemies, Focus-only) need their partner skills, as intended.
+
+**Checks:**
+- Whole game: 470/576 in single-skill isolation; Dark Presence now only boosts Focus damage.
+- PvP mirror 91/180. PvE unchanged.
+- Tests: 3 new. `npm test` 469/469, build OK.
+
 ## 2026-09-23 — Claude — Wizards fully implemented + mixed-army loss fix
 
 All 6 commanders (h5 Vex, h6 Mira, h17 Dov, h18 Oren, h29 Theon, h30 Ryn) were checked against their descriptions. The Wizard skill set is `BOUNTYHUNTERS_SKILLS` in `wizards_skills.js`. 38 handler types were rewritten for the per-unit commander path; the troop/legacy path is kept. Shared types (`cmd_foc_passive`, `army_evasion_per_round_chance`, `enemy_status_def_down` incl. frostbite, `cmd_focus_dmg_bonus`, `multi_hit_random_atk_stack`) stay generic for Coldborns/Ashen Dead.
