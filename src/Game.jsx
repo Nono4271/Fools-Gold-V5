@@ -14,7 +14,7 @@ import {
 } from "../shared/utils/crewStructures.js";
 import { HQP, POWER_DEFS, hqSiegeValue, FORT_LEVELS } from "../shared/constants/map.js";
 import { FACTION_TROOPS } from "../shared/constants/troops.js";
-import { barracksCapacity, upgCost, upgDuration, maxAvailLevel, tierFromBranchLevel, upgCostQuarter, upgDurationQuarter, upgCostBranch, upgDurationBranch } from "../shared/constants/buildings.js";
+import { STARTING_TROOPS, upgCost, upgDuration, maxAvailLevel, tierFromBranchLevel, upgCostQuarter, upgDurationQuarter, upgCostBranch, upgDurationBranch } from "../shared/constants/buildings.js";
 import { isoXY } from "../shared/constants/geometry.js";
 
 // Utils
@@ -303,7 +303,7 @@ export default function RiseToWar() {
   // from tickAiRss. setAiRss now writes directly to the ref; a no-op state shim
   // is kept so FactionScreen/WinScreen callers compile without changes.
   const [aiBldgs,        setAiBldgs]        = useState({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 });
-  const [aiBarracksPool, setAiBarracksPool] = useState(barracksCapacity(0));
+  const [aiBarracksPool, setAiBarracksPool] = useState(STARTING_TROOPS);
   const aiLastActionRef = useRef(0);
   const [aiHqKeys, setAiHqKeys] = useState({});
 
@@ -315,7 +315,7 @@ export default function RiseToWar() {
     aiRssRef.current = typeof updater === "function" ? updater(aiRssRef.current) : updater;
   }, []);
   const aiBldgsRef = useRef({ hq:1, quarry:0, lumber:0, forge:0, refinery:0, barracks:0, training:0, commandcenter:0, healingtent:0, walls:0 });
-  const aiPoolRef  = useRef(barracksCapacity(0));
+  const aiPoolRef  = useRef(STARTING_TROOPS);
 
   useEffect(() => { aiBldgsRef.current = aiBldgs;        }, [aiBldgs]);
   useEffect(() => { aiPoolRef.current  = aiBarracksPool; }, [aiBarracksPool]);
@@ -346,7 +346,7 @@ export default function RiseToWar() {
     aiBldgsMapRef.current.set(fk, typeof updater === "function" ? updater(cur) : updater);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const setAiPoolMap = useCallback((fk, updater) => {
-    const cur = aiPoolMapRef.current.get(fk) ?? barracksCapacity(0);
+    const cur = aiPoolMapRef.current.get(fk) ?? STARTING_TROOPS;
     aiPoolMapRef.current.set(fk, typeof updater === "function" ? updater(cur) : updater);
   }, []);
   useEffect(() => { playerHqRef.current = playerHqKey;   }, [playerHqKey]);
@@ -376,7 +376,7 @@ export default function RiseToWar() {
 
   // troopCounts: { "faction:branch:tier" => number }
   // 54 independent pools — one per distinct troop type (e.g. "pirates:swashbucklers:0" = Deckhands)
-  // Total of all values must not exceed barracksCapacity(bldgs.barracks)
+  // Total of all values must not exceed barracksCommandCapacity(bldgs.barracks), counted in commands (shared/utils/barracks.js)
 
   // Convenience: total troops across all pools (for capacity checks)
   const barracksPool = Object.values(troopCounts).reduce((s, n) => s + (n || 0), 0);
