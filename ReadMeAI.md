@@ -1438,6 +1438,11 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Commander screen march box removed; P10+ protection covers the whole tile
+
+- **CommanderScreen:** removed the "Attacking / Marching · ~Ns → dest" box (both layouts). Owner: not needed, and it pushed the skill trees down.
+- **MapRenderer protection layer:** P10+ tiles are drawn at 2x size (2x2 cells), but the capture-protection glow and 🛡 badge were drawn on the primary cell only. They now use `resourceFootprint` (same shape as the selection outline) and centre the badge on it.
+
 ## 2026-09-23 — Claude — Audit + timed Quarter/Branch upgrades + admin "Max all"
 
 **Timed quarters and branches (owner spec):**
