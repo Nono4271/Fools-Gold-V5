@@ -276,7 +276,7 @@ color: ok ? P.gold : "#2a2a2a", borderRadius:4 }}>
 );
 }
 
-function BuildingDetail({ bKey, bldgs, rss, canAfford, upgrade, upgQueue }) {
+function BuildingDetail({ bKey, bldgs, rss, canAfford, upgrade, upgQueue, quarterLevel }) {
 const def   = BLDG[bKey]; if (!def) return null;
 const lvl   = bldgs[bKey]||0;
 const avail = maxAvailLevel(bKey, bldgs.hq||1);
@@ -292,7 +292,7 @@ if (!isAbsMax && !isGated) {
       barracks: bldgs.barracks||0,
       training: bldgs.training||0,
       commandcenter: bldgs.commandcenter||0,
-      q1Lvl: bldgs.quarters?.[0]||0,
+      q1Lvl: quarterLevel ?? 1, // player's own faction quarter (bldgs.quarters never existed)
     });
   } else if (bKey === "barracks") {
     reverseBlocker = barracksUpgradeBlocker(targetLvl, { training: bldgs.training||0 });
@@ -1066,7 +1066,7 @@ return (
           ← All Buildings
         </button>
         <BuildingDetail bKey={selBuilding} bldgs={bldgs} rss={rss}
-          canAfford={canAfford} upgrade={upgrade} upgQueue={upgQueue} />
+          canAfford={canAfford} upgrade={upgrade} upgQueue={upgQueue} quarterLevel={quarterLevels?.[primaryFaction]} />
       </div>
     )}
 
@@ -1880,8 +1880,18 @@ function ManageShipScreen({
   const slCmdCost   = COMMAND_COST[activeBrDef?.size] ?? 1;
   const maxByCmd    = Math.floor(Math.max(0, commandCap - otherCmdUsed) / slCmdCost);
   const activePool  = activeBKey ? ((troopCounts || {})[activeBKey] || 0) : 0;
-  const activeAvail = activePool - inOtherSlots(activeBKey);
-  const maxSlider   = Math.min(maxByCmd, activeAvail + (activeSlotData?.troops ?? 0));
+  // Troops of this type the commander ALREADY holds (they left the barracks
+  // pool when assigned) — they're available to the draft too.
+  const committedTroops = (bk) => (cmd.troopSlots || []).reduce((s, sl) => {
+    const k = sl?.branch ? `${sl.branch.faction}:${sl.branch.branch}:${sl.branch.tier ?? 0}` : null;
+    return k === bk ? s + (sl.troops || 0) : s;
+  }, 0);
+  // Max for the active slot = barracks pool + already-held − what the other
+  // draft slots use. (Used to add the active slot's own DRAFT value, so every
+  // drag raised the cap — the slider could go past the troops you had.)
+  const activeMax   = activeBKey ? Math.max(0, activePool + committedTroops(activeBKey) - inOtherSlots(activeBKey)) : 0;
+  const maxSlider   = Math.min(maxByCmd, activeMax);
+  const activeAvail = Math.max(0, activeMax - (activeSlotData?.troops ?? 0)); // shown as "Pool" (still unassigned)
 
   // Sync slider when active slot changes
   useEffect(() => {
