@@ -16,7 +16,7 @@ function validateName(s) {
 import { CSS } from "../../constants/css.js";
 import { ALIGNMENT, PLAYABLE_FACTIONS, getFactionAlignment } from "../../../shared/constants/factions.js";
 import { HDEFS, SC, SS } from "../../../shared/constants/heroes.js";
-import { barracksCapacity, BRANCH_UNLOCK_Q, tierFromBranchLevel } from "../../../shared/constants/buildings.js";
+import { STARTING_TROOPS, BRANCH_UNLOCK_Q, tierFromBranchLevel } from "../../../shared/constants/buildings.js";
 import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 import { factionBonus } from "../../../shared/constants/factionBonuses.js";
 
@@ -152,7 +152,7 @@ export default function FactionScreen({
     // setFacName(f.n); // Don't overwrite player name
     setAiRss({stone:300,wood:300,gas: 300,food: 300});
     setAiBldgs({hq:1,quarry:0,lumber:0,forge:0,refinery:0,barracks:0,training:0,commandcenter:0,healingtent:0,walls:0});
-    setAiBarracksPool(barracksCapacity(0));
+    setAiBarracksPool(STARTING_TROOPS);
     aiLastActionRef.current = 0;
     setCmds([...startCmds, ...allAiCmds]);
     setColl([
@@ -167,11 +167,11 @@ export default function FactionScreen({
     // Quarters screen happened to be opened and unlocked it.
     if (setBldgs) setBldgs(b => ({ ...b, ...startingBldgPatch }));
     // Seed starting troop pool: first branch of the chosen faction at tier 0
-    // barracksCapacity(0) = 2000, which is the starting pool size at barracks level 0
+    // STARTING_TROOPS = 2000, which is the starting pool size at barracks level 0
     if (setTroopCounts && fDef && fDef.branches.length > 0) {
       const firstBranch = fDef.branches[0];
       const startKey = `${f.key}:${firstBranch.key}:0`;
-      setTroopCounts({ [startKey]: barracksCapacity(0) });
+      setTroopCounts({ [startKey]: STARTING_TROOPS });
     }
     setScreen("game");
   }
