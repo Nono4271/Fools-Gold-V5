@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { unstable_batchedUpdates } from "react-dom";
 import { clearHQCache } from "../MapRenderer";
 import { isoXY } from "../../shared/constants/geometry.js";
-import { barracksCapacity } from "../../shared/constants/buildings.js";
+import { STARTING_TROOPS } from "../../shared/constants/buildings.js";
 import { setImpassableTiles } from "../../shared/utils/pathfinding.js";
 import {
   ALL_FACTIONS, decodeBuffers, createTileMap, stampPlayerHq, aiHqKeysByFaction, aiPlayerId,
@@ -73,7 +73,7 @@ export function useMapInit({
       for (const aiFk of Object.keys(newAiHqKeys)) {
         aiRssMapRef.current.set(aiFk, { stone:5000, wood:5000, gas:5000, food:5000 });
         aiBldgsMapRef.current.set(aiFk, { ...INIT_AI_BLDGS });
-        aiPoolMapRef.current.set(aiFk, barracksCapacity(0));
+        aiPoolMapRef.current.set(aiFk, STARTING_TROOPS);
         aiTileKeysMapRef.current.set(aiFk, new Set(factionTileKeys?.[aiFk] || []));
       }
 

@@ -1,8 +1,8 @@
 import { useCallback, useEffect } from "react";
 import { HQP } from "../../shared/constants/map.js";
-import { barracksCapacity, cmdCommand } from "../../shared/constants/buildings.js";
+import { barracksCommandCapacity, cmdCommand } from "../../shared/constants/buildings.js";
 import { effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
-import { returnToBarracks, reinforcementSourceKey, reinforcementAborted, stepReinforcement, mergeReinforcement } from "../../shared/utils/reinforcements.js";
+import { returnToBarracksCmds as returnToBarracks, reinforcementSourceKey, reinforcementAborted, stepReinforcement, mergeReinforcement } from "../../shared/utils/reinforcements.js";
 
 // Reinforcement marches: send barracks troops to a field commander.
 // Rules live in shared/utils/reinforcements.js.
@@ -17,7 +17,7 @@ export function useReinforcements({
       const now = Date.now();
       // Read every tick so a relocated HQ is used (was fixed at effect start).
       const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
-      const barracksCap = barracksCapacity(bldgs.barracks || 0);
+      const barracksCap = barracksCommandCapacity(bldgs.barracks || 0);
       setReinMarches(prev => {
         if (!prev.length) return prev;
         const next = [];
