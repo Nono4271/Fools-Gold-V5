@@ -234,16 +234,33 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
   }, []);
 
   // ── Complete build/upgrade when timer expires ────────────────────────────────
+  // When a fort finishes BUILDING it comes online and auto-stations the
+  // player's commanders standing on its tile (up to capacity).
+  const cmdsLatestRef = useRef(cmds);
+  cmdsLatestRef.current = cmds;
   useEffect(() => {
     const id = setInterval(() => {
       const now = Date.now();
+      const stationNow = {}; // fortId -> [uid]
+      for (const f of fortsRef.current) {
+        if (!(f.isBuilding && f.completesAt && now >= f.completesAt)) continue;
+        const cap = FORT_LEVELS[(f.level || 1) - 1]?.capacity ?? 2;
+        const free = Math.max(0, cap - (f.stationedCmdUids?.length || 0));
+        const uids = (cmdsLatestRef.current || [])
+          .filter(c => c.owner === "player" && c.tk === f.tileKey && !c.march && !c.stationedFortId && !c.stationedWellId)
+          .slice(0, free).map(c => c.uid);
+        if (uids.length) stationNow[f.id] = uids;
+      }
+      const stationed = new Map(Object.entries(stationNow).flatMap(([fid, uids]) => uids.map(u => [u, fid])));
+      if (stationed.size) setCmds(prev => prev.map(c => stationed.has(c.uid) ? { ...c, stationedFortId: stationed.get(c.uid), stranded: false } : c));
       setForts(prev => {
         let changed = false;
         const next = prev.map(f => {
           if (f.completesAt && now >= f.completesAt) {
             changed = true;
             if (f.isBuilding) {
-              return { ...f, isBuilding: false, completesAt: null };
+              const add = (stationNow[f.id] || []).filter(u => !f.stationedCmdUids.includes(u));
+              return { ...f, isBuilding: false, completesAt: null, stationedCmdUids: [...f.stationedCmdUids, ...add] };
             }
             if (f.isUpgrading && f.pendingLevel) {
               const levelDef = FORT_LEVELS[f.pendingLevel - 1];
@@ -262,9 +279,9 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
         });
         return changed ? next : prev;
       });
-    }, 5000);
+    }, 2000);
     return () => clearInterval(id);
-  }, []);
+  }, [setCmds]);
 
   return {
     forts,
