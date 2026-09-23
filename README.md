@@ -1,13 +1,15 @@
-# skills-engine-20260923
+# orcs-skills-20260923
 
-Copy each file to the same path in the repo (branch codex/core-fixes-20260919).
+Copy each file to the same path in the repo (branch codex/core-fixes-20260919). Includes everything from skills-engine-20260923 (battle.js, skills.js, test file are newer versions of those).
 
-| File | Change |
+| File | Change vs last zip (skills-engine-20260923) |
 |---|---|
-| shared/utils/battle.js | Commander skills (effect-type format) now run in combat: level scaling, max-level bonuses. Flat DEF-down points fixed. Captain's Honor uses the scaled value. |
-| shared/constants/skills.js | Battle/passives now read `cmd.skillPoints` (where spent points are actually saved). Max-level march speed bonus. |
-| shared/constants/pirates_skills.js | REPLACED with your new pirate set. Renamed pir_protect_the_weak / pir_cleanse / pir_many_trades. Treasure Hunter live. Captain's Honor 4%→20%. |
-| tests/commanderSkills.test.js | NEW |
-| ReadMeAI.md | Changelog entry |
+| shared/utils/battle.js | All orc skill mechanics; persistent skill state; overwrite/heal-block/burn bug fixes |
+| shared/constants/skills.js | Siege-per-troop skill bonus (`skillSiegeBonus`) |
+| shared/constants/orcs_skills.js | NEW in zips — Lifeline of the Tribe max key → orcCombatSpd |
+| src/hooks/useMarch.js | NEW in zips — siege power includes Orc Explosives |
+| src/hooks/useFortressSiege.js | NEW in zips — same for fortress sieges |
+| tests/commanderSkills.test.js | +5 orc tests |
+| ReadMeAI.md | Changelog |
 
-Tests 427/427, build OK.
+Tests 432/432, build OK.

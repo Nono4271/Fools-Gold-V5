@@ -1438,6 +1438,52 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Commander skills Phase 2: Orcs fully implemented
+
+All 6 orc commanders (h9 Grimtusk, h10 Ashgrip/Groth, h21 Warcroak, h22 Grix, h33 Korgath, h34 Bruk), 71 unique skills, were checked against their descriptions and implemented in `shared/utils/battle.js`. Tested leave-one-out: full kit maxed, each skill removed in turn, 4 army mixes × 4 enemy factions × 2 seeds.
+
+**Engine additions:**
+- Persistent per-battle commander state (`newCommanderSkillState`, `ctx.cs`). It carries timed buffs, multi-round poison, stacks and self-debuffs across rounds; `rs` is rebuilt every round.
+- Actives now resolve before passives, so "vs stunned / bleeding / poisoned" passives see this round's statuses.
+- "Skill damage +X%" (Grim's Focus, Human Scum, Retaliation, first-skill max bonus) now scales that round's active-skill damage.
+- Helpers:
+  - `armyShare`/`armyAvg`/`armyAll`: branch/faction/"mounted"-role bonuses scale by the share of the army they cover, and flat +N DEF/HP become multipliers from real unit stats;
+  - `enemyIs`: faction or alignment conditions;
+  - `applyBurn` (enemy DMG −X% this round, new `rs.enemyBurnPenalty`);
+  - `addPoison` (multi-round DoT);
+  - `setBuff`;
+  - `debuffCommander` (Can't Stop Me cleanse + Retaliation trigger).
+- New consumers:
+  - `rs.atkEvadeNextHit` (next enemy hit can be evaded);
+  - `rs.enemyBurnPenalty` (defender cmd + slot damage);
+  - `rs.enemyHealBlocked`. Commander heal-block used to set `rs.blockHeal`, which blocked the *attacker's own* heals.
+- "mounted" group = `branchDef.role === "mounted"` (adds inquisitors and werewolves).
+
+**Bugs fixed in shared handlers (also help other factions using the same types):**
+- `physical_damage_followup`, `physical_damage_self_debuff`, `physical_damage_large_bonus` did `rs.cmdMult = 0.27 / 1.0 / 0.30`. That overwrote commander damage instead of adding to it.
+- `physical_damage_bleed` had no damage component.
+- `burn_damage_apply` also added `enemyAtkReduce`, which is subtracted from *our* damage.
+- `dual_poison_dot_def_down` set `bleedRoundsLeft`.
+- Flat "+N DEF" skills (Iron Dense, Lead the Charge) were applied as N%.
+- Faction/size-conditional skills applied against every enemy.
+- Removed 2 dead duplicate `case` labels (`dmg_bonus_vs_size`, `physical_damage_heal_block`). 24 other duplicate labels + 2 unreachable blocks remain in other factions' sections. One is pirate `debuff_chance_reduction`, whose `case` label is missing.
+
+**Data:** `war_lifeline_of_tribe` max key `werewolfCombatSpd` → `orcCombatSpd` (owner: "should be orcs").
+
+**Non-combat:** Orc Explosives / `army_siege_bonus` → `getPassiveBonuses().siegePerTroop`. `skillSiegeBonus(cmd, troops)` is added to the siege bonus in `useMarch` (incl. `attackerComposition`, so the server recomputes the same number) and `useFortressSiege`. Interpreted as +N siege **per troop**.
+
+**Still not active (by design / pending):**
+- War Leader's Plans (`command_differential_bonus`) is **disabled pending owner decision**. "Command" in the engine is army command (troops × size cost), so sides differ by thousands.
+- Retaliation and Can't Stop Me only trigger on debuffs to our own commander. Grimtusk has no self-debuff and enemy commander skills don't run yet.
+- Focus Fire (Coordinated Assault) has no extra effect in the pooled-HP model; its damage works.
+- Stun/confusion/madness immunities have no enemy source yet.
+
+**Balance flags (data, not changed):** linear `base + perLevel×(lvl−1)` reaches ×15 at main-skill max. Examples: Final Lunge 1500%, Frontline Medic heal 750%, Calculated Strike 1500%, Iron Dense DEF +60, Friends with Shaman heal ~200%.
+
+**Other finding:** `mal_double_tap` exists in both nightcreatures and dragons with DIFFERENT definitions; the dragons one wins in `ALL_SKILLS`.
+
+Tests: 5 new orc tests in `tests/commanderSkills.test.js`. `npm test` 432/432, build OK.
+
 ## 2026-09-23 — Claude — Commander skills now apply in combat (Phase 1) + new pirate skill set
 
 **Audit findings (before this change):**
