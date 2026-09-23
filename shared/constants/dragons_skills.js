@@ -891,7 +891,7 @@ export const SHARED_DRAGON_SKILLS = {
     faction: "dragons", commander: "h36",
     type: "passive",
     desc: "[Commander] Normal Attacks deal additional 3% Focus Damage. (Passive)",
-    effect: { type: "cmd_normal_atk_bonus_focus", value: 0.03 },
+    effect: { type: "focus_damage", value: 0.03 }, // same handler as the Night Creatures original (was a different type → NC skill got overridden)
     base: 0.03, perLevel: 0.03,
     nextDesc: (lvl) => `Normal Attacks +${Math.round((0.03+lvl*0.03)*100)}% extra Focus DMG (permanent)`,
   },
