@@ -11,16 +11,19 @@ export default memo(function FortPanel({
   // only refreshes the on-screen countdown.
   const deleteMode = fort?.removal?.mode ?? null; // null | "demolish" | "abandon"
   const endsAt = fort?.removal?.endsAt ?? 0;
+  const busyUntil = fort?.completesAt && (fort.isBuilding || fort.isUpgrading) ? fort.completesAt : 0;
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!endsAt) return;
+    if (!endsAt && !busyUntil) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 1000);
     const onVisible = () => { if (document.visibilityState === "visible") setNow(Date.now()); };
     document.addEventListener("visibilitychange", onVisible);
     return () => { clearInterval(id); document.removeEventListener("visibilitychange", onVisible); };
-  }, [endsAt]);
+  }, [endsAt, busyUntil]);
   const countdown = endsAt ? secsUntil(endsAt, now) : 0;
+  const busySecs = busyUntil ? secsUntil(busyUntil, now) : 0;
+  const fmtHMS = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return `${h ? `${h}:${String(m).padStart(2, "0")}` : m}:${String(s % 60).padStart(2, "0")}`; };
   const startDelete = (mode) => startFortRemoval?.(fort.id, mode);
   const cancelDelete = () => cancelFortRemoval?.(fort.id);
 
@@ -76,6 +79,14 @@ export default memo(function FortPanel({
         ))}
       </div>
 
+      {/* Build / upgrade in progress (timer lives on the fort: completesAt) */}
+      {busyUntil > 0 && (
+        <div style={{ marginBottom: 8, padding: "6px 8px", borderRadius: 5, background: "rgba(240,192,64,.08)", border: "1px solid rgba(240,192,64,.3)",
+          fontFamily: "'Cinzel',serif", fontSize: 9, color: "#f0c040", textAlign: "center" }}>
+          {fort.isBuilding ? "🏗 UNDER CONSTRUCTION" : `⬆ UPGRADING TO LV${fort.pendingLevel}`} · {fmtHMS(busySecs)} left
+        </div>
+      )}
+
       {/* Fort siege bar */}
       <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
@@ -92,7 +103,7 @@ export default memo(function FortPanel({
       {/* Upgrade + Move — primary action row at bottom */}
       {selTile?.owner === "player" && (<>
         <div style={{ display: "flex", gap: 5 }}>
-          {nextDef && (
+          {nextDef && !busyUntil && (
             <button onClick={() => upgradeFort?.(fort.id)} style={{
               flex: 1, padding: "8px 0",
               background: "linear-gradient(135deg,rgba(60,80,20,.5),rgba(40,60,10,.3))",
