@@ -5,6 +5,7 @@ import { skillFiresOnRound, getActiveSkills, getPassiveBonuses } from "../consta
 import { npcForPowerLevel, factionDefCmdForTile, FACTION_BRANCHES_EXPORT } from "../constants/heroes.js";
 import { resolveNeutralUnit, getNeutralTierSkills } from "../constants/neutralTroops.js";
 import { ANCIENT_FACTIONS } from "../constants/ancientTroops.js";
+import { NEUTRAL_FACTIONS } from "../constants/neutralTroops.js";
 import { factionBonusValue } from "../constants/factionBonuses.js";
 
 // ── Normalize a commander to troopSlots array (backward compat) ──────────────
@@ -23,7 +24,7 @@ function totalSlotTroops(slots) {
 function resolveBranch(troopBranch) {
 if (!troopBranch) return null;
 const { faction, branch, tier = 0 } = troopBranch;
-const f = FACTION_TROOPS[faction] || ANCIENT_FACTIONS[faction];
+const f = FACTION_TROOPS[faction] || ANCIENT_FACTIONS[faction] || NEUTRAL_FACTIONS[faction];
 if (!f) return null;
 const b = f.branches.find(b => b.key === branch);
 if (!b) return null;
@@ -34,7 +35,7 @@ return { branchDef: b, tierData: b.tiers[tier] ?? null };
 function getTierSkillsForBattle(troopBranch) {
 if (!troopBranch) return [];
 const { faction, branch, tier = 0 } = troopBranch;
-const f = FACTION_TROOPS[faction] || ANCIENT_FACTIONS[faction];
+const f = FACTION_TROOPS[faction] || ANCIENT_FACTIONS[faction] || NEUTRAL_FACTIONS[faction];
 if (!f) return [];
 const b = f.branches.find(b => b.key === branch);
 if (!b) return [];
@@ -72,7 +73,7 @@ export function getNeutralSlotForBattle(neutralKey, troops) {
 function hasTroopImmunity(troopBranch, immuneType) {
 if (!troopBranch) return false;
 const { faction, branch, tier = 0 } = troopBranch;
-const f = FACTION_TROOPS[faction];
+const f = FACTION_TROOPS[faction] || ANCIENT_FACTIONS[faction] || NEUTRAL_FACTIONS[faction];
 if (!f) return false;
 const b = f.branches.find(b => b.key === branch);
 if (!b) return false;
@@ -3038,10 +3039,22 @@ const passives      = getPassiveBonuses(cmd);
 const atkHeroSkills = getActiveSkills(cmd);
 const durationBuffs = new Map();
 
-// Faction "+N% Damage in PvE Battles" bonus (e.g. wizards) — only applies when
-// the defender is a neutral/AI-controlled tile, never against another player.
+// PvE damage bonuses. `cmd.crewPveDmgMult` / `cmd.crewSpawnDmgMult` ride
+// along on the commander object the same way `cmd.faction` does (set on
+// boostedCmd in useMarch.js / useTactics.js) since simBattle has no other way
+// to see crew state.
+//   - Faction "+N% Damage in PvE Battles" (e.g. wizards): any non-player
+//     fight — neutral/AI tiles AND Spawn sweeps.
+//   - Crew "PvE" perk: neutral/AI TILES only.
+//   - Crew "Spawn Sweeper" perk: Spawn armies only (generateSpawnCommander()
+//     sets `isSpawn: true`; onSweep's synthetic defTile carries it too).
+// Never applies against another player.
 const isPveBattle   = defTile?.owner === "neutral" || defTile?.owner === "ai";
-const facPveDmgMult = isPveBattle ? (1 + factionBonusValue(cmd.faction, "pveDmg")) : 1;
+const isSpawnFight  = !!(dc?.isSpawn || defTile?.isSpawn);
+const facPveDmgMult = (isPveBattle || isSpawnFight)
+  ? (1 + factionBonusValue(cmd.faction, "pveDmg") + (isPveBattle ? (cmd.crewPveDmgMult || 0) : 0))
+  : 1;
+const facSpawnDmgMult = isSpawnFight ? (1 + (cmd.crewSpawnDmgMult || 0)) : 1;
 
 const atkLvl    = cmd.lvl || 5;
 const defLvl    = dc ? dc.lvl  : 2;
@@ -3201,12 +3214,12 @@ const bastionDefMult = (bastionActive && round <= 2) ? 2 : 1;
 
 // Build round state
 const rs = {
-  cmdMult:facPveDmgMult, cmdHits:1, critChance:passives.critChance,
+  cmdMult:facPveDmgMult * facSpawnDmgMult, cmdHits:1, critChance:passives.critChance,
   cmdPctDmg:0, lifesteal:0, healPct:passives.healPerRound,
   skillHealCoeff:0,          // coefficient for skill heals (subject to decay cap)
   recoveryModSum:0,          // sum of recovery modifiers for skill heals
   blockHeal:0, enemyNullified:false,
-  troopAtkMult:passives.troopAtkMult * facPveDmgMult, troopDefMult:passives.troopDefMult,
+  troopAtkMult:passives.troopAtkMult * facPveDmgMult * facSpawnDmgMult, troopDefMult:passives.troopDefMult,
   dmgReduce:passives.dmgReduce, troopDmgReduce:0,
   enemyAtkReduce:passives.enemyAtkReduce, enemyDmgReduce:0, enemyMissChance:0,
   garrisonIgnore:passives.garrisonIgnore,

@@ -1,4 +1,6 @@
 import {FACTION_TROOPS} from '../constants/troops.js';
+import {ANCIENT_FACTIONS} from '../constants/ancientTroops.js';
+import {NEUTRAL_FACTIONS} from '../constants/neutralTroops.js';
 import {CMD_SIZE} from '../constants/buildings.js';
 const FACTION_TUNING = {
   pirates:[1.10,.90,1],wizards:[.75,1.20,1.04],orcs:[1.20,.80,.96],dragons:[.80,1.20,1.05],
@@ -23,7 +25,7 @@ export function capstoneTrainDiscount(branchLevel) {
 export function trainingQuote(branchKey,amount,speedMult=1,costTimeDiscount=0,costMult=1) {
   if(typeof branchKey !== 'string') return null;
   const [faction,key,tierText,...extra] = branchKey.split(':');
-  const tier = Number(tierText), branches = FACTION_TROOPS[faction]?.branches;
+  const tier = Number(tierText), branches = (FACTION_TROOPS[faction] || ANCIENT_FACTIONS[faction] || NEUTRAL_FACTIONS[faction])?.branches;
   const index = branches?.findIndex(branch => branch.key === key) ?? -1;
   const branch = branches?.[index];
   if(extra.length || tierText === '' || !Number.isInteger(tier) || tier<0 || tier>2 || !branch?.tiers[tier]) return null;
@@ -33,9 +35,11 @@ export function trainingQuote(branchKey,amount,speedMult=1,costTimeDiscount=0,co
   const variation = [.97,1,1.03][index] ?? 1, sizeCost=SIZE_COST[branch.size];
   const discMult = branch.capstone ? 1-Math.min(0.5,Math.max(0,costTimeDiscount)) : 1;
   const realCostMult = discMult * (Number.isFinite(costMult) ? costMult : 1);
-  const base=branch.capstone ? CAPSTONE_BASE_COST : BASE_COST[tier];
+  // Neutral units (singleTier) price by their own T1/T2/T3 bracket, not the branch-tier index.
+  const costTier = branch.costTier ?? tier;
+  const base=branch.capstone ? CAPSTONE_BASE_COST : BASE_COST[costTier];
   const perCommandCost={stone:0,wood:round10(base[0]*wood*variation*sizeCost*realCostMult),gas:round10(base[1]*gas/variation*sizeCost*realCostMult),food:round10(base[2]*variation*sizeCost*realCostMult)};
-  const baseMinutes = branch.capstone ? CAPSTONE_BASE_MINUTES : SMALL_MINUTES[tier];
+  const baseMinutes = branch.capstone ? CAPSTONE_BASE_MINUTES : SMALL_MINUTES[costTier];
   const baseSeconds=Math.round((baseMinutes+SIZE_MINUTES[branch.size])*time*variation*60*discMult);
   const commandMs=Math.round(baseSeconds*1000/Math.max(1,Number.isFinite(speedMult)?speedMult:1));
   const commands=amount/commandSize;

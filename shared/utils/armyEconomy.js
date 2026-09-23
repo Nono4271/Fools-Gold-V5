@@ -6,7 +6,7 @@ export const healingFoodCost = amount => Math.ceil(amount*.2);
 // healSpeedMult >1 heals faster (e.g. 1.111 for the faction "-10% healing
 // time" bonus — reducing TIME by 10% means the RATE goes up by 1/0.9).
 export const healingRate = (buildings,healSpeedMult=1) => Math.max(1,Math.floor(trainRate(buildings.training||0)*.4*(Number.isFinite(healSpeedMult)?healSpeedMult:1)));
-export const initialArmyEconomy = () => ({rss:{stone:200000,wood:200000,gas:200000,food:200000},troopCounts:{},woundedByBranch:{},trainingQueues:[],healQueue:[],autoHeal:false});
+export const initialArmyEconomy = () => ({rss:{stone:200000,wood:200000,gas:200000,food:200000},troopCounts:{},woundedByBranch:{},trainingQueues:[],healQueue:[],autoHeal:false,contractDaily:{day:null,commands:0}});
 export function splitTroops(slots,amount) {
   const valid=slots.filter(sl=>sl.branch&&sl.troops>0);
   const total=valid.reduce((s,sl)=>s+sl.troops,0);
@@ -60,8 +60,15 @@ export function armyEconomyReducer(state,action) {
       const [f,key,tier]=action.branchKey.split(':');
       const reserved=state.trainingQueues.reduce((s,q)=>s+q.remaining,0);
       if(Number(tier)>(action.unlocked[`${f}:${key}`]??-1)||action.amount>maxTrainBatch(b.training||0)||state.trainingQueues.length>=trainingQueueCount(b.training||0)||troopTotal(state.troopCounts)+reserved+action.amount>barracksCapacity(b.barracks||0)||Object.entries(quote.cost).some(([key,n])=>!Number.isFinite(state.rss[key])||state.rss[key]<n)) return state;
+      // Contract Outpost daily cap (shared/utils/crewStructures.js): action.dailyLimit = { day, limit } only for Outpost-sourced units.
+      let contractDaily=state.contractDaily;
+      if(action.dailyLimit){
+        const cd=state.contractDaily||{},used=cd.day===action.dailyLimit.day?(cd.commands||0):0;
+        if(used+quote.commands>action.dailyLimit.limit) return state;
+        contractDaily={day:action.dailyLimit.day,commands:used+quote.commands};
+      }
       const rss={...state.rss};for(const [key,n] of Object.entries(quote.cost))rss[key]-=n;
-      return {...state,rss,trainingQueues:[...state.trainingQueues,{id:action.id,branchKey:action.branchKey,remaining:action.amount,total:action.amount,commandSize:quote.commandSize,commandMs:quote.commandMs,nextAt:action.now+quote.commandMs}]};
+      return {...state,rss,contractDaily,trainingQueues:[...state.trainingQueues,{id:action.id,branchKey:action.branchKey,remaining:action.amount,total:action.amount,commandSize:quote.commandSize,commandMs:quote.commandMs,nextAt:action.now+quote.commandMs}]};
     }
     case 'heal': return startHealing(state,action.amount,action.buildings,action.now,action.id,action.healSpeedMult);
     case 'healSpeedup': return action.duration>0?{...state,healQueue:state.healQueue.map(q=>q.id===action.id?{...q,creditMs:q.creditMs+action.duration}:q)}:state;

@@ -75,21 +75,55 @@ function ticksOwed(startMs, total, done, now) {
 }
 
 // Gather tick. Returns null (nothing due), {stop:true} (tile gone) or the result.
-// `gatheringBonusPct` is the commander's own real skill bonus (e.g. Supply
-// Specialist, "+N% extra resources from gathering") — 0 if they don't have it.
-export function gatherTick(cmd, tile, now, gatheringBonusPct = 0) {
+// `gatheringBonusPct` is the stacked skill/faction/crew gathering bonus.
+// `isWell`: the commander is gathering at a crew Well (shared/utils/
+// crewStructures.js) — it yields ALL FOUR resources, each at a p11 tile's
+// gather rate, returned as `rssAll` instead of the single `rss`/`amount`.
+export const WELL_GATHER_POWER_LEVEL = 11;
+export function gatherTick(cmd, tile, now, gatheringBonusPct = 0, isWell = false) {
   if (!cmd.gathering || !cmd.gatherTileKey) return null;
   if (!tile) return { stop: true };
   const done = cmd.gatherTicksDone ?? 0;
   const newTicks = ticksOwed(cmd.gatherStartMs, cmd.gatherTicks, done, now);
   if (!newTicks) return null;
   const nextDone = done + newTicks;
+  const patch = { gatherTicksDone: nextDone, gathering: nextDone < (cmd.gatherTicks ?? 1) };
+  if (isWell) {
+    const each = Math.floor(tileRate(WELL_GATHER_POWER_LEVEL) * 4 * newTicks * (1 + gatheringBonusPct));
+    return { newTicks, eggs: newTicks * EGG_COST.gather, rss: null, amount: 0,
+      rssAll: { stone: each, wood: each, gas: each, food: each }, patch };
+  }
   return {
     newTicks, eggs: newTicks * EGG_COST.gather,
     rss: tile.rss || null,
     amount: Math.floor(tileRate(tile.powerLevel ?? 2) * 4 * newTicks * (1 + gatheringBonusPct)),
-    patch: { gatherTicksDone: nextDone, gathering: nextDone < (cmd.gatherTicks ?? 1) },
+    patch,
   };
+}
+
+// ── Sweep (Spawn) helpers ────────────────────────────────────────────────
+// A Spawn isn't a real map tile with a garrison, so build the defTile shape
+// simBattle(cmd, attackerTroops, defTile, wallLvl) expects: generateSpawnCommander()'s
+// `slots: [{ troopBranch, troops }]` become `defCmd.troopSlots: [{ branch, troops }]`.
+// `mapTile` (optional) only supplies terrain for the terrain-defense bonus.
+export function spawnDefTile(spawnCmd, mapTile = null) {
+  const troopSlots = (spawnCmd?.slots || []).map(sl => ({ branch: sl.troopBranch, troops: sl.troops }));
+  return {
+    terrain: mapTile?.terrain ?? "grass",
+    owner: "spawn",
+    isSpawn: true,
+    powerLevel: mapTile?.powerLevel ?? 1,
+    regionName: mapTile?.regionName ?? null,
+    defCmd: { ...spawnCmd, troopSlots, isSpawn: true },
+  };
+}
+
+// Troops the attacker loses in a sweep (simBattle's `lost`, capped at what it
+// brought) and the 30% of those that go to the healing tent — same 30%
+// wounded rule useMarch.js applies after every battle.
+export function sweepTroopLosses(res, troops) {
+  const lost = Math.max(0, Math.min(troops || 0, Math.round(res?.lost || 0)));
+  return { lost, wounded: Math.floor(lost * 0.30) };
 }
 
 // Training tick. Returns null (nothing due) or the XP / egg result.

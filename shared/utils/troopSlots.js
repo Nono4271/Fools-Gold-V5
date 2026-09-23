@@ -2,6 +2,7 @@
 // Extracted from Game.jsx so the future server can run the same rules.
 import { FACTION_TROOPS, COMMAND_COST } from "../constants/troops.js";
 import { ANCIENT_FACTIONS } from "../constants/ancientTroops.js";
+import { NEUTRAL_FACTIONS } from "../constants/neutralTroops.js";
 import { normaliseTroopSlots } from "./pathfinding.js";
 
 export const MAX_TROOP_SLOTS = 3;
@@ -17,7 +18,7 @@ export function troopPoolKey(branch) {
 // battle.js so all three places resolve an Ancient the same way.
 function findBranchDef(branch) {
   if (!branch) return null;
-  const f = FACTION_TROOPS[branch.faction] || ANCIENT_FACTIONS[branch.faction];
+  const f = FACTION_TROOPS[branch.faction] || ANCIENT_FACTIONS[branch.faction] || NEUTRAL_FACTIONS[branch.faction];
   return f?.branches?.find(b => b.key === branch.branch) ?? null;
 }
 

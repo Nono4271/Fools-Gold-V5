@@ -1,11 +1,13 @@
 import { COLS, ROWS } from "../constants/geometry.js";
 import { FACTION_TROOPS } from "../constants/troops.js";
+import { ANCIENT_FACTIONS } from "../constants/ancientTroops.js";
+import { NEUTRAL_FACTIONS } from "../constants/neutralTroops.js";
 
 // Helper: look up troop spd from a cmd's troopBranch descriptor { faction, branch, tier }
 function resolveTroopSpd(troopBranch) {
   if (!troopBranch) return null;
   const { faction, branch, tier = 0 } = troopBranch;
-  const f = FACTION_TROOPS[faction];
+  const f = FACTION_TROOPS[faction] || ANCIENT_FACTIONS[faction] || NEUTRAL_FACTIONS[faction];
   if (!f) return null;
   const b = f.branches.find(b => b.key === branch);
   if (!b) return null;
