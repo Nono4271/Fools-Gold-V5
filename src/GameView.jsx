@@ -71,7 +71,7 @@ export default function GameView(props) {
     reinMarchesRef, respectSchematics, returnTroops, rss, rssBonus, facTileYield, crewRssBonus, searchOpen, selKey, selTile,
     serverConnected, setAiBarracksPool, setAiBldgs, setAiHqKeys, setAiRss, setArmySlots,
     setAtkKey, setAutoHeal, setBLog, setBarracks, setBattles, setBldgs, setCmdScreenOpen,
-    setCmdScreenUid, setCmds, setCrewOpen, setCrews, setDeletingSecsLeft, setDeletingTiles,
+    setCmdScreenUid, setCmds, setConsumables, setCrewOpen, setCrews, setDeletingSecsLeft, setDeletingTiles,
     setEditArmyCmd, setGearInventory, setGearScreenOpen, setGems, setHealQueue, setHqOpen,
     setHqTab, setLeaderboardOpen, setMode, setMvCmd, setMysticOrbs, setPendingCrewId, setPick,
     setPlayerCrewId, setPlayerHqKey, setPopupMode, setPopupPos, setPowerPool, setQuarterLevels,

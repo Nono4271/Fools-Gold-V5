@@ -2824,7 +2824,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     // march.worker.js computes interpolated positions off the main thread.
     // Main thread ticker only moves existing PIXI objects — no recreate per frame.
     const marchWorker = new Worker(
-      new URL('./workers/march.worker.js', import.meta.url)
+      new URL('./workers/march.worker.js', import.meta.url),
+      { type: 'module' } // the worker uses import — without this it fails to start in dev
     );
     marchWorkerRef.current = marchWorker;
 

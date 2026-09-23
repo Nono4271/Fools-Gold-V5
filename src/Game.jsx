@@ -14,7 +14,7 @@ import {
 } from "../shared/utils/crewStructures.js";
 import { HQP, POWER_DEFS, hqSiegeValue, FORT_LEVELS } from "../shared/constants/map.js";
 import { FACTION_TROOPS } from "../shared/constants/troops.js";
-import { barracksCapacity, upgCost, upgDuration, maxAvailLevel, tierFromBranchLevel } from "../shared/constants/buildings.js";
+import { barracksCapacity, upgCost, upgDuration, maxAvailLevel, tierFromBranchLevel, upgCostQuarter, upgDurationQuarter, upgCostBranch, upgDurationBranch } from "../shared/constants/buildings.js";
 import { isoXY } from "../shared/constants/geometry.js";
 
 // Utils
@@ -873,7 +873,7 @@ export default function RiseToWar() {
 
   useTraining({screen,bldgs,dispatchArmy,healSpeedMult});
 
-  useUpgrades({ screen, setUpgQueue, setBldgs, setBarracks });
+  useUpgrades({ screen, setUpgQueue, setBldgs, setBarracks, setQuarterLevels });
 
   // Build gatePartners: for each crossing, map gateA key ↔ gateB key so that
   // a commander on gateA is treated as adjacent to gateB (and vice versa).
@@ -1638,7 +1638,21 @@ export default function RiseToWar() {
     setCmds, troopCounts, setTroopCounts, commandCenterLvl: bldgs.commandcenter,
   });
 
-  const upgrade = useCallback(type => {
+  // Quarters ("q_<faction>") and branches ("b_<faction>_<branch>") go through the same
+  // timed queue as buildings. The Quarters screen passes the current level and the
+  // level its gate allows (HQ gate for quarters, quarter gate for branches).
+  const upgrade = useCallback((type, gate) => {
+    if (gate && (type.startsWith("q_") || type.startsWith("b_"))) {
+      const { lvl, ceil } = gate;
+      if (lvl >= ceil || upgQueue[type]) return;
+      const isQ = type.startsWith("q_");
+      const c = isQ ? upgCostQuarter(lvl) : upgCostBranch(lvl);
+      if (!c || !canAfford(c)) return;
+      const dur = isQ ? upgDurationQuarter(lvl+1) : upgDurationBranch(lvl+1);
+      setRss(p => Object.fromEntries(Object.entries(p).map(([k,v]) => [k, v-(c[k]||0)])));
+      setUpgQueue(q => ({ ...q, [type]:{ endsAt:Date.now()+dur, startedAt:Date.now(), newLvl:lvl+1, dur } }));
+      return;
+    }
     const lvl = bldgs[type]||0;
     const avail = maxAvailLevel(type, bldgs.hq||1);
     if (lvl >= avail || upgQueue[type]) return;
