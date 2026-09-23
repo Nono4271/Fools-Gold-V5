@@ -21,7 +21,7 @@ export function useMapInit({
   aiHqKeysRef, aiRssMapRef, aiBldgsMapRef, aiPoolMapRef, aiTileKeysMapRef,
   aiPlayerIdMapRef, spawnedAiHqsRef, aiGemsRef, aiFoundersRef, pKeysRef, eligibleSpawnKeysRef,
   setCrossingsState, setKeepMeta, setAiHqKeys, setAiFactionKeys, setAiCmds, setAiCmdsVersion,
-  setAiFaction, setPlayerCmds, initPathfinding, perfLog,
+  setAiFaction, setPlayerCmds, initPathfinding, perfLog, mapSeedRef,
 }) {
   // ── Generate the world when a game starts ──
   useEffect(() => {
@@ -146,13 +146,17 @@ export function useMapInit({
       setLoadLabel("Error generating map — please refresh");
     };
 
-    worker.postMessage({ facKey });
+    // Same seed → same world, so saves only need the tiles that changed.
+    const seed = mapSeedRef?.current ?? ((Math.random() * 2 ** 31) >>> 0);
+    if (mapSeedRef) mapSeedRef.current = seed;
+    worker.postMessage({ facKey, seed });
     return () => worker.terminate();
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Wipe the world only for a new-game flow; overlays keep the map alive ──
   useEffect(() => {
     if (screen === "title" || screen === "faction") {
+      if (mapSeedRef) mapSeedRef.current = null;
       setMapReady(false);
       setTiles({});
       setLoadPct(0);
