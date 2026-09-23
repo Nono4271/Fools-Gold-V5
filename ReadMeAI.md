@@ -1438,6 +1438,22 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Pirate + Orc Burn is per unit
+
+Owner: "fix the pirate skills", then "fix orcs too" (Burn should work like the Dragons' per-unit Burn).
+- **Hot Sauce:** every enemy unit is Burned individually. Its max level (burned units DEF -10) now applies to those units only; it used to be army-wide. That max key is marked handler-owned.
+- **Flaming Skillet (max):** each of the 3 units hit rolls its own Burn.
+- **Soup's Hot:** only the attacking unit is Burned (-20% on its own damage). An attacking commander gets `cmdBurned`. It used to Burn-debuff the whole attacking army.
+- **Cook's Barrage** (+X% vs Burn) and **Keeping the Heat Up** (follow-up vs Burn) check the unit being hit. They used to apply whenever any Burn was active, and Keeping the Heat Up doubled all troop damage on a roll.
+- **Fire Breath** was converted in the Dragons batch.
+- **Orcs:**
+  - **Shaman's Final Surprise:** the unit hit rolls its 40% Burn.
+  - **Master of None:** each enemy unit rolls its 30% Burn (poison and bleed unchanged).
+  - **Easy Targets (max):** the Ranged unit hit rolls its 30% Burn.
+  - All three used to Burn the whole enemy army. No commander skill calls the army-wide `applyBurn` any more; troop skills still do.
+
+**Checks:** every Samuel skill, and every Orc Burn skill, helps in leave-one-out. PvP mirror 92/180, PvE unchanged. 1 new test; `npm test` 461/461, build OK.
+
 ## 2026-09-23 — Claude — Dragons fully implemented
 
 All 6 commanders (h11 Emberclaw, h12 Scaleveil, h23 Kraul, h24 Cinderfang, h35 Skar, h36 Nyxara) were checked against their descriptions. 39 handler types were rewritten for the per-unit commander path; the troop-skill path keeps its old behaviour. Types that other factions share (`focus_damage_single`, `branch_flat_def_bonus`, `branch_phys_dmg_reduce`, `aoe_focus_damage_foc_mod`, `heal_two_units_dragon_bonus`) are written generically, and branch `"all"` means every unit.
