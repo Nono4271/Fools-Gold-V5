@@ -920,9 +920,10 @@ export default function RiseToWar() {
 
   // Demolish — remove fort, tile stays player-owned
   const demolishFort = useCallback((fortId) => {
+    const fort = forts.find(f => f.id === fortId);
     destroyFort(fortId);
-    floaty("🔨 Fort demolished", "#c8a060", null);
-  }, [destroyFort, floaty]);
+    if (fort?.tileKey) floaty("🔨 Fort demolished", "#c8a060", fort.tileKey); // floaty needs a tile key
+  }, [destroyFort, forts, floaty]);
 
   // Abandon — remove fort AND release tile back to neutral
   const abandonFort = useCallback((fortId) => {
@@ -937,7 +938,7 @@ export default function RiseToWar() {
         defCmd: null, hasAiCommander: false,
       });
     }
-    floaty("🚪 Fort abandoned", "#8a8a8a", null);
+    if (fort?.tileKey) floaty("🚪 Fort abandoned", "#8a8a8a", fort.tileKey);
   }, [destroyFort, forts, patchTile, floaty]);
 
   // Fires demolish/abandon when a fort's stored deadline passes.
