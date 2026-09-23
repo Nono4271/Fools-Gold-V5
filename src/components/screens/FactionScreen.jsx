@@ -82,7 +82,7 @@ export default function FactionScreen({
   setScreen, setFacKey, setFacName, setAiFaction,
   setAiRss, setAiBldgs, setAiBarracksPool, aiLastActionRef,
   setCmds, setColl, setTiles,
-  setTroopCounts, setUnlockedBranches, setQuarterLevels,
+  setTroopCounts, setUnlockedBranches, setQuarterLevels, setBldgs,
   setPlayerName: setPlayerNameGlobal,
 }) {
   const [selected,   setSelected]   = useState(PLAYABLE_FACTIONS[0]);
@@ -162,6 +162,10 @@ export default function FactionScreen({
     setTiles({});
     if (setQuarterLevels) setQuarterLevels(startingQuarterLevels);
     if (setUnlockedBranches) setUnlockedBranches(startingUB);
+    // Starting branch building(s) at Lv1 — without this the starting troops
+    // had no unlocked branch (couldn't be assigned or scrapped) until the
+    // Quarters screen happened to be opened and unlocked it.
+    if (setBldgs) setBldgs(b => ({ ...b, ...startingBldgPatch }));
     // Seed starting troop pool: first branch of the chosen faction at tier 0
     // barracksCapacity(0) = 2000, which is the starting pool size at barracks level 0
     if (setTroopCounts && fDef && fDef.branches.length > 0) {
