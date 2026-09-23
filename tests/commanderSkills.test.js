@@ -190,3 +190,34 @@ test("pirates: Captain's Honor confuses Brine (self-debuff) and Around the Block
     .filter(a => /resists/.test(a.action)).length;
   assert.ok(resisted > 0);
 });
+
+// ── Per-unit targeting ────────────────────────────────────────────────────────
+function threeUnitFoe() {
+  const mk = (f, b) => ({ branch: { faction: f, branch: b, tier: 2 }, troops: 6000 });
+  const slots = [mk('orcs', 'grunts'), mk('orcs', 'warg_riders'), mk('pirates', 'gunners')]; // melee, mounted, ranged
+  return { id: 0, n: 'D', faction: 'orcs', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 18000, troopBranch: slots[0].branch, troopSlots: slots };
+}
+const allActs = r => r.report.rounds.flatMap(x => x.actions);
+
+test('targeting: AoE skills hit every enemy unit separately', () => {
+  const acts = allActs(pirBattle('h2', { sam_hot_sauce: 15 }, 1, threeUnitFoe()));
+  assert.ok(acts.some(a => a.isSkill && /Hot Sauce → [23] units/.test(a.action))); // one hit per LIVING unit
+});
+
+test('targeting: "2 Enemy Units" skills hit 2 different units', () => {
+  const acts = allActs(pirBattle('h13', { bri_admirals_go_to: 7 }, 1, threeUnitFoe()));
+  assert.ok(acts.some(a => a.isSkill && /Admiral's Go To → 2 units/.test(a.action)));
+});
+
+test('targeting: normal attacks hit one unit, frontline (melee) first', () => {
+  const acts = allActs(pirBattle('h1', {}, 1, threeUnitFoe()));
+  const first = acts.find(a => a.isPlayer === true && /attack →|strikes →/.test(a.action));
+  assert.ok(first && /→ Grunt|→ Marauder|→ Bloodaxe/.test(first.action), first?.action);
+});
+
+test('targeting: "+X% vs Orc unit" bonus hit only lands on an Orc unit', () => {
+  const vsOrcs = allActs(pirBattle('h1', { fyn_orc_hunter: 15 }, 1, threeUnitFoe()));
+  assert.ok(vsOrcs.some(a => a.isSkill && /\(orcs\)/.test(a.action)));
+  const vsHk = allActs(pirBattle('h1', { fyn_orc_hunter: 15 }, 1));
+  assert.ok(!vsHk.some(a => a.isSkill && /\(orcs\)/.test(a.action)));
+});
