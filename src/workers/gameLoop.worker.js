@@ -1,6 +1,6 @@
 import { advanceMarch } from '../../shared/utils/marchMotion.js';
 import { aiTrainingTick, aiTroopCap, rssSpent } from '../../shared/utils/aiEconomy.js';
-import { barracksCapacity } from '../../shared/constants/buildings.js';
+import { barracksCapacity, STARTING_TROOPS } from '../../shared/constants/buildings.js';
 import { AI_STAMINA_MAX, canAffordMarch } from '../../shared/utils/tactics.js';
 // ── Game Loop Web Worker ──────────────────────────────────────────────────────
 // Offloads all setInterval logic from the main thread so React renders never
@@ -320,7 +320,7 @@ function tickAiEcon() {
   const bldgUpdates  = {}; // { fk: { ...bldgs } }
 
   for (const fk of aiFactionKeys) {
-    const local = aiEconLocal[fk] || (aiEconLocal[fk] = { pool: aiPool?.[fk] ?? _barrCap(0), queue: [] });
+    const local = aiEconLocal[fk] || (aiEconLocal[fk] = { pool: aiPool?.[fk] ?? STARTING_TROOPS, queue: [] });
     const curPool  = local.pool;
     const curRss   = { ...(aiRss?.[fk]  || { stone:5000, wood:5000, gas: 5000, food: 5000 }) };
     const curBldgs = { ...(aiBldgs?.[fk] || { hq:1, barracks:0, commandcenter:0 }) };
