@@ -313,10 +313,10 @@ export const WARCROAK_UNIQUE_SKILLS = {
     name: "Leader's Plans", icon: "📋", tree: "command", cls: "leader",
     faction: "orcs", commander: "h21",
     type: "passive",
-    desc: "[Army] +1.0 DEF and +1.0 HP for every 1 more Command than the enemy (dynamic per round). (Passive)",
-    effect: { type: "command_differential_bonus", defPerCommand: 1.0, hpPerCommand: 1.0 },
+    desc: "[Army] +1.0 DEF and +1.0 HP for every 4 more Command than the enemy (dynamic per round). (Passive)",
+    effect: { type: "command_differential_bonus", defPerCommand: 1.0, hpPerCommand: 1.0, commandStep: 4 },
     base: 1.0, perLevel: 1.0,
-    nextDesc: (lvl) => `Per Command advantage over enemy: Army DEF +${1.0+lvl*1.0} & HP +${1.0+lvl*1.0} (recalculated each round)`,
+    nextDesc: (lvl) => `Per 4 Command advantage over enemy: Army DEF +${1.0+lvl*1.0} & HP +${1.0+lvl*1.0} (recalculated each round)`,
   },
 
   // ── R3 — Unique skills ────────────────────────────────────────────────────
