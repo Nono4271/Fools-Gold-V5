@@ -72,6 +72,10 @@ import { perfLog } from "./utils/perfLog.jsx";
 import TitleScreen from "./components/screens/TitleScreen.jsx";
 import FactionScreen from "./components/screens/FactionScreen.jsx";
 import GachaScreen from "./components/screens/GachaScreen.jsx";
+// TEST MODE (src/testmode/) — remove these 2 imports + the "TEST MODE" blocks below to strip it.
+import { useTestMode } from "./testmode/useTestMode.js";
+import { TEST_MODE_AVAILABLE } from "./testmode/adminRules.js";
+import { TestCampaignMenu } from "./testmode/TestUi.jsx";
 
 
 export default function RiseToWar() {
@@ -192,12 +196,15 @@ export default function RiseToWar() {
   }, []);
 
   const [mapReady, setMapReady] = useState(false);
+  // World seed — the map generator is deterministic for a given seed, so a
+  // save only has to store the tiles that changed (see src/testmode/).
+  const mapSeedRef = useRef(null);
   // Stable session ID — generated once per browser session
   const [sessionId] = useState(() => `fg-${Math.random().toString(36).slice(2,10)}`);
   const [loadPct,  setLoadPct]  = useState(0);
   const [loadLabel,setLoadLabel]= useState("Generating world...");
   const [playerHqKey, setPlayerHqKey] = useState(null);
-  const {rss,setRss,troopCounts,setTroopCounts,trainingQueues,setTrainingQueues,healQueue,setHealQueue,woundedTroops,setWounded,addWounded,autoHeal,setAutoHeal,contractDaily,dispatch:dispatchArmy} = useArmyEconomy();
+  const {rss,setRss,troopCounts,setTroopCounts,trainingQueues,setTrainingQueues,healQueue,setHealQueue,woundedTroops,setWounded,addWounded,autoHeal,setAutoHeal,contractDaily,woundedByBranch,dispatch:dispatchArmy} = useArmyEconomy();
   const [gems,   setGems]    = useState(20000);
   const [crewOpen,      setCrewOpen]      = useState(false);
   const [chatOpen,      setChatOpen]      = useState(false);
@@ -734,7 +741,7 @@ export default function RiseToWar() {
     aiHqKeysRef, aiRssMapRef, aiBldgsMapRef, aiPoolMapRef, aiTileKeysMapRef,
     aiPlayerIdMapRef, spawnedAiHqsRef, aiGemsRef, aiFoundersRef, pKeysRef, eligibleSpawnKeysRef,
     setCrossingsState, setKeepMeta, setAiHqKeys, setAiFactionKeys, setAiCmds, setAiCmdsVersion,
-    setAiFaction, setPlayerCmds, initPathfinding, perfLog,
+    setAiFaction, setPlayerCmds, initPathfinding, perfLog, mapSeedRef,
   });
 
   // ── Floaty helper ──
@@ -935,6 +942,34 @@ export default function RiseToWar() {
 
   // Fires demolish/abandon when a fort's stored deadline passes.
   useFortRemovals({ screen, forts, demolishFort, abandonFort });
+
+  // ── TEST MODE — admin tools + local saves (src/testmode/useTestMode.js) ──
+  const applyHqMoveRef = useRef(null); // set after useRelocation below
+  const { admin, noAdjacency: testNoAdj, startNewTestCampaign, loadFrom: testLoadFrom, listSaves: testListSaves } = useTestMode({
+    screen, setScreen, mapReady, facKey, facName, setFacKey, setFacName, mapSeedRef, staminaMax, dragonEggsCap, mysticOrbsCap,
+    tilesMapRef, setTileVersion, mapRendererRef, pKeysRef, setPKeys, powerPerHrRef, setPowerPerHr, aiTileKeysRef, defeatedTilesRef,
+    aiHqKeysRef, aiRssMapRef, aiBldgsMapRef, aiPoolMapRef, aiTileKeysMapRef, aiPlayerIdMapRef, spawnedAiHqsRef, aiGemsRef, aiFoundersRef,
+    cmdsRef, setCmds, setColl, setCrews, playerHqKey, setPlayerHqKey, playerHqRef, teleportTo, floaty,
+    setRss, setUpgQueue, dispatchArmy, forts, loadForts, applyHqMoveRef,
+    army: { rss, troopCounts, woundedByBranch, trainingQueues, healQueue, autoHeal, contractDaily },
+    persist: {
+      gems: [gems, setGems], crews: [crews, setCrews], playerCrewId: [playerCrewId, setPlayerCrewId],
+      pendingCrewId: [pendingCrewId, setPendingCrewId], regionOwners: [regionOwners, setRegionOwners], coll: [coll, setColl],
+      pityCounters: [pityCounters, setPityCounters], gearInventory: [gearInventory, setGearInventory],
+      respectSchematics: [respectSchematics, setRespectSchematics], lastFreePull: [lastFreePull, setLastFreePull],
+      dailyHalfUsed: [dailyHalfUsed, setDailyHalfUsed], bldgs: [bldgs, setBldgs], upgQueue: [upgQueue, setUpgQueue],
+      aiBldgs: [aiBldgs, setAiBldgs], aiBarracksPool: [aiBarracksPool, setAiBarracksPool], aiHqKeys: [aiHqKeys, setAiHqKeys],
+      quarterLevels: [quarterLevels, setQuarterLevels], troopSkillLevels: [troopSkillLevels, setTroopSkillLevels],
+      mysticOrbs: [mysticOrbs, setMysticOrbs], lastVoidTap: [lastVoidTap, setLastVoidTap], tomesLevel: [tomesLevel, setTomesLevel],
+      powerPool: [powerPool, setPowerPool], tomesUnspentPoints: [tomesUnspentPoints, setTomesUnspentPoints],
+      tomesNodeLevels: [tomesNodeLevels, setTomesNodeLevels], dragonEggs: [dragonEggs, setDragonEggs],
+      protectedTiles: [protectedTiles, setProtectedTiles], bLog: [bLog, setBLog], battles: [battles, setBattles],
+      unseenBattles: [unseenBattles, setUnseenBattles], reinMarches: [reinMarches, setReinMarches],
+      deletingTiles: [deletingTiles, setDeletingTiles], consumables: [consumables, setConsumables],
+      lastRelocateAt: [lastRelocateAt, setLastRelocateAt], rssSpeedUps: [rssSpeedUps, setRssSpeedUps],
+      longMarchReady: [longMarchReady, setLongMarchReady], quickMarchReady: [quickMarchReady, setQuickMarchReady],
+    },
+  });
 
   const fortsRef = useRef(forts);
   useEffect(() => { fortsRef.current = forts; _fortsRef.current = forts; }, [forts]);
@@ -1298,12 +1333,12 @@ export default function RiseToWar() {
   }, [selTile, tileVersion, facKey, crewmatePlayerIds]);
 
   const cmdsAdjToSel = useMemo(() => {
-    if (!selAdjToPlayer || !selTile) return [];
+    if (!(selAdjToPlayer || testNoAdj) || !selTile) return [];
     return playerCmds.filter(cmd =>
       cmd.owner === "player" && (normaliseTroopSlots(cmd).reduce((s,sl)=>s+(sl.troops||0),0) || cmd.troops || 0) > 0 && !cmd.march
       && !isWounded(cmd, nowTick) // wounded commanders can't lead marches
     );
-  }, [selAdjToPlayer, selTile, playerCmds, nowTick]);
+  }, [selAdjToPlayer, selTile, playerCmds, nowTick, testNoAdj]);
 
   const cmdsForMove = useMemo(() =>
     playerCmds.filter(cmd =>
@@ -1312,7 +1347,7 @@ export default function RiseToWar() {
     ),
   [playerCmds, nowTick]);
 
-  const canAtk = !!(selTile && selTile.owner!=="player" && (selAdjToPlayer || longMarchReady));
+  const canAtk = !!(selTile && selTile.owner!=="player" && (selAdjToPlayer || longMarchReady || testNoAdj));
 
   // Batch-compute path lengths from each commander to atkKey via pathfinding worker
   useEffect(() => {
@@ -1531,11 +1566,12 @@ export default function RiseToWar() {
   });
 
   // ── HQ Relocation — rules in shared/utils/relocation.js ──
-  const { performRelocation, onForcedRelocate } = useRelocation({
+  const { performRelocation, onForcedRelocate, applyHqMove } = useRelocation({
     tiles, patchTile, facKey, aiHqKeys, playerHqKey, playerHqRef, setPlayerHqKey,
     cmds, consumables, setConsumables, lastRelocateAt, setLastRelocateAt, setWinner, floaty,
   });
   onForcedRelocateRef.current = onForcedRelocate;
+  applyHqMoveRef.current = applyHqMove; // TEST MODE admin relocate
 
   // queueTraining(branchKey, amount)
   // branchKey: "faction:branch:tier" e.g. "pirates:swashbucklers:0"
@@ -1695,7 +1731,8 @@ export default function RiseToWar() {
   }, [floaty, startMarch, setHqOpen, setHqTab]);
 
   // ── Screen routing ──
-  if (screen==="title")   return <TitleScreen setScreen={setScreen} />;
+  if (screen==="title")   return <TitleScreen setScreen={setScreen} onTestCampaign={TEST_MODE_AVAILABLE ? () => setScreen("testmenu") : null} />;
+  if (screen==="testmenu") return <TestCampaignMenu onNew={startNewTestCampaign} onLoad={testLoadFrom} onBack={() => setScreen("title")} listSaves={testListSaves} />;
   if (screen==="faction") return (
     <FactionScreen
       setScreen={setScreen} setFacKey={setFacKey} setFacName={setFacName}
@@ -1788,5 +1825,6 @@ export default function RiseToWar() {
     unlockedBranches, unseenBattles, upgQueue, upgrade, upgradeFort, useConsumable,
     voidTapCooldown, voidTapLvl, voidTapReady, winner, worldMapOpen, worldMapPrompt,
     woundedQueue, woundedTroops, zoomRef, zoomState,
+    admin, // TEST MODE (null outside the test campaign)
   }} />;
 }

@@ -21,6 +21,8 @@ import BattleLog from "./components/game/BattleLog.jsx";
 import CommanderPicker from "./components/game/CommanderPicker.jsx";
 import CommanderCard from "./components/game/popup/CommanderCard.jsx";
 import MarchTimer from "./components/game/MarchTimer.jsx";
+// TEST MODE (src/testmode/) — admin panel + tile-popup admin row; `admin` is null outside the test campaign.
+import { AdminPanel, AdminTileActions } from "./testmode/TestUi.jsx";
 import BottomPanel from "./components/game/BottomPanel.jsx";
 import WinScreen from "./components/game/WinScreen.jsx";
 import Minimap from "./components/game/Minimap.jsx";
@@ -84,7 +86,7 @@ export default function GameView(props) {
     trainingQueues, trainingSpeedMult, trainingCostMult, healSpeedMult, trainingXpMult, troopCounts, troopSkillLevels,
     unlockedBranches, unseenBattles, upgQueue, upgrade, upgradeFort, useConsumable,
     voidTapCooldown, voidTapLvl, voidTapReady, winner, worldMapOpen, worldMapPrompt,
-    woundedQueue, woundedTroops, zoomRef, zoomState,
+    woundedQueue, woundedTroops, zoomRef, zoomState, admin,
   } = props;
 
   // Floating Commander card — opened by tapping a marching commander on the
@@ -310,6 +312,8 @@ export default function GameView(props) {
         spawns={spawns} onSweep={onSweep}
         protectedTiles={protectedTiles}
         onPerformRelocation={performRelocation}
+        ignoreRange={!!admin?.noAdjacency}
+        adminSlot={admin ? <AdminTileActions key={selKey} admin={admin} selKey={selKey} /> : null}
         lastRelocateAt={lastRelocateAt}
         relocationTokens={(consumables ?? []).find(c => c.typeId === "relocation")?.quantity ?? 0}
         allHqKeys={Object.values(aiHqKeys).flat().concat(playerHqKey ? [playerHqKey] : [])}
@@ -534,6 +538,7 @@ export default function GameView(props) {
           gems={gems}
           setGems={setGems}
           onClose={() => { setCmdScreenOpen(false); setCmdScreenUid(null); }}
+          ignoreAlignment={!!admin}
         />
       )}
 
@@ -700,8 +705,18 @@ export default function GameView(props) {
             recallMarch={recallMarch} recallStationary={recallStationary}
             setReinCmd={setReinCmd} setMode={setMode} barracksPool={barracksPool} playerHqKey={playerHqKey}
             startGuard={startGuard} cancelGuard={cancelGuard}/>
+          {admin && focusCmd.march && (
+            <button onClick={() => admin.finishMarch(focusCmd.uid)}
+              style={{ marginTop:6, width:"100%", minHeight:34, borderRadius:6, background:"rgba(240,192,64,.15)", border:"1px dashed #c8a040", color:"#f0c040", fontFamily:"'Cinzel',serif", fontSize:9, fontWeight:700, cursor:"pointer" }}>
+              🛠 ⚡ ARRIVE NOW
+            </button>
+          )}
         </div>
       )}
+
+      <AdminPanel admin={admin} cmds={cmds} selKey={selKey} upgQueue={upgQueue} trainingQueues={trainingQueues}
+        healQueue={healQueue} forts={forts} crews={crews}
+        hidden={worldMapOpen || hqOpen || cmdScreenOpen || gearScreenOpen || showBattleLog || tomesOpen} />
 
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
 
@@ -723,7 +738,8 @@ export default function GameView(props) {
           // joins the player's crew too (shared/constants/nyro.js).
           onCreateCrew={({ name, abbr, description, emblem, privacy, language }) => {
             const id = `crew_${Date.now()}`;
-            const crew = createCrew({ id, name, abbr, description, emblem, privacy, language, faction: facKey, founderId: facKey });
+            const crew0 = createCrew({ id, name, abbr, description, emblem, privacy, language, faction: facKey, founderId: facKey });
+            const crew = admin ? admin.crewLevelOnCreate(crew0) : crew0; // TEST MODE: crews start at level 50
             setCrews(prev => [...prev, { ...crew, members: [...crew.members, NYRO_ID] }]);
             setGems(g => (g || 0) - 500);
             setPlayerCrewId(id);

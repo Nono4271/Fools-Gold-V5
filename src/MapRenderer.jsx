@@ -1885,6 +1885,16 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
 const _hqTexCache = {}; // shared texture cache across rebuilds
 
 function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, playerName, playerFacKey, crewPids, vb, allHqKeys, aiPlayerIdMap, groundTexture, diplomacyPids) {
+  // Drop castles whose tile is no longer an HQ (e.g. the old spot after an HQ
+  // relocation) — otherwise the old artwork stays on the map.
+  for (let i = hqCont.children.length - 1; i >= 0; i--) {
+    const child = hqCont.children[i];
+    if (child.__hqKey && !tiles[child.__hqKey]?.isHQ) {
+      hqCont.removeChild(child);
+      child.destroy({ children: true });
+      _hqStateCache.delete(child.__hqKey);
+    }
+  }
   if (_hqKeyIndex.size === 0 || !vb) {
     if (!vb) _hqKeyIndex.clear();
     // Seed from patched tiles
