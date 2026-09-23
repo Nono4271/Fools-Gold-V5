@@ -866,8 +866,21 @@ function randomSpawn(regionKey, usedKeys, flagArr, terrainArr, powerArr) {
   return null;
 }
 
+// Seeded PRNG so a given seed always builds the same world (saves rely on it).
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 self.onmessage = function(e) {
-  const { facKey } = e.data;
+  const { facKey, seed } = e.data;
+  // Every Math.random in this worker (and the shared camp-placement code it
+  // imports) now follows the seed. Workers have their own global scope.
+  if (Number.isFinite(seed)) Math.random = mulberry32(seed);
 
   postMessage({ type:"progress", pct:5,  label:"Building terrain..." });
   const { TERRAIN_MAP, REGION_MAP } = buildLookups();
