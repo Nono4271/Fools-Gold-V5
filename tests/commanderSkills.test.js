@@ -425,3 +425,27 @@ test("Ashen Dead: Varak's Verdict silences the enemy commander (was a Confusion)
   const acts = actsOver(s => ashBattle('h56', { varak_varaks_verdict: 7 }, s, { ...pvpArmy('h9', true) }));
   assert.ok(acts.some(a => /silenced — skill delayed/.test(a.action)));
 });
+
+// ── Coldborns ─────────────────────────────────────────────────────────────────
+function coldBattle(id, skillPoints, seed, defCmd, branches = ['raiders', 'bear_riders']) {
+  const slots = branches.map(b => ({ branch: { faction: 'coldborns', branch: b, tier: 2 }, troops: 10000 }));
+  const cmd = { id, n: id, faction: 'coldborns', cls: 'attacker', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 10000 * branches.length, troopBranch: slots[0].branch, troopSlots: slots, skillPoints };
+  return seeded(() => simBattle(cmd, cmd.troops, { defCmd: defCmd || bigFoe(), garrison: 100, owner: 'ai' }, 0), seed);
+}
+
+test('Coldborns: Frostbite lands on the unit hit and that unit deals -40% damage', () => {
+  const r3 = sp => { let t = 0; for (let s = 1; s <= 10; s++) t += (coldBattle('h50', sp, s).report.rounds.find(r => r.round === 3)?.actions || [])
+    .filter(a => a.isPlayer === false && a.dmg > 0 && /attack →/.test(a.action)).reduce((x, a) => x + a.dmg, 0); return t; };
+  assert.ok(allActs(coldBattle('h50', { valdris_glacial_strike: 7 }, 1)).some(a => /Glacial Strike — Frostbite on 1 unit/.test(a.action)));
+  assert.ok(r3({ valdris_glacial_strike: 7 }) < r3({}));
+});
+
+test('Coldborns: Shatter consumes Frostbite on a frostbitten unit', () => {
+  const acts = actsOver(s => coldBattle('h49', { bjorn_iceveins_strike: 7, bjorn_frost_cleave: 7, bjorn_shatter: 7 }, s));
+  assert.ok(acts.some(a => /Shatter — Frostbite shattered!/.test(a.action)));
+});
+
+test("Coldborns: Northern Resolve gives commander Stun Immunity (was Confusion immunity)", () => {
+  const acts = actsOver(s => coldBattle('h49', { bjorn_northern_resolve: 7 }, s, { ...pvpArmy('h34', true) }));
+  assert.ok(acts.some(a => /Northern Resolve — Stun Immune/.test(a.action)));
+});
