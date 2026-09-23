@@ -398,6 +398,8 @@ export function factionDefCmdForTile(c, r, playerFaction, powerLevel, waveIndex 
     id:              src.id,
     n:               src.n,
     icon:            src.icon,
+    portrait:        src.portrait,
+    bust:            src.bust,
     cls:             src.cls,
     faction:         src.faction,
     rarity:          src.rarity,
