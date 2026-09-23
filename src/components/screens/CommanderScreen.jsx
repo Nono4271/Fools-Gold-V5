@@ -2027,7 +2027,7 @@ function FilterPopup({ filterClass, setFilterClass, filterAlignment, setFilterAl
   );
 }
 
-export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInventory, respectSchematics, setCmds, onSchematicUsed, onClose, initialUid, gems, setGems }) {
+export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInventory, respectSchematics, setCmds, onSchematicUsed, onClose, initialUid, gems, setGems, ignoreAlignment }) {
   // ── Filter / sort state ──
   const [filterClass,      setFilterClass]      = useState(null);
   const [filterAlignment,  setFilterAlignment]  = useState(null);
@@ -2047,7 +2047,7 @@ export default function CommanderScreen({ cmds, bldgs, gearInventory, setGearInv
 
   // Determine player alignment to flag opposite-alignment commanders
   const playerFactionKey = allPlayer[0]?.faction ?? null;
-  const playerAlnKey = playerFactionKey ? getFactionAlignment(playerFactionKey) : null;
+  const playerAlnKey = !ignoreAlignment && playerFactionKey ? getFactionAlignment(playerFactionKey) : null; // TEST MODE ignores alignment
 
   // Build a full roster: owned commanders first (real data), then unowned HDEFS as preview stubs
   const ownedIds = new Set(allPlayer.map(c => c.id ?? c.uid));

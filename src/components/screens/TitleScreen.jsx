@@ -4,7 +4,7 @@ import { PLAYABLE_FACTIONS } from "../../../shared/constants/factions.js";
 import { getAccountUsername } from "../../utils/playerIdentity.js";
 import LoginModal from "./LoginModal.jsx";
 
-export default function TitleScreen({ setScreen }) {
+export default function TitleScreen({ setScreen, onTestCampaign }) {
   const [showLogin, setShowLogin] = useState(false);
   const [username, setUsername] = useState(getAccountUsername());
   return (
@@ -248,6 +248,12 @@ export default function TitleScreen({ setScreen }) {
             style={{padding:"13px",background:"linear-gradient(135deg,#7a1010,#c03030)",border:"1px solid #e04040",color:"#f0c040",fontSize:14,fontWeight:700,boxShadow:"0 4px 18px rgba(0,0,0,.6)"}}>
             ⚔ BEGIN CAMPAIGN
           </button>
+          {onTestCampaign && ( /* TEST MODE — only when the build enables it */
+            <button className="btn" onClick={onTestCampaign}
+              style={{padding:"11px",background:"rgba(20,14,6,.85)",border:"1px dashed #c8a040",color:"#f0c040",fontSize:12,fontWeight:700}}>
+              🛠 TEST CAMPAIGN
+            </button>
+          )}
           <button type="button" onClick={() => setShowLogin(true)}
             style={{background:"none",border:"none",color:"#d8a868",fontSize:12,cursor:"pointer",padding:4}}>
             {username ? `Logged in as ${username}` : "Log In / Register"}
