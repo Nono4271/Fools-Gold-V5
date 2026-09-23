@@ -1485,10 +1485,11 @@ All 6 orc commanders (h9 Grimtusk, h10 Ashgrip/Groth, h21 Warcroak, h22 Grix, h3
 
 **Siege:** owner confirmed "+N per troop".
 
-**Engine note (not changed):**
-- `simBattle`'s `atkCommand` (`totalArmyCommand`, costs 1/2/25) is 100× real Command.
-- `defCommand` uses `dc.commandBudget`, which is real Command.
-- Both feed `armyCommandFactor`, so attackers always sit near the factor cap.
+**Command units (investigated, reverted):**
+- `atkCommand` = `totalArmyCommand` (costs 1/2/25) is 100× real Command.
+- Defenders use `dc.commandBudget` (real Command, PvE garrisons) or `dc.troops` (player commanders, so PvP is on the same 100× scale).
+- Making both sides real Command made PvE need ~2× the tile's Command. The owner said PvE is tuned around the current behavior, so the change was reverted. PvP was already roughly symmetric.
+- Orc tests keep the "wins sooner or deals more" comparison.
 
 **Other finding:** `mal_double_tap` exists in both nightcreatures and dragons with DIFFERENT definitions; the dragons one wins in `ALL_SKILLS`.
 

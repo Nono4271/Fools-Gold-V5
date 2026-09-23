@@ -1,12 +1,12 @@
-# orcs-skills-2-20260923
+# command-revert-20260923
 
-Copy each file to the same path (branch codex/core-fixes-20260919).
+Copy each file to the same path (branch codex/core-fixes-20260919). Same 4 files as command-fix-20260923.
 
-| File | Change vs orcs-skills-20260923 |
+| File | Change vs command-fix-20260923 |
 |---|---|
-| shared/utils/battle.js | War Leader's Plans enabled: +N DEF/HP per 4 Command advantage (real Command) |
-| shared/constants/orcs_skills.js | Leader's Plans text → "every 4 more Command" |
-| tests/commanderSkills.test.js | +1 test (80 vs 55 applies, 80 vs 78 doesn't) |
-| ReadMeAI.md | Changelog corrected |
+| shared/utils/battle.js | Command fix reverted (PvE back to previous balance). Identical to orcs-skills-2 version. |
+| tests/crewStructures.test.js | Back to original |
+| tests/commanderSkills.test.js | Unchanged (kept "wins sooner or deals more" comparison) |
+| ReadMeAI.md | Changelog: fix investigated + reverted |
 
 Tests 433/433, build OK.
