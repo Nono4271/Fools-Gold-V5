@@ -761,9 +761,7 @@ switch (eff.type) {
     break;
   case "physical_damage_heal_block":
     rs.cmdMult   *= (1 + (eff.value || 0.20));
-    // Commander skill targets ENEMY healing; rs.blockHeal blocks the attacker's own heals.
-    if (ctx?.isCommander) rs.enemyHealBlocked = Math.max(rs.enemyHealBlocked || 0, eff.healBlockDuration || 1);
-    else rs.blockHeal = Math.max(rs.blockHeal || 0, eff.healBlockDuration || 1);
+    rs.blockHeal = Math.max(rs.blockHeal || 0, eff.healBlockDuration || 1); // blocks the OTHER side's heals
     break;
   // Bruk mechanics
   case "multi_branch_def_bonus":
@@ -3471,7 +3469,16 @@ const cmdScalingBonus = scalingBonus(cmd.rarity || "soldier", cmdAtkStat + cmdFo
 // Defender cmd stats for its normal attack formula
 const defCmdMight = dc ? (dc.atk || 80) : 80;
 const defCmdFoc   = dc ? (dc.foc || 0)  : 0;
-const defCommand  = dc ? (dc.commandBudget || dc.troops || 30) : 30;
+// PvE garrisons carry a tuned `commandBudget` and Spawns use `troops`; a player commander
+// defending (PvP) uses the same army-command formula as the attacker so both sides are measured alike.
+const defCommand  = dc
+  ? (dc.commandBudget || ((defSlotResolved.length > 0 && !isPveBattle && !isSpawnFight)
+      ? defSlotResolved.reduce((sum, sl) => {
+          const size = sl.branchDef?.size ?? "small";
+          return sum + (sl.troops || 0) * (size === "large" ? 25 : size === "medium" ? 2 : 1);
+        }, 0)
+      : (dc.troops || 30)))
+  : 30;
 const atkCommand  = totalArmyCommand;
 
 const report = {
@@ -3542,27 +3549,97 @@ if (gb2.armySpd  > 0) phase0.actions.push({ actor:"Gear", action:`Gear: +${gb2.a
 if (gb2.armySiege> 0) phase0.actions.push({ actor:"Gear", action:`Gear: +${gb2.armySiege} Siege Power`,   dmg:0, isPhase0:true, isGear:true });
 report.rounds.push(phase0);
 
-// ── Combat rounds ─────────────────────────────────────────────────────────
-for (let round = 1; round <= 10; round++) {
-const roundLog = { round, actions:[] };
-if (atkTroopHp <= 0 && defTroopHp <= 0) break;
-if (atkTroopHp <= 0) { roundLog.actions.push({ actor:"SYSTEM", action:"Attackers routed!", dmg:0 }); report.rounds.push(roundLog); break; }
-if (defTroopHp <= 0) { roundLog.actions.push({ actor:"SYSTEM", action:"Defenders defeated!", dmg:0 }); report.rounds.push(roundLog); break; }
-
-if (bastionActive && round === 1) roundLog.actions.push({ actor:cmd.n, action:"⚖ BALANCED — double HP & DEF (rounds 1-2)", dmg:0, isSkill:true });
-const bastionDefMult = (bastionActive && round <= 2) ? 2 : 1;
-
-// Build round state
-const rs = {
-  cmdMult:facPveDmgMult * facSpawnDmgMult, cmdHits:1, critChance:passives.critChance,
-  cmdPctDmg:0, lifesteal:0, healPct:passives.healPerRound,
+// ── Combat rounds (two-sided) ─────────────────────────────────────────────
+// Both armies run through the same code: each side has its own per-round
+// state (`S.rs`), its own commander skills, troop skills, heals, DoTs and
+// statuses. A side's "enemy*" fields (stun, miss, DEF down, ATK down …) act
+// on the OTHER side. Turn order = speed (ties: attacker first).
+// Before this, only the attacker had skills/heals/statuses, and every troop
+// skill (both sides) wrote into the attacker's state — so a defender's
+// "bonus damage" or "DEF down" helped the attacker.
+const defPassives   = dc ? getPassiveBonuses(dc) : getPassiveBonuses(null);
+const defHeroSkills = dc ? getActiveSkills(dc) : [];
+const defRespect    = dc ? (dc.respectLevel ?? dc.lvl ?? 1) : 1;
+const defBastion    = !!dc && dc.cls === "balanced" && defRespect >= 20;
+if (defBastion) {
+  defSlotHp = defSlotHp.map(h => h * 2);
+  defTroopHp = defSlotHp.reduce((s, h) => s + h, 0);
+}
+const makeSide = (o) => ({
+  lostHp: 0, dmgPool: 0, dmgRound: 1, blockHealRounds: 0,
+  venomNext: 0, bleedPer: 0, bleedRounds: 0, cs: newCommanderSkillState(), rs: null, ...o,
+});
+const A = makeSide({
+  key: "atk", isPlayer: true, name: cmd.n, cmdActor: cmd.n, troopActor: null, cmdObj: cmd,
+  slots: atkSlotResolved, slotHp: atkSlotHp, slotMax: atkSlotResolved.map(sl => sl.troops * sl.hpPer * bastionHpMult),
+  passives, heroSkills: atkHeroSkills, durationBuffs, skillLevels: atkSkillLevels,
+  atkStat: cmdAtkStat, focStat: cmdFocStat, spd: atkCmdSpd, command: atkCommand,
+  classPhys: attackerBonus ? 0.10 : 0, classFoc: strategistBonus ? 0.10 : 0, scaling: cmdScalingBonus,
+  bastion: bastionActive, pveMult: facPveDmgMult * facSpawnDmgMult,
+  primaryBranchDef: atkBranchDef, primaryTier: atkTierData, primaryDef: atkTroopDef, hpPer: atkTroopHpPer,
+  terrMult: 1,
+});
+const D = makeSide({
+  key: "def", isPlayer: false, name: dc?.n || "Defenders", cmdActor: "Enemy Cmd", troopActor: "Defenders", cmdObj: dc,
+  slots: defSlotResolved, slotHp: defSlotHp,
+  slotMax: defSlotResolved.length ? defSlotHp.slice() : [defTroopHp],
+  passives: defPassives, heroSkills: defHeroSkills, durationBuffs: new Map(), skillLevels: defSkillLevels,
+  atkStat: defCmdMight, focStat: defCmdFoc, spd: defCmdSpd, command: defCommand,
+  classPhys: (!!dc && dc.cls === "attacker" && defRespect >= 20) ? 0.10 : 0,
+  classFoc:  (!!dc && dc.cls === "strategist" && defRespect >= 20) ? 0.10 : 0,
+  scaling: dc ? scalingBonus(dc.rarity || "soldier", defCmdMight + defCmdFoc * 0.5, dc.id || 0) : 0,
+  bastion: defBastion, pveMult: 1,
+  primaryBranchDef: _defBranchDef, primaryTier: _defTierData, primaryDef: defTroopDef, hpPer: defTroopHpPer,
+  terrMult: 1, // set per round (walls / fort, reduced by attacker garrisonIgnore)
+});
+const other  = S => (S === A ? D : A);
+const hpOf   = S => Math.max(0, S.slotHp.reduce((s, h) => s + h, 0));
+const bastionDefOf = (S, round) => (S.bastion && round <= 2) ? 2 : 1;
+const realCommandOf = S => S.slots.length
+  ? S.slots.reduce((t, sl, i) => t + Math.max(0, (S.slotHp[i] || 0) / (sl.hpPer || 1)) * (COMMAND_COST[sl.branchDef?.size || "small"] || 0.01), 0)
+  : (S.cmdObj?.commandBudget || 0);
+// Damage `amount` HP to side T, spread over its living slots by HP share. Returns HP actually removed.
+const damageSide = (T, amount, round) => {
+  const before = hpOf(T);
+  if (before <= 0 || amount <= 0) return 0;
+  let left = amount;
+  for (let i = 0; i < T.slotHp.length && left > 0; i++) {
+    if (T.slotHp[i] <= 0) continue;
+    const portion = Math.min(T.slotHp[i], Math.round(amount * (T.slotHp[i] / before)));
+    T.slotHp[i] -= portion; left -= portion;
+  }
+  for (let i = 0; i < T.slotHp.length && left > 0; i++) { const p = Math.min(T.slotHp[i], left); T.slotHp[i] -= p; left -= p; }
+  const lost = before - hpOf(T);
+  T.lostHp += lost; T.dmgPool += lost; if (lost > 0) T.dmgRound = round;
+  return lost;
+};
+// Restore up to `amount` lost HP to side T (capped per slot at its max). Returns HP restored.
+const healSideHp = (T, amount) => {
+  let left = Math.min(amount, T.lostHp);
+  for (let i = 0; i < T.slotHp.length && left > 0; i++) {
+    const p = Math.min(left, Math.max(0, (T.slotMax[i] || 0) - T.slotHp[i]));
+    T.slotHp[i] += p; left -= p;
+  }
+  const done = Math.min(amount, T.lostHp) - left;
+  T.lostHp = Math.max(0, T.lostHp - done);
+  return done;
+};
+// Kill/remaining fields the battle log expects, from the point of view of who dealt the damage
+const hitFields = (S, T, lost) => S.isPlayer
+  ? { defKilled: Math.max(0, Math.round(lost / T.hpPer)), defRemaining: Math.max(0, Math.round(hpOf(T) / T.hpPer)), isPlayer: true }
+  : { atkKilled: Math.max(0, Math.round(lost / T.hpPer)), atkRemaining: Math.max(0, Math.round(hpOf(T) / T.hpPer)), isPlayer: false };
+// Tag log lines a side pushed without an owner (skill handlers don't know which side they run for)
+const tagSide = (roundLog, from, S) => { for (let i = from; i < roundLog.actions.length; i++) if (roundLog.actions[i].isPlayer === undefined) roundLog.actions[i].isPlayer = S.isPlayer; };
+const makeRoundState = (P, pveMult) => ({
+  cmdMult:pveMult, cmdHits:1, critChance:P.critChance,
+  cmdPctDmg:0, lifesteal:0, healPct:P.healPerRound,
   skillHealCoeff:0,          // coefficient for skill heals (subject to decay cap)
   recoveryModSum:0,          // sum of recovery modifiers for skill heals
   blockHeal:0, enemyNullified:false,
-  troopAtkMult:passives.troopAtkMult * facPveDmgMult * facSpawnDmgMult, troopDefMult:passives.troopDefMult,
-  dmgReduce:passives.dmgReduce, troopDmgReduce:0,
-  enemyAtkReduce:passives.enemyAtkReduce, enemyDmgReduce:0, enemyMissChance:0,
-  garrisonIgnore:passives.garrisonIgnore,
+  troopAtkMult:P.troopAtkMult * pveMult, troopDefMult:P.troopDefMult,
+  dmgReduce:P.dmgReduce, troopDmgReduce:0,
+  enemyAtkReduce:P.enemyAtkReduce, enemyDmgReduce:0, enemyMissChance:0,
+  garrisonIgnore:P.garrisonIgnore,
   skillFiredNames:[],
   // Troop skill state
   troopDoubleAtk:false, troopBonusDmgMult:0, troopCounterAtk:false,
@@ -3912,415 +3989,307 @@ const rs = {
   rangedDmgReduce:0,             // Are Those Toothpicks: damage reduce vs ranged units
   hpStackStacks:0,               // Tank: current HP stack count
   troopHpStackBonus:0,           // Tank: cumulative HP bonus (applied to troopDefMult as proxy)
+});
+const skillCtx = (S, T, round) => ({
+  atkSlots: S.slots, defSlots: T.slots, primaryDefSlot: T.slots[0] ?? null,
+  defTroopBranch: T.slots[0]?.branch ?? T.cmdObj?.troopBranch ?? null,
+  defFaction: T.slots[0]?.branch?.faction ?? T.cmdObj?.faction,
+  defAlignment: getFactionAlignment(T.slots[0]?.branch?.faction ?? T.cmdObj?.faction), ownFaction: S.cmdObj?.faction,
+  defHpPer: T.hpPer, defTile, atkCmdSpd: S.spd, cmdAtkStat: S.atkStat, cmdFocStat: S.focStat, bleedRoundsActive: S.bleedRounds,
+  cs: S.cs, venomTicking: S.venomNext > 0, atkCommand: S.command, defCommand: T.command,
+  atkCmdReal: realCommandOf(S), defCmdReal: realCommandOf(T),
+  defFactions: new Set([...T.slots.map(d => d.branch?.faction), T.cmdObj?.faction].filter(Boolean)),
+  defRoles: new Set(T.slots.map(d => d.branchDef?.role).filter(Boolean)),
+  defSizes: new Set(T.slots.map(d => d.branchDef?.size).filter(Boolean)),
+  defSlotCount: T.slots.filter((d, i) => (T.slotHp[i] || 0) > 0).length || 1,
+});
+
+// Hero-skill log lines (flat-format skills carry their numbers)
+const logHeroSkills = (S, roundLog) => {
+  const uniqNames = [...new Set(S.rs.skillFiredNames)];
+  uniqNames.forEach(name => {
+    const fs  = S.heroSkills.find(s => s.def?.name === name);
+    const def = fs?.def;
+    const lv  = (fs?.level ?? 1) - 1;
+    const v   = def ? (def.base + (def.perLevel ?? 0) * lv) : 0;
+    const dur = def?.duration ?? 1;
+    const se  = {};
+    if (def) {
+      if (def.troopAtkMult)         { se.type="buff";   se.stat="Troop ATK";          se.value=`×${v.toFixed(2)}`; se.pct=Math.round((v-1)*100); se.dur=dur; }
+      else if (def.troopDefMult)    { se.type="buff";   se.stat="Troop DEF";          se.value=`×${v.toFixed(2)}`; se.pct=Math.round((v-1)*100); se.dur=dur; }
+      else if (def.dmgReduce)       { se.type="buff";   se.stat="Incoming Damage";    se.value=`-${Math.round(v*100)}%`; se.dur=dur; }
+      else if (def.troopDmgReduce)  { se.type="buff";   se.stat="Troop Damage Taken"; se.value=`-${Math.round(v*100)}%`; se.dur=dur; }
+      else if (def.enemyAtkReduce)  { se.type="debuff"; se.stat="Enemy ATK";          se.value=`-${Math.round(v*100)}%`; se.dur=dur; }
+      else if (def.enemyDmgReduce)  { se.type="debuff"; se.stat="Enemy Damage";       se.value=`-${Math.round(v*100)}%`; se.dur=dur; }
+      else if (def.enemyMissChance) { se.type="debuff"; se.stat="Enemy Hit Chance";   se.value=`-${Math.round(v*100)}%`; se.dur=dur; }
+      else if (def.blockHeal)       { se.type="debuff"; se.stat="enemy healing";      se.value="blocked"; se.rounds=Math.round(v); se.dur=1; }
+      else if (def.nullifySkill)    { se.type="nullify"; se.dur=1; }
+      else if (def.garrisonIgnore)  { se.type="buff";   se.stat="Garrison Bonus";     se.value=`ignored ${Math.round(v*100)}%`; se.dur=dur; }
+      else if (def.healPct)         { se.type="heal";   se.pct=Math.round(v*100); se.dur=dur; }
+      else if (def.cmdMult || def.cmdHits || def.critBonus) {
+        se.type="damageBuff";
+        if (def.cmdMult)   se.cmdMult  = v.toFixed(2);
+        if (def.cmdHits)   se.cmdHits  = def.cmdHits;
+        if (def.critBonus) se.critBonus= Math.round(v*100);
+      }
+    }
+    roundLog.actions.push({ actor:S.name, action:name, skillIcon:def?.icon??"✨", dmg:0, isSkill:true, skillEffect:se, ...(S.isPlayer ? {} : { isPlayer:false }) });
+  });
 };
 
-applyDurationEffects(atkHeroSkills, round, durationBuffs, rs);
-applyInstantEffects(atkHeroSkills, round, rs);
-applyCommanderSkillEffects(atkHeroSkills, round, rs, roundLog, cmd.n, {
-  atkSlots: atkSlotResolved, defTroopBranch: primaryDefSlot?.branch ?? dc?.troopBranch ?? null,
-  primaryDefSlot, defFaction: primaryDefSlot?.branch?.faction ?? dc?.faction,
-  defAlignment: getFactionAlignment(primaryDefSlot?.branch?.faction ?? dc?.faction), ownFaction: cmd.faction,
-  defHpPer: defTroopHpPer, defSlots: defSlotResolved, defTile, atkCmdSpd, cmdAtkStat, cmdFocStat, bleedRoundsActive,
-  cs: cmdSkillState, venomTicking: prevRoundVenomDmg > 0, atkCommand, defCommand,
-  // Real Command (troops × COMMAND_COST) of what is still alive on each side this round
-  atkCmdReal: atkSlotResolved.reduce((t, sl, i) => t + Math.max(0, (atkSlotHp[i] || 0) / (sl.hpPer || 1)) * (COMMAND_COST[sl.branchDef?.size || "small"] || 0.01), 0),
-  defCmdReal: defSlotResolved.length
-    ? defSlotResolved.reduce((t, d, i) => t + Math.max(0, (defSlotHp[i] || 0) / (d.hpPer || 1)) * (COMMAND_COST[d.branchDef?.size || "small"] || 0.01), 0)
-    : (dc?.commandBudget || 0),
-  defFactions: new Set([...defSlotResolved.map(d => d.branch?.faction), dc?.faction].filter(Boolean)),
-  defRoles: new Set(defSlotResolved.map(d => d.branchDef?.role).filter(Boolean)),
-  defSizes: new Set(defSlotResolved.map(d => d.branchDef?.size).filter(Boolean)),
-  defSlotCount: defSlotResolved.filter((d, i) => (defSlotHp[i] || 0) > 0).length || 1,
-});
-
-// ── Venom tick — apply carried-over focus damage from previous round ──────
-if (prevRoundVenomDmg > 0) {
-  const venomHit = Math.max(1, Math.round(cmdFocStat * prevRoundVenomDmg));
-  const prevDef  = defTroopHp;
-  defTroopHp     = Math.max(0, defTroopHp - venomHit);
-  roundLog.actions.push({ actor:cmd.n, action:`🐍 Venom — ${Math.round(prevRoundVenomDmg*100)}% focus damage`, dmg:venomHit,
-    defKilled:Math.max(0, Math.round((prevDef-defTroopHp)/(defTroopHpPer||1))), isSkill:true });
-}
-prevRoundVenomDmg = rs.pendingVenomDmg; // carry forward for next round
-
-// ── Bleed tick — apply carry-over bleed damage ────────────────────────────
-if (bleedRoundsActive > 0 && bleedDmgPerRound > 0) {
-  const bleedHit = Math.max(1, Math.round(cmdAtkStat * bleedDmgPerRound));
-  const prevDef  = defTroopHp;
-  defTroopHp     = Math.max(0, defTroopHp - bleedHit);
-  roundLog.actions.push({ actor:cmd.n, action:`🩸 Bleed — ${Math.round(bleedDmgPerRound*100)}% physical damage`, dmg:bleedHit,
-    defKilled:Math.max(0, Math.round((prevDef-defTroopHp)/(defTroopHpPer||1))), isSkill:true });
-  bleedRoundsActive--;
-}
-if (rs.bleedApplied) {
-  bleedDmgPerRound  = rs.pendingBleedDmg;
-  bleedRoundsActive = rs.bleedRoundsLeft;
-}
-// Tick down Weak Spot independent stacks
-if (rs.weakSpotStacks.length > 0) {
-  rs.weakSpotStacks = rs.weakSpotStacks
-    .map(s => ({ ...s, roundsLeft: s.roundsLeft - 1 }))
-    .filter(s => s.roundsLeft > 0);
-}
-
-// round_start troop skills — all atk slots apply to enemy
-for (const sl of atkSlotResolved) {
-  procTroopSkills(sl.skills, "round_start", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", dc?.troopBranch ?? null, round, atkSlotResolved, sl);
-}
-
-// Log hero skills
-const uniqNames = [...new Set(rs.skillFiredNames)];
-uniqNames.forEach(name => {
-  const fs  = atkHeroSkills.find(s => s.def?.name === name);
-  const def = fs?.def;
-  const lv  = (fs?.level ?? 1) - 1;
-  const v   = def ? (def.base + (def.perLevel ?? 0) * lv) : 0;
-  const dur = def?.duration ?? 1;
-  const se  = {};
-  if (def) {
-    if (def.troopAtkMult)         { se.type="buff";   se.stat="Troop ATK";          se.value=`×${v.toFixed(2)}`; se.pct=Math.round((v-1)*100); se.dur=dur; }
-    else if (def.troopDefMult)    { se.type="buff";   se.stat="Troop DEF";          se.value=`×${v.toFixed(2)}`; se.pct=Math.round((v-1)*100); se.dur=dur; }
-    else if (def.dmgReduce)       { se.type="buff";   se.stat="Incoming Damage";    se.value=`-${Math.round(v*100)}%`; se.dur=dur; }
-    else if (def.troopDmgReduce)  { se.type="buff";   se.stat="Troop Damage Taken"; se.value=`-${Math.round(v*100)}%`; se.dur=dur; }
-    else if (def.enemyAtkReduce)  { se.type="debuff"; se.stat="Enemy ATK";          se.value=`-${Math.round(v*100)}%`; se.dur=dur; }
-    else if (def.enemyDmgReduce)  { se.type="debuff"; se.stat="Enemy Damage";       se.value=`-${Math.round(v*100)}%`; se.dur=dur; }
-    else if (def.enemyMissChance) { se.type="debuff"; se.stat="Enemy Hit Chance";   se.value=`-${Math.round(v*100)}%`; se.dur=dur; }
-    else if (def.blockHeal)       { se.type="debuff"; se.stat="enemy healing";      se.value="blocked"; se.rounds=Math.round(v); se.dur=1; }
-    else if (def.nullifySkill)    { se.type="nullify"; se.dur=1; }
-    else if (def.garrisonIgnore)  { se.type="buff";   se.stat="Garrison Bonus";     se.value=`ignored ${Math.round(v*100)}%`; se.dur=dur; }
-    else if (def.healPct)         { se.type="heal";   se.pct=Math.round(v*100); se.dur=dur; }
-    else if (def.cmdMult || def.cmdHits || def.critBonus) {
-      se.type="damageBuff";
-      if (def.cmdMult)   se.cmdMult  = v.toFixed(2);
-      if (def.cmdHits)   se.cmdHits  = def.cmdHits;
-      if (def.critBonus) se.critBonus= Math.round(v*100);
+// Commander action (normal attack + this round's skill multipliers)
+const commanderAct = (S, T, round, roundLog) => {
+  const r = S.rs, er = T.rs;
+  if (hpOf(S) <= 0 || hpOf(T) <= 0) return;
+  const who = S.isPlayer ? S.cmdActor : "Enemy Cmd";
+  if (er.enemyNullified) return;
+  if (er.enemyStunned > 0) { er.enemyStunned--; roundLog.actions.push({ actor:who, action: S.isPlayer ? `⚡ ${S.name} is stunned!` : "⚡ Enemy commander is stunned!", dmg:0, isPlayer:S.isPlayer }); return; }
+  if (er.enemySilenced) { er.enemySilenced = false; roundLog.actions.push({ actor:who, action: S.isPlayer ? `🎵 ${S.name} silenced — skill delayed!` : "🎵 Enemy commander silenced — skill delayed!", dmg:0, isPlayer:S.isPlayer }); return; }
+  if (er.enemyConfused > 0) {
+    er.enemyConfused--;
+    if (!r.atkConfusionImmune && Math.random() < 0.5) {
+      const selfDmg = Math.max(1, Math.round(calcCmdNormalDmg(S.atkStat, S.command, 0) * 0.8
+        * Math.max(0, 1 + defReduction(S.primaryDef * (r.troopDefMult || 1) * bastionDefOf(S, round)))));
+      const lost = damageSide(S, selfDmg, round);
+      roundLog.actions.push({ actor:who, action:`😵 Confused! Attacks own troops — ${Math.max(0, Math.round(lost / S.hpPer))} friendly casualties`, dmg:selfDmg, isPlayer:!S.isPlayer, isConfused:true });
+      return;
     }
   }
-  roundLog.actions.push({ actor:cmd.n, action:name, skillIcon:def?.icon??"✨", dmg:0, isSkill:true, skillEffect:se });
-});
+  if (er.enemyTargetsTaunted) roundLog.actions.push({ actor:who, action: S.isPlayer ? "🎯 Taunted — forced to attack!" : "🎯 Taunted — forced to attack!", dmg:0, isPlayer:S.isPlayer });
+  if (Math.random() < (er.enemyMissChance || 0)) { roundLog.actions.push({ actor:who, action: S.isPlayer ? `${S.name} missed!` : "Enemy commander missed!", dmg:0, isPlayer:S.isPlayer }); return; }
+  if (er.atkEvadeNextHit > 0) { const ev = Math.random() < er.atkEvadeNextHit; er.atkEvadeNextHit = 0; if (ev) { roundLog.actions.push({ actor:who, action:"💨 Attack evaded!", dmg:0, isPlayer:S.isPlayer }); return; } }
+  if (er.invisibleUnits > 0 && Math.random() < 0.30) { roundLog.actions.push({ actor:who, action:"🌑 Attack evaded — target invisible!", dmg:0, isPlayer:S.isPlayer }); return; }
 
-if (rs.blockHeal > 0) blockHealRounds = Math.max(blockHealRounds, rs.blockHeal);
-const healBlocked = blockHealRounds > 0;
-if (blockHealRounds > 0) blockHealRounds--;
+  // Own damage mods up; target's damage-received / our-ATK-down mods down
+  const common = (r.enemyDmgTakenUp || 0) - (er.enemyAtkReduce || 0) - (er.enemyDmgReduce || 0) - (er.dmgReduce || 0) - (er.enemyBurnPenalty || 0);
+  const physModSum = (r.cmdMult - 1) + S.classPhys + S.scaling + common;
+  const focModSum  = (r.cmdMult - 1) + S.classFoc  + S.scaling + common;
+  const atkR = S.atkStat + (r.cmdAtkFlat || 0) - (er.enemyCmdAtkFlatDown || 0);
+  const focR = S.focStat + (r.cmdFocFlat || 0);
+  const usesFoc = (S.primaryBranchDef?.dmgType === "magical") || (focR > atkR);
+  const hit = () => usesFoc
+    ? calcCmdFocusSkillDmg(focR, S.command, 1.0 + (r.focusDmgBonus || 0), focModSum)
+    : calcCmdNormalDmg(Math.max(1, atkR), S.command, physModSum);
+  const hit1 = hit();
+  const { eligibleRounds: fuRounds, chance: fuChance } = followupStats(r.followupSources || []);
+  const followupExpected = round * fuRounds * fuChance;
+  const hit2 = followupExpected > 0 ? hit() : 0;
+  const tDef   = T.primaryDef * (er.troopDefMult || 1) * bastionDefOf(T, round);
+  const effDef = Math.max(0, tDef * (1 - Math.min(0.9, r.enemyDefDown || 0)) - (r.enemyDefFlatDown || 0));
+  const defMult  = usesFoc ? 1.0 : Math.max(0, 1 + defReduction(effDef));
+  const isCrit   = Math.random() < (r.critChance || 0);
+  const totalDmg = Math.max(1, Math.round((hit1 + hit2 * followupExpected) * defMult * (isCrit ? 1.5 : 1.0) * S.terrMult));
+  if (r.lifesteal > 0 && S.blockHealRounds <= 0) {
+    const gain = healSideHp(S, Math.round(totalDmg * r.lifesteal));
+    S.dmgPool = Math.max(0, S.dmgPool - gain);
+    const t = Math.round(gain / S.hpPer);
+    if (t > 0) roundLog.actions.push({ actor:who, action:`🧛 Lifesteal +${t} troops`, dmg:-t, isSkill:true, isHeal:true, isPlayer:S.isPlayer });
+  }
+  const lost = damageSide(T, totalDmg, round);
+  roundLog.actions.push({ actor:who,
+    action: S.isPlayer ? `${S.name} strikes${isCrit?" (CRIT!)":""}${hit2>0?" + follow-up":""}` : `${report.defCmdIcon} Enemy commander strikes${isCrit?" (CRIT!)":""}`,
+    dmg:totalDmg, ...hitFields(S, T, lost) });
+};
 
-const gi = Math.min(0.90, rs.garrisonIgnore);
+// Troop slot action
+const slotAct = (S, idx, T, round, roundLog) => {
+  const r = S.rs, er = T.rs, sl = S.slots[idx];
+  if (!sl || !sl.tierData || S.slotHp[idx] <= 0 || hpOf(T) <= 0) return;
+  const label = S.isPlayer ? (sl.branchDef?.label || `Slot ${idx+1}`) : "Defenders";
+  const unitName = sl.branchDef?.label || (S.isPlayer ? `Slot ${idx+1}` : `Defenders ${idx+1}`);
+  if (er.enemyNullified) return;
+  if (er.enemyStunned > 0) return;
+  if (er.enemyConfused > 0) {
+    er.enemyConfused--;
+    if (!r.atkConfusionImmune && Math.random() < 0.5) {
+      const selfDmg = calcTroopDmg(sl.branchDef, sl.tierData, sl.def, 0, S.command, 1, 0, false, 1, [], round);
+      const prev = S.slotHp[idx];
+      S.slotHp[idx] = Math.max(0, S.slotHp[idx] - selfDmg);
+      S.lostHp += prev - S.slotHp[idx]; S.dmgPool += prev - S.slotHp[idx];
+      roundLog.actions.push({ actor:label, action:`😵 Confused! ${unitName} attack own ranks — ${Math.max(0, Math.round((prev - S.slotHp[idx]) / sl.hpPer))} casualties`, dmg:selfDmg, isPlayer:!S.isPlayer, isConfused:true });
+      return;
+    }
+  }
+  if (Math.random() < (er.enemyMissChance || 0)) { roundLog.actions.push({ actor:label, action: S.isPlayer ? `${unitName} missed!` : "Enemy troops missed!", dmg:0, isPlayer:S.isPlayer }); return; }
+  if (er.atkEvadeNextHit > 0) { const ev = Math.random() < er.atkEvadeNextHit; er.atkEvadeNextHit = 0; if (ev) { roundLog.actions.push({ actor:label, action:"💨 Attack evaded!", dmg:0, isPlayer:S.isPlayer }); return; } }
+
+  // on_hit troop skills of the acting slot → its own side's state
+  const logFrom = roundLog.actions.length;
+  procTroopSkills(sl.skills, "on_hit", S.skillLevels, r, roundLog, sl.branchDef?.label || label, T.slots[0]?.branch ?? T.cmdObj?.troopBranch ?? null, round, S.slots, sl);
+  tagSide(roundLog, logFrom, S);
+
+  const hits = r.troopDoubleAtk ? 2 : 1;
+  const rangedReduce = (sl.branchDef?.role === "ranged" && er.rangedDmgReduce > 0) ? er.rangedDmgReduce : 0;
+  const sizeMod = troopSizeModifier(sl.branchDef?.size ?? null, T.primaryBranchDef?.size ?? null);
+  for (let hi = 0; hi < hits; hi++) {
+    if (hpOf(T) <= 0) break;
+    const modSum = (r.troopAtkMult - 1) + (r.enemyDmgTakenUp || 0)
+      - (er.enemyAtkReduce || 0) - (er.enemyDmgReduce || 0) - (er.troopDmgReduce || 0) - (er.dmgReduce || 0) - rangedReduce - (er.enemyBurnPenalty || 0);
+    const tDef = Math.max(0, T.primaryDef * (er.troopDefMult || 1) * bastionDefOf(T, round) - (r.enemyDefFlatDown || 0));
+    let dmg = calcTroopDmg(sl.branchDef, sl.tierData, tDef, Math.min(0.9, r.enemyDefDown || 0), S.command, S.terrMult,
+      modSum, false, sizeMod, r.followupSources || [], round);
+    if (r.troopBonusDmgMult > 0) {
+      const bonus = Math.round(dmg * r.troopBonusDmgMult);
+      dmg += bonus;
+      roundLog.actions.push({ actor:label, action:`💥 Bonus strike +${bonus} dmg`, dmg:bonus, isPlayer:S.isPlayer, isTroopSkill:true });
+      // One on_hit proc buffs exactly one hit (procs roll once per round, not per hit)
+      r.troopBonusDmgMult = 0;
+    }
+    dmg = Math.max(1, Math.round(dmg));
+    const lost = damageSide(T, dmg, round);
+    roundLog.actions.push({ actor:label, action:`${unitName} attack${hits>1?` (hit ${hi+1}/2)`:""}`, dmg, ...hitFields(S, T, lost) });
+  }
+
+  // on_hit_received — the target's primary slot reacts (into the target's own state)
+  if (T.slots[0]) {
+    const from2 = roundLog.actions.length;
+    procTroopSkills(T.slots[0].skills, "on_hit_received", T.skillLevels, er, roundLog, T.isPlayer ? (T.slots[0].branchDef?.label || "Troops") : "Defenders", sl.branch ?? null, round, T.slots, T.slots[0]);
+    tagSide(roundLog, from2, T);
+  }
+
+  // Counter attack — the TARGET's counter skill hits back at 50% (was triggered by the attacker's own skill)
+  if (er.troopCounterAtk && hpOf(T) > 0 && S.slotHp[idx] > 0 && T.slots[0]?.tierData) {
+    const ts = T.slots[0];
+    const cDmg = calcTroopDmg(ts.branchDef, ts.tierData, sl.def * (r.troopDefMult || 1) * bastionDefOf(S, round), 0, T.command, T.terrMult,
+      -(r.enemyAtkReduce || 0) - (r.enemyDmgReduce || 0) - (r.dmgReduce || 0) - (r.troopDmgReduce || 0), false,
+      troopSizeModifier(ts.branchDef?.size ?? null, sl.branchDef?.size ?? null), [], round);
+    const cFinal = Math.max(1, Math.round(cDmg * 0.50));
+    const prev = S.slotHp[idx];
+    S.slotHp[idx] = Math.max(0, S.slotHp[idx] - cFinal);
+    S.lostHp += prev - S.slotHp[idx]; S.dmgPool += prev - S.slotHp[idx]; S.dmgRound = round;
+    roundLog.actions.push({ actor: T.isPlayer ? (ts.branchDef?.label || "Troops") : "Defenders", action:`⚡ Counter attack!`, dmg:cFinal, isPlayer:T.isPlayer, isTroopSkill:true });
+  }
+};
+
+for (let round = 1; round <= 10; round++) {
+const roundLog = { round, actions:[] };
+atkTroopHp = hpOf(A); defTroopHp = hpOf(D);
+if (atkTroopHp <= 0 && defTroopHp <= 0) break;
+if (atkTroopHp <= 0) { roundLog.actions.push({ actor:"SYSTEM", action:"Attackers routed!", dmg:0 }); report.rounds.push(roundLog); break; }
+if (defTroopHp <= 0) { roundLog.actions.push({ actor:"SYSTEM", action:"Defenders defeated!", dmg:0 }); report.rounds.push(roundLog); break; }
+
+if (A.bastion && round === 1) roundLog.actions.push({ actor:cmd.n, action:"⚖ BALANCED — double HP & DEF (rounds 1-2)", dmg:0, isSkill:true });
+if (D.bastion && round === 1) roundLog.actions.push({ actor:D.name, action:"⚖ BALANCED — double HP & DEF (rounds 1-2)", dmg:0, isSkill:true, isPlayer:false });
+
+// 1) Per-side round state + commander skills
+A.rs = makeRoundState(A.passives, A.pveMult);
+D.rs = makeRoundState(D.passives, D.pveMult);
+const rs = A.rs; // legacy name for the round-end ticks below
+for (const S of [A, D]) {
+  const T = other(S), from = roundLog.actions.length;
+  applyDurationEffects(S.heroSkills, round, S.durationBuffs, S.rs);
+  applyInstantEffects(S.heroSkills, round, S.rs);
+  applyCommanderSkillEffects(S.heroSkills, round, S.rs, roundLog, S.name, skillCtx(S, T, round));
+  tagSide(roundLog, from, S);
+}
+
+// 2) DoT ticks (venom = FOC, bleed = ATK of the side that applied it)
+for (const S of [A, D]) {
+  const T = other(S);
+  if (S.venomNext > 0 && hpOf(T) > 0) {
+    const venomHit = Math.max(1, Math.round(S.focStat * S.venomNext));
+    const lost = damageSide(T, venomHit, round);
+    roundLog.actions.push({ actor:S.name, action:`🐍 Venom — ${Math.round(S.venomNext*100)}% focus damage`, dmg:venomHit, ...hitFields(S, T, lost), isSkill:true });
+  }
+  S.venomNext = S.rs.pendingVenomDmg || 0;
+  if (S.bleedRounds > 0 && S.bleedPer > 0 && hpOf(T) > 0) {
+    const bleedHit = Math.max(1, Math.round(S.atkStat * S.bleedPer));
+    const lost = damageSide(T, bleedHit, round);
+    roundLog.actions.push({ actor:S.name, action:`🩸 Bleed — ${Math.round(S.bleedPer*100)}% physical damage`, dmg:bleedHit, ...hitFields(S, T, lost), isSkill:true });
+    S.bleedRounds--;
+  }
+  if (S.rs.bleedApplied) { S.bleedPer = S.rs.pendingBleedDmg; S.bleedRounds = S.rs.bleedRoundsLeft; }
+}
+
+// 3) round_start troop skills (each side into its own state)
+for (const S of [A, D]) {
+  const T = other(S);
+  for (const sl of S.slots) {
+    const from = roundLog.actions.length;
+    procTroopSkills(sl.skills, "round_start", S.skillLevels, S.rs, roundLog, S.isPlayer ? (sl.branchDef?.label || "Troops") : "Defenders", T.slots[0]?.branch ?? T.cmdObj?.troopBranch ?? null, round, S.slots, sl);
+    tagSide(roundLog, from, S);
+  }
+}
+
+// 4) Hero-skill log
+logHeroSkills(A, roundLog);
+logHeroSkills(D, roundLog);
+
+// 5) Heal block: a side's blockHeal blocks the OTHER side's healing
+for (const S of [A, D]) {
+  const T = other(S);
+  if ((T.rs.blockHeal || 0) > 0) S.blockHealRounds = Math.max(S.blockHealRounds, T.rs.blockHeal);
+  S.healBlockedNow = S.blockHealRounds > 0;
+  if (S.blockHealRounds > 0) S.blockHealRounds--;
+}
+
+// 6) Walls / fort bonus for the defender (attacker garrisonIgnore reduces it)
+const gi = Math.min(0.90, A.rs.garrisonIgnore || 0);
 const roundTerrBonus = 1 + fort*(1-gi) / 100;
+D.terrMult = roundTerrBonus;
 
-// Passive heal (Healing Tent + passive heal skills) — uses simple healPct, no decay
-if (rs.healPct > 0 && totalAtkLostHp > 0 && !healBlocked) {
-  const restored   = Math.min(totalAtkLostHp, Math.round(totalAtkLostHp * rs.healPct));
-  let healLeft = restored;
-  for (let si = 0; si < atkSlotHp.length && healLeft > 0; si++) {
-    const sl = atkSlotResolved[si];
-    const slMax = sl.troops * sl.hpPer * bastionHpMult;
-    const portion = Math.min(healLeft, Math.max(0, slMax - atkSlotHp[si]));
-    atkSlotHp[si] = Math.min(slMax, atkSlotHp[si] + portion);
-    healLeft -= portion;
+// 7) Heals (passive healPct: share of lost HP; skill heal: commander heal formula with decay cap)
+for (const S of [A, D]) {
+  if (S.healBlockedNow) continue;
+  const hpDiv = S.hpPer;
+  if (S.rs.healPct > 0 && S.lostHp > 0) {
+    const restored = healSideHp(S, Math.round(S.lostHp * S.rs.healPct));
+    const troopsBack = Math.round(restored / hpDiv);
+    if (troopsBack > 0) roundLog.actions.push({ actor:S.name, action:`💚 ${troopsBack} troops restored (passive)`, dmg:-troopsBack, isSkill:true, isHeal:true, troopsBack,
+      ...(S.isPlayer ? { atkRemaining:Math.round(hpOf(S)/hpDiv) } : { isPlayer:false, defRemaining:Math.round(hpOf(S)/hpDiv) }) });
   }
-  const actualRestored = restored - healLeft;
-  atkTroopHp     = Math.min(atkHpMax, atkTroopHp + actualRestored);
-  totalAtkLostHp = Math.max(0, totalAtkLostHp - actualRestored);
-  const troopsBack = Math.round(actualRestored / atkTroopHpPer);
-  if (troopsBack > 0) roundLog.actions.push({ actor:cmd.n, action:`💚 ${troopsBack} troops restored (passive)`, dmg:-troopsBack, isSkill:true, isHeal:true, troopsBack, atkRemaining:Math.round(atkTroopHp/atkTroopHpPer) });
-}
-
-// Skill heal — uses commander heal formula with decay cap
-if (rs.skillHealCoeff > 0 && !healBlocked) {
-  const healAmt = calcCmdHeal(atkCommand, rs.skillHealCoeff, rs.recoveryModSum || 0, totalDamageTakenPool, round, damageFirstTakenRound);
-  const capped  = Math.min(totalAtkLostHp, Math.max(0, Math.round(healAmt)));
-  if (capped > 0) {
-    let healLeft2 = capped;
-    for (let si = 0; si < atkSlotHp.length && healLeft2 > 0; si++) {
-      const sl = atkSlotResolved[si];
-      const slMax = sl.troops * sl.hpPer * bastionHpMult;
-      const portion = Math.min(healLeft2, Math.max(0, slMax - atkSlotHp[si]));
-      atkSlotHp[si] = Math.min(slMax, atkSlotHp[si] + portion);
-      healLeft2 -= portion;
-    }
-    const actualSkillHeal = capped - healLeft2;
-    atkTroopHp = Math.min(atkHpMax, atkTroopHp + actualSkillHeal);
-    totalAtkLostHp = Math.max(0, totalAtkLostHp - actualSkillHeal);
-    totalDamageTakenPool = Math.max(0, totalDamageTakenPool - actualSkillHeal);
-    const troopsBack2 = Math.round(actualSkillHeal / atkTroopHpPer);
-    if (troopsBack2 > 0) roundLog.actions.push({ actor:cmd.n, action:`💚 ${troopsBack2} troops healed (skill)`, dmg:-troopsBack2, isSkill:true, isHeal:true, troopsBack:troopsBack2, atkRemaining:Math.round(atkTroopHp/atkTroopHpPer) });
+  if (S.rs.skillHealCoeff > 0) {
+    const healAmt = calcCmdHeal(S.command, S.rs.skillHealCoeff, S.rs.recoveryModSum || 0, S.dmgPool, round, S.dmgRound);
+    const done = healSideHp(S, Math.max(0, Math.round(healAmt)));
+    S.dmgPool = Math.max(0, S.dmgPool - done);
+    const troopsBack2 = Math.round(done / hpDiv);
+    if (troopsBack2 > 0) roundLog.actions.push({ actor:S.name, action:`💚 ${troopsBack2} troops healed (skill)`, dmg:-troopsBack2, isSkill:true, isHeal:true, troopsBack:troopsBack2,
+      ...(S.isPlayer ? { atkRemaining:Math.round(hpOf(S)/hpDiv) } : { isPlayer:false, defRemaining:Math.round(hpOf(S)/hpDiv) }) });
   }
 }
 
-// % HP nuke
-if (rs.cmdPctDmg > 0 && defTroopHp > 0) {
-  const isCrit = Math.random() < rs.critChance;
-  const dmg    = Math.max(1, Math.round(defTroops * defTroopHpPer * rs.cmdPctDmg * (isCrit?1.5:1.0)));
-  defTroopHp   = Math.max(0, defTroopHp - dmg);
-  roundLog.actions.push({ actor:cmd.n, action:`💀 % HP strike${isCrit?" (CRIT!)":""}`, dmg, isPlayer:true, isSkill:true });
+// 8) % max-HP nukes
+for (const S of [A, D]) {
+  const T = other(S);
+  if (S.rs.cmdPctDmg > 0 && hpOf(T) > 0) {
+    const isCrit = Math.random() < S.rs.critChance;
+    const maxHp  = T.slotMax.reduce((s, h) => s + h, 0);
+    const dmg    = Math.max(1, Math.round(maxHp * S.rs.cmdPctDmg * (isCrit ? 1.5 : 1.0)));
+    const lost   = damageSide(T, dmg, round);
+    roundLog.actions.push({ actor:S.name, action:`💀 % HP strike${isCrit?" (CRIT!)":""}`, dmg, ...hitFields(S, T, lost), isSkill:true });
+  }
 }
 
-// Build speed-ordered list: atk cmd + one entry per atk slot + def cmd + one entry per def slot
-const order = [
-  { id:"atkCmd",   spd:atkCmdSpd + (rs.cmdSpdBonus || 0),   side:"atk" },
-  ...atkSlotResolved.map((sl, idx) => ({ id:`atkSlot_${idx}`, slotIdx:idx, spd:sl.spd + (rs.slotSpdBonus?.[idx] || 0), side:"atk" })),
-  { id:"defCmd",   spd:defCmdSpd - (rs.enemySpdFlatDown || 0),   side:"def" },
-  ...defSlotResolved.map((sl, idx) => ({ id:`defSlot_${idx}`, slotIdx:idx, spd:sl.spd - (rs.enemySpdFlatDown || 0), side:"def" })),
-].sort((a,b) => b.spd - a.spd || (a.side==="atk" ? -1 : 1));
+// 9) Speed order: both commanders + every slot. Own SPD buffs up, enemy SPD-down debuffs down.
+const order = [];
+for (const S of [A, D]) {
+  const T = other(S);
+  order.push({ side:S, cmd:true, spd:S.spd + (S.rs.cmdSpdBonus || 0) - (T.rs.enemySpdFlatDown || 0) });
+  S.slots.forEach((sl, idx) => order.push({ side:S, slotIdx:idx, spd:sl.spd + (S.rs.slotSpdBonus?.[idx] || 0) - (T.rs.enemySpdFlatDown || 0) }));
+}
+// Speed ties: one coin flip per round decides which side's tied units go first (no built-in attacker edge)
+const tieFirst = Math.random() < 0.5 ? A : D;
+order.sort((a, b) => b.spd - a.spd || (a.side === b.side ? 0 : (a.side === tieFirst ? -1 : 1)));
 
 for (const ent of order) {
-  if (atkTroopHp <= 0 || defTroopHp <= 0) break;
+  if (hpOf(A) <= 0 || hpOf(D) <= 0) break;
+  const S = ent.side, T = other(S);
+  if (ent.cmd) commanderAct(S, T, round, roundLog);
+  else slotAct(S, ent.slotIdx, T, round, roundLog);
+}
 
-  // ── Attacker commander ────────────────────────────────────────────────
-  if (ent.id === "atkCmd") {
-    if (defTroopHp <= 0) continue;
-    // Build damage modifier sum from rs state
-    const physModSum = (rs.cmdMult - 1)
-      + (attackerBonus ? 0.10 : 0)
-      + cmdScalingBonus
-      + (rs.enemyDmgTakenUp || 0)
-      - (rs.enemyAtkReduce || 0);
-    const focModSum  = (rs.cmdMult - 1)
-      + (strategistBonus ? 0.10 : 0)
-      + cmdScalingBonus
-      + (rs.enemyDmgTakenUp || 0)
-      - (rs.enemyAtkReduce || 0);
-    const troopDmgType = atkBranchDef?.dmgType ?? "physical";
-    const cmdAtkR      = cmdAtkStat + (rs.cmdAtkFlat || 0);  // + max-level flat ATK
-    const cmdFocR      = cmdFocStat + (rs.cmdFocFlat || 0);  // + max-level flat FOC
-    const usesFoc      = troopDmgType === "magical" || (cmdFocR > cmdAtkR);
-
-    // Primary hit
-    const hit1 = usesFoc
-      ? calcCmdFocusSkillDmg(cmdFocR, atkCommand, 1.0 + (rs.focusDmgBonus||0), focModSum)
-      : calcCmdNormalDmg(cmdAtkR, atkCommand, physModSum);
-
-    // Follow-up hit — calculated separately then summed
-    const { eligibleRounds: fuRounds, chance: fuChance } = followupStats(rs.followupSources || []);
-    const followupExpected = round * fuRounds * fuChance; // expected follow-up contribution
-    const hit2 = followupExpected > 0
-      ? (usesFoc
-          ? calcCmdFocusSkillDmg(cmdFocR, atkCommand, 1.0 + (rs.focusDmgBonus||0), focModSum)
-          : calcCmdNormalDmg(cmdAtkR, atkCommand, physModSum))
-      : 0;
-
-    // Apply defence reduction to each hit
-    const effectiveDef = Math.max(0, defTroopDef * (1 - Math.min(0.9, rs.enemyDefDown || 0)) - (rs.enemyDefFlatDown || 0));
-    const defMult      = usesFoc ? 1.0 : Math.max(0, 1 + defReduction(effectiveDef));
-    const isCrit       = Math.random() < (rs.critChance || 0);
-    const critMult     = isCrit ? 1.5 : 1.0;
-    const totalDmg     = Math.max(1, Math.round((hit1 + hit2 * followupExpected) * defMult * critMult));
-
-    if (rs.lifesteal > 0 && !healBlocked) {
-      const gain = Math.round(totalDmg * rs.lifesteal);
-      atkTroopHp     = Math.min(atkHpMax, atkTroopHp + gain);
-      totalAtkLostHp = Math.max(0, totalAtkLostHp - gain);
-      totalDamageTakenPool = Math.max(0, totalDamageTakenPool - gain);
-      const t = Math.round(gain / atkTroopHpPer);
-      if (t > 0) roundLog.actions.push({ actor:cmd.n, action:`🧛 Lifesteal +${t} troops`, dmg:-t, isSkill:true, isHeal:true });
-    }
-    const prevDef  = defTroopHp;
-    defTroopHp = Math.max(0, defTroopHp - totalDmg);
-    roundLog.actions.push({ actor:cmd.n, action:`${cmd.n} strikes${isCrit?" (CRIT!)":""}${hit2>0?" + follow-up":""}`, dmg:totalDmg, defKilled:Math.max(0,Math.round((prevDef-defTroopHp)/defTroopHpPer)), defRemaining:Math.max(0,Math.round(defTroopHp/defTroopHpPer)), isPlayer:true });
-
-  // ── Attacker slot ─────────────────────────────────────────────────────
-  } else if (ent.id?.startsWith("atkSlot_")) {
-    const slotIdx = ent.slotIdx;
-    const sl      = atkSlotResolved[slotIdx];
-    if (!sl || !sl.tierData || atkSlotHp[slotIdx] <= 0 || defTroopHp <= 0) continue;
-
-    // on_hit troop skills from this slot — pass primary defTroopBranch for immunity
-    procTroopSkills(sl.skills, "on_hit", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null, round, atkSlotResolved, sl);
-
-    const count     = Math.ceil(atkSlotHp[slotIdx] / sl.hpPer);
-    const slotLabel = sl.branchDef?.label || `Slot ${slotIdx+1}`;
-    const hits      = rs.troopDoubleAtk ? 2 : 1;
-
-    for (let hi = 0; hi < hits; hi++) {
-      if (defTroopHp <= 0) break;
-      const troopDmgModSum = (rs.troopAtkMult - 1) + (rs.enemyDmgTakenUp || 0) - (rs.enemyAtkReduce || 0);
-      const effectiveDefDown = Math.min(0.9, rs.enemyDefDown || 0);
-      let dmg = calcTroopDmg(
-        sl.branchDef, sl.tierData,
-        Math.max(0, defTroopDef - (rs.enemyDefFlatDown || 0)), effectiveDefDown,
-        atkCommand,
-        roundTerrBonus,
-        troopDmgModSum,
-        false,
-        mod,
-        rs.followupSources || [],
-        round
-      );
-      if (rs.troopBonusDmgMult > 0) {
-        const bonus = Math.round(dmg * rs.troopBonusDmgMult);
-        dmg += bonus;
-        roundLog.actions.push({ actor:slotLabel, action:`💥 Bonus strike +${bonus} dmg`, dmg:bonus, isPlayer:true, isTroopSkill:true });
-        // Consume it: on_hit procs are only rolled ONCE per round (before this
-        // hits loop, not once per hit), so a single successful "bonus damage"
-        // proc was being reapplied to EVERY hit in a double_attack round
-        // (double the hits = double the free bonus damage from one proc).
-        // Zeroing it here makes one proc buff exactly the one hit it fired
-        // on, matching the skill text ("chance to deal an extra instance").
-        rs.troopBonusDmgMult = 0;
-      }
-      // Distribute attacker damage proportionally across alive def slots
-      let dmgLeft2 = dmg;
-      const prevDefTotal2 = defTroopHp;
-      const defSlotHpAlive = defSlotHp.reduce((s,h) => s+h, 0);
-      if (defSlotHpAlive > 0) {
-        for (let di = 0; di < defSlotHp.length && dmgLeft2 > 0; di++) {
-          if (defSlotHp[di] <= 0) continue;
-          const frac = defSlotHp[di] / defSlotHpAlive;
-          const portion = Math.min(defSlotHp[di], Math.round(dmgLeft2 * frac));
-          defSlotHp[di] = Math.max(0, defSlotHp[di] - portion);
-          dmgLeft2 -= portion;
-        }
-      }
-      defTroopHp = Math.max(0, defSlotHp.reduce((s,h) => s+h, 0));
-      roundLog.actions.push({ actor:slotLabel, action:`${slotLabel} attack${hits>1?` (hit ${hi+1}/2)`:""}`, dmg, defKilled:Math.max(0,Math.round((prevDefTotal2-defTroopHp)/defTroopHpPer)), defRemaining:Math.max(0,Math.round(defTroopHp/defTroopHpPer)), isPlayer:true });
-    }
-
-    // Counter attack — use primary def slot for counter stats
-    if (rs.troopCounterAtk && defTroopHp > 0) {
-      const cDmg = calcTroopDmg(
-        _defBranchDef, _defTierData,
-        atkTroopDef, 0,
-        defCommand,
-        roundTerrBonus,
-        -(rs.enemyDmgReduce || 0) - (rs.dmgReduce || 0),
-        false,
-        defMod,
-        [], round
-      );
-      const cFinal = Math.max(1, Math.round(cDmg * 0.50));
-      const prevSlotHp = atkSlotHp[slotIdx];
-      atkSlotHp[slotIdx] = Math.max(0, atkSlotHp[slotIdx] - cFinal);
-      const hpLost = prevSlotHp - atkSlotHp[slotIdx];
-      atkTroopHp = Math.max(0, atkTroopHp - hpLost);
-      totalAtkLostHp += hpLost;
-      roundLog.actions.push({ actor:"Defenders", action:`⚡ Counter attack!`, dmg:cFinal, isPlayer:false, isTroopSkill:true });
-    }
-
-  // ── Defender commander ────────────────────────────────────────────────
-  } else if (ent.id === "defCmd") {
-    if (rs.enemyNullified || atkTroopHp <= 0) continue;
-    if (rs.enemyStunned > 0) {
-      rs.enemyStunned--;
-      roundLog.actions.push({ actor:"Enemy Cmd", action:"⚡ Enemy commander is stunned!", dmg:0 });
-      continue;
-    }
-    if (rs.enemySilenced) {
-      rs.enemySilenced = false; // consumed — skill fires next round naturally
-      roundLog.actions.push({ actor:"Enemy Cmd", action:"🎵 Enemy commander silenced — skill delayed!", dmg:0 });
-      continue;
-    }
-    if (rs.enemyConfused > 0) {
-      rs.enemyConfused--;
-      if (Math.random() < 0.5) {
-        // Confused — attacks own troops
-        const selfDmg = Math.max(1, Math.round(
-          calcCmdNormalDmg(defCmdMight, defCommand, 0) * 0.8
-          * Math.max(0, 1 + defReduction(defTroopDef * bastionDefMult))
-        ));
-        const prevDef  = defTroopHp;
-        // distribute self-damage across def slots
-        let sdLeft = selfDmg;
-        const defSHA = defSlotHp.reduce((s,h)=>s+h,0);
-        if (defSHA > 0) { for (let di=0;di<defSlotHp.length&&sdLeft>0;di++) { if(defSlotHp[di]<=0)continue; const p=Math.min(defSlotHp[di],Math.round(sdLeft*(defSlotHp[di]/defSHA))); defSlotHp[di]=Math.max(0,defSlotHp[di]-p); sdLeft-=p; } }
-        defTroopHp = Math.max(0, defSlotHp.reduce((s,h)=>s+h,0));
-        const killed = Math.max(0, Math.round((prevDef - defTroopHp) / defTroopHpPer));
-        roundLog.actions.push({ actor:"Enemy Cmd", action:`😵 Confused! Attacks own troops — ${killed} friendly casualties`, dmg:selfDmg, isPlayer:false, isConfused:true });
-        continue;
-      }
-      // 50% chance they act normally despite confusion
-    }
-    if (rs.enemyTargetsTaunted) {
-      roundLog.actions.push({ actor:"Enemy Cmd", action:"🎯 Taunted — forced to attack!", dmg:0 });
-    }
-    if (Math.random() < rs.enemyMissChance) { roundLog.actions.push({ actor:"Enemy Cmd", action:"Enemy commander missed!", dmg:0 }); continue; }
-    if (rs.atkEvadeNextHit > 0) { // Shaman's Defense etc.: next enemy hit may land on an evading unit
-      const ev = Math.random() < rs.atkEvadeNextHit; rs.atkEvadeNextHit = 0;
-      if (ev) { roundLog.actions.push({ actor:"Enemy Cmd", action:"💨 Attack evaded!", dmg:0 }); continue; }
-    }
-    if (rs.invisibleUnits > 0 && Math.random() < 0.30) { roundLog.actions.push({ actor:"Enemy Cmd", action:"🌑 Attack evaded — target invisible!", dmg:0 }); continue; }
-    const eMod     = (1 - (rs.enemyAtkReduce||0)) * (1 - (rs.enemyDmgReduce||0)) * (1 - (rs.dmgReduce||0)) * (1 - (rs.enemyBurnPenalty||0));
-    const defPhysModSum = -(1 - eMod); // convert multiplier to modifier sum
-    const defDmg = calcCmdNormalDmg(Math.max(1, defCmdMight - (rs.enemyCmdAtkFlatDown || 0)), defCommand, defPhysModSum);
-    const defAtkDefMult = Math.max(0, 1 + defReduction(atkTroopDef * (rs.troopDefMult||1) * bastionDefMult));
-    const dmg    = Math.max(1, Math.round(defDmg * defAtkDefMult * roundTerrBonus));
-    const prevAtk  = atkTroopHp;
-    atkTroopHp     = Math.max(0, atkTroopHp - dmg);
-    const hpLost   = prevAtk - atkTroopHp;
-    totalAtkLostHp += hpLost;
-    totalDamageTakenPool += hpLost;
-    damageFirstTakenRound = round;
-    roundLog.actions.push({ actor:"Enemy Cmd", action:`${report.defCmdIcon} Enemy commander strikes`, dmg, atkKilled:Math.max(0,Math.round(hpLost/atkTroopHpPer)), atkRemaining:Math.max(0,Math.round(atkTroopHp/atkTroopHpPer)), isPlayer:false });
-
-  // ── Defender slot ─────────────────────────────────────────────────────
-  } else if (ent.id?.startsWith("defSlot_")) {
-    const dSlotIdx = ent.slotIdx;
-    const dsl = defSlotResolved[dSlotIdx];
-    if (!dsl || !dsl.tierData || defSlotHp[dSlotIdx] <= 0 || atkTroopHp <= 0) continue;
-    if (rs.enemyNullified) continue;
-    if (rs.enemyStunned > 0) continue;
-    if (rs.enemyConfused > 0) {
-      rs.enemyConfused--;
-      if (Math.random() < 0.5) {
-        const selfDmg = calcTroopDmg(dsl.branchDef, dsl.tierData, dsl.def, 0, defCommand, roundTerrBonus, 0, false, 1, [], round);
-        const prevSlot = defSlotHp[dSlotIdx];
-        defSlotHp[dSlotIdx] = Math.max(0, defSlotHp[dSlotIdx] - selfDmg);
-        defTroopHp = Math.max(0, defSlotHp.reduce((s,h)=>s+h,0));
-        const killed = Math.max(0, Math.round((prevSlot - defSlotHp[dSlotIdx]) / dsl.hpPer));
-        roundLog.actions.push({ actor:"Defenders", action:`😵 Confused! ${dsl.branchDef?.label||"Defenders"} attack own ranks — ${killed} casualties`, dmg:selfDmg, isPlayer:false, isConfused:true });
-        continue;
-      }
-    }
-    if (Math.random() < rs.enemyMissChance) { roundLog.actions.push({ actor:"Defenders", action:"Enemy troops missed!", dmg:0 }); continue; }
-    if (rs.atkEvadeNextHit > 0) {
-      const ev = Math.random() < rs.atkEvadeNextHit; rs.atkEvadeNextHit = 0;
-      if (ev) { roundLog.actions.push({ actor:"Defenders", action:"💨 Attack evaded!", dmg:0 }); continue; }
-    }
-
-    // on_hit troop skills — this def slot targeting attacker
-    procTroopSkills(dsl.skills, "on_hit", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null, round, defSlotResolved, dsl);
-
-    const rangedReduce = (dsl.branchDef?.role === "ranged" && rs.rangedDmgReduce > 0) ? rs.rangedDmgReduce : 0;
-    const defSlotModSum = -(rs.enemyDmgReduce||0) - (rs.troopDmgReduce||0) - (rs.dmgReduce||0) - rangedReduce - (rs.enemyBurnPenalty||0);
-    const dSlotMod  = troopSizeModifier(dsl.branchDef?.size ?? null, atkSize);
-    const dCount    = Math.ceil(defSlotHp[dSlotIdx] / dsl.hpPer);
-    const dmgD = Math.max(1, Math.round(
-      calcTroopDmg(dsl.branchDef, dsl.tierData, atkTroopDef * (rs.troopDefMult||1) * bastionDefMult, 0, defCommand, roundTerrBonus, defSlotModSum, false, dSlotMod, [], round)
-    ));
-    // Distribute this slot's damage proportionally across alive atk slots
-    const prevAtkTotal2 = atkTroopHp;
-    let dmgLeft3 = dmgD;
-    const atkSlotHpAlive2 = atkSlotHp.reduce((s,h)=>s+h,0);
-    if (atkSlotHpAlive2 > 0) {
-      for (let si=0;si<atkSlotHp.length&&dmgLeft3>0;si++) {
-        if (atkSlotHp[si]<=0) continue;
-        const frac = atkSlotHp[si]/atkSlotHpAlive2;
-        const portion = Math.min(atkSlotHp[si], Math.round(dmgLeft3*frac));
-        atkSlotHp[si] = Math.max(0, atkSlotHp[si]-portion);
-        dmgLeft3 -= portion;
-      }
-    }
-    const newAtkTotalHp2 = atkSlotHp.reduce((s,h)=>s+h,0);
-    const hpLostD = prevAtkTotal2 - newAtkTotalHp2;
-    atkTroopHp     = newAtkTotalHp2;
-    totalAtkLostHp += hpLostD;
-    totalDamageTakenPool += hpLostD;
-    damageFirstTakenRound = round;
-
-    // on_hit_received — attacker's primary slot reacts
-    procTroopSkills(atkSlotResolved[0]?.skills ?? atkTroopSkills, "on_hit_received", atkSkillLevels, rs, roundLog, "Troops", dsl.branch ?? null, round, atkSlotResolved, atkSlotResolved[0]);
-
-    const dLabel = dsl.branchDef?.label || `Defenders ${dSlotIdx+1}`;
-    roundLog.actions.push({ actor:"Defenders", action:`${dLabel} attack`, dmg:dmgD, atkKilled:Math.max(0,Math.round((prevAtkTotal2-atkTroopHp)/atkTroopHpPer)), atkRemaining:Math.max(0,Math.round(atkTroopHp/atkTroopHpPer)), isPlayer:false });
+// 10) round_end troop skills (both sides)
+for (const S of [A, D]) {
+  const T = other(S);
+  for (const sl of S.slots) {
+    const from = roundLog.actions.length;
+    procTroopSkills(sl.skills, "round_end", S.skillLevels, S.rs, roundLog, S.isPlayer ? (sl.branchDef?.label || "Troops") : "Defenders", T.slots[0]?.branch ?? T.cmdObj?.troopBranch ?? null, round, S.slots, sl);
+    tagSide(roundLog, from, S);
   }
 }
 
-// round_end troop skills (all atk slots)
-for (const sl of atkSlotResolved) {
-  procTroopSkills(sl.skills, "round_end", atkSkillLevels, rs, roundLog, sl.branchDef?.label||"Troops", primaryDefSlot?.branch ?? dc?.troopBranch ?? null, round, atkSlotResolved, sl);
-}
-// round_end for all def slots
-for (const dsl of defSlotResolved) {
-  procTroopSkills(dsl.skills, "round_end", defSkillLevels, rs, roundLog, dsl.branchDef?.label||"Defenders", primarySlot?.branch ?? cmd.troopBranch ?? null, round, defSlotResolved, dsl);
-}
+atkTroopHp = hpOf(A); defTroopHp = hpOf(D);
+totalAtkLostHp = A.lostHp;
 
 // ── Life Drain tick ───────────────────────────────────────────────────────────
 if (rs.lifeDrainApplied) {
