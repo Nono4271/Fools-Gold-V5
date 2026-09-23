@@ -705,16 +705,25 @@ export function tierFromBranchLevel(bLvl) {
 
 // ── Barracks helpers ──────────────────────────────────────────────────────────
 
-export function barracksCapacity(lvl) {
-  if (lvl <= 0) return 2000;
-  return Math.round(2000 * Math.pow(45, (lvl - 1) / 19));
+// Barracks space is measured in COMMANDS (the same unit as a commander's
+// command cap): one command = CMD_SIZE[size] troops (small 100, medium 50,
+// large 4). Lv1 holds 30 commands, Lv20 holds 1000.
+export const BARRACKS_CMD_MIN = 30;
+export const BARRACKS_CMD_MAX = 1000;
+export function barracksCommandCapacity(lvl) {
+  const l = Math.max(1, Math.min(20, lvl || 0));
+  return Math.round(BARRACKS_CMD_MIN * Math.pow(BARRACKS_CMD_MAX / BARRACKS_CMD_MIN, (l - 1) / 19));
 }
 
-export function barracksCommandPool(lvl) {
-  const l = Math.max(0, Math.min(20, lvl || 0));
-  if (l <= 0) return 0;
-  return Math.round(20 + (l - 1) * (280 / 19));
+// Troops the AI's single-number pool can hold. AI pools are plain small-unit
+// counts (100 per command); the player's real space check is command-based
+// (see shared/utils/barracks.js).
+export function barracksCapacity(lvl) {
+  return barracksCommandCapacity(lvl) * 100;
 }
+
+// Troops in the starting barracks pool (player and AI): 20 small commands.
+export const STARTING_TROOPS = 2000;
 
 // ── Training helpers ──────────────────────────────────────────────────────────
 
