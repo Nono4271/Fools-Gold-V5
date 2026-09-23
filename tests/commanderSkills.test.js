@@ -350,3 +350,12 @@ test("Dragons: You Get a Heal! heals Dragon units when a debuff lands on them", 
   const heals = sp => actsOver(s => drgBattle('h24', sp, s, foe)).filter(a => a.isHeal && a.isPlayer !== false).length;
   assert.ok(heals({ cinderfang_you_get_a_heal: 7 }) > heals({}));
 });
+
+test("pirates: Burn is per unit — Hot Sauce burns each enemy unit, Soup's Hot burns only the attacker", () => {
+  // Hot Sauce: enemy units deal less damage in its round (round 4) than without it
+  const r4 = sp => { let t = 0; for (let s = 1; s <= 10; s++) t += (pirBattle('h2', sp, s, threeUnitFoe()).report.rounds.find(r => r.round === 4)?.actions || [])
+    .reduce((a, x) => a + (x.isPlayer === false && x.dmg > 0 && !x.isConfused ? x.dmg : 0), 0); return t; };
+  assert.ok(r4({ sam_hot_sauce: 15 }) < r4({}));
+  const soup = actsOver(s => pirBattle('h2', { sam_soups_hot: 7 }, s));
+  assert.ok(soup.some(a => /Burned while attacking/.test(a.action)));
+});
