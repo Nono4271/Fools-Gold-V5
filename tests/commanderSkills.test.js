@@ -158,3 +158,35 @@ test('defender actions are logged as enemy actions', () => {
   assert.ok(acts.some(a => a.actor === 'Enemy Cmd' && a.isPlayer === false && a.dmg > 0));
   assert.ok(acts.some(a => a.isSkill && a.isPlayer === false));   // defender's commander skills fire
 });
+
+// ── Pirates (Phase 2) ─────────────────────────────────────────────────────────
+function pirBattle(id, skillPoints, seed, defCmd) {
+  const slots = ['swashbucklers', 'gunners'].map(b => ({ branch: { faction: 'pirates', branch: b, tier: 2 }, troops: 10000 }));
+  const cmd = { id, n: id, faction: 'pirates', cls: 'attacker', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 20000, troopBranch: slots[0].branch, troopSlots: slots, skillPoints };
+  const fb = { faction: 'holyknights', branch: 'templars', tier: 2 };
+  const def = defCmd || { id: 0, n: 'D', faction: 'holyknights', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 20000, troopBranch: fb, troopSlots: [{ branch: fb, troops: 20000 }] };
+  return seeded(() => simBattle(cmd, 20000, { defCmd: def, garrison: 100, owner: 'ai' }, 0), seed);
+}
+const lostOver = (id, sp, n = 10) => { let t = 0; for (let s = 1; s <= n; s++) t += pirBattle(id, sp, s).lost; return t; };
+
+test('pirates: Hot Sauce burn damage + Burn helps (was cutting our own damage)', () => {
+  assert.ok(lostOver('h2', { sam_hot_sauce: 15 }) < lostOver('h2', {}));
+});
+
+test("pirates: Whiskey Barrel's Drunk lasts into the next round (enemy misses in round 4 after a round-3 Drunk)", () => {
+  const misses = sp => { let n = 0; for (let s = 1; s <= 20; s++) n += (pirBattle('h25', sp, s).report.rounds.find(r => r.round === 4)?.actions || [])
+    .filter(a => /missed/.test(a.action) && a.isPlayer === false).length; return n; };
+  assert.ok(misses({ reck_whiskey_barrel: 15 }) > misses({}));
+});
+
+test("pirates: Captain's Honor confuses Brine (self-debuff) and Around the Block resists enemy stuns", () => {
+  let selfConfused = 0;
+  for (let s = 1; s <= 20; s++) selfConfused += pirBattle('h13', { bri_captains_honor: 7 }, s).report.rounds.flatMap(x => x.actions)
+    .filter(a => a.isConfused && a.isPlayer === false && /own troops/.test(a.action)).length;
+  assert.ok(selfConfused > 0);
+  const bruk = pvpArmy('h34', true);
+  let resisted = 0;
+  for (let s = 1; s <= 20; s++) resisted += pirBattle('h1', { fyn_around_the_block: 7 }, s, { ...bruk }).report.rounds.flatMap(x => x.actions)
+    .filter(a => /resists/.test(a.action)).length;
+  assert.ok(resisted > 0);
+});
