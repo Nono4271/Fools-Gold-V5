@@ -259,3 +259,56 @@ test('Night Creatures: Power in Numbers only with an all-Spider army', () => {
   const mixed = s => ncBattle('h47', { skit_power_in_numbers: 7 }, s).lost === ncBattle('h47', {}, s).lost;
   assert.ok([1, 2, 3].every(mixed));
 });
+
+// ── Holy Knights ──────────────────────────────────────────────────────────────
+function hkBattle(id, skillPoints, seed, defCmd, branches = ['templars', 'inquisitors'], tile = {}) {
+  const slots = branches.map(b => ({ branch: { faction: 'holyknights', branch: b, tier: 2 }, troops: 10000 }));
+  const cmd = { id, n: id, faction: 'holyknights', cls: 'attacker', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 10000 * branches.length, troopBranch: slots[0].branch, troopSlots: slots, skillPoints };
+  return seeded(() => simBattle(cmd, cmd.troops, { defCmd: defCmd || threeUnitFoe(), garrison: 100, owner: 'ai', ...tile }, 0), seed);
+}
+// Damage the enemy dealt to us (round 1 only when r1 — battle length doesn't skew it)
+const takenOver = (id, sp, n = 10, defCmd, tile, r1) => { let t = 0; for (let s = 1; s <= n; s++) t += hkBattle(id, sp, s, defCmd, undefined, tile).report.rounds
+  .filter(x => !r1 || x.round === 1).flatMap(x => x.actions).reduce((a, x) => a + (x.isPlayer === false && x.dmg > 0 ? x.dmg : 0), 0); return t; };
+
+test("HK: Heaven's Hammer / Got Ya always stun the unit they hit", () => {
+  assert.ok(allActs(hkBattle('h40', { ser_heavens_hammer: 7 }, 1)).some(a => /Heaven's Hammer — Enemy unit stunned/.test(a.action)));
+  assert.ok(allActs(hkBattle('h42', { mou_got_ya: 7 }, 1)).some(a => /Got Ya — Enemy unit stunned/.test(a.action)));
+});
+
+test("HK: Mourne's Special adds Focus damage to every enemy unit; Smite hits all units", () => {
+  assert.ok(allActs(hkBattle('h42', { mou_mournes_special: 15 }, 1)).some(a => a.isSkill && /Mourne's Special → 3 units/.test(a.action)));
+  assert.ok(allActs(hkBattle('h40', { ser_smite: 7 }, 1)).some(a => a.isSkill && /Smite → 3 units/.test(a.action)));
+});
+
+test("HK: damage-taken passives lower damage received (People's Hero, Commander In Arms, Will of the Templar)", () => {
+  assert.ok(takenOver('h39', { bre_peoples_hero: 15 }, 10, null, {}, true) < takenOver('h39', {}, 10, null, {}, true));
+  assert.ok(takenOver('h41', { dan_commander_in_arms: 7 }, 10, null, {}, true) < takenOver('h41', {}, 10, null, {}, true));
+  assert.ok(takenOver('h38', { vay_will_of_templar: 7 }, 10, null, {}, true) < takenOver('h38', {}, 10, null, {}, true));
+});
+
+test("HK: Here We Go Again only resists Creature of the Night damage at night", () => {
+  const nc = { ...pvpArmy('h44', false) };
+  assert.ok(takenOver('h37', { ald_here_we_go_again: 7 }, 10, nc, { isNight: true }) < takenOver('h37', {}, 10, nc, { isNight: true }));
+  assert.equal(takenOver('h37', { ald_here_we_go_again: 7 }, 5, nc, { isNight: false }), takenOver('h37', {}, 5, nc, { isNight: false }));
+});
+
+test('HK: Power Drain lowers the enemy commander ATK in round 1', () => {
+  const hit = sp => allActs(hkBattle('h41', sp, 1)).find(a => a.actor === 'Enemy Cmd' && a.dmg > 0 && /strikes/.test(a.action))?.dmg || 0;
+  assert.ok(hit({ dan_power_drain: 7 }) < hit({}));
+});
+
+test('HK: Divine Prayer — a stunned Seraph may cleanse it', () => {
+  const bruk = pvpArmy('h34', true); // Ground Shake stuns our commander
+  let resisted = 0;
+  for (let s = 1; s <= 20; s++) resisted += allActs(hkBattle('h40', { ser_divine_prayer: 7 }, s, { ...bruk })).filter(a => /resists stun/.test(a.action)).length;
+  assert.ok(resisted > 0);
+});
+
+test('HK: Whatever It Takes can confuse allied units too (base chance), enemy chance scales', () => {
+  let own = 0, foe = 0;
+  for (let s = 1; s <= 10; s++) for (const a of allActs(hkBattle('h41', { dan_whatever_it_takes: 7 }, s))) {
+    const m = a.action.match(/Whatever It Takes — (\d+) enemy units? confused(?:, (\d+) allied)?/);
+    if (m) { foe += +m[1]; own += +(m[2] || 0); }
+  }
+  assert.ok(foe > own, `${foe} vs ${own}`);
+});
