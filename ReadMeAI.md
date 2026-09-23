@@ -1438,6 +1438,31 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-22 — Claude — TEST CAMPAIGN (admin mode + local saves) — REMOVE BEFORE LAUNCH
+
+Owner-requested solo testing mode. All of it lives in `src/testmode/`, plus small mount points marked `TEST MODE`.
+- **Turning it on:** the title screen shows 🛠 TEST CAMPAIGN when `import.meta.env.DEV` is true or the build has `VITE_TEST_MODE=1`. Production builds without that variable hide it.
+- **Admin powers** (`useTestMode.js`, rules in `adminRules.js`):
+  - All HDEFS commanders granted at start (any alignment; CommanderScreen `ignoreAlignment`).
+  - Adjacency and range bypass: `testNoAdj` in Game.jsx `canAtk`/`cmdsAdjToSel`, and TilePopup `ignoreRange`.
+  - Set commander level (real `applyXp` going up; strips growth and skill points going down) and respect (promotions at 7/12).
+  - ⚡ finish for marches, upgrades, training, healing, forts and crew structures. Marches are finished by shifting the march clock, so the normal arrival and battle still run.
+  - Relocate the HQ to any structurally valid 3x3 pad; commanders at the old HQ move with it.
+  - Crews start at level 50.
+  - Gems, eggs, void orbs and the 4 resources are topped up every second.
+- **UI** (`TestUi.jsx`): the title menu (new game or continue from a slot), a 🛠 ADMIN panel (Commanders / Timers / Map / Saves), a 🛠 RELOCATE row in the tile popup, and ⚡ ARRIVE NOW on the floating commander card.
+- **Saves** (`saveStore.js`): stored in IndexedDB as autosave (every 60s and when the app is hidden) plus 3 slots.
+  - The world is rebuilt from a **map seed**: `mapGen.worker.js` swaps `Math.random` for mulberry32 when given `seed`; `useMapInit` passes and keeps `mapSeedRef`. So a save only stores the tile store (changed tiles), commanders, AI refs, the army reducer state and ~35 state values.
+  - Loading reloads the page (sessionStorage flag) and applies the snapshot on `mapReady`.
+  - Wild spawns are not saved.
+- **Bug fix (affects normal play):** `buildHQLayer` now removes castles whose tile is no longer an HQ. Before, the old castle stayed on the map after any HQ relocation.
+- **Known (not fixed):** normal `performRelocation` leaves commanders' `tk` on the old HQ tile.
+- **To remove:**
+  - Delete `src/testmode/` and `tests/testMode.test.js`.
+  - Undo the `TEST MODE` lines in Game.jsx, GameView.jsx, TilePopup.jsx, CommanderScreen.jsx and TitleScreen.jsx.
+  - The seed support in useMapInit and mapGen can stay.
+- Tests: `tests/testMode.test.js` (7). 420/420 pass.
+
 ## 2026-09-22 — Claude — March countdowns + clickable march coordinates
 
 - `marchMsLeft(march, now)` in `shared/utils/marchMotion.js`: time left on a march (sum of remaining segments minus time into the current one).
