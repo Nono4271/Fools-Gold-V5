@@ -176,7 +176,7 @@ Screenshot/recording:
 ## 13. HQ relocation
 - [ ] M1 A valid pad (3x3 owned, same region, P1–P9, not next to another HQ) shows RELOCATE; invalid pads don't
 - [ ] M2 Relocate: token used, 72h cooldown, blocked while commanders march
-- [ ] M3 **Known bug:** after a normal relocation, commanders stay on the old HQ tile. Confirm, then fix
+- [ ] M3 Commanders at HQ move to the new HQ after relocation (fixed 2026-09-23 — re-test)
 - [ ] M4 The old HQ tiles turn neutral; the new HQ castle, name and border appear; buildings are kept
 
 ## 14. Factions (run once per faction)

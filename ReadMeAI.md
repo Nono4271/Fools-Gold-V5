@@ -1438,6 +1438,22 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Test-play bug batch (building gates, army slider, starting troops, relocation)
+
+- **Building deadlocks (affects normal play)**, in `shared/constants/buildings.js`:
+  - Barracks and Training each required the other at the target level, so neither could leave Lv0. Now Barracks Lv N needs Training Lv N-1, and Training Lv N needs Barracks Lv N.
+  - `hqUpgradeBlocker` required Barracks/Training at `target×2`, which is above their cap at the current HQ, so HQ could never pass Lv1. It now requires `(target-1)×2`.
+  - HQMenu read the faction quarter from `bldgs.quarters`, which never existed, so HQ Lv4+ was also blocked. It now reads `quarterLevels[playerFaction]`.
+  - `tests/buildingGates.test.js` checks that every building can reach its max.
+- **Starting troops unusable until Quarters was opened**: FactionScreen computed the starting branch building (`startingBldgPatch`) but never applied it. It now calls `setBldgs`.
+- **Army slider could exceed owned troops**: `maxSlider` added the slot's own *draft* value, so every drag raised the cap. It's now barracks pool + troops the commander already holds of that type − other draft slots.
+- **HQ relocation**: `useRelocation.applyHqMove` now moves commanders standing on the old HQ to the new one (normal, forced and admin relocation).
+- **Test mode**:
+  - Gems and resources refill to their targets immediately (every 0.4s) instead of only below a floor.
+  - Lowering respect undoes promotions (never below natural rarity) and removes the skill points it granted.
+  - Arrivals skip the foothold check when "ignore adjacency" is on (`useMarch` `ignoreAdjacency`), so non-adjacent attacks now fight and capture.
+- 422/422 tests pass.
+
 ## 2026-09-22 — Claude — TEST CAMPAIGN (admin mode + local saves) — REMOVE BEFORE LAUNCH
 
 Owner-requested solo testing mode. All of it lives in `src/testmode/`, plus small mount points marked `TEST MODE`.
