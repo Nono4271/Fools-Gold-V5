@@ -11,8 +11,8 @@ export const TEST_MODE_AVAILABLE = (() => {
   try { return !!(import.meta.env?.DEV || import.meta.env?.VITE_TEST_MODE === "1"); } catch { return false; }
 })();
 
-// Unlimited-currency targets (topped up every second in test mode).
-export const TEST_TOPUP = { rss: 10_000_000, rssFloor: 5_000_000, gems: 1_000_000, gemsFloor: 500_000 };
+// Unlimited-currency targets — refilled to these the moment anything is spent.
+export const TEST_TOPUP = { rss: 10_000_000, gems: 1_000_000 };
 
 // ── Commanders ─────────────────────────────────────────────────────────────
 export function newTestCommander(h, hqKey, stamina = 150, now = Date.now()) {
@@ -44,22 +44,31 @@ export function adminSetLevel(cmd, target) {
   }
   const drop = from - to;
   const r1 = v => Math.round(v * 10) / 10;
-  const unspent = cmd.unspentSkillPoints ?? 0;
-  const allocated = Object.values(cmd.skillPoints || {}).reduce((s, n) => s + (n || 0), 0);
-  const skills = unspent >= drop
-    ? { skillPoints: cmd.skillPoints || {}, unspentSkillPoints: unspent - drop }
-    : { skillPoints: {}, unspentSkillPoints: Math.max(0, unspent + allocated - drop) };
   return {
-    ...cmd, ...skills, lvl: to, xp: 0,
+    ...cmd, ...removeSkillPoints(cmd, drop), lvl: to, xp: 0,
     atk: r1((cmd.atk ?? 0) - (cmd.atkPerLevel ?? 0) * drop),
     foc: r1(Math.max(0, (cmd.foc ?? 0) - (cmd.focPerLevel ?? 0) * drop)),
     spd: r1((cmd.spd ?? 0) - (cmd.spdPerLevel ?? 0) * drop),
   };
 }
 
+// Remove `n` skill points: unspent ones first, then refund allocated skills.
+function removeSkillPoints(cmd, n) {
+  const unspent = cmd.unspentSkillPoints ?? 0;
+  if (unspent >= n) return { skillPoints: cmd.skillPoints || {}, unspentSkillPoints: unspent - n };
+  const allocated = Object.values(cmd.skillPoints || {}).reduce((s, v) => s + (v || 0), 0);
+  return { skillPoints: {}, unspentSkillPoints: Math.max(0, unspent + allocated - n) };
+}
+
+// Promotion stat multipliers — must match RARITY_MULT in shared/constants/heroes.js
+// (promotedStats multiplies atk/foc by the NEW rarity's value).
+const PROMO_MULT = { veteran: 1.25, champion: 1.55 };
+const RANK = { soldier: 0, veteran: 1, champion: 2 };
+
 // Set respect level (0–15). Raising grants 1 skill point per level and applies
 // promotions (soldier→veteran at 7, veteran→champion at 12) with their stat
-// bumps. Lowering only lowers the level/points (promotions are kept).
+// bumps. Lowering reverses all of that: skill points are removed and
+// promotions are undone (never below the commander's natural rarity).
 export function adminSetRespect(cmd, target) {
   const to = Math.max(0, Math.min(RESPECT_MAX, Math.round(target)));
   const from = cmd.respectLevel ?? 0;
@@ -70,6 +79,15 @@ export function adminSetRespect(cmd, target) {
       if (out.rarity === r && to >= PROMO[r].respectRequired) out = { ...out, ...promotedStats(out, PROMO[r].to), rarity: PROMO[r].to };
     }
     out.unspentSkillPoints = (out.unspentSkillPoints ?? 0) + (to - from);
+  } else {
+    const natural = RANK[HDEFS.find(h => h.id === cmd.id)?.rarity] ?? 0;
+    const demote = (fromR, toR) => {
+      const m = PROMO_MULT[fromR];
+      out = { ...out, rarity: toR, atk: Math.round((out.atk ?? 0) / m), foc: out.foc > 0 ? Math.round(out.foc / m) : 0 };
+    };
+    if (out.rarity === "champion" && to < PROMO.veteran.respectRequired && natural < RANK.champion) demote("champion", "veteran");
+    if (out.rarity === "veteran" && to < PROMO.soldier.respectRequired && natural < RANK.veteran) demote("veteran", "soldier");
+    out = { ...out, ...removeSkillPoints(out, from - to) };
   }
   return { ...out, respectLevel: to, respectPoints: respectTotalFor(to, out.rarity), _justPromoted: null };
 }

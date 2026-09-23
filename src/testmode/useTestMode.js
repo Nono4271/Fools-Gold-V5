@@ -162,19 +162,19 @@ export function useTestMode(g) {
     grantAllCommanders();
   }, [active, grantAllCommanders]);
 
-  // ── Unlimited gems / eggs / void orbs / resources (top-up each second) ──
+  // ── Unlimited gems / eggs / void orbs / resources (refilled right after any spend) ──
   useEffect(() => {
     if (!active) return;
     const id = setInterval(() => {
       const s = latest.current;
       const { rss } = s.army;
-      if (["wood", "stone", "gas", "food"].some(k => (rss?.[k] ?? 0) < TEST_TOPUP.rssFloor)) {
+      if (["wood", "stone", "gas", "food"].some(k => (rss?.[k] ?? 0) < TEST_TOPUP.rss)) {
         s.setRss(p => ({ ...p, wood: Math.max(p.wood, TEST_TOPUP.rss), stone: Math.max(p.stone, TEST_TOPUP.rss), gas: Math.max(p.gas, TEST_TOPUP.rss), food: Math.max(p.food, TEST_TOPUP.rss) }));
       }
-      if ((s.persist.gems[0] ?? 0) < TEST_TOPUP.gemsFloor) s.persist.gems[1](TEST_TOPUP.gems);
+      if ((s.persist.gems[0] ?? 0) < TEST_TOPUP.gems) s.persist.gems[1](TEST_TOPUP.gems);
       if ((s.persist.dragonEggs[0] ?? 0) < s.dragonEggsCap) s.persist.dragonEggs[1](s.dragonEggsCap);
       if ((s.persist.mysticOrbs[0] ?? 0) < s.mysticOrbsCap) s.persist.mysticOrbs[1](s.mysticOrbsCap);
-    }, 1000);
+    }, 400);
     return () => clearInterval(id);
   }, [active]);
 
@@ -226,9 +226,7 @@ export function useTestMode(g) {
         const oldHq = st.playerHqRef.current;
         const check = adminRelocationCheck(key, st.tilesMapRef.current, oldHq);
         if (!check.ok) { st.floaty(`⚠ ${check.reason}`, "#cc6030", key); return check; }
-        st.applyHqMoveRef.current?.(key);
-        // Commanders sitting at the old HQ come with it.
-        st.setCmds(p => p.map(c => c.owner === "player" && !c.march && c.tk === oldHq ? { ...c, tk: key } : c));
+        st.applyHqMoveRef.current?.(key); // also moves commanders at the old HQ
         // Drop the cached HQ artwork so the old castle disappears right away.
         clearHQCache();
         setTimeout(() => st.mapRendererRef.current?.forceRedrawTiles?.(st.tilesMapRef.current), 30);
