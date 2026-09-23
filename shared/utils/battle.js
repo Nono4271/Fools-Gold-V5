@@ -115,7 +115,9 @@ applySkillEffect(skill, eff, rs, roundLog, actorLabel, defTroopBranch, round, al
 function skillSlotPred(spec) {
   if (!spec) return () => true;
   const list = Array.isArray(spec) ? spec : [spec];
-  return sl => list.some(s => s === "mounted" ? sl.branchDef?.role === "mounted" : (sl.branch?.branch === s || sl.branch?.faction === s));
+  return sl => list.some(s => s === "mounted" ? sl.branchDef?.role === "mounted"
+    : (s === "humans" || s === "creatures") ? getFactionAlignment(sl.branch?.faction) === s
+    : (sl.branch?.branch === s || sl.branch?.faction === s));
 }
 // Share of the attacking army's troops that match `spec` (0–1).
 function armyShare(ctx, spec) {
@@ -161,6 +163,19 @@ function debuffCommander(ctx, roundLog, actor, label, apply) {
   }
   apply();
   if (cs?.retaliationBonus > 0) cs.pendingSkillBonus = cs.retaliationBonus;
+}
+
+// Drunk: enemy units miss more (30% × share of enemy units drunk). Lasts this round and the next.
+function markDrunk(rs, ctx, share = 1, miss = 0.30) {
+  rs.drunkApplied = true; rs.drunkAppliedNow = true;
+  rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance || 0) + miss * share);
+  if (ctx?.cs) { ctx.cs.drunkFrom = ctx.round; ctx.cs.drunkUntil = ctx.round + 1; ctx.cs.drunkMiss = Math.max(ctx.cs.drunkMiss || 0, miss * share); }
+}
+// Burn DAMAGE (FOC-based skill damage) — tracked so "Burn DMG +X%" passives can scale it.
+function addBurnDmg(rs, amt) {
+  rs.focusDmgBonus = (rs.focusDmgBonus || 0) + amt;
+  rs.burnSkillDmg = (rs.burnSkillDmg || 0) + amt;
+  rs.burnDmgInstances = (rs.burnDmgInstances || 0) + 1;
 }
 
 // Effect resolver shared by troop skills (procTroopSkills) and commander
@@ -511,6 +526,10 @@ switch (eff.type) {
     break;
   case "faction_def_bonus":
     rs.factionDefBonus += eff.value || 0;
+    if (ctx?.isCommander) { // [Faction / alignment units] DEF +N (flat)
+      const g = eff.faction || eff.factions || ctx.ownFaction;
+      rs.troopDefMult *= 1 + ((eff.value || 0) / armyAvg(ctx, g, "def", 20)) * armyShare(ctx, g);
+    }
     break;
   case "dual_instance_buff_foc":
     rs.dualInstanceBuff   = { instances: eff.instances || 3, dmgReduce: eff.dmgReduce || 0.008, dmgUp: eff.dmgUp || 0.008 };
@@ -530,16 +549,22 @@ switch (eff.type) {
     rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.value || 0.03);
     break;
   case "dmg_type_resist_all":
-    rs.dmgTypeResistAll += eff.focusResist || 0.03;
+    // Focus damage received -X% (consumed where the enemy deals focus/magical damage)
+    rs.dmgTypeResistAll += eff.value ?? eff.focusResist ?? 0.03;
+    rs.focusDmgResist = (rs.focusDmgResist || 0) + (eff.value ?? eff.focusResist ?? 0.03);
     break;
   case "per_round_cleanse_chance":
     rs.perRoundCleanseChance += eff.chance || 0.06;
     break;
   // Seraph mechanics
   case "physical_damage_faction_bonus":
-    rs.cmdMult = (rs.cmdMult || 1) * (1 + (eff.primaryDmg || 0.30));
-    rs.physDmgFactionBonus = { bonusDmg: eff.bonusDmg || 0.20, bonusFaction: eff.bonusFaction || "nightcreatures" };
-    break;
+  { // X% Physical DMG | +Y% if the enemy army has the bonus faction (Y scales with level)
+    let hit = eff.value ?? eff.primaryDmg ?? 0.30;
+    const fac = eff.bonusFaction || "nightcreatures";
+    rs.physDmgFactionBonus = { bonusDmg: eff.bonusDmg || 0.20, bonusFaction: fac };
+    if (!ctx?.isCommander || enemyIs(ctx, fac)) hit += (eff.bonusDmg || 0.20) * (eff._lvlMul || 1);
+    rs.cmdMult = (rs.cmdMult || 1) * (1 + hit);
+    break; }
   case "physical_damage_faction_heal":
     rs.cmdMult = (rs.cmdMult || 1) * (1 + (eff.value || 0.30));
     rs.factionHealPct    = eff.healPct || 0.10;
@@ -606,15 +631,23 @@ switch (eff.type) {
     break;
   // Brennan mechanics
   case "heal_def_buff":
-    rs.healPct     += eff.healPct || 0.12;
+  { const n = ctx?.isCommander ? Math.max(1, ctx.atkSlots?.length || 1) : 1, frac = Math.min(1, (eff.targets || 2) / n);
+    rs.healPct     += (eff.value ?? eff.healPct ?? 0.12) * frac;
     rs.healDefBuff  = { targets: eff.targets || 2, defBonus: eff.defBonus || 0.15, defDuration: eff.defDuration || 2 };
-    break;
+    if (ctx?.isCommander) {
+      const up = (eff.defBonus || 0.15) * frac;
+      rs.troopDefMult *= 1 + up;
+      setBuff(ctx, null, round + 1, round + (eff.defDuration || 2) - 1, r => { r.troopDefMult *= 1 + up; });
+    }
+    break; }
   case "on_hit_heal_chance":
     rs.onHitHealChance = { targets: eff.targets || 2, chance: eff.chance || 0.40, healPct: eff.healPct || 0.04, guaranteed: eff.guaranteed || false };
     break;
   case "heal_cleanse_all":
-    rs.healPct       += eff.healPct || 0.10;
+    rs.healPct       += eff.value ?? eff.healPct ?? 0.10;
     rs.healCleansAll  = { cleanseChance: eff.cleanseChance || 0.08 };
+    // Cleanse: this round each enemy debuff on our units has a chance to be removed (rolled where debuffs land)
+    rs.debuffResistChance = (rs.debuffResistChance || 0) + (eff.cleanseChance || 0.08) * (eff._lvlMul || 1);
     break;
   case "heal_double_chance":
     rs.healPct         += eff.healPct || 0.08;
@@ -634,7 +667,7 @@ switch (eff.type) {
     rs.roleDmgBonusVsFaction = { role: eff.role, bonusFaction: eff.bonusFaction, value: eff.value || 0.02 };
     break;
   case "heal_all":
-    rs.healPct += eff.healPct || 0.50;
+    rs.healPct += eff.value ?? eff.healPct ?? 0.50;
     break;
   // Vayne mechanics
   case "early_round_dmg_up":
@@ -686,9 +719,18 @@ switch (eff.type) {
     break;
   // Aldric mechanics
   case "hk_triple_stat_bonus":
-    rs.hkTripleStatBonus = { dmgUp: eff.dmgUp || 0.006, defBonus: eff.defBonus || 6, spdBonus: eff.spdBonus || 6 };
-    rs.troopAtkMult *= (1 + (eff.dmgUp || 0.006));
-    break;
+  { // [Own-faction units] DMG +x% | DEF +N | SPD +N (N scales with level)
+    const m = eff._lvlMul || 1, dmgUp = eff.value ?? eff.dmgUp ?? 0.006;
+    const def = (eff.defBonus || 6) * m, spd = (eff.spdBonus || 6) * m;
+    rs.hkTripleStatBonus = { dmgUp, defBonus: def, spdBonus: spd };
+    if (ctx?.isCommander) {
+      const g = ctx.ownFaction, share = armyShare(ctx, g);
+      rs.troopAtkMult *= 1 + dmgUp * share;
+      rs.troopDefMult *= 1 + (def / armyAvg(ctx, g, "def", 20)) * share;
+      rs.slotSpdBonus = rs.slotSpdBonus || [];
+      (ctx.atkSlots || []).forEach((sl, i) => { if (sl.branch?.faction === g) rs.slotSpdBonus[i] = (rs.slotSpdBonus[i] || 0) + spd; });
+    } else rs.troopAtkMult *= (1 + dmgUp);
+    break; }
   case "per_round_stun_immune_chance":
     if (Math.random() < (eff.chance || 0.05)) {
       rs.invisStunImmune = true;
@@ -696,7 +738,7 @@ switch (eff.type) {
     }
     break;
   case "branch_heal_per_round":
-    rs.healPct += eff.healPct || 0.05;
+    rs.healPct += (eff.value ?? eff.healPct ?? 0.05) * (ctx?.isCommander ? armyShare(ctx, eff.branch) : 1);
     break;
   case "day_max_dmg_chance":
     rs.dayMaxDmgChance = eff.chance || 0.04;
@@ -750,6 +792,7 @@ switch (eff.type) {
     rs.cmdDmgBonusVsStunned += eff.value || 0.04;
     break;
   case "attacking_stance_bonus":
+    if (ctx?.isCommander && ctx.isAttacking === false) break; // "While Attacking" only
     rs.attackingStanceDmg += eff.value ?? eff.cmdDmgUp ?? 0.02;
     rs.cmdMult            *= (1 + (eff.value ?? eff.cmdDmgUp ?? 0.02));
     // "Army DEF +N" is flat DEF (was applied as N%)
@@ -765,12 +808,12 @@ switch (eff.type) {
     break;
   // Bruk mechanics
   case "multi_branch_def_bonus":
-    rs.multiBranchDefBonus = { branches: eff.branches, defBonus: eff.value ?? eff.defBonus ?? 2.0, defendingBonus: eff.defendingBonus || 1.0 };
-    // Flat DEF on the listed branches (defending bonus n/a: battle sim is the attacker)
+  { const flat = (eff.value ?? eff.defBonus ?? 2.0) + (ctx?.isCommander && ctx.isAttacking === false ? (eff.defendingBonus || 1.0) * (eff._lvlMul || 1) : 0);
+    rs.multiBranchDefBonus = { branches: eff.branches, defBonus: flat, defendingBonus: eff.defendingBonus || 1.0 };
     rs.troopDefMult *= ctx?.isCommander
-      ? 1 + ((eff.value ?? eff.defBonus ?? 2.0) / armyAvg(ctx, eff.branches, "def", 20)) * armyShare(ctx, eff.branches)
+      ? 1 + (flat / armyAvg(ctx, eff.branches, "def", 20)) * armyShare(ctx, eff.branches)
       : 1 + (eff.defBonus || 2.0) / 100;
-    break;
+    break; }
   case "multi_branch_dmg_reduce":
     rs.dmgReduce += (eff.value || 0.02) * (ctx?.isCommander ? armyShare(ctx, eff.branches) : 1);
     break;
@@ -900,9 +943,10 @@ switch (eff.type) {
     if (!ctx?.isCommander) rs.reactiveSkillDmgOnDebuff = eff.bonus || 0.05;
     break;
   case "attacking_defending_split":
-    rs.attackingDefendingSplit = { attackDmgUp: eff.value ?? eff.attackDmgUp ?? 0.015, defendDmgDown: (eff.defendDmgDown || 0.01) * (eff._lvlMul || 1) };
-    rs.cmdMult *= (1 + (eff.value ?? eff.attackDmgUp ?? 0.015)); // battle sim is always the attacker
-    break;
+  { const up = eff.value ?? eff.attackDmgUp ?? 0.015, down = (eff.defendDmgDown || 0.01) * (eff._lvlMul || 1);
+    rs.attackingDefendingSplit = { attackDmgUp: up, defendDmgDown: down };
+    rs.cmdMult *= ctx?.isCommander && ctx.isAttacking === false ? (1 - down) : (1 + up);
+    break; }
   case "reactive_cleanse_chance":
     // Commander: configured in applyCommanderSkillEffects (cs.cleanseChance), rolled by debuffCommander()
     if (!ctx?.isCommander) rs.reactiveCleanseChance += eff.chance || 0.05;
@@ -1004,163 +1048,212 @@ switch (eff.type) {
     rs.cmdAoe = true;
     rs.cmdMult *= (1 + (eff.value || 0.06));
     if (Math.random() < (eff.drunkChance || 0.60)) {
-      rs.drunkApplied = true;
-      rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance || 0) + (eff.drunkMissChance || 0.30));
+      if (ctx?.isCommander) markDrunk(rs, ctx, 1, eff.drunkMissChance || 0.30);
+      else { rs.drunkApplied = true; rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance || 0) + (eff.drunkMissChance || 0.30)); }
       roundLog.actions.push({ actor:actorLabel, action:`🛢️ Drunk applied — 30% miss, no evade!`, dmg:0, isTroopSkill:true });
     }
     break;
   case "aoe_physical_bonus_vs_drunk":
-    rs.cmdAoe  = true;
-    rs.cmdMult *= (1 + (eff.value || 0.07));
-    if (rs.drunkApplied) rs.cmdMult *= (1 + (eff.bonusDmgIfDrunk || 1.40));
-    break;
+  { rs.cmdAoe = true;
+    let hit = eff.value || 0.07;
+    if (rs.drunkApplied) hit *= 1 + (eff.bonusDmgIfDrunk || 1.40); // bonus on this skill's damage (was multiplying ALL commander damage)
+    rs.cmdMult *= (1 + hit);
+    break; }
   case "dmg_bonus_vs_faction_all":
     rs.dmgBonusVsFactionAll += eff.value || 0.01;
-    rs.cmdMult      *= (1 + (eff.value || 0.01));
-    rs.troopAtkMult *= (1 + (eff.value || 0.01));
+    if (!ctx?.isCommander || enemyIs(ctx, eff.faction)) {
+      rs.cmdMult      *= (1 + (eff.value || 0.01));
+      rs.troopAtkMult *= (1 + (eff.value || 0.01));
+    }
     break;
   case "multi_hit_random_faction_heal":
-    rs.cmdMult *= (1 + (eff.dmgPct || 0.11));
-    rs.healPct += eff.healPct || 0.60;
+    rs.cmdMult *= (1 + (eff.value ?? eff.dmgPct ?? 0.11) * (eff.hits || 2));
+    rs.healPct += (eff.healPct || 0.60) * (ctx?.isCommander ? armyShare(ctx, eff.healFaction || ctx.ownFaction) : 1);
     break;
   case "physical_damage_heal_block_chance":
     rs.cmdMult *= (1 + (eff.value || 0.14));
     if (Math.random() < (eff.healBlockChance || 0.70)) rs.blockHeal = Math.max(rs.blockHeal || 0, eff.healBlockDuration || 2);
     break;
   case "per_round_confusion_immune_chance":
-    rs.perRoundConfusionImmune += eff.chance || 0.03;
-    if (Math.random() < rs.perRoundConfusionImmune) {
+    rs.perRoundConfusionImmune += eff.value ?? eff.chance ?? 0.03;
+    if (Math.random() < (eff.value ?? eff.chance ?? 0.03)) {
+      rs.cmdConfusionImmune = true;  // commander
+      rs.atkConfusionImmune = true;  // and troops
       rs.invisStunImmune = true;
-      roundLog.actions.push({ actor:actorLabel, action:`🌊 Sea Earned Resilience — Confusion Immune!`, dmg:0, isTroopSkill:true });
+      roundLog.actions.push({ actor:actorLabel, action:`🌊 ${skill?.name||"Resilience"} — Confusion Immune this round!`, dmg:0, isTroopSkill:true });
     }
     break;
   case "all_faction_skill_dmg_bonus":
     rs.allFactionSkillDmg = { faction: eff.faction || "pirates", value: eff.value || 0.03 };
-    rs.skillDmgBonus += eff.value || 0.03;
+    if (!ctx?.isCommander || armyAll(ctx, eff.faction || "pirates")) rs.skillDmgBonus += eff.value || 0.03;
     break;
   case "confusion_vs_alignment":
-    rs.confusionVsAlignment = { alignment: eff.alignment, chance: eff.chance || 0.10 };
-    if (Math.random() < (eff.chance || 0.10)) {
+  { const list = Array.isArray(eff.alignment) ? eff.alignment : [eff.alignment];
+    rs.confusionVsAlignment = { alignment: eff.alignment, chance: eff.value ?? eff.chance ?? 0.10 };
+    if ((!ctx?.isCommander || list.some(a => enemyIs(ctx, a))) && Math.random() < (eff.value ?? eff.chance ?? 0.10)) {
       rs.enemyConfused = Math.max(rs.enemyConfused || 0, 1);
-      roundLog.actions.push({ actor:actorLabel, action:`💨 Smokescreen — Creature units confused!`, dmg:0, isTroopSkill:true });
+      roundLog.actions.push({ actor:actorLabel, action:`💨 ${skill?.name||"Smokescreen"} — enemy units confused!`, dmg:0, isTroopSkill:true });
     }
-    break;
+    break; }
   case "cmd_atk_per_faction_slot":
-    rs.cmdAtkPerFactionSlot = { faction: eff.faction || "pirates", atkPerSlot: eff.atkPerSlot || 0.5, maxSlots: eff.maxSlots || 3 };
+    rs.cmdAtkPerFactionSlot = { faction: eff.faction || "pirates", atkPerSlot: eff.value ?? eff.atkPerSlot ?? 0.5, maxSlots: eff.maxSlots || 3 };
+    if (ctx?.isCommander) {
+      const n = Math.min(eff.maxSlots || 3, (ctx.atkSlots || []).filter(sl => sl.branch?.faction === (eff.faction || "pirates")).length);
+      rs.cmdAtkFlat = (rs.cmdAtkFlat || 0) + n * (eff.value ?? eff.atkPerSlot ?? 0.5);
+    }
     break;
   case "physical_damage_stun_chance":
     rs.cmdMult *= (1 + (eff.value || 0.15));
     if (Math.random() < (eff.stunChance || 0.55)) {
       rs.enemyStunned = Math.max(rs.enemyStunned || 0, eff.stunDuration || 1);
-      roundLog.actions.push({ actor:actorLabel, action:`🃏 Pirate's Trick — Enemy stunned!`, dmg:0, isTroopSkill:true });
+      roundLog.actions.push({ actor:actorLabel, action:`🃏 ${skill?.name||"Stun"} — Enemy stunned!`, dmg:0, isTroopSkill:true });
     }
     break;
   // ── Seyne mechanics ───────────────────────────────────────────────────────
   case "aoe_def_down":
-    rs.aoeDefDown     += eff.value || 1.0;
-    rs.enemyDefFlatDown    = Math.min((rs.enemyDefFlatDown||0) + (eff.value||1.0), 50);
-    break;
+  { const v = eff.value || 1.0;
+    rs.aoeDefDown += v;
+    rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + v, 50);
+    if ((eff.duration || 2) > 1) setBuff(ctx, null, round + 1, round + (eff.duration || 2) - 1, r => { r.enemyDefFlatDown = Math.min((r.enemyDefFlatDown||0) + v, 50); });
+    break; }
   case "dmg_bonus_vs_debuffed":
     rs.dmgBonusVsDebuffed += eff.value || 0.02;
-    if (rs.enemyDefDown > 0 || rs.enemyDefFlatDown > 0) rs.troopAtkMult *= (1 + (eff.value || 0.02));
+    if (rs.enemyDefDown > 0 || rs.enemyDefFlatDown > 0) {
+      if (ctx?.isCommander) rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.value || 0.02); // "Damage Received +X%"
+      else rs.troopAtkMult *= (1 + (eff.value || 0.02));
+    }
     break;
   case "faction_dmg_bonus":
     rs.factionDmgBonus += eff.value || 0.01;
-    rs.troopAtkMult    *= (1 + (eff.value || 0.01));
+    rs.troopAtkMult    *= (1 + (eff.value || 0.01) * (ctx?.isCommander ? armyShare(ctx, eff.faction || ctx.ownFaction) : 1));
     break;
   case "faction_followup_per_round":
-    rs.factionFollowupPerRound += eff.chance || 0.03;
-    break;
-  case "drunk_chance_multi":
-    rs.drunkChanceMulti += eff.drunkChance || 0.10;
-    if (Math.random() < rs.drunkChanceMulti) {
-      rs.drunkApplied    = true;
-      rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance||0) + 0.30);
-      roundLog.actions.push({ actor:actorLabel, action:`🍺 Beers On Me — Drunk applied!`, dmg:0, isTroopSkill:true });
-    }
-    break;
-  case "on_drunk_apply_venom":
-    rs.onDrunkApplyVenom += eff.chance || 0.06;
-    if (rs.drunkApplied && Math.random() < rs.onDrunkApplyVenom) {
-      rs.pendingVenomDmg = Math.max(rs.pendingVenomDmg, 0.20);
-      roundLog.actions.push({ actor:actorLabel, action:`🧪 Poison the Drink — Venom applied!`, dmg:0, isTroopSkill:true });
-    }
-    break;
-  case "cmd_stun_or_confuse_by_faction":
-    rs.cmdStunOrConfuse = { humanChance: eff.humanChance || 0.04, creatureChance: eff.creatureChance || 0.04 };
-    if (Math.random() < (eff.humanChance || 0.04)) {
-      rs.enemyStunned = Math.max(rs.enemyStunned || 0, 1);
-      roundLog.actions.push({ actor:actorLabel, action:`📋 Know Your Enemy — Enemy CMD stunned!`, dmg:0, isTroopSkill:true });
-    }
-    break;
-  case "dmg_bonus_vs_role":
-    rs.dmgBonusVsRole += eff.value || 0.01;
-    rs.troopAtkMult   *= (1 + (eff.value || 0.01));
-    rs.cmdMult        *= (1 + (eff.value || 0.01));
-    break;
-  case "size_type_conditional_debuff":
-    rs.sizeTypeDebuff = { largeHpDown: eff.largeHpDown||0.10, mountedSpdDown: eff.mountedSpdDown||0.10, smallDmgDown: eff.smallDmgDown||0.10, chance: eff.chance||0.04 };
-    break;
-  case "cmd_followup_vs_alignment":
-    rs.cmdFollowupVsAlignment += eff.chance || 0.07;
-    break;
-  // ── Samuel mechanics ──────────────────────────────────────────────────────
-  case "dmg_bonus_vs_alignment":
-    rs.dmgBonusVsAlignment += eff.value || 0.01;
-    rs.troopAtkMult *= (1 + (eff.value || 0.01));
-    rs.cmdMult      *= (1 + (eff.value || 0.01));
-    break;
-  case "per_round_blind_chance":
-    rs.perRoundBlindChance += eff.chance || 0.09;
-    if (Math.random() < rs.perRoundBlindChance) {
-      rs.blindApplied = true;
-      roundLog.actions.push({ actor:actorLabel, action:`🌶️ Spice Attack — Enemy Blinded!`, dmg:0, isTroopSkill:true });
-    }
-    break;
-  case "on_enemy_attack_burn_chance":
-    rs.onEnemyAttackBurnChance += eff.chance || 0.015;
-    break;
-  case "multi_hit_different_targets_burn":
-    rs.cmdMult *= (1 + (eff.dmgPct || 0.10) * (eff.hits || 3));
-    if (eff.burnChancePerHit) {
-      for (let i = 0; i < (eff.hits || 3); i++) {
-        if (Math.random() < eff.burnChancePerHit) { rs.burnApplied = true; rs.burnDmgPenalty = 0.20; }
+    rs.factionFollowupPerRound += eff.value ?? eff.chance ?? 0.03;
+    if (ctx?.isCommander) {
+      const share = armyShare(ctx, eff.faction || ctx.ownFaction);
+      if (share > 0 && Math.random() < (eff.value ?? eff.chance ?? 0.03)) {
+        rs.troopAtkMult *= 1 + share; // those units get a follow-up attack this round
+        roundLog.actions.push({ actor:actorLabel, action:`🔁 ${skill?.name} — follow-up attack!`, dmg:0, isTroopSkill:true });
       }
     }
     break;
+  case "drunk_chance_multi":
+    rs.drunkChanceMulti += eff.value ?? eff.drunkChance ?? 0.10;
+    if (Math.random() < (eff.value ?? eff.drunkChance ?? 0.10)) {
+      if (ctx?.isCommander) markDrunk(rs, ctx, Math.min(1, (eff.targets || 2) / Math.max(1, ctx.defSlotCount || 1)));
+      else { rs.drunkApplied = true; rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance||0) + 0.30); }
+      roundLog.actions.push({ actor:actorLabel, action:`🍺 ${skill?.name||"Beers On Me"} — Drunk applied!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "on_drunk_apply_venom":
+    rs.onDrunkApplyVenom += eff.value ?? eff.chance ?? 0.06;
+    if (rs.drunkAppliedNow && Math.random() < (eff.value ?? eff.chance ?? 0.06)) {
+      addPoison(rs, ctx, 0.20, 1);
+      roundLog.actions.push({ actor:actorLabel, action:`🧪 ${skill?.name||"Poison the Drink"} — Venom applied!`, dmg:0, isTroopSkill:true });
+    }
+    break;
+  case "cmd_stun_or_confuse_by_faction":
+  { rs.cmdStunOrConfuse = { humanChance: eff.value ?? eff.humanChance ?? 0.04, creatureChance: eff.value ?? eff.creatureChance ?? 0.04 };
+    const align = ctx?.enemyCmdAlignment ?? ctx?.defAlignment;
+    if (align === "humans" && Math.random() < (eff.value ?? eff.humanChance ?? 0.04)) {
+      rs.enemyStunned = Math.max(rs.enemyStunned || 0, 1);
+      roundLog.actions.push({ actor:actorLabel, action:`📋 ${skill?.name} — Enemy CMD stunned!`, dmg:0, isTroopSkill:true });
+    } else if (align === "creatures" && Math.random() < (eff.value ?? eff.creatureChance ?? 0.04)) {
+      rs.enemyConfused = Math.max(rs.enemyConfused || 0, 1);
+      roundLog.actions.push({ actor:actorLabel, action:`📋 ${skill?.name} — Enemy CMD confused!`, dmg:0, isTroopSkill:true });
+    }
+    break; }
+  case "dmg_bonus_vs_role":
+    rs.dmgBonusVsRole += eff.value || 0.01;
+    if (!ctx?.isCommander || ctx.defRoles?.has(eff.role || "mounted")) {
+      rs.troopAtkMult   *= (1 + (eff.value || 0.01));
+      rs.cmdMult        *= (1 + (eff.value || 0.01));
+    }
+    break;
+  case "size_type_conditional_debuff":
+  { const c = eff.value ?? eff.chance ?? 0.04;
+    rs.sizeTypeDebuff = { largeHpDown: eff.largeHpDown||0.10, mountedSpdDown: eff.mountedSpdDown||0.10, smallDmgDown: eff.smallDmgDown||0.10, chance: c };
+    if (ctx?.isCommander) {
+      const tot = (ctx.defSlots || []).reduce((s, d) => s + (d.troops || 0), 0) || 1;
+      const shareOf = pred => (ctx.defSlots || []).filter(pred).reduce((s, d) => s + (d.troops || 0), 0) / tot;
+      const large = shareOf(d => d.branchDef?.size === "large"), mounted = (ctx.defSlots || []).filter(d => d.branchDef?.role === "mounted");
+      const small = shareOf(d => d.branchDef?.size === "small");
+      if (large > 0 && Math.random() < c) rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.largeHpDown || 0.10) * large;
+      if (mounted.length && Math.random() < c) rs.enemySpdFlatDown = (rs.enemySpdFlatDown || 0) + (eff.mountedSpdDown || 0.10) * (mounted.reduce((s, d) => s + (d.spd || 0), 0) / mounted.length);
+      if (small > 0 && Math.random() < c) rs.enemyDmgReduce = Math.min(0.80, (rs.enemyDmgReduce || 0) + (eff.smallDmgDown || 0.10) * small);
+    }
+    break; }
+  case "cmd_followup_vs_alignment":
+  { const list = Array.isArray(eff.alignment) ? eff.alignment : [eff.alignment];
+    rs.cmdFollowupVsAlignment += eff.value ?? eff.chance ?? 0.07;
+    if (ctx?.isCommander && list.some(a => enemyIs(ctx, a)) && Math.random() < (eff.value ?? eff.chance ?? 0.07)) rs.cmdMult += 1; // follow-up normal attack
+    break; }
+  // ── Samuel mechanics ──────────────────────────────────────────────────────
+  case "dmg_bonus_vs_alignment":
+  { const list = Array.isArray(eff.alignment) ? eff.alignment : [eff.alignment];
+    rs.dmgBonusVsAlignment += eff.value || 0.01;
+    if (!ctx?.isCommander || list.some(a => enemyIs(ctx, a))) {
+      rs.troopAtkMult *= (1 + (eff.value || 0.01));
+      rs.cmdMult      *= (1 + (eff.value || 0.01));
+    }
+    break; }
+  case "per_round_blind_chance":
+    // Each enemy unit: X% chance to be Blinded (next attack misses) → X% miss chance on enemy actions this round
+    rs.perRoundBlindChance += eff.value ?? eff.chance ?? 0.09;
+    if (ctx?.isCommander) rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance || 0) + (eff.value ?? eff.chance ?? 0.09));
+    else if (Math.random() < rs.perRoundBlindChance) rs.blindApplied = true;
+    break;
+  case "on_enemy_attack_burn_chance":
+    // Enemy units that attack us may Burn themselves (rolled in commanderAct/slotAct of the attacker)
+    rs.onEnemyAttackBurnChance += eff.value ?? eff.chance ?? 0.015;
+    break;
+  case "multi_hit_different_targets_burn":
+  { const dmg = (eff.value ?? eff.dmgPct ?? 0.10) * (eff.hits || 3); // Burn DMG (FOC mod)
+    if (ctx?.isCommander) addBurnDmg(rs, dmg); else rs.cmdMult *= (1 + dmg);
+    if (eff.burnChancePerHit) {
+      for (let i = 0; i < (eff.hits || 3); i++) if (Math.random() < eff.burnChancePerHit) applyBurn(rs, 0.20);
+    }
+    break; }
   case "cmd_burn_dmg_bonus":
-    rs.cmdBurnDmgBonus += eff.value || 0.03;
-    rs.cmdMult         *= (1 + (eff.value || 0.03));
+    rs.cmdBurnDmgBonus += eff.value || 0.03; // scales this round's burn damage (applied in applyCommanderSkillEffects)
+    if (!ctx?.isCommander) rs.cmdMult *= (1 + (eff.value || 0.03));
     break;
   case "dmg_bonus_vs_burn":
     rs.dmgBonusVsBurn += eff.value || 0.03;
     if (rs.burnApplied) rs.troopAtkMult *= (1 + (eff.value || 0.03));
     break;
   case "aoe_burn_guaranteed":
-    rs.cmdAoe      = true;
-    rs.cmdMult    *= (1 + (eff.value || 0.20));
-    rs.burnApplied = true;
-    rs.burnDmgPenalty = eff.burnDmgPenalty || 0.20;
-    rs.enemyAtkReduce += rs.burnDmgPenalty;
-    roundLog.actions.push({ actor:actorLabel, action:`🌡️ Hot Sauce — All enemies Burned!`, dmg:0, isTroopSkill:true });
+    rs.cmdAoe = true;
+    if (ctx?.isCommander) addBurnDmg(rs, eff.value || 0.20); else rs.cmdMult *= (1 + (eff.value || 0.20));
+    applyBurn(rs, eff.burnDmgPenalty || 0.20); // was also cutting OUR damage via enemyAtkReduce
+    roundLog.actions.push({ actor:actorLabel, action:`🌡️ ${skill?.name||"Hot Sauce"} — All enemies Burned!`, dmg:0, isTroopSkill:true });
     break;
   case "followup_vs_burn":
-    rs.followupVsBurn += eff.chance || 0.06;
+    rs.followupVsBurn += eff.value ?? eff.chance ?? 0.06;
+    if (ctx?.isCommander && rs.burnApplied && Math.random() < (eff.value ?? eff.chance ?? 0.06)) rs.troopAtkMult *= 2; // follow-up attack
     break;
   case "cmd_normal_atk_burn":
-    rs.cmdBurnDmgBonus += eff.value || 0.03;
-    rs.cmdMult         *= (1 + (eff.value || 0.03));
+    if (ctx?.isCommander) {
+      addBurnDmg(rs, eff.value || 0.03); // normal attacks add X% Burn DMG
+      if (eff.burnDmgReceivedUp) rs.cmdBurnDmgBonus += eff.burnDmgReceivedUp * Math.min(1, (eff.targets || 2) / Math.max(1, ctx.defSlotCount || 1));
+    } else { rs.cmdBurnDmgBonus += eff.value || 0.03; rs.cmdMult *= (1 + (eff.value || 0.03)); }
     break;
   case "on_burn_dmg_ally_def_stack":
-    if (!rs.onBurnDmgAllyDefStack) rs.onBurnDmgAllyDefStack = { branch: eff.branch, defPerStack: eff.defPerStack||1.0, maxStacks: eff.maxStacks||6, current:0 };
-    if (rs.burnApplied && rs.onBurnDmgAllyDefStack.current < rs.onBurnDmgAllyDefStack.maxStacks) {
-      rs.onBurnDmgAllyDefStack.current++;
-      rs.troopDefMult *= (1 + (rs.onBurnDmgAllyDefStack.defPerStack / 100));
+    if (ctx?.cs) { // +DEF (flat) to allied pirate units per burn-damage instance, persistent, max N
+      const key = `burnDef:${skill?.name}`;
+      const stacks = ctx.cs.stacks[key] = Math.min(eff.maxStacks || 6, (ctx.cs.stacks[key] || 0) + (rs.burnDmgInstances || 0));
+      if (stacks > 0) rs.troopDefMult *= 1 + (stacks * (eff.value ?? eff.defPerStack ?? 1) / armyAvg(ctx, eff.branch, "def", 20)) * armyShare(ctx, eff.branch);
+    } else {
+      if (!rs.onBurnDmgAllyDefStack) rs.onBurnDmgAllyDefStack = { branch: eff.branch, defPerStack: eff.defPerStack||1.0, maxStacks: eff.maxStacks||6, current:0 };
+      if (rs.burnApplied && rs.onBurnDmgAllyDefStack.current < rs.onBurnDmgAllyDefStack.maxStacks) {
+        rs.onBurnDmgAllyDefStack.current++;
+        rs.troopDefMult *= (1 + (rs.onBurnDmgAllyDefStack.defPerStack / 100));
+      }
     }
     break;
   case "conditional_round_start_heal":
-    rs.conditionalRoundHeal = { condition: eff.condition, healPct: eff.healPct || 0.08 };
-    if (rs.burnApplied) rs.healPct += eff.healPct || 0.08;
+    rs.conditionalRoundHeal = { condition: eff.condition, healPct: eff.value ?? eff.healPct ?? 0.08 };
+    if (rs.burnApplied || (ctx?.cs && ctx.cs.lastBurnRound === round - 1)) rs.healPct += eff.value ?? eff.healPct ?? 0.08;
     break;
   // ── Fynn mechanics ────────────────────────────────────────────────────────
   case "physical_damage_multi_heal_all":
@@ -1168,54 +1261,69 @@ switch (eff.type) {
     rs.healPct += eff.healPct || 0.50;
     break;
   case "cmd_bonus_attack_chance":
-    rs.cmdBonusAttackChance += eff.chance || 0.10;
+    rs.cmdBonusAttackChance += eff.value ?? eff.chance ?? 0.10;
+    if (ctx?.isCommander && Math.random() < (eff.value ?? eff.chance ?? 0.10)) {
+      rs.cmdMult += 1; // one extra normal attack
+      roundLog.actions.push({ actor: actorLabel, action: `⚔️ ${skill?.name} — extra normal attack!`, dmg: 0, isTroopSkill: true });
+    }
     break;
   case "attacking_stance_cmd_bonus":
-    rs.cmdMult *= (1 + (eff.value || 0.01));
+    if (!ctx?.isCommander || ctx.isAttacking !== false) rs.cmdMult *= (1 + (eff.value || 0.01)); // "While Attacking"
     break;
   // Brine mechanics
   case "early_round_pursuit_chance":
-    if (round <= (eff.maxRound || 4) && Math.random() < (eff.chance || 0.15)) {
-      rs.pursuitActive = true;
+    if (round <= (eff.maxRound || 4) && Math.random() < (eff.value ?? eff.chance ?? 0.15)) {
+      rs.pursuitActive = true;               // troops: attacks cannot miss / be evaded
+      if (eff.cmdGainsPursuit) rs.cmdPursuit = true;
       roundLog.actions.push({ actor: actorLabel, action: `🌫️ Pursuit — Attacks cannot be avoided!`, dmg: 0, isTroopSkill: true });
     }
-    rs.earlyRoundPursuitChance += eff.chance || 0.15;
+    rs.earlyRoundPursuitChance += eff.value ?? eff.chance ?? 0.15;
     break;
   case "self_confuse_army_dmg_up":
   { const up = eff.value ?? eff.armyDmgUp ?? 0.20; // level-scaled when fired as a commander skill
     rs.selfConfuseArmyDmg = { selfConfusion: eff.selfConfusion || 1, armyDmgUp: up };
     rs.troopAtkMult *= (1 + up);
-    roundLog.actions.push({ actor: actorLabel, action: `🕯️ Captain's Honor — Brine confused, troops +${Math.round(up*100)}% DMG!`, dmg: 0, isTroopSkill: true }); }
+    if (ctx?.isCommander) debuffCommander(ctx, roundLog, actorLabel, skill?.name, () => { rs.selfConfused = true; });
+    roundLog.actions.push({ actor: actorLabel, action: `🕯️ ${skill?.name||"Captain's Honor"} — commander confused, troops +${Math.round(up*100)}% DMG!`, dmg: 0, isTroopSkill: true }); }
     break;
   case "enemy_faction_vulnerability":
     rs.enemyFactionVuln = { faction: eff.faction || "orcs", value: eff.value || 0.025 };
-    rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.value || 0.025);
+    if (!ctx?.isCommander || enemyIs(ctx, eff.faction || "orcs")) rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.value || 0.025);
     break;
   case "multi_hit_random_faction_buff":
-    rs.cmdMult *= (1 + (eff.dmgPct || 0.08) * (eff.hits || 5));
-    rs.troopAtkMult *= (1 + (eff.allyDmgUp || 0.05));
-    rs.multiHitRandomFactionBuff = { hits: eff.hits || 5, bonusHitVsOrc: eff.bonusHitVsOrc || false };
-    break;
+  { let hits = eff.hits || 5;
+    if (eff.bonusHitVsOrc && enemyIs(ctx, "orcs")) hits += 1; // max level
+    rs.cmdMult *= (1 + (eff.value ?? eff.dmgPct ?? 0.08) * hits);
+    rs.troopAtkMult *= (1 + (eff.allyDmgUp || 0.05) * (ctx?.isCommander ? armyShare(ctx, eff.allyFaction || ctx.ownFaction) : 1));
+    rs.multiHitRandomFactionBuff = { hits, bonusHitVsOrc: eff.bonusHitVsOrc || false };
+    break; }
   // Saltwhisper mechanics
   case "heal_received_bonus":
-    rs.healReceivedBonus += eff.value || 0.02;
-    rs.healPct *= (1 + (eff.value || 0.02));
+    rs.healReceivedBonus += eff.value || 0.02; // applied at heal time (all heal sources)
+    if (!ctx?.isCommander) rs.healPct *= (1 + (eff.value || 0.02));
     break;
   case "sequential_immunity_then_aoe":
-    rs.sequentialImmunityAoe = { immunityRound: eff.immunityRound || 0, attackRound: eff.attackRound || 1, focusDmg: eff.focusDmg || 0.30, drunkChance: eff.drunkChance || 0.70 };
-    // Phase determined by which round within the 2-round duration we're in
-    // Round 4 = immunity, Round 5 = attack
-    rs.focusDmgBonus += eff.focusDmg || 0.30;
-    rs.cmdAoe = true;
-    if (Math.random() < (eff.drunkChance || 0.70)) {
-      rs.drunkApplied = true;
-      rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance || 0) + 0.30);
-      roundLog.actions.push({ actor: actorLabel, action: `🥃 Shadow's Drunken Warrior — All enemies Drunk!`, dmg: 0, isTroopSkill: true });
+  { // Fire round: commander cannot be debuffed | next round: all enemies X% Focus DMG + chance Drunk
+    const dmg = eff.value ?? eff.focusDmg ?? 0.30, dc = eff.drunkChance || 0.70;
+    rs.sequentialImmunityAoe = { focusDmg: dmg, drunkChance: dc };
+    if (ctx?.isCommander) {
+      rs.cmdDebuffImmune = true;
+      roundLog.actions.push({ actor: actorLabel, action: `🥃 ${skill?.name} — commander cannot be debuffed this round`, dmg: 0, isTroopSkill: true });
+      setBuff(ctx, null, round + 1, round + 1, (r, log, who) => {
+        r.focusDmgBonus = (r.focusDmgBonus || 0) + dmg; r.cmdAoe = true;
+        if (Math.random() < dc) { markDrunk(r, ctx, 1); log?.actions.push({ actor: who, action: `🥃 ${skill?.name} — All enemies Drunk!`, dmg: 0, isTroopSkill: true }); }
+      });
+    } else {
+      rs.focusDmgBonus += dmg; rs.cmdAoe = true;
+      if (Math.random() < dc) { rs.drunkApplied = true; rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance || 0) + 0.30); }
     }
-    break;
+    break; }
   case "army_evasion_two_hits":
-    rs.armyEvasionTwoHits += eff.chance || 0.08;
-    // 2-hit evasion window — tracked separately from single-hit evasion
+    rs.armyEvasionTwoHits += eff.value ?? eff.chance ?? 0.08;
+    if (ctx?.isCommander && Math.random() < (eff.value ?? eff.chance ?? 0.08)) {
+      rs.evadeHits = Math.max(rs.evadeHits || 0, eff.hitCount || 2); // next N enemy hits this round are evaded
+      roundLog.actions.push({ actor: actorLabel, action: `🌫️ ${skill?.name} — army will evade the next ${eff.hitCount || 2} hits`, dmg: 0, isTroopSkill: true });
+    }
     break;
   // Skar mechanics
   case "aoe_physical_slow":
@@ -2168,10 +2276,6 @@ switch (eff.type) {
     rs.cmdFocPassiveBonus = (rs.cmdFocPassiveBonus||0)+(eff.focValue||1.0);
     rs.cmdSpdBonus        = (rs.cmdSpdBonus||0)+(eff.spdValue||1.0);
     break;
-  case "faction_dmg_bonus":
-    rs.troopAtkMult *= (1+(eff.value||0.015));
-    rs.cmdMult      *= (1+(eff.value||0.015));
-    break;
   case "physical_damage_slow_chance":
     // Bone Splitter / Hollow Strike / Hollow Assault: physical + slow chance
     rs.cmdMult *= (1 + (eff.value || 0.30));
@@ -2198,7 +2302,7 @@ switch (eff.type) {
     roundLog.actions.push({ actor: actorLabel, action: `🦇 Vampire's Thrall — Enemies Confused + DMG +${Math.round((eff.dmgUp||0.02)*100)}%!`, dmg: 0, isTroopSkill: true });
     break;
   case "debuff_chance_reduction":
-    // Reduce chance of debuffs landing on commander (Around the Block)
+    // Reduce chance of debuffs landing on the commander (Around the Block) — rolled in commanderAct
     rs.debuffChanceReduction = (rs.debuffChanceReduction || 0) + (eff.value || 0.07);
     break;
   case "dmg_bonus_vs_faction":
@@ -2694,22 +2798,24 @@ switch (eff.type) {
     // Dragon units heal on receiving a debuff (You Get a Heal!)
     rs.branchHealOnDebuff = { branch: eff.branch || "dragons", healPct: eff.healPct || 0.06, maxPerRound: eff.maxPerRound || 1, usedThisRound: 0 };
     break;
-    rs.debuffChanceReduction += eff.value || 0.07;
-    break;
   case "burst_then_penalty":
     if (round <= (eff.earlyRounds || 2)) {
-      rs.cmdMult      *= (1 + (eff.earlyBonus || 0.14));
-      rs.troopAtkMult *= (1 + (eff.earlyBonus || 0.14));
+      rs.cmdMult      *= (1 + (eff.value ?? eff.earlyBonus ?? 0.14));
+      rs.troopAtkMult *= (1 + (eff.value ?? eff.earlyBonus ?? 0.14));
     } else if ((eff.penaltyRounds||[3,4,5]).includes(round)) {
       rs.cmdMult      *= (1 - (eff.penaltyValue || 0.50));
       rs.troopAtkMult *= (1 - (eff.penaltyValue || 0.50));
     }
     break;
   case "physical_damage_delayed_followup":
-    rs.cmdMult *= (1 + (eff.initialDmg || 0.20));
-    // Follow-up queued for next round — flagged
-    rs.pendingFollowupDmg = eff.followupDmg || 0.30;
-    break;
+  { const init = eff.value ?? eff.initialDmg ?? 0.20, fu = (eff.followupDmg || 0.30) * (eff._lvlMul || 1);
+    rs.cmdMult *= (1 + init);
+    rs.pendingFollowupDmg = fu;
+    setBuff(ctx, null, round + 1, round + 1, (r, log, who) => {
+      r.cmdMult *= (1 + fu);
+      log?.actions.push({ actor: who, action: `⚔️ ${skill?.name||"Overpower"} — follow-up +${Math.round(fu*100)}%`, dmg: 0, isTroopSkill: true });
+    });
+    break; }
   case "post_attack_vulnerability":
   { // After each commander attack the target takes +X% DMG for N rounds; up to M independent stacks
     const cs = ctx?.cs, v = eff.value || 0.015;
@@ -2753,7 +2859,13 @@ switch (eff.type) {
     if (ctx?.defSizes?.has("large")) rs.cmdMult *= (1 + (eff.largeBonusDmg || 0.20));
     break;
   case "first_skills_dmg_bonus":
-    if (rs.firstSkillsRemaining > 0) {
+    if (ctx?.cs) { // first N commander skill activations of the battle get +X% (scales this round's skill damage)
+      const key = `firstN:${skill?.name}`;
+      const left = ctx.cs.stacks[key] ?? (eff.instances || 4);
+      const fired = ctx.activesFired || 0, n = Math.min(left, fired);
+      if (n > 0) rs.skillDmgBonus += (eff.value ?? eff.bonus ?? 0.05) * n / fired;
+      ctx.cs.stacks[key] = left - n;
+    } else if (rs.firstSkillsRemaining > 0) {
       rs.firstSkillsBonus = eff.bonus || 0.05;
       rs.firstSkillsRemaining--;
     }
@@ -3127,7 +3239,12 @@ function applyCommanderSkillEffects(skills, round, rs, roundLog, actorLabel, ctx
   }
   // Effects carried over from earlier rounds (timed buffs, DoTs, stacks, self-debuffs)
   cs.buffs = cs.buffs.filter(b => b.until >= round);
-  for (const b of cs.buffs) if (b.from <= round) b.apply(rs);
+  for (const b of cs.buffs) if (b.from <= round) b.apply(rs, roundLog, actorLabel);
+  // Drunk lasts the round it lands and the next one
+  if (cs.drunkUntil >= round && cs.drunkFrom < round) {
+    rs.drunkApplied = true;
+    rs.enemyMissChance = Math.min(0.80, (rs.enemyMissChance || 0) + (cs.drunkMiss || 0.30));
+  }
   cs.poisons = cs.poisons.filter(p => p.until >= round);
   const poison = cs.poisons.reduce((t, p) => t + p.pct, 0);
   if (poison > 0) rs.pendingVenomDmg = Math.max(rs.pendingVenomDmg || 0, poison);
@@ -3166,6 +3283,9 @@ function applyCommanderSkillEffects(skills, round, rs, roundLog, actorLabel, ctx
   } else if (carriedBonus) cs.pendingSkillBonus = Math.max(cs.pendingSkillBonus, carriedBonus);
   // Generic max-level bonuses run after every handler so status conditions set this round count
   for (const { eff, def } of ran) if (eff.maxLevelEffect) applyMaxLevelBonuses(eff.maxLevelEffect, def.effect.type, rs, ctx);
+  // "Burn DMG +X%" passives scale this round's burn damage
+  if ((rs.burnSkillDmg || 0) > 0 && (rs.cmdBurnDmgBonus || 0) > 0) rs.focusDmgBonus += rs.burnSkillDmg * rs.cmdBurnDmgBonus;
+  if (rs.burnApplied) cs.lastBurnRound = round;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -3997,6 +4117,7 @@ const skillCtx = (S, T, round) => ({
   defAlignment: getFactionAlignment(T.slots[0]?.branch?.faction ?? T.cmdObj?.faction), ownFaction: S.cmdObj?.faction,
   defHpPer: T.hpPer, defTile, atkCmdSpd: S.spd, cmdAtkStat: S.atkStat, cmdFocStat: S.focStat, bleedRoundsActive: S.bleedRounds,
   cs: S.cs, venomTicking: S.venomNext > 0, atkCommand: S.command, defCommand: T.command,
+  isAttacking: S === A, enemyCmdAlignment: getFactionAlignment(T.cmdObj?.faction ?? T.slots[0]?.branch?.faction),
   atkCmdReal: realCommandOf(S), defCmdReal: realCommandOf(T),
   defFactions: new Set([...T.slots.map(d => d.branch?.faction), T.cmdObj?.faction].filter(Boolean)),
   defRoles: new Set(T.slots.map(d => d.branchDef?.role).filter(Boolean)),
@@ -4043,11 +4164,24 @@ const commanderAct = (S, T, round, roundLog) => {
   if (hpOf(S) <= 0 || hpOf(T) <= 0) return;
   const who = S.isPlayer ? S.cmdActor : "Enemy Cmd";
   if (er.enemyNullified) return;
-  if (er.enemyStunned > 0) { er.enemyStunned--; roundLog.actions.push({ actor:who, action: S.isPlayer ? `⚡ ${S.name} is stunned!` : "⚡ Enemy commander is stunned!", dmg:0, isPlayer:S.isPlayer }); return; }
-  if (er.enemySilenced) { er.enemySilenced = false; roundLog.actions.push({ actor:who, action: S.isPlayer ? `🎵 ${S.name} silenced — skill delayed!` : "🎵 Enemy commander silenced — skill delayed!", dmg:0, isPlayer:S.isPlayer }); return; }
-  if (er.enemyConfused > 0) {
-    er.enemyConfused--;
-    if (!r.atkConfusionImmune && Math.random() < 0.5) {
+  // Incoming debuffs: debuff-immune this round, or resisted (Around the Block, Cleanse)
+  const resists = () => r.cmdDebuffImmune || Math.random() < (r.debuffChanceReduction || 0) + (r.debuffResistChance || 0);
+  const resisted = (what) => roundLog.actions.push({ actor:who, action:`🛡️ ${S.isPlayer ? S.name : "Enemy commander"} resists ${what}!`, dmg:0, isPlayer:S.isPlayer });
+  if (er.enemyStunned > 0) {
+    er.enemyStunned--;
+    if (resists()) resisted("stun");
+    else { roundLog.actions.push({ actor:who, action: S.isPlayer ? `⚡ ${S.name} is stunned!` : "⚡ Enemy commander is stunned!", dmg:0, isPlayer:S.isPlayer }); return; }
+  }
+  if (er.enemySilenced) {
+    er.enemySilenced = false;
+    if (resists()) resisted("silence");
+    else { roundLog.actions.push({ actor:who, action: S.isPlayer ? `🎵 ${S.name} silenced — skill delayed!` : "🎵 Enemy commander silenced — skill delayed!", dmg:0, isPlayer:S.isPlayer }); return; }
+  }
+  let confused = false;
+  if (er.enemyConfused > 0) { er.enemyConfused--; if (!r.cmdConfusionImmune && !resists()) confused = true; }
+  if (r.selfConfused && !r.cmdConfusionImmune) confused = true; // Captain's Honor
+  if (confused) {
+    if (Math.random() < 0.5) {
       const selfDmg = Math.max(1, Math.round(calcCmdNormalDmg(S.atkStat, S.command, 0) * 0.8
         * Math.max(0, 1 + defReduction(S.primaryDef * (r.troopDefMult || 1) * bastionDefOf(S, round)))));
       const lost = damageSide(S, selfDmg, round);
@@ -4056,14 +4190,22 @@ const commanderAct = (S, T, round, roundLog) => {
     }
   }
   if (er.enemyTargetsTaunted) roundLog.actions.push({ actor:who, action: S.isPlayer ? "🎯 Taunted — forced to attack!" : "🎯 Taunted — forced to attack!", dmg:0, isPlayer:S.isPlayer });
-  if (Math.random() < (er.enemyMissChance || 0)) { roundLog.actions.push({ actor:who, action: S.isPlayer ? `${S.name} missed!` : "Enemy commander missed!", dmg:0, isPlayer:S.isPlayer }); return; }
-  if (er.atkEvadeNextHit > 0) { const ev = Math.random() < er.atkEvadeNextHit; er.atkEvadeNextHit = 0; if (ev) { roundLog.actions.push({ actor:who, action:"💨 Attack evaded!", dmg:0, isPlayer:S.isPlayer }); return; } }
-  if (er.invisibleUnits > 0 && Math.random() < 0.30) { roundLog.actions.push({ actor:who, action:"🌑 Attack evaded — target invisible!", dmg:0, isPlayer:S.isPlayer }); return; }
+  if (!r.cmdPursuit) { // Pursuit: attacks cannot miss or be evaded
+    if (Math.random() < (er.enemyMissChance || 0)) { roundLog.actions.push({ actor:who, action: S.isPlayer ? `${S.name} missed!` : "Enemy commander missed!", dmg:0, isPlayer:S.isPlayer }); return; }
+    if (er.evadeHits > 0) { er.evadeHits--; roundLog.actions.push({ actor:who, action:"💨 Attack evaded!", dmg:0, isPlayer:S.isPlayer }); return; }
+    if (er.atkEvadeNextHit > 0) { const ev = Math.random() < er.atkEvadeNextHit; er.atkEvadeNextHit = 0; if (ev) { roundLog.actions.push({ actor:who, action:"💨 Attack evaded!", dmg:0, isPlayer:S.isPlayer }); return; } }
+    if (er.invisibleUnits > 0 && Math.random() < 0.30) { roundLog.actions.push({ actor:who, action:"🌑 Attack evaded — target invisible!", dmg:0, isPlayer:S.isPlayer }); return; }
+  }
+  // Soup's Hot etc.: attacking this side can Burn the attacker (its damage -20% this round)
+  if ((er.onEnemyAttackBurnChance || 0) > 0 && Math.random() < er.onEnemyAttackBurnChance) {
+    applyBurn(er, 0.20);
+    roundLog.actions.push({ actor:who, action:`🔥 ${S.isPlayer ? S.name : "Enemy commander"} is Burned attacking!`, dmg:0, isPlayer:!S.isPlayer, isTroopSkill:true });
+  }
 
   // Own damage mods up; target's damage-received / our-ATK-down mods down
   const common = (r.enemyDmgTakenUp || 0) - (er.enemyAtkReduce || 0) - (er.enemyDmgReduce || 0) - (er.dmgReduce || 0) - (er.enemyBurnPenalty || 0);
   const physModSum = (r.cmdMult - 1) + S.classPhys + S.scaling + common;
-  const focModSum  = (r.cmdMult - 1) + S.classFoc  + S.scaling + common;
+  const focModSum  = (r.cmdMult - 1) + S.classFoc  + S.scaling + common - (er.focusDmgResist || 0);
   const atkR = S.atkStat + (r.cmdAtkFlat || 0) - (er.enemyCmdAtkFlatDown || 0);
   const focR = S.focStat + (r.cmdFocFlat || 0);
   const usesFoc = (S.primaryBranchDef?.dmgType === "magical") || (focR > atkR);
@@ -4078,7 +4220,11 @@ const commanderAct = (S, T, round, roundLog) => {
   const effDef = Math.max(0, tDef * (1 - Math.min(0.9, r.enemyDefDown || 0)) - (r.enemyDefFlatDown || 0));
   const defMult  = usesFoc ? 1.0 : Math.max(0, 1 + defReduction(effDef));
   const isCrit   = Math.random() < (r.critChance || 0);
-  const totalDmg = Math.max(1, Math.round((hit1 + hit2 * followupExpected) * defMult * (isCrit ? 1.5 : 1.0) * S.terrMult));
+  // Focus-skill damage (Burn/FOC skills) for a commander whose normal attack is physical: its own FOC-scaled part, ignores DEF
+  const focSkill = (!usesFoc && (r.focusDmgBonus || 0) > 0)
+    ? Math.max(0, calcCmdFocusSkillDmg(focR, S.command, r.focusDmgBonus, focModSum) - calcCmdFocusSkillDmg(focR, S.command, 0, focModSum))
+    : 0;
+  const totalDmg = Math.max(1, Math.round(((hit1 + hit2 * followupExpected) * defMult + focSkill) * (isCrit ? 1.5 : 1.0) * S.terrMult));
   if (r.lifesteal > 0 && S.blockHealRounds <= 0) {
     const gain = healSideHp(S, Math.round(totalDmg * r.lifesteal));
     S.dmgPool = Math.max(0, S.dmgPool - gain);
@@ -4098,10 +4244,11 @@ const slotAct = (S, idx, T, round, roundLog) => {
   const label = S.isPlayer ? (sl.branchDef?.label || `Slot ${idx+1}`) : "Defenders";
   const unitName = sl.branchDef?.label || (S.isPlayer ? `Slot ${idx+1}` : `Defenders ${idx+1}`);
   if (er.enemyNullified) return;
-  if (er.enemyStunned > 0) return;
+  const resists = () => Math.random() < (r.debuffResistChance || 0);
+  if (er.enemyStunned > 0 && !resists()) return;
   if (er.enemyConfused > 0) {
     er.enemyConfused--;
-    if (!r.atkConfusionImmune && Math.random() < 0.5) {
+    if (!r.atkConfusionImmune && !resists() && Math.random() < 0.5) {
       const selfDmg = calcTroopDmg(sl.branchDef, sl.tierData, sl.def, 0, S.command, 1, 0, false, 1, [], round);
       const prev = S.slotHp[idx];
       S.slotHp[idx] = Math.max(0, S.slotHp[idx] - selfDmg);
@@ -4110,8 +4257,15 @@ const slotAct = (S, idx, T, round, roundLog) => {
       return;
     }
   }
-  if (Math.random() < (er.enemyMissChance || 0)) { roundLog.actions.push({ actor:label, action: S.isPlayer ? `${unitName} missed!` : "Enemy troops missed!", dmg:0, isPlayer:S.isPlayer }); return; }
-  if (er.atkEvadeNextHit > 0) { const ev = Math.random() < er.atkEvadeNextHit; er.atkEvadeNextHit = 0; if (ev) { roundLog.actions.push({ actor:label, action:"💨 Attack evaded!", dmg:0, isPlayer:S.isPlayer }); return; } }
+  if (!r.pursuitActive) { // Pursuit: attacks cannot miss or be evaded
+    if (Math.random() < (er.enemyMissChance || 0)) { roundLog.actions.push({ actor:label, action: S.isPlayer ? `${unitName} missed!` : "Enemy troops missed!", dmg:0, isPlayer:S.isPlayer }); return; }
+    if (er.evadeHits > 0) { er.evadeHits--; roundLog.actions.push({ actor:label, action:"💨 Attack evaded!", dmg:0, isPlayer:S.isPlayer }); return; }
+    if (er.atkEvadeNextHit > 0) { const ev = Math.random() < er.atkEvadeNextHit; er.atkEvadeNextHit = 0; if (ev) { roundLog.actions.push({ actor:label, action:"💨 Attack evaded!", dmg:0, isPlayer:S.isPlayer }); return; } }
+  }
+  if ((er.onEnemyAttackBurnChance || 0) > 0 && Math.random() < er.onEnemyAttackBurnChance) {
+    applyBurn(er, 0.20);
+    roundLog.actions.push({ actor:label, action:`🔥 ${unitName} Burned while attacking!`, dmg:0, isPlayer:!S.isPlayer, isTroopSkill:true });
+  }
 
   // on_hit troop skills of the acting slot → its own side's state
   const logFrom = roundLog.actions.length;
@@ -4124,7 +4278,8 @@ const slotAct = (S, idx, T, round, roundLog) => {
   for (let hi = 0; hi < hits; hi++) {
     if (hpOf(T) <= 0) break;
     const modSum = (r.troopAtkMult - 1) + (r.enemyDmgTakenUp || 0)
-      - (er.enemyAtkReduce || 0) - (er.enemyDmgReduce || 0) - (er.troopDmgReduce || 0) - (er.dmgReduce || 0) - rangedReduce - (er.enemyBurnPenalty || 0);
+      - (er.enemyAtkReduce || 0) - (er.enemyDmgReduce || 0) - (er.troopDmgReduce || 0) - (er.dmgReduce || 0) - rangedReduce - (er.enemyBurnPenalty || 0)
+      - (sl.branchDef?.dmgType === "magical" ? (er.focusDmgResist || 0) : 0);
     const tDef = Math.max(0, T.primaryDef * (er.troopDefMult || 1) * bastionDefOf(T, round) - (r.enemyDefFlatDown || 0));
     let dmg = calcTroopDmg(sl.branchDef, sl.tierData, tDef, Math.min(0.9, r.enemyDefDown || 0), S.command, S.terrMult,
       modSum, false, sizeMod, r.followupSources || [], round);
@@ -4233,14 +4388,14 @@ for (const S of [A, D]) {
   if (S.healBlockedNow) continue;
   const hpDiv = S.hpPer;
   if (S.rs.healPct > 0 && S.lostHp > 0) {
-    const restored = healSideHp(S, Math.round(S.lostHp * S.rs.healPct));
+    const restored = healSideHp(S, Math.round(S.lostHp * S.rs.healPct * (1 + (S.rs.healReceivedBonus || 0))));
     const troopsBack = Math.round(restored / hpDiv);
     if (troopsBack > 0) roundLog.actions.push({ actor:S.name, action:`💚 ${troopsBack} troops restored (passive)`, dmg:-troopsBack, isSkill:true, isHeal:true, troopsBack,
       ...(S.isPlayer ? { atkRemaining:Math.round(hpOf(S)/hpDiv) } : { isPlayer:false, defRemaining:Math.round(hpOf(S)/hpDiv) }) });
   }
   if (S.rs.skillHealCoeff > 0) {
     const healAmt = calcCmdHeal(S.command, S.rs.skillHealCoeff, S.rs.recoveryModSum || 0, S.dmgPool, round, S.dmgRound);
-    const done = healSideHp(S, Math.max(0, Math.round(healAmt)));
+    const done = healSideHp(S, Math.max(0, Math.round(healAmt * (1 + (S.rs.healReceivedBonus || 0)))));
     S.dmgPool = Math.max(0, S.dmgPool - done);
     const troopsBack2 = Math.round(done / hpDiv);
     if (troopsBack2 > 0) roundLog.actions.push({ actor:S.name, action:`💚 ${troopsBack2} troops healed (skill)`, dmg:-troopsBack2, isSkill:true, isHeal:true, troopsBack:troopsBack2,
