@@ -975,6 +975,7 @@ export default function RiseToWar() {
   const fortsRef = useRef(forts);
   useEffect(() => { fortsRef.current = forts; _fortsRef.current = forts; }, [forts]);
   _fortsRef.current = forts; // sync immediately too
+  fortsRef.current = forts;
 
   // Recall that also unstations from fort
   const recallFromFort = useCallback((cmdUid, fortId) => {
@@ -1249,7 +1250,9 @@ export default function RiseToWar() {
             // ...and a completed march also ends any Guard (moving isn't a cancel: no cooldown).
             const arrived = { ...cmd, tk: upd.tk, march: null, stationedWellId: null, isGuarding: false, guardedAt: null };
             // Reposition arrival — station at fort
-            if (cmd.march?.type === "reposition" && cmd.march?.destFortId) {
+            // (Only if the fort still exists and is built — otherwise it just stands there.)
+            const destFort = cmd.march?.type === "reposition" && fortsRef.current.find(f => f.id === cmd.march.destFortId);
+            if (destFort && !destFort.isBuilding) {
               const fortId = cmd.march.destFortId;
               // Call stationAtFort async after state settles
               setTimeout(() => stationAtFort(cmd.uid, fortId), 0);
@@ -1534,6 +1537,11 @@ export default function RiseToWar() {
     // Check fort capacity
     const fort = getFortAtTile(fortTileKey);
     if (!fort) return { ok: false, reason: "No fort at destination" };
+    if (fort.isBuilding) return { ok: false, reason: "Fort is still under construction" };
+    // Moving to a fort needs an army; a commander with 0 troops can only be
+    // recalled to the fort it's already stationed at (recallToFort).
+    const troops = normaliseTroopSlots(cmd).reduce((s, sl) => s + (sl.troops || 0), 0) || cmd.troops || 0;
+    if (troops < 1) { floaty("⚠ Needs at least 1 troop to move to a fort", "#cc8030", cmd.tk); return { ok: false, reason: "No troops" }; }
     const levelDef = FORT_LEVELS[fort.level - 1];
     if (fort.stationedCmdUids.length >= levelDef.capacity && !fort.stationedCmdUids.includes(uid)) {
       return { ok: false, reason: `Fort full (max ${levelDef.capacity})` };
