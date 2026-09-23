@@ -1333,30 +1333,91 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
         })()}
       </div>
 
-      {/* ── March status ── */}
-      {cmd.march && (() => {
-        const eta = Math.ceil((cmd.march.path.length - cmd.march.step - 1) * cmd.march.stepMs / 1000);
-        const atk = cmd.march.type === "attack";
-        return (
-          <div style={{
-            margin: "10px 18px 0", padding: "8px 12px", flexShrink: 0,
-            background: atk ? "rgba(200,30,30,.08)" : "rgba(40,140,80,.08)",
-            border: `1px solid ${atk ? "#cc303038" : "#3daa6038"}`, borderRadius: 5,
-            display: "flex", alignItems: "center", gap: 8,
-          }}>
-            <span style={{ fontSize: 16 }}>{atk ? "⚔" : "🚶"}</span>
-            <div>
-              <div style={{ fontSize: 9, fontFamily: "'Cinzel',serif", fontWeight: 700,
-                color: atk ? "#e06060" : "#60c880" }}>
-                {atk ? "Attacking" : "Marching"} · ~{eta}s
+      {/* ── Spacer ── */}
+      <div style={{ height: 18, flexShrink: 0 }} />
+
+      {/* ── 4-stat row ── */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "repeat(4,1fr)",
+        borderBottom: "1px solid #1a1510", background: "#090805", flexShrink: 0,
+        position: "relative",
+      }}>
+        {(() => {
+          const bc = applyGearToCmd(cmd, gearInventory);
+          const GROWTH = {
+            attacker:   { ATK: 1.5, FOC: 0.2, SPD: 0.6 },
+            leader:     { ATK: 0.8, FOC: 0.8, SPD: 0.8 },
+            support:    { ATK: 0.2, FOC: 1.3, SPD: 0.8 },
+            balanced:   { ATK: 0.8, FOC: 0.8, SPD: 1.0 },
+            strategist: { ATK: 0.2, FOC: 1.5, SPD: 0.7 },
+          };
+          const growth = GROWTH[cmd.cls] ?? GROWTH.leader;
+          return [
+          { icon: "⚔",  label: "ATK", val: Math.round(bc.atk ?? 0), color: "#e08050", growth: growth.ATK },
+          { icon: "✦",  label: "FOC", val: Math.round(bc.foc ?? 0), color: "#aa66ff", growth: growth.FOC },
+          { icon: "💨", label: "SPD", val: Math.round(bc.spd ?? 0), color: "#40a8e0", growth: growth.SPD },
+          { icon: "📡", label: "CMD", val: cmdCap, color: "#60c0a0", growth: null },
+        ]})().map(({ icon, label, val, color, growth }) => (
+          <div key={label}
+            onClick={() => growth != null && setShowClassPopup(showClassPopup === `stat_${label}` ? null : `stat_${label}`)}
+            style={{
+              padding: "6px 0", textAlign: "center",
+              borderRight: "1px solid #161210",
+              cursor: growth != null ? "pointer" : "default",
+              position: "relative",
+              background: showClassPopup === `stat_${label}` ? "rgba(255,255,255,.04)" : "transparent",
+            }}>
+            <div style={{ fontSize: 12, marginBottom: 2 }}>{icon}</div>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 11, fontWeight: 700, color }}>{val}</div>
+            <div style={{ fontSize: 6, color: "#3a3020", fontFamily: "'Cinzel',serif",
+              letterSpacing: ".07em", marginTop: 3 }}>{label}{growth != null && <span style={{ color: "#3a3020" }}> ▴</span>}</div>
+
+            {/* Per-level growth popup */}
+            {showClassPopup === `stat_${label}` && growth != null && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+                background: "#12100a", border: "1px solid #f0c04044", borderRadius: 5,
+                padding: "8px 12px", zIndex: 50, whiteSpace: "nowrap",
+                boxShadow: "0 4px 20px rgba(0,0,0,.8)",
+              }}>
+                <div style={{ fontSize: 7, color: "#6a5a38", fontFamily: "'Cinzel',serif", letterSpacing: ".08em", marginBottom: 4 }}>
+                  {label} GROWTH
+                </div>
+                <div style={{ fontSize: 11, color: color, fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
+                  +{growth} per level
+                </div>
+                <div style={{ fontSize: 7, color: "#4a3a28", marginTop: 3, fontFamily: "'Crimson Pro',serif" }}>
+                  ({cmd.cls} class)
+                </div>
               </div>
-              <div style={{ fontSize: 7, color: "#3a3028", fontFamily: "'Cinzel',serif", marginTop: 1 }}>
-                → {cmd.march.dest}
-              </div>
-            </div>
+            )}
           </div>
-        );
-      })()}
+        ))}
+
+        {/* Lv20 class bonus indicator */}
+        {lvl >= 20 && (() => {
+          const bonuses = {
+            attacker:   "+25 ATK · +2 SP · +10% Physical Dmg",
+            leader:     "+5 Command",
+            support:    "+25 FOC · +5 SP",
+            balanced:   "+25 ATK/FOC/SPD · +2 SP · Bastion",
+            strategist: "+25 FOC · +2 SP · +10% Focus Dmg",
+          };
+          const txt = bonuses[cmd.cls];
+          if (!txt) return null;
+          const clsColors = { attacker:"#e08050", leader:"#d0a030", support:"#50d090", balanced:"#a080ff", strategist:"#cc66ff" };
+          return (
+            <div style={{
+              gridColumn: "1 / -1", padding: "4px 10px",
+              background: "rgba(255,255,255,.02)", borderTop: "1px solid #1a1510",
+              display: "flex", alignItems: "center", gap: 6,
+            }}>
+              <span style={{ fontSize: 8, color: clsColors[cmd.cls] ?? "#f0c040" }}>⭐ Lv20</span>
+              <span style={{ fontSize: 7, color: "#7a6a4a", fontFamily: "'Crimson Pro',serif" }}>{txt}</span>
+            </div>
+          );
+        })()}
+      </div>
 
       {/* ── Spacer ── */}
       <div style={{ height: 18, flexShrink: 0 }} />
