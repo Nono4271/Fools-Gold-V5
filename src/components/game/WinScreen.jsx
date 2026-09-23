@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { FAC } from "../../../shared/constants/factions.js";
-import { barracksCapacity } from "../../../shared/constants/buildings.js";
+import { STARTING_TROOPS } from "../../../shared/constants/buildings.js";
 
 export default memo(function WinScreen({ winner, aiFaction, setWinner, setTiles, setCmds, setMode, setSelKey, setUpgQueue, setBldgs, setTroopCounts, setAiRss, setAiBldgs, setAiBarracksPool, aiLastActionRef, setScreen, setWounded, setWoundedQueue, setRss, setReinMarches, setTrainingQueues, setBLog, setBattles, setUnseenBattles, setDeletingTiles, setDeletingSecsLeft, setPlayerHqKey, setAiHqKeys }) {
   const isVictory = winner === "player";
@@ -44,7 +44,7 @@ export default memo(function WinScreen({ winner, aiFaction, setWinner, setTiles,
           if (setAiHqKeys)         setAiHqKeys({});
           setAiRss({stone:300,wood:300,gas: 300,food: 300});
           setAiBldgs({hq:1,quarry:0,lumber:0,forge:0,refinery:0,barracks:0,training:0,commandcenter:0,healingtent:0,walls:0});
-          setAiBarracksPool(barracksCapacity(0));
+          setAiBarracksPool(STARTING_TROOPS);
           aiLastActionRef.current = 0;
         }}
           style={{padding:"12px 28px",background:"linear-gradient(135deg,#7a1010,#c03030)",border:"1px solid #e04040",color:"#f0c040",fontSize:13,fontWeight:700}}>

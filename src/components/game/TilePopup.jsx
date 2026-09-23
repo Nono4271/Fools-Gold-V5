@@ -1,12 +1,15 @@
 import { memo, useState, useCallback, useEffect } from "react";
 import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 import { CMD_SIZE } from "../../../shared/constants/buildings.js";
+import { branchKeySize } from "../../../shared/utils/barracks.js";
 import { RSS, POWER_DEFS, SIEGE_BASE, HQP, FORT_LEVELS, XP_PER_COMMAND } from "../../../shared/constants/map.js";
 import { garrisonDefCmd } from "../../../shared/utils/garrisonUtils.js";
 import { isTileInRange } from "../../hooks/useForts.js";
 import { spawnDisplayName } from "../../utils/spawnUtils.js";
 import { getTileOwnership } from "./popup/TileInfoPanel.jsx";
 import { FORTRESS_COST, FORTRESS_MIN_POWER_LEVEL } from "../../../shared/constants/crew.js";
+// Troops per command for a slot's unit type: 100 small / 50 medium / 4 large.
+const stepFor = b => CMD_SIZE[branchKeySize(`${b?.faction}:${b?.branch}:${b?.tier ?? 0}`)] ?? CMD_SIZE.small;
 import { canBuildFortressOnTile, canStartFortressBuild, isFortressBuilt } from "../../../shared/utils/crewFortress.js";
 import { canManageFortress } from "../../../shared/utils/crewRules.js";
 import CommanderCard from "./popup/CommanderCard.jsx";
@@ -272,7 +275,7 @@ export default memo(function TilePopup({
                     <span>TROOPS</span>
                     <span style={{ color:toRemove>0?"#cc5050":"#3daa60" }}>{sv.toLocaleString()}{toRemove>0&&<span style={{ color:"#cc5050", marginLeft:3 }}>(-{toRemove})</span>}</span>
                   </div>
-                  <input type="range" min={0} max={cur} step={CMD_SIZE.small} value={sv} onChange={e=>{ const v=+e.target.value; setSliderVals(p=>({...p,[sk]:v===cur?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small})); }} style={{ width:"100%", accentColor:"#cc5050", marginBottom:4 }}/>
+                  <input type="range" min={0} max={cur} step={stepFor(sl.branch)} value={sv} onChange={e=>{ const v=+e.target.value, st=stepFor(sl.branch); setSliderVals(p=>({...p,[sk]:v===cur?v:Math.round(v/st)*st})); }} style={{ width:"100%", accentColor:"#cc5050", marginBottom:4 }}/>
                   {toRemove>0&&<button onClick={() => { if(setTroopSlot) setTroopSlot(cmd.uid,si,sl.branch,sv); setEditArmyCmd(p=>{const ns=[...(p.troopSlots||[])];ns[si]={...ns[si],troops:sv};const filtered=ns.filter(x=>(x.troops||0)>0||x.branch).slice(0,3);return{...p,troopSlots:filtered,troops:filtered.reduce((s,x)=>s+(x.troops||0),0)};}); setSliderVals(v=>({...v,[sk]:undefined})); }} style={{ width:"100%", padding:"4px", background:"linear-gradient(135deg,rgba(150,40,40,.4),rgba(150,40,40,.15))", border:"1px solid #cc4444", color:"#dd6666", fontSize:8, fontWeight:700 }}>Remove {toRemove.toLocaleString()} troops</button>}
                 </>)}
               </div>
