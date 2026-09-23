@@ -1473,12 +1473,22 @@ All 6 orc commanders (h9 Grimtusk, h10 Ashgrip/Groth, h21 Warcroak, h22 Grix, h3
 **Non-combat:** Orc Explosives / `army_siege_bonus` → `getPassiveBonuses().siegePerTroop`. `skillSiegeBonus(cmd, troops)` is added to the siege bonus in `useMarch` (incl. `attackerComposition`, so the server recomputes the same number) and `useFortressSiege`. Interpreted as +N siege **per troop**.
 
 **Still not active (by design / pending):**
-- War Leader's Plans (`command_differential_bonus`) is **disabled pending owner decision**. "Command" in the engine is army command (troops × size cost), so sides differ by thousands.
 - Retaliation and Can't Stop Me only trigger on debuffs to our own commander. Grimtusk has no self-debuff and enemy commander skills don't run yet.
 - Focus Fire (Coordinated Assault) has no extra effect in the pooled-HP model; its damage works.
 - Stun/confusion/madness immunities have no enemy source yet.
 
-**Balance flags (data, not changed):** linear `base + perLevel×(lvl−1)` reaches ×15 at main-skill max. Examples: Final Lunge 1500%, Frontline Medic heal 750%, Calculated Strike 1500%, Iron Dense DEF +60, Friends with Shaman heal ~200%.
+**War Leader's Plans (owner spec):**
+- Rule: +N DEF and +N HP (flat, per unit) for every **4** Command more than the enemy. N is the skill value, 7 at max.
+- Command = troops × `COMMAND_COST`, so 57 command = 5,700 small troops. It's computed for both sides from what is alive each round (`ctx.atkCmdReal`/`defCmdReal`).
+- Example: 80 vs 55 → 6 steps → +42/+42.
+- Desc updated to "every 4 more Command".
+
+**Siege:** owner confirmed "+N per troop".
+
+**Engine note (not changed):**
+- `simBattle`'s `atkCommand` (`totalArmyCommand`, costs 1/2/25) is 100× real Command.
+- `defCommand` uses `dc.commandBudget`, which is real Command.
+- Both feed `armyCommandFactor`, so attackers always sit near the factor cap.
 
 **Other finding:** `mal_double_tap` exists in both nightcreatures and dragons with DIFFERENT definitions; the dragons one wins in `ALL_SKILLS`.
 

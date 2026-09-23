@@ -1,15 +1,12 @@
-# orcs-skills-20260923
+# orcs-skills-2-20260923
 
-Copy each file to the same path in the repo (branch codex/core-fixes-20260919). Includes everything from skills-engine-20260923 (battle.js, skills.js, test file are newer versions of those).
+Copy each file to the same path (branch codex/core-fixes-20260919).
 
-| File | Change vs last zip (skills-engine-20260923) |
+| File | Change vs orcs-skills-20260923 |
 |---|---|
-| shared/utils/battle.js | All orc skill mechanics; persistent skill state; overwrite/heal-block/burn bug fixes |
-| shared/constants/skills.js | Siege-per-troop skill bonus (`skillSiegeBonus`) |
-| shared/constants/orcs_skills.js | NEW in zips — Lifeline of the Tribe max key → orcCombatSpd |
-| src/hooks/useMarch.js | NEW in zips — siege power includes Orc Explosives |
-| src/hooks/useFortressSiege.js | NEW in zips — same for fortress sieges |
-| tests/commanderSkills.test.js | +5 orc tests |
-| ReadMeAI.md | Changelog |
+| shared/utils/battle.js | War Leader's Plans enabled: +N DEF/HP per 4 Command advantage (real Command) |
+| shared/constants/orcs_skills.js | Leader's Plans text → "every 4 more Command" |
+| tests/commanderSkills.test.js | +1 test (80 vs 55 applies, 80 vs 78 doesn't) |
+| ReadMeAI.md | Changelog corrected |
 
-Tests 432/432, build OK.
+Tests 433/433, build OK.
