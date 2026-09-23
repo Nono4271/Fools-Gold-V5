@@ -11,6 +11,14 @@ export function marchSegmentMs(fromKey, toKey, baseStepMs) {
   return Math.max(50,Math.round(baseStepMs*MARCH_TIME_SCALE*(diagonal?Math.SQRT2:1)));
 }
 
+// Milliseconds until a march reaches the end of its path (0 if done/invalid).
+export function marchMsLeft(m, now = Date.now()) {
+  if (!m?.path?.length || !(m.stepMs > 0)) return 0;
+  let total = 0;
+  for (let i = Math.max(0, m.step || 0); i < m.path.length - 1; i++) total += marchSegmentMs(m.path[i], m.path[i + 1], m.stepMs);
+  return Math.max(0, total - Math.max(0, now - (m.lastStepTime ?? now)));
+}
+
 export function reachedMarchDestination(step, pathLength) {
   return pathLength > 0 && step === pathLength - 1;
 }
