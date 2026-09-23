@@ -362,7 +362,7 @@ function GearTab({ gearInventory, setGearInventory, cmds, setCmds, playerAlignme
           const on = filterS === key;
           return (
             <button key={key} onClick={() => setFilterS(on ? null : key)} style={{
-              padding: "5px 8px", borderRadius: 5, cursor: "pointer", touchAction: "manipulation",
+              padding: "7px 10px", minHeight: 32, borderRadius: 5, cursor: "pointer", touchAction: "manipulation",
               background: on ? "rgba(200,160,64,.18)" : "rgba(255,255,255,.04)",
               border: `1px solid ${on ? "rgba(200,160,64,.55)" : "#2a2010"}`,
               color: on ? "#c8a040" : "#5a4a30",
@@ -373,7 +373,7 @@ function GearTab({ gearInventory, setGearInventory, cmds, setCmds, playerAlignme
         <div style={{ width: 1, height: 16, background: "#2a2010", flexShrink: 0 }} />
         {Object.entries(GEAR_RARITY).reverse().map(([key, r]) => (
           <button key={key} onClick={() => setFilterR(filterR === key ? null : key)} style={{
-            padding: "4px 7px", borderRadius: 4, cursor: "pointer", touchAction: "manipulation",
+            padding: "7px 9px", minHeight: 32, borderRadius: 4, cursor: "pointer", touchAction: "manipulation",
             background: filterR === key ? `${r.color}18` : "rgba(255,255,255,.03)",
             border: `1px solid ${filterR === key ? r.color + "55" : "#1e1810"}`,
             color: filterR === key ? r.color : "#4a3a28",

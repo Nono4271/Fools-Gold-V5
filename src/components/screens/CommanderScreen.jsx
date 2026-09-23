@@ -1107,7 +1107,7 @@ function CommanderDetail({ cmd, bldgs, gearInventory, setGearInventory, respectS
                   {/* + button to apply schematics */}
                   {rLvl < RESPECT_MAX && (
                     <button onClick={() => setShowSchematics(s => !s)} style={{
-                      width: 20, height: 20, borderRadius: "50%",
+                      width: 30, height: 30, borderRadius: "50%",
                       background: showSchematics ? `${r.color}30` : "rgba(255,255,255,.05)",
                       border: `1px solid ${r.color}50`,
                       color: r.color, fontSize: 13, lineHeight: 1,
