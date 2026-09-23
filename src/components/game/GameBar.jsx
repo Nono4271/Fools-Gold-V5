@@ -569,6 +569,7 @@ export default memo(function GameBar({
   searchOpen, setSearchOpen,
   // Fort props
   forts,
+  onOpenCmdCard,
 }) {
   if (hidden) return null;
   // All player commanders (for left rail) — only those NOT at HQ
@@ -611,6 +612,7 @@ export default memo(function GameBar({
                 const py = -cy * z + window.innerHeight / 2;
                 panRef.current = { x: px, y: py };
                 mapRendererRef.current?.teleport(px, py);
+                onOpenCmdCard?.(cmd.uid);
               }}
               active={false}
               badge={0}
