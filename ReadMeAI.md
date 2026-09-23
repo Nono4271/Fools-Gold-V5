@@ -1438,6 +1438,49 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Dragons fully implemented
+
+All 6 commanders (h11 Emberclaw, h12 Scaleveil, h23 Kraul, h24 Cinderfang, h35 Skar, h36 Nyxara) were checked against their descriptions. 39 handler types were rewritten for the per-unit commander path; the troop-skill path keeps its old behaviour. Types that other factions share (`focus_damage_single`, `branch_flat_def_bonus`, `branch_phys_dmg_reduce`, `aoe_focus_damage_foc_mod`, `heal_two_units_dragon_bonus`) are written generically, and branch `"all"` means every unit.
+
+**New per-unit statuses (commander skills):**
+- **Burn** (`burnUnits`, `rs.burnedUnits`): each unit rolls its own chance, and a burned unit deals -20% this round. "Vs burning" bonuses (Charred, Dragon Inferno max) check the unit being hit. Pirate burns still use the older army-wide Burn.
+- **Blind** (`rs.blindedUnits`): the unit's next attack misses.
+- **Slow** (`rs.unitSpdDown`): -N SPD for that unit in the turn order.
+
+**Other new engine support:**
+- `slotPhysResist`: physical damage received -X% on a unit.
+- `slotConfusionImmune`, `slotVenomImmune`.
+- Thorns (`rs.thorns`): Tough Skin reflects physical hits back to the attacking unit.
+- `firstHitsRed`: Elder Dragon, each unit's first N hits.
+- `stripBuffs`: Clear the Air removes the enemy's positive stat buffs for the round.
+- Heal-on-debuff: You Get a Heal!, after both sides' skills.
+- Fixed-target skill hits (`ti`).
+- `prioRank` now accepts singular faction names ("prioritiseWizard").
+
+**Notable fixes:**
+- Flame Dive: `bleedChance: 0` fell back to a 60% Bleed. It now applies its 45% Burn to the units hit.
+- Fire Volley: 5 hits on random units, each rolling Burn on its own unit (was an army-wide multiplier). The max-level bonus hit on a Wizard unit is added.
+- Ember's Entertainment: Burn damage to every unit on the normal attack, plus the max-level 15% Burn chance.
+- Flame Dancer / Future King / To Become an Elder / My Will vs Yours / Dragon Supremacy: flat commander ATK/FOC/SPD were applied as % or not at all.
+- Flat DEF/HP skills (Dragon Garrison, Me Little Army Big, I'll Work With It, Dragon Supremacy) were applied as +N%.
+- Superior Race, Tough Scales, Dragon Dance, Fire Fight, Locked In and I'll Work With It now affect only their branch or unit type.
+- Dusk's Blast, On the Prowl and Earthquake: every unit is hit and each rolls its own stun/slow (was the whole army at once).
+- Sniper, Meet Your Maker, Lightning Storm, Dragon Snack (melee +50%), Dragon Inferno, I Can Help and Don't Underestimate Me now use per-unit hits and statuses.
+- Mind over Matter: guaranteed enemy commander stun, with ATK -N for 2 rounds.
+- Dragon Scales: each Dragon unit rolls Poison/Venom immunity once, at battle start.
+- Back Line Healer / Dragon's Song: heals limited to the units they name.
+- Cauterize: when it fires, this round's incoming debuffs get its cleanse chance.
+
+**Coverage:** every Dragon skill changes combat in leave-one-out except:
+- Map-only: Siege ×2, Gatherer, Pather.
+- Dragon's Hope: round-8 heal.
+- Cauterize and You Get a Heal!: need enemy debuffs; You Get a Heal! is verified in tests.
+
+**Checks:**
+- Whole game: 469/576 commander skills change combat.
+- PvP mirror 92/180 attacker wins. PvE unchanged.
+- Tests: 5 new. `npm test` 460/460, build OK.
+
 ## 2026-09-23 — Claude — Holy Knights fully implemented
 
 All 6 commanders (h37 Aldric, h38 Vayne, h39 Brennan, h40 Seraph, h41 Dante, h42 Mourne) were checked against their descriptions. 35 handler types were rewritten for the per-unit commander path; troop-skill users of the same types (`decaying_dmg_reduce`, `per_round_def_stack`) keep their old behaviour.
