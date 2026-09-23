@@ -27,12 +27,29 @@ test('capstone branch training cost/time discount scales 0% at level 1 to 50% at
 test('larger commands take longer and cost moderately more',()=>{const quotes=FACTION_TROOPS.pirates.branches.map(b=>trainingQuote(`pirates:${b.key}:2`,CMD_SIZE[b.size]));for(let i=1;i<3;i++){assert.ok(quotes[i].baseSeconds>quotes[i-1].baseSeconds);const sum=q=>Object.values(q.cost).reduce((a,b)=>a+b,0);assert.ok(sum(quotes[i])>sum(quotes[i-1]));assert.ok(sum(quotes[i])/sum(quotes[i-1])<1.3);}});
 test('payment and ETA match the menu quote',()=>{const s=train(initial()),q=trainingQuote(key,200);for(const k of Object.keys(q.cost))assert.equal(s.rss[k],200000-q.cost[k]);assert.equal(trainingSecondsLeft(s.trainingQueues[0],0),q.totalSeconds);});
 test('training adds each complete command exactly once',()=>{let s=train(initial());const ms=s.trainingQueues[0].commandMs;s=tick(s,ms-1);assert.equal(s.troopCounts[key]||0,0);s=tick(s,ms);assert.equal(s.troopCounts[key],100);s=tick(s,2*ms);assert.equal(s.troopCounts[key],200);assert.equal(s.trainingQueues.length,0);s=tick(s,2*ms);assert.equal(s.troopCounts[key],200);});
-test('late training waits safely when barracks cannot fit a command',()=>{let s=train(initial());const end=s.trainingQueues[0].commandMs*5;s={...s,troopCounts:{[key]:1950}};s=tick(s,end);assert.equal(s.trainingQueues[0].remaining,200);s={...s,troopCounts:{[key]:1800}};s=tick(s,end);assert.equal(s.troopCounts[key],2000);assert.equal(s.trainingQueues.length,0);});
-test('pending training reserves capacity and poor players cannot pay',()=>{let s=train({...initial(),troopCounts:{[key]:1750}});assert.equal(train(s,{id:'second'}),s);const poor={...initial(),rss:{stone:0,wood:0,gas:0,food:0}};assert.equal(train(poor),poor);});
+test('late training waits safely when barracks cannot fit a command',()=>{let s=train(initial());const end=s.trainingQueues[0].commandMs*5;s={...s,troopCounts:{[key]:2950}};s=tick(s,end);assert.equal(s.trainingQueues[0].remaining,200);s={...s,troopCounts:{[key]:2800}};s=tick(s,end);assert.equal(s.troopCounts[key],3000);assert.equal(s.trainingQueues.length,0);});
+test('pending training reserves capacity and poor players cannot pay',()=>{let s=train({...initial(),troopCounts:{[key]:2750}});assert.equal(train(s,{id:'second'}),s);const poor={...initial(),rss:{stone:0,wood:0,gas:0,food:0}};assert.equal(train(poor),poor);});
 test('invalid quantities, locked troops and duplicate queue IDs are rejected',()=>{const s=initial();for(const amount of [-1,0,1,150,NaN])assert.equal(train(s,{amount}),s);assert.equal(train(s,{unlocked:{}}),s);assert.equal(train(s,{branchKey:'missing'}),s);const paid=train(s);assert.equal(train(paid),paid);});
 test('wounded allocation preserves troop types',()=>{assert.deepEqual(splitTroops([{branch:{faction:'pirates',branch:'swashbucklers',tier:0},troops:100},{branch:{faction:'pirates',branch:'sea_beasts',tier:0},troops:4}],31),{[key]:30,[other]:1});});
 test('healing reserves wounds, charges once and returns original types',()=>{let s=heal({...initial(),woundedByBranch:{[key]:8,[other]:2}},10);assert.equal(s.rss.food,200000-healingFoodCost(10));assert.equal(heal(s,10,{id:'second'}),s);s=tick(s,10000);assert.deepEqual(s.troopCounts,{[key]:8,[other]:2});assert.equal(s.healQueue.length,0);});
 test('manual healing is default; automatic uses same price',()=>{const s={...initial(),woundedByBranch:{[key]:10}};assert.equal(tick(s,0).healQueue.length,0);const auto=tick({...s,autoHeal:true},0);assert.equal(auto.rss.food,heal(s,10).rss.food);assert.equal(auto.healQueue[0].remaining,10);});
 test('automatic healing waits for food; a tent is required',()=>{const s={...initial(),woundedByBranch:{[key]:10},rss:{stone:0,wood:0,gas:0,food:0},autoHeal:true};assert.equal(tick(s,0).healQueue.length,0);const rich={...s,rss:initial().rss};assert.equal(heal(rich,10,{buildings:{...buildings,healingtent:0}}),rich);});
 test('healing speedups deliver troops without advancing training',()=>{let s=train(initial());s=heal({...s,woundedByBranch:{[key]:100}},100);s=reduce(s,{type:'healSpeedup',id:'heal',duration:100000});s=tick(s,0);assert.equal(s.troopCounts[key],100);assert.equal(s.trainingQueues[0].remaining,200);assert.equal(s.healQueue.length,0);});
-test('full barracks retain completed healing until room exists',()=>{let s=heal({...initial(),woundedByBranch:{[key]:10},troopCounts:{[key]:2000}},10);s=tick(s,10000);assert.equal(s.healQueue[0].remaining,10);s={...s,troopCounts:{[key]:1990}};s=tick(s,10000);assert.equal(s.troopCounts[key],2000);assert.equal(s.healQueue.length,0);});
+test('full barracks retain completed healing until room exists',()=>{let s=heal({...initial(),woundedByBranch:{[key]:10},troopCounts:{[key]:3000}},10);s=tick(s,10000);assert.equal(s.healQueue[0].remaining,10);s={...s,troopCounts:{[key]:2990}};s=tick(s,10000);assert.equal(s.troopCounts[key],3000);assert.equal(s.healQueue.length,0);});
+
+test('barracks space is counted in commands: a medium command (50) takes as much room as a small one (100)',()=>{
+ const pb=FACTION_TROOPS.pirates.branches,medB=pb.find(b=>b.size==='medium'),big=pb.find(b=>b.size==='large');
+ const med=`pirates:${medB.key}:0`,bigKey=`pirates:${big.key}:0`,unlocked={[`pirates:${medB.key}`]:2,[`pirates:${big.key}`]:2,'pirates:swashbucklers':2};
+ // Lv1 = 30 commands. 29 small commands (2900 troops) leaves exactly one command of room.
+ const s0={...initial(),troopCounts:{[key]:2900}};
+ assert.equal(train(s0,{branchKey:med,amount:CMD_SIZE.medium,unlocked}).trainingQueues.length,1);
+ assert.equal(train(s0,{branchKey:med,amount:CMD_SIZE.medium*2,unlocked}),s0);
+ // 30 commands of large units (120 troops) fill the barracks.
+ const full={...initial(),troopCounts:{[bigKey]:CMD_SIZE.large*30}};
+ assert.equal(train(full,{amount:100,unlocked}),full);
+});
+test('barracks holds 30 commands at Lv1 up to 1000 at Lv20',async()=>{
+ const {barracksCommandCapacity}=await import('../shared/constants/buildings.js');
+ assert.equal(barracksCommandCapacity(0),30);assert.equal(barracksCommandCapacity(1),30);assert.equal(barracksCommandCapacity(20),1000);
+ for(let l=2;l<=20;l++)assert.ok(barracksCommandCapacity(l)>barracksCommandCapacity(l-1));
+});
