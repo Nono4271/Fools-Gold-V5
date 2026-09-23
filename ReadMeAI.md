@@ -1465,7 +1465,7 @@ All 6 commanders (h37 Aldric, h38 Vayne, h39 Brennan, h40 Seraph, h41 Dante, h42
 - Priests' Prayer / Power of Sun (day only): max-damage chance on HK units. Do You Believe: HK unit focus resist.
 - Here We Go Again: at night, HK take less damage from COTN; at day (max level), HK deal +10% to COTN. It used to reduce damage from everything.
 - Erratic Eradication, Target Practice, Mad Ruler, Blessed Judgement (HK heal + melee max bonus), HK Protector (second heal on a 50% roll), Healing Touch, Patch You Up, Rally the Inquisitors (follow-up + permanent unit stun immunity), Inquisitor's Domain, Cleansing Faith, Heaven's Protection (one roll, rounds 1–4), Stoic Hero, Divine Prayer.
-- **Whatever It Takes: the level now scales only the enemy confusion chance.** The allied self-confusion stays at 7%. Before, both scaled, so at 7/7 49% of our own units were confused. Owner to confirm.
+- **Whatever It Takes:** each unit rolls. Level scales both chances, ally 7% → 49% and enemy 10% → 70% at 7/7. Owner: intended as high risk, high reward.
 
 **Coverage:** every HK skill changes combat in leave-one-out except Last Resort (round-8 heal; battles rarely reach round 8). Divine Prayer and the stun immunities only show against a stunning enemy; verified in tests.
 
