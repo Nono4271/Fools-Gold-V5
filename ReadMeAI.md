@@ -1438,6 +1438,19 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Real cause of "fort busts missing" + tap fix (verified end-to-end in the browser)
+
+- **March fields lost after the first step (affects everything)**: the game-loop worker's march snapshot carries only timing fields, and Game's `onMarchStep` *replaced* `cmd.march` with it. So `dest`, `origin` and `destFortId` disappeared after one step:
+  - reposition arrivals never stationed (no busts, and demolish recalled nobody);
+  - `recallMarch` lost its origin.
+  
+  The step patch is now merged into the existing march, and a late step from a replaced march (different `startedAt`) is ignored.
+- **Taps on clickable `<div>`s were dead on phones**, e.g. the fort commander picker rows. The `main.tsx` touch guard (mobile polish batch) called `preventDefault` on any non-button touch outside a scroll area, which cancels the click. Targets with `cursor:pointer` now pass through.
+- **Forts**:
+  - When the build completes, the fort auto-stations the player's commanders standing on its tile, up to capacity (`useForts` ticker, now every 2s).
+  - FortPanel 📍 MOVE always opens the picker, even with one commander.
+- Verified with Playwright (test campaign): assign troops → capture a tile → build → finish → auto-station shows the bust → MOVE picker → reposition → 2/2 stationed → demolish → finish → both commanders march home.
+
 ## 2026-09-23 — Claude — Forts: offline until built, army needed to move in, stationing fixes
 
 - **Offline until built:**
