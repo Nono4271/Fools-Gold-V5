@@ -1248,7 +1248,15 @@ function useTroopCards({ unlockedBranches, troopCounts, cmds }) {
         }
       });
     });
-    return cards;
+    // Owned troops (in barracks or on a commander) first, biggest stack first;
+    // untrained tiers sink to the bottom in their original order.
+    const owned = c => (c.poolCount > 0 || c.assigned > 0) ? 1 : 0;
+    return cards
+      .map((c, i) => ({ c, i }))
+      .sort((a, b) => owned(b.c) - owned(a.c)
+        || (owned(a.c) ? (b.c.poolCount + b.c.assigned) - (a.c.poolCount + a.c.assigned) : 0)
+        || a.i - b.i)
+      .map(x => x.c);
   }, [ub, cmds, troopCounts]);
 }
 
@@ -1331,7 +1339,7 @@ function TrainingListScreen({ bldgs, barracksPool, troopCards, trainingQueues, r
               borderRadius:5, marginBottom:3,
               background:i%2===0?"rgba(255,255,255,.018)":"transparent" }}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ width:64, height:64, borderRadius:6, overflow:"hidden", flexShrink:0,
+                <div style={{ width:44, height:44, borderRadius:6, overflow:"hidden", flexShrink:0,
                   background:`${t.fColor}18`, border:`1px solid ${t.fColor}35`, position:"relative" }}>
                   {(() => {
                     const psrc = troopPortraitPath(t.fKey, t.branch.key, t.tier.tierIdx ?? 0);
@@ -1952,436 +1960,263 @@ function ManageShipScreen({
     setSv(0);
   }
 
-  const rarColor = RC(cmd.rarity);
-  const stam     = cmd.stamina ?? staminaMax;
+  // ── Tray ordering (Rise-to-War style): what you actually own comes first ──
+  const [showLocked, setShowLocked] = useState(false);
+  const slotKeyOf = (sl) => sl?.branch
+    ? `${sl.branch.faction}:${sl.branch.branch}:${sl.branch.tier ?? 0}` : null;
+  const heldKeys  = new Set(slots.map(slotKeyOf).filter(Boolean));
+  const isOwned   = (t) => t.pool > 0 || heldKeys.has(t.bKey);
+  const ownedList = availTroopList
+    .filter(isOwned)
+    .sort((a, b) =>
+      (heldKeys.has(b.bKey) ? 1 : 0) - (heldKeys.has(a.bKey) ? 1 : 0) ||
+      b.pool - a.pool || b.tierIdx - a.tierIdx);
+  const lockedList = availTroopList.filter(t => !isOwned(t));
+
+  const fmtCount = (n) => n > 9999 ? `${(n / 1000).toFixed(1)}k` : (n || 0).toLocaleString();
+  const troopIcon = (br) => br.dmgType === "magical" ? "✦"
+    : br.size === "small" ? "🗡" : br.size === "large" ? "🪃" : "⚔";
+
+  function onTrayTap(t) {
+    const assignedIdx = slots.findIndex(sl => slotKeyOf(sl) === t.bKey);
+    if (assignedIdx >= 0) { setActiveSlot(assignedIdx); return; }
+    const empty = slots.findIndex(sl => !sl);
+    const target = empty >= 0 ? empty : activeSlot;   // all full → replace the selected slot
+    if (target !== null && target !== undefined) assignTroopToSlot(target, t.fKey, t.br, t.tierIdx);
+  }
+
+  function TrayCard({ t, locked }) {
+    const tierColor = TIER_COLORS_MS[Math.min(t.tierIdx, 2)];
+    const assignedIdx = slots.findIndex(sl => slotKeyOf(sl) === t.bKey);
+    const isAssigned = assignedIdx >= 0;
+    const psrc = troopPortraitPath(t.fKey, t.br.key, t.tierIdx);
+    return (
+      <button className="btn" disabled={locked} onClick={() => onTrayTap(t)}
+        style={{
+          display: "flex", alignItems: "center", gap: 7, padding: "5px 6px",
+          textAlign: "left", borderRadius: 5, minWidth: 0,
+          background: isAssigned ? `${tierColor}18` : "rgba(255,255,255,.03)",
+          border: `1px solid ${isAssigned ? tierColor : locked ? "#1a1818" : P.border}`,
+          opacity: locked ? 0.4 : 1, cursor: locked ? "default" : "pointer",
+        }}>
+        <div style={{ width: 40, height: 40, borderRadius: 4, overflow: "hidden", flexShrink: 0,
+          border: `1px solid ${tierColor}55`, position: "relative", background: "#0a0806" }}>
+          {psrc && <img src={psrc} alt="" loading="lazy"
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
+            onError={e => { e.currentTarget.style.display = "none"; }} />}
+          <div style={{ position: "absolute", top: 0, left: 0, fontSize: 6, fontWeight: 700,
+            color: tierColor, background: "rgba(0,0,0,.7)", padding: "0 3px", fontFamily: P.ff }}>
+            {TIER_ROMAN_MS[Math.min(t.tierIdx, 2)]}
+          </div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 8.5, fontWeight: 700, fontFamily: P.ff, lineHeight: 1.15,
+            color: isAssigned ? t.fColor : P.text,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {t.tierData?.label ?? t.br.label}
+          </div>
+          <div style={{ fontSize: 7, color: locked ? P.dim : "#7aaa7a", fontFamily: P.ff, marginTop: 1 }}>
+            {locked ? "none trained" : `${fmtCount(t.pool)} in barracks`}
+          </div>
+          {isAssigned && (
+            <div style={{ fontSize: 6.5, color: "#3daa60", fontWeight: 700, fontFamily: P.ff }}>
+              ✓ Slot {assignedIdx + 1} · {fmtCount(slots[assignedIdx]?.troops ?? 0)}
+            </div>
+          )}
+        </div>
+      </button>
+    );
+  }
+
+  const rarColor  = RC(cmd.rarity);
+  const stam      = cmd.stamina ?? staminaMax;
   const stamColor = stam >= 100 ? "#4ac870" : stam >= 40 ? "#f0c040" : "#cc4040";
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render: two panes so the troop list gets the full height ──────────────
   return (
-    <div style={{
-      display: "flex", flexDirection: "column", height: "100%", overflow: "hidden",
-      background: "#0a0c10",
-    }}>
+    <div style={{ display: "flex", height: "100%", overflow: "hidden", background: "#0a0c10" }}>
 
-      {/* ══ TOP BAR ══════════════════════════════════════════════════════════ */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "8px 12px",
-        background: "rgba(0,0,0,.5)",
-        borderBottom: `1px solid ${P.border}`,
-        flexShrink: 0,
-      }}>
-        {/* Back */}
-        <button className="btn" onClick={onBack} style={{
-          fontSize: 10, padding: "6px 12px", minHeight: 34,
-          background: "rgba(255,255,255,.04)",
-          border: `1px solid ${P.border}`,
-          color: P.dim, borderRadius: 3, flexShrink: 0,
-        }}>← Back</button>
+      {/* ═══ LEFT PANE: commander, slots, slider, actions ═══ */}
+      <div style={{ width: "44%", minWidth: 250, maxWidth: 360, flexShrink: 0, display: "flex",
+        flexDirection: "column", borderRight: `1px solid ${P.border}`, minHeight: 0 }}>
 
-        {/* Bust */}
-        <div style={{
-          width: 44, height: 52, flexShrink: 0,
-          borderRadius: 5, overflow: "hidden",
-          border: `1px solid ${rarColor}66`,
-          background: "#060408",
-        }}>
-          {cmd.bust ? (
-            <img src={cmd.bust} alt={cmd.n}
-              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }} />
-          ) : (
-            <div style={{ width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24 }}>
-              {cmd.icon}
-            </div>
-          )}
-        </div>
-
-        {/* Name / stats */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Row 1: level + name */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-            <div style={{
-              fontFamily: P.ff, fontSize: 7, fontWeight: 700, color: rarColor,
-              background: `${rarColor}22`, border: `1px solid ${rarColor}55`,
-              borderRadius: 3, padding: "1px 6px", flexShrink: 0,
-            }}>{cmd.lvl ?? 1}</div>
-            <div style={{ fontFamily: P.ff, fontSize: 11, fontWeight: 700, color: P.gold,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {cmd.n}
-            </div>
+        {/* Compact header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px",
+          background: "rgba(0,0,0,.5)", borderBottom: `1px solid ${P.border}`, flexShrink: 0 }}>
+          <button className="btn" onClick={onBack} style={{ fontSize: 10, padding: "5px 9px", minHeight: 30,
+            background: "rgba(255,255,255,.04)", border: `1px solid ${P.border}`, color: P.dim,
+            borderRadius: 3, flexShrink: 0 }}>←</button>
+          <div style={{ width: 32, height: 38, flexShrink: 0, borderRadius: 4, overflow: "hidden",
+            border: `1px solid ${rarColor}66`, background: "#060408" }}>
+            {cmd.bust
+              ? <img src={cmd.bust} alt={cmd.n} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }} />
+              : <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{cmd.icon}</div>}
           </div>
-
-          {/* Row 2: command used / cap */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-            <div style={{ fontSize: 7, color: fillColor, fontFamily: P.ff, flexShrink: 0 }}>
-              ⚔ {+cmdUsed.toFixed(1)}/{commandCap}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ fontFamily: P.ff, fontSize: 7, fontWeight: 700, color: rarColor,
+                background: `${rarColor}22`, border: `1px solid ${rarColor}55`, borderRadius: 3, padding: "0 5px" }}>{cmd.lvl ?? 1}</span>
+              <span style={{ fontFamily: P.ff, fontSize: 10, fontWeight: 700, color: P.gold,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cmd.n}</span>
             </div>
-            {/* command bar */}
-            <div style={{ flex: 1, height: 4, background: "#1a1820", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{
-                height: "100%", width: `${fillPct}%`,
-                background: fillColor, borderRadius: 2, transition: "width .25s",
-              }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3 }}>
+              <span style={{ fontSize: 7, color: fillColor, fontFamily: P.ff, flexShrink: 0 }}>
+                📡 {+cmdUsed.toFixed(1)}/{commandCap}
+              </span>
+              <div style={{ flex: 1, height: 4, background: "#1a1820", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${fillPct}%`, background: fillColor, transition: "width .25s" }} />
+              </div>
             </div>
-            <div style={{ fontSize: 6, color: fillColor, fontFamily: P.ff, flexShrink: 0 }}>
-              {fillPct}%
+            <div style={{ fontSize: 6.5, color: "#6a8aaa", fontFamily: P.ff, marginTop: 2 }}>
+              {armySpd !== null ? `🏃 Speed ${armySpd}` : "No troops assigned"} · ⚡{Math.floor(stam)}
             </div>
-          </div>
-
-          {/* Row 3: army speed */}
-          <div style={{ fontSize: 6.5, color: "#6a8aaa", fontFamily: P.ff }}>
-            {armySpd !== null
-              ? `🏃 Speed ${armySpd} (slowest unit)`
-              : <span style={{ color: "#3a3028" }}>No troops assigned</span>}
           </div>
         </div>
 
-        {/* Stamina */}
-        <div style={{ textAlign: "center", flexShrink: 0 }}>
-          <div style={{ fontSize: 9, color: stamColor, fontFamily: P.ff, fontWeight: 700 }}>
-            ⚡{Math.floor(stam)}
-          </div>
-          <div style={{ fontSize: 5.5, color: P.dim, fontFamily: P.ff }}>STAMINA</div>
-        </div>
-      </div>
+        {/* Slots + slider (scrolls if the screen is very short) */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 8px 6px" }}>
+          <div style={{ fontSize: 6.5, color: "#c8903a", fontFamily: P.ff, fontWeight: 700,
+            letterSpacing: ".16em", marginBottom: 5 }}>ARMY SLOTS</div>
 
-      {/* ══ MIDDLE: 3 SLOTS + SLIDER ══════════════════════════════════════════ */}
-      <div style={{
-        flexShrink: 0,
-        padding: "10px 12px 8px",
-        borderBottom: `1px solid ${P.border}`,
-        background: "rgba(0,0,0,.25)",
-      }}>
-        {/* Section label */}
-        <div style={{
-          fontSize: 6.5, color: "#c8903a", fontFamily: P.ff,
-          fontWeight: 700, letterSpacing: ".18em", marginBottom: 8,
-        }}>
-          STRIKE CRAFT SLOTS
-        </div>
-
-        {/* Slot boxes */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-          {[0, 1, 2].map(i => {
-            const sl  = slots[i];
-            const res = sl ? resolveSlotData(sl) : null;
-            const isActive = activeSlot === i;
-            const tierColor = res ? TIER_COLORS_MS[Math.min(res.tierIdx, 2)] : P.border;
-            const fColor    = sl ? (FACTION_META[sl.branch?.faction]?.c || P.gold) : P.border;
-            const icon = res
-              ? (res.brDef.dmgType === "magical" ? "✦"
-                : res.brDef.size === "small" ? "🗡"
-                : res.brDef.size === "large" ? "🪃" : "⚔")
-              : null;
-            const count = sl?.troops > 9999
-              ? `${(sl.troops / 1000).toFixed(1)}k`
-              : (sl?.troops || 0).toLocaleString();
-
-            return (
-              <div key={i}
-                onClick={() => sl ? setActiveSlot(isActive ? null : i) : null}
-                style={{
-                  flex: 1, minHeight: 120, borderRadius: 5,
-                  border: `2px solid ${isActive ? (tierColor) : sl ? tierColor + "88" : P.border}`,
-                  background: isActive
-                    ? `${tierColor}12`
-                    : sl ? "rgba(6,4,2,.9)" : "rgba(0,0,0,.35)",
-                  boxShadow: isActive ? `0 0 12px ${tierColor}44` : "none",
-                  display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center",
-                  gap: 3, padding: "8px 4px",
-                  cursor: sl ? "pointer" : "default",
-                  transition: "all .15s", position: "relative",
-                  overflow: "hidden",
-                }}
-              >
-                {sl ? (
-                  <>
-                    {/* Clear button */}
-                    <button className="btn"
-                      onClick={e => { e.stopPropagation(); clearSlot(i); }}
-                      style={{
-                        position: "absolute", top: 3, right: 3,
-                        width: 14, height: 14, borderRadius: "50%",
-                        background: "rgba(200,50,50,.7)",
-                        border: "none", color: "#fff",
-                        fontSize: 8, lineHeight: 1,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        padding: 0, cursor: "pointer",
-                      }}>✕</button>
-
-                    {/* Portrait background */}
-                    {(() => {
-                      const psrc = troopPortraitPath(sl.branch?.faction, sl.branch?.branch, sl.branch?.tier ?? 0);
-                      return psrc ? (
-                        <img src={psrc} alt={res?.tierData?.label ?? ""}
-                          style={{ position:"absolute", inset:0, width:"100%", height:"100%",
-                            objectFit:"cover", objectPosition:"top center", opacity:.85,
-                            borderRadius:4 }}
-                          onError={e => { e.currentTarget.style.display="none"; }}
-                        />
-                      ) : null;
-                    })()}
-                    {/* Dark vignette */}
-                    <div style={{ position:"absolute", inset:0, borderRadius:4,
-                      background:"linear-gradient(to top, rgba(4,2,1,.92) 0%, rgba(4,2,1,.4) 55%, transparent 100%)",
-                      pointerEvents:"none" }} />
-                    {/* Content overlay */}
-                    <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column",
-                      alignItems:"center", justifyContent:"flex-end", height:"100%",
-                      padding:"4px 4px 6px", gap:1 }}>
-                      <div style={{
-                        fontSize: 5.5, fontWeight: 700, color: tierColor,
-                        fontFamily: P.ff, letterSpacing: ".08em",
-                        border: `1px solid ${tierColor}66`, borderRadius: 2,
-                        padding: "1px 4px", lineHeight: 1.4, background:"rgba(0,0,0,.5)",
-                      }}>
-                        {TIER_ROMAN_MS[Math.min(res?.tierIdx ?? 0, 2)]}
+          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 8 }}>
+            {[0, 1, 2].map(i => {
+              const sl  = slots[i];
+              const res = sl ? resolveSlotData(sl) : null;
+              const isActive = activeSlot === i;
+              const tierColor = res ? TIER_COLORS_MS[Math.min(res.tierIdx, 2)] : P.border;
+              const fColor = sl ? (FACTION_META[sl.branch?.faction]?.c || P.gold) : P.dim;
+              const psrc = sl ? troopPortraitPath(sl.branch?.faction, sl.branch?.branch, sl.branch?.tier ?? 0) : null;
+              const cost = res ? (COMMAND_COST[res.brDef.size] ?? 1) : 1;
+              return (
+                <div key={i} onClick={() => sl && setActiveSlot(isActive ? null : i)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8, height: 50, padding: "4px 6px",
+                    borderRadius: 5, position: "relative",
+                    border: sl ? `2px solid ${isActive ? tierColor : tierColor + "88"}` : `1px dashed ${P.border}`,
+                    background: isActive ? `${tierColor}14` : sl ? "rgba(6,4,2,.9)" : "rgba(0,0,0,.3)",
+                    boxShadow: isActive ? `0 0 10px ${tierColor}44` : "none",
+                    cursor: sl ? "pointer" : "default",
+                  }}>
+                  <div style={{ fontFamily: P.ff, fontSize: 9, fontWeight: 700, color: P.dim, width: 10, textAlign: "center" }}>{i + 1}</div>
+                  {sl && res ? (
+                    <>
+                      <div style={{ width: 38, height: 38, borderRadius: 4, overflow: "hidden", flexShrink: 0,
+                        border: `1px solid ${tierColor}66`, background: "#0a0806" }}>
+                        {psrc && <img src={psrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
+                          onError={e => { e.currentTarget.style.display = "none"; }} />}
                       </div>
-                      <div style={{
-                        fontSize: 6.5, fontWeight: 700, color: fColor,
-                        fontFamily: P.ff, textAlign: "center", lineHeight: 1.2,
-                      }}>
-                        {res?.tierData?.label ?? "?"}
-                      </div>
-                      <div style={{
-                        fontSize: 11, fontWeight: 700, color: "#f0e8d8",
-                        fontFamily: P.ff,
-                      }}>
-                        {count}
-                      </div>
-                      {isActive && (
-                        <div style={{ fontSize: 5, color: tierColor, fontFamily: P.ff, letterSpacing: ".08em" }}>
-                          ▲ ACTIVE
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 8.5, fontWeight: 700, color: fColor, fontFamily: P.ff,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {res.tierData?.label ?? "?"}
                         </div>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <div style={{
-                    fontSize: 7.5, color: "#2a2820", fontFamily: P.ffb,
-                    fontStyle: "italic", textAlign: "center", lineHeight: 1.5,
-                  }}>
-                    Tap troop below to assign
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Slider for active slot */}
-        {activeSlot !== null && slots[activeSlot] && (() => {
-          const sl  = slots[activeSlot];
-          const res = resolveSlotData(sl);
-          const tierColor = res ? TIER_COLORS_MS[Math.min(res.tierIdx, 2)] : P.gold;
-          const svClamped = Math.min(sv, Math.max(0, maxSlider));
-
-          return (
-            <div style={{
-              padding: "8px 10px", borderRadius: 5,
-              background: `${tierColor}0a`,
-              border: `1px solid ${tierColor}33`,
-            }}>
-              <div style={{
-                display: "flex", justifyContent: "space-between",
-                fontSize: 7, color: "#6a5a4a", fontFamily: P.ff, marginBottom: 4,
-              }}>
-                <span style={{ color: tierColor }}>
-                  SLOT {activeSlot + 1} · {res?.tierData?.label ?? "?"}
-                </span>
-                <span style={{ color: "#c8a060" }}>
-                  {svClamped.toLocaleString()} troops
-                  {" · "}{(svClamped * slCmdCost).toFixed(1)} cmd
-                </span>
-              </div>
-              <input type="range"
-                min={0} max={Math.max(1, maxSlider)} value={svClamped}
-                step={CMD_SIZE.small}
-                onChange={e => { const v=+e.target.value; handleSliderChange(v===maxSlider?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
-                onInput={e => { const v=+e.target.value; handleSliderChange(v===maxSlider?v:Math.round(v/CMD_SIZE.small)*CMD_SIZE.small); }}
-                style={{ width: "100%", accentColor: tierColor, touchAction: "none" }}
-              />
-              <div style={{
-                display: "flex", justifyContent: "space-between",
-                fontSize: 6, color: "#3a3a4a", marginTop: 3,
-              }}>
-                <span>0</span>
-                <span style={{ color: "#5a7a5a" }}>Pool: {activeAvail.toLocaleString()}</span>
-                <span>{maxSlider.toLocaleString()}</span>
-              </div>
-            </div>
-          );
-        })()}
-
-        {activeSlot === null && (
-          <div style={{
-            fontSize: 7, color: "#3a3028", fontFamily: P.ffb,
-            fontStyle: "italic", textAlign: "center", paddingTop: 2,
-          }}>
-            Tap a filled slot to adjust its troop count
-          </div>
-        )}
-      </div>
-
-      {/* ══ BOTTOM: Troop tray (scrollable) ══════════════════════════════════ */}
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-        {/* Label */}
-        <div style={{
-          position: "sticky", top: 0, zIndex: 2,
-          padding: "6px 12px 4px",
-          background: "rgba(6,4,2,.95)",
-          borderBottom: `1px solid ${P.border}`,
-          fontSize: 6.5, color: "#c8903a", fontFamily: P.ff,
-          fontWeight: 700, letterSpacing: ".18em",
-        }}>
-          DRAG STRIKE CRAFT TO ASSIGN
-        </div>
-
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3,1fr)",
-          gap: 6, padding: "8px 10px 16px",
-        }}>
-          {availTroopList.length === 0 && (
-            <div style={{
-              gridColumn: "1/-1",
-              fontSize: 8, color: "#3a3028", fontFamily: P.ffb,
-              fontStyle: "italic", textAlign: "center", padding: "20px 0",
-            }}>
-              No troop types unlocked yet.
-            </div>
-          )}
-          {availTroopList.map(({ fKey, br, tierIdx, tierData, bKey, pool, fColor }) => {
-            const tierColor = TIER_COLORS_MS[Math.min(tierIdx, 2)];
-            // Is this troop already assigned to a slot?
-            const assignedSlotIdx = slots.findIndex(sl =>
-              sl?.branch?.faction === fKey &&
-              sl?.branch?.branch  === br.key &&
-              (sl?.branch?.tier ?? 0) === tierIdx
-            );
-            const isAssigned = assignedSlotIdx >= 0;
-            const assignedTroops = isAssigned ? (slots[assignedSlotIdx]?.troops ?? 0) : 0;
-
-            // Find next available slot
-            const nextEmptySlot = slots.findIndex(sl => !sl);
-
-            const icon = br.dmgType === "magical" ? "✦"
-              : br.size === "small" ? "🗡"
-              : br.size === "large" ? "🪃" : "⚔";
-            const countLabel = pool > 9999
-              ? `${(pool / 1000).toFixed(1)}k`
-              : pool.toLocaleString();
-
-            return (
-              <button key={bKey} className="btn"
-                onClick={() => {
-                  if (isAssigned) {
-                    // Toggle active slot to the one already using it
-                    setActiveSlot(assignedSlotIdx);
-                  } else if (nextEmptySlot >= 0) {
-                    // Assign to next empty slot
-                    assignTroopToSlot(nextEmptySlot, fKey, br, tierIdx);
-                  }
-                  // If all slots full and not assigned, do nothing (could prompt)
-                }}
-                disabled={pool === 0}
-                style={{
-                  padding: "8px 4px", textAlign: "center", borderRadius: 5,
-                  background: isAssigned ? `${tierColor}18` : "rgba(255,255,255,.03)",
-                  border: `1px solid ${isAssigned ? tierColor : pool > 0 ? P.border : "#1a1818"}`,
-                  cursor: pool > 0 ? "pointer" : "not-allowed",
-                  opacity: pool > 0 ? 1 : 0.4,
-                  boxShadow: isAssigned ? `0 0 8px ${tierColor}22` : "none",
-                  transition: "all .12s",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                }}
-              >
-                {/* Tier badge */}
-                <div style={{
-                  fontSize: 5.5, fontWeight: 700, color: tierColor,
-                  fontFamily: P.ff, letterSpacing: ".08em",
-                  border: `1px solid ${tierColor}55`, borderRadius: 2,
-                  padding: "1px 4px", lineHeight: 1.4,
-                }}>T{TIER_ROMAN_MS[Math.min(tierIdx, 2)]}</div>
-
-                {/* Portrait */}
-                {(() => {
-                  const psrc = troopPortraitPath(fKey, br.key, tierIdx);
-                  return psrc ? (
-                    <div style={{ width:64, height:64, borderRadius:5, overflow:"hidden",
-                      border:`1px solid ${tierColor}44`, flexShrink:0, position:"relative" }}>
-                      <img src={psrc} alt={tierData?.label ?? br.label}
-                        style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top center" }}
-                        onError={e => { e.currentTarget.style.display="none"; e.currentTarget.nextSibling.style.display="flex"; }}
-                      />
-                      <div style={{ position:"absolute", inset:0, display:"none",
-                        alignItems:"center", justifyContent:"center", fontSize:18 }}>{icon}</div>
-                    </div>
+                        <div style={{ fontSize: 7, color: "#c8a060", fontFamily: P.ff, marginTop: 1 }}>
+                          {fmtCount(sl.troops)} troops · {(sl.troops * cost).toFixed(1)} cmd
+                        </div>
+                      </div>
+                      <button className="btn" onClick={e => { e.stopPropagation(); clearSlot(i); }}
+                        style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(200,50,50,.7)",
+                          border: "none", color: "#fff", fontSize: 9, padding: 0, flexShrink: 0 }}>✕</button>
+                    </>
                   ) : (
-                    <div style={{ fontSize:18, lineHeight:1 }}>{icon}</div>
-                  );
-                })()}
-
-                {/* Troop name */}
-                <div style={{
-                  fontSize: 7, fontWeight: 700, color: isAssigned ? fColor : P.text,
-                  fontFamily: P.ff, lineHeight: 1.2, textAlign: "center",
-                }}>
-                  {tierData?.label ?? br.label}
+                    <div style={{ fontSize: 8, color: "#4a4030", fontFamily: P.ffb, fontStyle: "italic" }}>
+                      Empty — tap a troop on the right
+                    </div>
+                  )}
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Pool count */}
-                <div style={{ fontSize: 6, color: "#5a7a5a", fontFamily: P.ff }}>
-                  {countLabel} in barracks
-                </div>
-
-                {/* Assigned indicator */}
-                {isAssigned && (
-                  <div style={{
-                    fontSize: 6, color: "#3daa60", fontFamily: P.ff,
-                    fontWeight: 700, marginTop: 1,
-                  }}>
-                    ✓ Slot {assignedSlotIdx + 1} · {assignedTroops.toLocaleString()}
-                  </div>
-                )}
+          {/* Slider for the active slot */}
+          {activeSlot !== null && slots[activeSlot] ? (() => {
+            const sl  = slots[activeSlot];
+            const res = resolveSlotData(sl);
+            const tierColor = res ? TIER_COLORS_MS[Math.min(res.tierIdx, 2)] : P.gold;
+            const svClamped = Math.min(sv, Math.max(0, maxSlider));
+            const snap = (v) => v === maxSlider ? v : Math.round(v / CMD_SIZE.small) * CMD_SIZE.small;
+            const quick = (label, val) => (
+              <button key={label} className="btn" onClick={() => handleSliderChange(snap(Math.max(0, Math.min(maxSlider, val))))}
+                style={{ flex: 1, padding: "5px 0", fontSize: 8, fontWeight: 700, fontFamily: P.ff,
+                  background: `${tierColor}14`, border: `1px solid ${tierColor}55`, color: tierColor, borderRadius: 3 }}>
+                {label}
               </button>
             );
-          })}
+            return (
+              <div style={{ padding: "7px 9px", borderRadius: 5, background: `${tierColor}0a`, border: `1px solid ${tierColor}33` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 7, fontFamily: P.ff, marginBottom: 4 }}>
+                  <span style={{ color: tierColor }}>SLOT {activeSlot + 1} · {res?.tierData?.label ?? "?"}</span>
+                  <span style={{ color: "#c8a060" }}>{svClamped.toLocaleString()} · {(svClamped * slCmdCost).toFixed(1)} cmd</span>
+                </div>
+                <input type="range" min={0} max={Math.max(1, maxSlider)} value={svClamped} step={CMD_SIZE.small}
+                  onChange={e => handleSliderChange(snap(+e.target.value))}
+                  onInput={e => handleSliderChange(snap(+e.target.value))}
+                  style={{ width: "100%", accentColor: tierColor, touchAction: "none" }} />
+                <div style={{ display: "flex", gap: 4, margin: "3px 0" }}>
+                  {quick("0", 0)}{quick("¼", maxSlider / 4)}{quick("½", maxSlider / 2)}{quick("MAX", maxSlider)}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 6.5, color: "#5a7a5a", fontFamily: P.ff }}>
+                  <span>Unassigned: {activeAvail.toLocaleString()}</span>
+                  <span>Max: {maxSlider.toLocaleString()}</span>
+                </div>
+              </div>
+            );
+          })() : (
+            <div style={{ fontSize: 7.5, color: "#4a4030", fontFamily: P.ffb, fontStyle: "italic", textAlign: "center" }}>
+              Tap a filled slot to set its troop count
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div style={{ flexShrink: 0, display: "flex", gap: 8, padding: "7px 8px",
+          background: "rgba(0,0,0,.5)", borderTop: `1px solid ${P.border}` }}>
+          <button className="btn" onClick={handleRefill} style={{ flex: 1, padding: "9px 0",
+            background: "rgba(200,180,140,.06)", border: "1px solid rgba(200,180,140,.25)", color: "#d0c090",
+            fontFamily: P.ff, fontSize: 10, fontWeight: 700, letterSpacing: ".12em", borderRadius: 4 }}>REFILL</button>
+          <button className="btn" onClick={handleConfirm} style={{ flex: 1, padding: "9px 0",
+            background: "linear-gradient(135deg,#c8903a,#a06828)", border: "1px solid #7a5018", color: "#0a0806",
+            fontFamily: P.ff, fontSize: 10, fontWeight: 700, letterSpacing: ".12em", borderRadius: 4 }}>CONFIRM</button>
         </div>
       </div>
 
-      {/* ══ ACTION BAR ═══════════════════════════════════════════════════════ */}
-      <div style={{
-        flexShrink: 0,
-        display: "flex", gap: 10, padding: "10px 12px",
-        background: "rgba(0,0,0,.5)",
-        borderTop: `1px solid ${P.border}`,
-      }}>
-        <button className="btn"
-          onClick={handleRefill}
-          style={{
-            flex: 1, padding: "10px 0",
-            background: "rgba(200,180,140,.06)",
-            border: "1px solid rgba(200,180,140,.25)",
-            color: "#d0c090", fontFamily: P.ff, fontSize: 10,
-            fontWeight: 700, letterSpacing: ".12em", borderRadius: 4,
-            cursor: "pointer",
-          }}>
-          REFILL
-        </button>
-        <button className="btn"
-          onClick={handleConfirm}
-          style={{
-            flex: 1, padding: "10px 0",
-            background: "linear-gradient(135deg,#c8903a,#a06828)",
-            border: "1px solid #7a5018",
-            color: "#0a0806", fontFamily: P.ff, fontSize: 10,
-            fontWeight: 700, letterSpacing: ".12em", borderRadius: 4,
-            cursor: "pointer",
-          }}>
-          CONFIRM
-        </button>
+      {/* ═══ RIGHT PANE: troop tray — owned first, full height ═══ */}
+      <div style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 2, padding: "6px 10px 5px",
+          background: "rgba(6,4,2,.96)", borderBottom: `1px solid ${P.border}`,
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          fontSize: 7, color: "#c8903a", fontFamily: P.ff, fontWeight: 700, letterSpacing: ".16em" }}>
+          <span>YOUR TROOPS ({ownedList.length})</span>
+          <span style={{ color: P.dim, fontWeight: 400, letterSpacing: ".05em" }}>tap to assign</span>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))",
+          gap: 5, padding: "7px 8px" }}>
+          {ownedList.length === 0 && (
+            <div style={{ gridColumn: "1/-1", fontSize: 8.5, color: "#5a5040", fontFamily: P.ffb,
+              fontStyle: "italic", textAlign: "center", padding: "18px 8px" }}>
+              No trained troops in the barracks. Train some in the Training tab.
+            </div>
+          )}
+          {ownedList.map(t => <div key={t.bKey} style={{ display: "contents" }}>{TrayCard({ t, locked: false })}</div>)}
+        </div>
+
+        {lockedList.length > 0 && (
+          <>
+            <button className="btn" onClick={() => setShowLocked(v => !v)}
+              style={{ width: "100%", textAlign: "left", padding: "6px 10px", background: "rgba(255,255,255,.02)",
+                border: "none", borderTop: `1px solid ${P.border}`, borderBottom: `1px solid ${P.border}`,
+                color: P.dim, fontSize: 7, fontFamily: P.ff, letterSpacing: ".14em" }}>
+              {showLocked ? "▾" : "▸"} NOT TRAINED YET ({lockedList.length})
+            </button>
+            {showLocked && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))",
+                gap: 5, padding: "7px 8px 14px" }}>
+                {lockedList.map(t => <div key={t.bKey} style={{ display: "contents" }}>{TrayCard({ t, locked: true })}</div>)}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
