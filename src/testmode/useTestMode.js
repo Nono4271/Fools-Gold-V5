@@ -5,6 +5,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { HDEFS } from "../../shared/constants/heroes.js";
 import { POWER_DEFS } from "../../shared/constants/map.js";
 import { crewMemberCapForLevel, CREW_MAX_LEVEL } from "../../shared/constants/crew.js";
+import { FACTION_TROOPS } from "../../shared/constants/troops.js";
+import { getFactionAlignment } from "../../shared/constants/factions.js";
+import { adminMaxedBase } from "./adminRules.js";
 import { clearHQCache } from "../MapRenderer";
 import {
   TEST_TOPUP, missingCommanders, adminSetLevel, adminSetRespect,
@@ -213,6 +216,15 @@ export function useTestMode(g) {
       // Demolish/abandon timers live on fort.removal — finishing one lets useFortRemovals fire it.
       finishFortRemoval: id => s().loadForts(s().forts.map(f => f.id === id && f.removal ? { ...f, removal: { ...f.removal, endsAt: Date.now() } } : f)),
       finishCrewBuilds,
+      // One tap: every building, every quarter of your alignment and every branch in them to max level.
+      maxAllBuildings: () => {
+        const st = s();
+        const { bldgs, quarterLevels, keys } = adminMaxedBase(st.facKey, FACTION_TROOPS, getFactionAlignment);
+        st.persist.bldgs[1](p => ({ ...p, ...bldgs }));
+        st.persist.quarterLevels[1](p => ({ ...p, ...quarterLevels }));
+        st.setUpgQueue(q => Object.fromEntries(Object.entries(q).filter(([k]) => !keys.has(k)))); // nothing left to finish
+        if (st.playerHqKey) st.floaty("🏰 All buildings & quarters maxed", "#f0c040", st.playerHqKey);
+      },
       finishAll: () => {
         const st = s(), now = Date.now();
         st.setCmds(p => p.map(c => c.owner === "player" && c.march ? { ...c, march: finishMarchPatch(c.march, now) } : c));

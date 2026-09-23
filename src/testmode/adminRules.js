@@ -4,6 +4,7 @@ import { HDEFS, applyXp, respectTotalFor, promotedStats, PROMO, RESPECT_MAX } fr
 import { CMD_LVL_MIN, CMD_LVL_MAX, xpToNext } from "../../shared/constants/troops.js";
 import { marchMsLeft } from "../../shared/utils/marchMotion.js";
 import { hq3x3Keys } from "../../shared/utils/relocation.js";
+import { BLDG } from "../../shared/constants/buildings.js";
 
 // Is the test campaign button available in this build?
 // On in `npm run dev`; in a deployed build only when VITE_TEST_MODE=1.
@@ -129,4 +130,19 @@ export function adminRelocationCheck(centerKey, tiles, playerHqKey) {
     if (BAD_TERRAIN.has(t.terrain)) return { ok: false, reason: `Pad has ${t.terrain} terrain` };
   }
   return { ok: true };
+}
+
+// Max-everything patch for the test campaign: all buildings at their max level, every quarter
+// of the player's alignment at Lv10 and every branch in them at Lv6. `keys` = the upgrade-queue
+// keys this replaces (buildings, "q_<faction>", "b_<faction>_<branch>").
+export function adminMaxedBase(facKey, factionTroops, alignmentOf) {
+  const bldgs = {}, quarterLevels = {}, keys = new Set();
+  for (const [k, def] of Object.entries(BLDG)) { bldgs[k] = def.max; keys.add(k); }
+  const align = alignmentOf(facKey);
+  for (const [fk, fDef] of Object.entries(factionTroops)) {
+    if (alignmentOf(fk) !== align) continue;
+    quarterLevels[fk] = 10; keys.add(`q_${fk}`);
+    for (const br of fDef.branches || []) { bldgs[`b_${fk}_${br.key}`] = 6; keys.add(`b_${fk}_${br.key}`); }
+  }
+  return { bldgs, quarterLevels, keys };
 }

@@ -169,6 +169,7 @@ function TimersTab({ admin, cmds, upgQueue, trainingQueues, healQueue, forts, cr
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <button style={btn("#f0c040", { minHeight: 44 })} onClick={admin.finishAll}>⚡ FINISH EVERYTHING</button>
+      <button style={btn("#60c080", { minHeight: 44 })} onClick={admin.maxAllBuildings}>🏰 MAX ALL BUILDINGS &amp; QUARTERS</button>
       {empty && <div style={{ fontSize: 12, color: "#8a7a5a", textAlign: "center", padding: 12 }}>Nothing in progress.</div>}
       {marching.map(c => <Row key={c.uid} label={`🥾 ${c.n}`} sub={`→ ${c.march.dest} · ${fmtMsShort(marchMsLeft(c.march, now))}`} onFinish={() => admin.finishMarch(c.uid)} />)}
       {ups.map(([type, u]) => <Row key={type} label={`🏗 ${type} → Lv ${u.newLvl}`} sub={fmtMsShort(Math.max(0, u.endsAt - now))} onFinish={() => admin.finishUpgrade(type)} />)}
