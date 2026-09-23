@@ -814,8 +814,8 @@ switch (eff.type) {
     }
     break; }
   case "chaos_confusion":
-  { // level scales the enemy chance; the allied self-confusion stays at its base chance
-    const m = eff._lvlMul || 1, ally = eff.allyChance ?? 0.07, foe = Math.min(1, (eff.enemyChance || 0.10) * m);
+  { // level scales both chances (owner: high risk, high reward)
+    const m = eff._lvlMul || 1, ally = Math.min(1, eff.value ?? eff.allyChance ?? 0.07), foe = Math.min(1, (eff.enemyChance || 0.10) * m);
     rs.chaosConfusionAlly  = ally;
     rs.chaosConfusionEnemy = foe;
     if (ctx?.isCommander) { // each unit rolls: own units may be confused, enemy units may be confused
