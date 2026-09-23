@@ -619,7 +619,9 @@ export function hqUpgradeBlocker(targetLvl, { barracks, training, commandcenter,
   const cc  = commandcenter || 0;
   const q1  = q1Lvl || 0;
 
-  const reqBT = targetLvl * 2;
+  // Barracks/Training must be at the cap of the CURRENT HQ level (HQ×2).
+  // (Was targetLvl×2, which is above that cap — HQ could never go past Lv1.)
+  const reqBT = (targetLvl - 1) * 2;
   if (bar < reqBT) return `Barracks must be Lv${reqBT}`;
   if (tr  < reqBT) return `Training Grounds must be Lv${reqBT}`;
 
@@ -638,10 +640,12 @@ export function hqUpgradeBlocker(targetLvl, { barracks, training, commandcenter,
   return null;
 }
 
-// Barracks ↔ Training 1:1 mutual gate
+// Barracks ↔ Training 1:1 gate. Barracks leads by at most one level and
+// Training follows (both used to require the other at the target level, so
+// neither could ever leave Lv0).
 export function barracksUpgradeBlocker(targetLvl, { training }) {
   const tr = training || 0;
-  if (tr < targetLvl) return `Training Grounds must be Lv${targetLvl}`;
+  if (tr < targetLvl - 1) return `Training Grounds must be Lv${targetLvl - 1}`;
   return null;
 }
 
