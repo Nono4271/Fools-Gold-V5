@@ -1824,6 +1824,7 @@ switch (eff.type) {
     if (Math.random() < rs.onHitFrostbiteChance) {
       rs.frostbiteApplied   = true;
       rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2);
+      rs.troopFrost = "hit"; // the engine freezes the unit this attack hits
       roundLog.actions.push({ actor: actorLabel, action: `${skill.icon} ${skill.name} — Frostbite applied! Enemy DMG -40% for 2 rnd`, dmg: 0, isTroopSkill: true });
     }
     break;
@@ -1833,7 +1834,7 @@ switch (eff.type) {
       if (n) roundLog.actions.push({ actor: actorLabel, action: `❄️ ${skill?.name} — ${n} unit${n > 1 ? "s" : ""} Frostbitten!`, dmg: 0, isTroopSkill: true });
     } else {
       rs.perRoundFrostbiteAoeChance = (rs.perRoundFrostbiteAoeChance || 0) + (eff.chance || 0.015);
-      if (Math.random() < rs.perRoundFrostbiteAoeChance) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2); }
+      if (Math.random() < rs.perRoundFrostbiteAoeChance) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2); rs.troopFrost = "all"; }
     }
     break;
   // ── Bjorn mechanics ───────────────────────────────────────────────────────
@@ -2120,9 +2121,6 @@ switch (eff.type) {
     // Shieldwall / Völva's Shield / Ice Wall: DMG resist vs alignment or faction
     rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.015));
     break;
-    // Coldborn Brotherhood: branch units resist creature alignment
-    rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.02));
-    break;
   case "branch_flat_hp_bonus":
     rs.branchFlatHpBonus = { branch: eff.branch || "bear_riders", value: eff.value || 8 };
     if (ctx?.isCommander) flatDefHp(rs, ctx, brSpec(eff.branch || "bear_riders"), 0, eff.value || 8); // [Branch units] HP +N (flat)
@@ -2207,13 +2205,6 @@ switch (eff.type) {
       const n = rollFreeze(rs, ctx, ctx.pickEnemy(targetsOf(eff), null, true), eff.value ?? eff.chance ?? 0.07);
       if (n) roundLog.actions.push({ actor: actorLabel, action: `❄️ ${skill?.name} — ${n} unit${n > 1 ? "s" : ""} Frostbitten!`, dmg: 0, isTroopSkill: true });
     } else if (Math.random() < (eff.chance || 0.07)) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = 2; }
-    break;
-  case "on_hit_frostbite_chance":
-    // Raider troop skill — on-hit frostbite proc
-    if (Math.random() < (eff.chance || 0.035)) {
-      rs.frostbiteApplied   = true;
-      rs.frostbiteRoundsLeft = 2;
-    }
     break;
   case "vs_all_dmg_up_frostbite_chance":
     rs.cmdAoe = true;
@@ -4429,7 +4420,6 @@ const makeRoundState = (P, pveMult) => ({
   frostbitenSpdDown:0,           // Permafrost / The Long Winter: extra SPD penalty
   unitLostThisBattle:false,      // Frozen Throne: tracks if any unit has been lost
   allyHealingReceivedUp:0,       // Völva's Blessing max: allied healing received bonus
-  marchSpeedBonus:0,             // Ironmarch's Roar max / Pather: march speed bonus
   earlyRoundBurnImmune:false,    // Seer's Vision max: burn immune rounds 1-3
   dmgVsSlowed:0,                 // Mind Games: allied DMG bonus vs slowed targets
   burnDmgReceiveReduce:0,        // Tidal Wave: reduce burn DMG received
@@ -4464,8 +4454,6 @@ const makeRoundState = (P, pveMult) => ({
   physDmgSpdMod:0,               // Blinding Speed: SPD-modified physical DMG
   physDmgCmdSpdBoost:null,       // Lieutenant of Spellblades: { targets, spdBoostPct, spdDuration }
   // ── Frostbite status ──────────────────────────────────────────────────────
-  frostbiteApplied:false,        // Frostbite active on enemy this round
-  frostbiteRoundsLeft:0,         // Rounds of Frostbite remaining
   frostbiteDmgPenalty:0.40,      // Frostbite: enemy DMG dealt -40%
   frostbiteDuration:2,           // Default Frostbite duration in rounds
   // ── Coldborns mechanics ───────────────────────────────────────────────────
@@ -4485,7 +4473,6 @@ const makeRoundState = (P, pveMult) => ({
   frostbiteApplyDefDown:null,    // Shattered Defenses: { defDown, duration } on each Frostbite apply
   aoeEnemyVulnFrostbite:null,    // Skald's Curse: { vulnValue, frostbiteChance }
   earlyRoundDmgStunImmune:null,  // Seer's Vision: { dmgUp, maxRound }
-  earlyRoundBurnImmune:false,    // Seer's Vision max: burn immune early rounds
   healAllCleanse:null,           // Winter's Warmth: { healPct, cleanseCount }
   healAllCleanseChance:null,     // Völva's Blessing: { healPct, cleanseChance }
   healingReceivedUp:0,           // Völva's Blessing max: healing received bonus
@@ -4798,6 +4785,12 @@ const slotAct = (S, idx, T, round, roundLog) => {
     }
   }
 
+  // Troop-skill on-hit Frostbite (Raiders): the unit this attack hit, this round and next
+  if (r.troopFrost === "hit" && ti != null && T.slotHp[ti] > 0) {
+    const m = S.cs.frostbite || (S.cs.frostbite = new Map());
+    m.set(ti, Math.max(m.get(ti) || 0, round + 1));
+    r.troopFrost = null;
+  }
   // on_hit_received — the unit that was hit reacts (into the target's own state)
   const hitSlot = T.slots[ti ?? 0];
   if (hitSlot) {
@@ -4911,6 +4904,12 @@ for (const S of [A, D]) {
     const from = roundLog.actions.length;
     procTroopSkills(sl.skills, "round_start", S.skillLevels, S.rs, roundLog, S.isPlayer ? (sl.branchDef?.label || "Troops") : "Defenders", T.slots[0]?.branch ?? T.cmdObj?.troopBranch ?? null, round, S.slots, sl);
     tagSide(roundLog, from, S);
+  }
+  // Troop-skill Frostbite (e.g. Frostbite Carol troop skill): every living enemy unit, this round and next
+  if (S.rs.troopFrost === "all") {
+    const m = S.cs.frostbite || (S.cs.frostbite = new Map());
+    for (const i of aliveOf(T)) m.set(i, Math.max(m.get(i) || 0, round + 1));
+    S.rs.troopFrost = null;
   }
 }
 
