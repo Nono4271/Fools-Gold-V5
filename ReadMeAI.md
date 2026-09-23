@@ -1438,6 +1438,48 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Commander skills now apply in combat (Phase 1) + new pirate skill set
+
+**Audit findings (before this change):**
+- No commander skill worked in real play. CommanderScreen saves spent levels to `cmd.skillPoints`, but `getActiveSkills`/`getPassiveBonuses` only read `cmd.skillLevels`, which nothing sets. That also switched off the Supply Specialist / Orc March passives.
+- Even with levels present, structured skills (`effect:{type}`: 560 across 8 factions) never reached combat. Battle only applied the old flat fields (`cmdMult`, `healPct`, …). The `case` handlers in `procTroopSkills` were only ever called for troop skills.
+- `maxLevelEffect` sits on the skill, but handlers read `eff.maxLevelEffect`, so all 190 max-level effects did nothing.
+- 22 handlers added flat DEF points (5, 10 …) to `rs.enemyDefDown`, which damage treats as a fraction. That would have produced negative DEF once the handlers ran.
+
+**Fixes (`shared/utils/battle.js`, `shared/constants/skills.js`):**
+- `getActiveSkills`/`getPassiveBonuses` read `cmd.skillLevels ?? cmd.skillPoints`.
+- `procTroopSkills`' switch moved into `applySkillEffect()` (troop behavior unchanged). Free variables it referenced (`defTile`, `atkSlotResolved`, `cmdAtkStat`, `bleedRoundsActive` …) now come from a `ctx` argument.
+- New `applyCommanderSkillEffects()` runs right after `applyInstantEffects`. Actives run on their fire rounds, passives every round. `effect.value` = level-scaled `base + perLevel×(lvl-1)`. At max level (main 15 / side 7), `maxLevelEffect` is attached and its param keys override effect params.
+- New `applyMaxLevelBonuses()` handles the common max bonuses generically:
+  - commander ATK/FOC/SPD +X (new `rs.cmdAtkFlat`/`cmdFocFlat`; `rs.cmdSpdBonus` now affects turn order);
+  - enemy ATK/SPD −X;
+  - unit-group HP/DEF/DMG range/combat SPD/DMG%, with groups pirate/orc/hk/dragon/coldborn/warg/werewolf/skeleton/mummy/spider/mounted/army;
+  - conditional "vs drunk / debuffed / poisoned / bleed-or-burn / frostbitten" DMG;
+  - conditional DEF −X vs burned / slowed / drunk / creatures.
+- Flat DEF points moved to a new `rs.enemyDefFlatDown` (subtracted from DEF). The fraction is capped at 0.9.
+- World-map: a skill at max with `maxLevelEffect.marchSpeedBonus` adds to march speed.
+- Measured with each skill maxed alone, vs 4 enemy factions: **392/576 skills now change combat** (was ~16). **125/190 max-level effects** change combat.
+
+**Pirates (`shared/constants/pirates_skills.js`):**
+- Replaced with the owner's custom 72-skill set.
+- Renamed the keys that collided in `ALL_SKILLS`: `mou_protect_the_weak`→`pir_protect_the_weak` (Holy Knights), `bre_cleanse`→`pir_cleanse` (Holy Knights), `tha_many_trades`→`pir_many_trades` (Night Creatures).
+- Treasure Hunter: removed `notImplemented` / "Coming Soon". Gathering exists and `gathering_bonus` is wired.
+- Captain's Honor scales from +4% (Lv1) to +20% (Lv7). Its handler now uses the level-scaled value.
+- `"humans"` alignment tags are intentional (owner).
+
+**Still not working (Phase 2+, per faction):**
+- ~184 skills still don't change a battle:
+  - they set state nothing reads (248 of 280 handler state fields are unread: burn damage, confusion on self, evasion, pursuit, first-skill bonus …);
+  - or they're non-combat;
+  - or they're immunities.
+- Defending commanders' skills never apply, in any format, so enemy stuns/confusion don't exist yet and immunities have nothing to block.
+- 262 handlers ignore `eff.value`, so those skills don't scale with level.
+- Data notes:
+  - `war_lifeline_of_tribe` max key is `werewolfCombatSpd` but the text says "Orc Units SPD";
+  - Night Creatures `mal_blood_transfusion` is still flat-format (works via the flat path).
+- Balance will shift a lot now that skills apply; some self-debuff skills (double-edge) currently net-hurt.
+- Tests: new `tests/commanderSkills.test.js`. `npm test` 427/427, build OK.
+
 ## 2026-09-23 — Claude — Real cause of "fort busts missing" + tap fix (verified end-to-end in the browser)
 
 - **March fields lost after the first step (affects everything)**: the game-loop worker's march snapshot carries only timing fields, and Game's `onMarchStep` *replaced* `cmd.march` with it. So `dest`, `origin` and `destFortId` disappeared after one step:
