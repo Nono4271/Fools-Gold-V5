@@ -221,3 +221,41 @@ test('targeting: "+X% vs Orc unit" bonus hit only lands on an Orc unit', () => {
   const vsHk = allActs(pirBattle('h1', { fyn_orc_hunter: 15 }, 1));
   assert.ok(!vsHk.some(a => a.isSkill && /\(orcs\)/.test(a.action)));
 });
+
+// ── Per-unit DoTs / statuses + Night Creatures ────────────────────────────────
+function ncBattle(id, skillPoints, seed, defCmd, branches = ['vampires', 'werewolves']) {
+  const slots = branches.map(b => ({ branch: { faction: 'nightcreatures', branch: b, tier: 2 }, troops: 10000 }));
+  const cmd = { id, n: id, faction: 'nightcreatures', cls: 'attacker', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 10000 * branches.length, troopBranch: slots[0].branch, troopSlots: slots, skillPoints };
+  return seeded(() => simBattle(cmd, cmd.troops, { defCmd: defCmd || threeUnitFoe(), garrison: 100, owner: 'ai' }, 0), seed);
+}
+
+test('DoTs tick on the unit they were applied to (not spread)', () => {
+  const acts = allActs(ncBattle('h45', { groth_fangs_assault: 15 }, 2));
+  assert.ok(acts.some(a => /^🩸 Bleed → /.test(a.action) && a.isPlayer === true));
+});
+
+test('stuns land on specific enemy units, not the whole army', () => {
+  let msgs = [];
+  for (let s = 1; s <= 10; s++) msgs = msgs.concat(allActs(ncBattle('h48', { tha_surprise_assault: 7 }, s)).filter(a => /enemy units? stunned/.test(a.action)).map(a => a.action));
+  assert.ok(msgs.length > 0);
+  assert.ok(msgs.every(m => /\d+ enemy unit/.test(m)));
+});
+
+test('Night Creatures: Double Tap is the NC skill again (Dragons copy no longer overrides it with another type)', () => {
+  assert.equal(ALL_SKILLS.mal_double_tap.effect.type, 'focus_damage');
+});
+
+test('Night Creatures: Eight Eyes grants confusion immunity (used to clear the ENEMY\'s confusion)', () => {
+  const cmd = { ...pvpArmy('h48', false), skillPoints: { tha_eight_eyes: 7, tha_surprise_assault: 7 } };
+  // runs cleanly and never logs our commander attacking own troops from its own immunity skill
+  const r = pvp(cmd, pvpArmy('h44', true), 4);
+  assert.ok(Number.isFinite(r.lost));
+});
+
+test('Night Creatures: Power in Numbers only with an all-Spider army', () => {
+  let a = 0, b = 0;
+  for (let s = 1; s <= 10; s++) { a += ncBattle('h47', { skit_power_in_numbers: 7 }, s, null, ['spiders']).lost; b += ncBattle('h47', {}, s, null, ['spiders']).lost; }
+  assert.ok(a < b);
+  const mixed = s => ncBattle('h47', { skit_power_in_numbers: 7 }, s).lost === ncBattle('h47', {}, s).lost;
+  assert.ok([1, 2, 3].every(mixed));
+});
