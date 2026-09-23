@@ -1,6 +1,7 @@
 import { memo, useState, useEffect } from "react";
 import { FORT_LEVELS } from "../../../../shared/constants/map.js";
 import { secsUntil } from "../../../../shared/utils/tileTimers.js";
+import { cmdTroopCount } from "../../../../shared/utils/structureDefense.js";
 
 export default memo(function FortPanel({
   fort, selTile, selKey, cmds,
@@ -46,8 +47,9 @@ export default memo(function FortPanel({
     return { unlocked, uid, cmd };
   });
 
+  // Moving to a fort needs an army (≥1 troop); recalling to a fort doesn't.
   const idleCmds = (cmds || []).filter(c =>
-    c.owner === "player" && !c.march && c.tk !== selKey && !c.stranded
+    c.owner === "player" && !c.march && c.tk !== selKey && !c.stranded && cmdTroopCount(c) > 0
   );
 
   return (
@@ -112,7 +114,7 @@ export default memo(function FortPanel({
               borderRadius: 5, cursor: "pointer",
             }}>⬆ UPGRADE</button>
           )}
-          {idleCmds.length > 0 && stationedCount < levelDef.capacity && (
+          {!fort.isBuilding && idleCmds.length > 0 && stationedCount < levelDef.capacity && (
             <button onClick={() => {
               if (idleCmds.length === 1) startReposition?.(idleCmds[0].uid, selKey, fort.id);
               else setPopupMode?.("repositionPick");
