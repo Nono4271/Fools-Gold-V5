@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { FORT_LEVELS, FORT_MAX_LEVEL, FORT_RANGE_RADIUS, FORT_SIEGE_RESET_MS } from "../../shared/constants/map.js";
 import { withFortRemoval, withoutFortRemoval } from "../../shared/utils/fortRemoval.js";
+import { bfsPath, marchStepMs } from "../../shared/utils/pathfinding.js";
 
 // Chebyshev distance check
 function inRange(ac, ar, bc, br) {
@@ -84,6 +85,9 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
     setForts(prev => prev.map(f => {
       if (f.id !== fortId) return f;
       if (f.level >= FORT_MAX_LEVEL) return f;
+      // One timer at a time — upgrading mid-build used to overwrite the build
+      // timer and leave the fort stuck half-built/half-upgraded.
+      if (f.isBuilding || f.isUpgrading) return f;
       const nextLevel = f.level + 1;
       const levelDef = FORT_LEVELS[nextLevel - 1];
       const upgradeMs = levelDef.upgradeMs ?? 4500000;
@@ -128,10 +132,15 @@ export function useForts({ playerHqKey, cmds, setCmds, emitFortUpdate, fortMax =
           // Stranded — mark as stranded, only recall available
           return { ...c, stationedFortId: null, stranded: true };
         }
-        // Physically at fort — auto recall to HQ
+        // Physically at fort — auto recall to HQ. (The march used to have no
+        // path, which the game loop treats as "arrived nowhere" — the
+        // commander's tile became undefined and it vanished from the map.)
+        const path = hqKey ? bfsPath(fort.tileKey, hqKey) : null;
+        if (!path || path.length < 2) return { ...c, stationedFortId: null, stranded: true };
+        const now = Date.now();
         return { ...c, stationedFortId: null, stranded: false,
           march: { type: "recall", dest: hqKey, origin: fort.tileKey,
-            path: null, step: 0, stepMs: null, lastStepTime: Date.now() } };
+            path, step: 0, stepMs: marchStepMs(60), startedAt: now, lastStepTime: now } };
       }));
     }
 
