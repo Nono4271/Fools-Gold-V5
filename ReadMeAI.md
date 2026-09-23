@@ -1480,17 +1480,17 @@ All 6 commanders (h5 Vex, h6 Mira, h17 Dov, h18 Oren, h29 Theon, h30 Ryn) were c
 - Losses, `atkSlotTroopsEnd` and `defTroopsEnd` are now counted per slot from each slot's own HP per troop.
 - PvE results are unchanged. Per-hit log counts (`atkRemaining` etc.) still use the primary slot's HP per troop.
 
-**Not implemented / owner notes:**
-- Game Over max (on kill → next skill +20%).
-- Still Standing? DEF -N: I made it last for the rest of the battle (the description gives no duration).
-- Testing the Water scales both numbers as written (DEF +63% / DMG -63% at 7/7), and Mira does worse with it in the sweep.
+**Owner decisions (follow-up):**
+- **Still Standing?:** DEF -N lasts 1 round.
+- **Testing the Water:** only DEF scales, 9% → 40% at 7/7 (`perLevel: 0.31/6` in `wizards_skills.js`). DMG -9% is fixed.
+- **Game Over max:** a unit killed by a Game Over hit sets `cs.pendingSkillBonus` = 20%, so the next skill activation deals +20% (hit option `onKillBonus`, logged "kill!").
 
 **Coverage:** every Wizard combat skill changes combat except Curtain Call (round 10), Still Standing (round 7), Tidal Wave (needs enemy Burn) and Keep Taker (Keep tiles). The other 7 are map-only.
 
 **Checks:**
 - Whole game: 471/576 commander skills change combat.
 - PvP mirror 91/180. PvE unchanged.
-- Tests: 4 new. `npm test` 465/465, build OK.
+- Tests: 5 new. `npm test` 466/466, build OK.
 
 ## 2026-09-23 — Claude — Pirate + Orc Burn is per unit
 
