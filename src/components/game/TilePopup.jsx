@@ -80,6 +80,7 @@ export default memo(function TilePopup({
   spawns, onSweep,
   protectedTiles,
   onPerformRelocation,
+  ignoreRange, adminSlot, // TEST MODE
   lastRelocateAt,
   relocationTokens,
   allHqKeys,
@@ -134,12 +135,12 @@ export default memo(function TilePopup({
   }, [setCmdScreenOpen, setCmdScreenUid]);
 
   const checkRange = useCallback((cmd) => {
-    if (!cmd || !forts || !playerHqKey) return true;
+    if (ignoreRange || !cmd || !forts || !playerHqKey) return true;
     const sf = cmd.stationedFortId ? forts.find(f => f.id === cmd.stationedFortId) : null;
     const stationKey = sf ? sf.tileKey : playerHqKey;
     const [sc, sr] = stationKey.split(",").map(Number);
     return isTileInRange(selKey, [{ c: sc, r: sr }]);
-  }, [selKey, forts, playerHqKey]);
+  }, [selKey, forts, playerHqKey, ignoreRange]);
 
   const POPUP_W = 270;
   const posHq         = usePopupPosition(tileScreenX, tileScreenY, 200, 220);
@@ -886,6 +887,7 @@ export default memo(function TilePopup({
           {/* Notes */}
           {(ownership==="crew"||ownership==="faction")&&<div style={{ fontSize:7, color:ownership==="faction"?"#e87830":"#2299ff", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>{ownership==="faction"?"🟠 Faction territory — you can move here freely":"🤝 Crew territory — you can move here freely"}</div>}
           {(ownership==="enemy"||isNeutral)&&!canAtk&&!selTile.isWin&&<div style={{ fontSize:7, color:"#5a4a3a", fontFamily:"'Crimson Pro',serif", fontStyle:"italic", textAlign:"center" }}>Own an adjacent tile to attack</div>}
+          {adminSlot /* TEST MODE admin row */}
           </div>{/* end inner flex */}
         </div>
       </div>
