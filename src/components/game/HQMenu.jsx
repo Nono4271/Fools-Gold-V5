@@ -223,6 +223,21 @@ display:"grid", gridTemplateColumns:"1fr 1fr", gridTemplateRows:"1fr 1fr 1fr", g
 
 const QUARTER_UPGRADE_COST = (lvl) => upgCostQuarter(lvl) || { stone:0, wood:0, gas:0 };
 const BRANCH_UPGRADE_COST  = (lvl) => upgCostBranch(lvl)  || { stone:0, wood:0, gas:0 };
+// Quarter level shown/used: the stored level. Your own faction's quarter starts unlocked (Lv1);
+// the others start locked (Lv0) and need a timed unlock. Older saves never stored the other
+// quarters — treat one as Lv1 if one of its branches was already built.
+function effQuarterLvl(fKey, slot, quarterLevels, bldgs) {
+  const st = (quarterLevels || {})[fKey];
+  if (st != null) return st;
+  if (slot === 0) return 1;
+  return Object.keys(bldgs || {}).some(k => k.startsWith(`b_${fKey}_`) && bldgs[k] > 0) ? 1 : 0;
+}
+const fmtDurMs = (ms) => {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m${s % 60 ? ` ${s % 60}s` : ""}`;
+  return `${Math.floor(s / 3600)}h${s % 3600 >= 60 ? ` ${Math.floor((s % 3600) / 60)}m` : ""}`;
+};
 
 function LevelBar({ lvl, max, color }) {
 return (
@@ -253,11 +268,10 @@ if (isMax) return <div style={{ fontSize:9, color:P.gold, fontFamily:P.ff, fontW
 if (inProg) {
 const pct = Math.max(0, Math.min(100, ((now-inProg.startedAt)/inProg.dur)*100));
 const secsLeft = Math.max(0, Math.ceil((inProg.endsAt-now)/1000));
-const mm = Math.floor(secsLeft/60), ss = secsLeft%60;
 return (
 <div style={{ textAlign:"right" }}>
 <div style={{ fontSize:8, color:P.gold, fontFamily:P.ff, marginBottom:2 }}>
-⚙ {mm>0?`${mm}m ${ss}s`:`${ss}s`}
+⚙ {fmtDurMs(secsLeft * 1000)}
 </div>
 <div style={{ height:3, background:"#181820", borderRadius:2, overflow:"hidden", width:60 }}>
 <div style={{ height:"100%", width:`${pct}%`, background:"linear-gradient(90deg,#c03030,#f0c040)", borderRadius:2 }}/>
@@ -305,7 +319,7 @@ const cost     = (!isAbsMax && !isGated && !reverseBlocker) ? upgCost(bKey, lvl)
 const ok       = cost && canAfford(cost);
 const inProg   = upgQueue[bKey];
 const nd       = cost ? upgDuration(bKey, lvl+1) : 0;
-const mm = Math.floor(nd/60000), ss = Math.floor((nd%60000)/1000);
+
 
 return (
 <div style={{ padding:"16px 20px" }}>
@@ -341,7 +355,7 @@ return (
 ))}
 </div>
 <div style={{ fontSize:8, color:P.dim, fontFamily:P.ffb, marginBottom:10 }}>
-⏱ {mm>0?`${mm}m ${ss>0?ss+"s":""}`:`${ss}s`}
+⏱ {fmtDurMs(nd)}
 </div>
 <UpgradeButton lvl={lvl} maxLvl={def.max} cost={cost} canAfford={canAfford} onUpgrade={()=>upgrade(bKey)} inProg={inProg} />
 </div>
@@ -598,55 +612,30 @@ const BRANCH_LVL_BONUS = [
   );
   }
 
-  function QuarterDetail({ fKey, fDef, slot, bldgs, setBldgs, rss, setRss, canAfford, quarterLevels, setQuarterLevels, setUnlockedBranches, troopSkillLevels, setTroopSkillLevels, mysticOrbs, setMysticOrbs }) {
+  function QuarterDetail({ fKey, fDef, slot, bldgs, rss, canAfford, quarterLevels, upgrade, upgQueue, troopSkillLevels, setTroopSkillLevels, mysticOrbs, setMysticOrbs }) {
   const [selTroop, setSelTroop] = useState(null); // { branch, tierIdx, tier }
+  const [, setTick] = useState(0); // countdowns for queued quarter/branch upgrades
+  useEffect(() => { const id = setInterval(() => setTick(t => t + 1), 1000); return () => clearInterval(id); }, []);
   const hqLvl   = bldgs.hq || 1;
   const qCeil   = quarterMaxLevel(slot, hqLvl);
-  const _stored = (quarterLevels||{})[fKey];
-  const qLvl    = _stored != null ? _stored : (qCeil > 0 ? 1 : 0);
+  const qLvl    = effQuarterLvl(fKey, slot, quarterLevels, bldgs);
+  const qKey    = `q_${fKey}`;
+  const qBusy   = (upgQueue || {})[qKey];
   const qCost   = QUARTER_UPGRADE_COST(qLvl);
   const atCeil  = qLvl >= qCeil;
   const atMax   = qLvl >= 10;
-  const canUpg  = !atMax && !atCeil && canAfford(qCost);
+  const canUpg  = !qBusy && !atMax && !atCeil && canAfford(qCost);
 
-  useEffect(() => {
-  const bldgUpdates = {};
-  const ubUpdates   = {};
-  fDef.branches.forEach((br, idx) => {
-  if (qLvl >= BRANCH_UNLOCK_Q[idx]) {
-  const bKey = `b_${fKey}_${br.key}`;
-  if (!(bKey in bldgs) || (bldgs[bKey] || 0) < 1) {
-  bldgUpdates[bKey] = 1;
-  ubUpdates[`${fKey}:${br.key}`] = 0;
-  }
-  }
-  });
-  if (Object.keys(bldgUpdates).length > 0) {
-  setBldgs(b => ({ ...b, ...bldgUpdates }));
-  if (setUnlockedBranches) setUnlockedBranches(p => ({ ...p, ...ubUpdates }));
-  }
-  }, [qLvl, fKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const upgradeQuarter = () => {
-  if (!canUpg) return;
-  setQuarterLevels(prev => ({ ...prev, [fKey]: qLvl + 1 }));
-  setRss(p => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v - (qCost[k] || 0)])));
-  };
-
+  // Quarter and branch upgrades are timed (upgrade queue); unlocking a quarter (Lv0→1)
+  // or a branch (Lv0→1) is the first timed step.
+  const upgradeQuarter = () => { if (canUpg) upgrade(qKey, { lvl: qLvl, ceil: Math.min(10, qCeil) }); };
   const upgradeBranch = (branchKey, branchIdx) => {
   const bKey  = `b_${fKey}_${branchKey}`;
   const bLvl  = bldgs[bKey] || 0;
   const bCeil = branchMaxLevel(branchIdx, qLvl);
-  if (bLvl >= bCeil) return;
-  const cost = BRANCH_UPGRADE_COST(bLvl);
-  if (!canAfford(cost)) return;
-  const newBLvl = bLvl + 1;
-  setBldgs(b => ({ ...b, [bKey]: newBLvl }));
-  setRss(p => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v - (cost[k] || 0)])));
-  if (setUnlockedBranches) {
-  const newTier = tierFromBranchLevel(newBLvl);
-  setUnlockedBranches(p => ({ ...p, [`${fKey}:${branchKey}`]: newTier }));
-  }
+  if (bLvl >= bCeil || (upgQueue || {})[bKey]) return;
+  if (!canAfford(BRANCH_UPGRADE_COST(bLvl))) return;
+  upgrade(bKey, { lvl: bLvl, ceil: bCeil });
   };
 
   const roman = ["I","II","III"];
@@ -683,6 +672,11 @@ const BRANCH_LVL_BONUS = [
   <div style={{ textAlign:"right", minWidth:72 }}>
   {atMax ? (
   <div style={{ fontSize:9, color:fDef.c, fontFamily:P.ff, fontWeight:700 }}>MAX</div>
+  ) : qBusy ? (
+  <div style={{ textAlign:"center" }}>
+  <div style={{ fontSize:9, color:P.gold, fontFamily:P.ff, fontWeight:700 }}>⚙ Lv{qBusy.newLvl}</div>
+  <div style={{ fontSize:8, color:P.sub }}>{fmtDurMs(qBusy.endsAt - Date.now())}</div>
+  </div>
   ) : atCeil ? (
   <div style={{ textAlign:"center" }}>
   <div style={{ fontSize:8, color:"#c8903a", fontFamily:P.ff, marginBottom:3 }}>🔒 HQ GATE</div>
@@ -695,12 +689,13 @@ const BRANCH_LVL_BONUS = [
   background: canUpg ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
   border: `1px solid ${canUpg ? fDef.c : "#1e1810"}`,
   color: canUpg ? fDef.c : "#2a2a2a", borderRadius:4 }}>
-  ^ Lv{qLvl+1}
+  {qLvl === 0 ? "UNLOCK" : `^ Lv${qLvl+1}`}
   </button>
   <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
   {Object.entries(qCost).filter(([,v])=>v>0).map(([k,v]) => (
   <RssPill key={k} rssKey={k} amount={v} rss={rss} small />
   ))}
+  <div style={{ fontSize:7, color:"#88aacc", fontFamily:P.ff }}>⏱ {fmtDurMs(upgDurationQuarter(qLvl+1))}</div>
   </div>
   </div>
   )}
@@ -713,12 +708,13 @@ const BRANCH_LVL_BONUS = [
   const unlockQ    = BRANCH_UNLOCK_Q[branchIdx];
   const branchOpen = qLvl >= unlockQ;
   const bKey       = `b_${fKey}_${br.key}`;
-  const bLvl       = branchOpen ? Math.max(1, bldgs[bKey] || 1) : 0;
+  const bLvl       = branchOpen ? (bldgs[bKey] || 0) : 0; // Lv0 = open but not unlocked yet (timed unlock)
   const bCeil      = branchMaxLevel(branchIdx, qLvl);
   const atBCeil    = bLvl >= bCeil;
   const atBMax     = bLvl >= 6;
   const bCost      = BRANCH_UPGRADE_COST(bLvl);
-  const bOk        = branchOpen && !atBMax && !atBCeil && canAfford(bCost);
+  const bBusy      = (upgQueue || {})[bKey];
+  const bOk        = branchOpen && !bBusy && !atBMax && !atBCeil && canAfford(bCost);
   const unlockedTier = tierFromBranchLevel(bLvl);
   const dmgColor   = br.dmgType === "magical" ? "#a855f7" : "#e08050";
 
@@ -779,6 +775,11 @@ const BRANCH_LVL_BONUS = [
   {atBMax ? (
   <div style={{ fontSize:7, color:fDef.c, fontFamily:P.ff, fontWeight:700,
   textAlign:"center" }}>MAX</div>
+  ) : bBusy ? (
+  <div style={{ textAlign:"center" }}>
+  <div style={{ fontSize:8, color:P.gold, fontFamily:P.ff, fontWeight:700 }}>⚙ Lv{bBusy.newLvl}</div>
+  <div style={{ fontSize:7, color:P.sub }}>{fmtDurMs(bBusy.endsAt - Date.now())}</div>
+  </div>
   ) : atBCeil ? (
   <div style={{ fontSize:6, color:"#7a5030", fontFamily:P.ff,
   textAlign:"center", lineHeight:1.5 }}>Q Lv{bCeil+1}<br/>to unlock</div>
@@ -790,12 +791,13 @@ const BRANCH_LVL_BONUS = [
   background: bOk ? `linear-gradient(135deg,${fDef.c}44,${fDef.c}18)` : "rgba(255,255,255,.02)",
   border:`1px solid ${bOk ? fDef.c : "#1e1810"}`,
   color: bOk ? fDef.c : "#2a2a2a", borderRadius:4, marginBottom:4 }}>
-  {bOk ? `^ Lv${bLvl+1}` : "^"}
+  {bLvl === 0 ? "UNLOCK" : bOk ? `^ Lv${bLvl+1}` : "^"}
   </button>
   <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
   {Object.entries(bCost).filter(([,v])=>v>0).map(([k,v]) => (
   <RssPill key={k} rssKey={k} amount={v} rss={rss} small />
   ))}
+  <div style={{ fontSize:7, color:"#88aacc", fontFamily:P.ff }}>⏱ {fmtDurMs(upgDurationBranch(bLvl+1))}</div>
   </div>
   </>
   )}
@@ -944,7 +946,7 @@ const LEFT_NAV = [
 { id:"buildings", icon:"🏛", label:"Buildings", color:"#c8903a", locked:false, isYou:false, slot:-1 },
 ...factionOrder.map((fKey,i) => {
 const maxLvl = quarterMaxLevel(i, hqLvl);
-const curLvl = (quarterLevels||{})[fKey] != null ? (quarterLevels||{})[fKey] : (maxLvl > 0 ? 1 : 0);
+const curLvl = effQuarterLvl(fKey, i, quarterLevels, bldgs);
 return {
 id: `q_${fKey}`,
 icon:   FACTION_META[fKey]?.s || "⚑",
@@ -1077,10 +1079,10 @@ return (
         <QuarterDetail
           fKey={quarterFKey} fDef={fDef}
           slot={navItem?.slot ?? 0}
-          bldgs={bldgs} setBldgs={setBldgs}
-          rss={rss} setRss={setRss} canAfford={canAfford}
-          quarterLevels={quarterLevels} setQuarterLevels={setQuarterLevels}
-          setUnlockedBranches={setUnlockedBranches}
+          bldgs={bldgs}
+          rss={rss} canAfford={canAfford}
+          quarterLevels={quarterLevels}
+          upgrade={upgrade} upgQueue={upgQueue}
           troopSkillLevels={troopSkillLevels} setTroopSkillLevels={setTroopSkillLevels}
           mysticOrbs={mysticOrbs} setMysticOrbs={setMysticOrbs} />
       );
