@@ -13,6 +13,7 @@ import CommanderCard from "./popup/CommanderCard.jsx";
 import FortPanel from "./popup/FortPanel.jsx";
 import CrewStructurePanel from "./popup/CrewStructurePanel.jsx";
 import { isWounded } from "../../../shared/utils/commanderStatus.js";
+import { cmdTroopCount } from "../../../shared/utils/structureDefense.js";
 import HQPopup from "./popup/HQPopup.jsx";
 
 // Smart positioning hook — places popup on the opposite side of screen from the tile
@@ -136,7 +137,7 @@ export default memo(function TilePopup({
 
   const checkRange = useCallback((cmd) => {
     if (ignoreRange || !cmd || !forts || !playerHqKey) return true;
-    const sf = cmd.stationedFortId ? forts.find(f => f.id === cmd.stationedFortId) : null;
+    const sf = cmd.stationedFortId ? forts.find(f => f.id === cmd.stationedFortId && !f.isBuilding) : null; // unbuilt fort gives no range
     const stationKey = sf ? sf.tileKey : playerHqKey;
     const [sc, sr] = stationKey.split(",").map(Number);
     return isTileInRange(selKey, [{ c: sc, r: sr }]);
@@ -153,7 +154,7 @@ export default memo(function TilePopup({
   if (!selKey || !selTile) return null;
 
   const ownership = getTileOwnership(selTile, facKey, crewmatePlayerIds);
-  const fort = getFortAtTile?.(selKey);
+  const fort = forts?.find(f => f.tileKey === selKey) ?? getFortAtTile?.(selKey) ?? null;
   const isHqTile = selKey === playerHqKey;
 
   // HQ popup
@@ -203,7 +204,8 @@ export default memo(function TilePopup({
   if (popupMode === "repositionPick") {
     const pos = posReposition;
     if (!pos) return null;
-    const idleCmds = cmds.filter(c => c.owner==="player" && !c.march && c.tk !== selKey && !c.stranded && !isWounded(c));
+    // Moving to a fort needs an army (≥1 troop); recalling to a fort doesn't.
+    const idleCmds = cmds.filter(c => c.owner==="player" && !c.march && c.tk !== selKey && !c.stranded && !isWounded(c) && cmdTroopCount(c) > 0);
     return (
       <div style={{ position:"fixed", left:pos.x, top:pos.y, zIndex:500, pointerEvents:"auto", width:200, background:"rgba(5,7,11,.97)", border:"1px solid #3a5a6a", borderRadius:8, overflow:"hidden", boxShadow:"0 8px 32px rgba(0,0,0,.9)" }}>
         <div style={{ padding:"8px 10px", borderBottom:"1px solid #1e2a2e", display:"flex", alignItems:"center", gap:6 }}>
