@@ -1438,6 +1438,45 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Audit + timed Quarter/Branch upgrades + admin "Max all"
+
+**Timed quarters and branches (owner spec):**
+- Quarter and branch upgrades were instant. They now use the building upgrade queue (`upgQueue`, same speed-ups / crew help / admin finish):
+  - quarter key `q_<faction>`, completed into `quarterLevels` by `useUpgrades`;
+  - branch key `b_<faction>_<branch>`, a `bldgs` key like any building, so `unlockedBranches` follows.
+  - `upgrade(type, { lvl, ceil })` in Game.jsx takes the gate from the Quarters screen.
+- **Quarter:** Lv1 unlock takes 5 min, rising geometrically to 24 h for Lv10.
+- **Branch:** Lv1 unlock takes 10 min, rising geometrically to 12 h for Lv6.
+- **Costs:** 75th percentile of the total RSS of the 8 building upgrades closest in length, made monotonic, split ~25/52/23 wood/stone/gas (`QUARTER_COST` / `BRANCH_COST`).
+- **Unlocking:** your own quarter still starts at Lv1 with its first branch at Lv1. Other quarters now start locked (Lv0) and need the 5-min unlock. Branches no longer auto-unlock at their quarter level; each needs the 10-min unlock.
+- **Older saves:** a quarter with no stored level counts as Lv1 if one of its branches was already built (`effQuarterLvl`).
+- **UI:** the Quarters screen shows UNLOCK / ^ LvN, the time, and a live countdown while an upgrade runs.
+
+**Admin (test mode) → Timers → 🏰 MAX ALL BUILDINGS & QUARTERS:**
+- Every building goes to its max level, every quarter of your alignment to Lv10, and every branch in them to Lv6.
+- It clears any of those still in the upgrade queue.
+- Implemented in `adminMaxedBase` (adminRules.js).
+
+**Audit fixes:**
+- **GameView:** `setConsumables` was used but never destructured. Buying a consumable from the Crew Store threw a ReferenceError.
+- **Dev mode:** the `gameLoop` and `march` workers use `import` but were created as classic workers. In `npm run dev` (test mode) they failed to start ("Cannot use import statement outside a module"), so marches/AI ticks didn't run. Both are now `{ type: "module" }`; the build was already fine.
+- **Upgrade timers:** 24 h upgrades showed as "1440m 0s". They now show h/m (`fmtDurMs`).
+- **battle.js:**
+  - unreachable leftover code after `dmg_resist_vs_alignment_branch`;
+  - 4 duplicate round-state keys;
+  - the last duplicate `case` (`on_hit_frostbite_chance`) — lint is now clean.
+  - Troop-skill Frostbite (Raiders on-hit, Frostbite Carol troop skill) only set flags nothing read. It now freezes the unit hit or every enemy unit, using the per-unit Frostbite.
+
+**Stray files in the upload (not used by anything) — owner to delete:**
+- `shared/battle.js`: an old copy of `shared/utils/battle.js` uploaded to the wrong folder.
+- `README-*.md` at the repo root: zip notes.
+- `tests/README.md`, `tests/ReadMeAI.md`, `src/testmode/readme`.
+
+**Checks:**
+- `npm test` 476/476 (new `tests/quarterUpgrades.test.js`), build OK, eslint no-undef/dupe/unreachable clean.
+- Browser run (test campaign): quarter upgrade queued 10m → finished; branch unlock queued 10m; MAX ALL puts everything at max; no console errors.
+- PvP mirror 91/180, PvE unchanged.
+
 ## 2026-09-23 — Claude — Coldborns fully implemented (all 8 factions done)
 
 All 6 commanders (h49 Bjorn, h50 Valdris, h51 Leif, h52 Eira, h53 Halvard, h54 Knut) were checked against their descriptions. 36 handler types were rewritten for the per-unit commander path; the troop/legacy path is kept. 20 unreachable duplicate `case` blocks (later copies of the same labels, dead code in the switch) were removed. `no-duplicate-case` went from 23 to 1.
