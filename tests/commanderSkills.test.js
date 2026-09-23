@@ -74,9 +74,11 @@ function orcBattle(id, skillPoints, foeFaction = 'holyknights', foeBranch = 'tem
   return seeded(() => simBattle(cmd, 20000, { defCmd: def, garrison: 100, owner: 'ai' }, 0), seed);
 }
 const dealt = r => r.report.rounds.flatMap(x => x.actions).reduce((t, x) => t + (x.isPlayer ? (x.dmg || 0) : 0), 0);
+// Stronger = wins in fewer rounds, or same rounds with more damage dealt
+const stronger = (a, b) => a.report.rounds.length < b.report.rounds.length || (a.report.rounds.length === b.report.rounds.length && dealt(a) > dealt(b));
 
 test('orcs: Brutal Strike adds damage (used to overwrite commander damage down to 27%)', () => {
-  assert.ok(dealt(orcBattle('h33', { kor_brutal_strike: 15 })) > dealt(orcBattle('h33', {})));
+  assert.ok(stronger(orcBattle('h33', { kor_brutal_strike: 15 }), orcBattle('h33', {})));
 });
 
 test('orcs: faction-conditional skills only apply vs that faction', () => {
@@ -87,7 +89,7 @@ test('orcs: faction-conditional skills only apply vs that faction', () => {
 });
 
 test("orcs: Warlord's Touch vulnerability stacks persist across rounds", () => {
-  assert.ok(dealt(orcBattle('h33', { kor_warlords_touch: 7 })) > dealt(orcBattle('h33', {})));
+  assert.ok(stronger(orcBattle('h33', { kor_warlords_touch: 7 }), orcBattle('h33', {})));
 });
 
 test('orcs: Lifeline of the Tribe max-level bonus is Orc combat SPD (typo fix)', () => {
