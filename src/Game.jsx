@@ -1057,6 +1057,7 @@ export default function RiseToWar() {
     guardedTiles,
     onForcedRelocate: (...args) => onForcedRelocateRef.current?.(...args),
     crews, playerCrewId, regionOwners, setRegionOwners,
+    ignoreAdjacency: testNoAdj, // TEST MODE
   });
 
   useFortressSiege({
@@ -1568,7 +1569,7 @@ export default function RiseToWar() {
   // ── HQ Relocation — rules in shared/utils/relocation.js ──
   const { performRelocation, onForcedRelocate, applyHqMove } = useRelocation({
     tiles, patchTile, facKey, aiHqKeys, playerHqKey, playerHqRef, setPlayerHqKey,
-    cmds, consumables, setConsumables, lastRelocateAt, setLastRelocateAt, setWinner, floaty,
+    cmds, consumables, setConsumables, lastRelocateAt, setLastRelocateAt, setWinner, floaty, setPlayerCmds,
   });
   onForcedRelocateRef.current = onForcedRelocate;
   applyHqMoveRef.current = applyHqMove; // TEST MODE admin relocate
@@ -1741,7 +1742,7 @@ export default function RiseToWar() {
       setAiBarracksPool={setAiBarracksPool} aiLastActionRef={aiLastActionRef}
       setCmds={setCmds} setColl={setColl} setTiles={setTiles}
       setTroopCounts={setTroopCounts} setUnlockedBranches={setUnlockedBranches}
-      setQuarterLevels={setQuarterLevels}
+      setQuarterLevels={setQuarterLevels} setBldgs={setBldgs}
     />
   );
   if (screen==="gacha")   return (
