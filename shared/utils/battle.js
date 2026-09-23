@@ -289,6 +289,7 @@ function enemyUnitsWith(rs, ctx, status) {
     case "burn":  return [...(rs.burnedUnits?.keys() || [])];
     case "slow":  return Object.keys(rs.unitSpdDown || {}).map(Number);
     case "stun":  return [...(rs.stunnedUnits || [])];
+    case "frostbite": return frozenUnits(ctx);
     default: return null; // unknown → caller keeps its army-wide fallback
   }
 }
@@ -309,6 +310,18 @@ function pctSlow(rs, ctx, list, pct, rounds, round) {
   const slow = r => { for (const ti of list) setSlot(r, "unitSpdDown", ti, Math.round((ctx.defSlotSpd(ti) || 60) * pct), "max"); if (list.length) r.slowApplied = true; };
   slow(rs); if (rounds > 1) setBuff(ctx, null, round + 1, round + rounds - 1, slow);
 }
+// Frostbite (commander skills): per enemy unit, 2 rounds (ctx.cs.frostbite: ti → last round).
+// A frostbitten unit deals -40% damage (slotAct) and loses SPD from Permafrost-type skills.
+function freezeUnits(rs, ctx, list, rounds = 2) {
+  if (!ctx?.isCommander) { if (list?.length ?? 1) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft || 0, rounds); } return list?.length || 1; }
+  const m = ctx.cs.frostbite || (ctx.cs.frostbite = new Map()), apps = ctx.cs.frostApps || (ctx.cs.frostApps = []);
+  for (const ti of list) { m.set(ti, Math.max(m.get(ti) || 0, ctx.round + rounds - 1)); apps.push({ ti, round: ctx.round }); }
+  if (list.length) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft || 0, 1); }
+  return list.length;
+}
+const frozenUnits = (ctx) => ctx?.cs?.frostbite ? [...ctx.cs.frostbite].filter(([, until]) => until >= ctx.round).map(([ti]) => ti) : [];
+// Each unit of the list rolls the chance → frostbitten units
+const rollFreeze = (rs, ctx, list, chance, rounds = 2) => freezeUnits(rs, ctx, (list || []).filter(() => Math.random() < chance), rounds);
 // Effect resolver shared by troop skills (procTroopSkills) and commander
 // skills (applyCommanderSkillEffects). `quiet` skips the generic log line.
 function applySkillEffect(skill, eff, rs, roundLog, actorLabel, defTroopBranch, round, alliedSlots, actingSlot, skillLevels, quiet, ctx) {
@@ -1415,6 +1428,11 @@ switch (eff.type) {
   case "per_round_confusion_immune_chance":
     rs.perRoundConfusionImmune += eff.value ?? eff.chance ?? 0.03;
     if (Math.random() < (eff.value ?? eff.chance ?? 0.03)) {
+      if (ctx?.isCommander && /Stun Immun/.test(skill?.desc || "")) { // Coldborn versions: commander Stun Immunity
+        rs.cmdStunImmune = true;
+        roundLog.actions.push({ actor:actorLabel, action:`🛡️ ${skill?.name} — Stun Immune this round!`, dmg:0, isTroopSkill:true });
+        break;
+      }
       rs.cmdConfusionImmune = true;  // commander
       rs.atkConfusionImmune = true;  // and troops
       rs.invisStunImmune = true;
@@ -1733,7 +1751,10 @@ switch (eff.type) {
     break; }
   case "focus_damage_single":
     addSkillHit(rs, ctx, eff.value || 0.60, { n: 1, prio: prioOf(eff), stat: "foc", label: skill?.name });
-    if (eff.frostbiteChance && Math.random() < eff.frostbiteChance) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft || 0, 2); }
+    if (eff.frostbiteChance) { // the unit hit rolls Frostbite
+      if (ctx?.isCommander) rollFreeze(rs, ctx, ctx.pickEnemy(1, prioOf(eff)), eff.frostbiteChance);
+      else if (Math.random() < eff.frostbiteChance) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft || 0, 2); }
+    }
     break;
   case "dual_cmd_foc_shift":
   { const v = eff.value ?? eff.selfFocUp ?? 1;
@@ -1807,34 +1828,27 @@ switch (eff.type) {
     }
     break;
   case "per_round_frostbite_aoe_chance":
-    // Frostbite Carol / Frost Destruction — each round chance to Frostbite all enemies
-    rs.perRoundFrostbiteAoeChance = (rs.perRoundFrostbiteAoeChance || 0) + (eff.chance || 0.015);
-    if (Math.random() < rs.perRoundFrostbiteAoeChance) {
-      rs.frostbiteApplied   = true;
-      rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2);
-      roundLog.actions.push({ actor: actorLabel, action: `❄️ Frost — All enemies Frostbitten! DMG dealt -40% for 2 rnd`, dmg: 0, isTroopSkill: true });
+    if (ctx?.isCommander) { // each enemy unit rolls Frostbite
+      const n = rollFreeze(rs, ctx, ctx.pickEnemy("all"), eff.value ?? eff.chance ?? 0.015);
+      if (n) roundLog.actions.push({ actor: actorLabel, action: `❄️ ${skill?.name} — ${n} unit${n > 1 ? "s" : ""} Frostbitten!`, dmg: 0, isTroopSkill: true });
+    } else {
+      rs.perRoundFrostbiteAoeChance = (rs.perRoundFrostbiteAoeChance || 0) + (eff.chance || 0.015);
+      if (Math.random() < rs.perRoundFrostbiteAoeChance) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2); }
     }
     break;
   // ── Bjorn mechanics ───────────────────────────────────────────────────────
   case "physical_damage_frostbite_chance":
-    // Physical DMG + Frostbite chance (Icevein's Strike, Winter's Edge, Winter's Frost)
-    rs.cmdMult *= (1 + (eff.value || eff.dmgPct || 0.30));
-    if (eff.dmgPct === 0) break; // Winter's Frost — Frostbite only, no DMG
-    if (Math.random() < (eff.frostbiteChance || 0.50)) {
-      rs.frostbiteApplied    = true;
-      rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2);
-      roundLog.actions.push({ actor: actorLabel, action: `🧊 ${skill?.name||"Strike"} — Frostbite applied! Enemy DMG -40% (2 rnd)`, dmg: 0, isTroopSkill: true });
-    }
+    if (eff.dmgPct !== 0) addSkillHit(rs, ctx, eff.value || eff.dmgPct || 0.30, { n: targetsOf(eff), prio: prioOf(eff), label: skill?.name });
+    { const n = ctx?.isCommander ? rollFreeze(rs, ctx, ctx.pickEnemy(targetsOf(eff), prioOf(eff)), eff.frostbiteChance ?? 0.50) // each unit hit rolls Frostbite
+        : (Math.random() < (eff.frostbiteChance ?? 0.50) ? freezeUnits(rs, ctx, null) : 0);
+      if (n) roundLog.actions.push({ actor: actorLabel, action: `🧊 ${skill?.name||"Strike"} — Frostbite on ${ctx?.isCommander ? `${n} unit${n > 1 ? "s" : ""}` : "enemy"} (DMG -40%, 2 rnd)`, dmg: 0, isTroopSkill: true }); }
     break;
   case "aoe_physical_frostbite_chance":
-    // AoE physical DMG + Frostbite chance (Blood on Ice, Frost Cleave)
-    rs.cmdAoe  = true;
-    rs.cmdMult *= (1 + (eff.value || 0.10));
-    if (Math.random() < (eff.frostbiteChance || 0.25)) {
-      rs.frostbiteApplied    = true;
-      rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2);
-      roundLog.actions.push({ actor: actorLabel, action: `🩸 ${skill?.name||"Blood on Ice"} — All enemies hit + Frostbite!`, dmg: 0, isTroopSkill: true });
-    }
+    rs.cmdAoe = true;
+    addSkillHit(rs, ctx, eff.value || 0.10, { n: "all", label: skill?.name });
+    { const n = ctx?.isCommander ? rollFreeze(rs, ctx, ctx.pickEnemy("all"), eff.frostbiteChance || 0.25) // each unit rolls
+        : (Math.random() < (eff.frostbiteChance || 0.25) ? freezeUnits(rs, ctx, null) : 0);
+      if (n) roundLog.actions.push({ actor: actorLabel, action: `🩸 ${skill?.name} — Frostbite on ${ctx?.isCommander ? `${n} unit${n > 1 ? "s" : ""}` : "enemies"}!`, dmg: 0, isTroopSkill: true }); }
     break;
   case "cmd_atk_per_frostbite_round":
     // CMD ATK bonus each round Frostbite is active (Cold Fury)
@@ -1844,28 +1858,32 @@ switch (eff.type) {
     }
     break;
   case "physical_shatter_frostbite":
-    // Physical DMG vs Frostbitten target, strips Frostbite, applies DEF down (Shatter)
-    if (rs.frostbiteApplied || rs.frostbiteRoundsLeft > 0) {
-      rs.cmdMult             *= (1 + (eff.value || 0.60));
-      rs.frostbiteApplied     = false;
-      rs.frostbiteRoundsLeft  = 0;
-      rs.enemyDefFlatDown         = Math.min((rs.enemyDefFlatDown||0) + (eff.defDown || 5), 50);
-      roundLog.actions.push({ actor: actorLabel, action: `💥 Shatter — Frostbite stripped! Enemy DEF -${eff.defDown||5} (${eff.defDuration||2} rnd)`, dmg: 0, isTroopSkill: true });
-    } else {
-      rs.cmdMult *= (1 + (eff.value || 0.60) * 0.50); // half damage vs non-frozen target
-    }
+    if (ctx?.isCommander) { // a frostbitten unit: full hit, Frostbite removed, DEF -N (2 rnd); none frostbitten → half damage on 1 unit
+      const ti = frozenUnits(ctx)[0];
+      if (ti != null) {
+        const dd = eff.defDown || 5;
+        addSkillHit(rs, ctx, eff.value || 0.60, { ti, label: skill?.name });
+        ctx.cs.frostbite.delete(ti);
+        setSlot(rs, "unitDefFlatDown", ti, dd, "add");
+        setBuff(ctx, null, round + 1, round + (eff.defDownDuration || 2) - 1, r => setSlot(r, "unitDefFlatDown", ti, dd, "add"));
+        roundLog.actions.push({ actor: actorLabel, action: `💥 ${skill?.name} — Frostbite shattered! DEF -${dd} (${eff.defDownDuration || 2} rnd)`, dmg: 0, isTroopSkill: true });
+      } else addSkillHit(rs, ctx, (eff.value || 0.60) * 0.5, { n: 1, label: skill?.name });
+    } else if (rs.frostbiteApplied || rs.frostbiteRoundsLeft > 0) {
+      rs.cmdMult *= (1 + (eff.value || 0.60)); rs.frostbiteApplied = false; rs.frostbiteRoundsLeft = 0;
+      rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + (eff.defDown || 5), 50);
+    } else rs.cmdMult *= (1 + (eff.value || 0.60) * 0.50);
     break;
   case "multi_hit_random_atk_stack":
     rs.cmdAoe = true;
-    if (ctx?.isCommander) { // N hits on random units; commander ATK +N per unique unit hit (this round)
+    if (ctx?.isCommander) { // N hits on random units; commander ATK +N per unique unit hit (this round) | max: frostbitten units take +X% skill DMG
       const pct = eff.value ?? eff.dmgPct ?? 0.04, list = ctx.pickEnemy(eff.hits || 6, null, true);
       for (const ti of list) addSkillHit(rs, ctx, pct, { ti, label: skill?.name });
       rs.cmdAtkFlat = (rs.cmdAtkFlat || 0) + new Set(list).size * (eff.atkPerUniqueHit || 10);
+      if (eff.maxLevelEffect?.frostbittenSkillDmgTakenUp) (rs.vsTarget || (rs.vsTarget = [])).push({ who: "skill", match: { frostbitten: true }, value: eff.maxLevelEffect.frostbittenSkillDmgTakenUp });
     } else {
       rs.cmdMult *= (1 + (eff.dmgPct || 0.08) * (eff.hits || 4));
       rs.cmdSpdBonus = (rs.cmdSpdBonus || 0) + Math.min(eff.hits || 4, 3) * (eff.atkPerUniqueHit || 5);
     }
-    if (rs.frostbiteApplied || rs.frostbiteRoundsLeft > 0) rs.troopAtkMult *= (1 + (eff.maxLevelEffect?.frostbittenSkillDmgUp || rs.frostbittenSkillDmgUp || 0));
     break;
   case "per_round_atk_up_spd_down_stack":
     // Berserker's Rush — every round CMD ATK stacks permanently
@@ -1905,13 +1923,9 @@ switch (eff.type) {
     }
     break;
   case "frostbitten_enemy_spd_down":
-    // SPD penalty on Frostbitten enemies (Permafrost, The Long Winter)
     rs.frostbittenEnemySpdDown = (rs.frostbittenEnemySpdDown || 0) + (eff.value || 5);
-    // Applied to enemy SPD in combat calculation
-    if (rs.frostbiteApplied || rs.frostbiteRoundsLeft > 0) {
-      rs.slowApplied = true;
-      rs.slowValue   = (rs.slowValue || 0) + (eff.value || 5);
-    }
+    if (ctx?.isCommander) rs.frostSpdDown = (rs.frostSpdDown || 0) + (eff.value || 5); // frostbitten enemy units lose SPD (turn order)
+    else if (rs.frostbiteApplied || rs.frostbiteRoundsLeft > 0) { rs.slowApplied = true; rs.slowValue = (rs.slowValue || 0) + (eff.value || 5); }
     break;
   case "physical_damage_frostbite_guaranteed":
     // Physical DMG with guaranteed Frostbite (Glacial Strike)
@@ -1939,15 +1953,12 @@ switch (eff.type) {
     }
     break;
   case "frostbite_active_army_dmg_stack":
-    // Frost Fury: Army DMG stacks per Frostbite-active round
-    if (rs.frostbiteApplied || rs.frostbiteRoundsLeft > 0) {
-      if (!rs.frostbiteActiveArmyDmgStack) rs.frostbiteActiveArmyDmgStack = { valuePerStack: eff.valuePerStack||0.015, maxStacks: eff.maxStacks||5, current: 0 };
-      if (rs.frostbiteActiveArmyDmgStack.current < rs.frostbiteActiveArmyDmgStack.maxStacks) {
-        rs.frostbiteActiveArmyDmgStack.current++;
-        rs.troopAtkMult *= (1 + rs.frostbiteActiveArmyDmgStack.valuePerStack);
-        rs.cmdMult      *= (1 + rs.frostbiteActiveArmyDmgStack.valuePerStack);
-      }
-    }
+    if (ctx?.isCommander) { // +X% army DMG per round an enemy unit is frostbitten (battle-long, max stacks)
+      const key = `frostFury:${skill?.name}`, st = ctx.cs.stacks[key] || { n: 0, last: 0 };
+      if (frozenUnits(ctx).length && st.last !== round && st.n < (eff.maxStacks || 5)) { st.n++; st.last = round; }
+      ctx.cs.stacks[key] = st;
+      rs.troopAtkMult *= 1 + st.n * (eff.value ?? eff.valuePerStack ?? 0.015);
+    } else if (rs.frostbiteApplied || rs.frostbiteRoundsLeft > 0) rs.troopAtkMult *= (1 + (eff.valuePerStack || 0.015));
     break;
   case "early_round_dmg_followup":
     // Frost Chant: early rounds DMG + follow-up chance
@@ -1958,26 +1969,25 @@ switch (eff.type) {
     }
     break;
   case "early_round_followup_chance":
-    // Song of Courage / Thane's Charge: follow-up chance early rounds
     if (round <= (eff.maxRound || 2)) {
-      rs.followupChance = (rs.followupChance || 0) + (eff.chance || 0.06);
-      if (eff.maxLevelEffect?.armyEvasionNextHit) rs.armyEvasionPerRoundChance = (rs.armyEvasionPerRoundChance || 0) + eff.maxLevelEffect.armyEvasionNextHit;
+      rs.followupChance = (rs.followupChance || 0) + (eff.value ?? eff.chance ?? 0.06);
+      if (ctx?.isCommander) rs.troopAtkMult *= 1 + (eff.value ?? eff.chance ?? 0.06); // expected extra attack
     }
+    if (ctx?.cs && eff.oncePerBattleEvasionChance && round === 1) // max: each allied unit rolls to evade its next hit (once per battle)
+      for (const i of ownIdx(ctx, null)) if (Math.random() < eff.oncePerBattleEvasionChance) (rs.slotEvadeNext || (rs.slotEvadeNext = new Set())).add(i);
     break;
   case "army_followup_per_round":
-    // War Drums / Völva's Sight: follow-up chance every round
-    rs.armyFollowupPerRound = (rs.armyFollowupPerRound || 0) + (eff.chance || 0.02);
-    rs.followupChance       = (rs.followupChance || 0) + rs.armyFollowupPerRound;
-    if (eff.maxLevelEffect?.cmdNormalAtkFocDmg) rs.cmdNormalAtkFocDmg = (rs.cmdNormalAtkFocDmg||0) + eff.maxLevelEffect.cmdNormalAtkFocDmg;
+    rs.armyFollowupPerRound = (rs.armyFollowupPerRound || 0) + (eff.value ?? eff.chance ?? 0.02);
+    if (ctx?.isCommander) { // allied units: extra-attack chance (expected) | max: commander normal attacks +40% Focus damage
+      rs.troopAtkMult *= 1 + (eff.value ?? eff.chance ?? 0.02);
+      if (eff.cmdNormalAtkFocBonus) addSkillHit(rs, ctx, eff.cmdNormalAtkFocBonus, { n: 1, stat: "foc", kind: "normalExtra", requiresNormal: true, fromActive: false, label: skill?.name });
+    } else rs.followupChance = (rs.followupChance || 0) + rs.armyFollowupPerRound;
     break;
   case "focus_damage_frostbite_chance":
-    // FOC DMG + Frostbite chance (Frozen Verse, Cold Snap Strike, Frost Tactics)
-    rs.focusDmgBonus += eff.value || 0.15;
-    if (Math.random() < (eff.frostbiteChance || 0.25)) {
-      rs.frostbiteApplied    = true;
-      rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2);
-      roundLog.actions.push({ actor: actorLabel, action: `🧊 ${skill?.name||"Ice"} — Frostbite applied!`, dmg: 0, isTroopSkill: true });
-    }
+    addSkillHit(rs, ctx, eff.value || 0.15, { n: targetsOf(eff), prio: prioOf(eff), stat: "foc", label: skill?.name });
+    { const n = ctx?.isCommander ? rollFreeze(rs, ctx, ctx.pickEnemy(targetsOf(eff), prioOf(eff)), eff.frostbiteChance ?? 0.25) // each unit hit rolls
+        : (Math.random() < (eff.frostbiteChance ?? 0.25) ? freezeUnits(rs, ctx, null) : 0);
+      if (n) roundLog.actions.push({ actor: actorLabel, action: `🧊 ${skill?.name||"Ice"} — Frostbite on ${ctx?.isCommander ? `${n} unit${n > 1 ? "s" : ""}` : "enemy"}!`, dmg: 0, isTroopSkill: true }); }
     break;
   case "focus_damage_frostbite_guaranteed":
     // FOC DMG with guaranteed Frostbite (Bitter Cold)
@@ -1987,19 +1997,19 @@ switch (eff.type) {
     roundLog.actions.push({ actor: actorLabel, action: `🌨️ Bitter Cold — Frostbite guaranteed!`, dmg: 0, isTroopSkill: true });
     break;
   case "early_round_dmg_stun_immune":
-    // Seer's Vision: early DMG + Stun Immune
-    if (round <= (eff.maxRound || 3)) {
-      rs.troopAtkMult  *= (1 + (eff.dmgUp || 0.02));
-      rs.cmdMult       *= (1 + (eff.dmgUp || 0.02));
-      rs.invisStunImmune = true;
+    if (round <= (eff.maxRound || 3)) { // allied units: DMG +X% + stun immune | max: burn immune
+      rs.troopAtkMult *= (1 + (eff.value ?? eff.dmgUp ?? 0.02));
+      if (ctx?.isCommander) {
+        rs.unitStunImmuneAll = true;
+        if (eff.earlyRoundBurnImmune) for (const i of ownIdx(ctx, null)) (rs.slotBurnImmune || (rs.slotBurnImmune = new Set())).add(i);
+      } else { rs.cmdMult *= (1 + (eff.dmgUp || 0.02)); rs.invisStunImmune = true; }
       if (eff.maxLevelEffect?.earlyRoundBurnImmune) rs.earlyRoundBurnImmune = true;
     }
     break;
   case "heal_all_army_dmg_up":
-    // Ancient Rite: heal all + Army DMG up
-    rs.healPct      += eff.healPct || 0.08;
-    rs.troopAtkMult *= (1 + (eff.dmgUp || 0.01));
-    rs.cmdMult      *= (1 + (eff.dmgUp || 0.01));
+    rs.healPct += eff.value ?? eff.healPct ?? 0.08;
+    { const up = r => { r.troopAtkMult *= (1 + (eff.dmgUp || 0.01)); if (!ctx?.isCommander) r.cmdMult *= (1 + (eff.dmgUp || 0.01)); }; // army DMG +X% for N rounds
+      up(rs); if (ctx?.isCommander) setBuff(ctx, null, round + 1, round + (eff.dmgDuration || 2) - 1, up); }
     break;
   case "heal_all_cleanse":
     rs.healPct += eff.value ?? eff.healPct ?? 0.10;
@@ -2007,36 +2017,30 @@ switch (eff.type) {
     if (ctx?.isCommander) rs.cleanseUnits = Math.max(rs.cleanseUnits || 0, eff.cleanse ?? eff.cleanseCount ?? 1); // each allied unit: remove N debuffs (after both sides' skills)
     break;
   case "heal_all_cleanse_chance":
-    // Völva's Blessing: heal all + cleanse chance
-    rs.healPct           += eff.healPct || 0.12;
+    rs.healPct += eff.value ?? eff.healPct ?? 0.12;
     rs.perRoundCleanseChance = (rs.perRoundCleanseChance || 0) + (eff.cleanseChance || 0.40);
-    if (eff.maxLevelEffect?.healingReceivedUp) rs.healingReceivedUp = (rs.healingReceivedUp||0) + eff.maxLevelEffect.healingReceivedUp;
+    if (ctx?.isCommander) { // each allied unit: X% chance to shed 1 debuff | max: healing received +Y%
+      rs.cleanseUnits = Math.max(rs.cleanseUnits || 0, 1); rs.cleanseChance = Math.max(rs.cleanseChance || 0, eff.cleanseChance || 0.40);
+      if (eff.allyHealingReceivedUp) rs.healReceivedBonus = (rs.healReceivedBonus || 0) + eff.allyHealingReceivedUp;
+    } else if (eff.maxLevelEffect?.healingReceivedUp) rs.healingReceivedUp = (rs.healingReceivedUp||0) + eff.maxLevelEffect.healingReceivedUp;
     break;
   case "aoe_focus_frostbite_chance":
-    // Völva's Wrath: AoE FOC + Frostbite chance
-    rs.cmdAoe       = true;
-    rs.focusDmgBonus += eff.value || 0.10;
-    if (Math.random() < (eff.frostbiteChance || 0.35)) {
-      rs.frostbiteApplied    = true;
-      rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2);
-      roundLog.actions.push({ actor: actorLabel, action: `⚡ Völva's Wrath — All enemies Frostbitten!`, dmg: 0, isTroopSkill: true });
-    }
+    rs.cmdAoe = true;
+    addSkillHit(rs, ctx, eff.value || 0.10, { n: "all", stat: "foc", label: skill?.name });
+    { const n = ctx?.isCommander ? rollFreeze(rs, ctx, ctx.pickEnemy("all"), eff.frostbiteChance || 0.35) // each unit rolls
+        : (Math.random() < (eff.frostbiteChance || 0.35) ? freezeUnits(rs, ctx, null) : 0);
+      if (n) roundLog.actions.push({ actor: actorLabel, action: `⚡ ${skill?.name} — Frostbite on ${ctx?.isCommander ? `${n} unit${n > 1 ? "s" : ""}` : "enemies"}!`, dmg: 0, isTroopSkill: true }); }
     break;
   // ── Halvard mechanics ─────────────────────────────────────────────────────
   case "aoe_enemy_buff_strip_frostbite":
-    // Blizzard Command: strip all enemy buffs + Frostbite chance
-    rs.enemyBuffStripped = true;
-    {
-      let stripped = 0;
-      if (rs.burnApplied)       { stripped++; } // strip self to check... actually we strip enemy-side buffs
-      // Strip positive enemy stat buffs
-      rs.troopAtkMult = Math.min(rs.troopAtkMult, 1.0); // can't strip atk mult that went above baseline
+    rs.enemyBuffStripped = true; // enemy army loses its positive stat buffs this round
+    if (ctx?.isCommander) { // each unit rolls Frostbite | max: enemy units DEF -10
+      const n = rollFreeze(rs, ctx, ctx.pickEnemy("all"), eff.frostbiteChance || 0.20);
+      if (eff.strippedEnemyDefDown) rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + eff.strippedEnemyDefDown, 50);
+      roundLog.actions.push({ actor: actorLabel, action: `🌪️ ${skill?.name} — Enemy buffs stripped${n ? ` + ${n} Frostbitten` : ""}!`, dmg: 0, isTroopSkill: true });
+    } else {
       if (eff.maxLevelEffect?.strippedEnemyDefDown) rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + eff.maxLevelEffect.strippedEnemyDefDown, 50);
-    }
-    if (Math.random() < (eff.frostbiteChance || 0.20)) {
-      rs.frostbiteApplied    = true;
-      rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2);
-      roundLog.actions.push({ actor: actorLabel, action: `🌪️ Blizzard Command — Buffs stripped + Frostbite!`, dmg: 0, isTroopSkill: true });
+      if (Math.random() < (eff.frostbiteChance || 0.20)) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, 2); }
     }
     break;
   case "frostbitten_enemy_foc_vuln":
@@ -2054,16 +2058,16 @@ switch (eff.type) {
     }
     break;
   case "aoe_focus_multi_hit_frostbite":
-    // Winter Storm: AoE multi-hit FOC + Frostbite per hit
     rs.cmdAoe = true;
-    rs.focusDmgBonus += (eff.dmgPct || 0.08) * (eff.hits || 3);
-    for (let h = 0; h < (eff.hits || 3); h++) {
-      if (Math.random() < (eff.frostbiteChance || 0.25)) {
-        rs.frostbiteApplied    = true;
-        rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, rs.frostbiteDuration || 2);
-      }
+    if (ctx?.isCommander) { // N Focus hits on every unit; each hit rolls Frostbite on that unit
+      const hits = eff.hits || 3, c = eff.frostbiteChancePerHit ?? eff.frostbiteChance ?? 0.25;
+      for (let k = 0; k < hits; k++) addSkillHit(rs, ctx, eff.value ?? eff.dmgPct ?? 0.08, { n: "all", stat: "foc", label: skill?.name });
+      const n = rollFreeze(rs, ctx, ctx.pickEnemy("all"), 1 - Math.pow(1 - c, hits));
+      if (n) roundLog.actions.push({ actor: actorLabel, action: `🌨️ ${skill?.name} — ${n} unit${n > 1 ? "s" : ""} Frostbitten!`, dmg: 0, isTroopSkill: true });
+    } else {
+      rs.focusDmgBonus += (eff.dmgPct || 0.08) * (eff.hits || 3);
+      for (let h = 0; h < (eff.hits || 3); h++) if (Math.random() < (eff.frostbiteChance || 0.25)) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, 2); }
     }
-    if (rs.frostbiteApplied) roundLog.actions.push({ actor: actorLabel, action: `🌨️ Winter Storm — All enemies hit + Frostbite!`, dmg: 0, isTroopSkill: true });
     break;
   case "focus_burn_dual_status_chance":
     // Frost and Fire: FOC + Burn DMG + 50% Frostbite or Burn
@@ -2086,32 +2090,30 @@ switch (eff.type) {
     }
     break;
   case "cmd_foc_spd_passive":
-    // Cold Calculation: CMD FOC + SPD bonus
-    rs.cmdFocPassiveBonus = (rs.cmdFocPassiveBonus || 0) + (eff.focValue || 1.0);
-    rs.cmdSpdBonus        = (rs.cmdSpdBonus || 0) + (eff.spdValue || 1.0);
+    if (ctx?.isCommander) { rs.cmdFocFlat = (rs.cmdFocFlat || 0) + (eff.value ?? eff.focValue ?? 1); rs.cmdSpdBonus = (rs.cmdSpdBonus || 0) + (eff.value ?? eff.spdValue ?? 1); } // flat FOC / SPD
+    else { rs.cmdFocPassiveBonus = (rs.cmdFocPassiveBonus || 0) + (eff.focValue || 1.0); rs.cmdSpdBonus = (rs.cmdSpdBonus || 0) + (eff.spdValue || 1.0); }
     break;
   // ── Knut mechanics ────────────────────────────────────────────────────────
   case "early_round_dmg_up_enemy_def_down":
-    // Ironmarch's Roar: early DMG up + enemy DEF down
-    if (round <= (eff.maxRound || 2)) {
-      rs.troopAtkMult *= (1 + (eff.dmgUp || 0.03));
-      rs.cmdMult      *= (1 + (eff.dmgUp || 0.03));
-      rs.enemyDefFlatDown  = Math.min((rs.enemyDefFlatDown||0) + (eff.enemyDefDown||2), 50);
-      if (eff.maxLevelEffect?.marchSpeedBonus) rs.marchSpeedBonus = (rs.marchSpeedBonus||0) + eff.maxLevelEffect.marchSpeedBonus;
+    if (round <= (eff.maxRound || 2)) { // allied units DMG +X% | enemies DEF -N
+      rs.troopAtkMult *= (1 + (eff.value ?? eff.dmgUp ?? 0.03));
+      if (!ctx?.isCommander) rs.cmdMult *= (1 + (eff.dmgUp || 0.03));
+      rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + (eff.enemyDefDown||2), 50);
     }
     break;
   case "early_round_dmg_def_up":
-    // Rally the Clan: early DMG + DEF up
-    if (round <= (eff.maxRound || 2)) {
-      rs.troopAtkMult *= (1 + (eff.dmgUp || 0.04));
-      rs.cmdMult      *= (1 + (eff.dmgUp || 0.04));
-      rs.troopDefMult *= (1 + (eff.defUp || 0.04));
-      if (eff.maxLevelEffect?.earlyRoundConfusionImmune) rs.invisStunImmune = true;
+    if (round <= (eff.maxRound || 2)) { // allied units DMG +X% | DEF +X% | max: army confusion immune
+      rs.troopAtkMult *= (1 + (eff.value ?? eff.dmgUp ?? 0.04));
+      rs.troopDefMult *= (1 + (eff.value ?? eff.defUp ?? 0.04));
+      if (!ctx?.isCommander) rs.cmdMult *= (1 + (eff.dmgUp || 0.04));
+      if (eff.maxLevelEffect?.earlyRoundConfusionImmune) { if (ctx?.isCommander) rs.atkConfusionImmune = true; else rs.invisStunImmune = true; }
     }
     break;
   case "dmg_resist_vs_alignment":
     if (ctx?.isCommander && (eff.alignment === "humans" || eff.alignment === "creatures")) // damage FROM those units only
       (rs.resistFrom || (rs.resistFrom = [])).push({ match: { alignment: eff.alignment }, value: eff.value || 0.015 });
+    else if (ctx?.isCommander && eff.alignment === "all_coldborn") // [Allied Coldborn units] DMG taken -X%
+      for (const i of ownIdx(ctx, "coldborns")) setSlot(rs, "slotDmgTakenMult", i, 1 - (eff.value || 0.015));
     else rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.015));
     break;
   case "dmg_resist_vs_alignment_branch":
@@ -2122,50 +2124,24 @@ switch (eff.type) {
     rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.02));
     break;
   case "branch_flat_hp_bonus":
-    // Bear's Endurance: flat HP bonus to a branch
     rs.branchFlatHpBonus = { branch: eff.branch || "bear_riders", value: eff.value || 8 };
+    if (ctx?.isCommander) flatDefHp(rs, ctx, brSpec(eff.branch || "bear_riders"), 0, eff.value || 8); // [Branch units] HP +N (flat)
     break;
   case "physical_damage_perm_def_down":
-    // Shield Splitter: physical DMG + permanent DEF down on target
-    rs.cmdMult     *= (1 + (eff.value || 0.40));
-    rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + (eff.defDown||3.0), 50);
-    if (eff.maxLevelEffect?.frostbiteOnHit) {
-      rs.frostbiteApplied    = true;
-      rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, eff.maxLevelEffect.frostbiteDuration || 1);
+    addSkillHit(rs, ctx, eff.value || 0.40, { n: 1, prio: prioOf(eff), label: skill?.name });
+    if (ctx?.isCommander) { // that unit: DEF -N for the rest of the battle | max: Frostbite (1 rnd)
+      const list = ctx.pickEnemy(1, prioOf(eff)), dd = eff.defDown || 3;
+      const apply = r => { for (const ti of list) setSlot(r, "unitDefFlatDown", ti, dd, "add"); };
+      apply(rs); setBuff(ctx, null, round + 1, 10, apply);
+      if (eff.applyFrostbite) freezeUnits(rs, ctx, list, eff.frostbiteDuration || 1);
+    } else {
+      rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + (eff.defDown||3.0), 50);
+      if (eff.maxLevelEffect?.applyFrostbite) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft, 1); }
     }
-    roundLog.actions.push({ actor: actorLabel, action: `💥 Shield Splitter — Enemy DEF -${eff.defDown||3} permanently!`, dmg: 0, isTroopSkill: true });
+    roundLog.actions.push({ actor: actorLabel, action: `💥 ${skill?.name} — Enemy DEF -${eff.defDown||3} permanently!`, dmg: 0, isTroopSkill: true });
     break;
   // ── Frostbite mechanics ───────────────────────────────────────────────────
   // Frostbite: DMG dealt -40% for 2 rounds
-  case "physical_damage_frostbite_chance":
-    rs.cmdMult *= (1 + (eff.value || eff.base || 0.30));
-    if (Math.random() < (eff.frostbiteChance || 0.50)) {
-      rs.frostbiteApplied = true;
-      rs.frostbiteRoundsLeft = 2;
-      roundLog.actions.push({ actor: actorLabel, action: `🧊 Frostbite applied — Enemy DMG -40% for 2 rounds!`, dmg: 0, isTroopSkill: true });
-    }
-    break;
-  case "aoe_physical_frostbite_chance":
-    rs.cmdAoe = true;
-    rs.cmdMult *= (1 + (eff.value || 0.10));
-    if (Math.random() < (eff.frostbiteChance || 0.25)) {
-      rs.frostbiteApplied = true;
-      rs.frostbiteRoundsLeft = 2;
-      roundLog.actions.push({ actor: actorLabel, action: `🧊 AoE Frostbite — All enemies DMG -40% for 2 rounds!`, dmg: 0, isTroopSkill: true });
-    }
-    break;
-  case "physical_shatter_frostbite":
-    // Shatter: heavy hit on frostbitten target, removes frostbite, applies DEF down
-    if (rs.frostbiteApplied) {
-      rs.cmdMult *= (1 + (eff.value || 0.60)) * 1.25; // bonus vs frostbitten
-      rs.frostbiteApplied = false;
-      rs.frostbiteRoundsLeft = 0;
-      rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + (eff.defDown || 5.0), 50);
-      roundLog.actions.push({ actor: actorLabel, action: `💥 Shatter — Frostbite removed + DEF -${eff.defDown||5} (${eff.defDownDuration||2} rnd)!`, dmg: 0, isTroopSkill: true });
-    } else {
-      rs.cmdMult *= (1 + (eff.value || 0.60));
-    }
-    break;
   case "physical_damage_frostbitten_slow":
     addSkillHit(rs, ctx, eff.value || 0.25, { n: targetsOf(eff), prio: prioOf(eff), label: skill?.name });
     if (ctx?.isCommander) { // Coldborn version: only if Frostbite is up; Ashen version: guaranteed Slow | max: slowed units DEF -N
@@ -2178,86 +2154,59 @@ switch (eff.type) {
       if (eff.maxLevelEffect?.slowedEnemyDefDown) for (const ti of Object.keys(rs.unitSpdDown || {}).map(Number)) setSlot(rs, "unitDefFlatDown", ti, eff.maxLevelEffect.slowedEnemyDefDown, "add");
     } else if (rs.frostbiteApplied) { rs.slowApplied = true; rs.slowValue = eff.slowValue || 25; }
     break;
-  case "physical_damage_perm_def_down":
-    // Shield Splitter: permanent DEF reduction, optionally applies frostbite at max level
-    rs.cmdMult *= (1 + (eff.value || 0.40));
-    rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + (eff.defDown || 3.0), 50);
-    if (eff.maxLevelEffect?.applyFrostbite) {
-      rs.frostbiteApplied = true;
-      rs.frostbiteRoundsLeft = eff.maxLevelEffect.frostbiteDuration || 1;
-      roundLog.actions.push({ actor: actorLabel, action: `⚔️ Shield Splitter — DEF -${eff.defDown||3} permanently + Frostbite applied!`, dmg: 0, isTroopSkill: true });
-    }
-    break;
   case "cmd_dmg_bonus_vs_frostbitten":
-    // Frozen Prey / Frostbitten Foes / Calculated Cruelty
-    if (rs.frostbiteApplied) {
-      rs.cmdMult      *= (1 + (eff.value || 0.03));
-      rs.troopAtkMult *= (1 + (eff.value || 0.03));
-    }
+    if (ctx?.isCommander) (rs.vsTarget || (rs.vsTarget = [])).push({ who: /^\[CMD &/.test(skill?.desc || "") ? "all" : "cmd", match: { frostbitten: true }, value: eff.value || 0.03 }); // per frostbitten unit
+    else if (rs.frostbiteApplied) { rs.cmdMult *= (1 + (eff.value || 0.03)); rs.troopAtkMult *= (1 + (eff.value || 0.03)); }
     break;
   case "cmd_atk_per_round_frostbite_active":
-    // Cold Fury: CMD ATK bonus each round frostbite is active
-    if (rs.frostbiteApplied) {
-      rs.cmdFocPassiveBonus = (rs.cmdFocPassiveBonus || 0); // reuse existing field
-      rs.coldFuryAtkBonus   = (rs.coldFuryAtkBonus || 0) + (eff.value || 2.0);
-      rs.cmdMult            *= (1 + (eff.value || 2.0) / 100);
-    }
+    if (ctx?.isCommander) { if (frozenUnits(ctx).length) rs.cmdAtkFlat = (rs.cmdAtkFlat || 0) + (eff.value || 2.0); } // this round, while any enemy unit is frostbitten
+    else if (rs.frostbiteApplied) { rs.coldFuryAtkBonus = (rs.coldFuryAtkBonus || 0) + (eff.value || 2.0); rs.cmdMult *= (1 + (eff.value || 2.0) / 100); }
     break;
   case "per_round_atk_stack_spd_lose":
-    // Berserker's Rush: every round ATK permanently grows, SPD permanently drops
-    rs.berserkerRushAtkGain = (rs.berserkerRushAtkGain || 0) + (eff.atkPerRound || 3.0);
-    rs.berserkerRushSpdLoss = (rs.berserkerRushSpdLoss || 0) + (eff.spdLostPerRound || 2.0);
-    rs.cmdMult *= (1 + (rs.berserkerRushAtkGain / 100));
-    if (eff.maxLevelEffect?.enemyDefDown) rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + eff.maxLevelEffect.enemyDefDown, 50);
-    roundLog.actions.push({ actor: actorLabel, action: `😤 Berserker's Rush — ATK +${eff.atkPerRound||3} (total +${rs.berserkerRushAtkGain}) | SPD -${eff.spdLostPerRound||2} (total -${rs.berserkerRushSpdLoss})`, dmg: 0, isTroopSkill: true });
+    if (ctx?.isCommander) { // each round: commander ATK +N and SPD -2 (both permanent, so N × round) | max: enemy units DEF -10
+      rs.cmdAtkFlat = (rs.cmdAtkFlat || 0) + (eff.value ?? eff.atkPerRound ?? 3) * round;
+      rs.cmdSpdBonus = (rs.cmdSpdBonus || 0) - (eff.spdLostPerRound || 2) * round;
+      if (eff.maxLevelEffect?.enemyDefDown) rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + eff.maxLevelEffect.enemyDefDown, 50);
+    } else {
+      rs.berserkerRushAtkGain = (rs.berserkerRushAtkGain || 0) + (eff.atkPerRound || 3.0);
+      rs.cmdMult *= (1 + (rs.berserkerRushAtkGain / 100));
+      if (eff.maxLevelEffect?.enemyDefDown) rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + eff.maxLevelEffect.enemyDefDown, 50);
+    }
     break;
   case "cmd_atk_stack_on_troop_hit":
-    // War Scars: CMD ATK buff when troops take damage (tracked per round)
-    rs.warScarsStacksThisRound = (rs.warScarsStacksThisRound || 0) + 1;
-    if (rs.warScarsStacksThisRound <= (eff.maxStacks || 5)) {
-      rs.cmdMult *= (1 + (eff.valuePerStack || 0.01));
+    if (ctx?.cs) { // CMD ATK +X% per hit our troops took last round (max stacks)
+      const now = ctx.cs.hitsTaken || 0, key = `warScars:${skill?.name}`, prev = ctx.cs.stacks[key] ?? 0;
+      ctx.cs.stacks[key] = now;
+      rs.cmdMult *= 1 + (eff.value ?? eff.valuePerStack ?? 0.01) * Math.min(eff.maxStacks || 5, now - prev);
+    } else {
+      rs.warScarsStacksThisRound = (rs.warScarsStacksThisRound || 0) + 1;
+      if (rs.warScarsStacksThisRound <= (eff.maxStacks || 5)) rs.cmdMult *= (1 + (eff.valuePerStack || 0.01));
     }
     break;
   case "no_unit_lost_dmg_stun_immune":
-    // Frozen Throne: bonus if no units killed yet
-    if (!rs.unitLostThisBattle) {
-      rs.cmdMult         *= (1 + (eff.dmgBonus || 0.03));
-      rs.invisStunImmune  = true;
-      if (eff.maxLevelEffect?.armyDmgReceiveDown) rs.dmgReduce = Math.min(0.85, rs.dmgReduce + eff.maxLevelEffect.armyDmgReceiveDown);
-    }
-    break;
-  case "frostbitten_enemy_spd_down":
-    // Permafrost / The Long Winter: extra SPD penalty on frostbitten enemies
-    rs.frostbitenSpdDown = (rs.frostbitenSpdDown || 0) + (eff.value || 5);
+    if (ctx?.cs) { // while none of our units has died: CMD DMG +X% + stun immune (max: army DMG taken -Y%); lost for good once one dies
+      if (ctx.ownSlotIdx(() => true).length < (ctx.atkSlots || []).length) ctx.cs.throneLost = true;
+      if (!ctx.cs.throneLost) {
+        rs.cmdMult *= (1 + (eff.value ?? eff.dmgBonus ?? 0.03));
+        rs.cmdStunImmune = true;
+        if (eff.armyDmgReceiveDown) rs.dmgReduce = Math.min(0.85, rs.dmgReduce + eff.armyDmgReceiveDown);
+      }
+    } else if (!rs.unitLostThisBattle) { rs.cmdMult *= (1 + (eff.dmgBonus || 0.03)); rs.invisStunImmune = true; }
     break;
   case "frostbite_applied_def_down":
-    // Shattered Defenses: DEF down each time frostbite is applied
-    if (rs.frostbiteApplied) {
-      rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + (eff.defDown || 1.0), 50);
-    }
+    if (ctx?.isCommander) { // each Frostbite applied: that unit DEF -N for 2 rounds
+      for (const a of (ctx.cs.frostApps || [])) if (a.round >= round - (eff.duration || 2) + 1) setSlot(rs, "unitDefFlatDown", a.ti, eff.value ?? eff.defDown ?? 1, "add");
+    } else if (rs.frostbiteApplied) rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + (eff.defDown || 1.0), 50);
     break;
   case "frostbitten_enemy_foc_dmg_taken_up":
-    // Cold Logic: frostbitten enemies take more FOC DMG
-    if (rs.frostbiteApplied) {
-      rs.focusDmgBonus += eff.value || 0.05;
-      rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.value || 0.05);
-    }
-    break;
-  case "per_round_frostbite_aoe_chance":
-    // Frostbite Carol / Frost Destruction / Tide of Ice
-    if (Math.random() < (eff.chance || 0.06)) {
-      rs.frostbiteApplied   = true;
-      rs.frostbiteRoundsLeft = 2;
-      roundLog.actions.push({ actor: actorLabel, action: `❄️ Frostbite AoE — All enemies Frostbitten!`, dmg: 0, isTroopSkill: true });
-    }
+    if (ctx?.isCommander) (rs.vsTarget || (rs.vsTarget = [])).push({ who: "all", foc: true, match: { frostbitten: true }, value: eff.value || 0.05 }); // frostbitten units: Focus DMG taken +X%
+    else if (rs.frostbiteApplied) { rs.focusDmgBonus += eff.value || 0.05; rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.value || 0.05); }
     break;
   case "per_round_frostbite_multi_chance":
-    // Winter's Frost: frostbite chance on multiple specific targets per round
-    if (Math.random() < (eff.chance || 0.07)) {
-      rs.frostbiteApplied   = true;
-      rs.frostbiteRoundsLeft = 2;
-      roundLog.actions.push({ actor: actorLabel, action: `❄️ Winter's Frost — Frostbite applied!`, dmg: 0, isTroopSkill: true });
-    }
+    if (ctx?.isCommander) { // each round: N enemy units each roll Frostbite
+      const n = rollFreeze(rs, ctx, ctx.pickEnemy(targetsOf(eff), null, true), eff.value ?? eff.chance ?? 0.07);
+      if (n) roundLog.actions.push({ actor: actorLabel, action: `❄️ ${skill?.name} — ${n} unit${n > 1 ? "s" : ""} Frostbitten!`, dmg: 0, isTroopSkill: true });
+    } else if (Math.random() < (eff.chance || 0.07)) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = 2; }
     break;
   case "on_hit_frostbite_chance":
     // Raider troop skill — on-hit frostbite proc
@@ -2267,159 +2216,37 @@ switch (eff.type) {
     }
     break;
   case "vs_all_dmg_up_frostbite_chance":
-    // Skald's Curse: all enemies DMG received up + frostbite chance
-    rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.dmgTakenUp || 0.02);
     rs.cmdAoe = true;
-    if (Math.random() < (eff.frostbiteChance || 0.20)) {
-      rs.frostbiteApplied   = true;
-      rs.frostbiteRoundsLeft = 2;
-      if (eff.maxLevelEffect?.frostbitenSpdDown) rs.frostbitenSpdDown = (rs.frostbitenSpdDown||0) + eff.maxLevelEffect.frostbitenSpdDown;
-      roundLog.actions.push({ actor: actorLabel, action: `🔮 Skald's Curse — Frostbite + DMG Received up!`, dmg: 0, isTroopSkill: true });
-    }
-    break;
-  case "focus_damage_frostbite_chance":
-    // FOC damage + frostbite chance (Ice Lance variant, Frozen Verse, Bitter Cold, Cold Snap Strike)
-    rs.focusDmgBonus += eff.value || 0.20;
-    if (Math.random() < (eff.frostbiteChance || 0.40)) {
-      rs.frostbiteApplied   = true;
-      rs.frostbiteRoundsLeft = 2;
-      roundLog.actions.push({ actor: actorLabel, action: `🧊 Focus Frostbite — applied!`, dmg: 0, isTroopSkill: true });
-    }
-    break;
-  case "aoe_focus_frostbite_chance":
-    // Völva's Wrath: AoE FOC hit + frostbite
-    rs.cmdAoe = true;
-    rs.focusDmgBonus += eff.value || 0.10;
-    if (Math.random() < (eff.frostbiteChance || 0.35)) {
-      rs.frostbiteApplied   = true;
-      rs.frostbiteRoundsLeft = 2;
-      roundLog.actions.push({ actor: actorLabel, action: `⚡ Völva's Wrath — AoE FOC + Frostbite!`, dmg: 0, isTroopSkill: true });
-    }
-    break;
-  case "aoe_enemy_buff_strip_frostbite":
-    // Blizzard Command: strip buffs + frostbite
-    rs.enemyBuffStripped = true;
-    if (rs.burnApplied)       { rs.burnApplied=false; rs.burnDmgPenalty=0; rs.enemyAtkReduce=Math.max(0,rs.enemyAtkReduce-0.20); }
-    if (rs.pendingVenomDmg>0) { rs.pendingVenomDmg=0; }
-    if (rs.enemyStunned>0)    { rs.enemyStunned=0; }
-    if (rs.enemyConfused>0)   { rs.enemyConfused=0; }
-    if (rs.blindApplied)      { rs.blindApplied=false; }
-    if (rs.slowApplied)       { rs.slowApplied=false; rs.slowValue=0; }
-    roundLog.actions.push({ actor: actorLabel, action: `🌨️ Blizzard Command — All enemy buffs stripped!`, dmg: 0, isTroopSkill: true });
-    if (Math.random() < (eff.frostbiteChance || 0.20)) {
-      rs.frostbiteApplied   = true;
-      rs.frostbiteRoundsLeft = 2;
-      if (eff.maxLevelEffect?.strippedEnemyDefDown) rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + eff.maxLevelEffect.strippedEnemyDefDown, 50);
-      roundLog.actions.push({ actor: actorLabel, action: `🧊 Blizzard Command — Frostbite applied!`, dmg: 0, isTroopSkill: true });
-    }
-    break;
-  case "aoe_focus_multi_hit_frostbite":
-    // Winter Storm: multi-hit FOC AoE + frostbite per hit
-    rs.cmdAoe = true;
-    rs.focusDmgBonus += (eff.value || 0.08) * (eff.hits || 3);
-    for (let i = 0; i < (eff.hits || 3); i++) {
-      if (Math.random() < (eff.frostbiteChancePerHit || 0.25)) {
-        rs.frostbiteApplied   = true;
-        rs.frostbiteRoundsLeft = 2;
-      }
-    }
-    if (rs.frostbiteApplied) roundLog.actions.push({ actor: actorLabel, action: `🌪️ Winter Storm — Multi-hit FOC + Frostbite!`, dmg: 0, isTroopSkill: true });
+    rs.enemyDmgTakenUp = (rs.enemyDmgTakenUp || 0) + (eff.value ?? eff.dmgTakenUp ?? 0.02); // all enemies take +X% this round
+    if (ctx?.isCommander) { // each unit rolls Frostbite | max: frostbitten units SPD -10
+      const n = rollFreeze(rs, ctx, ctx.pickEnemy("all"), eff.frostbiteChance || 0.20);
+      if (eff.frostbitenSpdDown) rs.frostSpdDown = (rs.frostSpdDown || 0) + eff.frostbitenSpdDown;
+      if (n) roundLog.actions.push({ actor: actorLabel, action: `🔮 ${skill?.name} — ${n} unit${n > 1 ? "s" : ""} Frostbitten!`, dmg: 0, isTroopSkill: true });
+    } else if (Math.random() < (eff.frostbiteChance || 0.20)) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = 2; }
     break;
   case "focus_burn_dual_frostbite_burn_chance":
-    // Frost and Fire: FOC + Burn DMG, 50% Frostbite or Burn
-    rs.focusDmgBonus += (eff.value || 0.15) * 2; // FOC + Burn components
-    if (Math.random() < (eff.frostbiteOrBurnChance || 0.50)) {
-      if (Math.random() < 0.50) {
-        rs.frostbiteApplied   = true;
-        rs.frostbiteRoundsLeft = 2;
-        roundLog.actions.push({ actor: actorLabel, action: `🔥❄️ Frost and Fire — Frostbite applied!`, dmg: 0, isTroopSkill: true });
-      } else {
-        rs.burnApplied    = true;
-        rs.burnDmgPenalty = 0.20;
-        rs.enemyAtkReduce += 0.20;
-        roundLog.actions.push({ actor: actorLabel, action: `🔥❄️ Frost and Fire — Burn applied!`, dmg: 0, isTroopSkill: true });
-      }
+    if (ctx?.isCommander) { // N units: X% Focus + X% Burn damage; each rolls Frostbite or Burn | max: CMD confusion immune early rounds
+      const v = eff.value || 0.15, list = ctx.pickEnemy(targetsOf(eff), prioOf(eff));
+      addSkillHit(rs, ctx, v, { n: targetsOf(eff), prio: prioOf(eff), stat: "foc", label: skill?.name });
+      addBurnDmg(rs, v, ctx, { n: targetsOf(eff), prio: prioOf(eff), label: `${skill?.name} (burn)` });
+      const frost = [], burn = [];
+      for (const ti of list) if (Math.random() < (eff.frostbiteOrBurnChance || 0.50)) (Math.random() < 0.5 ? frost : burn).push(ti);
+      freezeUnits(rs, ctx, frost); burnUnits(rs, ctx, 0, null, 1, 0.20, { list: burn });
+      if (eff.earlyRoundConfusionImmune && round <= (eff.maxRound || 3)) rs.cmdConfusionImmune = true;
+    } else {
+      rs.focusDmgBonus += (eff.value || 0.15) * 2;
+      if (Math.random() < (eff.frostbiteOrBurnChance || 0.50)) { if (Math.random() < 0.50) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = 2; } else applyBurn(rs, 0.20); }
     }
-    if (eff.maxLevelEffect?.earlyRoundConfusionImmune && round <= (eff.maxLevelEffect.maxRound || 3)) {
-      rs.invisStunImmune = true;
-    }
-    break;
-  case "frostbite_active_army_dmg_stack":
-    // Frost Fury: army DMG up each round frostbite is active
-    if (rs.frostbiteApplied) {
-      rs.frostFuryStacks = Math.min((rs.frostFuryStacks || 0) + 1, eff.maxStacks || 5);
-      rs.troopAtkMult   *= (1 + (eff.valuePerStack || 0.015) * rs.frostFuryStacks);
-    }
-    break;
-  case "army_followup_per_round":
-    // War Drums / Völva's Sight: per-round follow-up chance for army
-    rs.factionFollowupPerRound = (rs.factionFollowupPerRound || 0) + (eff.chance || 0.02);
     break;
   case "early_round_dmg_followup_chance":
-    // Frost Chant: early rounds DMG up + followup chance
-    if (round <= (eff.maxRound || 3)) {
-      rs.troopAtkMult *= (1 + (eff.dmgUp || 0.04));
+    if (round <= (eff.maxRound || 3)) { // allied units: DMG +X% and 10% extra-attack chance (expected)
+      rs.troopAtkMult *= (1 + (eff.value ?? eff.dmgUp ?? 0.04)) * (1 + (eff.followupChance || 0.10));
       rs.factionFollowupPerRound = (rs.factionFollowupPerRound || 0) + (eff.followupChance || 0.10);
     }
     break;
-  case "early_round_followup_chance":
-    // Song of Courage / Thane's Charge: early rounds follow-up
-    if (round <= (eff.maxRound || 2)) {
-      rs.factionFollowupPerRound = (rs.factionFollowupPerRound || 0) + (eff.chance || 0.06);
-    }
-    break;
-  case "early_round_dmg_stun_immune":
-    // Seer's Vision: early rounds DMG up + stun immune
-    if (round <= (eff.maxRound || 3)) {
-      rs.troopAtkMult    *= (1 + (eff.dmgUp || 0.02));
-      rs.invisStunImmune  = true;
-      if (eff.maxLevelEffect?.earlyRoundBurnImmune) rs.earlyRoundBurnImmune = true;
-    }
-    break;
-  case "heal_all_army_dmg_up":
-    // Ancient Rite: heal + army DMG up
-    rs.healPct    += eff.healPct || 0.08;
-    rs.troopAtkMult *= (1 + (eff.dmgUp || 0.01));
-    break;
-  case "heal_all_cleanse_chance":
-    // Völva's Blessing: heal all + chance to cleanse
-    rs.healPct += eff.healPct || 0.12;
-    if (Math.random() < (eff.cleanseChance || 0.40)) {
-      rs.pendingVenomDmg = 0;
-      rs.burnApplied     = false;
-      roundLog.actions.push({ actor: actorLabel, action: `✨ Völva's Blessing — Healed + debuff cleansed!`, dmg: 0, isTroopSkill: true });
-    }
-    if (eff.maxLevelEffect?.allyHealingReceivedUp) rs.allyHealingReceivedUp = (rs.allyHealingReceivedUp||0) + eff.maxLevelEffect.allyHealingReceivedUp;
-    break;
-  case "early_round_dmg_up_enemy_def_down":
-    // Ironmarch's Roar: allied DMG up + enemy DEF down in early rounds
-    if (round <= (eff.maxRound || 2)) {
-      rs.troopAtkMult *= (1 + (eff.dmgUp || 0.03));
-      rs.cmdMult      *= (1 + (eff.dmgUp || 0.03));
-      rs.enemyDefFlatDown  = Math.min((rs.enemyDefFlatDown||0) + (eff.enemyDefDown||2.0), 50);
-    }
-    if (eff.maxLevelEffect?.marchSpeedBonus) rs.marchSpeedBonus = (rs.marchSpeedBonus||0) + eff.maxLevelEffect.marchSpeedBonus;
-    break;
-  case "early_round_dmg_def_up":
-    // Rally the Clan: DMG + DEF up early rounds + optional confusion immune
-    if (round <= (eff.maxRound || 2)) {
-      rs.troopAtkMult *= (1 + (eff.dmgUp || 0.04));
-      rs.troopDefMult *= (1 + (eff.defUp || 0.04));
-      if (eff.maxLevelEffect?.earlyRoundConfusionImmune) rs.invisStunImmune = true;
-    }
-    break;
-  case "branch_flat_hp_bonus":
-    // Bear's Endurance: flat HP bonus to a branch
-    rs.branchFlatHpBonus = { branch: eff.branch || "bear_riders", value: eff.value || 8 };
-    break;
   case "faction_dmg_resist_vs_alignment":
-    // Coldborn Brotherhood: faction-specific DMG resist vs alignment
-    rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.02));
-    break;
-  case "cmd_foc_spd_passive":
-    // Cold Calculation: CMD FOC + SPD bonus
-    rs.cmdFocPassiveBonus = (rs.cmdFocPassiveBonus || 0) + (eff.focValue || 1.0);
-    rs.cmdSpdBonus = (rs.cmdSpdBonus || 0) + (eff.spdValue || 1.0);
+    if (ctx?.isCommander) (rs.resistFrom || (rs.resistFrom = [])).push({ match: { alignment: eff.alignment || "creatures" }, value: (eff.value || 0.02) * armyShare(ctx, eff.faction || ctx.ownFaction) }); // [Faction units] DMG from <alignment> -X%
+    else rs.dmgReduce = Math.min(0.85, rs.dmgReduce + (eff.value || 0.02));
     break;
   case "passive_heal_per_round":
     // Winter's Song / Cold Mending / Heals for Days: passive per-round heal
@@ -3570,7 +3397,7 @@ const MLE_STAT_KEYS = {
   spdBonus:"cmdSpdBonus", cmdSpdBonus:"cmdSpdBonus", atkDown:"enemyCmdAtkFlatDown", spdDown:"enemySpdFlatDown",
 };
 // Keys whose own case block already reads eff.maxLevelEffect.<key> (don't double-apply).
-const MLE_HANDLER_OWNED = new Set(["undead_buff_enemy_def_down:atkBonus", "silence_and_foc_vuln:cmdFocBonus", "aoe_burn_guaranteed:burnedEnemyDefDown", "physical_damage_frostbitten_slow:slowedEnemyDefDown"]);
+const MLE_HANDLER_OWNED = new Set(["undead_buff_enemy_def_down:atkBonus", "silence_and_foc_vuln:cmdFocBonus", "aoe_burn_guaranteed:burnedEnemyDefDown", "physical_damage_frostbitten_slow:slowedEnemyDefDown", "multi_hit_random_atk_stack:frostbittenSkillDmgTakenUp"]);
 const MLE_UNIT_RE = /^(pirate|orc|hk|holyKnight|dragon|coldbornc|warg|werewolf|skeletonMummy|skeleton|mummy|spider|mounted|army|)(?:Troop)?(HpBonus|DefBonus|CombatSpd|BonusDmg|DmgRangeMin|DmgRangeMax|DmgStatMin|DmgStatMax|DmgRangeBonus|HealingReceivedUp)$/i;
 const MLE_GROUPS = {
   pirate:{ faction:"pirates" }, orc:{ faction:"orcs" }, hk:{ faction:"holyknights" }, holyknight:{ faction:"holyknights" },
@@ -3681,6 +3508,7 @@ function applyCommanderSkillEffects(skills, round, rs, roundLog, actorLabel, ctx
   const cs = ctx.cs || (ctx.cs = newCommanderSkillState());
   ctx.isCommander = true;
   cs.round = round; cs.drainAppliedNow = 0;
+  if (cs.frostbite && [...cs.frostbite.values()].some(u => u >= round)) { rs.frostbiteApplied = true; rs.frostbiteRoundsLeft = Math.max(rs.frostbiteRoundsLeft || 0, 1); } // status for conditional skills
   ctx.round = round;
   const list = [];
   for (const { key, def, level } of skills) {
@@ -4259,7 +4087,8 @@ const vsMult = (S, T, i, who, isFoc = false) => (S.rs.vsTarget || []).reduce((m,
     : v.match?.burned ? (S.rs.burnedUnits?.has(i) || (S.rs.enemyBurnPenalty || 0) > 0)
     : v.match?.slowed ? (S.rs.unitSpdDown?.[i] || 0) > 0
     : v.match?.poisoned ? S.dots.some(d => d.kind === "venom" && d.ti === i)
-    : v.match?.drained ? (S.cs.lifeDrain?.get(i) || 0) >= (S.cs.round || 0) : unitMatches(T, i, v.match);
+    : v.match?.drained ? (S.cs.lifeDrain?.get(i) || 0) >= (S.cs.round || 0)
+    : v.match?.frostbitten ? (S.cs.frostbite?.get(i) || 0) >= (S.cs.round || 0) : unitMatches(T, i, v.match);
   return ok ? m * (1 + v.value) : m;
 }, 1) * (1 + (S.rs.unitVuln?.[i] || 0)) * (T.rs.slotDmgTakenMult?.[i] ?? 1)
   // The People's Hero: the unit's DMG received -X%, decaying per hit it has taken
@@ -4946,6 +4775,7 @@ const slotAct = (S, idx, T, round, roundLog) => {
       modSum, false, sizeMod, r.followupSources || [], round) * vsMult(S, T, ti, "troops", sl.branchDef?.dmgType === "magical") * resistMult(T, S, sl)
       * (r.slotAtkMult?.[idx] ?? 1) * (r.slotBurnImmune?.has(idx) ? 1 : 1 - (er.burnedUnits?.get(idx) || 0))   // this unit Burned: DMG dealt -X%
       * ((er.minDmgUnits?.has(idx) && sl.tierData) ? sl.tierData.dmgLo / ((sl.tierData.dmgLo + sl.tierData.dmgHi) / 2) : 1) // Powerful Suppression
+      * ((T.cs.frostbite?.get(idx) || 0) >= round ? 1 - (er.frostbiteDmgPenalty ?? 0.40) : 1) // Frostbite: this unit deals -40%
       * (sl.branchDef?.dmgType === "magical" ? 1 - (er.slotFocusResist?.[ti] || 0) : 1 - (er.slotPhysResist?.[ti] || 0))
       * (((r.slotMaxDmgChance?.[idx] || 0) > 0 && Math.random() < r.slotMaxDmgChance[idx] && sl.tierData)   // "max damage" proc
           ? sl.tierData.dmgHi / ((sl.tierData.dmgLo + sl.tierData.dmgHi) / 2) : 1);
@@ -5030,12 +4860,14 @@ for (const S of [A, D]) {
   if (!n) continue;
   er.enemyStunned = 0; er.enemyConfused = 0;
   S.slots.forEach((sl, i) => {
+    if ((S.rs.cleanseChance || 0) > 0 && Math.random() >= S.rs.cleanseChance) return; // Völva's Blessing: X% per unit
     let left = n;
     for (const set of [er.stunnedUnits, er.confusedUnits, er.blindedUnits, er.minDmgUnits]) if (left > 0 && set?.delete(i)) left--;
     if (left > 0 && er.burnedUnits?.delete(i)) left--;
     for (const f of ["unitDefFlatDown", "unitSpdDown"]) if (left > 0 && er[f]?.[i]) { delete er[f][i]; left--; }
     if (left > 0) { const k = T.dots.findIndex(d => d.ti === i); if (k >= 0) { T.dots.splice(k, 1); left--; } }
     if (left > 0 && T.cs.lifeDrain?.has(i)) { T.cs.lifeDrain.delete(i); left--; }
+    if (left > 0 && T.cs.frostbite?.has(i)) { T.cs.frostbite.delete(i); left--; }
   });
 }
 // You Get a Heal!: units of the branch that a debuff landed on this round heal X% (once per round)
@@ -5149,7 +4981,8 @@ const order = [];
 for (const S of [A, D]) {
   const T = other(S);
   order.push({ side:S, cmd:true, spd:S.spd + (S.rs.cmdSpdBonus || 0) - (T.rs.enemySpdFlatDown || 0) });
-  S.slots.forEach((sl, idx) => order.push({ side:S, slotIdx:idx, spd:sl.spd + (S.rs.slotSpdBonus?.[idx] || 0) - (T.rs.enemySpdFlatDown || 0) - (T.rs.unitSpdDown?.[idx] || 0) }));
+  S.slots.forEach((sl, idx) => order.push({ side:S, slotIdx:idx, spd:sl.spd + (S.rs.slotSpdBonus?.[idx] || 0) - (T.rs.enemySpdFlatDown || 0) - (T.rs.unitSpdDown?.[idx] || 0)
+    - ((T.cs.frostbite?.get(idx) || 0) >= round ? (T.rs.frostSpdDown || 0) : 0) })); // Permafrost / The Long Winter
 }
 // Speed ties: one coin flip per round decides which side's tied units go first (no built-in attacker edge)
 const tieFirst = Math.random() < 0.5 ? A : D;
