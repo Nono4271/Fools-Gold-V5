@@ -74,11 +74,18 @@ function orcBattle(id, skillPoints, foeFaction = 'holyknights', foeBranch = 'tem
   return seeded(() => simBattle(cmd, 20000, { defCmd: def, garrison: 100, owner: 'ai' }, 0), seed);
 }
 const dealt = r => r.report.rounds.flatMap(x => x.actions).reduce((t, x) => t + (x.isPlayer ? (x.dmg || 0) : 0), 0);
-// Stronger = wins in fewer rounds, or same rounds with more damage dealt
-const stronger = (a, b) => a.report.rounds.length < b.report.rounds.length || (a.report.rounds.length === b.report.rounds.length && dealt(a) > dealt(b));
+// Stronger over 10 seeds = fewer total troops lost (ties: fewer total rounds)
+const strongerOver = (id, sp) => {
+  let lw = 0, lo = 0, rw = 0, ro = 0;
+  for (let seed = 1; seed <= 10; seed++) {
+    const w = orcBattle(id, sp, 'holyknights', 'templars', seed), o = orcBattle(id, {}, 'holyknights', 'templars', seed);
+    lw += w.lost; lo += o.lost; rw += w.report.rounds.length; ro += o.report.rounds.length;
+  }
+  return lw < lo || (lw === lo && rw < ro);
+};
 
 test('orcs: Brutal Strike adds damage (used to overwrite commander damage down to 27%)', () => {
-  assert.ok(stronger(orcBattle('h33', { kor_brutal_strike: 15 }), orcBattle('h33', {})));
+  assert.ok(strongerOver('h33', { kor_brutal_strike: 15 }));
 });
 
 test('orcs: faction-conditional skills only apply vs that faction', () => {
@@ -89,7 +96,7 @@ test('orcs: faction-conditional skills only apply vs that faction', () => {
 });
 
 test("orcs: Warlord's Touch vulnerability stacks persist across rounds", () => {
-  assert.ok(stronger(orcBattle('h33', { kor_warlords_touch: 7 }), orcBattle('h33', {})));
+  assert.ok(strongerOver('h33', { kor_warlords_touch: 7 }));
 });
 
 test('orcs: Lifeline of the Tribe max-level bonus is Orc combat SPD (typo fix)', () => {
@@ -113,4 +120,41 @@ test("orcs: Leader's Plans = +N DEF/HP per 4 Command advantage (Command = troops
   assert.ok(run(8000, 5500, { war_leaders_plans: 7 }) < run(8000, 5500, {}));
   // 80 vs 78: under one 4-command step → no effect
   assert.equal(run(8000, 7800, { war_leaders_plans: 7 }), run(8000, 7800, {}));
+});
+
+// ── Two-sided battle (PvP parity) ─────────────────────────────────────────────
+function pvpArmy(id, maxed) {
+  const hd = heroes.find(h => h.id === id);
+  const slots = FACTION_TROOPS[hd.faction].branches.slice(0, 2).map(b => ({ branch: { faction: hd.faction, branch: b.key, tier: 2 }, troops: 4000 }));
+  const c = { id, n: hd.n, faction: hd.faction, cls: hd.cls, rarity: hd.rarity, lvl: 40, respectLevel: 10, atk: 220, foc: 220, spd: 100, troops: 8000, troopBranch: slots[0].branch, troopSlots: slots, skillPoints: {} };
+  if (maxed) c.skillPoints = maxLevels(c);
+  return c;
+}
+const pvp = (a, d, seed) => seeded(() => simBattle(a, a.troops, { owner: 'player', terrain: 'grass', defCmd: { ...d } }, 0), seed);
+
+test('PvP parity: identical armies — attacker has no built-in edge', () => {
+  let atkWins = 0, n = 0;
+  for (const id of ['h9', 'h1', 'h44', 'h37']) for (const maxed of [false, true]) {
+    const x = pvpArmy(id, maxed);
+    for (let s = 1; s <= 20; s++) { if (pvp(x, x, s).won) atkWins++; n++; }
+  }
+  const rate = atkWins / n;
+  assert.ok(rate > 0.35 && rate < 0.65, `attacker win rate ${rate}`);
+});
+
+test("PvP parity: the defending commander's skills apply", () => {
+  const atk = pvpArmy('h9', false);
+  let lostVsPlain = 0, lostVsSkilled = 0;
+  for (let s = 1; s <= 10; s++) {
+    lostVsPlain   += pvp(atk, pvpArmy('h33', false), s).lost;
+    lostVsSkilled += pvp(atk, pvpArmy('h33', true), s).lost;
+  }
+  assert.ok(lostVsSkilled > lostVsPlain);
+});
+
+test('defender actions are logged as enemy actions', () => {
+  const r = pvp(pvpArmy('h9', true), pvpArmy('h33', true), 3);
+  const acts = r.report.rounds.flatMap(x => x.actions);
+  assert.ok(acts.some(a => a.actor === 'Enemy Cmd' && a.isPlayer === false && a.dmg > 0));
+  assert.ok(acts.some(a => a.isSkill && a.isPlayer === false));   // defender's commander skills fire
 });
