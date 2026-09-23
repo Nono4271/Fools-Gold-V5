@@ -1438,6 +1438,39 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Per-unit targeting (owner spec)
+
+The owner's rule: an AoE that hits an army with 3 different units deals 3 separate hits, one per unit, because the units have different stats and skills. Owner answers:
+- multi-target skills hit that many separate units, chosen by priority;
+- normal attacks hit a single unit, **frontline first**.
+
+**Normal attacks** (troops and commanders, both sides):
+- One target unit: melee → mounted → ranged/siege, and within a group the unit with the most troops.
+- The damage uses that unit's DEF (× its side's DEF buffs, − the attacker's DEF-down debuffs), size modifier and "vs X" bonuses.
+- Overkill spills to the next unit in frontline order (`damageSlot`).
+- `on_hit_received` and the counter-attack come from the unit that was hit.
+- Miss/evade stop only the normal attack. Extra normal attacks (Pirate Vet, Creature Hunter) are real extra attacks.
+
+**Commander skill damage = separate hits** (`rs.skillHits`, `addSkillHit`), resolved in `commanderAct` after the normal attack:
+- `n` units (`targets: 2`, `hits: 3` different units), `"all"` (one hit per living unit), or `random` (independent random picks: Cannon Volley, Korgath's Brutality, Ironjaw Crush).
+- Priority from skill data: `prioritise`/`target` (ranged, melee, mounted, large, lowestDef, highestDef, highestDmg, faction). Unknown keys fall back to frontline order.
+- Per-target bonuses: `bonusIf` (Easy Targets vs Ranged, Experienced Fighter max vs Melee, Large Bonus). `onlyIf` (Orc Hunter's "+Y% to 1 random Orc unit" only hits an Orc unit).
+- Formulas: the engine's existing, previously unused `calcCmdPhysicalSkillDmg` (ATK × coefficient × (2 + command factor), vs the target's DEF) and `calcCmdFocusSkillDmg` (FOC skills / Burn, ignore DEF).
+- Each hit rolls crit and target evasion separately. "Skill DMG +X%" and "Burn DMG +X%" scale the queued hits.
+- "+X% vs <faction/alignment/role/size> units" passives are now checked per unit hit (`rs.vsTarget`, `vsMult`). "Damage received FROM <faction> units −X%" is checked per attacker (`rs.resistFrom`).
+- Normal-attack-only modifiers moved off `cmdMult`:
+  - `cmd_normal_atk_bonus` → `rs.normalAtkBonus`;
+  - "normal attacks also hit all units" and "normal attacks add X% Burn" → extra hits;
+  - `rs.cmdMult` now means "all commander damage".
+- Converted for orcs and pirates (all their damage types). Other factions still use the old single-multiplier path; any leftover `focusDmgBonus` on a physical commander becomes one focus hit. All 446/576 working skills still work (no regressions in the per-skill sweep).
+
+**Results:**
+- PvP mirror: 84/180 attacker wins (47%).
+- PvE vs original engine (orc army, no skills): P1–P5 within a few %. **P6–P8 are easier** (P6 at equal Command 50% → 95% wins), because focus fire kills enemy units, and their damage, sooner. P10–P12 unchanged to slightly harder. Garrison tuning may be wanted.
+- Not per-unit yet: DoT ticks (venom/bleed), %HP nukes and confusion self-damage still spread over all units.
+
+Tests: 4 targeting tests. `npm test` 443/443, build OK.
+
 ## 2026-09-23 — Claude — Commander skills Phase 2: Pirates fully implemented
 
 All 6 pirate commanders (h1 Fynn, h2 Samuel, h13 Brine, h14 Saltwhisper, h25 Reck, h26 Seyne), 71 unique skills (owner's custom set), were checked against their descriptions and implemented in `shared/utils/battle.js`. Leave-one-out test: full kit maxed, each skill removed in turn, 4 army mixes × 4 enemy factions × 2 seeds. Every pirate skill changes combat except:
