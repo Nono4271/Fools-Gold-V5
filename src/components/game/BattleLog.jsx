@@ -627,8 +627,8 @@ function computeBattleStats(b) {
     for (const a of rd.actions ?? []) {
       if (!a.dmg) continue;
       if (a.isHeal) {
-        // healing restores attacker troops; dmg is negative (troops back)
-        atkHealing += Math.abs(a.dmg);
+        // healing restores troops; dmg is negative (troops back). Defender heals are tagged isPlayer:false.
+        if (a.isPlayer !== false) atkHealing += Math.abs(a.dmg);
         continue;
       }
       if (a.dmg <= 0) continue;
