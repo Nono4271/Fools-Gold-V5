@@ -168,6 +168,7 @@ Screenshot/recording:
 - [ ] K3 Guarded tile under attack: the newest guard fights first **[MP]** (the AI doesn't attack player tiles yet)
 - [ ] K4 Forts: build (3 eggs), upgrade, capacity, station, range from forts, demolish, abandon, removal timers
   - Fixed 2026-09-23: construction/upgrade timer now shows; no upgrade during build; demolish finishes; commanders recalled from a demolished fort walk home (used to vanish) — re-test
+  - Fixed 2026-09-23 (2): fort offline (no range/stationing) until built; moving in needs ≥1 troop; busts show when stationed; demolish sends stationed commanders home — re-test
 - [ ] K5 Fort max count and the Numerous Forts tome
 
 ## 12. Wizard's Tomes

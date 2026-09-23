@@ -1438,6 +1438,20 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Forts: offline until built, army needed to move in, stationing fixes
+
+- **Offline until built:**
+  - `buildAnchors` skips `isBuilding` forts.
+  - TilePopup `checkRange` ignores an unbuilt station fort.
+  - `stationAtFort` and `startReposition` refuse an unbuilt fort, and FortPanel hides 📍 MOVE while building.
+  - `buildFort` no longer auto-stations the commanders standing on the tile.
+- **Moving to a fort needs ≥1 troop**: enforced in `startReposition`, FortPanel and the reposition picker, using `cmdTroopCount`. `recallToFort` (a 0-troop commander going back to its fort) is unchanged.
+- **Stale fort data**:
+  - `useForts.fortsRef` and Game's `fortsRef` now update during render, not in an effect. `getFortAtTile` had been returning the previous state, so the popup could show "0/2 stationed" and no busts after stationing.
+  - TilePopup now reads the fort from the `forts` prop.
+  - A reposition arriving at a missing or unbuilt fort just stands there instead of setting a dangling `stationedFortId`.
+- With stationing fixed, demolish/abandon recalls the stationed commanders home (the `bfsPath` fix from the previous entry).
+
 ## 2026-09-23 — Claude — Fort fixes + test save export/import
 
 - **FortPanel** now shows the build/upgrade countdown (`completesAt`) and hides UPGRADE while busy. Before, a fort looked finished right away even though it was really building for 2 hours.
