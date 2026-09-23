@@ -115,10 +115,7 @@ export default memo(function FortPanel({
             }}>⬆ UPGRADE</button>
           )}
           {!fort.isBuilding && idleCmds.length > 0 && stationedCount < levelDef.capacity && (
-            <button onClick={() => {
-              if (idleCmds.length === 1) startReposition?.(idleCmds[0].uid, selKey, fort.id);
-              else setPopupMode?.("repositionPick");
-            }} style={{
+            <button onClick={() => setPopupMode?.("repositionPick") /* always pick, even with 1 commander */} style={{
               flex: 1, padding: "8px 0",
               background: "linear-gradient(160deg,#083a18,#041e0a)",
               border: "1px solid #2a8040", color: "#80d090",
