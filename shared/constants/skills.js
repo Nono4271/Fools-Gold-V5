@@ -549,6 +549,9 @@ export function getTreeDisplayNames(cmd) {
   return names[cls] ?? names.attacker;
 }
 
+// Flat siege-power bonus from skills for an army of `troops`.
+export function skillSiegeBonus(cmd, troops) { return Math.round(getPassiveBonuses(cmd).siegePerTroop * (troops || 0)); }
+
 // Spent skill levels live in `cmd.skillPoints` (CommanderScreen writes
 // { [skillKey]: level }); `skillLevels` is the legacy/test name — accept both.
 function cmdSkillLevels(cmd) { return cmd?.skillLevels ?? cmd?.skillPoints ?? null; }
@@ -578,6 +581,7 @@ export function getPassiveBonuses(cmd) {
     // skills have no passiveXxx flag; they're picked up below by effect.type
     // instead, since they act outside battle resolution.
     marchSpeedBonus:0, gatheringBonus:0,
+    siegePerTroop:0, // Orc Explosives etc.: "[Army] Siege +N" = +N siege per troop (feeds calcSiegePower's bonus)
   };
   const lvls = cmdSkillLevels(cmd);
   if (!lvls) return bonuses;
@@ -602,6 +606,7 @@ export function getPassiveBonuses(cmd) {
       if (def.passiveGarrisonIgnore)   bonuses.garrisonIgnore += v;
       if (def.effect?.type === "march_speed_bonus") bonuses.marchSpeedBonus += v;
       if (def.effect?.type === "gathering_bonus")   bonuses.gatheringBonus  += v;
+      if (def.effect?.type === "army_siege_bonus")  bonuses.siegePerTroop   += v;
     }
   }
   return bonuses;

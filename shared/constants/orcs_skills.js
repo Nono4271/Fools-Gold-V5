@@ -268,7 +268,7 @@ export const WARCROAK_UNIQUE_SKILLS = {
     desc: "[Army] March Speed +1.0%. (Non-Combat Passive)",
     effect: { type: "march_speed_bonus", value: 0.01 },
     base: 0.01, perLevel: 0.01,
-    maxLevelEffect: { werewolfCombatSpd: 10 },
+    maxLevelEffect: { orcCombatSpd: 10 },
     nextDesc: (lvl) => `March Speed +${Math.round((0.01+lvl*0.01)*100)}%${lvl >= 14 ? " | Max: Orc Units SPD +10 in combat" : ""} (permanent)`,
   },
 
