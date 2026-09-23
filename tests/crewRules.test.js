@@ -21,8 +21,10 @@ test('crewMemberCapForLevel: +5 every 2 levels, caps at 100 by level 20', () => 
   assert.equal(crewMemberCapForLevel(50), 100);
 });
 
-test('crewFortressSlotsForLevel: 2 base, +1 at 15/30/45, caps at 5', () => {
-  assert.equal(crewFortressSlotsForLevel(1), 2);
+test('crewFortressSlotsForLevel: 1 base, +1 at 5/15/30/45, caps at 5', () => {
+  assert.equal(crewFortressSlotsForLevel(1), 1);
+  assert.equal(crewFortressSlotsForLevel(4), 1);
+  assert.equal(crewFortressSlotsForLevel(5), 2);
   assert.equal(crewFortressSlotsForLevel(14), 2);
   assert.equal(crewFortressSlotsForLevel(15), 3);
   assert.equal(crewFortressSlotsForLevel(30), 4);
@@ -116,9 +118,9 @@ test('addCrewXp grows cap with level and never shrinks it below the current valu
 
 test('fortressSlotsAvailable accounts for slots already used', () => {
   let crew = crewWith({});
-  assert.equal(fortressSlotsAvailable(crew), 2);
-  crew = { ...crew, fortresses: [{ id: 'ft1' }] };
   assert.equal(fortressSlotsAvailable(crew), 1);
+  crew = { ...crew, fortresses: [{ id: 'ft1' }] };
+  assert.equal(fortressSlotsAvailable(crew), 0);
 });
 
 test('contribution points: add/read/spend, insufficient balance returns null', () => {
