@@ -203,7 +203,7 @@ function addSkillHit(rs, ctx, pct, o = {}) {
       pct, stat: o.stat || "atk", n: o.n ?? 1, prio: o.prio || null, random: !!o.random,
       kind: o.kind || "skill", fromActive: o.fromActive ?? (ctx.phase === "active"),
       bonusIf: o.bonusIf || null, onlyIf: o.onlyIf || null, label: o.label || null, isBurn: !!o.isBurn,
-      dot: o.dot || null, useStat: o.useStat || null, nth: o.nth ?? null, ti: o.ti ?? null, requiresNormal: !!o.requiresNormal,
+      dot: o.dot || null, useStat: o.useStat || null, nth: o.nth ?? null, ti: o.ti ?? null, requiresNormal: !!o.requiresNormal, onKillBonus: o.onKillBonus || 0,
     });
   } else if (o.stat === "foc") rs.focusDmgBonus = (rs.focusDmgBonus || 0) + pct;
   else rs.cmdMult *= (1 + pct);
@@ -2822,7 +2822,7 @@ switch (eff.type) {
         for (const f of ["unitDefFlatDown", "unitSpdDown"]) if (rs[f]?.[ti]) { delete rs[f][ti]; n++; }
         n += ctx.clearDots(ti);
         total += n;
-        addSkillHit(rs, ctx, (eff.value || 0.10) + n * b, { ti, stat: "foc", label: skill?.name });
+        addSkillHit(rs, ctx, (eff.value || 0.10) + n * b, { ti, stat: "foc", label: skill?.name, onKillBonus: eff.onKillNextSkillBonus || 0 });
       }
       if (total) roundLog.actions.push({ actor: actorLabel, action: `💥 ${skill?.name} — ${total} debuff${total > 1 ? "s" : ""} stripped → +${Math.round(b * 100)}% Focus DMG each!`, dmg: 0, isTroopSkill: true });
     } else {
@@ -2836,10 +2836,9 @@ switch (eff.type) {
     }
     break;
   case "multi_flat_def_down":
-    if (ctx?.isCommander) { // [N units] DEF -N for the rest of the battle
+    if (ctx?.isCommander) { // [N units] DEF -N this round (owner: 1 round)
       const dd = eff.value ?? eff.defDown ?? 5, list = ctx.pickEnemy(targetsOf(eff), prioOf(eff));
-      const apply = r => { for (const ti of list) setSlot(r, "unitDefFlatDown", ti, dd, "add"); };
-      apply(rs); setBuff(ctx, null, round + 1, 10, apply);
+      for (const ti of list) setSlot(rs, "unitDefFlatDown", ti, dd, "add");
       roundLog.actions.push({ actor: actorLabel, action: `😤 ${skill?.name} — ${list.length} unit${list.length > 1 ? "s" : ""} DEF -${dd}!`, dmg: 0, isTroopSkill: true });
     } else rs.enemyDefFlatDown = Math.min((rs.enemyDefFlatDown||0) + (eff.defDown || 5.0), 50);
     break;
@@ -2927,7 +2926,7 @@ switch (eff.type) {
   case "early_round_def_up_dmg_down":
     if (round <= (eff.maxRound || 3)) {
       rs.troopDefMult *= (1 + (eff.value ?? eff.defUp ?? 0.09));
-      rs.troopAtkMult *= Math.max(0, 1 - (eff.value ?? eff.dmgDown ?? 0.09));
+      rs.troopAtkMult *= Math.max(0, 1 - (eff.dmgDown ?? 0.09)); // DMG down doesn't scale with level (owner)
     }
     break;
   case "atk_threshold_bonuses":
@@ -4742,6 +4741,10 @@ const commanderAct = (S, T, round, roundLog) => {
         * vsMult(S, T, ti, h.kind === "normalExtra" ? "cmd" : "skill") * resistMult(T, S, null)));
       lostSum += damageSlot(T, ti, dmg, round);
       sum += dmg;
+      if (h.onKillBonus && T.slotHp[ti] <= 0) { // Game Over max: a kill → next skill activation +X%
+        S.cs.pendingSkillBonus = Math.max(S.cs.pendingSkillBonus || 0, h.onKillBonus);
+        roundLog.actions.push({ actor:who, action:`💀 ${h.label || "Skill"} — kill! Next skill DMG +${Math.round(h.onKillBonus * 100)}%`, dmg:0, isSkill:true, isPlayer:S.isPlayer });
+      }
     }
     dealtTotal += sum;
     if (!(h.pct > 0) && h.dot && targets.length) roundLog.actions.push({ actor:who, action:`${h.dot.kind === "venom" ? "🐍" : "🩸"} ${h.label || "DoT"} ${targets.length > 1 ? `→ ${targets.length} units` : unitLabel(T, targets[0])} (${h.dot.kind})`, dmg:0, isSkill:true, isPlayer:S.isPlayer });
