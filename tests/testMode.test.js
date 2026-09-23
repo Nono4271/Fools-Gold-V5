@@ -32,7 +32,7 @@ test('set level up uses real XP growth; down strips growth and skill points', ()
   assert.equal(adminSetLevel(c, 1).lvl, 5);
 });
 
-test('set respect: promotions at 7 and 12, points match the level', () => {
+test('set respect: promotions at 7 and 12 and undone when lowered', () => {
   const r12 = adminSetRespect(base(), 12);
   assert.equal(r12.respectLevel, 12);
   assert.equal(r12.rarity, 'champion');
@@ -40,7 +40,12 @@ test('set respect: promotions at 7 and 12, points match the level', () => {
   assert.equal(r12.unspentSkillPoints, 5 + 12);
   const r5 = adminSetRespect(r12, 5);
   assert.equal(r5.respectLevel, 5);
-  assert.equal(r5.rarity, 'champion'); // promotions are kept
+  assert.equal(r5.rarity, 'soldier');                 // both promotions undone
+  assert.ok(Math.abs(r5.atk - base().atk) <= 2);      // stats back (rounding)
+  assert.equal(r5.unspentSkillPoints, 5 + 5);         // 7 respect points removed
+  assert.equal(adminSetRespect(r12, 8).rarity, 'veteran');
+  const nativeChamp = { ...HDEFS.find(h => h.rarity === 'champion'), respectLevel: 13, unspentSkillPoints: 20, skillPoints: {} };
+  assert.equal(adminSetRespect(nativeChamp, 0).rarity, 'champion'); // never below natural rarity
   assert.equal(adminSetRespect(base(), 99).respectLevel, 15);
 });
 
