@@ -1438,6 +1438,12 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-22 — Claude — Commander card from marching sprites + left-rail busts
+
+- Tapping one of your MARCHING commanders on the map (the moving sprite) now opens its Commander card (`CommanderCard`) instead of selecting the tile underneath. Hit test: `hitMarchingCmd` in `src/MapRenderer.jsx` (uses the march worker positions; new `onCommanderTap` prop).
+- Tapping a bust icon in the left rail (`GameBar.jsx`, commanders not at HQ) still pans to it and now also opens the card (`onOpenCmdCard`).
+- The card floats beside the left rail (`GameView.jsx`, `focusCmdUid`), shows "MARCHING → dest" or the tile, and has a ✕. Tapping any tile closes it. This is the primary way to recall a march in progress (↩ button).
+
 ## 2026-09-22 — Claude — Duplicate battle reports, Wounded, Guard, protection glow, mobile polish
 
 - **Duplicate reports fixed:** arrival effects re-ran while a battle was awaited, so one battle could fire 2-3 times. `useMarch.js` / `useFortressSiege.js` now claim each arrival once (`claimBattle` / `claimedRef`). Multi-wave or multi-defender fights now label each report (`Wave x/y`, `Defender i/n`) in BattleLog.
