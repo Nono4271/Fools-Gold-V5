@@ -1438,6 +1438,52 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Coldborns fully implemented (all 8 factions done)
+
+All 6 commanders (h49 Bjorn, h50 Valdris, h51 Leif, h52 Eira, h53 Halvard, h54 Knut) were checked against their descriptions. 36 handler types were rewritten for the per-unit commander path; the troop/legacy path is kept. 20 unreachable duplicate `case` blocks (later copies of the same labels, dead code in the switch) were removed. `no-duplicate-case` went from 23 to 1.
+
+**Frostbite (new, per unit):**
+- Frostbite was only a flag nothing read.
+- `freezeUnits` / `rollFreeze` mark enemy units in `cs.frostbite` (ti → last round, 2 rounds).
+- A frostbitten unit deals -40% (`frostbiteDmgPenalty`) and loses `frostSpdDown` SPD in the turn order (Permafrost, The Long Winter, Skald's Curse max).
+- `vsMult` matches `frostbitten` units (Frozen Prey / Frostbitten Foes / Calculated Cruelty, Cold Logic Focus-only, Howling Blizzard max).
+- Applications are logged in `cs.frostApps` (Shattered Defenses: DEF -1 for 2 rounds per application).
+- Cleanse removes Frostbite.
+- `rs.frostbiteApplied` is still set while any unit is frostbitten, for the old conditional checks.
+
+**Notable fixes:**
+- Every Frostbite active now hits specific units, and each unit rolls its own Frostbite:
+  - Icevein's Strike, Glacial Strike, Winter's Edge;
+  - Blood on Ice, Frost Cleave, Völva's Wrath, Winter Storm (per-hit chance);
+  - Frozen Verse, Bitter Cold, Cold Snap, Frost Tactics, Skald's Arrow;
+  - Frost and Fire (Frostbite or Burn per unit), Carol / Tide of Ice / Winter's Frost.
+- Shatter needs a frostbitten unit (full hit, removes it, DEF -5 for 2 rounds); with none frostbitten it deals half damage.
+- Shield Splitter: permanent DEF -3 on the unit hit. Its max-level Frostbite read the wrong key (`frostbiteOnHit` vs `applyFrostbite`).
+- Howling Blizzard max read `frostbittenSkillDmgUp`; the key is `frostbittenSkillDmgTakenUp`. It is now handler-owned.
+- Raider's Will / Northern Resolve / Valdris Stands give commander Stun Immunity, per their text (they gave Confusion immunity).
+- Berserker's Rush: flat ATK +N and SPD -2 per round, permanent; max: enemy DEF -10.
+- War Scars: +X% CMD damage per hit the troops took last round (max 5).
+- Frozen Throne is lost for good once one of our units dies. It was never lost.
+- Cold Fury / Frost Fury follow real frostbitten units; Frost Fury stacks persist.
+- Follow-ups now matter:
+  - War Drums, Völva's Sight, Song of Courage, Thane's Charge, Frost Chant (their field was unread);
+  - War Drums max: +40% Focus hit on the normal attack;
+  - Thane's Charge max: once-per-battle 50% evade per unit.
+- Seer's Vision: army stun immunity (+ max Burn immunity) rounds 1–3.
+- Völva's Blessing: 40% per-unit cleanse; max healing received +15%.
+- Völva's Shield: Coldborn units only. Coldborn Brotherhood: only vs Creature attackers.
+- Bear's Endurance (HP +8, was unread), Cold Calculation (flat FOC/SPD).
+- Ancient Rite's DMG buff lasts 2 rounds.
+
+**Coverage:** every Coldborn combat skill changes combat except:
+- Siege of the North: map-only.
+- Frost Salve: in Eira's full kit, the heals already restore all lost HP each round.
+
+**Checks:**
+- Whole game: 476/576 commander skills change combat in single-skill isolation (the rest are map-only or need a partner/condition).
+- PvP mirror 91/180. PvE unchanged.
+- Tests: 3 new. `npm test` 472/472, build OK.
+
 ## 2026-09-23 — Claude — Ashen Dead fully implemented
 
 All 6 commanders (h55 Malgrath, h56 Varak, h57 Dreadmourne, h58 Veyra, h59 Mordwyn, h60 Cael) were checked against their descriptions. 44 handler types were rewritten for the per-unit commander path; the troop/legacy path is kept. Shared Coldborn types stay generic:
