@@ -2010,7 +2010,7 @@ function drawMarchLines(gfx, cmds, reinMarches, tiles) {
   (reinMarches || []).forEach(rm => drawPath(rm.path.slice(rm.step), 0x2299ff)); // blue for reinforcements
 }
 
-export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, diplomacyPlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles, guardedTileKeys, spawns, protectedTileKeys, crewStructures }, ref) {
+export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, selKey, mode, mvCmd, reinMarchesRef, panRef: panRefProp, zoomRef: zoomRefProp, ZOOM_LEVELS, onTileClick, onPanChange, onZoomChange, playerName, playerHqKey, playerFacKey, crewmatePlayerIds, diplomacyPlayerIds, allHqKeys, aiPlayerIdMap, forts, guardedTiles, guardedTileKeys, spawns, protectedTileKeys, crewStructures, onCommanderTap }, ref) {
 
   const containerRef   = useRef(null);
   const appRef         = useRef(null);
@@ -2058,6 +2058,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const onTileClickRef  = useRef(onTileClick);
   const onPanChangeRef  = useRef(onPanChange);
   const onZoomChangeRef = useRef(onZoomChange);
+  const onCommanderTapRef = useRef(onCommanderTap);
+  useEffect(() => { onCommanderTapRef.current = onCommanderTap; }, [onCommanderTap]);
 
   useEffect(() => { selRef.current = selKey; }, [selKey]);
   useEffect(() => { modeRef.current  = mode; },        [mode]);
@@ -2942,6 +2944,22 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         if (nz !== zoomRef.current) applyZoom(nz);
       }
     };
+    // Tap on one of the player's MARCHING commanders (moving sprite) → open
+    // its Commander card instead of selecting the tile under it. Standing
+    // commanders are reached through their tile popup as before.
+    const hitMarchingCmd = (wx, wy) => {
+      const r = Math.max(14, 22 / zoomRef.current);
+      let best = null, bestD = r * r;
+      for (const c of cmdsRef.current || []) {
+        if (c.owner !== "player" || !c.march) continue;
+        const p = marchPosRef.current.get(c.uid);
+        if (!p) continue;
+        const dx = wx - p.px, dy = wy - (p.py + TH * 0.5 - 8);
+        const d = dx * dx + dy * dy;
+        if (d <= bestD) { bestD = d; best = c.uid; }
+      }
+      return best;
+    };
     const onTE = e => {
       if (e.touches.length < 2) pinchDist0.current = null;
       if (e.touches.length === 0) {
@@ -2950,7 +2968,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
           const rect = el.getBoundingClientRect();
           const wx = (t.clientX-rect.left-panRef.current.x)/zoomRef.current;
           const wy = (t.clientY-rect.top -panRef.current.y)/zoomRef.current;
-          const key = worldToKey(wx, wy, tilesRef.current);
+          const hitUid = onCommanderTapRef.current ? hitMarchingCmd(wx, wy) : null;
+          const key = hitUid ? null : worldToKey(wx, wy, tilesRef.current);
+          if (hitUid) onCommanderTapRef.current(hitUid);
           if (key) {
             // No keepPart redirect needed for P10+ (now single tile)
             const rawTile = tilesRef.current[key];
@@ -3087,6 +3107,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
         const rect = el.getBoundingClientRect();
         const wx = (e.clientX-rect.left-panRef.current.x)/zoomRef.current;
         const wy = (e.clientY-rect.top -panRef.current.y)/zoomRef.current;
+        const hitUid = onCommanderTapRef.current ? hitMarchingCmd(wx, wy) : null;
+        if (hitUid) { onCommanderTapRef.current(hitUid); onPanChangeRef.current(panRef.current); return; }
         const key = worldToKey(wx, wy, tilesRef.current);
         if (key) {
           const tile = tilesRef.current[key];

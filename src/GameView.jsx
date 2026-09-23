@@ -1,6 +1,6 @@
 // Main in-game screen layout (map, HUD, popups, menus, overlays).
 // Pure presentation: every value and handler comes from Game.jsx as a prop.
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { MapRenderer } from "./MapRenderer";
 import { CSS } from "./constants/css.js";
 import { validateRelocationPad, allHqKeyList } from "../shared/utils/relocation.js";
@@ -19,6 +19,7 @@ import HQMenu from "./components/game/HQMenu.jsx";
 import WorldMap from "./components/game/WorldMap.jsx";
 import BattleLog from "./components/game/BattleLog.jsx";
 import CommanderPicker from "./components/game/CommanderPicker.jsx";
+import CommanderCard from "./components/game/popup/CommanderCard.jsx";
 import BottomPanel from "./components/game/BottomPanel.jsx";
 import WinScreen from "./components/game/WinScreen.jsx";
 import Minimap from "./components/game/Minimap.jsx";
@@ -84,6 +85,14 @@ export default function GameView(props) {
     voidTapCooldown, voidTapLvl, voidTapReady, winner, worldMapOpen, worldMapPrompt,
     woundedQueue, woundedTroops, zoomRef, zoomState,
   } = props;
+
+  // Floating Commander card — opened by tapping a marching commander on the
+  // map or a portrait in the left rail (GameBar). Primary way to recall a
+  // march in progress. Tapping any tile closes it.
+  const [focusCmdUid, setFocusCmdUid] = useState(null);
+  const focusCmd = focusCmdUid ? cmds.find(c => c.uid === focusCmdUid && c.owner === "player") : null;
+  const onMapTileClick = useCallback((k, e) => { setFocusCmdUid(null); onTileClick(k, e); }, [onTileClick]);
+  const onCommanderTap = useCallback(uid => { setSelKey?.(null); setFocusCmdUid(uid); }, [setSelKey]);
 
   // Map markers for every crew's Fortresses / Wells / Contract Outpost —
   // colour by relationship to the player's crew (see MapRenderer's
@@ -230,7 +239,8 @@ export default function GameView(props) {
         tiles={tiles} cmds={cmds} selKey={selKey} mode={mode} mvCmd={mvCmd}
         reinMarchesRef={reinMarchesRef}
         panRef={panRef} zoomRef={zoomRef} ZOOM_LEVELS={ZOOM_LEVELS}
-        onTileClick={onTileClick}
+        onTileClick={onMapTileClick}
+        onCommanderTap={onCommanderTap}
         onPanChange={onPanChange}
         onZoomChange={handleZoomChange}
         playerHqKey={playerHqKey}
@@ -652,7 +662,26 @@ export default function GameView(props) {
         spawns={spawns}
         spawnWorkerRef={spawnWorkerRef}
         eligibleSpawnKeysRef={eligibleSpawnKeysRef}
+        onOpenCmdCard={onCommanderTap}
       />
+
+      {focusCmd && !(worldMapOpen || hqOpen || cmdScreenOpen || gearScreenOpen || showBattleLog || tomesOpen) && (
+        <div style={{ position:"fixed", left:"calc(var(--left-inset, 8px) + 52px)", bottom:"calc(var(--sab, 0px) + 89px)", width:220, zIndex:500,
+          background:"rgba(5,7,11,.97)", border:"1px solid #2a3a2a", borderRadius:8, padding:6, boxShadow:"0 8px 32px rgba(0,0,0,.9)", animation:"fadeUp .15s ease" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
+            <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:"#8a9a7a", letterSpacing:".06em" }}>
+              {focusCmd.march ? `MARCHING${focusCmd.march.dest ? ` → ${focusCmd.march.dest}` : ""}` : `AT ${focusCmd.tk}`}
+            </span>
+            <button onClick={() => setFocusCmdUid(null)} aria-label="Close"
+              style={{ width:32, height:32, borderRadius:6, background:"rgba(40,40,40,.5)", border:"1px solid #444", color:"#bbb", fontSize:13, cursor:"pointer" }}>✕</button>
+          </div>
+          <CommanderCard cmd={focusCmd} ownership="player"
+            onCmdScreenOpen={uid => { setCmdScreenUid?.(uid); setCmdScreenOpen?.(true); }}
+            recallMarch={recallMarch} recallStationary={recallStationary}
+            setReinCmd={setReinCmd} setMode={setMode} barracksPool={barracksPool} playerHqKey={playerHqKey}
+            startGuard={startGuard} cancelGuard={cancelGuard}/>
+        </div>
+      )}
 
       {showPerf && <PerfOverlay open={showPerf} onToggle={() => setShowPerf(v => !v)} />}
 
