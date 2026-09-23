@@ -312,3 +312,41 @@ test('HK: Whatever It Takes confuses enemy units more often than allied units (b
   }
   assert.ok(foe > own, `${foe} vs ${own}`);
 });
+
+// ── Dragons ───────────────────────────────────────────────────────────────────
+function drgBattle(id, skillPoints, seed, defCmd, branches = ['dragonkin', 'drake_riders']) {
+  const slots = branches.map(b => ({ branch: { faction: 'dragons', branch: b, tier: 2 }, troops: 10000 }));
+  const cmd = { id, n: id, faction: 'dragons', cls: 'attacker', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 10000 * branches.length, troopBranch: slots[0].branch, troopSlots: slots, skillPoints };
+  return seeded(() => simBattle(cmd, cmd.troops, { defCmd: defCmd || threeUnitFoe(), garrison: 100, owner: 'ai' }, 0), seed);
+}
+const actsOver = (fn, n = 10) => { let a = []; for (let s = 1; s <= n; s++) a = a.concat(allActs(fn(s))); return a; };
+
+test('Dragons: Flame Dive burns (no longer applies a 60% Bleed); Fire Volley hits 5 random units', () => {
+  const dive = actsOver(s => drgBattle('h11', { emb_flame_dive: 7 }, s));
+  assert.ok(!dive.some(a => /Bleed/.test(a.action) && a.isPlayer === true));
+  assert.ok(allActs(drgBattle('h11', { emb_fire_volley: 7 }, 1)).filter(a => a.isSkill && /^✨ Fire Volley →/.test(a.action)).length >= 1);
+});
+
+test("Dragons: Bad Pointy Hats prioritises Wizard units", () => {
+  const mk = (f, b) => ({ branch: { faction: f, branch: b, tier: 2 }, troops: 30000 });
+  const slots = [mk('orcs', 'grunts'), mk('wizards', 'acolytes')];
+  const foe = { id: 0, n: 'D', faction: 'orcs', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 60000, troopBranch: slots[0].branch, troopSlots: slots };
+  const hit = allActs(drgBattle('h23', { kraul_bad_pointy_hats: 7 }, 1, foe)).find(a => a.isSkill && /Bad Pointy Hats →/.test(a.action));
+  assert.ok(hit && !/Grunt/.test(hit.action), hit?.action);
+});
+
+test('Dragons: Smoke and Fire blinds units (their next attack misses); Tough Skin reflects physical hits', () => {
+  assert.ok(actsOver(s => drgBattle('h12', { scaleveil_smoke_and_fire: 7 }, s)).some(a => /Blinded — missed/.test(a.action)));
+  assert.ok(allActs(drgBattle('h35', { skar_tough_skin: 7 }, 1)).some(a => /Tough Skin/.test(a.action) && a.dmg > 0));
+});
+
+test('Dragons: Clear the Air strips enemy buffs; Earthquake slows units', () => {
+  assert.ok(actsOver(s => drgBattle('h24', { cinderfang_clear_the_air: 7 }, s)).some(a => /All enemy buffs stripped/.test(a.action)));
+  assert.ok(actsOver(s => drgBattle('h35', { skar_earthquake: 7 }, s)).some(a => /Slowed/.test(a.action)));
+});
+
+test("Dragons: You Get a Heal! heals Dragon units when a debuff lands on them", () => {
+  const foe = { ...pvpArmy('h36', true) }; // Nyxara: stuns
+  const heals = sp => actsOver(s => drgBattle('h24', sp, s, foe)).filter(a => a.isHeal && a.isPlayer !== false).length;
+  assert.ok(heals({ cinderfang_you_get_a_heal: 7 }) > heals({}));
+});
