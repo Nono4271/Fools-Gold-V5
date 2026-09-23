@@ -64,3 +64,37 @@ test('pirate skills: 6 commanders x 12, all defined, no key collisions with othe
   }
   assert.ok(!PIRATES_SKILLS.sal_treasure_hunter.notImplemented);
 });
+
+// ── Orcs (Phase 2) ────────────────────────────────────────────────────────────
+function orcBattle(id, skillPoints, foeFaction = 'holyknights', foeBranch = 'templars', seed = 5) {
+  const slots = ['grunts', 'warg_riders'].map(b => ({ branch: { faction: 'orcs', branch: b, tier: 2 }, troops: 10000 }));
+  const cmd = { id, n: id, faction: 'orcs', cls: 'attacker', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 20000, troopBranch: slots[0].branch, troopSlots: slots, skillPoints };
+  const fb = { faction: foeFaction, branch: foeBranch, tier: 2 };
+  const def = { id: 0, n: 'D', faction: foeFaction, lvl: 50, atk: 220, foc: 220, spd: 100, troops: 20000, troopBranch: fb, troopSlots: [{ branch: fb, troops: 20000 }] };
+  return seeded(() => simBattle(cmd, 20000, { defCmd: def, garrison: 100, owner: 'ai' }, 0), seed);
+}
+const dealt = r => r.report.rounds.flatMap(x => x.actions).reduce((t, x) => t + (x.isPlayer ? (x.dmg || 0) : 0), 0);
+
+test('orcs: Brutal Strike adds damage (used to overwrite commander damage down to 27%)', () => {
+  assert.ok(dealt(orcBattle('h33', { kor_brutal_strike: 15 })) > dealt(orcBattle('h33', {})));
+});
+
+test('orcs: faction-conditional skills only apply vs that faction', () => {
+  const sig = r => JSON.stringify([r.lost, dealt(r)]);
+  assert.equal(sig(orcBattle('h9', { grim_pirate_filth: 7 })), sig(orcBattle('h9', {})));             // vs Holy Knights: no effect
+  assert.notEqual(sig(orcBattle('h9', { grim_pirate_filth: 7 }, 'pirates', 'swashbucklers')),
+                  sig(orcBattle('h9', {}, 'pirates', 'swashbucklers')));                               // vs Pirates: applies
+});
+
+test("orcs: Warlord's Touch vulnerability stacks persist across rounds", () => {
+  assert.ok(dealt(orcBattle('h33', { kor_warlords_touch: 7 })) > dealt(orcBattle('h33', {})));
+});
+
+test('orcs: Lifeline of the Tribe max-level bonus is Orc combat SPD (typo fix)', () => {
+  assert.deepEqual(ALL_SKILLS.war_lifeline_of_tribe.maxLevelEffect, { orcCombatSpd: 10 });
+});
+
+test('orcs: Orc Explosives adds siege per troop', async () => {
+  const { skillSiegeBonus } = await import('../shared/constants/skills.js');
+  assert.equal(skillSiegeBonus({ id: 'h22', faction: 'orcs', cls: 'support', skillPoints: { gri_orc_explosives: 1 } }, 1000), 2000);
+});
