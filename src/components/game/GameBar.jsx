@@ -3,6 +3,7 @@ import { RARITY, CLASS } from "../../../shared/constants/heroes.js";
 import { CSS } from "../../constants/css.js";
 import { HQP, POWER_DEFS } from "../../../shared/constants/map.js";
 import { isoXY, COLS, ROWS } from "../../../shared/constants/geometry.js";
+import MarchTimer from "./MarchTimer.jsx";
 import { CAMP_TIERS, campTierForPowerLevel, findCamps } from "../../../shared/utils/campSearch.js";
 import { isWounded } from "../../../shared/utils/commanderStatus.js";
 
@@ -594,12 +595,12 @@ export default memo(function GameBar({
         position: "fixed", left: "var(--left-inset, 8px)", bottom: "calc(var(--sab, 0px) + 89px)",
         zIndex: 300,
         display: "flex", flexDirection: "column-reverse", gap: 5, alignItems: "center",
-        maxHeight: `${3 * 42 + 2 * 5}px`, overflowY: "auto", scrollbarWidth: "none",
+        maxHeight: `${3 * 42 + 2 * 5 + 8}px`, overflowY: "auto", scrollbarWidth: "none", paddingBottom: 6, rowGap: 9,
       }}>
         {playerCmds.length > 0 ? playerCmds.map(cmd => {
           const stationedFort = (forts || []).find(f => f.stationedCmdUids?.includes(cmd.uid));
           const isAtHQ = !cmd.stationedFortId && !cmd.stranded;
-          const badge = isWounded(cmd) ? "🩸" : cmd.isGuarding ? "🛡" : cmd.stranded ? "⚠" : stationedFort ? "📍" : isAtHQ ? "🏰" : null;
+          const badge = cmd.march ? null : isWounded(cmd) ? "🩸" : cmd.isGuarding ? "🛡" : cmd.stranded ? "⚠" : stationedFort ? "📍" : isAtHQ ? "🏰" : null;
           return (
           <div key={cmd.uid} style={{ position: "relative" }}>
             <PortraitButton
@@ -617,6 +618,13 @@ export default memo(function GameBar({
               active={false}
               badge={0}
             />
+            {cmd.march && (
+              <MarchTimer march={cmd.march} style={{
+                position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)",
+                fontSize: 7.5, color: "#ffe6a0", background: "rgba(10,14,10,.92)",
+                border: "1px solid #5a7a3a", borderRadius: 8, padding: "1px 4px", pointerEvents: "none",
+              }}/>
+            )}
             {badge && (
               <div style={{
                 position: "absolute", bottom: 0, right: 0,
