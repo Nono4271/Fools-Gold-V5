@@ -163,8 +163,9 @@ function TimersTab({ admin, cmds, upgQueue, trainingQueues, healQueue, forts, cr
   const marching = cmds.filter(c => c.owner === "player" && c.march);
   const ups = Object.entries(upgQueue || {});
   const fortsBusy = (forts || []).filter(f => f.completesAt && f.completesAt > now);
+  const fortsRemoving = (forts || []).filter(f => f.removal?.endsAt > now);
   const crewBusy = (crews || []).flatMap(c => [...(c.fortresses || []), ...(c.wells || []), ...(c.outpost ? [c.outpost] : [])]).filter(x => x.buildEndsAt && x.buildEndsAt > now);
-  const empty = !marching.length && !ups.length && !trainingQueues?.length && !healQueue?.length && !fortsBusy.length && !crewBusy.length;
+  const empty = !marching.length && !ups.length && !trainingQueues?.length && !healQueue?.length && !fortsBusy.length && !fortsRemoving.length && !crewBusy.length;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <button style={btn("#f0c040", { minHeight: 44 })} onClick={admin.finishAll}>⚡ FINISH EVERYTHING</button>
@@ -173,7 +174,8 @@ function TimersTab({ admin, cmds, upgQueue, trainingQueues, healQueue, forts, cr
       {ups.map(([type, u]) => <Row key={type} label={`🏗 ${type} → Lv ${u.newLvl}`} sub={fmtMsShort(Math.max(0, u.endsAt - now))} onFinish={() => admin.finishUpgrade(type)} />)}
       {(trainingQueues || []).map(q => <Row key={q.id} label={`⚔ Training ${q.branchKey}`} sub={`${(q.remaining || 0).toLocaleString()} troops left (needs barracks space)`} onFinish={() => admin.finishTraining(q.id)} />)}
       {(healQueue || []).map(q => <Row key={q.id} label="✚ Healing" sub={`${(q.remaining || 0).toLocaleString()} troops left`} onFinish={() => admin.finishHeal(q.id)} />)}
-      {fortsBusy.map(f => <Row key={f.id} label={`🏯 Fort ${f.tileKey} ${f.isUpgrading ? `→ Lv ${f.pendingLevel}` : "build"}`} sub={fmtMsShort(f.completesAt - now)} onFinish={() => admin.finishFort(f.id)} />)}
+      {fortsBusy.map(f => <Row key={f.id} label={`🏯 Fort ${f.tileKey} · ${f.isUpgrading ? `upgrade → Lv ${f.pendingLevel}` : "construction"}`} sub={fmtMsShort(f.completesAt - now)} onFinish={() => admin.finishFort(f.id)} />)}
+      {fortsRemoving.map(f => <Row key={`rm_${f.id}`} label={`🏯 Fort ${f.tileKey} · ${f.removal.mode === "abandon" ? "abandon" : "demolish"}`} sub={fmtMsShort(f.removal.endsAt - now)} onFinish={() => admin.finishFortRemoval(f.id)} />)}
       {crewBusy.map(x => <Row key={x.id} label={`🏰 Crew structure ${x.tileKey}`} sub={fmtMsShort(x.buildEndsAt - now)} onFinish={admin.finishCrewBuilds} />)}
     </div>
   );
@@ -204,6 +206,7 @@ function MapTab({ admin, selKey }) {
 
 function SavesTab({ admin }) {
   const [bump, setBump] = useState(0);
+  const [msg, setMsg] = useState(null);
   const saves = useSaves(admin.listSaves, bump);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -211,7 +214,19 @@ function SavesTab({ admin }) {
         Autosaves every minute and when the app is closed. Last save: {when(admin.lastSaveAt)}{admin.saveMsg ? ` · ${admin.saveMsg}` : ""}
       </div>
       <SlotList saves={saves} onSave={async slot => { await admin.saveTo(slot); setBump(b => b + 1); }} onLoad={admin.loadFrom} />
-      <div style={{ fontSize: 11, color: "#8a7a5a" }}>Saves live in this browser only. Loading reloads the page. Wild spawns aren't saved (new ones appear).</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button style={btn("#c8a060", { flex: 1 })} onClick={admin.exportSave}>📤 EXPORT FILE</button>
+        <label style={{ ...btn("#c8a060", { flex: 1 }), display: "flex", alignItems: "center", justifyContent: "center" }}>
+          📥 IMPORT → SLOT 3
+          <input type="file" accept="application/json,.json" style={{ display: "none" }}
+            onChange={async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; const r = await admin.importSave(f); setMsg(r.ok ? "Imported into Slot 3 — tap LOAD" : r.reason); setBump(b => b + 1); }} />
+        </label>
+      </div>
+      {msg && <div style={{ fontSize: 12, color: "#f0d890" }}>{msg}</div>}
+      <div style={{ fontSize: 11, color: "#8a7a5a", lineHeight: 1.5 }}>
+        Saves belong to this exact web address in this browser. Always open the game from the same link (your branch link, not a one-off deployment link) or they won't show up.
+        Export a file to move a save to another link or device. Loading reloads the page. Wild spawns aren't saved (new ones appear).
+      </div>
     </div>
   );
 }

@@ -210,6 +210,8 @@ export function useTestMode(g) {
       finishTraining: id => s().dispatchArmy({ type: "set", key: "trainingQueues", value: qs => qs.map(q => q.id === id ? finishTrainingQueue(q) : q) }),
       finishHeal: id => s().dispatchArmy({ type: "set", key: "healQueue", value: qs => qs.map(q => q.id === id ? finishHealQueue(q) : q) }),
       finishFort: id => s().loadForts(s().forts.map(f => f.id === id && f.completesAt ? { ...f, completesAt: Date.now() } : f)),
+      // Demolish/abandon timers live on fort.removal — finishing one lets useFortRemovals fire it.
+      finishFortRemoval: id => s().loadForts(s().forts.map(f => f.id === id && f.removal ? { ...f, removal: { ...f.removal, endsAt: Date.now() } } : f)),
       finishCrewBuilds,
       finishAll: () => {
         const st = s(), now = Date.now();
@@ -217,7 +219,9 @@ export function useTestMode(g) {
         st.setUpgQueue(q => Object.fromEntries(Object.entries(q).map(([k, v]) => [k, { ...v, endsAt: now }])));
         st.dispatchArmy({ type: "set", key: "trainingQueues", value: qs => qs.map(q => finishTrainingQueue(q, now)) });
         st.dispatchArmy({ type: "set", key: "healQueue", value: qs => qs.map(finishHealQueue) });
-        st.loadForts(st.forts.map(f => f.completesAt ? { ...f, completesAt: now } : f));
+        st.loadForts(st.forts.map(f => ({ ...f,
+          ...(f.completesAt ? { completesAt: now } : {}),
+          ...(f.removal ? { removal: { ...f.removal, endsAt: now } } : {}) })));
         finishCrewBuilds();
       },
       relocateCheck: key => adminRelocationCheck(key, s().tilesMapRef.current, s().playerHqRef.current),
@@ -235,6 +239,26 @@ export function useTestMode(g) {
       },
       crewLevelOnCreate: crew => ({ ...crew, level: CREW_MAX_LEVEL, cap: crewMemberCapForLevel(CREW_MAX_LEVEL) }),
       saveTo, loadFrom, listSaves,
+      // Save file export/import — moves a save between site addresses/devices
+      // (browser saves belong to one exact web address).
+      exportSave: () => {
+        const snap = buildSnapshot();
+        snap.meta.tiles = Object.values(snap.tiles).filter(t => t.owner === "player").length;
+        const blob = new Blob([JSON.stringify(snap)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `foolsgold-test-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.json`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      },
+      importSave: async (file) => {
+        try {
+          const snap = JSON.parse(await file.text());
+          if (snap?.meta?.version !== SAVE_VERSION || !snap.tiles) return { ok: false, reason: "Not a Fool's Gold test save (or an older version)" };
+          await writeSave("slot3", snap);
+          return { ok: true };
+        } catch (err) { return { ok: false, reason: String(err?.message || err) }; }
+      },
       teleportTo: key => { const [c, r] = String(key).split(",").map(Number); if (Number.isFinite(c) && Number.isFinite(r)) s().teleportTo(c, r); },
     };
   }, [testMode, noAdjacency, lastSaveAt, saveMsg, grantAllCommanders, saveTo, loadFrom]);
