@@ -5,13 +5,19 @@ import { allHqKeyList, checkPlannedRelocation, findForcedRelocationPad, hqMovePa
 // HQ relocation actions. Rules live in shared/utils/relocation.js.
 export function useRelocation({
   tiles, patchTile, facKey, aiHqKeys, playerHqKey, playerHqRef, setPlayerHqKey,
-  cmds, consumables, setConsumables, lastRelocateAt, setLastRelocateAt, setWinner, floaty,
+  cmds, consumables, setConsumables, lastRelocateAt, setLastRelocateAt, setWinner, floaty, setPlayerCmds,
 }) {
   // Old HQ tiles revert to neutral plain; new 3x3 becomes the HQ.
+  // Commanders sitting at the old HQ move with it (they used to be left on
+  // the old, now-neutral tile).
   const applyHqMove = useCallback((newCenterKey) => {
-    for (const [k, patch] of hqMovePatches(playerHqRef.current, newCenterKey, tiles, facKey)) patchTile(k, patch);
+    const oldCenterKey = playerHqRef.current;
+    for (const [k, patch] of hqMovePatches(oldCenterKey, newCenterKey, tiles, facKey)) patchTile(k, patch);
     setPlayerHqKey(newCenterKey);
-  }, [playerHqRef, patchTile, facKey, tiles, setPlayerHqKey]);
+    if (oldCenterKey && setPlayerCmds) {
+      setPlayerCmds(prev => prev.map(c => c.owner === "player" && !c.march && c.tk === oldCenterKey ? { ...c, tk: newCenterKey } : c));
+    }
+  }, [playerHqRef, patchTile, facKey, tiles, setPlayerHqKey, setPlayerCmds]);
 
   // Planned relocation — costs 1 token, 72hr cooldown, all commanders must be home.
   const performRelocation = useCallback((newCenterKey) => {

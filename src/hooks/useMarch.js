@@ -149,6 +149,7 @@ facMasterySiegeMult = 1,
 registerProtection,
 onForcedRelocate,
 crews, playerCrewId, regionOwners, setRegionOwners,
+ignoreAdjacency = false, // TEST MODE: arrivals don't need a connecting tile
 crewPveDmgMult = 0, crewSpawnDmgMult = 0,
 }) {
 
@@ -197,6 +198,7 @@ const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
 // gateB (and vice versa), so you can attack straight across without owning
 // any other tiles near the border.
 const hasPlayerFoothold = (destKey, originKey, tileMap) => {
+  if (ignoreAdjacency) return true;
   const [dc, dr] = destKey.split(",").map(Number);
   // adj8: attacks are allowed from a diagonally-owned tile, not just orthogonal.
   if (adj8(dc, dr).some(k => {
