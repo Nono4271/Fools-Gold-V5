@@ -399,3 +399,29 @@ test("Wizards: Game Over (max) — a kill gives the next skill +20%; Testing the
   const eff = commanderSkillEffect('mira_testing_the_water', ALL_SKILLS.mira_testing_the_water, 7);
   assert.ok(Math.abs(eff.value - 0.40) < 1e-9 && eff.dmgDown === 0.09);
 });
+
+// ── Ashen Dead ────────────────────────────────────────────────────────────────
+function ashBattle(id, skillPoints, seed, defCmd, branches = ['skeleton_legion', 'mummies']) {
+  const slots = branches.map(b => ({ branch: { faction: 'ashen_dead', branch: b, tier: 2 }, troops: 10000 }));
+  const cmd = { id, n: id, faction: 'ashen_dead', cls: 'attacker', lvl: 50, atk: 220, foc: 220, spd: 100, troops: 10000 * branches.length, troopBranch: slots[0].branch, troopSlots: slots, skillPoints };
+  return seeded(() => simBattle(cmd, cmd.troops, { defCmd: defCmd || bigFoe(), garrison: 100, owner: 'ai' }, 0), seed);
+}
+
+test("Ashen Dead: Life Drain turns the enemy's healing into damage on drained units", () => {
+  const healer = { ...pvpArmy('h39', true) }; // Brennan heals every few rounds
+  const acts = actsOver(s => ashBattle('h55', { malgrath_plague_of_the_eternal: 15, malgrath_necrotic_touch: 7 }, s, healer));
+  assert.ok(acts.some(a => /Life Drain — healing turned to damage/.test(a.action) && a.dmg > 0));
+});
+
+test("Ashen Dead: Cael's Rampage normal attack hits every unit; Dead Man's Weight slows all enemies", () => {
+  const acts = actsOver(s => ashBattle('h60', { cael_caels_rampage_passive: 7 }, s));
+  assert.ok(acts.some(a => /Normal attack hits all/.test(a.action)));
+  const perRound = actsOver(s => ashBattle('h60', { cael_caels_rampage_passive: 7 }, s)).filter(a => a.isPlayer === true && /h60 strikes/.test(a.action)).length;
+  assert.ok(perRound > 10 * 5); // more strikes than one per round
+  assert.ok(actsOver(s => ashBattle('h57', { dread_dead_mans_weight: 15 }, s)).some(a => /Dead Man's Weight — Enemy SPD -/.test(a.action)));
+});
+
+test("Ashen Dead: Varak's Verdict silences the enemy commander (was a Confusion)", () => {
+  const acts = actsOver(s => ashBattle('h56', { varak_varaks_verdict: 7 }, s, { ...pvpArmy('h9', true) }));
+  assert.ok(acts.some(a => /silenced — skill delayed/.test(a.action)));
+});
