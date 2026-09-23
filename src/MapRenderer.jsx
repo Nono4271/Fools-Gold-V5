@@ -4,7 +4,6 @@ import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
 import {usesNewWorldVisuals, sameTerritory, resourceFootprint, selectionEdgesBesideHq, hqJoinedBorderSegments} from "./utils/worldVisuals.js";
 import {softenTerritoryColor} from "./utils/hqTerrainStyle.js";
-import {terrainGroundAsset, terrainMaterialTone, resourceShadowSpec} from "./utils/mapVisualPolish.js";
 import {createResourceSpriteCache} from "./utils/resourceSprites.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
 
@@ -46,12 +45,9 @@ const DARK_VISUAL_TERRAIN = {
 const GROUND_TEXTURE_MATRIX = new PIXI.Matrix(0.7,0,0,0.46,0,0);
 function fillVisualGround(gfx, points, c, r, terrain, useNewVisuals, groundTexture) {
   const natural = !['river','ravine','rockymountain','hellfire','shore','road'].includes(terrain);
-  const resolvedTexture = groundTexture?.byTerrain?.[terrain] ||
-    groundTexture?.byTerrain?.grass || groundTexture;
-  if (useNewVisuals && natural && resolvedTexture?.baseTexture?.valid) {
-    const tone = terrainMaterialTone(c, r, terrain);
-    const tint = Math.max(0, Math.min(0xffffff, Math.round(0xffffff * tone)));
-    gfx.beginTextureFill({texture:resolvedTexture,matrix:GROUND_TEXTURE_MATRIX,color:tint});
+  if (useNewVisuals && natural && groundTexture?.baseTexture.valid) {
+    const tint = terrain === 'forest' ? 0xc3cfbc : terrain === 'mountain' ? 0xd2d0c6 : 0xffffff;
+    gfx.beginTextureFill({texture:groundTexture,matrix:GROUND_TEXTURE_MATRIX,color:tint});
   } else {
     gfx.beginFill(useNewVisuals ? getSpawnVisualColor(c,r,terrain) : getTileBaseColor(c,r,terrain));
   }
@@ -2226,11 +2222,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const propsGfx = new PIXI.Graphics(); world.addChild(propsGfx);
     propsFrontRef.current = propsGfx; propsBackRef.current = propsGfx;
 
-    // Phase 2: one shared contact-shadow layer for resource props. Keeping
-    // shadows in a single Graphics object avoids one display object per node.
-    const resourceShadowGfx = new PIXI.Graphics();
-    world.addChildAt(resourceShadowGfx, world.children.indexOf(propsGfx));
-
     // ── iOS sprite-based props ────────────────────────────────────────────────
     // Pre-render each resource type ONCE to a RenderTexture at startup.
     // EARCUT / fan-tessellation runs exactly once per resource type here.
@@ -2256,19 +2247,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       redrawRef.current?.redraw?.(true);
     };
     const resourceSpriteCache = createResourceSpriteCache(app.renderer,onVisualAssetsLoaded);
-
-    // Phase 2 ground materials: keep the original asset untouched while using
-    // dedicated, subtle material variants for natural terrain types.
-    const groundTexture = PIXI.Texture.from('/props/dark-map/grass-ground-v2.webp');
-    groundTexture.byTerrain = {};
-    ['grass','forest','mountain','desert','ruin'].forEach((terrain) => {
-      const texture = terrain === 'grass'
-        ? groundTexture
-        : PIXI.Texture.from(`/props/dark-map/${terrainGroundAsset(terrain)}`);
-      texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
-      groundTexture.byTerrain[terrain] = texture;
-      if (!texture.baseTexture.valid) texture.baseTexture.once('loaded',onVisualAssetsLoaded);
-    });
+    const groundTexture = PIXI.Texture.from('/props/dark-map/grass-ground.webp');
+    groundTexture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+    if (!groundTexture.baseTexture.valid) groundTexture.baseTexture.once('loaded',onVisualAssetsLoaded);
 
     // ── iOS lazy texture baking ───────────────────────────────────────────────
     // Instead of baking all 52 textures synchronously at startup (blocking the
@@ -2481,32 +2462,6 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const pb = getViewBounds(PROPS_BUF);
       while (visualPropsContainer.children.length > 0) {
         visualPropsPool.push(visualPropsContainer.removeChildAt(0));
-      }
-
-      // Phase 2 contact shadows: broad, low-alpha ellipses anchor resource
-      // clusters to the tile surface and make the existing art feel less flat.
-      resourceShadowGfx.clear();
-      if (zoomRef.current >= 0.5) {
-        const shadowTiles = tilesRef.current;
-        const shadowDMin = pb.cMin + pb.rMin, shadowDMax = pb.cMax + pb.rMax;
-        for (let d = shadowDMin; d <= shadowDMax; d++) {
-          const cLo = Math.max(pb.cMin, d - pb.rMax), cHi = Math.min(pb.cMax, d - pb.rMin);
-          for (let c = cLo; c <= cHi; c++) {
-            const r = d - c;
-            if (r < pb.rMin || r > pb.rMax) continue;
-            const tile = shadowTiles[`${c},${r}`];
-            if (!tile?.rss || tile.isHQ || tile.isHQPart || tile.isKeepPart ||
-                tile.isGate || tile.isWin || tile.isShore || tile.powerLevel === 1) continue;
-            const pl = tile.powerLevel || 1;
-            const fp = resourceFootprint(c,r,tile);
-            const spec = resourceShadowSpec(tile,pl);
-            const rx = fp.halfWidth * spec.scaleX;
-            const ry = fp.halfHeight * spec.scaleY;
-            resourceShadowGfx.beginFill(0x080907, spec.alpha);
-            resourceShadowGfx.drawEllipse(fp.x, fp.y + fp.halfHeight * 0.06, rx, ry);
-            resourceShadowGfx.endFill();
-          }
-        }
       }
 
       if (isIOS) {
@@ -3214,9 +3169,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       touchTarget.removeEventListener("touchmove",   safeTM);
       touchTarget.removeEventListener("touchend",    safeTE);
       touchTarget.removeEventListener("touchcancel", safeTE);
-      Object.values(groundTexture.byTerrain || {}).forEach((texture) => {
-        if (texture?.baseTexture) texture.baseTexture.off('loaded',onVisualAssetsLoaded);
-      });
+      groundTexture.baseTexture.off('loaded',onVisualAssetsLoaded);
       visualPropsPool.forEach(sprite => sprite.destroy());
       app.destroy(true, { children: true });
       resourceSpriteCache.destroy();
