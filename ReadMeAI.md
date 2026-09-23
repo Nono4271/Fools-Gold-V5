@@ -1438,6 +1438,42 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Holy Knights fully implemented
+
+All 6 commanders (h37 Aldric, h38 Vayne, h39 Brennan, h40 Seraph, h41 Dante, h42 Mourne) were checked against their descriptions. 35 handler types were rewritten for the per-unit commander path; troop-skill users of the same types (`decaying_dmg_reduce`, `per_round_def_stack`) keep their old behaviour.
+
+**Engine support (small, shared):**
+- Stun immunity: `rs.cmdStunImmune` (commander), `rs.unitStunImmuneAll` / `rs.slotStunImmune` (units). `earlyRoundStunImmune` (Commander Guidance max) is now read too.
+- `rs.selfConfusedUnits`: our own units confused by our own skill.
+- `requiresNormal` skill hits: "after the commander attacks" extras only fire if the normal attack happened.
+- Per-unit hit counters in `damageSlot` (`cs.unitHits`, `cs.hitsTaken`).
+- `rs.decayRed`: The People's Hero, per unit and per hit, in `vsMult`.
+- `rs.firstHitsEvade`: Commander In Arms, each unit's first N hits.
+- `rs.divinePrayer`: cleanse roll when our commander is stunned, confused or silenced; a failed roll adds a DEF stack.
+- `rs.healCut`: Last Hope's permanent heal block on its units' share.
+
+**Notable fixes:**
+- Heaven's Hammer added focus damage and stunned the whole army. It is now physical, 1 unit, guaranteed stun. Got Ya: focus, 1 unit, guaranteed stun.
+- Smite / Last Ride now hit every enemy unit (they were a flag nothing read).
+- Mourne's Special / The Wise now deal their Focus damage after the normal attack (were never read).
+- Will of the Templar / Will of an Inquisitor: enemy DMG -X% for rounds 1–4. They wrote fields nothing read.
+- Defense in Numbers stacks now persist through the battle and are +5 flat DEF. They reset each round and were +5%.
+- Warrior's Burden: from round 4 Aldric's FOC and SPD are halved and HK units get HP/DEF +N for the rest of the fight. It was only a log line.
+- Promise Land: +N commander ATK per hit the army takes (max 6).
+- Power Drain: enemy commander ATK down (7 × level, -10 per round).
+- Maniac's Poison: a poison DoT on 2 units plus heal block. It used the frontline legacy venom.
+- Priests' Prayer / Power of Sun (day only): max-damage chance on HK units. Do You Believe: HK unit focus resist.
+- Here We Go Again: at night, HK take less damage from COTN; at day (max level), HK deal +10% to COTN. It used to reduce damage from everything.
+- Erratic Eradication, Target Practice, Mad Ruler, Blessed Judgement (HK heal + melee max bonus), HK Protector (second heal on a 50% roll), Healing Touch, Patch You Up, Rally the Inquisitors (follow-up + permanent unit stun immunity), Inquisitor's Domain, Cleansing Faith, Heaven's Protection (one roll, rounds 1–4), Stoic Hero, Divine Prayer.
+- **Whatever It Takes: the level now scales only the enemy confusion chance.** The allied self-confusion stays at 7%. Before, both scaled, so at 7/7 49% of our own units were confused. Owner to confirm.
+
+**Coverage:** every HK skill changes combat in leave-one-out except Last Resort (round-8 heal; battles rarely reach round 8). Divine Prayer and the stun immunities only show against a stunning enemy; verified in tests.
+
+**Checks:**
+- Whole game: 466/576 commander skills change combat.
+- PvP mirror 92/180 attacker wins. PvE unchanged.
+- Tests: 7 new. `npm test` 455/455, build OK.
+
 ## 2026-09-23 — Claude — Per-unit DoTs/statuses + Night Creatures fully implemented
 
 **Per-unit (owner: "fix venom/bleed ticks, %HP strikes, confused self-hits"):**
