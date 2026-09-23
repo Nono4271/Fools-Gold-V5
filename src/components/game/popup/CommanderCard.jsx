@@ -1,7 +1,19 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import { useGameContext } from "../../../GameContext.js";
 import { FACTION_TROOPS } from "../../../../shared/constants/troops.js";
 import { TROOP_FACTIONS } from "../../../../shared/constants/allTroops.js";
+import { woundedMsLeft, guardCooldownLeft, fmtMsShort, GUARD_STAMINA_COST } from "../../../../shared/utils/commanderStatus.js";
+
+// Re-render every second while a countdown (Wounded / Guard cooldown) is showing.
+function useNowWhile(active) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [active]);
+  return active ? now : Date.now();
+}
 
 function tbInfo(tb) {
   if (!tb) return null;
@@ -91,6 +103,10 @@ function FriendlyCommanderCard({
   const troopLabel = slots.map(sl => tbInfo(sl.branch)?.label).filter(Boolean).join(" + ");
   const isMarching = !!cmd.march;
   const isAtHQ = cmd.tk === playerHqKey;
+  const hasTimer = (cmd.woundedUntil || cmd.guardCooldownUntil) > Date.now();
+  const now = useNowWhile(isPlayer && hasTimer);
+  const woundLeft = woundedMsLeft(cmd, now);
+  const guardCd = guardCooldownLeft(cmd, now);
 
   const borderColor = isPlayer ? "#3a6a3a" : "#204080";
   const nameColor   = isPlayer ? "#90c870" : "#60a0ff";
@@ -145,38 +161,51 @@ function FriendlyCommanderCard({
               {Math.floor(stam)}
             </span>
           </div>
+          {woundLeft > 0 && (
+            <div style={{ marginTop: 4, fontSize: 7.5, color: "#e07070", fontFamily: "'Cinzel',serif", letterSpacing: ".04em" }}>
+              🩸 WOUNDED · {fmtMsShort(woundLeft)} — can't march, gather, train or guard
+            </div>
+          )}
+          {woundLeft <= 0 && guardCd > 0 && !cmd.isGuarding && (
+            <div style={{ marginTop: 4, fontSize: 7, color: "#8090c0", fontFamily: "'Cinzel',serif" }}>
+              🛡 Guard ready in {fmtMsShort(guardCd)}
+            </div>
+          )}
         </div>
 
         {/* Side action buttons — vertical stack */}
         {isPlayer && (
           <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-            {isMarching ? (
+            {woundLeft > 0 ? (
+              <div title="Wounded" style={{ width: 36, height: 36, borderRadius: 7, background: "rgba(160,40,40,.2)", border: "1px solid #803030", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🩸</div>
+            ) : isMarching ? (
               <button onClick={() => recallMarch?.(cmd.uid)}
                 title="Cancel March"
-                style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(180,60,60,.25)", border: "1px solid #cc4444", color: "#ff9090", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
+                style={{ width: 36, height: 36, borderRadius: 7, background: "rgba(180,60,60,.25)", border: "1px solid #cc4444", color: "#ff9090", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
             ) : cmd.isGuarding ? (
               // Guarding — only show the guard button to cancel
               <button
                 onClick={() => setGuardPrompt("cancel")}
                 title="Cancel Guard"
-                style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(240,200,40,.25)", border: "1px solid #c8a020", color: "#f0c040", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>🛡</button>
+                style={{ width: 36, height: 36, borderRadius: 7, background: "rgba(240,200,40,.25)", border: "1px solid #c8a020", color: "#f0c040", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>🛡</button>
             ) : (
               <>
                 {!isAtHQ && (
                   <button onClick={() => recallStationary?.(cmd.uid)}
                     title="Recall"
-                    style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(180,120,20,.2)", border: "1px solid #c89030", color: "#f0c060", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
+                    style={{ width: 36, height: 36, borderRadius: 7, background: "rgba(180,120,20,.2)", border: "1px solid #c89030", color: "#f0c060", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
                 )}
                 {barracksPool > 0 && (cmd.troopSlots?.length > 0 || cmd.troopBranch) && (
                   <button onClick={() => { setReinCmd?.(cmd); setMode?.("reinforce"); }}
                     title="Reinforce"
-                    style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(20,60,160,.25)", border: "1px solid #2060cc", color: "#80a0ff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                    style={{ width: 36, height: 36, borderRadius: 7, background: "rgba(20,60,160,.25)", border: "1px solid #2060cc", color: "#80a0ff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                 )}
                 {/* Guard — activate */}
                 <button
-                  onClick={() => setGuardPrompt("activate")}
-                  title="Guard (10⚡)"
-                  style={{ width: 30, height: 30, borderRadius: 6, background: "rgba(40,80,160,.25)", border: "1px solid #4060cc", color: "#8090e0", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>🛡</button>
+                  onClick={() => guardCd <= 0 && setGuardPrompt("activate")}
+                  disabled={guardCd > 0}
+                  title={guardCd > 0 ? `Guard ready in ${fmtMsShort(guardCd)}` : `Guard (${GUARD_STAMINA_COST}⚡)`}
+                  style={{ width: 36, height: 36, borderRadius: 7, background: "rgba(40,80,160,.25)", border: "1px solid #4060cc", color: "#8090e0", fontSize: 13, cursor: guardCd > 0 ? "not-allowed" : "pointer", opacity: guardCd > 0 ? 0.45 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>🛡</button>
               </>
             )}
           </div>
@@ -192,8 +221,8 @@ function FriendlyCommanderCard({
             </div>
             <div style={{ fontSize: 8, color: "#7a9a8a", marginBottom: 14, lineHeight: 1.5 }}>
               {guardPrompt === "activate"
-                ? "This commander will defend all owned and crew tiles in a 3×3 area. Costs 10⚡."
-                : "Your commander will stop guarding the surrounding tiles. No stamina cost."}
+                ? `This commander will defend its tile and the 8 around it (your tiles, crew tiles and your crew's Fortress/Well/Outpost — not HQs or keeps). Attacks there fight the newest guard first. Costs ${GUARD_STAMINA_COST}⚡. Moving ends the guard.`
+                : "Your commander will stop guarding. No stamina cost, but it can't guard again for 3 minutes."}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setGuardPrompt(null)}

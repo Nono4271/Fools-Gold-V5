@@ -5,7 +5,7 @@ import {
   WELL_COST, OUTPOST_COST, OUTPOST_DAILY_COMMAND_LIMIT,
 } from "../../../../shared/constants/crew.js";
 import {
-  canStartWellBuild, canStartOutpostBuild, isStructureBuilt, canStationAtWell,
+  canStartWellBuild, canStartOutpostBuild, isStructureBuilt, canStationAtWell, structureSiege,
 } from "../../../../shared/utils/crewStructures.js";
 
 /*
@@ -33,10 +33,27 @@ function ActionBtn({ ok, onClick, reason, color, children }) {
   );
 }
 
+// Siege HP line + (for another crew's structure) an ATTACK button. Same
+// combat as a Fortress: standing commanders → stationed (Well only) → siege.
+function SiegeRow({ structure, mine, canAtk, canAtkNow, onAttack }) {
+  const { siege, siegeMax } = structureSiege(structure);
+  return (
+    <>
+      <div style={{ ...NOTE, color: "#e0a0a0" }}>🏰 Siege: {siege.toLocaleString()}/{siegeMax.toLocaleString()}</div>
+      {!mine && canAtk && (
+        <ActionBtn ok={!!canAtkNow} reason={canAtkNow ? "" : "No commander in range with stamina"} color="#cc2020" onClick={onAttack}>
+          ATTACK
+        </ActionBtn>
+      )}
+    </>
+  );
+}
+
 export default function CrewStructurePanel({
   selKey, selTile, isNeutral, myCrew, facKey, rss, nowTick, cmds,
   crewFortressAtTile, wellAtTile, wellCrew, outpostAtTile, outpostCrew, crewStructureKeys,
   contractCommandsLeft,
+  canAtk, canAtkNow, onAttackStructure,
   onBuildWell, onDemolishWell, onStationAtWell, onOpenWellGather,
   onBuildOutpost, onDemolishOutpost, onChooseOutpostUnits,
 }) {
@@ -76,13 +93,21 @@ export default function CrewStructurePanel({
     const mine = !!myCrew && wellCrew?.id === myCrew.id;
     const built = isStructureBuilt(wellAtTile, now);
     if (!built) return <div style={{ ...NOTE, color: "#80c0e0" }}>🏗 Well under construction — {minsLeft(wellAtTile)}m left</div>;
-    if (!mine) return <div style={{ ...NOTE, color: "#80c0e0" }}>💧 {wellCrew?.name || "Crew"} Well</div>;
-    const stationable = (cmds || []).filter(c => c.owner === "player" && c.tk !== selKey
+    if (!mine) return (
+      <>
+        <div style={{ ...NOTE, color: "#80c0e0", flexBasis: "100%" }}>💧 {wellCrew?.name || "Crew"} Well</div>
+        <SiegeRow structure={wellAtTile} mine={false} canAtk={canAtk} canAtkNow={canAtkNow} onAttack={onAttackStructure} />
+      </>
+    );
+    const stationable = (cmds || []).filter(c => c.owner === "player" && c.stationedWellId !== wellAtTile.id
       && canStationAtWell(myCrew, wellAtTile, facKey, c, now).ok);
-    const hereIdle = (cmds || []).filter(c => c.owner === "player" && c.tk === selKey && !c.march && !c.gathering && !c.training);
+    // Only commanders STATIONED at the Well gather — ones that merely moved
+    // onto the tile stand guard (they fight first) but don't gather.
+    const hereIdle = (cmds || []).filter(c => c.owner === "player" && c.stationedWellId === wellAtTile.id && c.tk === selKey && !c.march && !c.gathering && !c.training);
     return (
       <>
         <div style={{ ...NOTE, color: "#80c0e0", flexBasis: "100%" }}>💧 Well · gathers all 4 resources at the p11 rate</div>
+        <SiegeRow structure={wellAtTile} mine />
         <ActionBtn ok={stationable.length > 0} reason={stationable.length ? "" : "No idle commanders"} color="#3a90c0" onClick={() => setStationOpen(o => !o)}>
           📍 STATION
         </ActionBtn>
@@ -113,7 +138,12 @@ export default function CrewStructurePanel({
   if (!built) return <div style={{ ...NOTE, color: "#e0c080" }}>🏗 Contract Outpost under construction — {minsLeft(outpostAtTile)}m left</div>;
   const units = outpostAtTile.units || [];
   const unitLabel = k => NEUTRAL_TROOPS.find(u => u.key === k)?.label || k;
-  if (!mine) return <div style={{ ...NOTE, color: "#e0c080" }}>📜 {outpostCrew?.name || "Crew"} Contract Outpost</div>;
+  if (!mine) return (
+    <>
+      <div style={{ ...NOTE, color: "#e0c080", flexBasis: "100%" }}>📜 {outpostCrew?.name || "Crew"} Contract Outpost</div>
+      <SiegeRow structure={outpostAtTile} mine={false} canAtk={canAtk} canAtkNow={canAtkNow} onAttack={onAttackStructure} />
+    </>
+  );
   const maxUnits = crewOutpostUnitSlots(myCrew.level);
   const toggle = k => {
     const next = units.includes(k) ? units.filter(u => u !== k) : [...units, k];
@@ -127,6 +157,7 @@ export default function CrewStructurePanel({
           Train in the HQ → Training · {contractCommandsLeft ?? OUTPOST_DAILY_COMMAND_LIMIT}/{OUTPOST_DAILY_COMMAND_LIMIT} commands left today
         </div>
       </div>
+      <SiegeRow structure={outpostAtTile} mine />
       {isFounder && (
         <ActionBtn ok color="#c0a040" onClick={() => setPickOpen(o => !o)}>CHOOSE UNITS ({units.length}/{maxUnits})</ActionBtn>
       )}
