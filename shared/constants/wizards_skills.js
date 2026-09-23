@@ -544,8 +544,8 @@ export const MIRA_UNIQUE_SKILLS = {
     type: "passive",
     desc: "[All Allied Troops] Rounds 1-3: DEF +9% | DMG Dealt -9%. (Passive)",
     effect: { type: "early_round_def_up_dmg_down", defUp: 0.09, dmgDown: 0.09, maxRound: 3 },
-    base: 0.09, perLevel: 0.09,
-    nextDesc: (lvl) => `Rounds 1-3: DEF +${Math.round((0.09+lvl*0.09)*100)}% | DMG -${Math.round((0.09+lvl*0.09)*100)}% (permanent)`,
+    base: 0.09, perLevel: 0.31 / 6, // DEF 9% → 40% at 7/7; DMG -9% stays fixed (owner)
+    nextDesc: (lvl) => `Rounds 1-3: DEF +${Math.round((0.09+lvl*0.31/6)*100)}% | DMG -9% (permanent)`,
   },
 
   // Fixed rounds 6 and 8
