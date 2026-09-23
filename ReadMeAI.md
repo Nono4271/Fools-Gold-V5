@@ -1438,6 +1438,60 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Wizards fully implemented + mixed-army loss fix
+
+All 6 commanders (h5 Vex, h6 Mira, h17 Dov, h18 Oren, h29 Theon, h30 Ryn) were checked against their descriptions. The Wizard skill set is `BOUNTYHUNTERS_SKILLS` in `wizards_skills.js`. 38 handler types were rewritten for the per-unit commander path; the troop/legacy path is kept. Shared types (`cmd_foc_passive`, `army_evasion_per_round_chance`, `enemy_status_def_down` incl. frostbite, `cmd_focus_dmg_bonus`, `multi_hit_random_atk_stack`) stay generic for Coldborns/Ashen Dead.
+
+**Engine support:**
+- `skillSlotPred` accepts a function.
+- New ctx helpers:
+  - `defSlotSpd` (for % Slow);
+  - `dotUnits(kind)`, the enemy units carrying our DoTs;
+  - `clearDots(ti)`.
+- `vsMult` matches `slowed` / `poisoned` units and applies Wise Wizard's escalation (`rs.escalate`, per hit the unit has taken).
+- Commander:
+  - `cmdFocDmgUp` (Meditation, focus damage);
+  - `normalIgnoreDef` (Hit the Gym);
+  - `cs.focVuln` (A Wizard's Power: the unit's next Focus hit taken +X%, from the next round);
+  - `burnDmgResist` on Burn-type hits (Tidal Wave).
+- Units:
+  - `minDmgUnits` (Powerful Suppression: minimum damage next round);
+  - `slotBurnImmune` (Bound to Me max).
+- `troopLossReduce` (Tiler) is applied to the attacker's final losses (max 50%).
+
+**Notable fixes:**
+- Nearly every Wizard active added its damage to the legacy focus pool or `cmdMult` and applied stun/burn/confusion/poison army-wide. They are now per-unit hits and statuses:
+  - Shock Wave, Blade of Fire, Lightning Blade, Riddle Me This, Hourglass;
+  - Poison Arrow, Poisoned Blade (highest DEF);
+  - Flaming Arrow (Dragon priority), Many Trophies (+60% on Dragon units);
+  - Hexblade (6 random hits, +10 CMD ATK per unique unit);
+  - Blinding Speed (SPD-scaled), Lieutenant of Spellblades (SPD +100% for 2 rounds).
+- Game Over hits each enemy unit for 10% plus 100% per debuff it strips from that unit (stun/confuse/blind/burn/DEF-down/slow/our DoTs).
+- Mind Games: guaranteed enemy commander Confusion; allies +X% vs slowed units for the rest of the battle.
+- Battle Mage / Small and Quick: flat commander FOC / ATK / SPD (they were ignored or used as %).
+- Mage's Secret Knowledge / Hit the Gym read the commander's FOC / ATK this round.
+- Front Line Combat, Destroy All Creatures, Feel the Burn and A Bad Time now apply only to the matching units (they were army-wide).
+- Bound to Me, Golem Master, Wizard Onslaught: only their branch.
+- Plenty of Stamina max gives commander confusion immunity (it gave stun immunity).
+- Keep Taker max: commander stun immunity at a Keep.
+
+**Mixed-army loss fix (all factions):**
+- Final losses used the PRIMARY slot's HP per troop for the whole army. In an army mixing unit sizes (e.g. Spellblades + Golems) that made losses read as 0.
+- Losses, `atkSlotTroopsEnd` and `defTroopsEnd` are now counted per slot from each slot's own HP per troop.
+- PvE results are unchanged. Per-hit log counts (`atkRemaining` etc.) still use the primary slot's HP per troop.
+
+**Not implemented / owner notes:**
+- Game Over max (on kill → next skill +20%).
+- Still Standing? DEF -N: I made it last for the rest of the battle (the description gives no duration).
+- Testing the Water scales both numbers as written (DEF +63% / DMG -63% at 7/7), and Mira does worse with it in the sweep.
+
+**Coverage:** every Wizard combat skill changes combat except Curtain Call (round 10), Still Standing (round 7), Tidal Wave (needs enemy Burn) and Keep Taker (Keep tiles). The other 7 are map-only.
+
+**Checks:**
+- Whole game: 471/576 commander skills change combat.
+- PvP mirror 91/180. PvE unchanged.
+- Tests: 4 new. `npm test` 465/465, build OK.
+
 ## 2026-09-23 — Claude — Pirate + Orc Burn is per unit
 
 Owner: "fix the pirate skills", then "fix orcs too" (Burn should work like the Dragons' per-unit Burn).
