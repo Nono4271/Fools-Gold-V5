@@ -1438,6 +1438,18 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Fort fixes + test save export/import
+
+- **FortPanel** now shows the build/upgrade countdown (`completesAt`) and hides UPGRADE while busy. Before, a fort looked finished right away even though it was really building for 2 hours.
+- **useForts**:
+  - `upgradeFort` refuses while building/upgrading. Upgrading mid-build overwrote the build timer and left the fort stuck.
+  - `destroyFort`: commanders standing on the fort get a real recall path (`bfsPath` + `marchStepMs(60)`). Before, their march had `path: null`, the game loop cleared it with `tk: undefined`, and the commander vanished.
+- **Game.jsx**: the demolish/abandon floaties passed `null` as the tile key, and `floaty()` then threw (`k.split`). They now use the fort's tile.
+- **Test mode**:
+  - Admin → Timers lists fort demolish/abandon timers separately from build/upgrade (`finishFortRemoval`); FINISH EVERYTHING includes them.
+  - Saves → Export file / Import → Slot 3.
+  - IndexedDB saves are per-origin, and every Cloudflare deployment link is a different origin, so testers must use the branch alias URL or export/import.
+
 ## 2026-09-23 — Claude — Test-play bug batch (building gates, army slider, starting troops, relocation)
 
 - **Building deadlocks (affects normal play)**, in `shared/constants/buildings.js`:

@@ -26,15 +26,16 @@ Screenshot/recording:
 ---
 
 ## 0. Test Campaign itself (the tool has to work before anything else)
-- [ ] T1 🛠 TEST CAMPAIGN shows on the title screen when `VITE_TEST_MODE=1` and is hidden without it
-- [ ] T2 New Test Campaign → faction → name → map loads, and every commander (any alignment) is in your roster
-- [ ] T3 Gems, eggs, void orbs and the 4 resources refill automatically after spending
-- [ ] T4 Admin → Commanders: level up/down, respect up/down (promotion at 7 and 12), MAX, stamina refill, search
-- [ ] T5 Admin → Timers: ⚡ finish works for march, building upgrade, training, healing, fort, crew structure, and FINISH EVERYTHING
-- [ ] T6 Attacking works with no adjacency or range limits; turning the toggle off restores the normal rules
-- [ ] T7 🛠 RELOCATE HQ HERE works from a tile popup; commanders move with the HQ; the old castle disappears
+- [x] T1 🛠 TEST CAMPAIGN shows on the title screen when `VITE_TEST_MODE=1` and is hidden without it
+- [x] T2 New Test Campaign → faction → name → map loads, and every commander (any alignment) is in your roster
+- [x] T3 Gems, eggs, void orbs and the 4 resources refill automatically after spending
+- [x] T4 Admin → Commanders: level up/down, respect up/down (promotion at 7 and 12), MAX, stamina refill, search
+- [ ] T5 (march/training/buildings ✓ confirmed; forts re-test after the fort fix) Admin → Timers: ⚡ finish works for march, building upgrade, training, healing, fort, crew structure, and FINISH EVERYTHING
+- [x] T6 Attacking works with no adjacency or range limits; turning the toggle off restores the normal rules
+- [x] T7 🛠 RELOCATE HQ HERE works from a tile popup; commanders move with the HQ; the old castle disappears
 - [ ] T8 A crew created in test mode starts at level 50 with all perks
 - [ ] T9 Save to Slot 1/2/3 → Load → everything matches (tiles, HQ spot, commanders, levels, buildings, crew, resources)
+  - Note: saves belong to one web address — always use the branch link; use Admin → Saves → Export/Import to move a save
 - [ ] T10 The autosave happens (wait 1 min, or close and reopen the app) and Continue from the title menu restores it
 - [ ] T11 Loading while marches or timers are running: they catch up correctly afterwards
 - [ ] T12 A normal campaign after a test campaign has no leftover admin powers
@@ -166,6 +167,7 @@ Screenshot/recording:
 - [ ] K2 Cancel guard gives a 3-minute cooldown; moving ends the guard with no cooldown
 - [ ] K3 Guarded tile under attack: the newest guard fights first **[MP]** (the AI doesn't attack player tiles yet)
 - [ ] K4 Forts: build (3 eggs), upgrade, capacity, station, range from forts, demolish, abandon, removal timers
+  - Fixed 2026-09-23: construction/upgrade timer now shows; no upgrade during build; demolish finishes; commanders recalled from a demolished fort walk home (used to vanish) — re-test
 - [ ] K5 Fort max count and the Numerous Forts tome
 
 ## 12. Wizard's Tomes
