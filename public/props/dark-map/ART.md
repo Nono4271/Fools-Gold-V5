@@ -28,3 +28,17 @@ Use case: stylized-concept. Asset type: seamless repeating ground texture for an
 ## Rendering
 
 `src/utils/resourceSprites.js` declares asset-specific ground anchors and preserves proportions. `src/utils/spawnVisualTest.js` supplies count/size layouts and shared tile-footprint centres. Baking combines the parts into a cached texture, preserving one sprite per resource tile. Original source images are never destroyed by map cleanup.
+
+## Phase 2 material pass — 2026-09-23
+
+The original `grass-ground.webp` remains untouched. The map renderer now uses a second material set for the new-world visual mode:
+
+- `grass-ground-v2.webp` — refined neutral meadow surface
+- `forest-ground-v2.webp` — cooler/darker mossy forest floor
+- `mountain-ground-v2.webp` — desaturated rocky soil tone
+- `desert-ground-v2.webp` — muted warm dry-earth tone
+- `ruin-ground-v2.webp` — darker desaturated worn ground
+
+These are derived from the existing approved ground language rather than replacing the original source. They remain opaque, seamless-use textures with no objects or UI.
+
+The renderer also adds a single shared contact-shadow layer beneath resource props so existing sprites sit into the terrain instead of appearing pasted onto it. This is intentionally low-alpha and does not change the resource artwork itself.
