@@ -1438,6 +1438,42 @@ keeps and Outposts can't hold stationed armies.
 
 ---
 
+## 2026-09-23 — Claude — Two-sided battle engine (PvP parity) + defender troop skills fixed
+
+`simBattle`'s round loop is rewritten so **both armies run through the same code** (owner: "PvP should function the same when real players are on the map; speed determines turn order"). Setup, report, XP and win-% are unchanged.
+
+**Before:**
+- Only the attacker had commander skills, heals, DoTs and statuses.
+- Every troop skill of **both** sides wrote into the attacker's round state. A defender's "bonus damage"/"double attack" boosted the attacker's next hit; its "enemy DEF down" lowered the defender's own DEF; the attacker's counter-attack skill made the *defender* counter.
+- Attacker skills that "block enemy heals" blocked the attacker's own heals.
+- The attacker's own `enemyAtkReduce` was subtracted from its own damage.
+- The walls/fort bonus also multiplied attacker troop damage.
+- Commander strikes, venom, bleed and %HP nukes reduced `defTroopHp` but not `defSlotHp`, so the next troop hit (which recomputes HP from slots) erased that damage. Same on the defender side.
+
+**Now:**
+- Sides `A`/`D` each have their own round state `S.rs`, commander-skill state (`S.cs`), duration buffs, DoTs, heal-block counter, lost-HP / heal-decay pools and class bonuses (attacker/strategist/balanced for the defender too).
+- Per round:
+  1. each side's hero skills (flat + structured) run into its own state;
+  2. venom/bleed ticks;
+  3. round_start troop skills;
+  4. skill log;
+  5. heal block (a side's `blockHeal` blocks the other side);
+  6. walls/fort bonus on defender damage only;
+  7. heals for both sides;
+  8. %HP nukes;
+  9. speed order across both commanders + all slots (own SPD buffs, enemy SPD-down debuffs; speed ties decided by one coin flip per round instead of always attacker);
+  10. `commanderAct` / `slotAct` identical for both sides — a side's "enemy*" fields (stun, silence, confuse, miss, evade, ATK/DMG down, DEF down, burn) act on the other side;
+  11. round_end troop skills.
+- All damage goes through `damageSide()` (spread over living slots by HP share); heals through `healSideHp()`.
+- Defender log lines keep their labels ("Enemy Cmd", "Defenders") and are tagged `isPlayer:false`. `BattleLog.jsx` no longer counts defender heals as attacker healing.
+- `defCommand`: PvE garrisons keep `commandBudget`, Spawns keep `troops`. A player commander defending (PvP) now uses the attacker's army-command formula instead of the raw troop count.
+- AI faction garrison commanders (P4+) already carried `skillPoints`, so they now actually use their skills.
+
+**Verification:**
+- Mirror PvP: identical armies, 4 commanders × skills on/off, 20–30 seeds. Attacker win rate ≈ 47% (was up to 2:1 before the tie-break fix).
+- PvE vs old engine (orc army, no skills, 20 seeds): P1–P6 within a few %; P7–P8 easier (commander damage no longer erased); P12 somewhat harder (AI commander skills).
+- Tests: 3 new PvP tests. Orc skill tests aggregate over 10 seeds. `npm test` 436/436, build OK.
+
 ## 2026-09-23 — Claude — Commander skills Phase 2: Orcs fully implemented
 
 All 6 orc commanders (h9 Grimtusk, h10 Ashgrip/Groth, h21 Warcroak, h22 Grix, h33 Korgath, h34 Bruk), 71 unique skills, were checked against their descriptions and implemented in `shared/utils/battle.js`. Tested leave-one-out: full kit maxed, each skill removed in turn, 4 army mixes × 4 enemy factions × 2 seeds.
