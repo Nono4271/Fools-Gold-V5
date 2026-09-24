@@ -1492,7 +1492,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#08090b" }}>
       {/* Top bar */}
-      <div style={{ padding:"7px 12px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+      <div style={{ padding:"5px 10px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
         {isScrap ? (
           <button className="btn" onClick={() => onSwitchMode?.("train")} style={{ background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:5, color:P.dim, cursor:"pointer", padding:"5px 12px", fontFamily:P.ff, fontSize:9 }}>‹ TRAIN</button>
         ) : (
@@ -1505,11 +1505,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
       </div>
 
       {/* Barracks capacity */}
-      <div style={{ padding:"7px 12px", flexShrink:0 }}>
+      <div style={{ padding:"4px 10px", flexShrink:0 }}>
         <BarracksBar bldgs={bldgs} troopCounts={troopCounts} trainingQueues={trainingQueues}/>
       </div>
 
-      {/* Horizontal two-row scroller — pan-x + class so iOS touch handler lets it through */}
+      {/* Horizontal two-row field — matches LOTR Rise to War style:
+          small free-standing troops, light floating labels, most of screen is the field.
+          Outer scrolls left/right; troops are chunked into vertical pairs (2 rows). */}
       <div
         className="training-scroll"
         style={{
@@ -1517,209 +1519,224 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           minHeight: 0,
           overflowX: "auto",
           overflowY: "hidden",
-          padding: "6px 12px 10px",
+          padding: "4px 10px 6px",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-x",
-          // Give the two-row grid a reliable height budget on phones
-          display: "flex",
-          alignItems: "flex-start",
         }}
       >
         <div
           style={{
-            display: "grid",
-            gridTemplateRows: "repeat(2, 210px)",
-            gridAutoColumns: "168px",
-            gridAutoFlow: "column",
-            gap: "10px 12px",
+            display: "flex",
+            flexDirection: "row",
+            gap: 8,
             width: "max-content",
             minWidth: "100%",
-            // Force the grid to be exactly two rows tall so both rows are always visible
-            // and horizontal scroll works when there are more columns.
-            height: "430px",
+            alignItems: "flex-start",
+            paddingBottom: 4,
           }}
         >
-          {ordered.map((t) => {
-            const amount = values[t.key] || 0;
-            const size = t.branch?.size || "small";
-            const step = isScrap ? 1 : (CMD_SIZE[size] || 100);
-            const room = troopsThatFit(t.bKey, freeCmds);
-            const maxAmount = isScrap
-              ? (t.poolCount || 0)
-              : Math.max(0, Math.floor(Math.min(maxBatch, room) / step) * step);
-            const tierLabel = ["I", "II", "III", "IV"][t.tier?.tierIdx ?? 0] || "I";
-            const psrc = troopPortraitPath(t.fKey, t.branch.key, t.tier?.tierIdx ?? 0);
-            const fc = t.fColor || FACTION_META[t.fKey]?.c || "#888";
-            const ownedNow = (t.poolCount || 0) > 0 || (t.assigned || 0) > 0;
-            const quote =
-              !isScrap && amount > 0
-                ? trainingQuote(
-                    t.bKey,
-                    amount,
-                    trainingSpeedMult,
-                    t.branch?.capstone
-                      ? capstoneTrainDiscount(bldgs[`b_${t.fKey}_${t.branch.key}`])
-                      : 0,
-                    trainingCostMult
-                  )
-                : null;
-            const affordable = isScrap || !quote?.cost || canAfford(quote.cost);
-            const canSelect = isScrap ? maxAmount > 0 : maxAmount >= step && affordable;
-
-            return (
+          {(() => {
+            const pairs = [];
+            for (let i = 0; i < ordered.length; i += 2) {
+              pairs.push(ordered.slice(i, i + 2));
+            }
+            return pairs.map((pair, colIdx) => (
               <div
-                key={t.key}
+                key={"col-" + colIdx}
                 style={{
-                  width: 168,
-                  height: 210,
-                  position: "relative",
-                  flexShrink: 0,
-                  opacity: !ownedNow && !amount ? 0.82 : 1,
                   display: "flex",
                   flexDirection: "column",
+                  gap: 8,
+                  width: 130,
+                  flexShrink: 0,
                 }}
               >
-                {/* Header: Name + Count (count next to name) */}
-                <div
-                  style={{
-                    height: 24,
-                    textAlign: "center",
-                    flexShrink: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    pointerEvents: "none",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontFamily: P.ff,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: P.text,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      lineHeight: 1.15,
-                    }}
-                  >
-                    {t.tier.label}
-                    <span style={{ color: ownedNow ? P.gold : P.dim, fontWeight: 600, marginLeft: 6 }}>
-                      {(t.poolCount || 0).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
+                {pair.map((t) => {
+                  const amount = values[t.key] || 0;
+                  const size = t.branch?.size || "small";
+                  const step = isScrap ? 1 : (CMD_SIZE[size] || 100);
+                  const room = troopsThatFit(t.bKey, freeCmds);
+                  const maxAmount = isScrap
+                    ? (t.poolCount || 0)
+                    : Math.max(0, Math.floor(Math.min(maxBatch, room) / step) * step);
+                  const tierLabel = ["I", "II", "III", "IV"][t.tier?.tierIdx ?? 0] || "I";
+                  const psrc = troopPortraitPath(t.fKey, t.branch.key, t.tier?.tierIdx ?? 0);
+                  const fc = t.fColor || FACTION_META[t.fKey]?.c || "#888";
+                  const ownedNow = (t.poolCount || 0) > 0 || (t.assigned || 0) > 0;
+                  const quote =
+                    !isScrap && amount > 0
+                      ? trainingQuote(
+                          t.bKey,
+                          amount,
+                          trainingSpeedMult,
+                          t.branch?.capstone
+                            ? capstoneTrainDiscount(bldgs[`b_${t.fKey}_${t.branch.key}`])
+                            : 0,
+                          trainingCostMult
+                        )
+                      : null;
+                  const affordable = isScrap || !quote?.cost || canAfford(quote.cost);
+                  const canSelect = isScrap ? maxAmount > 0 : maxAmount >= step && affordable;
 
-                {/* Slider ABOVE the portrait / head */}
-                <div
-                  style={{
-                    flexShrink: 0,
-                    margin: "0 4px 6px",
-                    padding: "4px 6px 5px",
-                    borderRadius: 6,
-                    background: "rgba(5,7,9,.85)",
-                    border: `1px solid ${amount > 0 ? fc + "aa" : P.border + "99"}`,
-                    backdropFilter: "blur(2px)",
-                    zIndex: 4,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 1,
-                      fontFamily: P.ff,
-                      fontSize: 7.5,
-                    }}
-                  >
-                    <span style={{ color: P.text, fontWeight: 700 }}>{isScrap ? "SCRAP" : "TRAIN"}</span>
-                    <span style={{ color: amount > 0 ? P.gold : P.dim, fontWeight: 700 }}>
-                      {amount.toLocaleString()}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={Math.max(step, maxAmount)}
-                    step={step}
-                    value={Math.min(amount, maxAmount)}
-                    disabled={!canSelect && amount === 0}
-                    onChange={(e) => setValue(t, e.target.value)}
-                    style={{
-                      width: "100%",
-                      margin: 0,
-                      accentColor: fc,
-                      cursor: canSelect ? "pointer" : "not-allowed",
-                      height: 18,
-                    }}
-                  />
-                </div>
-
-                {/* Troop portrait — starts below the slider so face is never covered */}
-                <div
-                  style={{
-                    flex: 1,
-                    minHeight: 0,
-                    position: "relative",
-                    border: `1px solid ${amount > 0 ? fc : P.border}`,
-                    borderRadius: 9,
-                    overflow: "hidden",
-                    background: `${fc}12`,
-                    boxShadow: amount > 0 ? `0 0 0 1px ${fc}55, 0 0 16px ${fc}20` : "none",
-                  }}
-                >
-                  {psrc && (
-                    <img
-                      src={psrc}
-                      alt=""
-                      draggable="false"
+                  return (
+                    <div
+                      key={t.key}
                       style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        objectPosition: "top center",
+                        width: 130,
+                        height: 168,
+                        position: "relative",
+                        flexShrink: 0,
+                        opacity: !ownedNow && !amount ? 0.75 : 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
                       }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  )}
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background:
-                        "linear-gradient(to bottom,rgba(0,0,0,.05) 0%,rgba(0,0,0,.05) 40%,rgba(0,0,0,.78) 100%)",
-                      pointerEvents: "none",
-                    }}
-                  />
+                    >
+                      {/* Floating label above head: Name + Count  (tier small) */}
+                      <div
+                        style={{
+                          height: 20,
+                          width: "100%",
+                          textAlign: "center",
+                          flexShrink: 0,
+                          pointerEvents: "none",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "flex-end",
+                          lineHeight: 1.05,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: P.ff,
+                            fontSize: 9,
+                            fontWeight: 700,
+                            color: P.text,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            textShadow: "0 1px 2px #000, 0 0 4px #000",
+                          }}
+                        >
+                          {t.tier.label}
+                          <span style={{ color: ownedNow ? P.gold : "#8a7a60", marginLeft: 4, fontWeight: 600 }}>
+                            {(t.poolCount || 0).toLocaleString()}
+                          </span>
+                        </div>
+                        <div style={{ fontFamily: P.ff, fontSize: 6.5, color: fc, opacity: 0.9 }}>
+                          {tierLabel}
+                        </div>
+                      </div>
 
-                  {/* Bottom meta: tier + size/cmd */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 8,
-                      right: 8,
-                      bottom: 8,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      zIndex: 3,
-                      fontFamily: P.ff,
-                      fontSize: 7,
-                    }}
-                  >
-                    <span style={{ color: fc, fontWeight: 700 }}>{tierLabel}</span>
-                    <span style={{ color: P.dim }}>
-                      {isScrap ? `${(t.poolCount || 0).toLocaleString()} owned` : `${step}/cmd`}
-                    </span>
-                  </div>
-                </div>
+                      {/* Compact slider just under the label / above the head */}
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          width: "100%",
+                          padding: "2px 3px 3px",
+                          marginBottom: 2,
+                          borderRadius: 4,
+                          background: amount > 0 ? "rgba(5,7,9,.75)" : "rgba(5,7,9,.45)",
+                          border: amount > 0 ? `1px solid ${fc}88` : "1px solid transparent",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontFamily: P.ff,
+                            fontSize: 6.5,
+                            marginBottom: 0,
+                          }}
+                        >
+                          <span style={{ color: "#c8b898", fontWeight: 700 }}>{isScrap ? "SCRAP" : "TRAIN"}</span>
+                          <span style={{ color: amount > 0 ? P.gold : "#6a5a48", fontWeight: 700 }}>
+                            {amount.toLocaleString()}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={Math.max(step, maxAmount)}
+                          step={step}
+                          value={Math.min(amount, maxAmount)}
+                          disabled={!canSelect && amount === 0}
+                          onChange={(e) => setValue(t, e.target.value)}
+                          style={{
+                            width: "100%",
+                            margin: 0,
+                            accentColor: fc,
+                            cursor: canSelect ? "pointer" : "not-allowed",
+                            height: 14,
+                          }}
+                        />
+                      </div>
+
+                      {/* Sprite / portrait — minimal frame, looks more like a field unit */}
+                      <div
+                        style={{
+                          flex: 1,
+                          minHeight: 0,
+                          width: "100%",
+                          position: "relative",
+                          borderRadius: 6,
+                          overflow: "hidden",
+                          background: "transparent",
+                        }}
+                      >
+                        {psrc ? (
+                          <img
+                            src={psrc}
+                            alt=""
+                            draggable="false"
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                              objectPosition: "center bottom",
+                              filter: amount > 0 ? "none" : "brightness(0.92)",
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 28,
+                              opacity: 0.5,
+                            }}
+                          >
+                            {t.fIcon || "⚔"}
+                          </div>
+                        )}
+                        {/* subtle ground shadow */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: "15%",
+                            right: "15%",
+                            bottom: 2,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: "rgba(0,0,0,.35)",
+                            pointerEvents: "none",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            ));
+          })()}
         </div>
       </div>
 
@@ -1728,10 +1745,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
         style={{
           flexShrink: 0,
           borderTop: `1px solid ${P.border}`,
-          padding: "8px 12px",
+          padding: "6px 10px",
           display: "flex",
           alignItems: "center",
-          gap: 10,
+          gap: 8,
           background: "rgba(5,6,8,.98)",
         }}
       >
