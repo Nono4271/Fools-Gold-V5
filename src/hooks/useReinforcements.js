@@ -1,8 +1,8 @@
 import { useCallback, useEffect } from "react";
 import { HQP } from "../../shared/constants/map.js";
 import { barracksCommandCapacity, cmdCommand } from "../../shared/constants/buildings.js";
-import { effectiveMarchSpd, marchStepMs, normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
-import { returnToBarracksCmds as returnToBarracks, reinforcementSourceKey, reinforcementAborted, stepReinforcement, mergeReinforcement } from "../../shared/utils/reinforcements.js";
+import { normaliseTroopSlots } from "../../shared/utils/pathfinding.js";
+import { returnToBarracksCmds as returnToBarracks, reinforcementSourceKey, reinforcementAborted, stepReinforcement, mergeReinforcement, reinforcementStepMs, withdrawFromArmy } from "../../shared/utils/reinforcements.js";
 
 // Reinforcement marches: send barracks troops to a field commander.
 // Rules live in shared/utils/reinforcements.js.
@@ -68,10 +68,8 @@ export function useReinforcements({
   const startReinforcement = useCallback((cmd, amount) => {
     if (!cmd || amount <= 0) return;
     const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
-    const slots = normaliseTroopSlots(cmd);
-    const stepMs = Math.max(50, Math.floor(marchStepMs(effectiveMarchSpd(
-      applyAllBonuses(cmd, gearInventory).spd || 60,
-      slots.length ? slots.map(sl => sl.branch) : cmd.troopBranch)) * reinSpeedMult / 2));
+    // Use the shared formula so the actual timer matches what BottomPanel displays.
+    const stepMs = reinforcementStepMs(cmd, applyAllBonuses(cmd, gearInventory).spd, reinSpeedMult);
     setMode("view"); setReinCmd(null);
     setSliderVals(v => ({ ...v, [`rein_${cmd.uid}`]: undefined }));
     findPath(hqKey, cmd.tk).then(path => {
@@ -79,14 +77,39 @@ export function useReinforcements({
       setReinMarches(prev => {
         if (prev.some(r => r.cmdUid === cmd.uid && !r.returning)) return prev;
         const srcKey = reinforcementSourceKey(cmd);
-        // Never send more than that troop type has in barracks.
         const sent = srcKey ? Math.min(amount, troopCounts[srcKey] || 0) : 0;
         if (sent <= 0) return prev;
         setTroopCounts(counts => ({ ...counts, [srcKey]: Math.max(0, (counts[srcKey] || 0) - sent) }));
         return [...prev, { uid:`rein_${Date.now()}`, cmdUid:cmd.uid, amount:sent, branchKey:srcKey, path, step:0, stepMs, startedAt:Date.now(), lastStepTime:Date.now() }];
       });
     });
-  }, [gearInventory, findPath, troopCounts]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gearInventory, reinSpeedMult, findPath, troopCounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { startReinforcement };
+  // Pull troops out of a specific slot and march them home as a returning convoy.
+  const startWithdrawal = useCallback((cmd, slotIndex, amount) => {
+    if (!cmd || amount <= 0) return;
+    const hqKey = playerHqRef.current || `${HQP.player.c},${HQP.player.r}`;
+    setPlayerCmds(cmds => cmds.map(c => {
+      if (c.uid !== cmd.uid) return c;
+      const { cmd: updated, withdrawn, branchKey } = withdrawFromArmy(c, slotIndex, amount);
+      if (withdrawn <= 0) return c;
+      const stepMs = reinforcementStepMs(c, applyAllBonuses(c, gearInventory).spd, reinSpeedMult);
+      findPath(c.tk, hqKey).then(path => {
+        if (!path || path.length < 2) {
+          // Can't path home — just return to barracks immediately.
+          const barracksCap = barracksCommandCapacity(bldgs.barracks || 0);
+          setTroopCounts(counts => returnToBarracks(counts, branchKey, withdrawn, barracksCap));
+          return;
+        }
+        setReinMarches(prev => [
+          ...prev,
+          { uid:`rein_${Date.now()}`, cmdUid:cmd.uid, amount:withdrawn, branchKey, path, step:0, stepMs, returning:true, startedAt:Date.now(), lastStepTime:Date.now() }
+        ]);
+      });
+      return updated;
+    }));
+    setMode("view"); setReinCmd(null);
+  }, [gearInventory, reinSpeedMult, bldgs.barracks, findPath]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { startReinforcement, startWithdrawal };
 }
