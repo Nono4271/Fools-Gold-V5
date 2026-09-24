@@ -34,7 +34,7 @@ document.addEventListener(
     if (target.closest("canvas")) return; // MapRenderer handles its own touches
     // Screens that opted out explicitly (kept for long-press/context menus
     // even when their list is too short to scroll).
-    if (target.closest(".gear-picker-list, .roster-scroll, .battle-popup, .find-tiles-popup, .chat-scroll, .crew-scroll")) return;
+    if (target.closest(".gear-picker-list, .roster-scroll, .battle-popup, .find-tiles-popup, .chat-scroll, .crew-scroll, .training-scroll")) return;
     const interactive = target.closest(
       'button, input, select, textarea, a, [role="button"], [role="slider"], [role="checkbox"]'
     );
