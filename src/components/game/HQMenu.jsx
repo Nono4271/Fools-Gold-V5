@@ -1517,20 +1517,26 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           minHeight: 0,
           overflowX: "auto",
           overflowY: "hidden",
-          padding: "8px 14px 14px",
+          padding: "6px 12px 10px",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-x",
+          // Give the two-row grid a reliable height budget on phones
+          display: "flex",
+          alignItems: "flex-start",
         }}
       >
         <div
           style={{
             display: "grid",
-            gridTemplateRows: "repeat(2, 260px)",
-            gridAutoColumns: "200px",
+            gridTemplateRows: "repeat(2, 210px)",
+            gridAutoColumns: "168px",
             gridAutoFlow: "column",
-            gap: "12px 14px",
+            gap: "10px 12px",
             width: "max-content",
             minWidth: "100%",
+            // Force the grid to be exactly two rows tall so both rows are always visible
+            // and horizontal scroll works when there are more columns.
+            height: "430px",
           }}
         >
           {ordered.map((t) => {
@@ -1564,8 +1570,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               <div
                 key={t.key}
                 style={{
-                  width: 200,
-                  height: 260,
+                  width: 168,
+                  height: 210,
                   position: "relative",
                   flexShrink: 0,
                   opacity: !ownedNow && !amount ? 0.82 : 1,
@@ -1576,7 +1582,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 {/* Header: Name + Count (count next to name) */}
                 <div
                   style={{
-                    height: 28,
+                    height: 24,
                     textAlign: "center",
                     flexShrink: 0,
                     display: "flex",
@@ -1588,7 +1594,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   <div
                     style={{
                       fontFamily: P.ff,
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 700,
                       color: P.text,
                       whiteSpace: "nowrap",
