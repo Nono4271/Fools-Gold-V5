@@ -1561,8 +1561,14 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           padding: "4px 6px 2px",
           position: "relative",
           zIndex: 1,
-          // subtle field feel
-          background: "radial-gradient(ellipse at 50% 80%, rgba(40,50,30,.35) 0%, transparent 70%)",
+          // Shared dark-fantasy battlefield: faction-neutral so every troop type
+          // trains in the same grounded environment.
+          backgroundImage:
+            "linear-gradient(to bottom, rgba(4,7,10,.20) 0%, rgba(4,7,10,.06) 48%, rgba(4,6,5,.42) 100%), url(\"/hq/training_muddy_battlefield.webp\")",
+          backgroundSize: "100% 100%",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          boxShadow: "inset 0 18px 30px rgba(0,0,0,.18), inset 0 -24px 42px rgba(0,0,0,.35)",
         }}
       >
         {(() => {
@@ -1749,19 +1755,21 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 4,
+                gap: 7,
                 width: "max-content",
                 minWidth: "100%",
                 paddingRight: 20,
-                paddingBottom: 4,
+                paddingBottom: 7,
+                position: "relative",
+                zIndex: 2,
               }}
             >
               {/* Top row — offset for diagonal / staggered feel */}
-              <div style={{ display: "flex", flexDirection: "row", gap: 5, paddingLeft: 42 }}>
+              <div style={{ display: "flex", flexDirection: "row", gap: 5, paddingLeft: 42, transform: "translateY(-2px)" }}>
                 {top.map(renderUnit)}
               </div>
               {/* Bottom row */}
-              <div style={{ display: "flex", flexDirection: "row", gap: 5 }}>
+              <div style={{ display: "flex", flexDirection: "row", gap: 5, transform: "translateY(2px)" }}>
                 {bot.map(renderUnit)}
               </div>
             </div>
