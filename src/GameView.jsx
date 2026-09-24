@@ -81,7 +81,7 @@ export default function GameView(props) {
     setTrainingQueues, setTroopCounts, setTroopSkillLevels, setTroopSlot, setUnlockedBranches,
     setUnseenBattles, setUpgQueue, setWinner, setWorldMapOpen, setWorldMapPrompt, setWounded,
     setWoundedQueue, showBattleLog, showPerf, sliderVals, spawnWorkerRef, spawns, staminaMax,
-    startGuard, startMarch, startReinforcement, startReposition, teleportTo, tileCap,
+    startGuard, startMarch, startReinforcement, startWithdrawal, reinSpeedMult, startReposition, teleportTo, tileCap,
     tileScreenX, tileScreenY, tiles, tomesLevel, tomesOpen, tomesUnspentPoints, trainSlider,
     trainingQueues, trainingSpeedMult, trainingCostMult, healSpeedMult, trainingXpMult, troopCounts, troopSkillLevels,
     unlockedBranches, unseenBattles, upgQueue, upgrade, upgradeFort, useConsumable,
@@ -385,6 +385,8 @@ export default function GameView(props) {
           cmdsOnSel={cmdsOnSel} barracksPool={barracksPool} troopCounts={troopCounts}
           bldgs={bldgs} sliderVals={sliderVals} setSliderVals={setSliderVals}
           startReinforcement={startReinforcement}
+          startWithdrawal={startWithdrawal}
+          reinSpeedMult={reinSpeedMult}
           setMode={setMode} setAtkKey={setAtkKey} setPick={setPick}
           setSelKey={setSelKey} setPopupPos={setPopupPos}
           gearInventory={gearInventory}

@@ -1289,7 +1289,7 @@ export default function RiseToWar() {
   });
 
   // ── Reinforcement marches — rules in shared/utils/reinforcements.js ──
-  const { startReinforcement } = useReinforcements({
+  const { startReinforcement, startWithdrawal } = useReinforcements({
     screen, playerHqRef, cmdsRef, tilesRef, setReinMarches, setTroopCounts, setPlayerCmds,
     bldgs, findPath, floaty, applyAllBonuses, gearInventory, reinSpeedMult, troopCounts,
     setMode, setReinCmd, setSliderVals,
@@ -1848,7 +1848,7 @@ export default function RiseToWar() {
     setTrainingQueues, setTroopCounts, setTroopSkillLevels, setTroopSlot, setUnlockedBranches,
     setUnseenBattles, setUpgQueue, setWinner, setWorldMapOpen, setWorldMapPrompt, setWounded,
     setWoundedQueue, showBattleLog, showPerf, sliderVals, spawnWorkerRef, spawns, staminaMax,
-    startGuard, startMarch, startReinforcement, startReposition, teleportTo, tileCap,
+    startGuard, startMarch, startReinforcement, startWithdrawal, reinSpeedMult, startReposition, teleportTo, tileCap,
     tileScreenX, tileScreenY, tiles, tomesLevel, tomesOpen, tomesUnspentPoints, trainSlider,
     trainingQueues, trainingSpeedMult, trainingCostMult, healSpeedMult, trainingXpMult, troopCounts, troopSkillLevels,
     unlockedBranches, unseenBattles, upgQueue, upgrade, upgradeFort, useConsumable,

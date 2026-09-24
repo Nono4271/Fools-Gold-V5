@@ -1965,6 +1965,53 @@ function buildHQLayer(hqCont, tiles, selKey, onHQClick, PIXI, isPanningRef, play
   }
 }
 
+// Draw animated convoy icons for reinforcement marches.
+// Each convoy is a small pulsing wagon icon interpolated between path steps.
+function drawConvoyIcons(gfx, reinMarches, tiles, now) {
+  gfx.clear();
+  if (!reinMarches || reinMarches.length === 0) return;
+  reinMarches.forEach(rm => {
+    if (!rm.path || rm.path.length < 2) return;
+    const step = Math.min(rm.step, rm.path.length - 1);
+    // Interpolate sub-step position so the icon glides smoothly.
+    const elapsed = now - rm.lastStepTime;
+    const frac = rm.stepMs > 0 ? Math.min(1, elapsed / rm.stepMs) : 1;
+    const fromKey = rm.path[step];
+    const toKey   = rm.path[Math.min(step + 1, rm.path.length - 1)];
+    const fromTile = tiles[fromKey]; const toTile = tiles[toKey];
+    if (!fromTile && !toTile) return;
+    const elev = fromTile?.isWin ? 10 : 4;
+    const [fc, fr] = fromKey.split(",").map(Number);
+    const [tc2, tr2] = toKey.split(",").map(Number);
+    const { cx: fx, cy: fy } = isoXY(fc, fr);
+    const { cx: tx, cy: ty } = isoXY(tc2, tr2);
+    const px = fx + (tx - fx) * frac;
+    const py = (fy - elev + TH / 2) + ((ty - elev + TH / 2) - (fy - elev + TH / 2)) * frac;
+    // Pulse ring
+    const pulse = 0.6 + 0.4 * Math.sin(now / 300);
+    const color = rm.returning ? 0xffaa44 : 0x44aaff;
+    gfx.beginFill(color, 0.15 * pulse); gfx.drawCircle(px, py, 13); gfx.endFill();
+    gfx.lineStyle(1.5, color, 0.7 * pulse); gfx.drawCircle(px, py, 10); gfx.lineStyle(0);
+    // Wagon body
+    gfx.beginFill(0x1a1a2a, 0.9); gfx.drawRoundedRect(px - 7, py - 5, 14, 10, 2); gfx.endFill();
+    gfx.lineStyle(1, color, 0.9);  gfx.drawRoundedRect(px - 7, py - 5, 14, 10, 2); gfx.lineStyle(0);
+    // Wheels
+    gfx.beginFill(color, 0.9); gfx.drawCircle(px - 4, py + 5, 2.5); gfx.endFill();
+    gfx.beginFill(color, 0.9); gfx.drawCircle(px + 4, py + 5, 2.5); gfx.endFill();
+    // Direction arrow on body
+    const dir = rm.returning ? -1 : 1;
+    gfx.beginFill(0xffffff, 0.9);
+    gfx.drawPolygon([px + dir*5, py, px + dir*1, py - 2.5, px + dir*1, py + 2.5]);
+    gfx.endFill();
+    // Troop count label
+    if (rm.amount > 0) {
+      // Draw a tiny amount badge above
+      gfx.beginFill(0x000000, 0.7); gfx.drawRoundedRect(px - 8, py - 14, 16, 8, 2); gfx.endFill();
+      gfx.lineStyle(1, color, 0.8); gfx.drawRoundedRect(px - 8, py - 14, 16, 8, 2); gfx.lineStyle(0);
+    }
+  });
+}
+
 function drawMarchLines(gfx, cmds, reinMarches, tiles) {
   gfx.clear();
   const drawPath = (path, col) => {
@@ -2031,6 +2078,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const propsFrontRef  = useRef(null);
   const propsBackRef   = useRef(null);
   const marchGfxRef    = useRef(null);
+  const convoyGfxRef   = useRef(null);
   const guardGfxRef    = useRef(null);
   const protectGfxRef  = useRef(null);
   const spawnGfxRef    = useRef(null);
@@ -2303,6 +2351,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const protectGfx = new PIXI.Container(); world.addChild(protectGfx); protectGfxRef.current = protectGfx;
     const spawnGfx = new PIXI.Graphics(); world.addChild(spawnGfx); spawnGfxRef.current = spawnGfx;
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
+    const convoyGfx = new PIXI.Graphics(); world.addChild(convoyGfx); convoyGfxRef.current = convoyGfx;
     const cmdGfx = new PIXI.Graphics(); world.addChild(cmdGfx); cmdGfxRef.current = cmdGfx;
     const cmdTextCont = new PIXI.Container(); world.addChild(cmdTextCont); cmdTextContRef.current = cmdTextCont;
 
@@ -2675,6 +2724,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
 
     function redrawOverlays() {
       drawMarchLines(marchGfxRef.current, cmdsRef.current, reinRef.current, tilesRef.current);
+      if (convoyGfxRef.current) drawConvoyIcons(convoyGfxRef.current, reinRef.current, tilesRef.current, Date.now());
       renderCommanderIcons();
     }
 
@@ -3443,6 +3493,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     cByTileRef.current = buildCByTile(cmds);
     // Route lines must update when a march begins, steps, or ends.
     if (marchGfxRef.current) drawMarchLines(marchGfxRef.current, cmds, reinRef.current, tilesRef.current);
+    if (convoyGfxRef.current) drawConvoyIcons(convoyGfxRef.current, reinRef.current, tilesRef.current, Date.now());
     // The ticker owns moving icons while marching; otherwise draw them once.
     if (!cmds.some(c => c.march)) redrawRef.current?.renderCommanderIcons?.();
   }, [cmds]);
