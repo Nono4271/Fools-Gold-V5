@@ -392,7 +392,7 @@ const BRANCH_LVL_BONUS = [
   on_hit_received: "On Hit Taken", on_kill: "On Kill", passive: "Passive",
   };
   const RSS_COL = { stone:["🪨","#aaaaaa"], wood:["🪵","#c8903a"], gas:  ["⚗","#4a90c0"],  food: ["🌾","#80b040"] };
-  const portraitSrc = troopPortraitPath(fKey, branch.key, tierIdx);
+  const portraitSrc = troopVisualPath(fKey, branch.key, tierIdx);
   const [portraitErr, setPortraitErr] = useState(false);
   return (
   <div style={{ position:"fixed", inset:0, zIndex:9999,
@@ -831,7 +831,7 @@ const BRANCH_LVL_BONUS = [
   boxShadow: canView ? `0 2px 8px ${fDef.c}22` : "none" }}>
   {/* Portrait image background */}
   {(() => {
-    const psrc = troopPortraitPath(fKey, br.key, idx);
+    const psrc = troopVisualPath(fKey, br.key, idx);
     return psrc ? (
       <img src={psrc} alt={tier.label}
         style={{ position:"absolute", inset:0, width:"100%", height:"100%",
@@ -919,6 +919,22 @@ nightcreatures:{ n:"Creatures of the Night",s:"🌑",  c:"#a030c0" },
 coldborns:     { n:"Coldborns",             s:"❄️",  c:"#60b8d4" },
 ashen_dead:    { n:"Ashen Dead",            s:"💀",  c:"#6a6a8a" },
 };
+// Standing troop sprites for the Pirates / Swashbucklers branch.
+// T1/T2/T3 map to tierIdx 0/1/2. All other factions/branches keep using
+// the existing portrait resolver.
+const PIRATE_SWASHBUCKLER_STANDING = {
+  0: "/assets/troops/pirates_swashbucklers_t1_standing.png",
+  1: "/assets/troops/pirates_swashbucklers_t2_standing.png",
+  2: "/assets/troops/pirates_swashbucklers_t3_standing.png",
+};
+
+function troopVisualPath(fKey, branchKey, tierIdx = 0) {
+  if (fKey === "pirates" && branchKey === "swashbucklers" && PIRATE_SWASHBUCKLER_STANDING[tierIdx]) {
+    return PIRATE_SWASHBUCKLER_STANDING[tierIdx];
+  }
+  return troopPortraitPath(fKey, branchKey, tierIdx);
+}
+
 const ALIGN_FACTIONS = {
 humans:   ["pirates","wizards","holyknights","coldborns"],
 creatures:["orcs","dragons","nightcreatures","ashen_dead"],
@@ -1269,7 +1285,7 @@ function useTroopCards({ unlockedBranches, troopCounts, cmds }) {
 function UnitCard({ t, selected, onClick, dim, showAssigned = true }) {
   const fc    = t.fColor || FACTION_META[t.fKey]?.c || "#888";
   const fIcon = t.fIcon || FACTION_META[t.fKey]?.s || "⚑";
-  const psrc  = troopPortraitPath(t.fKey, t.branch.key, t.tier.tierIdx ?? 0);
+  const psrc  = troopVisualPath(t.fKey, t.branch.key, t.tier.tierIdx ?? 0);
   const owned = (t.poolCount || 0) > 0;
   return (
     <button className="btn" onClick={onClick}
@@ -1567,7 +1583,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               ? (t.poolCount || 0)
               : Math.max(0, Math.floor(Math.min(maxBatch, room) / step) * step);
             const tierLabel = ["I", "II", "III", "IV"][t.tier?.tierIdx ?? 0] || "I";
-            const psrc = troopPortraitPath(t.fKey, t.branch.key, t.tier?.tierIdx ?? 0);
+            const psrc = troopVisualPath(t.fKey, t.branch.key, t.tier?.tierIdx ?? 0);
             const fc = t.fColor || FACTION_META[t.fKey]?.c || "#888";
             const ownedNow = (t.poolCount || 0) > 0 || (t.assigned || 0) > 0;
             const quote =
@@ -2075,7 +2091,7 @@ function ManageShipScreen({
     const tierColor = TIER_COLORS_MS[Math.min(t.tierIdx, 2)];
     const assignedIdx = slots.findIndex(sl => slotKeyOf(sl) === t.bKey);
     const isAssigned = assignedIdx >= 0;
-    const psrc = troopPortraitPath(t.fKey, t.br.key, t.tierIdx);
+    const psrc = troopVisualPath(t.fKey, t.br.key, t.tierIdx);
     return (
       <button className="btn" disabled={locked} onClick={() => onTrayTap(t)}
         style={{
@@ -2171,7 +2187,7 @@ function ManageShipScreen({
               const isActive = activeSlot === i;
               const tierColor = res ? TIER_COLORS_MS[Math.min(res.tierIdx, 2)] : P.border;
               const fColor = sl ? (FACTION_META[sl.branch?.faction]?.c || P.gold) : P.dim;
-              const psrc = sl ? troopPortraitPath(sl.branch?.faction, sl.branch?.branch, sl.branch?.tier ?? 0) : null;
+              const psrc = sl ? troopVisualPath(sl.branch?.faction, sl.branch?.branch, sl.branch?.tier ?? 0) : null;
               const cost = res ? (COMMAND_COST[res.brDef.size] ?? 1) : 1;
               return (
                 <div key={i} onClick={() => sl && setActiveSlot(isActive ? null : i)}
@@ -2380,7 +2396,7 @@ function BattleGroupsScreen({
     const count = sl.troops > 999
       ? `${(sl.troops / 1000).toFixed(1)}k`
       : (sl.troops || 0).toLocaleString();
-    const psrc = troopPortraitPath(sl.branch?.faction, sl.branch?.branch, res.tierIdx);
+    const psrc = troopVisualPath(sl.branch?.faction, sl.branch?.branch, res.tierIdx);
     return (
       <div style={{
         width: 34, height: 38, borderRadius: 3, flexShrink: 0,
@@ -2437,7 +2453,7 @@ function BattleGroupsScreen({
     const count = sl.troops > 9999
       ? `${(sl.troops / 1000).toFixed(1)}k`
       : (sl.troops || 0).toLocaleString();
-    const psrc = troopPortraitPath(sl.branch?.faction, sl.branch?.branch, res.tierIdx);
+    const psrc = troopVisualPath(sl.branch?.faction, sl.branch?.branch, res.tierIdx);
 
     return (
       <div
