@@ -1491,23 +1491,23 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#08090b" }}>
-      {/* Top bar */}
-      <div style={{ padding:"4px 8px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+      {/* Compact top bar: SCRAP/TRAIN + barracks inline (no separate barracks box) */}
+      <div style={{ padding:"5px 8px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:6, flexShrink:0, flexWrap:"wrap" }}>
         {isScrap ? (
-          <button className="btn" onClick={() => onSwitchMode?.("train")} style={{ background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:5, color:P.dim, cursor:"pointer", padding:"5px 12px", fontFamily:P.ff, fontSize:9 }}>‹ TRAIN</button>
+          <button className="btn" onClick={() => onSwitchMode?.("train")} style={{ background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:5, color:P.dim, cursor:"pointer", padding:"4px 10px", fontFamily:P.ff, fontSize:9 }}>‹ TRAIN</button>
         ) : (
-          <button className="btn" onClick={() => onSwitchMode?.("scrap")} style={{ background:"rgba(200,40,40,.12)", border:"1px solid #cc404066", borderRadius:5, color:"#ff8888", cursor:"pointer", padding:"5px 12px", fontFamily:P.ff, fontSize:9 }}>SCRAP</button>
+          <button className="btn" onClick={() => onSwitchMode?.("scrap")} style={{ background:"rgba(200,40,40,.12)", border:"1px solid #cc404066", borderRadius:5, color:"#ff8888", cursor:"pointer", padding:"4px 10px", fontFamily:P.ff, fontSize:9 }}>SCRAP</button>
         )}
-        <div style={{ fontFamily:P.ff, fontSize:12, fontWeight:700, color:isScrap?"#ff7755":P.gold, letterSpacing:".07em" }}>{isScrap ? "⚠ SCRAP TROOPS" : "⚔ TRAINING"}</div>
-        <div style={{ marginLeft:"auto", fontFamily:P.ff, fontSize:8, color:P.dim }}>
-          {isScrap ? "SELECT TROOPS TO SCRAP" : `${trainingQueues?.length||0}/${maxQueues} QUEUES · ${fmtCmd(freeCmds)} COMMANDS FREE`}
+        <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:isScrap?"#ff7755":P.gold, letterSpacing:".06em" }}>{isScrap ? "⚠ SCRAP" : "⚔ TRAINING"}</div>
+        <div style={{ marginLeft:"auto", fontFamily:P.ff, fontSize:7.5, color:P.dim, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", justifyContent:"flex-end" }}>
+          <span>🏕 Lv{bldgs.barracks||0}</span>
+          <span style={{ color:P.gold, fontWeight:700 }}>{fmtCmd(poolCommands(troopCounts))} / {barracksCommandCapacity(bldgs.barracks||0)}</span>
+          <span>{fmtCmd(freeCmds)} free</span>
+          {!isScrap && <span>{trainingQueues?.length||0}/{maxQueues} queues</span>}
+          {isScrap && <span>SELECT TO SCRAP</span>}
         </div>
       </div>
 
-      {/* Barracks capacity */}
-      <div style={{ padding:"4px 10px", flexShrink:0 }}>
-        <BarracksBar bldgs={bldgs} troopCounts={troopCounts} trainingQueues={trainingQueues}/>
-      </div>
 
       {/* Field: zoomed-out, two staggered rows (diagonal feel like LOTR reference).
           Scroll LEFT/RIGHT. Most of the screen is the troop field. */}
@@ -1718,12 +1718,12 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 paddingBottom: 4,
               }}
             >
-              {/* Top row */}
-              <div style={{ display: "flex", flexDirection: "row", gap: 5 }}>
+              {/* Top row — offset for diagonal / staggered feel */}
+              <div style={{ display: "flex", flexDirection: "row", gap: 5, paddingLeft: 42 }}>
                 {top.map(renderUnit)}
               </div>
-              {/* Bottom row — offset for diagonal / staggered feel */}
-              <div style={{ display: "flex", flexDirection: "row", gap: 5, paddingLeft: 42 }}>
+              {/* Bottom row */}
+              <div style={{ display: "flex", flexDirection: "row", gap: 5 }}>
                 {bot.map(renderUnit)}
               </div>
             </div>
