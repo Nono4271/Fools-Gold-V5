@@ -923,9 +923,9 @@ ashen_dead:    { n:"Ashen Dead",            s:"💀",  c:"#6a6a8a" },
 // T1/T2/T3 map to tierIdx 0/1/2. All other factions/branches keep using
 // the existing portrait resolver.
 const PIRATE_SWASHBUCKLER_STANDING = {
-  0: "/assets/troops/pirates_swashbucklers_t1_standing.png",
-  1: "/assets/troops/pirates_swashbucklers_t2_standing.png",
-  2: "/assets/troops/pirates_swashbucklers_t3_standing.png",
+  0: "/troops/pirates_swashbucklers_t1_standing.webp",
+  1: "/troops/pirates_swashbucklers_t2_standing.webp",
+  2: "/troops/pirates_swashbucklers_t3_standing.webp",
 };
 
 function troopVisualPath(fKey, branchKey, tierIdx = 0) {
