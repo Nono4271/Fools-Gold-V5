@@ -1,8 +1,20 @@
 // Pure rules for reinforcement marches (barracks troops sent to a commander in the field).
 // Moved from Game.jsx.
 import { troopPoolKey, branchCommandCost, withTroopSlots, MAX_TROOP_SLOTS } from "./troopSlots.js";
-import { normaliseTroopSlots } from "./pathfinding.js";
+import { normaliseTroopSlots, effectiveMarchSpd, marchStepMs } from "./pathfinding.js";
 import { poolCommands, troopsThatFit } from "./barracks.js";
+
+// ── Single source of truth for convoy step timing ─────────────────────────────
+// Both useReinforcements (actual timer) and BottomPanel (ETA display) call this
+// so they can never drift apart and cause "teleporting" or stalling convoys.
+export function reinforcementStepMs(cmd, gearSpd, reinSpeedMult) {
+  const slots = normaliseTroopSlots(cmd);
+  const spd = effectiveMarchSpd(
+    gearSpd || cmd.spd || 60,
+    slots.length ? slots.map(sl => sl.branch) : cmd.troopBranch
+  );
+  return Math.max(50, Math.floor(marchStepMs(spd) * (reinSpeedMult ?? 1) / 2));
+}
 
 // Add troops back to one barracks pool, limited by free barracks space.
 export function returnToBarracks(counts, branchKey, amount, barracksCap) {
@@ -87,4 +99,23 @@ export function mergeReinforcement(cmd, branchKey, amount, commandCap) {
     else slots[idx] = { ...slots[idx], troops: (slots[idx].troops || 0) + add };
   }
   return { cmd: add > 0 ? withTroopSlots(cmd, slots) : cmd, overflow: amount - add };
+}
+
+// ── Withdraw troops from a specific slot ─────────────────────────────────────
+// Pulls `amount` troops out of slot[slotIndex], returns {cmd, withdrawn, branchKey}.
+// The withdrawn troops march home as a "returning" convoy reusing the same
+// reinforcement path infra in useReinforcements.
+export function withdrawFromArmy(cmd, slotIndex, amount) {
+  const slots = [...normaliseTroopSlots(cmd)];
+  const sl = slots[slotIndex];
+  if (!sl || !sl.branch || (sl.troops || 0) <= 0) {
+    return { cmd, withdrawn: 0, branchKey: null };
+  }
+  const take = Math.max(0, Math.min(amount, sl.troops || 0));
+  if (take === 0) return { cmd, withdrawn: 0, branchKey: troopPoolKey({ ...sl.branch, tier: sl.branch.tier ?? 0 }) };
+  const branchKey = troopPoolKey({ ...sl.branch, tier: sl.branch.tier ?? 0 });
+  slots[slotIndex] = { ...sl, troops: (sl.troops || 0) - take };
+  // Remove empty slots (keeps at least one so the commander stays valid)
+  const pruned = slots.filter((s, i) => i === 0 || (s.troops || 0) > 0);
+  return { cmd: withTroopSlots(cmd, pruned), withdrawn: take, branchKey };
 }
