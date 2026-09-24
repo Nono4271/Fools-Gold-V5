@@ -1425,7 +1425,7 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
 // ── Screen 2: Train / Scrap — unit list | selected unit + slider | queues ──────
 function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troopCards, trainingQueues, setTrainingQueues, trainingSpeedMult, trainingCostMult = 1,
   neutralSources = {}, contractCommandsLeft, initialKey,
-  canAfford, queueTraining, rss, discardTroops, onBack, onSwitchMode }) {
+  canAfford, queueTraining, rss, discardTroops, onBack, onSwitchMode, healQueue = [] }) {
 
   const isScrap = mode === "scrap";
   const maxQueues = trainingQueueCount(bldgs.training||0);
@@ -1492,21 +1492,43 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#08090b" }}>
       {/* Compact top bar: SCRAP/TRAIN + barracks inline (no separate barracks box) */}
-      <div style={{ padding:"5px 8px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:6, flexShrink:0, flexWrap:"wrap" }}>
-        {isScrap ? (
-          <button className="btn" onClick={() => onSwitchMode?.("train")} style={{ background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:5, color:P.dim, cursor:"pointer", padding:"4px 10px", fontFamily:P.ff, fontSize:9 }}>‹ TRAIN</button>
-        ) : (
-          <button className="btn" onClick={() => onSwitchMode?.("scrap")} style={{ background:"rgba(200,40,40,.12)", border:"1px solid #cc404066", borderRadius:5, color:"#ff8888", cursor:"pointer", padding:"4px 10px", fontFamily:P.ff, fontSize:9 }}>SCRAP</button>
-        )}
-        <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:isScrap?"#ff7755":P.gold, letterSpacing:".06em" }}>{isScrap ? "⚠ SCRAP" : "⚔ TRAINING"}</div>
-        <div style={{ marginLeft:"auto", fontFamily:P.ff, fontSize:7.5, color:P.dim, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", justifyContent:"flex-end" }}>
-          <span>🏕 Lv{bldgs.barracks||0}</span>
-          <span style={{ color:P.gold, fontWeight:700 }}>{fmtCmd(poolCommands(troopCounts))} / {barracksCommandCapacity(bldgs.barracks||0)}</span>
-          <span>{fmtCmd(freeCmds)} free</span>
-          {!isScrap && <span>{trainingQueues?.length||0}/{maxQueues} queues</span>}
-          {isScrap && <span>SELECT TO SCRAP</span>}
-        </div>
-      </div>
+      {(() => {
+        const cap = barracksCommandCapacity(bldgs.barracks||0) || 1;
+        const owned = poolCommands(troopCounts);
+        const training = queuedCommands(trainingQueues);
+        // Healing commands: sum remaining from heal queues if passed, else 0
+        const healing = (healQueue||[]).reduce((s, q) => s + (Number(q.remaining)||0) * (COMMAND_COST[q.size] || 1), 0);
+        const free = Math.max(0, cap - owned - training - healing);
+        const pct = (n) => Math.min(100, Math.max(0, (n / cap) * 100));
+        return (
+          <div style={{ padding:"5px 8px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:6, flexShrink:0, flexWrap:"wrap" }}>
+            {isScrap ? (
+              <button className="btn" onClick={() => onSwitchMode?.("train")} style={{ background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:5, color:P.dim, cursor:"pointer", padding:"4px 10px", fontFamily:P.ff, fontSize:9 }}>‹ TRAIN</button>
+            ) : (
+              <button className="btn" onClick={() => onSwitchMode?.("scrap")} style={{ background:"rgba(200,40,40,.12)", border:"1px solid #cc404066", borderRadius:5, color:"#ff8888", cursor:"pointer", padding:"4px 10px", fontFamily:P.ff, fontSize:9 }}>SCRAP</button>
+            )}
+            <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:isScrap?"#ff7755":P.gold, letterSpacing:".06em" }}>{isScrap ? "⚠ SCRAP" : "⚔ TRAINING"}</div>
+
+            {/* Compact capacity bar: gold=owned, blue=training, green=healing, grey=available */}
+            <div style={{ flex:1, minWidth:80, maxWidth:200, height:8, borderRadius:4, background:"#1a1a22", overflow:"hidden", display:"flex", border:"1px solid #2a2418" }}>
+              {owned > 0 && <div style={{ width:`${pct(owned)}%`, background:"#c8903a", transition:"width .3s" }} title="In barracks"/>}
+              {training > 0 && <div style={{ width:`${pct(training)}%`, background:"#4488cc", transition:"width .3s" }} title="Training"/>}
+              {healing > 0 && <div style={{ width:`${pct(healing)}%`, background:"#3daa60", transition:"width .3s" }} title="Healing"/>}
+            </div>
+
+            <div style={{ fontFamily:P.ff, fontSize:7.5, color:P.dim, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+              <span>🏕{bldgs.barracks||0}</span>
+              <span style={{ color:"#c8903a" }}>{fmtCmd(owned)}</span>
+              <span>/</span>
+              <span>{cap.toLocaleString()}</span>
+              <span style={{ color:"#7a7a8a" }}>{fmtCmd(free)} free</span>
+              {training > 0 && <span style={{ color:"#4488cc" }}>{fmtCmd(training)} train</span>}
+              {healing > 0 && <span style={{ color:"#3daa60" }}>{fmtCmd(healing)} heal</span>}
+              {!isScrap && <span>{trainingQueues?.length||0}/{maxQueues}q</span>}
+            </div>
+          </div>
+        );
+      })()}
 
 
       {/* Field: zoomed-out, two staggered rows (diagonal feel like LOTR reference).
@@ -1798,7 +1820,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
 // ── Root two-screen wrapper ────────────────────────────────────────────────────
 function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, setTrainingQueues,
   canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches, trainingSpeedMult, trainingCostMult = 1,
-  neutralSources = {}, contractCommandsLeft }) {
+  neutralSources = {}, contractCommandsLeft, healQueue = [] }) {
 
   // Always show the horizontal two-row training view (never the old list view).
   // "train" | "scrap" — scrap filters to owned troops only.
@@ -1818,6 +1840,7 @@ function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, s
       neutralSources={neutralSources} contractCommandsLeft={contractCommandsLeft}
       onBack={() => setSubScreen("train")}
       onSwitchMode={(m) => setSubScreen(m)}
+      healQueue={healQueue}
     />
   );
 }
@@ -3376,6 +3399,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
             unlockedBranches={unlockedBranches}
             trainingSpeedMult={trainingSpeedMult} trainingCostMult={trainingCostMult}
             neutralSources={neutralSources} contractCommandsLeft={contractCommandsLeft}
+            healQueue={healQueue}
             discardTroops={(bKey, n) => {
               if (bKey) setTroopCounts(prev => ({ ...prev, [bKey]: Math.max(0, (prev[bKey]||0) - n) }));
             }}/>
