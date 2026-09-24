@@ -919,33 +919,50 @@ nightcreatures:{ n:"Creatures of the Night",s:"🌑",  c:"#a030c0" },
 coldborns:     { n:"Coldborns",             s:"❄️",  c:"#60b8d4" },
 ashen_dead:    { n:"Ashen Dead",            s:"💀",  c:"#6a6a8a" },
 };
-// Standing troop sprites for the Pirates branches (Swashbucklers, Gunners,
-// Sea Beasts). T1/T2/T3 map to tierIdx 0/1/2. Every other faction/branch
-// keeps using the existing portrait resolver. Files: RGBA WebP in
-// public/troops/pirates_<branch>_t<N>_standing.webp, 512x1024 (768x1024 for the
-// wide poses so they fill the same height). Contain-fit, so any width works.
-const PIRATE_STANDING = {
-  swashbucklers: {
-    0: "/troops/pirates_swashbucklers_t1_standing.webp",
-    1: "/troops/pirates_swashbucklers_t2_standing.webp",
-    2: "/troops/pirates_swashbucklers_t3_standing.webp",
+// Standing troop sprites. The long-term plan is every branch of every
+// faction gets one of these (transparent, full-body, feet on a shared
+// baseline) in place of the painted portrait card. They're being rolled out
+// incrementally, so STANDING_SPRITES only lists what actually has art today;
+// troopVisualPath() below falls back to the existing portrait resolver for
+// everything else, branch by branch. T1/T2/T3 map to tierIdx 0/1/2; a
+// capstone is a single tier and always keyed under 0.
+// Files: RGBA WebP in public/troops/<faction>_<branch>_t<N>_standing.webp,
+// 512x1024 (768x1024 for wide poses so they fill the same height as the
+// tall humanoid ones). Contain-fit at render time, so either width works.
+const STANDING_SPRITES = {
+  pirates: {
+    swashbucklers: {
+      0: "/troops/pirates_swashbucklers_t1_standing.webp",
+      1: "/troops/pirates_swashbucklers_t2_standing.webp",
+      2: "/troops/pirates_swashbucklers_t3_standing.webp",
+    },
+    gunners: {
+      0: "/troops/pirates_gunners_t1_standing.webp",
+      1: "/troops/pirates_gunners_t2_standing.webp",
+      2: "/troops/pirates_gunners_t3_standing.webp",
+    },
+    sea_beasts: {
+      0: "/troops/pirates_sea_beasts_t1_standing.webp",
+      1: "/troops/pirates_sea_beasts_t2_standing.webp",
+      2: "/troops/pirates_sea_beasts_t3_standing.webp",
+    },
+    leviathan: { 0: "/troops/pirates_leviathan_t1_standing.webp" }, // capstone
   },
-  gunners: {
-    0: "/troops/pirates_gunners_t1_standing.webp",
-    1: "/troops/pirates_gunners_t2_standing.webp",
-    2: "/troops/pirates_gunners_t3_standing.webp",
-  },
-  sea_beasts: {
-    0: "/troops/pirates_sea_beasts_t1_standing.webp",
-    1: "/troops/pirates_sea_beasts_t2_standing.webp",
-    2: "/troops/pirates_sea_beasts_t3_standing.webp",
-  },
+  // Capstones only for now (T1-T3 still use the painted portraits until
+  // those sprites are made) - Wizards, Orcs, Dragons, Holy Knights,
+  // Creatures of the Night, Coldborns, Ashen Dead.
+  wizards:        { void_warden:      { 0: "/troops/wizards_void_warden_t1_standing.webp" } },
+  orcs:           { doomcaller:       { 0: "/troops/orcs_doomcaller_t1_standing.webp" } },
+  dragons:        { sovereign_wyrm:   { 0: "/troops/dragons_sovereign_wyrm_t1_standing.webp" } },
+  holyknights:    { seraph_vanguard:  { 0: "/troops/holyknights_seraph_vanguard_t1_standing.webp" } },
+  nightcreatures: { umbral_colossus:  { 0: "/troops/nightcreatures_umbral_colossus_t1_standing.webp" } },
+  coldborns:      { frostbound_titan: { 0: "/troops/coldborns_frostbound_titan_t1_standing.webp" } },
+  ashen_dead:     { bone_colossus:    { 0: "/troops/ashen_dead_bone_colossus_t1_standing.webp" } },
 };
 
 function troopVisualPath(fKey, branchKey, tierIdx = 0) {
-  if (fKey === "pirates" && PIRATE_STANDING[branchKey]?.[tierIdx]) {
-    return PIRATE_STANDING[branchKey][tierIdx];
-  }
+  const sprite = STANDING_SPRITES[fKey]?.[branchKey]?.[tierIdx];
+  if (sprite) return sprite;
   return troopPortraitPath(fKey, branchKey, tierIdx);
 }
 
