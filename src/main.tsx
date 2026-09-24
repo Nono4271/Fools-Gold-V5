@@ -20,7 +20,7 @@ document.addEventListener(
     const target = e.target as Element | null;
     if (!target) return;
     if (target.closest("canvas")) return;
-    if (target.closest(".gear-picker-list, .roster-scroll, .battle-popup, .find-tiles-popup, .chat-scroll, .crew-scroll, .training-scroll")) return;
+    if (target.closest(".gear-picker-list, .roster-scroll, .battle-popup, .find-tiles-popup, .chat-scroll, .crew-scroll, .training-scroll, .training-parent")) return;
     const interactive = target.closest(
       'button, input, select, textarea, a, [role="button"], [role="slider"], [role="checkbox"]'
     );

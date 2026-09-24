@@ -142,3 +142,31 @@ input[type="range"]:disabled { opacity: 0.4; }
   width: 16px;
   height: 16px;
 }
+
+/* ── Training field: horizontal pan (must override .scr pan-y) ── */
+.training-parent {
+  touch-action: pan-x !important;
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+}
+
+.training-scroll {
+  touch-action: pan-x !important;
+  -webkit-overflow-scrolling: touch;
+  overflow-x: scroll !important;
+  overflow-y: hidden !important;
+  overscroll-behavior-x: contain;
+}
+
+.training-scroll input[type="range"] {
+  height: 22px;
+}
+.training-scroll input[type="range"]::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+}
+.training-scroll input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+}
