@@ -1509,234 +1509,191 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
         <BarracksBar bldgs={bldgs} troopCounts={troopCounts} trainingQueues={trainingQueues}/>
       </div>
 
-      {/* Horizontal two-row field — matches LOTR Rise to War style:
-          small free-standing troops, light floating labels, most of screen is the field.
-          Outer scrolls left/right; troops are chunked into vertical pairs (2 rows). */}
+      {/* Field: two continuous rows, scroll LEFT/RIGHT. Most of the screen is troops. */}
       <div
         className="training-scroll"
         style={{
           flex: 1,
           minHeight: 0,
-          overflowX: "auto",
+          overflowX: "scroll",
           overflowY: "hidden",
-          padding: "4px 10px 6px",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-x",
+          padding: "2px 8px 4px",
         }}
       >
         <div
           style={{
-            display: "flex",
-            flexDirection: "row",
-            gap: 8,
+            display: "grid",
+            gridTemplateRows: "1fr 1fr",
+            gridAutoColumns: "118px",
+            gridAutoFlow: "column",
+            gap: "6px 8px",
             width: "max-content",
-            minWidth: "100%",
-            alignItems: "flex-start",
-            paddingBottom: 4,
+            height: "100%",
+            minHeight: 280,
+            paddingRight: 16,
           }}
         >
-          {(() => {
-            const pairs = [];
-            for (let i = 0; i < ordered.length; i += 2) {
-              pairs.push(ordered.slice(i, i + 2));
-            }
-            return pairs.map((pair, colIdx) => (
+          {ordered.map((t) => {
+            const amount = values[t.key] || 0;
+            const size = t.branch?.size || "small";
+            const step = isScrap ? 1 : (CMD_SIZE[size] || 100);
+            const room = troopsThatFit(t.bKey, freeCmds);
+            const maxAmount = isScrap
+              ? (t.poolCount || 0)
+              : Math.max(0, Math.floor(Math.min(maxBatch, room) / step) * step);
+            const tierLabel = ["I", "II", "III", "IV"][t.tier?.tierIdx ?? 0] || "I";
+            const psrc = troopPortraitPath(t.fKey, t.branch.key, t.tier?.tierIdx ?? 0);
+            const fc = t.fColor || FACTION_META[t.fKey]?.c || "#888";
+            const ownedNow = (t.poolCount || 0) > 0 || (t.assigned || 0) > 0;
+            const quote =
+              !isScrap && amount > 0
+                ? trainingQuote(
+                    t.bKey,
+                    amount,
+                    trainingSpeedMult,
+                    t.branch?.capstone
+                      ? capstoneTrainDiscount(bldgs[`b_${t.fKey}_${t.branch.key}`])
+                      : 0,
+                    trainingCostMult
+                  )
+                : null;
+            const affordable = isScrap || !quote?.cost || canAfford(quote.cost);
+            const canSelect = isScrap ? maxAmount > 0 : maxAmount >= step && affordable;
+
+            return (
               <div
-                key={"col-" + colIdx}
+                key={t.key}
                 style={{
+                  width: 118,
+                  height: "100%",
+                  minHeight: 0,
+                  position: "relative",
+                  flexShrink: 0,
+                  opacity: !ownedNow && !amount ? 0.72 : 1,
                   display: "flex",
                   flexDirection: "column",
-                  gap: 8,
-                  width: 130,
-                  flexShrink: 0,
+                  alignItems: "center",
                 }}
               >
-                {pair.map((t) => {
-                  const amount = values[t.key] || 0;
-                  const size = t.branch?.size || "small";
-                  const step = isScrap ? 1 : (CMD_SIZE[size] || 100);
-                  const room = troopsThatFit(t.bKey, freeCmds);
-                  const maxAmount = isScrap
-                    ? (t.poolCount || 0)
-                    : Math.max(0, Math.floor(Math.min(maxBatch, room) / step) * step);
-                  const tierLabel = ["I", "II", "III", "IV"][t.tier?.tierIdx ?? 0] || "I";
-                  const psrc = troopPortraitPath(t.fKey, t.branch.key, t.tier?.tierIdx ?? 0);
-                  const fc = t.fColor || FACTION_META[t.fKey]?.c || "#888";
-                  const ownedNow = (t.poolCount || 0) > 0 || (t.assigned || 0) > 0;
-                  const quote =
-                    !isScrap && amount > 0
-                      ? trainingQuote(
-                          t.bKey,
-                          amount,
-                          trainingSpeedMult,
-                          t.branch?.capstone
-                            ? capstoneTrainDiscount(bldgs[`b_${t.fKey}_${t.branch.key}`])
-                            : 0,
-                          trainingCostMult
-                        )
-                      : null;
-                  const affordable = isScrap || !quote?.cost || canAfford(quote.cost);
-                  const canSelect = isScrap ? maxAmount > 0 : maxAmount >= step && affordable;
+                <div
+                  style={{
+                    flexShrink: 0,
+                    width: "100%",
+                    textAlign: "center",
+                    pointerEvents: "none",
+                    paddingTop: 1,
+                    lineHeight: 1.1,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: P.ff,
+                      fontSize: 8.5,
+                      fontWeight: 700,
+                      color: P.text,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      textShadow: "0 1px 2px #000, 0 0 3px #000",
+                    }}
+                  >
+                    {t.tier.label}
+                    <span style={{ color: ownedNow ? P.gold : "#8a7a60", marginLeft: 3, fontWeight: 600 }}>
+                      {(t.poolCount || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div style={{ fontFamily: P.ff, fontSize: 6, color: fc }}>{tierLabel}</div>
+                </div>
 
-                  return (
-                    <div
-                      key={t.key}
+                <div
+                  style={{
+                    flexShrink: 0,
+                    width: "100%",
+                    padding: "1px 2px 2px",
+                    margin: "1px 0 2px",
+                    borderRadius: 3,
+                    background: amount > 0 ? "rgba(5,7,9,.8)" : "rgba(5,7,9,.4)",
+                    border: amount > 0 ? `1px solid ${fc}77` : "1px solid transparent",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontFamily: P.ff,
+                      fontSize: 6,
+                    }}
+                  >
+                    <span style={{ color: "#c8b898", fontWeight: 700 }}>{isScrap ? "S" : "T"}</span>
+                    <span style={{ color: amount > 0 ? P.gold : "#6a5a48", fontWeight: 700 }}>
+                      {amount.toLocaleString()}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={Math.max(step, maxAmount)}
+                    step={step}
+                    value={Math.min(amount, maxAmount)}
+                    disabled={!canSelect && amount === 0}
+                    onChange={(e) => setValue(t, e.target.value)}
+                    style={{
+                      width: "100%",
+                      margin: 0,
+                      accentColor: fc,
+                      cursor: canSelect ? "pointer" : "not-allowed",
+                      height: 12,
+                    }}
+                  />
+                </div>
+
+                <div
+                  style={{
+                    flex: 1,
+                    minHeight: 0,
+                    width: "100%",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  {psrc ? (
+                    <img
+                      src={psrc}
+                      alt=""
+                      draggable="false"
                       style={{
-                        width: 130,
-                        height: 168,
-                        position: "relative",
-                        flexShrink: 0,
-                        opacity: !ownedNow && !amount ? 0.75 : 1,
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                        objectPosition: "center bottom",
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
                         display: "flex",
-                        flexDirection: "column",
                         alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 22,
+                        opacity: 0.45,
                       }}
                     >
-                      {/* Floating label above head: Name + Count  (tier small) */}
-                      <div
-                        style={{
-                          height: 20,
-                          width: "100%",
-                          textAlign: "center",
-                          flexShrink: 0,
-                          pointerEvents: "none",
-                          display: "flex",
-                          flexDirection: "column",
-                          justifyContent: "flex-end",
-                          lineHeight: 1.05,
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontFamily: P.ff,
-                            fontSize: 9,
-                            fontWeight: 700,
-                            color: P.text,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            textShadow: "0 1px 2px #000, 0 0 4px #000",
-                          }}
-                        >
-                          {t.tier.label}
-                          <span style={{ color: ownedNow ? P.gold : "#8a7a60", marginLeft: 4, fontWeight: 600 }}>
-                            {(t.poolCount || 0).toLocaleString()}
-                          </span>
-                        </div>
-                        <div style={{ fontFamily: P.ff, fontSize: 6.5, color: fc, opacity: 0.9 }}>
-                          {tierLabel}
-                        </div>
-                      </div>
-
-                      {/* Compact slider just under the label / above the head */}
-                      <div
-                        style={{
-                          flexShrink: 0,
-                          width: "100%",
-                          padding: "2px 3px 3px",
-                          marginBottom: 2,
-                          borderRadius: 4,
-                          background: amount > 0 ? "rgba(5,7,9,.75)" : "rgba(5,7,9,.45)",
-                          border: amount > 0 ? `1px solid ${fc}88` : "1px solid transparent",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontFamily: P.ff,
-                            fontSize: 6.5,
-                            marginBottom: 0,
-                          }}
-                        >
-                          <span style={{ color: "#c8b898", fontWeight: 700 }}>{isScrap ? "SCRAP" : "TRAIN"}</span>
-                          <span style={{ color: amount > 0 ? P.gold : "#6a5a48", fontWeight: 700 }}>
-                            {amount.toLocaleString()}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={Math.max(step, maxAmount)}
-                          step={step}
-                          value={Math.min(amount, maxAmount)}
-                          disabled={!canSelect && amount === 0}
-                          onChange={(e) => setValue(t, e.target.value)}
-                          style={{
-                            width: "100%",
-                            margin: 0,
-                            accentColor: fc,
-                            cursor: canSelect ? "pointer" : "not-allowed",
-                            height: 14,
-                          }}
-                        />
-                      </div>
-
-                      {/* Sprite / portrait — minimal frame, looks more like a field unit */}
-                      <div
-                        style={{
-                          flex: 1,
-                          minHeight: 0,
-                          width: "100%",
-                          position: "relative",
-                          borderRadius: 6,
-                          overflow: "hidden",
-                          background: "transparent",
-                        }}
-                      >
-                        {psrc ? (
-                          <img
-                            src={psrc}
-                            alt=""
-                            draggable="false"
-                            style={{
-                              position: "absolute",
-                              inset: 0,
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "contain",
-                              objectPosition: "center bottom",
-                              filter: amount > 0 ? "none" : "brightness(0.92)",
-                            }}
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              position: "absolute",
-                              inset: 0,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: 28,
-                              opacity: 0.5,
-                            }}
-                          >
-                            {t.fIcon || "⚔"}
-                          </div>
-                        )}
-                        {/* subtle ground shadow */}
-                        <div
-                          style={{
-                            position: "absolute",
-                            left: "15%",
-                            right: "15%",
-                            bottom: 2,
-                            height: 6,
-                            borderRadius: "50%",
-                            background: "rgba(0,0,0,.35)",
-                            pointerEvents: "none",
-                          }}
-                        />
-                      </div>
+                      {t.fIcon || "⚔"}
                     </div>
-                  );
-                })}
+                  )}
+                </div>
               </div>
-            ));
-          })()}
+            );
+          })}
         </div>
       </div>
 
