@@ -3,15 +3,15 @@ import { FACTION_TROOPS } from "../../../shared/constants/troops.js";
 function tbInfo(tb) { if (!tb) return null; const f = TROOP_FACTIONS[tb.faction]; const b = f?.branches.find(b => b.key === tb.branch); const t = b?.tiers[tb.tier ?? 0]; if (!b || !t) return null; return { label: `${b.label} — ${t.label}`, color: "#c8a060" }; }
 import { HQP } from "../../../shared/constants/map.js";
 import { cmdCommand } from "../../../shared/constants/buildings.js";
-import { bfsPath, effectiveMarchSpd, marchStepMs } from "../../../shared/utils/pathfinding.js";
+import { bfsPath } from "../../../shared/utils/pathfinding.js";
 import { applyGearToCmd } from "../../../shared/utils/gearStats.js";
-import { reinforcementRoom } from "../../../shared/utils/reinforcements.js";
+import { reinforcementRoom, reinforcementStepMs } from "../../../shared/utils/reinforcements.js";
 import { TROOP_FACTIONS } from "../../../shared/constants/allTroops.js";
 
 export default memo(function BottomPanel({
   mode, mvCmd, setMvCmd, reinCmd, setReinCmd,
   cmdsOnSel, barracksPool, troopCounts, bldgs, sliderVals, setSliderVals,
-  startReinforcement, setMode, setAtkKey, setPick, setSelKey, setPopupPos,
+  startReinforcement, startWithdrawal, reinSpeedMult, setMode, setAtkKey, setPick, setSelKey, setPopupPos,
   gearInventory, reinMarches, playerHqKey,
 }) {
   const hqKey = playerHqKey || `${HQP.player.c},${HQP.player.r}`;
@@ -41,40 +41,56 @@ export default memo(function BottomPanel({
 
       <div className="scr" style={{flex:1,overflowY:"auto",padding:"10px 14px",paddingBottom: mode==="reinforce" ? 70 : 10}}>
 
-        {/* ── REINFORCE ── */}
+        {/* ── REINFORCE / WITHDRAW ── */}
         {mode==="reinforce" && reinCmd && (() => {
-          const cap     = cmdCommand(reinCmd.lvl||5, bldgs.commandcenter||0, reinCmd.commandBonus??0);
-          // Room uses the real size of the troop type being sent, minus troops already en route,
-          // and only that type's barracks count.
+          const cap       = cmdCommand(reinCmd.lvl||5, bldgs.commandcenter||0, reinCmd.commandBonus??0);
           const inTransit = (reinMarches||[]).filter(r => r.cmdUid === reinCmd.uid && !r.returning)
                               .reduce((s, r) => s + r.amount, 0);
           const { room, available, maxAdd } = reinforcementRoom({ cmd: reinCmd, commandCap: cap, pool: troopCounts || {}, inTransit });
-          const sk      = `rein_${reinCmd.uid}`;
-          const sv      = Math.min(sliderVals[sk]??0, maxAdd);
-          const _rSlots = reinCmd.troopSlots?.length ? reinCmd.troopSlots : (reinCmd.troopBranch ? [{ branch: reinCmd.troopBranch }] : []);
-          const effSpd  = effectiveMarchSpd(applyGearToCmd(reinCmd, gearInventory).spd||60, _rSlots.length ? _rSlots.map(sl=>sl.branch) : reinCmd.troopBranch);
-          const stepMs  = Math.max(100, Math.floor(marchStepMs(effSpd)/2));
-          const path    = bfsPath(hqKey, reinCmd.tk);
-          const estSecs = path ? Math.ceil((path.length-1)*stepMs/1000) : "?";
+          const sk        = `rein_${reinCmd.uid}`;
+          const sv        = Math.min(sliderVals[sk]??0, maxAdd);
+          // Use shared formula — matches the actual timer in useReinforcements.
+          const stepMs    = reinforcementStepMs(reinCmd, applyGearToCmd(reinCmd, gearInventory).spd, reinSpeedMult);
+          const path      = bfsPath(hqKey, reinCmd.tk);
+          const estSecs   = path ? Math.ceil((path.length-1)*stepMs/1000) : "?";
+
+          // Slots for the withdraw section
+          const slots = reinCmd.troopSlots?.length
+            ? reinCmd.troopSlots
+            : (reinCmd.troopBranch ? [{ branch: reinCmd.troopBranch, troops: reinCmd.troops||0 }] : []);
+          const selSlotKey  = `wdslot_${reinCmd.uid}`;
+          const wdSlotIdx   = sliderVals[selSlotKey] ?? 0;
+          const wdSlot      = slots[wdSlotIdx] || slots[0];
+          const wdMax       = wdSlot?.troops || 0;
+          const wdKey       = `wd_${reinCmd.uid}`;
+          const wdAmt       = Math.min(sliderVals[wdKey]??0, wdMax);
+
+          const Slider = ({ value, max, skKey, color="#4080ff" }) => {
+            const pct = max > 0 ? value / max : 0;
+            return (
+              <div
+                style={{width:"100%",height:36,display:"flex",alignItems:"center",marginBottom:6,cursor:"pointer",touchAction:"none",userSelect:"none"}}
+                onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); const rect=e.currentTarget.getBoundingClientRect(); setSliderVals(v=>({...v,[skKey]:Math.round(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width))*max)})); }}
+                onPointerMove={e => { e.preventDefault(); if(!(e.buttons>0||e.pressure>0))return; const rect=e.currentTarget.getBoundingClientRect(); setSliderVals(v=>({...v,[skKey]:Math.round(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width))*max)})); }}
+              >
+                <div style={{position:"relative",width:"100%",height:8,background:"rgba(255,255,255,.1)",borderRadius:4,overflow:"visible"}}>
+                  <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${pct*100}%`,background:`linear-gradient(90deg,${color}88,${color})`,borderRadius:4,pointerEvents:"none"}}/>
+                  <div style={{position:"absolute",top:"50%",left:`${pct*100}%`,transform:"translate(-50%,-50%)",width:22,height:22,background:color,border:"3px solid #fff",borderRadius:"50%",boxShadow:"0 2px 8px rgba(0,0,0,.5)",pointerEvents:"none"}}/>
+                </div>
+              </div>
+            );
+          };
 
           return (
             <div>
               {/* Commander card */}
-              <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12,padding:"8px 10px",background:"rgba(30,60,120,.12)",border:"1px solid rgba(50,100,200,.3)",borderRadius:5}}>
-                {reinCmd.bust
-                  ? <img src={reinCmd.bust} alt={reinCmd.n} style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",flexShrink:0}} />
-                  : <span style={{fontSize:26}}>{reinCmd.icon}</span>
-                }
+              <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:10,padding:"8px 10px",background:"rgba(30,60,120,.12)",border:"1px solid rgba(50,100,200,.3)",borderRadius:5}}>
+                {reinCmd.bust ? <img src={reinCmd.bust} alt={reinCmd.n} style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/> : <span style={{fontSize:26}}>{reinCmd.icon}</span>}
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:11,fontWeight:700,color:"#e0d0c0"}}>{reinCmd.n} <span style={{color:"#f0c040",fontSize:9}}>Lv{reinCmd.lvl||5}</span></div>
-                  {(() => {
-                  const slots = reinCmd.troopSlots?.length ? reinCmd.troopSlots : (reinCmd.troopBranch ? [{ branch: reinCmd.troopBranch, troops: reinCmd.troops||0 }] : []);
-                  return slots.map((sl, i) => { const _ti = tbInfo(sl.branch); return _ti ? (
-                    <div key={i} style={{fontSize:9,color:_ti.color}}>
-                      {_ti.label} · <strong style={{color:"#e0d0c0"}}>{(sl.troops||0).toLocaleString()}</strong>
-                    </div>
-                  ) : null; });
-                })()}
+                  {slots.map((sl, i) => { const _ti = tbInfo(sl.branch); return _ti ? (
+                    <div key={i} style={{fontSize:9,color:_ti.color}}>{_ti.label} · <strong style={{color:"#e0d0c0"}}>{(sl.troops||0).toLocaleString()}</strong></div>
+                  ) : null; })}
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
                   <div style={{fontSize:9,color:"#6a7a9a",fontFamily:"'Cinzel',serif"}}>Barracks</div>
@@ -82,61 +98,64 @@ export default memo(function BottomPanel({
                 </div>
               </div>
 
+              {/* ── SEND SECTION ── */}
+              <div style={{fontSize:8,color:"#4a8aff",fontFamily:"'Cinzel',serif",letterSpacing:".12em",marginBottom:6}}>▶ SEND REINFORCEMENTS</div>
               {available > 0 ? (
                 room > 0 ? (
-                  <div>
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:8,color:"#6a7a9a",letterSpacing:".1em",fontFamily:"'Cinzel',serif",marginBottom:4}}>
-                      <span>SEND REINFORCEMENTS</span>
-                      <span style={{color:sv>0?"#88aaff":"#4a5a7a"}}>{sv.toLocaleString()} troops{sv>0?` · ~${estSecs}s`:""}</span>
+                  <div style={{marginBottom:14}}>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:8,color:"#6a7a9a",marginBottom:4}}>
+                      <span>Troops to send</span>
+                      <span style={{color:sv>0?"#88aaff":"#4a5a7a"}}>{sv.toLocaleString()}{sv>0?` · ~${estSecs}s`:""}</span>
                     </div>
-                    {/* Custom touch-friendly slider */}
-                    {(() => {
-                      const pct = maxAdd > 0 ? sv / maxAdd : 0;
-                      return (
-                        <div
-                          style={{width:"100%",height:36,display:"flex",alignItems:"center",marginBottom:6,cursor:"pointer",touchAction:"none",userSelect:"none"}}
-                          onPointerDown={e => {
-                            e.preventDefault();
-                            e.currentTarget.setPointerCapture(e.pointerId);
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const p = Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
-                            setSliderVals(v=>({...v,[sk]:Math.round(p*maxAdd)}));
-                          }}
-                          onPointerMove={e => {
-                            e.preventDefault();
-                            if (!(e.buttons > 0 || e.pressure > 0)) return;
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const p = Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
-                            setSliderVals(v=>({...v,[sk]:Math.round(p*maxAdd)}));
-                          }}
-                        >
-                          <div style={{position:"relative",width:"100%",height:8,background:"rgba(255,255,255,.1)",borderRadius:4,overflow:"visible"}}>
-                            <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${pct*100}%`,background:"linear-gradient(90deg,#2050aa,#4080ff)",borderRadius:4,pointerEvents:"none"}}/>
-                            <div style={{position:"absolute",top:"50%",left:`${pct*100}%`,transform:"translate(-50%,-50%)",width:22,height:22,background:"#4080ff",border:"3px solid #fff",borderRadius:"50%",boxShadow:"0 2px 8px rgba(0,0,0,.5)",pointerEvents:"none"}}/>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:7,color:"#4a4a5a",marginBottom:10}}>
-                      <span>0</span>
-                      <span style={{color:"#5a6a8a"}}>Max: {maxAdd.toLocaleString()}</span>
-                      <span>{maxAdd.toLocaleString()}</span>
+                    <Slider value={sv} max={maxAdd} skKey={sk} color="#4080ff"/>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:7,color:"#4a4a5a",marginBottom:4}}>
+                      <span>0</span><span style={{color:"#5a6a8a"}}>Max: {maxAdd.toLocaleString()}</span><span>{maxAdd.toLocaleString()}</span>
                     </div>
-                    {sv === 0 && <div style={{fontSize:8,color:"#4a4a5a",fontFamily:"'Crimson Pro',serif",fontStyle:"italic",textAlign:"center"}}>Slide right to set reinforcement size</div>}
+                    {sv===0 && <div style={{fontSize:8,color:"#4a4a5a",fontStyle:"italic",textAlign:"center"}}>Slide right to set amount</div>}
                   </div>
                 ) : (
-                  <div style={{padding:"8px 10px",background:"rgba(200,80,30,.08)",border:"1px solid rgba(200,80,30,.2)",borderRadius:4,fontSize:9,color:"#cc6030",fontFamily:"'Crimson Pro',serif"}}>
+                  <div style={{padding:"8px 10px",background:"rgba(200,80,30,.08)",border:"1px solid rgba(200,80,30,.2)",borderRadius:4,fontSize:9,color:"#cc6030",fontFamily:"'Crimson Pro',serif",marginBottom:14}}>
                     Army at full capacity ({cap.toLocaleString()}).
                   </div>
                 )
               ) : (
-                <div style={{padding:"10px",background:"rgba(200,50,50,.08)",border:"1px solid rgba(200,50,50,.2)",borderRadius:4,fontSize:9,color:"#cc6060",fontFamily:"'Crimson Pro',serif",fontStyle:"italic"}}>
-                  Barracks is empty. Train more troops first.
+                <div style={{padding:"8px 10px",background:"rgba(200,50,50,.08)",border:"1px solid rgba(200,50,50,.2)",borderRadius:4,fontSize:9,color:"#cc6060",fontFamily:"'Crimson Pro',serif",fontStyle:"italic",marginBottom:14}}>
+                  Barracks is empty — train more troops first.
+                </div>
+              )}
+
+              {/* ── WITHDRAW SECTION ── */}
+              {slots.length > 0 && wdMax > 0 && (
+                <div style={{borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:10,marginBottom:10}}>
+                  <div style={{fontSize:8,color:"#cc7030",fontFamily:"'Cinzel',serif",letterSpacing:".12em",marginBottom:6}}>◀ WITHDRAW TROOPS</div>
+                  {/* Slot picker — only show when multiple slots */}
+                  {slots.length > 1 && (
+                    <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+                      {slots.map((sl, i) => {
+                        const _ti = tbInfo(sl.branch);
+                        return (
+                          <div key={i}
+                            onClick={() => setSliderVals(v=>({...v,[selSlotKey]:i,[wdKey]:0}))}
+                            style={{padding:"5px 10px",borderRadius:4,border:`1px solid ${wdSlotIdx===i?"#cc7030":"rgba(255,255,255,.1)"}`,background:wdSlotIdx===i?"rgba(200,80,30,.15)":"rgba(255,255,255,.04)",cursor:"pointer",fontSize:9,color:wdSlotIdx===i?"#e8a060":"#8a8a9a"}}>
+                            Slot {i+1}{_ti ? `: ${(sl.troops||0).toLocaleString()}` : ""}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:8,color:"#6a7a9a",marginBottom:4}}>
+                    <span>Troops to withdraw</span>
+                    <span style={{color:wdAmt>0?"#e8a060":"#4a5a7a"}}>{wdAmt.toLocaleString()}{wdAmt>0?` · ~${estSecs}s back`:""}</span>
+                  </div>
+                  <Slider value={wdAmt} max={wdMax} skKey={wdKey} color="#cc7030"/>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:7,color:"#4a4a5a"}}>
+                    <span>0</span><span style={{color:"#5a6a8a"}}>Max: {wdMax.toLocaleString()}</span><span>{wdMax.toLocaleString()}</span>
+                  </div>
                 </div>
               )}
 
               <button className="btn" onClick={() => { setMode("view"); setReinCmd(null); }}
-                style={{marginTop:10,padding:"7px 16px",background:"none",border:"1px solid #2a2a2a",color:"#555",fontSize:10}}>← Cancel</button>
+                style={{marginTop:8,padding:"7px 16px",background:"none",border:"1px solid #2a2a2a",color:"#555",fontSize:10}}>← Cancel</button>
             </div>
           );
         })()}
@@ -173,19 +192,29 @@ export default memo(function BottomPanel({
         )}
 
       </div>
-      {/* Sticky reinforce confirm button */}
-      {mode==="reinforce" && (() => {
-        const reinCmd2 = reinCmd;
-        if (!reinCmd2) return null;
-        const sk2 = `rein_${reinCmd2.uid}`;
-        const sv2 = sliderVals[sk2] ?? 0;
-        if (sv2 <= 0) return null;
+      {/* Sticky confirm buttons — send OR withdraw, whichever has a value */}
+      {mode==="reinforce" && reinCmd && (() => {
+        const sk2   = `rein_${reinCmd.uid}`;
+        const sv2   = sliderVals[sk2] ?? 0;
+        const wdKey2 = `wd_${reinCmd.uid}`;
+        const wdAmt2 = sliderVals[wdKey2] ?? 0;
+        const wdSlotKey2 = `wdslot_${reinCmd.uid}`;
+        const wdIdx2 = sliderVals[wdSlotKey2] ?? 0;
+        if (sv2 <= 0 && wdAmt2 <= 0) return null;
         return (
-          <div style={{padding:"10px 14px",paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 10px)",borderTop:"1px solid rgba(255,255,255,.06)",flexShrink:0}}>
-            <button onClick={() => startReinforcement(reinCmd2, sv2)}
-              style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,rgba(30,60,120,.7),rgba(30,60,120,.4))",border:"1px solid rgba(50,100,220,.6)",borderRadius:6,color:"#88aaff",fontSize:12,fontWeight:700,fontFamily:"'Cinzel',serif"}}>
-              🚶 March {sv2.toLocaleString()} reinforcements
-            </button>
+          <div style={{padding:"10px 14px",paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 10px)",borderTop:"1px solid rgba(255,255,255,.06)",flexShrink:0,display:"flex",flexDirection:"column",gap:8}}>
+            {sv2 > 0 && (
+              <button onClick={() => startReinforcement(reinCmd, sv2)}
+                style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,rgba(30,60,120,.7),rgba(30,60,120,.4))",border:"1px solid rgba(50,100,220,.6)",borderRadius:6,color:"#88aaff",fontSize:12,fontWeight:700,fontFamily:"'Cinzel',serif"}}>
+                🚶 Send {sv2.toLocaleString()} reinforcements
+              </button>
+            )}
+            {wdAmt2 > 0 && (
+              <button onClick={() => { startWithdrawal(reinCmd, wdIdx2, wdAmt2); setSliderVals(v=>({...v,[wdKey2]:0})); }}
+                style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,rgba(120,60,20,.7),rgba(120,60,20,.4))",border:"1px solid rgba(200,100,40,.6)",borderRadius:6,color:"#e8a060",fontSize:12,fontWeight:700,fontFamily:"'Cinzel',serif"}}>
+                ↩ Withdraw {wdAmt2.toLocaleString()} troops
+              </button>
+            )}
           </div>
         );
       })()}
