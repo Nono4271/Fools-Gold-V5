@@ -1326,98 +1326,229 @@ function UnitSectionLabel({ children, right }) {
 }
 
 // ── Screen 1: Troop overview — tap a unit to train it ──────────────────────────
-function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueues, rss, onTrain, onScrap, onPick }) {
-  const maxQ    = trainingQueueCount(bldgs.training||0);
-  const activeQ = trainingQueues?.length || 0;
-  const owned   = troopCards.filter(t => (t.poolCount || 0) > 0 || (t.assigned || 0) > 0);
-  const rest    = troopCards.filter(t => !((t.poolCount || 0) > 0 || (t.assigned || 0) > 0));
+function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueues, rss, onScrap,
+  canAfford, queueTraining, trainingSpeedMult, trainingCostMult = 1 }) {
+  const maxQ      = trainingQueueCount(bldgs.training||0);
+  const activeQ   = trainingQueues?.length || 0;
+  const freeSlots  = Math.max(0, maxQ - activeQ);
+  const capCmds    = barracksCommandCapacity(bldgs.barracks||0);
+  const freeCmds   = Math.max(0, capCmds - poolCommands(troopCounts) - queuedCommands(trainingQueues));
+  const maxBatch   = maxTrainBatch(bldgs.training||0);
+  const [trainMode, setTrainMode] = useState(false);
+  const [selected, setSelected] = useState({});
+
+  const owned = troopCards.filter(t => (t.poolCount || 0) > 0 || (t.assigned || 0) > 0);
+  const rest  = troopCards.filter(t => !((t.poolCount || 0) > 0 || (t.assigned || 0) > 0));
+
+  const getStep = card => CMD_SIZE[card?.branch?.size || "small"] || 1;
+  const amountFor = card => Math.max(0, selected[card.key] || 0);
+  const selectedEntries = troopCards.filter(t => amountFor(t) > 0);
+
+  // Each slider sees the room left by the other selected troop types, so the
+  // screen never lets the player select more barracks space than exists.
+  const maxFor = card => {
+    const usedByOthers = selectedEntries
+      .filter(t => t.key !== card.key)
+      .reduce((sum, t) => {
+        const step = getStep(t);
+        const amount = Math.floor(amountFor(t) / step) * step;
+        return sum + amount / step;
+      }, 0);
+    const availableCommands = Math.max(0, freeCmds - usedByOthers);
+    const room = troopsThatFit(card.bKey, availableCommands);
+    const step = getStep(card);
+    return Math.max(0, Math.floor(Math.min(maxBatch, room) / step) * step);
+  };
+
+  const quoteFor = (card, amount) => {
+    if (!card || amount <= 0) return null;
+    const discount = card.branch?.capstone
+      ? capstoneTrainDiscount(bldgs[`b_${card.fKey}_${card.branch.key}`])
+      : 0;
+    return trainingQuote(card.bKey, amount, trainingSpeedMult, discount, trainingCostMult);
+  };
+
+  const totalCost = selectedEntries.reduce((acc, card) => {
+    const q = quoteFor(card, amountFor(card));
+    if (!q?.cost) return acc;
+    Object.entries(q.cost).forEach(([key, value]) => { acc[key] = (acc[key] || 0) + value; });
+    return acc;
+  }, {});
+  const totalCommands = selectedEntries.reduce((sum, card) => {
+    const q = quoteFor(card, amountFor(card));
+    return sum + (q?.commands || 0);
+  }, 0);
+  const affordable = Object.keys(totalCost).length === 0 || canAfford(totalCost);
+  const canConfirm = trainMode && selectedEntries.length > 0 &&
+    selectedEntries.length <= freeSlots && totalCommands <= freeCmds + 1e-9 && affordable;
+
+  function setAmount(card, raw) {
+    const step = getStep(card);
+    const max = maxFor(card);
+    const snapped = Math.min(max, Math.max(0, Math.floor(Number(raw || 0) / step) * step));
+    setSelected(prev => {
+      const next = { ...prev };
+      if (snapped <= 0) delete next[card.key];
+      else next[card.key] = snapped;
+      return next;
+    });
+  }
+
+  function enterTrainMode() {
+    setTrainMode(true);
+    setSelected({});
+  }
+
+  function cancelTrainMode() {
+    setTrainMode(false);
+    setSelected({});
+  }
+
+  function confirmTraining() {
+    if (!canConfirm) return;
+    // Aggregate affordability is checked above; reducer dispatches are applied
+    // in order, so every selected troop type becomes its own training queue.
+    selectedEntries.forEach(card => queueTraining(card.bKey, amountFor(card)));
+    setSelected({});
+    setTrainMode(false);
+  }
+
+  const renderCard = card => {
+    const fc = card.fColor || FACTION_META[card.fKey]?.c || "#888";
+    const fIcon = card.fIcon || FACTION_META[card.fKey]?.s || "⚑";
+    const psrc = troopPortraitPath(card.fKey, card.branch.key, card.tier.tierIdx ?? 0);
+    const step = getStep(card);
+    const max = maxFor(card);
+    const value = Math.min(amountFor(card), max);
+    const hasSelection = value > 0;
+    const assigned = card.assigned || 0;
+
+    return (
+      <div key={card.key} style={{
+        position:"relative", minWidth:0, height:270, overflow:"hidden", borderRadius:8,
+        background:"linear-gradient(180deg,rgba(31,34,39,.98),rgba(12,14,18,.98))",
+        border:`1px solid ${hasSelection ? fc + "aa" : P.border}`,
+        boxShadow:hasSelection ? `0 0 0 1px ${fc}33, 0 8px 22px rgba(0,0,0,.3)` : "0 8px 18px rgba(0,0,0,.2)"
+      }}>
+        <div style={{ position:"absolute", inset:0, background:`radial-gradient(circle at 50% 25%, ${fc}18, transparent 58%)`, pointerEvents:"none" }}/>
+        <div style={{ position:"absolute", left:7, top:7, zIndex:3, padding:"3px 6px", borderRadius:4,
+          background:"rgba(0,0,0,.72)", border:`1px solid ${fc}55`, color:fc, fontFamily:P.ff, fontSize:7, fontWeight:700 }}>
+          {fIcon} T{(card.tier.tierIdx ?? 0) + 1}
+        </div>
+        <div style={{ position:"absolute", right:7, top:7, zIndex:3, padding:"3px 6px", borderRadius:4,
+          background:"rgba(0,0,0,.72)", color:P.text, fontFamily:P.ff, fontSize:8, fontWeight:700 }}>
+          {(card.poolCount || 0).toLocaleString()}
+        </div>
+
+        {/* Full-body troop art. The existing troop portraits are already framed
+            as standing characters, so they are intentionally shown nearly edge
+            to edge rather than inside a tiny thumbnail. */}
+        <div style={{ position:"absolute", left:10, right:10, top:26, bottom:54, display:"flex", justifyContent:"center", alignItems:"flex-end" }}>
+          {psrc && <img src={psrc} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"contain", objectPosition:"center bottom", filter:trainMode && !hasSelection ? "brightness(.78)" : "none", transition:"filter .15s" }}
+            onError={e => { e.currentTarget.style.display="none"; }}/>} 
+          {!psrc && <div style={{ fontSize:46, opacity:.35 }}>{fIcon}</div>}
+        </div>
+
+        {trainMode && (
+          <div style={{ position:"absolute", left:10, right:10, top:70, zIndex:5, padding:"6px 7px 7px",
+            borderRadius:6, background:"rgba(5,7,10,.88)", border:`1px solid ${hasSelection ? fc + "aa" : "#ffffff22"}`,
+            backdropFilter:"blur(3px)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
+              <span style={{ fontFamily:P.ff, fontSize:8, color:P.text, fontWeight:700 }}>TRAIN</span>
+              <span style={{ fontFamily:P.ff, fontSize:10, color:hasSelection ? P.gold : P.dim, fontWeight:700 }}>
+                {value.toLocaleString()}
+              </span>
+            </div>
+            <input type="range" min={0} max={Math.max(step, max)} step={step} value={value}
+              disabled={max <= 0}
+              onChange={e => setAmount(card, e.target.value)}
+              style={{ width:"100%", accentColor:fc, cursor:max > 0 ? "pointer" : "not-allowed" }}/>
+            <div style={{ display:"flex", justifyContent:"space-between", marginTop:2, fontSize:6.5, color:P.dim, fontFamily:P.ff }}>
+              <span>0</span><span>{max.toLocaleString()} max</span>
+            </div>
+          </div>
+        )}
+
+        <div style={{ position:"absolute", left:0, right:0, bottom:0, zIndex:4, padding:"7px 8px 8px",
+          background:"linear-gradient(180deg,rgba(8,10,13,.08),rgba(8,10,13,.97) 25%)" }}>
+          <div style={{ display:"flex", alignItems:"end", gap:6 }}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontFamily:P.ff, fontSize:10, fontWeight:700, color:P.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{card.tier.label}</div>
+              <div style={{ fontSize:7, color:fc, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{card.branch.label}</div>
+            </div>
+            <TroopSizeTag size={card.branch.size}/>
+          </div>
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:4, fontSize:6.5, color:P.dim, fontFamily:P.ff }}>
+            <span>{assigned > 0 ? `${assigned.toLocaleString()} deployed` : `${card.poolCount || 0} in barracks`}</span>
+            <span>{step}/cmd</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const section = (title, cards, dim=false) => cards.length === 0 ? null : (
+    <div style={{ marginTop:title === "YOUR TROOPS" ? 0 : 14 }}>
+      <UnitSectionLabel right={trainMode ? "choose quantities" : "standing unit display"}>{title} ({cards.length})</UnitSectionLabel>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(145px,1fr))", gap:8 }}>
+        {cards.map(card => renderCard(card))}
+      </div>
+    </div>
+  );
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%" }}>
-      {/* Header: title + barracks meter side by side to save height */}
-      <div style={{ padding:"8px 12px", borderBottom:`1px solid ${P.border}`,
-        display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100%", minHeight:0 }}>
+      <div style={{ padding:"8px 12px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
         <div style={{ flexShrink:0 }}>
           <div style={{ fontFamily:P.ff, fontSize:13, fontWeight:700, color:P.gold, letterSpacing:".07em" }}>⚔ TRAINING</div>
           <div style={{ fontFamily:P.ff, fontSize:7.5, color:P.dim, marginTop:1 }}>{activeQ}/{maxQ} queues active</div>
         </div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <BarracksBar bldgs={bldgs} troopCounts={troopCounts} trainingQueues={trainingQueues}/>
-        </div>
+        <div style={{ flex:1, minWidth:0 }}><BarracksBar bldgs={bldgs} troopCounts={troopCounts} trainingQueues={trainingQueues}/></div>
       </div>
 
-      {/* Active queues as compact chips */}
       {trainingQueues && trainingQueues.length > 0 && (
         <div style={{ padding:"6px 12px 0", display:"flex", flexWrap:"wrap", gap:5, flexShrink:0 }}>
           {trainingQueues.map((q, idx) => {
-            const qPct     = Math.round(((q.total - q.remaining) / q.total) * 100);
+            const qPct = Math.round(((q.total - q.remaining) / q.total) * 100);
             const secsLeft = trainingSecondsLeft(q);
-            const parts    = q.branchKey?.split(":") || [];
-            const brDef    = TROOP_FACTIONS[parts[0]]?.branches?.find(b => b.key === parts[1]);
-            const label    = brDef?.tiers?.[parseInt(parts[2]||0)]?.label || parts[1] || q.branchKey;
-            return (
-              <div key={q.id} style={{ flex:"1 1 150px", maxWidth:240, padding:"4px 8px",
-                background:"rgba(40,80,160,.08)", border:"1px solid rgba(60,120,220,.25)", borderRadius:5 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", gap:6, fontFamily:P.ff, fontSize:7.5 }}>
-                  <span style={{ color:"#88aaff", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                    {idx+1} · {label}
-                  </span>
-                  <span style={{ color:"#6a8aaa", flexShrink:0 }}>+{q.remaining.toLocaleString()} · ~{secsLeft}s</span>
-                </div>
-                <div style={{ height:3, marginTop:3, background:"#181820", borderRadius:2, overflow:"hidden" }}>
-                  <div style={{ height:"100%", width:`${qPct}%`,
-                    background:"linear-gradient(90deg,#3366cc,#88aaff)", transition:"width 1s" }}/>
-                </div>
+            const parts = q.branchKey?.split(":") || [];
+            const brDef = TROOP_FACTIONS[parts[0]]?.branches?.find(b => b.key === parts[1]);
+            const label = brDef?.tiers?.[parseInt(parts[2]||0)]?.label || parts[1] || q.branchKey;
+            return <div key={q.id} style={{ flex:"1 1 150px", maxWidth:240, padding:"4px 8px", background:"rgba(40,80,160,.08)", border:"1px solid rgba(60,120,220,.25)", borderRadius:5 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", gap:6, fontFamily:P.ff, fontSize:7.5 }}>
+                <span style={{ color:"#88aaff", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{idx+1} · {label}</span>
+                <span style={{ color:"#6a8aaa", flexShrink:0 }}>+{q.remaining.toLocaleString()} · ~{secsLeft}s</span>
               </div>
-            );
+              <div style={{ height:3, marginTop:3, background:"#181820", borderRadius:2, overflow:"hidden" }}><div style={{ height:"100%", width:`${qPct}%`, background:"linear-gradient(90deg,#3366cc,#88aaff)", transition:"width 1s" }}/></div>
+            </div>;
           })}
         </div>
       )}
 
-      {/* Scrollable unit grid: what you own first, then what you could train */}
-      <div style={{ flex:1, overflowY:"auto", padding:"8px 10px", minHeight:0 }}>
-        {troopCards.length === 0 && (
-          <div style={{ textAlign:"center", padding:"30px 20px", fontSize:9, color:P.dim,
-            fontFamily:P.ffb, fontStyle:"italic" }}>
-            No troop types unlocked yet. Unlock troop branches in Quarters.
-          </div>
-        )}
-        {owned.length > 0 && (
-          <>
-            <UnitSectionLabel right="tap to train more">YOUR TROOPS ({owned.length})</UnitSectionLabel>
-            <div style={UNIT_GRID}>
-              {owned.map(t => <UnitCard key={t.key} t={t} onClick={() => onPick(t.key)}/>)}
-            </div>
-          </>
-        )}
-        {rest.length > 0 && (
-          <div style={{ marginTop: owned.length ? 12 : 0 }}>
-            <UnitSectionLabel right="none trained yet">AVAILABLE TO TRAIN ({rest.length})</UnitSectionLabel>
-            <div style={UNIT_GRID}>
-              {rest.map(t => <UnitCard key={t.key} t={t} dim onClick={() => onPick(t.key)}/>)}
-            </div>
-          </div>
-        )}
+      <div style={{ flex:1, overflowY:"auto", padding:"8px 10px 14px", minHeight:0 }}>
+        {troopCards.length === 0 ? <div style={{ textAlign:"center", padding:"40px 20px", fontSize:9, color:P.dim, fontFamily:P.ffb, fontStyle:"italic" }}>No troop types unlocked yet. Unlock troop branches in Quarters.</div> : <>
+          {section("YOUR TROOPS", owned)}
+          {section("AVAILABLE TO TRAIN", rest)}
+        </>}
       </div>
 
-      {/* Bottom action buttons */}
-      <div style={{ padding:"8px 12px", borderTop:`1px solid ${P.border}`,
-        display:"flex", justifyContent:"flex-end", gap:10, flexShrink:0 }}>
-        <button className="btn" onClick={onScrap}
-          style={{ padding:"8px 20px", fontFamily:P.ff, fontSize:10, fontWeight:700,
-            letterSpacing:".06em", cursor:"pointer", borderRadius:5,
-            background:"linear-gradient(135deg,#8a2020,#5a1010)",
-            border:"1px solid #cc303088", color:"#ff8888" }}>
-          SCRAP
-        </button>
-        <button className="btn" onClick={onTrain}
-          style={{ padding:"8px 26px", fontFamily:P.ff, fontSize:10, fontWeight:700,
-            letterSpacing:".06em", cursor:"pointer", borderRadius:5,
-            background:"linear-gradient(135deg,#c8903a,#8a5a18)",
-            border:"1px solid #f0c04077", color:"#fff8e8" }}>
-          TRAIN
-        </button>
-      </div>
+      {trainMode && (
+        <div style={{ padding:"7px 12px 4px", borderTop:`1px solid ${P.border}`, background:"rgba(8,10,13,.96)", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+          <div style={{ flex:1, minWidth:0, fontFamily:P.ff, fontSize:7.5, color:P.dim }}>
+            <span style={{ color:selectedEntries.length > 0 ? P.gold : P.text, fontWeight:700 }}>{selectedEntries.length}</span>/{freeSlots} queues · <span style={{ color:totalCommands <= freeCmds ? "#6aaa50" : "#cc4444" }}>{fmtCmd(totalCommands)}</span>/{fmtCmd(freeCmds)} commands
+            {!affordable && <span style={{ color:"#cc4444" }}> · insufficient resources</span>}
+          </div>
+          <button className="btn" onClick={cancelTrainMode} style={{ padding:"8px 13px", fontFamily:P.ff, fontSize:9, fontWeight:700, cursor:"pointer", borderRadius:5, background:"rgba(255,255,255,.04)", border:`1px solid ${P.border}`, color:P.sub }}>CANCEL</button>
+          <button className="btn" onClick={confirmTraining} disabled={!canConfirm} style={{ padding:"8px 16px", fontFamily:P.ff, fontSize:9, fontWeight:700, cursor:canConfirm?"pointer":"not-allowed", borderRadius:5, background:canConfirm?"linear-gradient(135deg,#c8903a,#8a5a18)":"rgba(90,70,35,.35)", border:canConfirm?"1px solid #f0c04077":`1px solid ${P.border}`, color:canConfirm?"#fff8e8":P.dim }}>TRAIN SELECTED</button>
+        </div>
+      )}
+
+      {!trainMode && (
+        <div style={{ padding:"8px 12px", borderTop:`1px solid ${P.border}`, display:"flex", justifyContent:"flex-end", gap:10, flexShrink:0 }}>
+          <button className="btn" onClick={onScrap} style={{ padding:"8px 20px", fontFamily:P.ff, fontSize:10, fontWeight:700, letterSpacing:".06em", cursor:"pointer", borderRadius:5, background:"linear-gradient(135deg,#8a2020,#5a1010)", border:"1px solid #cc303088", color:"#ff8888" }}>SCRAP</button>
+          <button className="btn" onClick={enterTrainMode} disabled={freeSlots <= 0 || freeCmds <= 0 || maxBatch <= 0} style={{ padding:"8px 26px", fontFamily:P.ff, fontSize:10, fontWeight:700, letterSpacing:".06em", cursor:freeSlots > 0 && freeCmds > 0 && maxBatch > 0 ? "pointer":"not-allowed", borderRadius:5, background:freeSlots > 0 && freeCmds > 0 && maxBatch > 0 ? "linear-gradient(135deg,#c8903a,#8a5a18)":"rgba(90,70,35,.35)", border:"1px solid #f0c04077", color:freeSlots > 0 && freeCmds > 0 && maxBatch > 0 ? "#fff8e8":P.dim }}>TRAIN</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1715,8 +1846,8 @@ function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, s
       <TrainingListScreen
         bldgs={bldgs} troopCounts={troopCounts}
         troopCards={troopCards} trainingQueues={trainingQueues} rss={rss}
-        onPick={key => { setPickKey(key); setSubScreen("train"); }}
-        onTrain={() => { setPickKey(null); setSubScreen("train"); }}
+        canAfford={canAfford} queueTraining={queueTraining}
+        trainingSpeedMult={trainingSpeedMult} trainingCostMult={trainingCostMult}
         onScrap={() => { setPickKey(null); setSubScreen("scrap"); }}/>
     );
   }
