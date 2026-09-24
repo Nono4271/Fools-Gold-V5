@@ -919,18 +919,31 @@ nightcreatures:{ n:"Creatures of the Night",s:"🌑",  c:"#a030c0" },
 coldborns:     { n:"Coldborns",             s:"❄️",  c:"#60b8d4" },
 ashen_dead:    { n:"Ashen Dead",            s:"💀",  c:"#6a6a8a" },
 };
-// Standing troop sprites for the Pirates / Swashbucklers branch.
-// T1/T2/T3 map to tierIdx 0/1/2. All other factions/branches keep using
-// the existing portrait resolver.
-const PIRATE_SWASHBUCKLER_STANDING = {
-  0: "/troops/pirates_swashbucklers_t1_standing.webp",
-  1: "/troops/pirates_swashbucklers_t2_standing.webp",
-  2: "/troops/pirates_swashbucklers_t3_standing.webp",
+// Standing troop sprites for the Pirates branches (Swashbucklers, Gunners,
+// Sea Beasts). T1/T2/T3 map to tierIdx 0/1/2. Every other faction/branch
+// keeps using the existing portrait resolver. Files: 512x1024 RGBA WebP in
+// public/troops/pirates_<branch>_t<N>_standing.webp.
+const PIRATE_STANDING = {
+  swashbucklers: {
+    0: "/troops/pirates_swashbucklers_t1_standing.webp",
+    1: "/troops/pirates_swashbucklers_t2_standing.webp",
+    2: "/troops/pirates_swashbucklers_t3_standing.webp",
+  },
+  gunners: {
+    0: "/troops/pirates_gunners_t1_standing.webp",
+    1: "/troops/pirates_gunners_t2_standing.webp",
+    2: "/troops/pirates_gunners_t3_standing.webp",
+  },
+  sea_beasts: {
+    0: "/troops/pirates_sea_beasts_t1_standing.webp",
+    1: "/troops/pirates_sea_beasts_t2_standing.webp",
+    2: "/troops/pirates_sea_beasts_t3_standing.webp",
+  },
 };
 
 function troopVisualPath(fKey, branchKey, tierIdx = 0) {
-  if (fKey === "pirates" && branchKey === "swashbucklers" && PIRATE_SWASHBUCKLER_STANDING[tierIdx]) {
-    return PIRATE_SWASHBUCKLER_STANDING[tierIdx];
+  if (fKey === "pirates" && PIRATE_STANDING[branchKey]?.[tierIdx]) {
+    return PIRATE_STANDING[branchKey][tierIdx];
   }
   return troopPortraitPath(fKey, branchKey, tierIdx);
 }
