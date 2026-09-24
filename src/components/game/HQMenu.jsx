@@ -921,8 +921,9 @@ ashen_dead:    { n:"Ashen Dead",            s:"💀",  c:"#6a6a8a" },
 };
 // Standing troop sprites for the Pirates branches (Swashbucklers, Gunners,
 // Sea Beasts). T1/T2/T3 map to tierIdx 0/1/2. Every other faction/branch
-// keeps using the existing portrait resolver. Files: 512x1024 RGBA WebP in
-// public/troops/pirates_<branch>_t<N>_standing.webp.
+// keeps using the existing portrait resolver. Files: RGBA WebP in
+// public/troops/pirates_<branch>_t<N>_standing.webp, 512x1024 (768x1024 for the
+// wide poses so they fill the same height). Contain-fit, so any width works.
 const PIRATE_STANDING = {
   swashbucklers: {
     0: "/troops/pirates_swashbucklers_t1_standing.webp",
