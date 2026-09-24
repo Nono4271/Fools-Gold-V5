@@ -1492,7 +1492,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#08090b" }}>
       {/* Top bar */}
-      <div style={{ padding:"5px 10px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+      <div style={{ padding:"4px 8px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
         {isScrap ? (
           <button className="btn" onClick={() => onSwitchMode?.("train")} style={{ background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:5, color:P.dim, cursor:"pointer", padding:"5px 12px", fontFamily:P.ff, fontSize:9 }}>‹ TRAIN</button>
         ) : (
@@ -1509,7 +1509,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
         <BarracksBar bldgs={bldgs} troopCounts={troopCounts} trainingQueues={trainingQueues}/>
       </div>
 
-      {/* Field: two continuous rows, scroll LEFT/RIGHT. Most of the screen is troops. */}
+      {/* Field: zoomed-out, two staggered rows (diagonal feel like LOTR reference).
+          Scroll LEFT/RIGHT. Most of the screen is the troop field. */}
       <div
         className="training-scroll"
         style={{
@@ -1519,23 +1520,23 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           overflowY: "hidden",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-x",
-          padding: "2px 8px 4px",
+          padding: "4px 6px 2px",
+          position: "relative",
+          zIndex: 1,
+          // subtle field feel
+          background: "radial-gradient(ellipse at 50% 80%, rgba(40,50,30,.35) 0%, transparent 70%)",
         }}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateRows: "1fr 1fr",
-            gridAutoColumns: "118px",
-            gridAutoFlow: "column",
-            gap: "6px 8px",
-            width: "max-content",
-            height: "100%",
-            minHeight: 280,
-            paddingRight: 16,
-          }}
-        >
-          {ordered.map((t) => {
+        {(() => {
+          // Split into two rows for staggered / diagonal placement
+          const top = [];
+          const bot = [];
+          ordered.forEach((t, i) => {
+            if (i % 2 === 0) top.push(t);
+            else bot.push(t);
+          });
+
+          const renderUnit = (t) => {
             const amount = values[t.key] || 0;
             const size = t.branch?.size || "small";
             const step = isScrap ? 1 : (CMD_SIZE[size] || 100);
@@ -1566,31 +1567,28 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               <div
                 key={t.key}
                 style={{
-                  width: 118,
-                  height: "100%",
-                  minHeight: 0,
-                  position: "relative",
+                  width: 84,
                   flexShrink: 0,
-                  opacity: !ownedNow && !amount ? 0.72 : 1,
+                  opacity: !ownedNow && !amount ? 0.7 : 1,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                 }}
               >
+                {/* Floating label above head */}
                 <div
                   style={{
-                    flexShrink: 0,
                     width: "100%",
                     textAlign: "center",
                     pointerEvents: "none",
-                    paddingTop: 1,
-                    lineHeight: 1.1,
+                    lineHeight: 1.05,
+                    marginBottom: 1,
                   }}
                 >
                   <div
                     style={{
                       fontFamily: P.ff,
-                      fontSize: 8.5,
+                      fontSize: 7.5,
                       fontWeight: 700,
                       color: P.text,
                       whiteSpace: "nowrap",
@@ -1604,17 +1602,17 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                       {(t.poolCount || 0).toLocaleString()}
                     </span>
                   </div>
-                  <div style={{ fontFamily: P.ff, fontSize: 6, color: fc }}>{tierLabel}</div>
+                  <div style={{ fontFamily: P.ff, fontSize: 5.5, color: fc }}>{tierLabel}</div>
                 </div>
 
+                {/* Compact slider above head */}
                 <div
                   style={{
-                    flexShrink: 0,
                     width: "100%",
                     padding: "1px 2px 2px",
-                    margin: "1px 0 2px",
+                    marginBottom: 2,
                     borderRadius: 3,
-                    background: amount > 0 ? "rgba(5,7,9,.8)" : "rgba(5,7,9,.4)",
+                    background: amount > 0 ? "rgba(5,7,9,.8)" : "rgba(5,7,9,.35)",
                     border: amount > 0 ? `1px solid ${fc}77` : "1px solid transparent",
                   }}
                 >
@@ -1623,7 +1621,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                       display: "flex",
                       justifyContent: "space-between",
                       fontFamily: P.ff,
-                      fontSize: 6,
+                      fontSize: 5.5,
                     }}
                   >
                     <span style={{ color: "#c8b898", fontWeight: 700 }}>{isScrap ? "S" : "T"}</span>
@@ -1644,16 +1642,16 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                       margin: 0,
                       accentColor: fc,
                       cursor: canSelect ? "pointer" : "not-allowed",
-                      height: 12,
+                      height: 10,
                     }}
                   />
                 </div>
 
+                {/* Sprite — no card frame */}
                 <div
                   style={{
-                    flex: 1,
-                    minHeight: 0,
-                    width: "100%",
+                    width: 78,
+                    height: 88,
                     position: "relative",
                     overflow: "hidden",
                   }}
@@ -1683,18 +1681,54 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: 22,
-                        opacity: 0.45,
+                        fontSize: 20,
+                        opacity: 0.4,
                       }}
                     >
                       {t.fIcon || "⚔"}
                     </div>
                   )}
+                  {/* soft ground shadow */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: "18%",
+                      right: "18%",
+                      bottom: 1,
+                      height: 5,
+                      borderRadius: "50%",
+                      background: "rgba(0,0,0,.3)",
+                      pointerEvents: "none",
+                    }}
+                  />
                 </div>
               </div>
             );
-          })}
-        </div>
+          };
+
+          return (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                width: "max-content",
+                minWidth: "100%",
+                paddingRight: 20,
+                paddingBottom: 4,
+              }}
+            >
+              {/* Top row */}
+              <div style={{ display: "flex", flexDirection: "row", gap: 5 }}>
+                {top.map(renderUnit)}
+              </div>
+              {/* Bottom row — offset for diagonal / staggered feel */}
+              <div style={{ display: "flex", flexDirection: "row", gap: 5, paddingLeft: 42 }}>
+                {bot.map(renderUnit)}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Fixed action bar */}
@@ -2148,7 +2182,7 @@ function ManageShipScreen({
                           border: "none", color: "#fff", fontSize: 9, padding: 0, flexShrink: 0 }}>✕</button>
                     </>
                   ) : (
-                    <div style={{ fontSize: 8, color: "#4a4030", fontFamily: P.ffb, fontStyle: "italic" }}>
+                    <div style={{ fontSize: 7.5, color: "#4a4030", fontFamily: P.ffb, fontStyle: "italic" }}>
                       Empty — tap a troop on the right
                     </div>
                   )}
@@ -2169,7 +2203,7 @@ function ManageShipScreen({
             const snap = (v) => Math.min(sliderMax, Math.max(0, Math.floor(v / step) * step));
             const quick = (label, val) => (
               <button key={label} className="btn" onClick={() => handleSliderChange(snap(Math.max(0, Math.min(maxSlider, val))))}
-                style={{ flex: 1, padding: "5px 0", fontSize: 8, fontWeight: 700, fontFamily: P.ff,
+                style={{ flex: 1, padding: "5px 0", fontSize: 7.5, fontWeight: 700, fontFamily: P.ff,
                   background: `${tierColor}14`, border: `1px solid ${tierColor}55`, color: tierColor, borderRadius: 3 }}>
                 {label}
               </button>
@@ -2364,7 +2398,7 @@ function BattleGroupsScreen({
           border: "1px solid #2a2418",
           background: "rgba(0,0,0,.35)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#3a3028", fontSize: 8, fontFamily: P.ffb, fontStyle: "italic",
+          color: "#3a3028", fontSize: 7.5, fontFamily: P.ffb, fontStyle: "italic",
           cursor: onClick ? "pointer" : "default",
         }}
           onClick={onClick}
@@ -2468,7 +2502,7 @@ function BattleGroupsScreen({
         }}
       >
         {/* Top row: bust + info */}
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 5 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 5, marginBottom: 5 }}>
           {/* Bust image */}
           <div style={{
             width: 38, height: 46, flexShrink: 0, borderRadius: 4,
@@ -2641,7 +2675,7 @@ function BattleGroupsScreen({
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {/* Rarity / level badge */}
               <div style={{
-                fontFamily: P.ff, fontSize: 8, fontWeight: 700,
+                fontFamily: P.ff, fontSize: 7.5, fontWeight: 700,
                 color: rarColor,
                 background: `${rarColor}22`,
                 border: `1px solid ${rarColor}55`,
@@ -2791,7 +2825,7 @@ function BattleGroupsScreen({
 
         {playerCmds.length === 0 ? (
           <div style={{
-            fontSize: 8, color: "#3a3028", fontFamily: P.ffb,
+            fontSize: 7.5, color: "#3a3028", fontFamily: P.ffb,
             fontStyle: "italic", textAlign: "center", padding: "12px 6px",
           }}>
             No commanders
@@ -3300,12 +3334,24 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
 
   {/* Content */}
   {(() => {
-    const splitLayout = hqTab === "buildings" || hqTab === "army";
+    const splitLayout = hqTab === "buildings" || hqTab === "army" || hqTab === "troops";
+    const isTroops = hqTab === "troops";
     return (
-      <div className="scr" style={{ flex:1, overflowY: splitLayout ? "hidden" : "auto",
-        minHeight:0, padding: (isHub || splitLayout) ? 0 : 14,
-        display: isHub ? "flex" : splitLayout ? "flex" : "block",
-        flexDirection:"column", position:"relative", zIndex:2 }}>
+      <div
+        className={isTroops ? "training-parent" : "scr"}
+        style={{
+          flex: 1,
+          overflowY: splitLayout ? "hidden" : "auto",
+          minHeight: 0,
+          padding: (isHub || splitLayout) ? 0 : 14,
+          display: isHub ? "flex" : splitLayout ? "flex" : "block",
+          flexDirection: "column",
+          position: "relative",
+          zIndex: 2,
+          // Critical for iOS: .scr forces touch-action:pan-y which blocks horizontal scroll
+          touchAction: isTroops ? "pan-x" : undefined,
+        }}
+      >
 
         {hqTab === "hub" && <HubScreen setHqTab={setHqTab}/>}
 
