@@ -3,7 +3,9 @@
 // rest of the shared/utils split).
 //
 // Fortress lifecycle:
-//  1. Founder/officer starts a build on an unclaimed p10+ tile (not a camp).
+//  1. Founder/officer starts a build on a p10+ tile already owned by the
+//     player or a crewmate (not a camp, not unclaimed wilds — see
+//     tileOwnerInCrew / canBuildFortressOnTile).
 //  2. FORTRESS_BUILD_MS later it's live: siege = siegeMax (full health),
 //     open for members to station commanders.
 //  3. An attacker must first clear every army actually stationed inside —
@@ -20,11 +22,13 @@ import {
 } from "../constants/crew.js";
 import { fortressSlotsAvailable } from "./crewRules.js";
 
-// True if `tile` is unclaimed, or owned by a player in `crew` — "player"
-// owner means the human player, who is always a member of their own crew;
-// an AI owner is checked against crew.founder/crew.members via ownerPlayerId.
+// True if `tile` is owned by a player in `crew` — "player" owner means the
+// human player, who is always a member of their own crew; an AI owner is
+// checked against crew.founder/crew.members via ownerPlayerId. An unclaimed
+// tile (no owner at all) is NOT "in crew" — it must be claimed first before
+// a crew structure can go on it (see canBuildFortressOnTile).
 export function tileOwnerInCrew(tile, crew) {
-  if (!tile?.owner) return true;
+  if (!tile?.owner) return false;
   if (tile.owner === "player") return true;
   const pid = tile.ownerPlayerId;
   return !!pid && !!crew && (crew.founder === pid || (crew.members || []).includes(pid));
@@ -44,6 +48,7 @@ export function canBuildFortressOnTile(tile, crew) {
   if (tile.isKeep || tile.isGate || tile.isRuin || tile.isWin || tile.isHQ) {
     return { ok: false, reason: "Cannot build on a special tile" };
   }
+  if (!tile.owner) return { ok: false, reason: "Tile must be claimed by you or a crewmate first" };
   if (!tileOwnerInCrew(tile, crew)) return { ok: false, reason: "Tile is claimed by a player outside your crew" };
   if (tile.fort || tile.crewFortress) return { ok: false, reason: "Tile already has a structure" };
   return { ok: true, reason: null };

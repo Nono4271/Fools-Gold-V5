@@ -2,15 +2,17 @@
 // Same split as crewFortress.js: no React, no storage; src/ wires these in.
 //
 // WELL (crew level 31 → 1 well, 40 → 2 wells)
-//   - Founder-only build on an unclaimed p10+ tile (same tile rules as a
-//     Crew Fortress). Stored on crew.wells: [{ id, crewId, tileKey, buildEndsAt? }].
+//   - Founder-or-officer build on a p10+ tile already owned by the player or
+//     a crewmate (same tile rules as a Crew Fortress — not unclaimed wilds).
+//     Stored on crew.wells: [{ id, crewId, tileKey, buildEndsAt? }].
 //   - Once built, any crew member can station a commander there — from
 //     anywhere, the Well has no range — then gather on it like any tile.
 //   - Gathering at a Well yields ALL FOUR resources, each at a p11 tile's
 //     gather rate (shared/utils/tactics.js gatherTick's `isWell` path).
 //
 // CONTRACT OUTPOST (crew level 35; 2nd unit pick at 50; -10% hire time at 42)
-//   - Founder-only build on an unclaimed p10+ tile. One per crew. Stored as
+//   - Founder-or-officer build on a p10+ tile already owned by the player or
+//     a crewmate. One per crew. Stored as
 //     crew.outpost: { id, crewId, tileKey, units: [neutralKey], buildEndsAt? }.
 //   - The founder picks 1 (2 at level 50) NEUTRAL units — Ancients excluded —
 //     and every crew member can then train them.
@@ -50,6 +52,7 @@ export function canBuildCrewStructureOnTile(tile, tileKey, occupiedKeys, minPowe
   if (tile.isKeep || tile.isGate || tile.isRuin || tile.isWin || tile.isHQ || tile.isHQPart || tile.isKeepPart) {
     return { ok: false, reason: "Cannot build on a special tile" };
   }
+  if (!tile.owner) return { ok: false, reason: "Tile must be claimed by you or a crewmate first" };
   if (!tileOwnerInCrew(tile, crew)) return { ok: false, reason: "Tile is claimed by a player outside your crew" };
   if (tile.fort || tile.crewFortress || occupiedKeys?.has(tileKey)) return { ok: false, reason: "Tile already has a structure" };
   return { ok: true, reason: null };
