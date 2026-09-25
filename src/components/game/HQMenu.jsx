@@ -1493,13 +1493,13 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
 // at runtime (see FIT below) and scales everything to actually fit, so rows
 // can never clip again regardless of what this is set to.
 const TRAIN_FIELD_ZOOM = 1.0; // base layout scale; the field itself handles responsive sizing
-const TRAIN_CARD_W = 250;
-const TRAIN_SPRITE_W = 205;
-const TRAIN_SPRITE_H = 175;
+const TRAIN_CARD_W = 245;
+const TRAIN_SPRITE_W = 190;
+const TRAIN_SPRITE_H = 132;
 // Depth-based per-card scale (foreshortening) — near/bottom-row cards sit
 // bigger than far/top-row ones. This still only moves LAYOUT size.
-const TRAIN_SCALE_MIN = 0.88;
-const TRAIN_SCALE_MAX = 1.02;
+const TRAIN_SCALE_MIN = 0.84;
+const TRAIN_SCALE_MAX = 1.00;
 
 // Standing sprites are authored at 512×1024 (wide poses 768×1024). Cap display
 // size so we never upsample past source (blur). Layout size is driven by
@@ -1667,8 +1667,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
             return (h % 1000) / 1000;
           };
           const depthFor = (key, isTop) => {
-            const base = isTop ? 0.18 : 0.82;
-            const jitter = (hash01(key) - 0.5) * 0.12;
+            const base = isTop ? 0.22 : 0.78;
+            const jitter = (hash01(key) - 0.5) * 0.08;
             return Math.min(1, Math.max(0, base + jitter));
           };
 
@@ -1718,7 +1718,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   alignItems: "center",
                   justifyContent: "flex-start",
                   position: "relative",
-                  transform: isTop ? "translateY(8px)" : "translateY(-4px)",
+                  transform: `translate(${isTop ? -55 : 55}px, ${isTop ? -6 + (0.5 - depth) * 10 : -14 + (0.5 - depth) * 10}px)`,
                   zIndex: Math.round(depth * 100),
                 }}
               >
@@ -1727,7 +1727,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 <div
                   style={{
                     width: "100%",
-                    height: 32,
+                    height: 30,
                     flexShrink: 0,
                     textAlign: "center",
                     pointerEvents: "none",
@@ -1769,11 +1769,11 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
 
                 <div style={{
                   width: "100%",
-                  height: 34,
+                  height: 30,
                   flexShrink: 0,
-                  padding: "1px 3px 2px",
-                  marginTop: 2,
-                  marginBottom: 4,
+                  padding: "1px 3px 1px",
+                  marginTop: 1,
+                  marginBottom: 2,
                   borderRadius: 3,
                   background: amount > 0 ? "rgba(5,7,9,.82)" : "rgba(5,7,9,.38)",
                   border: amount > 0 ? `1px solid ${fc}77` : "1px solid rgba(255,255,255,.04)",
@@ -1807,13 +1807,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                     // Consistent three-person diagonal cluster. The spacing is
                     // deliberately normalized across all troop types so one
                     // unit cannot randomly create a huge gap or overlap.
-                    const hw = TRAIN_SPRITE_W * 0.46;
+                    const hw = TRAIN_SPRITE_W * 0.47;
                     const layouts = [
                       { x: -hw * 0.88, y: 1, s: 0.84, z: 1 },
                       { x: 0,          y: 7, s: 0.98, z: 3 },
                       { x: hw * 0.88,  y: 2, s: 0.86, z: 2 },
                     ];
-                    const figH = Math.min(TRAIN_SPRITE_H * 0.92 * scale, SPRITE_ART_NATIVE_H);
+                    const figH = Math.min(TRAIN_SPRITE_H * 0.98 * scale, SPRITE_ART_NATIVE_H);
                     const figW = Math.min(figH * 0.55, SPRITE_ART_NATIVE_W);
                     return layouts.map((p, idx) => (
                       <div key={idx} style={{
@@ -1875,7 +1875,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               minWidth: "max-content",
               width: "max-content",
               boxSizing: "border-box",
-              padding: "12px 34px 10px 34px",
+              padding: "2px 34px 8px 34px",
               position: "relative",
               zIndex: 2,
             }}>
@@ -1885,14 +1885,14 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   height: "100%",
                   flexShrink: 0,
                   display: "grid",
-                  gridTemplateRows: "1fr 1fr",
-                  rowGap: 8,
+                  gridTemplateRows: "minmax(0,1fr) minmax(0,1fr)",
+                  rowGap: 0,
                   position: "relative",
                 }}>
-                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "visible" }}>
+                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "hidden" }}>
                     {renderUnit(col.top, true)}
                   </div>
-                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "visible" }}>
+                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "hidden" }}>
                     {renderUnit(col.bottom, false)}
                   </div>
                 </div>
