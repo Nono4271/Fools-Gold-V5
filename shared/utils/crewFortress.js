@@ -20,11 +20,22 @@ import {
 } from "../constants/crew.js";
 import { fortressSlotsAvailable } from "./crewRules.js";
 
+// True if `tile` is unclaimed, or owned by a player in `crew` — "player"
+// owner means the human player, who is always a member of their own crew;
+// an AI owner is checked against crew.founder/crew.members via ownerPlayerId.
+export function tileOwnerInCrew(tile, crew) {
+  if (!tile?.owner) return true;
+  if (tile.owner === "player") return true;
+  const pid = tile.ownerPlayerId;
+  return !!pid && !!crew && (crew.founder === pid || (crew.members || []).includes(pid));
+}
+
 // tile: whatever shape src/hooks/useMapInit.js / worldTiles.js hand back
 // (powerLevel, isCamp/campType, owner, fort, crewFortress, etc.). Only the
 // fields this rule actually needs are read, so it stays decoupled from the
-// exact tile object shape.
-export function canBuildFortressOnTile(tile) {
+// exact tile object shape. `crew` is required to build on a tile someone
+// already owns (see tileOwnerInCrew) — omit it to only allow unclaimed tiles.
+export function canBuildFortressOnTile(tile, crew) {
   if (!tile) return { ok: false, reason: "No tile selected" };
   if ((tile.powerLevel || 0) < FORTRESS_MIN_POWER_LEVEL) {
     return { ok: false, reason: `Must be a power level ${FORTRESS_MIN_POWER_LEVEL}+ tile` };
@@ -33,7 +44,7 @@ export function canBuildFortressOnTile(tile) {
   if (tile.isKeep || tile.isGate || tile.isRuin || tile.isWin || tile.isHQ) {
     return { ok: false, reason: "Cannot build on a special tile" };
   }
-  if (tile.owner) return { ok: false, reason: "Tile is already claimed" };
+  if (!tileOwnerInCrew(tile, crew)) return { ok: false, reason: "Tile is claimed by a player outside your crew" };
   if (tile.fort || tile.crewFortress) return { ok: false, reason: "Tile already has a structure" };
   return { ok: true, reason: null };
 }
@@ -51,7 +62,7 @@ export function canStartFortressBuild(crew, actorId, tile, resources) {
   const roleOk = !!crew && (crew.founder === actorId || (crew.officers || []).includes(actorId));
   if (!roleOk) return { ok: false, reason: "Only the founder or an officer can build a fortress" };
   if (fortressSlotsAvailable(crew) <= 0) return { ok: false, reason: "No fortress slots available" };
-  const tileCheck = canBuildFortressOnTile(tile);
+  const tileCheck = canBuildFortressOnTile(tile, crew);
   if (!tileCheck.ok) return tileCheck;
   if (!canAffordFortress(resources)) return { ok: false, reason: "Not enough resources" };
   return { ok: true, reason: null };

@@ -25,6 +25,7 @@ import {
 } from "../constants/crew.js";
 import { resolveNeutralUnit, NEUTRAL_FACTION_KEY } from "../constants/neutralTroops.js";
 import { resolveAncientUnit, ANCIENT_FACTION_KEY } from "../constants/ancientTroops.js";
+import { tileOwnerInCrew } from "./crewFortress.js";
 
 const isFounder = (crew, actorId) => !!crew && crew.founder === actorId;
 
@@ -35,15 +36,17 @@ function canAfford(cost, resources) {
 
 // Tile rules shared by both structures (mirrors canBuildFortressOnTile), plus
 // "no other crew structure already here". `occupiedKeys`: Set of tile keys
-// holding any crew fortress/well/outpost across ALL crews.
-export function canBuildCrewStructureOnTile(tile, tileKey, occupiedKeys, minPower) {
+// holding any crew fortress/well/outpost across ALL crews. `crew` is required
+// to build on a tile someone already owns (see crewFortress.js's
+// tileOwnerInCrew) — omit it to only allow unclaimed tiles.
+export function canBuildCrewStructureOnTile(tile, tileKey, occupiedKeys, minPower, crew) {
   if (!tile) return { ok: false, reason: "No tile selected" };
   if ((tile.powerLevel || 0) < minPower) return { ok: false, reason: `Must be a power level ${minPower}+ tile` };
   if (tile.isCamp || tile.campType || tile.isCampPart) return { ok: false, reason: "Cannot build on a camp" };
   if (tile.isKeep || tile.isGate || tile.isRuin || tile.isWin || tile.isHQ || tile.isHQPart || tile.isKeepPart) {
     return { ok: false, reason: "Cannot build on a special tile" };
   }
-  if (tile.owner) return { ok: false, reason: "Tile is already claimed" };
+  if (!tileOwnerInCrew(tile, crew)) return { ok: false, reason: "Tile is claimed by a player outside your crew" };
   if (tile.fort || tile.crewFortress || occupiedKeys?.has(tileKey)) return { ok: false, reason: "Tile already has a structure" };
   return { ok: true, reason: null };
 }
@@ -114,7 +117,7 @@ export function canStartWellBuild(crew, actorId, tile, tileKey, resources, occup
   if (!isFounder(crew, actorId)) return { ok: false, reason: "Only the founder can build a Well" };
   if (crewWellSlotsForLevel(crew.level) <= 0) return { ok: false, reason: "Crew level 31 unlocks the Well" };
   if (wellSlotsAvailable(crew) <= 0) return { ok: false, reason: "No Well slots available" };
-  const t = canBuildCrewStructureOnTile(tile, tileKey, occupiedKeys, WELL_MIN_POWER_LEVEL);
+  const t = canBuildCrewStructureOnTile(tile, tileKey, occupiedKeys, WELL_MIN_POWER_LEVEL, crew);
   if (!t.ok) return t;
   if (!canAfford(WELL_COST, resources)) return { ok: false, reason: "Not enough resources" };
   return { ok: true, reason: null };
@@ -146,7 +149,7 @@ export function canStartOutpostBuild(crew, actorId, tile, tileKey, resources, oc
   if (!isFounder(crew, actorId)) return { ok: false, reason: "Only the founder can build a Contract Outpost" };
   if (!crewOutpostUnlocked(crew.level)) return { ok: false, reason: "Crew level 35 unlocks the Contract Outpost" };
   if (crew.outpost) return { ok: false, reason: "Crew already has a Contract Outpost" };
-  const t = canBuildCrewStructureOnTile(tile, tileKey, occupiedKeys, OUTPOST_MIN_POWER_LEVEL);
+  const t = canBuildCrewStructureOnTile(tile, tileKey, occupiedKeys, OUTPOST_MIN_POWER_LEVEL, crew);
   if (!t.ok) return t;
   if (!canAfford(OUTPOST_COST, resources)) return { ok: false, reason: "Not enough resources" };
   return { ok: true, reason: null };

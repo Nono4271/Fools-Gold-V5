@@ -23,6 +23,17 @@ function isP10Structure(tile) {
   return !!tile?.isKeep && !tile?.isGate && (tile?.powerLevel || 0) >= FORTRESS_MIN_POWER_LEVEL;
 }
 
+// The 3 isKeepPart neighbor cells mapGen's stampP10 stamps alongside a P10+
+// structure's primary (c,r) tile — see src/workers/mapGen.worker.js's
+// stampP10, which covers [c+1,r], [c,r+1], [c+1,r+1]. Call sites must clear
+// isKeepPart on these when the structure falls, or they keep rendering as a
+// skipped/merged block forever (MapRenderer.jsx never draws them again).
+export function p10StructureNeighborKeys(tile) {
+  if (!tile || tile.c == null || tile.r == null) return [];
+  const { c, r } = tile;
+  return [`${c + 1},${r}`, `${c},${r + 1}`, `${c + 1},${r + 1}`];
+}
+
 // A real, region-controlling territory Keep — the only kind of tile that
 // should ever hand a whole region's war-control to the capturing faction
 // (see warRules.js's recordRegionCapture). This is `isKeep` minus the two
@@ -62,27 +73,30 @@ export function resolveSiegeOutcome({ tile, siegePower, now = Date.now(), captur
   const siegeMax = capture.siegeMax ?? tile.siegeMax ?? SIEGE_BASE;
 
   if (siegePower >= currentSiege) {
-    // Clearing a P10+ structure's native garrison doesn't hand the tile to
-    // the attacker — it drops the Keep flag and leaves the tile unclaimed,
-    // becoming the "bare p10+ tile" a crew's founder/officer can then start
-    // a Fortress/Well/Outpost build on. A real region Keep or a Gate is
-    // captured normally (owner goes to the attacker) — see isP10Structure.
+    // Clearing a P10+ structure's native garrison drops the Keep flag and
+    // hands the bare tile to the attacker, same as any other capture (a
+    // founder/officer can then start a Fortress/Well/Outpost build on it —
+    // see crewFortress.js/crewStructures.js, which now allow building on any
+    // crewmate's owned p10+ tile, not just an unclaimed one). The 3
+    // isKeepPart neighbor cells are returned as neighborKeys so the caller
+    // clears them too (they're never captured territory themselves).
     if (isP10Structure(tile)) {
       return {
         captured: true,
+        neighborKeys: p10StructureNeighborKeys(tile),
         patch: {
           isKeep: false,
           keepName: null,
-          owner: null,
-          faction: undefined,
-          ownerPlayerId: undefined,
+          owner: capture.owner ?? "player",
+          faction: capture.faction ?? undefined,
+          ownerPlayerId: capture.ownerPlayerId ?? undefined,
           garrison: 0,
           siege: siegeMax,
           siegeMax,
           defeatedWaves: [],
           resetAt: null,
-          defCmd: null,
-          hasAiCommander: false,
+          defCmd: capture.defCmd ?? null,
+          hasAiCommander: capture.hasAiCommander ?? false,
           ...(capture.protect !== false ? { protectedUntil: now + TILE_PROTECTION_MS } : {}),
         },
       };
