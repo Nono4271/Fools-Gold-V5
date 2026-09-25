@@ -54,8 +54,8 @@ export default function GameView(props) {
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, diplomacyPlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
-    stationAtFortress, unstationFromFortress,
-    buildCrewWell, demolishCrewWell, stationAtWell, buildCrewOutpost, demolishCrewOutpost, chooseOutpostUnits,
+    stationAtFortress, unstationFromFortress, startFortressMarch,
+    buildCrewWell, demolishCrewWell, stationAtWell, startWellMarch, buildCrewOutpost, demolishCrewOutpost, chooseOutpostUnits,
     crewStructureKeys, myCrewStructureKeys, trainableUnlocked, neutralSources, contractCommandsLeft,
     startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
@@ -332,7 +332,7 @@ export default function GameView(props) {
         crewFortressAtTile={selKey ? crews.flatMap(c => c.fortresses||[]).find(f => f.tileKey === selKey) : null}
         onBuildCrewFortress={buildCrewFortress}
         onDemolishCrewFortressHere={demolishCrewFortressHere}
-        onStationAtFortress={stationAtFortress}
+        onStationAtFortress={startFortressMarch}
         onUnstationFromFortress={unstationFromFortress}
         {...(() => {
           if (!selKey) return {};
@@ -344,7 +344,7 @@ export default function GameView(props) {
           };
         })()}
         crewStructureKeys={crewStructureKeys} myCrewStructureKeys={myCrewStructureKeys} contractCommandsLeft={contractCommandsLeft}
-        onBuildWell={buildCrewWell} onDemolishWell={demolishCrewWell} onStationAtWell={stationAtWell}
+        onBuildWell={buildCrewWell} onDemolishWell={demolishCrewWell} onStationAtWell={startWellMarch}
         onBuildOutpost={buildCrewOutpost} onDemolishOutpost={demolishCrewOutpost} onChooseOutpostUnits={chooseOutpostUnits}
       />
 

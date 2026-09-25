@@ -1188,6 +1188,76 @@ export default function RiseToWar() {
     return { ok: true };
   }, [myCrew, facKey, floaty, unstationCmd]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Start a march to the crew Fortress — mirrors startReposition (forts):
+  // the commander now has to travel there like any other move, instead of
+  // teleporting straight onto the tile. Landing/actual stationing happens
+  // in onMarchStep's arrival handler below, via stationAtFortress.
+  const startFortressMarch = useCallback((cmdUid, fortress) => {
+    const cmd = cmdsRef.current?.find(c => c.uid === cmdUid);
+    if (cmd && blockIfWounded(cmd)) return { ok: false, reason: "Commander is wounded" };
+    const check = canStationCommander(myCrew, fortress, facKey);
+    if (!check.ok) { floaty(`⚠ ${check.reason}`, "#cc8030", fortress?.tileKey); return check; }
+    if (!cmd || cmd.march || cmd.gathering || cmd.training) return { ok: false, reason: "Commander is busy" };
+    if (cmd.stranded) return { ok: false, reason: "Commander is stranded — recall to HQ first" };
+    const troops = normaliseTroopSlots(cmd).reduce((s, sl) => s + (sl.troops || 0), 0) || cmd.troops || 0;
+    if (troops < 1) { floaty("⚠ Needs at least 1 troop to move to the Fortress", "#cc8030", cmd.tk); return { ok: false, reason: "No troops" }; }
+    const _rSlots = normaliseTroopSlots(cmd);
+    const baseStepMs = marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd || 60, _rSlots.length ? _rSlots.map(sl => sl.branch) : cmd.troopBranch));
+    findPath(cmd.tk, fortress.tileKey).then(path => {
+      if (!path || path.length < 2) return;
+      setCmds(prev => prev.map(c => c.uid === cmdUid ? { ...c,
+        drawTimer: null, drawTile: null, drawOrigin: null,
+        march: { type: "repositionFortress", path, step: 0, dest: fortress.tileKey, destFortressId: fortress.id, origin: cmd.tk, stepMs: baseStepMs, startedAt: Date.now(), lastStepTime: Date.now() }
+      } : c));
+    });
+    return { ok: true };
+  }, [myCrew, facKey, floaty, gearInventory, findPath]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Start a march to the crew Well — mirrors startFortressMarch above.
+  // Landing/actual stationing happens in onMarchStep's arrival handler,
+  // via stationAtWell.
+  const startWellMarch = useCallback((cmdUid, well) => {
+    const cmd = cmdsRef.current?.find(c => c.uid === cmdUid);
+    if (cmd && blockIfWounded(cmd)) return { ok: false, reason: "Commander is wounded" };
+    const check = canStationAtWell(myCrew, well, facKey, cmd, Date.now());
+    if (!check.ok) { floaty(`⚠ ${check.reason}`, "#cc8030", well?.tileKey); return check; }
+    const troops = normaliseTroopSlots(cmd).reduce((s, sl) => s + (sl.troops || 0), 0) || cmd.troops || 0;
+    if (troops < 1) { floaty("⚠ Needs at least 1 troop to move to the Well", "#cc8030", cmd.tk); return { ok: false, reason: "No troops" }; }
+    const _rSlots = normaliseTroopSlots(cmd);
+    const baseStepMs = marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd || 60, _rSlots.length ? _rSlots.map(sl => sl.branch) : cmd.troopBranch));
+    findPath(cmd.tk, well.tileKey).then(path => {
+      if (!path || path.length < 2) return;
+      setCmds(prev => prev.map(c => c.uid === cmdUid ? { ...c,
+        drawTimer: null, drawTile: null, drawOrigin: null,
+        march: { type: "repositionWell", path, step: 0, dest: well.tileKey, destWellId: well.id, origin: cmd.tk, stepMs: baseStepMs, startedAt: Date.now(), lastStepTime: Date.now() }
+      } : c));
+    });
+    return { ok: true };
+  }, [myCrew, facKey, floaty, gearInventory, findPath]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Turn a commander around mid-errand and send them back where they came
+  // from — used when a Fort/Fortress/Well they were repositioning to turns
+  // out to be gone (destroyed/demolished) by the time they arrive. Reads
+  // the fresh commander off cmdsRef (called from a setTimeout after the
+  // arrival state has settled), paths back to origin, and queues a plain
+  // "bounce" march — no special arrival handling, they just stand down
+  // once they get there.
+  const bounceMarch = useCallback((cmdUid, originKey, reasonLabel) => {
+    const cmd = cmdsRef.current?.find(c => c.uid === cmdUid);
+    if (!cmd || cmd.march) return; // already moving again somehow — leave it alone
+    if (!originKey || cmd.tk === originKey) return; // nowhere to bounce to
+    const _rSlots = normaliseTroopSlots(cmd);
+    const baseStepMs = marchStepMs(effectiveMarchSpd(applyAllBonuses(cmd, gearInventory).spd || 60, _rSlots.length ? _rSlots.map(sl => sl.branch) : cmd.troopBranch));
+    findPath(cmd.tk, originKey).then(path => {
+      if (!path || path.length < 2) return;
+      setCmds(prev => prev.map(c => c.uid === cmdUid ? { ...c,
+        stationedFortId: null, stationedFortressId: null, stationedWellId: null, stranded: false,
+        march: { type: "bounce", path, step: 0, dest: originKey, origin: cmd.tk, stepMs: baseStepMs, startedAt: Date.now(), lastStepTime: Date.now() }
+      } : c));
+    });
+    if (reasonLabel) floaty(`⚠ ${reasonLabel} — ${cmd.n} turns back`, "#cc8030", cmd.tk);
+  }, [gearInventory, findPath, floaty]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const buildCrewOutpost = useCallback((tileKey, tile) => {
     if (!myCrew) return { ok: false, reason: "Not in a crew" };
     const check = canStartOutpostBuild(myCrew, facKey, tile, tileKey, rss, crewStructureKeys);
@@ -1283,8 +1353,9 @@ export default function RiseToWar() {
           if (!upd) return cmd;
           changed = true;
           if (upd.clearMarch) {
-            // Any completed march means the commander left its Well (stationing
-            // is set directly by stationAtWell, never by a march).
+            // Any completed march means the commander left its old Well first
+            // (a "repositionWell" arrival re-adds stationedWellId below, via
+            // stationAtWell, once it's confirmed the Well is still there).
             // ...and a completed march also ends any Guard (moving isn't a cancel: no cooldown).
             const arrived = { ...cmd, tk: upd.tk, march: null, stationedWellId: null, isGuarding: false, guardedAt: null };
             // Reposition arrival — station at fort
@@ -1295,6 +1366,44 @@ export default function RiseToWar() {
               // Call stationAtFort async after state settles
               setTimeout(() => stationAtFort(cmd.uid, fortId), 0);
               return { ...arrived, stationedFortId: fortId, stranded: false };
+            }
+            // Fort destroyed/demolished while this commander was en route —
+            // bounce them back to where they set out from instead of
+            // parking on the now-empty tile. (Still-building forts fall
+            // through to the plain "arrived" case below and just wait.)
+            if (cmd.march?.type === "reposition" && !destFort) {
+              const originKey = cmd.march.origin;
+              setTimeout(() => bounceMarch(cmd.uid, originKey, "Fort destroyed"), 0);
+              return { ...arrived, stationedFortId: null, stranded: false };
+            }
+            // Reposition arrival — station at crew Fortress (mirrors the fort
+            // case above; the Fortress has no range, only a built check).
+            const destFortress = cmd.march?.type === "repositionFortress" &&
+              myCrew?.fortresses?.find(f => f.id === cmd.march.destFortressId);
+            if (destFortress && isFortressBuilt(destFortress, Date.now())) {
+              const fortressId = cmd.march.destFortressId;
+              setTimeout(() => stationAtFortress(cmd.uid, destFortress), 0);
+              return { ...arrived, stationedFortressId: fortressId, stranded: false };
+            }
+            // Fortress destroyed/demolished en route — bounce back to origin.
+            if (cmd.march?.type === "repositionFortress" && !destFortress) {
+              const originKey = cmd.march.origin;
+              setTimeout(() => bounceMarch(cmd.uid, originKey, "Fortress destroyed"), 0);
+              return { ...arrived, stationedFortressId: null, stranded: false };
+            }
+            // Reposition arrival — station at crew Well (same pattern).
+            const destWell = cmd.march?.type === "repositionWell" &&
+              myCrew?.wells?.find(w => w.id === cmd.march.destWellId);
+            if (destWell && isStructureBuilt(destWell, Date.now())) {
+              const wellId = cmd.march.destWellId;
+              setTimeout(() => stationAtWell(cmd.uid, destWell), 0);
+              return { ...arrived, stationedWellId: wellId, stranded: false };
+            }
+            // Well destroyed/demolished en route — bounce back to origin.
+            if (cmd.march?.type === "repositionWell" && !destWell) {
+              const originKey = cmd.march.origin;
+              setTimeout(() => bounceMarch(cmd.uid, originKey, "Well destroyed"), 0);
+              return { ...arrived, stationedWellId: null, stranded: false };
             }
             // Recall arrival at HQ — unstation from fort
             if (cmd.march?.type === "recall" || cmd.march?.type === "move") {
@@ -1857,8 +1966,8 @@ export default function RiseToWar() {
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, diplomacyPlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
-    stationAtFortress, unstationFromFortress,
-    buildCrewWell, demolishCrewWell, stationAtWell, buildCrewOutpost, demolishCrewOutpost, chooseOutpostUnits,
+    stationAtFortress, unstationFromFortress, startFortressMarch,
+    buildCrewWell, demolishCrewWell, stationAtWell, startWellMarch, buildCrewOutpost, demolishCrewOutpost, chooseOutpostUnits,
     crewStructureKeys, myCrewStructureKeys, trainableUnlocked, neutralSources, contractCommandsLeft,
     startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
     demolishFort, doVoidTap, dragonEggs, dragonEggsCap, editArmyCmd, eligibleSpawnKeysRef,
