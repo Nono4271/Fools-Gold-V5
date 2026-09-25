@@ -1631,7 +1631,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           overflowY: "auto",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-x",
-          padding: "8px 10px 2px",
+          padding: "4px 10px 18px",
           position: "relative",
           zIndex: 1,
           // Shared dark-fantasy battlefield: faction-neutral so every troop type
@@ -1719,7 +1719,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   alignItems: "center",
                   justifyContent: "flex-start",
                   position: "relative",
-                  transform: `translate(${isTop ? 52 : -52}px, ${isTop ? -2 : -8}px)`,
+                  transform: `translate(${isTop ? 52 : -52}px, ${isTop ? -14 : -20}px)`,
                   zIndex: Math.round(depth * 100),
                 }}
               >
@@ -1802,7 +1802,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   position: "relative",
                   overflow: "visible",
                   flexShrink: 0,
-                  marginTop: 2,
+                  marginTop: -6,
                 }}>
                   {psrc ? (() => {
                     // Consistent three-person diagonal cluster. The spacing is
