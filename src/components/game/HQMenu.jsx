@@ -1686,7 +1686,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               <div
                 key={t.key}
                 style={{
-                  width: 84,
+                  width: 118,
                   flexShrink: 0,
                   opacity: !ownedNow && !amount ? 0.7 : 1,
                   display: "flex",
@@ -1792,36 +1792,84 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   />
                 </div>
 
-                {/* Sprite — no card frame */}
+                {/* Sprite cluster — 2-3 instances per card so it reads as
+                    "troops," not a single hero portrait. Count and offsets
+                    are hashed from the unit key so they're stable across
+                    re-renders. */}
                 <div
                   style={{
-                    width: 78,
+                    width: 112,
                     height: 88,
                     position: "relative",
-                    overflow: "hidden",
                   }}
                 >
                   {psrc ? (
-                    <img
-                      src={psrc}
-                      alt=""
-                      draggable="false"
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "contain",
-                        objectPosition: "center bottom",
-                        // Atmospheric perspective: far-back units read a touch
-                        // hazier/cooler and less saturated than near ones, so
-                        // depth reads even before the color-grade overlay.
-                        filter: `saturate(${satAmt}) brightness(${briAmt})`,
-                      }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
+                    (() => {
+                      const clusterN = hash01(t.key + "n") < 0.5 ? 2 : 3;
+                      const layouts = {
+                        2: [
+                          { x: -15, y: 3, s: 0.82, z: 1 },
+                          { x: 14, y: 0, s: 1, z: 2 },
+                        ],
+                        3: [
+                          { x: -24, y: 4, s: 0.76, z: 1 },
+                          { x: 3, y: -3, s: 1, z: 3 },
+                          { x: 25, y: 3, s: 0.8, z: 2 },
+                        ],
+                      };
+                      return layouts[clusterN].map((p, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            position: "absolute",
+                            left: `calc(50% + ${p.x}px)`,
+                            bottom: p.y,
+                            width: 60 * p.s,
+                            height: 88 * p.s,
+                            transform: "translateX(-50%)",
+                            zIndex: p.z,
+                          }}
+                        >
+                          <img
+                            src={psrc}
+                            alt=""
+                            draggable="false"
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                              objectPosition: "center bottom",
+                              // Atmospheric perspective: far-back units read a touch
+                              // hazier/cooler and less saturated than near ones, so
+                              // depth reads even before the color-grade overlay.
+                              filter: `saturate(${satAmt}) brightness(${briAmt})`,
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                          {/* soft ground shadow per member — blurred radial ellipse,
+                              matches a single overhead light source so every unit
+                              reads as standing on the same field instead of a flat
+                              pasted-on cutout */}
+                          <div
+                            style={{
+                              position: "absolute",
+                              left: "8%",
+                              right: "8%",
+                              bottom: -2,
+                              height: 9 * shadowScale * p.s,
+                              borderRadius: "50%",
+                              background: `radial-gradient(ellipse at center, rgba(0,0,0,${shadowOpacity + .3}) 0%, rgba(0,0,0,${shadowOpacity}) 45%, rgba(0,0,0,0) 75%)`,
+                              filter: "blur(1.5px)",
+                              pointerEvents: "none",
+                            }}
+                          />
+                        </div>
+                      ));
+                    })()
                   ) : (
                     <div
                       style={{
@@ -1837,22 +1885,6 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                       {t.fIcon || "⚔"}
                     </div>
                   )}
-                  {/* soft ground shadow — blurred radial ellipse, matches a single
-                      overhead light source so every unit reads as standing on
-                      the same field instead of a flat pasted-on cutout */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: `${6 + (1 - shadowScale) * 20}%`,
-                      right: `${6 + (1 - shadowScale) * 20}%`,
-                      bottom: -2,
-                      height: 11 * shadowScale,
-                      borderRadius: "50%",
-                      background: `radial-gradient(ellipse at center, rgba(0,0,0,${shadowOpacity + .3}) 0%, rgba(0,0,0,${shadowOpacity}) 45%, rgba(0,0,0,0) 75%)`,
-                      filter: "blur(1.5px)",
-                      pointerEvents: "none",
-                    }}
-                  />
                 </div>
               </div>
             );
