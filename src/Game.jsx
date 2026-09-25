@@ -55,6 +55,7 @@ import {
 import {
   canStartFortressBuild, createFortress, completeFortressBuild,
   isFortressBuilt, canDemolishFortress, removeFortress,
+  canStationCommander, stationCommander, unstationCommander,
 } from "../shared/utils/crewFortress.js";
 import { diplomacyPlayerIdSets } from "../shared/utils/crewRules.js";
 import { useChat } from "./hooks/useChat.js";
@@ -1116,6 +1117,38 @@ export default function RiseToWar() {
     floaty("🏰 Fortress demolished", "#cc8030", fortress.tileKey);
   }, [myCrew, facKey, floaty]);
 
+  // Station a commander inside the crew Fortress — from anywhere, like a
+  // Well (the Fortress has no range of its own). The commander teleports
+  // onto the fortress tile and sits in stationedByPlayer until unstationed
+  // or defeated defending a siege (see useFortressSiege.js).
+  const stationAtFortress = useCallback((cmdUid, fortress) => {
+    const cmd = cmdsRef.current?.find(c => c.uid === cmdUid);
+    if (cmd && blockIfWounded(cmd)) return { ok: false, reason: "Commander is wounded" };
+    const check = canStationCommander(myCrew, fortress, facKey);
+    if (!check.ok) { floaty(`⚠ ${check.reason}`, "#cc8030", fortress?.tileKey); return check; }
+    if (!cmd || cmd.march || cmd.gathering || cmd.training) return { ok: false, reason: "Commander is busy" };
+    if (cmd.stranded) return { ok: false, reason: "Commander is stranded — recall to HQ first" };
+    if (cmd.stationedFortId) unstationCmd(cmd.uid);
+    setCrews(prev => prev.map(c => c.id === myCrew.id
+      ? { ...c, fortresses: (c.fortresses || []).map(f => f.id === fortress.id ? stationCommander(f, facKey, cmdUid) : f) }
+      : c));
+    setPlayerCmds(prev => prev.map(c => c.uid === cmdUid
+      ? { ...c, tk: fortress.tileKey, stationedFortressId: fortress.id, stationedFortId: null, stranded: false, drawTimer: null, drawTile: null, drawOrigin: null }
+      : c));
+    floaty(`📍 ${cmd.n} stationed at the Fortress`, "#f0c040", fortress.tileKey);
+    return { ok: true };
+  }, [myCrew, facKey, floaty, unstationCmd]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pull a commander back out of the Fortress (does not move them — they
+  // stay put on the fortress tile until the player sends them elsewhere).
+  const unstationFromFortress = useCallback((cmdUid, fortress) => {
+    if (!myCrew || !fortress) return;
+    setCrews(prev => prev.map(c => c.id === myCrew.id
+      ? { ...c, fortresses: (c.fortresses || []).map(f => f.id === fortress.id ? unstationCommander(f, facKey, cmdUid) : f) }
+      : c));
+    setPlayerCmds(prev => prev.map(c => c.uid === cmdUid ? { ...c, stationedFortressId: null } : c));
+  }, [myCrew, facKey]);
+
   // ── Crew Well + Contract Outpost (shared/utils/crewStructures.js) ─────────
   const spendCost = cost => setRss(p => { const n = { ...p }; for (const [k, v] of Object.entries(cost)) n[k] = (n[k] || 0) - v; return n; });
   const newStructId = prefix => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
@@ -1824,6 +1857,7 @@ export default function RiseToWar() {
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, diplomacyPlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
+    stationAtFortress, unstationFromFortress,
     buildCrewWell, demolishCrewWell, stationAtWell, buildCrewOutpost, demolishCrewOutpost, chooseOutpostUnits,
     crewStructureKeys, myCrewStructureKeys, trainableUnlocked, neutralSources, contractCommandsLeft,
     startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,

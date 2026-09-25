@@ -54,6 +54,7 @@ export default function GameView(props) {
     relCancelOutgoing, relUnfriend, relBlockPlayer, relUnblockPlayer, relSearch, relationsNameOf,
     cmdScreenOpen, cmdScreenUid, cmds, cmdsAdjToSel, cmdsForMove, cmdsOnSel, consumables,
     crewOpen, crewmatePlayerIds, diplomacyPlayerIds, crews, myCrew, buildCrewFortress, demolishCrewFortressHere,
+    stationAtFortress, unstationFromFortress,
     buildCrewWell, demolishCrewWell, stationAtWell, buildCrewOutpost, demolishCrewOutpost, chooseOutpostUnits,
     crewStructureKeys, myCrewStructureKeys, trainableUnlocked, neutralSources, contractCommandsLeft,
     startFortressSiegeMarch, crossingsState, deletingSecsLeft, deletingTiles,
@@ -100,6 +101,13 @@ export default function GameView(props) {
   // Map markers for every crew's Fortresses / Wells / Contract Outpost —
   // colour by relationship to the player's crew (see MapRenderer's
   // syncCrewStructures). `built` flips when the build timer passes.
+  // Built fortresses belonging to the player's own crew — feeds the
+  // Minimap's range circles (see Minimap.jsx `anchors`), same as HQ/forts.
+  const myBuiltFortresses = useMemo(() => {
+    const now = nowTick ?? Date.now();
+    return (myCrew?.fortresses || []).filter(f => !f.buildEndsAt || now >= f.buildEndsAt);
+  }, [myCrew, nowTick]);
+
   const crewStructures = useMemo(() => {
     const now = nowTick ?? Date.now();
     const out = [];
@@ -324,6 +332,8 @@ export default function GameView(props) {
         crewFortressAtTile={selKey ? crews.flatMap(c => c.fortresses||[]).find(f => f.tileKey === selKey) : null}
         onBuildCrewFortress={buildCrewFortress}
         onDemolishCrewFortressHere={demolishCrewFortressHere}
+        onStationAtFortress={stationAtFortress}
+        onUnstationFromFortress={unstationFromFortress}
         {...(() => {
           if (!selKey) return {};
           const wellCrew = crews.find(c => (c.wells || []).some(w => w.tileKey === selKey)) || null;
@@ -449,7 +459,7 @@ export default function GameView(props) {
         />
       )}
 
-      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} playerHqKey={playerHqKey} aiHqKeys={aiHqKeys} onWorldMap={() => setWorldMapOpen(true)} forts={forts} />
+      <Minimap tiles={tiles} pKeys={pKeys} panRef={panRef} zoomRef={zoomRef} redrawRef={minimapRedrawRef} playerFacKey={facKey} crewmatePlayerIds={crewmatePlayerIds} playerHqKey={playerHqKey} aiHqKeys={aiHqKeys} onWorldMap={() => setWorldMapOpen(true)} forts={forts} crewFortresses={myBuiltFortresses} />
 
       {/* HQ + Search buttons overlapping bottom of minimap */}
       {!worldMapOpen && !hqOpen && !cmdScreenOpen && !gearScreenOpen && (
