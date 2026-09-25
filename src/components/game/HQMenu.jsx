@@ -1780,16 +1780,20 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                       {t.fIcon || "⚔"}
                     </div>
                   )}
-                  {/* soft ground shadow */}
+                  {/* soft ground shadow — blurred radial ellipse, matches a single
+                      overhead light source so every unit reads as standing on
+                      the same field instead of a flat pasted-on cutout */}
                   <div
                     style={{
                       position: "absolute",
-                      left: "18%",
-                      right: "18%",
-                      bottom: 1,
-                      height: 5,
+                      left: "6%",
+                      right: "6%",
+                      bottom: -2,
+                      height: 11,
                       borderRadius: "50%",
-                      background: "rgba(0,0,0,.3)",
+                      background:
+                        "radial-gradient(ellipse at center, rgba(0,0,0,.6) 0%, rgba(0,0,0,.32) 45%, rgba(0,0,0,0) 75%)",
+                      filter: "blur(1.5px)",
                       pointerEvents: "none",
                     }}
                   />
@@ -1823,6 +1827,39 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
             </div>
           );
         })()}
+
+        {/* ── Unified color grade ───────────────────────────────────────────
+            Everything below the training-scroll div (background art AND every
+            troop sprite) sits behind these two overlays. Unlike the dark
+            gradient baked into the backgroundImage above — which only ever
+            touched the battlefield photo — these use mix-blend-mode so they
+            tint the sprites too, pulling each character's individually-lit
+            art toward one shared cool/moody grade. */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 5,
+            pointerEvents: "none",
+            mixBlendMode: "color",
+            background:
+              "linear-gradient(165deg, rgba(72,98,122,.38) 0%, rgba(46,60,74,.26) 55%, rgba(22,26,32,.34) 100%)",
+          }}
+        />
+        {/* Vignette + grounding darkness — reinforces the top/bottom fade and
+            darkens the outer edges so focus stays center, on the sprites. */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 6,
+            pointerEvents: "none",
+            mixBlendMode: "multiply",
+            background:
+              "radial-gradient(ellipse 72% 65% at 50% 42%, rgba(0,0,0,0) 0%, rgba(0,0,0,.14) 60%, rgba(0,0,0,.5) 100%), " +
+              "linear-gradient(to bottom, rgba(0,0,0,.28) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 68%, rgba(0,0,0,.42) 100%)",
+          }}
+        />
       </div>
 
       {/* Fixed action bar */}
