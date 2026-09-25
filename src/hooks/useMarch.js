@@ -6,6 +6,13 @@ import { adj, adj8, bfsPath, effectiveMarchSpd, marchStepMs, normaliseTroopSlots
 import { isTileInRange } from "./useForts.js";
 import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../shared/utils/garrisonUtils.js";
 import { resolveSiegeOutcome, garrisonResetMs } from "../../shared/utils/captureRules.js";
+
+// A captured P10+ structure's outcome carries neighborKeys (its 3 isKeepPart
+// cells) — clear them so they stop rendering as a skipped merged block.
+// No-op for every other capture (outcome.neighborKeys is undefined).
+const clearP10Neighbors = (patchTile, outcome) => {
+  outcome?.neighborKeys?.forEach(nk => patchTile(nk, { isKeepPart: false }));
+};
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
 import { getPassiveBonuses, getActiveSkills, MAIN_SKILLS, skillSiegeBonus } from "../../shared/constants/skills.js";
@@ -347,9 +354,11 @@ arrivedAttackers.forEach(async staleCmd => {
   if (allWavesDefeated && !standingPresent) {
     const siegePower = playerSiegePower(cmdSiegePower(cmd, boostedCmd), defTile);
     const attacker = attackerComposition(cmd, boostedCmd);
-    const { captured: siegeCaptured, patch: outcomePatch } = resolveSiegeOutcome({ tile: defTile, siegePower });
+    const siegeOutcome = resolveSiegeOutcome({ tile: defTile, siegePower });
+    const { captured: siegeCaptured, patch: outcomePatch } = siegeOutcome;
     if (siegeCaptured) {
       patchTile(destKey, outcomePatch);
+      clearP10Neighbors(patchTile, siegeOutcome);
       _emitCapture(destKey, outcomePatch, attacker);
       registerProtection?.(destKey);
       trackRegionCapture(defTile, facKey);
@@ -605,13 +614,15 @@ arrivedAttackers.forEach(async staleCmd => {
     troopSlots: cmd.troopSlots ? applySlotLosses(cmd, cmdTroops(cmd)-remainingTroops).troopSlots : undefined };
   const siegePower = playerSiegePower(cmdSiegePower(postLossCmd, boostedCmd), defTile);
   const attacker   = attackerComposition(postLossCmd, boostedCmd);
-  const { captured: tileCaptured, patch: outcomePatch } = resolveSiegeOutcome({
+  const captureOutcome = resolveSiegeOutcome({
     tile: defTile, siegePower, defeatedWaves: newlyDefeated,
     capture: { defCmd: null, hasAiCommander: false },
   });
+  const { captured: tileCaptured, patch: outcomePatch } = captureOutcome;
 
   if (tileCaptured) {
     patchTile(destKey, outcomePatch);
+    clearP10Neighbors(patchTile, captureOutcome);
     _emitCapture(destKey, outcomePatch, attacker);
     registerProtection?.(destKey);
     trackRegionCapture(defTile, facKey);
@@ -838,6 +849,7 @@ useEffect(() => {
       tileCaptured = outcome.captured;
       if (tileCaptured) {
         patchTile(destKey, outcome.patch);
+        clearP10Neighbors(patchTile, outcome);
         _emitCapture(destKey, outcome.patch, attacker);
         registerProtection?.(destKey);
         trackRegionCapture(defTile, facKey);
@@ -957,6 +969,7 @@ arrivedAI.forEach(async cmd => {
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
       const isFriendly = cmd.faction === facKey;
       patchTile(destKey, outcome.patch);
+      clearP10Neighbors(patchTile, outcome);
       trackRegionCapture(defTile, cmd.faction);
       floaty(isFriendly ? "🤝 Ally captured tile!" : "⚠ ENEMY CAPTURED TILE!", isFriendly ? "#2299ff" : "#dd3322", destKey);
       if (destKey === WIN_KEY) setWinner("ai");
@@ -988,6 +1001,7 @@ arrivedAI.forEach(async cmd => {
     tileCaptured = outcome.captured;
     patchTile(destKey, outcome.patch);
     if (tileCaptured) {
+      clearP10Neighbors(patchTile, outcome);
       const isPlayerHQ = defTile.isHQ && defTile.owner === "player";
       const isFriendly = cmd.faction === facKey;
       trackRegionCapture(defTile, cmd.faction);
