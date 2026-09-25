@@ -1498,8 +1498,8 @@ const TRAIN_SPRITE_W = Math.round(140 * TRAIN_FIELD_ZOOM);
 const TRAIN_SPRITE_H = Math.round(160 * TRAIN_FIELD_ZOOM);
 // Depth-based per-card scale (foreshortening) — near/bottom-row cards sit
 // bigger than far/top-row ones. This still only moves LAYOUT size.
-const TRAIN_SCALE_MIN = 0.78;
-const TRAIN_SCALE_MAX = 1.18;
+const TRAIN_SCALE_MIN = 0.82;
+const TRAIN_SCALE_MAX = 1.08;
 
 // Standing sprites are authored at 512×1024 (wide poses 768×1024). Cap display
 // size so we never upsample past source (blur). Layout size is driven by
@@ -1591,13 +1591,16 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  // Height two full-zoom rows would want before fitting: sprite box + label/
-  // slider stack + inter-row gap + bottom clearance. Tuned so landscape still
-  // shows both rows instead of collapsing to one.
-  const wantedRowsH = TRAIN_SPRITE_H * TRAIN_SCALE_MAX * 2 + 120;
-  // Scale everything vertical down (never up) so it always fits fieldH.
-  // Floor at 0.55 so landscape never shrinks figures into unreadability.
-  const fitScale = fieldH > 0 ? Math.min(1, Math.max(0.55, fieldH / wantedRowsH)) : 1;
+  // True height two rows need at full zoom: per-card chrome (name + tier
+  // badge + slider ≈ 44px) + sprite box + inter-row gap + padding.
+  // Underestimating this is what made landscape clip the second row.
+  const CARD_CHROME_H = 44;
+  const wantedRowsH =
+    (TRAIN_SPRITE_H * TRAIN_SCALE_MAX + CARD_CHROME_H) * 2 + 36;
+  // Scale down to fit. Soft floor at 0.42 so figures stay readable, but low
+  // enough that both rows fit on short landscape panels instead of the
+  // bottom row getting clipped by overflowY:hidden.
+  const fitScale = fieldH > 0 ? Math.min(1, Math.max(0.42, fieldH / wantedRowsH)) : 1;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#08090b" }}>
@@ -1888,8 +1891,9 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                       };
                       // Display size of each figure: driven by the layout box
                       // so two rows fit, hard-capped at native art so we never
-                      // upsample (blur). Aspect matches standing sprites (~1:2).
-                      const figH = Math.min(TRAIN_SPRITE_H * 1.15, SPRITE_ART_NATIVE_H);
+                      // upsample (blur). Keep within the sprite box so row
+                      // overflow doesn't clip under overflowY:hidden.
+                      const figH = Math.min(TRAIN_SPRITE_H * 0.98, SPRITE_ART_NATIVE_H);
                       const figW = Math.min(figH * 0.55, SPRITE_ART_NATIVE_W);
                       return layouts[clusterN].map((p, idx) => (
                         <div
@@ -1967,29 +1971,27 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               style={{
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: "center",
-                // Clear vertical separation between back row and front row so
-                // landscape doesn't read as a single stacked line of units.
-                gap: Math.round(28 * fitScale),
+                // Pin rows to the available field height so both stay visible
+                // in landscape instead of centering a too-tall stack and
+                // clipping the bottom row under overflowY:hidden.
+                justifyContent: "space-between",
+                height: "100%",
+                boxSizing: "border-box",
                 width: "max-content",
                 minWidth: "100%",
                 paddingRight: 24,
-                // Extra bottom clearance: the near/bottom row scales up and
-                // jitters downward for the foreshortening effect, so this
-                // needs enough slack that feet + ground shadow never touch
-                // the scroll container's clipped edge.
-                paddingBottom: 20,
+                paddingTop: 4,
+                paddingBottom: 8,
                 position: "relative",
                 zIndex: 2,
               }}
             >
-              {/* Top row — pushed back: offset up and left for a diagonal /
-                  staggered feel, like it's sitting further out on the field */}
-              <div style={{ display: "flex", flexDirection: "row", gap: Math.round(18 * fitScale), paddingLeft: 56, paddingTop: 4, transform: "translateY(-8px)" }}>
+              {/* Top row — back of field */}
+              <div style={{ display: "flex", flexDirection: "row", gap: Math.round(16 * fitScale), paddingLeft: 48, flexShrink: 0 }}>
                 {top.map((t) => renderUnit(t, true))}
               </div>
-              {/* Bottom row — pushed forward, closer to camera */}
-              <div style={{ display: "flex", flexDirection: "row", gap: Math.round(18 * fitScale), paddingBottom: 4, transform: "translateY(6px)" }}>
+              {/* Bottom row — front of field */}
+              <div style={{ display: "flex", flexDirection: "row", gap: Math.round(16 * fitScale), flexShrink: 0 }}>
                 {bot.map((t) => renderUnit(t, false))}
               </div>
             </div>
