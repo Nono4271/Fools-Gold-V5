@@ -951,13 +951,13 @@ const STANDING_SPRITES = {
   // Capstones only for now (T1-T3 still use the painted portraits until
   // those sprites are made) - Wizards, Orcs, Dragons, Holy Knights,
   // Creatures of the Night, Coldborns, Ashen Dead.
-  wizards:        { void_warden:      { 0: "/troops/wizards_void_warden_t1_standing.webp" } },
-  orcs:           { doomcaller:       { 0: "/troops/orcs_doomcaller_t1_standing.webp" } },
-  dragons:        { sovereign_wyrm:   { 0: "/troops/dragons_sovereign_wyrm_t1_standing.webp" } },
-  holyknights:    { seraph_vanguard:  { 0: "/troops/holyknights_seraph_vanguard_t1_standing.webp" } },
-  nightcreatures: { umbral_colossus:  { 0: "/troops/nightcreatures_umbral_colossus_t1_standing.webp" } },
-  coldborns:      { frostbound_titan: { 0: "/troops/coldborns_frostbound_titan_t1_standing.webp" } },
-  ashen_dead:     { bone_colossus:    { 0: "/troops/ashen_dead_bone_colossus_t1_standing.webp" } },
+  wizards:        { hexblade_sovereign:  { 0: "/troops/wizards_hexblade_sovereign_t1_standing.webp" } },
+  orcs:           { doomfang_alpha:      { 0: "/troops/orcs_doomfang_alpha_t1_standing.webp" } },
+  dragons:        { sovereign_wyrm:      { 0: "/troops/dragons_sovereign_wyrm_t1_standing.webp" } },
+  holyknights:    { seraph_vanguard:     { 0: "/troops/holyknights_seraph_vanguard_t1_standing.webp" } },
+  nightcreatures: { crimson_progenitor:  { 0: "/troops/nightcreatures_crimson_progenitor_t1_standing.webp" } },
+  coldborns:      { glacial_warlord:     { 0: "/troops/coldborns_glacial_warlord_t1_standing.webp" } },
+  ashen_dead:     { deathless_harbinger: { 0: "/troops/ashen_dead_deathless_harbinger_t1_standing.webp" } },
 };
 
 function troopVisualPath(fKey, branchKey, tierIdx = 0) {
