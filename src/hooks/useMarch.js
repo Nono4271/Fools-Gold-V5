@@ -8,11 +8,18 @@ import { garrisonDefCmd, garrisonWaveDefCmd, garrisonWaveCount } from "../../sha
 import { resolveSiegeOutcome, garrisonResetMs } from "../../shared/utils/captureRules.js";
 
 // A captured P10+ structure's outcome carries neighborKeys (its 3 isKeepPart
-// cells) — clear them so they stop rendering as a skipped merged block.
-// No-op for every other capture (outcome.neighborKeys is undefined).
-const clearP10Neighbors = (patchTile, outcome) => {
-  outcome?.neighborKeys?.forEach(nk => patchTile(nk, { isKeepPart: false }));
-};
+// cells). They must NOT be cleared: isKeepPart is what keeps them merged
+// into — and hidden behind — the primary tile's 2x2 rendering, hit-testing
+// and selection outline forever, captured or not. (An earlier version of
+// this function cleared isKeepPart here to fix the neighbor cells going
+// invisible, which only masked the real bug: MapRenderer/worldVisuals.js
+// gated the 2x2 footprint on `tile.isKeep`, which capture intentionally
+// clears on the primary tile. That's now fixed at the source — see
+// MapRenderer.jsx/worldVisuals.js's `powerLevel >= 10 && !tile.isGate`
+// checks — so the neighbor cells can stay merged/hidden permanently, as
+// mapGen.worker.js's stampP10 always intended.) No-op now; kept as a
+// call-site marker so future capture paths remember not to touch these.
+const clearP10Neighbors = () => {};
 import { applyGearToCmd } from "../../shared/utils/gearStats.js";
 import { gearStatValue } from "../../shared/constants/gear.js";
 import { getPassiveBonuses, getActiveSkills, MAIN_SKILLS, skillSiegeBonus } from "../../shared/constants/skills.js";
