@@ -10,7 +10,7 @@ import { getTileOwnership } from "./popup/TileInfoPanel.jsx";
 import { FORTRESS_COST, FORTRESS_MIN_POWER_LEVEL } from "../../../shared/constants/crew.js";
 // Troops per command for a slot's unit type: 100 small / 50 medium / 4 large.
 const stepFor = b => CMD_SIZE[branchKeySize(`${b?.faction}:${b?.branch}:${b?.tier ?? 0}`)] ?? CMD_SIZE.small;
-import { canBuildFortressOnTile, canStartFortressBuild, isFortressBuilt } from "../../../shared/utils/crewFortress.js";
+import { canBuildFortressOnTile, canStartFortressBuild, isFortressBuilt, tileOwnerInCrew } from "../../../shared/utils/crewFortress.js";
 import { canManageFortress } from "../../../shared/utils/crewRules.js";
 import CommanderCard from "./popup/CommanderCard.jsx";
 import FortPanel from "./popup/FortPanel.jsx";
@@ -319,8 +319,13 @@ export default memo(function TilePopup({
 
   const borderColor = ownership==="player"?"#3a6a3a":ownership==="crew"?"#204080":ownership==="faction"?"#804010":ownership==="ally"?"#602080":"#802020";
 
-  // ── Crew Fortress ────────────────────────────────────────────────────────
-  const fortressBuildCheck = (isNeutral && myCrew) ? canStartFortressBuild(myCrew, facKey, selTile, rss) : { ok:false };
+  // ── Crew Fortress / Well / Outpost ──────────────────────────────────────
+  // These structures go on a p10+ tile you or a crewmate already own — NOT
+  // on unclaimed wilds (tileOwnerInCrew returns false for `!tile.owner`).
+  // isNeutral (above) stays about "no owner at all", used for attack/recon;
+  // this is the separate ownership check crew-structure builds need.
+  const crewOwnsThisTile = !!myCrew && tileOwnerInCrew(selTile, myCrew);
+  const fortressBuildCheck = crewOwnsThisTile ? canStartFortressBuild(myCrew, facKey, selTile, rss) : { ok:false };
   const canBuildFortressHere = fortressBuildCheck.ok;
   const fortressBuilt = crewFortressAtTile && isFortressBuilt(crewFortressAtTile, nowTick ?? Date.now());
   const fortressUnderConstruction = crewFortressAtTile && !fortressBuilt;
@@ -839,7 +844,7 @@ export default memo(function TilePopup({
               their own ATTACK button and wave/siege rules just above; a
               fortress can never be built on them (canBuildFortressOnTile
               already rejects them), so the button shouldn't even show. */}
-          {!crewFortressAtTile && !wellAtTile && !outpostAtTile && isNeutral && myCrew
+          {!crewFortressAtTile && !wellAtTile && !outpostAtTile && crewOwnsThisTile
             && !selTile.isCamp && !selTile.campType && !selTile.isKeep && !selTile.isGate && !selTile.isRuin && !selTile.isWin
             && (selTile.powerLevel||1)>=FORTRESS_MIN_POWER_LEVEL && (
             <button onClick={()=>canBuildFortressHere && onBuildCrewFortress?.(selKey, selTile)}
@@ -874,11 +879,13 @@ export default memo(function TilePopup({
               )}
             </>
           )}
-          {/* Crew Well / Contract Outpost */}
-          {(wellAtTile || outpostAtTile || (isNeutral && !crewFortressAtTile && myCrew?.founder === facKey && (selTile.powerLevel||1) >= 10)) && (
+          {/* Crew Well / Contract Outpost — founder-or-officer role check now
+              lives inside CrewStructurePanel, same as the Fortress button
+              above, so it's not duplicated (and can't drift out of sync) here. */}
+          {(wellAtTile || outpostAtTile || (crewOwnsThisTile && !crewFortressAtTile && (selTile.powerLevel||1) >= 10)) && (
           <div style={{ display:"flex", flexWrap:"wrap", gap:5, flex:"1 1 100%" }}>
             <CrewStructurePanel
-              selKey={selKey} selTile={selTile} isNeutral={isNeutral} myCrew={myCrew} facKey={facKey}
+              selKey={selKey} selTile={selTile} canClaimTile={crewOwnsThisTile} myCrew={myCrew} facKey={facKey}
               rss={rss} nowTick={nowTick} cmds={cmds} crewFortressAtTile={crewFortressAtTile}
               wellAtTile={wellAtTile} wellCrew={wellCrew} outpostAtTile={outpostAtTile} outpostCrew={outpostCrew}
               crewStructureKeys={crewStructureKeys} contractCommandsLeft={contractCommandsLeft}
