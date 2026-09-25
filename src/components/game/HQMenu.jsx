@@ -1493,9 +1493,9 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
 // at runtime (see FIT below) and scales everything to actually fit, so rows
 // can never clip again regardless of what this is set to.
 const TRAIN_FIELD_ZOOM = 1.0; // base layout scale; the field itself handles responsive sizing
-const TRAIN_CARD_W = 180;
-const TRAIN_SPRITE_W = 170;
-const TRAIN_SPRITE_H = 158;
+const TRAIN_CARD_W = 250;
+const TRAIN_SPRITE_W = 205;
+const TRAIN_SPRITE_H = 175;
 // Depth-based per-card scale (foreshortening) — near/bottom-row cards sit
 // bigger than far/top-row ones. This still only moves LAYOUT size.
 const TRAIN_SCALE_MIN = 0.88;
@@ -1649,43 +1649,36 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
         }}
       >
         {(() => {
-          // Split into two rows for staggered / diagonal placement
-          const top = [];
-          const bot = [];
-          ordered.forEach((t, i) => {
-            if (i % 2 === 0) top.push(t);
-            else bot.push(t);
-          });
+          // The reference uses a small number of large, staggered formations
+          // visible at once rather than a wall of 10+ narrow cards. Each
+          // horizontal "column" contains one back-row and one front-row unit,
+          // with the front unit offset so the formation reads diagonally.
+          const columns = [];
+          for (let i = 0; i < ordered.length; i += 2) {
+            columns.push({
+              top: ordered[i] || null,
+              bottom: ordered[i + 1] || null,
+            });
+          }
 
-          // Deterministic per-unit "depth" (0 = distant/back row, 1 = near/
-          // front row) with a small stable jitter so units don't line up
-          // like a flat wall of trading cards. Same key always gets the same
-          // depth, so nothing shifts between re-renders.
           const hash01 = (str) => {
             let h = 0;
             for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
             return (h % 1000) / 1000;
           };
           const depthFor = (key, isTop) => {
-            const base = isTop ? 0.14 : 0.86;
-            const jitter = (hash01(key) - 0.5) * 0.22;
+            const base = isTop ? 0.18 : 0.82;
+            const jitter = (hash01(key) - 0.5) * 0.12;
             return Math.min(1, Math.max(0, base + jitter));
           };
 
           const renderUnit = (t, isTop) => {
-            const depth = depthFor(t.key, isTop); // 0 = far, 1 = near
-            // Far units read smaller than near units.  The row itself owns
-            // the available height, so this scale only affects visual depth;
-            // it is no longer responsible for fitting the two-row layout.
+            if (!t) return <div style={{ width: TRAIN_CARD_W, flexShrink: 0 }} />;
+            const depth = depthFor(t.key, isTop);
             const scale = TRAIN_SCALE_MIN + depth * (TRAIN_SCALE_MAX - TRAIN_SCALE_MIN);
-            const yJitter = 0; // keep label/sprite alignment stable; depth is handled by row scale
-            const satAmt = 0.78 + depth * 0.28; // far units slightly desaturated
-            const briAmt = 0.90 + depth * 0.12; // far units slightly dimmer/hazier
-            // No CSS blur on the sprites themselves — it reads as soft/mushy art
-            // and was a big part of the "still blurry" report. Depth is already
-            // conveyed by scale + desat + the field haze overlay.
-            const blurAmt = 0;
-            const shadowScale = 0.65 + depth * 0.5; // near units cast bigger shadows
+            const satAmt = 0.80 + depth * 0.24;
+            const briAmt = 0.91 + depth * 0.10;
+            const shadowScale = 0.65 + depth * 0.5;
             const shadowOpacity = 0.14 + depth * 0.32;
             const amount = values[t.key] || 0;
             const size = t.branch?.size || "small";
@@ -1698,18 +1691,17 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
             const psrc = troopVisualPath(t.fKey, t.branch.key, t.tier?.tierIdx ?? 0);
             const fc = t.fColor || FACTION_META[t.fKey]?.c || "#888";
             const ownedNow = (t.poolCount || 0) > 0 || (t.assigned || 0) > 0;
-            const quote =
-              !isScrap && amount > 0
-                ? trainingQuote(
-                    t.bKey,
-                    amount,
-                    trainingSpeedMult,
-                    t.branch?.capstone
-                      ? capstoneTrainDiscount(bldgs[`b_${t.fKey}_${t.branch.key}`])
-                      : 0,
-                    trainingCostMult
-                  )
-                : null;
+            const quote = !isScrap && amount > 0
+              ? trainingQuote(
+                  t.bKey,
+                  amount,
+                  trainingSpeedMult,
+                  t.branch?.capstone
+                    ? capstoneTrainDiscount(bldgs[`b_${t.fKey}_${t.branch.key}`])
+                    : 0,
+                  trainingCostMult
+                )
+              : null;
             const affordable = isScrap || !quote?.cost || canAfford(quote.cost);
             const canSelect = isScrap ? maxAmount > 0 : maxAmount >= step && affordable;
 
@@ -1718,94 +1710,78 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 key={t.key}
                 style={{
                   width: TRAIN_CARD_W,
+                  height: "100%",
                   flexShrink: 0,
-                  opacity: !ownedNow && !amount ? 0.7 : 1,
+                  opacity: !ownedNow && !amount ? 0.72 : 1,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  // Keep the card itself unscaled so its label and controls stay
-                  // in a predictable place. Depth is applied only to the troop
-                  // figures below; scaling the whole card was what caused labels
-                  // to drift into the sprite area and disappear on the lower row.
-                  transform: "none",
+                  justifyContent: "flex-start",
+                  position: "relative",
+                  transform: isTop ? "translateY(8px)" : "translateY(-4px)",
                   zIndex: Math.round(depth * 100),
                 }}
               >
-                {/* Floating label above head */}
+                {/* The label/controls have their own fixed block. They never
+                    share the sprite box, so names cannot sit on the figures. */}
                 <div
                   style={{
                     width: "100%",
-                    minHeight: 25,
+                    height: 32,
+                    flexShrink: 0,
                     textAlign: "center",
                     pointerEvents: "none",
                     lineHeight: 1.05,
-                    marginBottom: 7,
                     position: "relative",
                     zIndex: 50,
                   }}
                 >
-                  <div
-                    style={{
-                      fontFamily: P.ffc,
-                      fontSize: 8,
-                      fontWeight: 600,
-                      letterSpacing: ".02em",
-                      textTransform: "uppercase",
-                      color: P.text,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      textShadow: "0 1px 2px #000, 0 0 4px #000, 0 0 1px #000",
-                    }}
-                  >
-                    {t.tier.label}
-                  </div>
-                  {/* Combined stat badge: tier numeral + count in one icon-style pill */}
-                  <div
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 3,
-                      marginTop: 1,
-                      padding: "0 4px",
-                      height: 11,
-                      borderRadius: 3,
-                      background: "rgba(0,0,0,.55)",
-                      border: `1px solid ${fc}55`,
-                    }}
-                  >
-                    <span style={{ fontFamily: P.ff, fontSize: 6, color: fc, fontWeight: 700 }}>{tierLabel}</span>
-                    <span style={{ width: 1, height: 6, background: `${fc}55` }} />
-                    <span style={{ fontFamily: P.ffc, fontSize: 6.5, fontWeight: 600,
-                      color: ownedNow ? P.gold : "#8a7a60" }}>
+                  <div style={{
+                    fontFamily: P.ffc,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: ".02em",
+                    textTransform: "uppercase",
+                    color: P.text,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    textShadow: "0 1px 2px #000, 0 0 5px #000",
+                  }}>{t.tier.label}</div>
+                  <div style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 3,
+                    marginTop: 2,
+                    padding: "0 5px",
+                    height: 12,
+                    borderRadius: 3,
+                    background: "rgba(0,0,0,.62)",
+                    border: `1px solid ${fc}66`,
+                  }}>
+                    <span style={{ fontFamily: P.ff, fontSize: 6.5, color: fc, fontWeight: 700 }}>{tierLabel}</span>
+                    <span style={{ width: 1, height: 7, background: `${fc}55` }} />
+                    <span style={{ fontFamily: P.ffc, fontSize: 7, fontWeight: 600, color: ownedNow ? P.gold : "#8a7a60" }}>
                       {(t.poolCount || 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
 
-                {/* Compact slider above head */}
-                <div
-                  style={{
-                    width: "100%",
-                    padding: "1px 2px 2px",
-                    marginBottom: 6,
-                    borderRadius: 3,
-                    background: amount > 0 ? "rgba(5,7,9,.8)" : "rgba(5,7,9,.35)",
-                    border: amount > 0 ? `1px solid ${fc}77` : "1px solid transparent",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontFamily: P.ff,
-                      fontSize: 5.5,
-                    }}
-                  >
+                <div style={{
+                  width: "100%",
+                  height: 34,
+                  flexShrink: 0,
+                  padding: "1px 3px 2px",
+                  marginTop: 2,
+                  marginBottom: 4,
+                  borderRadius: 3,
+                  background: amount > 0 ? "rgba(5,7,9,.82)" : "rgba(5,7,9,.38)",
+                  border: amount > 0 ? `1px solid ${fc}77` : "1px solid rgba(255,255,255,.04)",
+                  boxSizing: "border-box",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontFamily: P.ff, fontSize: 5.5 }}>
                     <span style={{ color: "#c8b898", fontWeight: 700 }}>{isScrap ? "S" : "T"}</span>
-                    <span style={{ color: amount > 0 ? P.gold : "#6a5a48", fontWeight: 700 }}>
-                      {amount.toLocaleString()}
-                    </span>
+                    <span style={{ color: amount > 0 ? P.gold : "#6a5a48", fontWeight: 700 }}>{amount.toLocaleString()}</span>
                   </div>
                   <input
                     type="range"
@@ -1815,117 +1791,73 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                     value={Math.min(amount, maxAmount)}
                     disabled={!canSelect && amount === 0}
                     onChange={(e) => setValue(t, e.target.value)}
-                    style={{
-                      width: "100%",
-                      margin: 0,
-                      accentColor: fc,
-                      cursor: canSelect ? "pointer" : "not-allowed",
-                      height: 10,
-                    }}
+                    style={{ width: "100%", margin: 0, accentColor: fc, cursor: canSelect ? "pointer" : "not-allowed", height: 10 }}
                   />
                 </div>
 
-                {/* Sprite cluster — 2-3 instances per card so it reads as
-                    "troops," not a single hero portrait. Count and offsets
-                    are hashed from the unit key so they're stable across
-                    re-renders. */}
-                <div
-                  style={{
-                    width: TRAIN_SPRITE_W,
-                    height: TRAIN_SPRITE_H,
-                    position: "relative",
-                    overflow: "visible",
-                    flexShrink: 0,
-                  }}
-                >
-                  {psrc ? (
-                    (() => {
-                      // Reference-style clusters: 2–4 figures, clearly spaced
-                      // so they read as a small regiment standing on the field
-                      // (not stacked on top of each other). Offsets are in
-                      // layout px relative to TRAIN_SPRITE_W so they scale with
-                      // the card instead of being hard-coded for a 100px art box.
-                      // Use a consistent three-figure formation. The previous
-                      // 2/3/4 random formation made some units look oddly
-                      // gapped while others were packed together.
-                      const hw = TRAIN_SPRITE_W * 0.50;
-                      const clusterN = 3;
-                      const layouts = {
-                        3: [
-                          { x: -hw * 0.72, y: 5, s: 0.88, z: 1 },
-                          { x:  0,         y: 0, s: 0.96, z: 3 },
-                          { x:  hw * 0.72, y: 3, s: 0.90, z: 2 },
-                        ],
-                      };
-                      // Display size of each figure: driven by the layout box
-                      // so two rows fit, hard-capped at native art so we never
-                      // upsample (blur). Keep within the sprite box so row
-                      // overflow doesn't clip under overflowY:hidden.
-                      const figH = Math.min(TRAIN_SPRITE_H * 0.96 * scale, SPRITE_ART_NATIVE_H);
-                      const figW = Math.min(figH * 0.55, SPRITE_ART_NATIVE_W);
-                      return layouts[clusterN].map((p, idx) => (
-                        <div
-                          key={idx}
+                <div style={{
+                  width: TRAIN_SPRITE_W,
+                  height: TRAIN_SPRITE_H,
+                  position: "relative",
+                  overflow: "visible",
+                  flexShrink: 0,
+                  marginTop: 2,
+                }}>
+                  {psrc ? (() => {
+                    // Consistent three-person diagonal cluster. The spacing is
+                    // deliberately normalized across all troop types so one
+                    // unit cannot randomly create a huge gap or overlap.
+                    const hw = TRAIN_SPRITE_W * 0.46;
+                    const layouts = [
+                      { x: -hw * 0.88, y: 1, s: 0.84, z: 1 },
+                      { x: 0,          y: 7, s: 0.98, z: 3 },
+                      { x: hw * 0.88,  y: 2, s: 0.86, z: 2 },
+                    ];
+                    const figH = Math.min(TRAIN_SPRITE_H * 0.92 * scale, SPRITE_ART_NATIVE_H);
+                    const figW = Math.min(figH * 0.55, SPRITE_ART_NATIVE_W);
+                    return layouts.map((p, idx) => (
+                      <div key={idx} style={{
+                        position: "absolute",
+                        left: `calc(50% + ${p.x}px)`,
+                        bottom: p.y,
+                        width: figW * p.s,
+                        height: figH * p.s,
+                        transform: "translateX(-50%)",
+                        zIndex: p.z,
+                      }}>
+                        <img
+                          src={psrc}
+                          alt=""
+                          draggable="false"
                           style={{
                             position: "absolute",
-                            left: `calc(50% + ${p.x}px)`,
-                            bottom: p.y,
-                            width: figW * p.s,
-                            height: figH * p.s,
+                            left: "50%",
+                            bottom: 0,
                             transform: "translateX(-50%)",
-                            zIndex: p.z,
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "contain",
+                            objectPosition: "center bottom",
+                            imageRendering: "auto",
+                            filter: `saturate(${satAmt}) brightness(${briAmt})`,
                           }}
-                        >
-                          <img
-                            src={psrc}
-                            alt=""
-                            draggable="false"
-                            style={{
-                              position: "absolute",
-                              left: "50%",
-                              bottom: 0,
-                              transform: "translateX(-50%)",
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "contain",
-                              objectPosition: "center bottom",
-                              // Sharp downsample; no CSS blur filter.
-                              imageRendering: "auto",
-                              filter: `saturate(${satAmt}) brightness(${briAmt})`,
-                            }}
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                            }}
-                          />
-                          {/* soft ground shadow per member */}
-                          <div
-                            style={{
-                              position: "absolute",
-                              left: "10%",
-                              right: "10%",
-                              bottom: -2,
-                              height: 10 * shadowScale * p.s,
-                              borderRadius: "50%",
-                              background: `radial-gradient(ellipse at center, rgba(0,0,0,${shadowOpacity + .25}) 0%, rgba(0,0,0,${shadowOpacity}) 45%, rgba(0,0,0,0) 75%)`,
-                              filter: "blur(1.2px)",
-                              pointerEvents: "none",
-                            }}
-                          />
-                        </div>
-                      ));
-                    })()
-                  ) : (
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 20,
-                        opacity: 0.4,
-                      }}
-                    >
+                          onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        />
+                        <div style={{
+                          position: "absolute",
+                          left: "10%",
+                          right: "10%",
+                          bottom: -2,
+                          height: 10 * shadowScale * p.s,
+                          borderRadius: "50%",
+                          background: `radial-gradient(ellipse at center, rgba(0,0,0,${shadowOpacity + .25}) 0%, rgba(0,0,0,${shadowOpacity}) 45%, rgba(0,0,0,0) 75%)`,
+                          filter: "blur(1.2px)",
+                          pointerEvents: "none",
+                        }} />
+                      </div>
+                    ));
+                  })() : (
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, opacity: 0.4 }}>
                       {t.fIcon || "⚔"}
                     </div>
                   )}
@@ -1935,36 +1867,39 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           };
 
           return (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateRows: "minmax(0, 1fr) minmax(0, 1fr)",
-                rowGap: 4,
-                height: "100%",
-                boxSizing: "border-box",
-                width: "max-content",
-                minWidth: "100%",
-                paddingRight: 24,
-                paddingTop: 2,
-                paddingBottom: 4,
-                position: "relative",
-                zIndex: 2,
-              }}
-            >
-              {/* Top row — back of field. A real grid row reserves its height,
-                  so the second row can never be pushed below the viewport. */}
-              <div style={{ display: "flex", alignItems: "flex-end", minHeight: 0, gap: 34, paddingLeft: 48, paddingTop: 8, paddingBottom: 4, overflow: "visible" }}>
-                {top.map((t) => renderUnit(t, true))}
-              </div>
-              {/* Bottom row — front of field. Slightly larger through the
-                  depth scale, like the reference battlefield formation. */}
-              <div style={{ display: "flex", alignItems: "flex-end", minHeight: 0, gap: 34, paddingLeft: 48, paddingTop: 8, paddingBottom: 4, overflow: "visible" }}>
-                {bot.map((t) => renderUnit(t, false))}
-              </div>
+            <div style={{
+              display: "flex",
+              alignItems: "stretch",
+              gap: 18,
+              height: "100%",
+              minWidth: "max-content",
+              width: "max-content",
+              boxSizing: "border-box",
+              padding: "12px 34px 10px 34px",
+              position: "relative",
+              zIndex: 2,
+            }}>
+              {columns.map((col, i) => (
+                <div key={i} style={{
+                  width: TRAIN_CARD_W,
+                  height: "100%",
+                  flexShrink: 0,
+                  display: "grid",
+                  gridTemplateRows: "1fr 1fr",
+                  rowGap: 8,
+                  position: "relative",
+                }}>
+                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "visible" }}>
+                    {renderUnit(col.top, true)}
+                  </div>
+                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "visible" }}>
+                    {renderUnit(col.bottom, false)}
+                  </div>
+                </div>
+              ))}
             </div>
           );
         })()}
-
         {/* ── Unified color grade ───────────────────────────────────────────
             Everything below the training-scroll div (background art AND every
             troop sprite) sits behind these two overlays. Unlike the dark
