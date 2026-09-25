@@ -1502,12 +1502,13 @@ const TRAIN_SCALE_MIN = 0.72;
 const TRAIN_SCALE_MAX = 1.3;
 
 // Hard ceiling on how big the *source art* is ever allowed to render, in px,
-// independent of TRAIN_FIELD_ZOOM/depth-scale. This is roughly the native
-// resolution the sprite art was authored at — rendering past it just
-// upsamples the same pixels and reads as blurry, so it's a cap, not a knob.
-// Raise this only if/when higher-res sprite art is available.
-const SPRITE_ART_NATIVE_W = 100;
-const SPRITE_ART_NATIVE_H = 150;
+// independent of TRAIN_FIELD_ZOOM/depth-scale. Standing sprites are authored
+// at 512×1024 (some wide poses 768×1024). Rendering past that just upsamples
+// and reads as blurry, so this is a cap, not a knob. Previously set to
+// 100×150 which forced the browser to upsample under CSS transform:scale,
+// producing the landscape blur / vanishing-sprite bug.
+const SPRITE_ART_NATIVE_W = 256;
+const SPRITE_ART_NATIVE_H = 512;
 
 // ── Screen 2: Train / Scrap — unit list | selected unit + slider | queues ──────
 function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troopCards, trainingQueues, setTrainingQueues, trainingSpeedMult, trainingCostMult = 1,
@@ -1705,7 +1706,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
             const yJitter = (hash01(t.key + "y") - 0.5) * 12 * fitScale; // organic scatter, px
             const satAmt = 0.66 + depth * 0.4; // far units slightly desaturated
             const briAmt = 0.86 + depth * 0.2; // far units slightly dimmer/hazier
-            const blurAmt = (1 - depth) * 1.1; // far units read a touch soft, like the eye/lens is focused on the front row
+            // Keep atmospheric blur subtle. At the old 1.1px * (1-depth) far
+            // units (especially after fitScale on short landscape panels)
+            // became an unreadable smear and often looked "missing".
+            const blurAmt = (1 - depth) * 0.35;
             const shadowScale = 0.65 + depth * 0.5; // near units cast bigger shadows
             const shadowOpacity = 0.14 + depth * 0.32;
             const amount = values[t.key] || 0;
@@ -1895,15 +1899,18 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                           key={idx}
                           style={{
                             position: "absolute",
-                            left: `calc(50% + ${p.x * fitScale}px)`,
-                            bottom: p.y * fitScale,
-                            // Native art size × this member's own scale ×
-                            // fitScale (which only ever shrinks, to squeeze
-                            // into a short panel — never grows past native,
-                            // so this can't blur). TRAIN_FIELD_ZOOM never
-                            // touches this at all.
-                            width: SPRITE_ART_NATIVE_W * p.s * fitScale,
-                            height: SPRITE_ART_NATIVE_H * p.s * fitScale,
+                            left: `calc(50% + ${p.x}px)`,
+                            bottom: p.y,
+                            // Size the bitmap at (or under) native art resolution.
+                            // The parent card already applies fitScale + depth
+                            // scale via transform:scale — applying fitScale
+                            // here a second time made sprites microscopic on
+                            // short landscape panels and forced the browser to
+                            // upsample a tiny raster (blur). Offset positions
+                            // stay in layout units; the card transform scales
+                            // them together with the art.
+                            width: SPRITE_ART_NATIVE_W * p.s,
+                            height: SPRITE_ART_NATIVE_H * p.s,
                             transform: "translateX(-50%)",
                             zIndex: p.z,
                           }}
@@ -1917,13 +1924,12 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                               left: "50%",
                               bottom: 0,
                               transform: "translateX(-50%)",
-                              // The wrapper box above is already capped at
-                              // native art resolution (× fitScale, which only
-                              // ever shrinks — never upscales past native).
-                              // TRAIN_FIELD_ZOOM does NOT reach this img at
-                              // all anymore, so raising zoom can never blur
-                              // the raster; it only affects card/spacing
-                              // layout. Feet stay pinned to the ground line.
+                              // Wrapper is sized at native (or under). Card
+                              // transform:scale only ever shrinks when the
+                              // field is short (fitScale ≤ 1), so the high-res
+                              // source is downsampled — sharp on retina and
+                              // landscape. TRAIN_FIELD_ZOOM never reaches the
+                              // img; it only changes card/spacing layout.
                               width: "100%",
                               height: "100%",
                               objectFit: "contain",
