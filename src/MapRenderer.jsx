@@ -119,7 +119,11 @@ function worldToKey(wx, wy, tiles) {
 
       const pl = tile.powerLevel ?? 0;
 
-      if (pl >= 10 && tile.isKeep) {
+      // powerLevel >= 10 alone identifies a P10+ primary tile (stampP10 always
+      // demotes neighbor/non-structure tiles below 10) — not tile.isKeep,
+      // which capture clears on purpose. isGate excludes gates that could
+      // theoretically carry a stray high powerLevel.
+      if (pl >= 10 && !tile.isGate) {
         if (inP10Footprint(wx, wy, c, r)) return key;
         continue;
       }
@@ -284,8 +288,12 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       // P10–P13 single-tile structures are handled in second pass below.
       // Static keeps (5x5) and HQs (3x3) are handled in their own passes.
       // isHQPart tiles render their terrain here but NOT their owner border — buildHQLayer draws that.
-      if ((isKeep && !isGate) || isKeepPart || isHQ) {
-        if ((tile.powerLevel ?? 0) >= 10) continue; // P10+ handled in second pass
+      // A P10+ primary tile must skip this first pass whether or not it's
+      // still garrisoned (isKeep clears on capture) — powerLevel >= 10 is
+      // the reliable signal; !isGate excludes gates.
+      const isP10Primary = (tile.powerLevel ?? 0) >= 10 && !isGate;
+      if ((isKeep && !isGate) || isKeepPart || isHQ || isP10Primary) {
+        if (isP10Primary) continue; // P10+ handled in second pass
         continue; // keeps handled in third pass, HQ center in fourth pass
       }
 
@@ -586,7 +594,10 @@ function drawAllTiles(gfx, tiles, rMin, rMax, cMin, cMax, selKey, mode, cByTile,
       const tile = tiles[`${c},${r}`];
       if (!tile) continue;
       const pl = tile.powerLevel ?? 0;
-      if (pl < 10 || !tile.isKeep || tile.isGate || tile.isWin) continue;
+      // Draw the merged 2x2 whether or not the structure is still garrisoned
+      // (isKeep clears on capture) — a captured P10+ tile still needs its
+      // big footprint rendered.
+      if (pl < 10 || tile.isGate || tile.isWin) continue;
       // 2x2 diamond: N tip at primary tile top, covers exactly the same area as 4 tiles
       const MERGED = resourceFootprint(c,r,tile).points;
       fillVisualGround(gfx,MERGED,c,r,tile.terrain,usesNewWorldVisuals(c,r),groundTexture);
@@ -688,7 +699,10 @@ function drawAllProps(gfx, tiles, rMin, rMax, cMin, cMax) {
       const sy = cy - 4;
       if (pl === 1) continue; // P1 has all resources but no individual props
       if (tile.rss) {
-        if (tile.isKeep && pl >= 10) {
+        // Large offset applies whether or not the structure is still
+        // garrisoned (isKeep clears on capture) — powerLevel >= 10 is the
+        // reliable P10+ primary-tile signal.
+        if (pl >= 10 && !tile.isGate) {
           // Single tile at 2x size — prop centered on the tile's visual midpoint
           const syntheticPl = 13 + (pl - 9) * 3;
           drawRssProp(gfx, tile.rss, cx, cy + TH / 2, c, r, syntheticPl);
@@ -2362,9 +2376,11 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const tile = tilesRef.current[key];
       if (!tile) return;
 
-      // P10–P13: draw white outline around the 2x visual diamond
+      // P10–P13: draw white outline around the 2x visual diamond. Whether or
+      // not the structure is still garrisoned (isKeep clears on capture) —
+      // powerLevel >= 10 is the reliable P10+ primary-tile signal.
       const pl = tile.powerLevel ?? 0;
-      if (pl >= 10 && tile.isKeep) {
+      if (pl >= 10 && !tile.isGate) {
         const MERGED = resourceFootprint(sc,sr,tile).points;
         selGfx.lineStyle(1.6, 0xf0eedb, 0.92);
         selGfx.drawPolygon(MERGED);
@@ -2547,8 +2563,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
               const sp = propsSpritePool.pop() ?? new PIXI.Sprite();
               sp.texture  = tex;
               sp.anchor.set(0.5, anchorY);
-              // P10–P13 primary: center sprite on the 2×2 footprint midpoint
-              if (tile.isKeep && pl >= 10) {
+              // P10–P13 primary: center sprite on the 2×2 footprint midpoint,
+              // whether or not the structure is still garrisoned (isKeep
+              // clears on capture) — powerLevel >= 10 is the reliable signal.
+              if (pl >= 10 && !tile.isGate) {
                 sp.x = cx;
                 sp.y = cy - 4 + TH;
               } else {
@@ -3329,7 +3347,9 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
       const tile = tilesRef.current[key];
       // P10+ tiles are drawn at 2x size (a 2x2 block): cover the whole footprint,
       // not just the primary grid cell (resourceFootprint = same shape as the selection outline).
-      const big = tile?.isKeep && !tile?.isGate && (tile?.powerLevel ?? 0) >= 10;
+      // Whether or not the structure is still garrisoned (isKeep clears on
+      // capture) — powerLevel >= 10 is the reliable P10+ primary-tile signal.
+      const big = !tile?.isGate && (tile?.powerLevel ?? 0) >= 10;
       const fp = big ? resourceFootprint(c, r, tile) : null;
       const { cx: cx0, cy } = isoXY(c, r);
       const elev = tile?.isWin ? 10 : 4;
