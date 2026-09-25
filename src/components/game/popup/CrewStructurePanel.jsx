@@ -12,7 +12,8 @@ import {
   CrewStructurePanel — the TilePopup action rows for crew Wells and the
   Contract Outpost (rules: shared/utils/crewStructures.js). Kept out of
   TilePopup.jsx so that file only gains one mount point.
-    - Unclaimed p10+ tile, founder: BUILD WELL / BUILD OUTPOST buttons.
+    - p10+ tile owned by you or a crewmate (canClaimTile — NOT unclaimed
+      wilds), founder or officer: BUILD WELL / BUILD OUTPOST buttons.
     - Well tile: build countdown, STATION (any idle commander, no range),
       GATHER (opens TilePopup's normal gather drawer), DEMOLISH (founder).
     - Outpost tile: build countdown, contracted units, founder unit picker,
@@ -50,7 +51,7 @@ function SiegeRow({ structure, mine, canAtk, canAtkNow, onAttack }) {
 }
 
 export default function CrewStructurePanel({
-  selKey, selTile, isNeutral, myCrew, facKey, rss, nowTick, cmds,
+  selKey, selTile, canClaimTile, myCrew, facKey, rss, nowTick, cmds,
   crewFortressAtTile, wellAtTile, wellCrew, outpostAtTile, outpostCrew, crewStructureKeys,
   contractCommandsLeft,
   canAtk, canAtkNow, onAttackStructure,
@@ -61,11 +62,15 @@ export default function CrewStructurePanel({
   const [pickOpen, setPickOpen] = useState(false);
   const now = nowTick ?? Date.now();
   const isFounder = !!myCrew && myCrew.founder === facKey;
+  // Building is founder-or-officer (matches canStartWellBuild/canStartOutpostBuild
+  // in shared/utils/crewStructures.js); demolish/unit-picking below stay
+  // founder-only by design, per this file's own header comment.
+  const isFounderOrOfficer = !!myCrew && (myCrew.founder === facKey || (myCrew.officers || []).includes(facKey));
   const minsLeft = s => Math.max(0, Math.ceil((s.buildEndsAt - now) / 60000));
 
-  // ── Build buttons (empty unclaimed tile) ──────────────────────────────
+  // ── Build buttons (tile owned by you or a crewmate, nothing built yet) ──
   if (!wellAtTile && !outpostAtTile) {
-    if (crewFortressAtTile || !isNeutral || !isFounder || (selTile?.powerLevel || 1) < 10) return null;
+    if (crewFortressAtTile || !canClaimTile || !isFounderOrOfficer || (selTile?.powerLevel || 1) < 10) return null;
     if (selTile.isCamp || selTile.campType || selTile.isKeep || selTile.isGate || selTile.isRuin || selTile.isWin) return null;
     const showWell = crewWellSlotsForLevel(myCrew.level) > 0;
     const showOutpost = crewOutpostUnlocked(myCrew.level) && !myCrew.outpost;
