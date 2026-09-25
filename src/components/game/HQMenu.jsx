@@ -24,6 +24,7 @@ text:   "#f0e8d8",
 sub:    "#a89878",
 ff:     "'Cinzel',serif",
 ffb:    "'Crimson Pro',serif",
+ffc:    "'Oswald',sans-serif",
 };
 
 // -- Tile nav buttons (the 6 sections on the hub screen) -----------------------
@@ -207,7 +208,7 @@ transition:"all .4s" }}/>
 function HubScreen({ setHqTab }) {
 return (
 <>
-<style>{`@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&display=swap');`}</style>
+<style>{`@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Oswald:wght@500;600;700&display=swap');`}</style>
 <div style={{ position:"relative", flex:1, padding:"10px 18px 18px",
 display:"grid", gridTemplateColumns:"1fr 1fr", gridTemplateRows:"1fr 1fr 1fr", gap:10 }}>
 {HUB_TILES_PARCHMENT.map((tile, i) => (
@@ -1712,22 +1713,41 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 >
                   <div
                     style={{
-                      fontFamily: P.ff,
-                      fontSize: 7.5,
-                      fontWeight: 700,
+                      fontFamily: P.ffc,
+                      fontSize: 8,
+                      fontWeight: 600,
+                      letterSpacing: ".02em",
+                      textTransform: "uppercase",
                       color: P.text,
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
-                      textShadow: "0 1px 2px #000, 0 0 3px #000",
+                      textShadow: "0 1px 2px #000, 0 0 4px #000, 0 0 1px #000",
                     }}
                   >
                     {t.tier.label}
-                    <span style={{ color: ownedNow ? P.gold : "#8a7a60", marginLeft: 3, fontWeight: 600 }}>
+                  </div>
+                  {/* Combined stat badge: tier numeral + count in one icon-style pill */}
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 3,
+                      marginTop: 1,
+                      padding: "0 4px",
+                      height: 11,
+                      borderRadius: 3,
+                      background: "rgba(0,0,0,.55)",
+                      border: `1px solid ${fc}55`,
+                    }}
+                  >
+                    <span style={{ fontFamily: P.ff, fontSize: 6, color: fc, fontWeight: 700 }}>{tierLabel}</span>
+                    <span style={{ width: 1, height: 6, background: `${fc}55` }} />
+                    <span style={{ fontFamily: P.ffc, fontSize: 6.5, fontWeight: 600,
+                      color: ownedNow ? P.gold : "#8a7a60" }}>
                       {(t.poolCount || 0).toLocaleString()}
                     </span>
                   </div>
-                  <div style={{ fontFamily: P.ff, fontSize: 5.5, color: fc }}>{tierLabel}</div>
                 </div>
 
                 {/* Compact slider above head */}
