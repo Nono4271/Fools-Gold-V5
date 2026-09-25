@@ -23,6 +23,15 @@ function isP10Structure(tile) {
   return !!tile?.isKeep && !tile?.isGate && (tile?.powerLevel || 0) >= FORTRESS_MIN_POWER_LEVEL;
 }
 
+// A real, region-controlling territory Keep — the only kind of tile that
+// should ever hand a whole region's war-control to the capturing faction
+// (see warRules.js's recordRegionCapture). This is `isKeep` minus the two
+// kinds of tile that also carry the F_KEEP flag but aren't one: P10-P13
+// structures (see isP10Structure above) and border Gates.
+export function isRegionKeepTile(tile) {
+  return !!tile?.isKeep && !tile?.isGate && !isP10Structure(tile);
+}
+
 // Garrison reset delay for a tile: keeps/gates take an hour, everything else
 // resets in 15 min (moved verbatim from useMarch.js's garrisonResetMs).
 export function garrisonResetMs(tile) {
