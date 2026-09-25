@@ -6,6 +6,38 @@ without needing to re-diff the whole codebase.
 
 Branch: codex/core-fixes-20260919
 
+
+## 2026-09-25 — Training yard presentation (Codex)
+
+**Owner preference: phone landscape is the primary game target.** Optimize composition,
+readability and touch controls for phone landscape first; desktop is a secondary
+browser testing view. Recommend a model before beginning each new task and pause
+so the owner can switch models and say ready.
+
+- `HQMenu.jsx`: compact Barracks navigation; readable tier/name/count banners;
+  formations select one shared quantity/cost/time panel. Draft amounts survive
+  switching formations, preserving batch training. Existing quotes, command sizes,
+  resource prices, training times, discounts and queue callbacks are retained.
+- `src/index.css`: scoped training-yard styles. More visible terrain, contact
+  shadows, perspective spacing, separate background grading, and selected formation
+  marker. Two ranks on taller views; a staggered line of larger formations on
+  short landscape phones. Native horizontal scrolling and safe-area padding.
+- Existing standing artwork is reused (three figures); units without standing art
+  keep a single portrait fallback. No new poses, art, 3D models or game systems.
+- Train button explains resource, capacity and queue limits before batch submission.
+  Scrap list is memoized to prevent its state effect looping after mode switches.
+- Verified: production build; 18 existing army menu/economy tests; browser layouts
+  at 1440x900, 852x393 and 667x375 (phone safe areas included), plus 390x844 fallback.
+  Browser interactions passed: retained drafts, two-type batch training, insufficient
+  resources, scrap-to-empty, portrait fallback, horizontal wheel and touch swipe.
+  Physical iPhone check remains with the owner. No training/fort speedups were
+  added; no balance rules changed.
+- COMPLETE: this presentation pass. Do not repeat economy audits unless a related
+  regression is reported. Separate future art work: varied formation poses and a
+  purpose-built barracks-yard background if requested.
+
+---
+
 ---
 
 ## 2026-09-20 — Claude (Sonnet 5) — Chat: DM/group picker's Cancel/Start buttons were unreachable

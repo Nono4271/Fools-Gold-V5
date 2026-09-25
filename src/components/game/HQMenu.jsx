@@ -1487,27 +1487,7 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
   );
 }
 
-// Training field "zoom": the one knob to turn cards/spacing bigger or smaller.
-// IMPORTANT: this only scales LAYOUT (card width, sprite box, gaps) — never
-// the raster art itself. The field container measures its own real height
-// at runtime (see FIT below) and scales everything to actually fit, so rows
-// can never clip again regardless of what this is set to.
-const TRAIN_FIELD_ZOOM = 1.0; // base layout scale; the field itself handles responsive sizing
-const TRAIN_CARD_W = 225;
-const TRAIN_SPRITE_W = 180;
-const TRAIN_SPRITE_H = 124;
-// Depth-based per-card scale (foreshortening) — near/bottom-row cards sit
-// bigger than far/top-row ones. This still only moves LAYOUT size.
-const TRAIN_SCALE_MIN = 0.84;
-const TRAIN_SCALE_MAX = 1.00;
-
-// Standing sprites are authored at 512×1024 (wide poses 768×1024). Cap display
-// size so we never upsample past source (blur). Layout size is driven by
-// TRAIN_SPRITE_* above; this is only a hard max on the <img> pixel box.
-const SPRITE_ART_NATIVE_W = 320;
-const SPRITE_ART_NATIVE_H = 640;
-
-// ── Screen 2: Train / Scrap — unit list | selected unit + slider | queues ──────
+// Shared training rules; the yard only changes how troops and controls are presented.
 function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troopCards, trainingQueues, setTrainingQueues, trainingSpeedMult, trainingCostMult = 1,
   neutralSources = {}, contractCommandsLeft, initialKey,
   canAfford, queueTraining, rss, discardTroops, onBack, onSwitchMode, healQueue = [] }) {
@@ -1517,11 +1497,11 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
   const maxBatch = maxTrainBatch(bldgs.training||0);
   const capCmds = barracksCommandCapacity(bldgs.barracks||0);
   const freeCmds = Math.max(0, capCmds - poolCommands(troopCounts) - queuedCommands(trainingQueues));
-  const listCards = isScrap ? troopCards.filter(t => (t.poolCount||0) > 0) : troopCards;
+  const listCards = useMemo(() => isScrap ? troopCards.filter(t => (t.poolCount||0) > 0) : troopCards, [isScrap, troopCards]);
 
-  // Each troop owns its own slider. This is deliberately a two-row, horizontal
-  // formation: CSS grid creates exactly two rows and auto-flow fills columns.
+  // Keep each draft when switching formations; one focused slider edits it.
   const [values, setValues] = useState(() => Object.fromEntries(listCards.map(t => [t.key, 0])));
+  const [activeKey, setActiveKey] = useState(initialKey || null);
   useEffect(() => {
     setValues(prev => {
       const next = {};
@@ -1545,6 +1525,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
   const fmtTime = s => s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m ${s%60}s` : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
 
   function trainSelected() {
+    if (blocked) return;
     if (isScrap) {
       selected.forEach(t => discardTroops?.(t.bKey, values[t.key]));
       setValues({});
@@ -1574,447 +1555,122 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
   const rest = listCards.filter(t => !((t.poolCount||0) > 0 || (t.assigned||0) > 0));
   const ordered = [...owned, ...rest];
 
-  // The field is deliberately laid out as two real CSS rows.  Do not use a
-  // whole-card transform as the mechanism that makes the rows fit: transforms
-  // do not change layout height, which was allowing the second row to be
-  // visually pushed outside the battlefield on short landscape screens.
+  const active = ordered.find(t => t.key === activeKey) || ordered[0];
+  const stepFor = t => isScrap ? 1 : (CMD_SIZE[t.branch?.size || "small"] || 100);
+  const maxFor = t => isScrap ? (t.poolCount || 0) : Math.max(0,
+    Math.floor(Math.min(maxBatch, troopsThatFit(t.bKey, freeCmds)) / stepFor(t)) * stepFor(t));
+  const quoteFor = (t, amount) => trainingQuote(t.bKey, amount, trainingSpeedMult,
+    t.branch?.capstone ? capstoneTrainDiscount(bldgs[`b_${t.fKey}_${t.branch.key}`]) : 0, trainingCostMult);
+  const activeAmount = active ? Math.min(values[active.key] || 0, maxFor(active)) : 0;
+  const activeQuote = active && !isScrap ? quoteFor(active, activeAmount || stepFor(active)) : null;
+  const totalCost = selected.reduce((cost, t) => {
+    const quote = quoteFor(t, values[t.key]);
+    Object.entries(quote?.cost || {}).forEach(([key, value]) => { cost[key] = (cost[key] || 0) + value; });
+    return cost;
+  }, {});
+  const freeQueues = Math.max(0, maxQueues - (trainingQueues?.length || 0));
+  const blocked = !selected.length ? "Choose an amount to begin" :
+    isScrap ? (selected.some(t => values[t.key] > maxFor(t)) ? "Troop availability changed; adjust the amount" : "") :
+    selected.length > freeQueues ? "Not enough training queues" :
+    selectedCommands > freeCmds || selected.some(t => values[t.key] > maxFor(t)) ? "Not enough barracks space" :
+    !canAfford(totalCost) ? "Not enough resources" : "";
+  const ownedCommands = poolCommands(troopCounts);
+  const queued = queuedCommands(trainingQueues);
+  const healing = (healQueue || []).reduce((sum, q) => sum + (Number(q.remaining) || 0) * (COMMAND_COST[q.size] || 1), 0);
+  const columns = [];
+  for (let i = 0; i < ordered.length; i += 2) columns.push(ordered.slice(i, i + 2));
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#08090b" }}>
-      {/* Compact top bar: SCRAP/TRAIN + barracks inline (no separate barracks box) */}
-      {(() => {
-        const cap = barracksCommandCapacity(bldgs.barracks||0) || 1;
-        const owned = poolCommands(troopCounts);
-        const training = queuedCommands(trainingQueues);
-        // Healing commands: sum remaining from heal queues if passed, else 0
-        const healing = (healQueue||[]).reduce((s, q) => s + (Number(q.remaining)||0) * (COMMAND_COST[q.size] || 1), 0);
-        const free = Math.max(0, cap - owned - training - healing);
-        const pct = (n) => Math.min(100, Math.max(0, (n / cap) * 100));
-        return (
-          <div style={{ padding:"5px 8px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:6, flexShrink:0, flexWrap:"wrap" }}>
-            {isScrap ? (
-              <button className="btn" onClick={() => onSwitchMode?.("train")} style={{ background:"rgba(255,255,255,.03)", border:`1px solid ${P.border}`, borderRadius:5, color:P.dim, cursor:"pointer", padding:"4px 10px", fontFamily:P.ff, fontSize:9 }}>‹ TRAIN</button>
-            ) : (
-              <button className="btn" onClick={() => onSwitchMode?.("scrap")} style={{ background:"rgba(200,40,40,.12)", border:"1px solid #cc404066", borderRadius:5, color:"#ff8888", cursor:"pointer", padding:"4px 10px", fontFamily:P.ff, fontSize:9 }}>SCRAP</button>
-            )}
-            <div style={{ fontFamily:P.ff, fontSize:11, fontWeight:700, color:isScrap?"#ff7755":P.gold, letterSpacing:".06em" }}>{isScrap ? "⚠ SCRAP" : "⚔ TRAINING"}</div>
+    <section className="training-yard" aria-label={isScrap ? "Scrap troops" : "Training yard"}>
+      <header className="ty-status">
+        <div className="ty-capacity">
+          <div><span>Barracks space</span><strong>{fmtCmd(ownedCommands)} <small>{queued > 0 ? `(+${fmtCmd(queued)})` : ""} / {capCmds.toLocaleString()} commands</small></strong></div>
+          <div className="ty-capacity-track" role="meter" aria-label="Barracks space including training" aria-valuemin={0} aria-valuemax={capCmds} aria-valuenow={Math.min(capCmds, ownedCommands + queued)}>
+            <i style={{width:`${Math.min(100, ownedCommands / capCmds * 100)}%`}} />
+            <i className="ty-reserved" style={{width:`${Math.min(100, queued / capCmds * 100)}%`}} />
+          </div>
+        </div>
+        <span className="ty-queue-count">{trainingQueues?.length || 0}/{maxQueues} queues · {fmtCmd(freeCmds)} free{healing > 0 && ` · ${fmtCmd(healing)} healing`}</span>
+        <button type="button" className="ty-mode" onClick={() => onSwitchMode?.(isScrap ? "train" : "scrap")}>{isScrap ? "Back to training" : "Scrap troops"}</button>
+      </header>
 
-            {/* Compact capacity bar: gold=owned, blue=training, green=healing, grey=available */}
-            <div style={{ flex:1, minWidth:80, maxWidth:200, height:8, borderRadius:4, background:"#1a1a22", overflow:"hidden", display:"flex", border:"1px solid #2a2418" }}>
-              {owned > 0 && <div style={{ width:`${pct(owned)}%`, background:"#c8903a", transition:"width .3s" }} title="In barracks"/>}
-              {training > 0 && <div style={{ width:`${pct(training)}%`, background:"#4488cc", transition:"width .3s" }} title="Training"/>}
-              {healing > 0 && <div style={{ width:`${pct(healing)}%`, background:"#3daa60", transition:"width .3s" }} title="Healing"/>}
+      <div className="ty-scene">
+        <div className="ty-scenery" aria-hidden="true" />
+        <div className="training-scroll ty-field" aria-label="Troop formations; scroll sideways" tabIndex={0}>
+          <div className="ty-formations">
+            {columns.map((column, columnIndex) => (
+              <div className="ty-column" key={columnIndex}>
+                {column.map((t, row) => {
+                  const tierIdx = t.tier?.tierIdx ?? 0;
+                  const standing = STANDING_SPRITES[t.fKey]?.[t.branch.key]?.[tierIdx];
+                  const amount = values[t.key] || 0;
+                  const training = (trainingQueues || []).filter(q => q.branchKey === t.bKey).reduce((sum, q) => sum + q.remaining, 0);
+                  return (
+                    <button type="button" key={t.key}
+                      className={`ty-formation ${row === 0 ? "ty-far" : "ty-near"} ${active?.key === t.key ? "is-active" : ""}`}
+                      aria-pressed={active?.key === t.key}
+                      aria-label={`${t.tier.label}, ${t.poolCount || 0} in barracks${amount ? `, ${amount} selected` : ""}`}
+                      onClick={() => setActiveKey(t.key)}>
+                      <span className="ty-plaque">
+                        <span className="ty-tier">{t.branch.capstone ? "IV" : ["I", "II", "III", "IV"][tierIdx]}</span>
+                        <span className="ty-unit-name"><strong>{t.tier.label}</strong><span>{(t.poolCount || 0).toLocaleString()} <small>in barracks</small>{training > 0 && <em> +{training.toLocaleString()}</em>}</span></span>
+                        {amount > 0 && <span className="ty-draft">+{amount.toLocaleString()}</span>}
+                      </span>
+                      <span className={`ty-figures ${standing ? "" : "ty-portrait"}`} aria-hidden="true">
+                        {(standing ? [0, 1, 2] : [1]).map(figure => (
+                          <span className={`ty-figure ty-figure-${figure}`} key={figure}>
+                            <img src={standing || troopVisualPath(t.fKey, t.branch.key, tierIdx)} alt="" draggable="false" />
+                          </span>
+                        ))}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          {!ordered.length && <div className="ty-empty">{isScrap ? "No troops in the barracks to scrap." : "Unlock a troop branch in Quarters to begin training."}</div>}
+        </div>
+        <div className="ty-yard-caption" aria-hidden="true"><span>THE MUSTERING GROUND</span><span>‹ Swipe to view troops ›</span></div>
+      </div>
+
+      <footer className="ty-command-panel">
+        {active ? <>
+          <div className="ty-order-heading">
+            <div><span className="ty-eyebrow">{isScrap ? "SCRAP TROOPS" : "PREPARE RECRUITS"}</span><h3>{active.tier.label}</h3></div>
+            <span>{isScrap ? `${active.poolCount.toLocaleString()} available` : `${stepFor(active)} troops per command`}</span>
+          </div>
+          <div className="ty-order-controls">
+            <div className="ty-quantity">
+              <button type="button" aria-label="Decrease troop amount" disabled={activeAmount <= 0} onClick={() => setValue(active, activeAmount - stepFor(active))}>−</button>
+              <label><span>{activeAmount.toLocaleString()} troops <small>· {fmtCmd(activeAmount / (CMD_SIZE[active.branch?.size] || 100))} commands</small></span>
+                <input aria-label={`Amount of ${active.tier.label}`} type="range" min={0} max={Math.max(stepFor(active), maxFor(active))} step={stepFor(active)} value={activeAmount} disabled={maxFor(active) < stepFor(active)} onChange={e => setValue(active, e.target.value)} />
+              </label>
+              <button type="button" aria-label="Increase troop amount" disabled={activeAmount >= maxFor(active)} onClick={() => setValue(active, activeAmount + stepFor(active))}>+</button>
+              <button type="button" className="ty-max" disabled={!maxFor(active)} onClick={() => setValue(active, maxFor(active))}>Max</button>
             </div>
-
-            <div style={{ fontFamily:P.ff, fontSize:7.5, color:P.dim, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-              <span>🏕{bldgs.barracks||0}</span>
-              <span style={{ color:"#c8903a" }}>{fmtCmd(owned)}</span>
-              <span>/</span>
-              <span>{cap.toLocaleString()}</span>
-              <span style={{ color:"#7a7a8a" }}>{fmtCmd(free)} free</span>
-              {training > 0 && <span style={{ color:"#4488cc" }}>{fmtCmd(training)} train</span>}
-              {healing > 0 && <span style={{ color:"#3daa60" }}>{fmtCmd(healing)} heal</span>}
-              {!isScrap && <span>{trainingQueues?.length||0}/{maxQueues}q</span>}
+            <div className="ty-quote">
+              {isScrap ? <span className="ty-warning">Selected troops will be removed.</span> : <>
+                <span className="ty-quote-label">{activeAmount ? "This order" : "Per command"}</span>
+                {Object.entries(activeQuote?.cost || {}).filter(([, value]) => value > 0).map(([key, value]) => <span key={key} className={(rss?.[key] || 0) < value ? "ty-warning" : ""}>{RSS[key]?.lbl || key} <b>{value.toLocaleString()}</b></span>)}
+                {activeQuote && <span>Time <b>{fmtTime(activeQuote.totalSeconds)}</b></span>}
+              </>}
+            </div>
+            <div className="ty-submit">
+              <button type="button" className="ty-clear" disabled={!selected.length} onClick={() => setValues({})}>Clear</button>
+              <button type="button" className={`ty-primary ${isScrap ? "ty-destructive" : ""}`} disabled={!!blocked} onClick={trainSelected}>{isScrap ? "Scrap selected" : "Train selected"}</button>
             </div>
           </div>
-        );
-      })()}
-
-
-      {/* Field: zoomed-out, two staggered rows (diagonal feel like LOTR reference).
-          Scroll LEFT/RIGHT. Most of the screen is the troop field. */}
-      <div
-        className="training-scroll"
-        style={{
-          flex: 1,
-          minHeight: 0, // allowed to actually shrink — fitScale compensates instead
-          overflowX: "scroll",
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
-          touchAction: "pan-x",
-          padding: "4px 10px 18px",
-          position: "relative",
-          zIndex: 1,
-          // Shared dark-fantasy battlefield: faction-neutral so every troop type
-          // trains in the same grounded environment.
-          backgroundImage:
-            "linear-gradient(to bottom, rgba(4,7,10,.20) 0%, rgba(4,7,10,.06) 48%, rgba(4,6,5,.42) 100%), url(\"/hq/training_muddy_battlefield.webp\")",
-          backgroundSize: "100% 100%",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          boxShadow: "inset 0 18px 30px rgba(0,0,0,.18), inset 0 -24px 42px rgba(0,0,0,.35)",
-          // Intentionally NO filter on this container. A parent CSS filter
-          // forces the browser to flatten every transformed sprite into an
-          // offscreen bitmap, which is a major source of soft/blurry art.
-          // Color grade is handled by the mix-blend overlays below instead.
-        }}
-      >
-        {(() => {
-          // The reference uses a small number of large, staggered formations
-          // visible at once rather than a wall of 10+ narrow cards. Each
-          // horizontal "column" contains one back-row and one front-row unit,
-          // with the front unit offset so the formation reads diagonally.
-          const columns = [];
-          for (let i = 0; i < ordered.length; i += 2) {
-            columns.push({
-              top: ordered[i] || null,
-              bottom: ordered[i + 1] || null,
-            });
-          }
-
-          const hash01 = (str) => {
-            let h = 0;
-            for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-            return (h % 1000) / 1000;
-          };
-          const depthFor = (key, isTop) => {
-            const base = isTop ? 0.22 : 0.78;
-            const jitter = (hash01(key) - 0.5) * 0.08;
-            return Math.min(1, Math.max(0, base + jitter));
-          };
-
-          const renderUnit = (t, isTop) => {
-            if (!t) return <div style={{ width: TRAIN_CARD_W, flexShrink: 0 }} />;
-            const depth = depthFor(t.key, isTop);
-            const scale = TRAIN_SCALE_MIN + depth * (TRAIN_SCALE_MAX - TRAIN_SCALE_MIN);
-            const satAmt = 0.80 + depth * 0.24;
-            const briAmt = 0.91 + depth * 0.10;
-            const shadowScale = 0.65 + depth * 0.5;
-            const shadowOpacity = 0.14 + depth * 0.32;
-            const amount = values[t.key] || 0;
-            const size = t.branch?.size || "small";
-            const step = isScrap ? 1 : (CMD_SIZE[size] || 100);
-            const room = troopsThatFit(t.bKey, freeCmds);
-            const maxAmount = isScrap
-              ? (t.poolCount || 0)
-              : Math.max(0, Math.floor(Math.min(maxBatch, room) / step) * step);
-            const tierLabel = ["I", "II", "III", "IV"][t.tier?.tierIdx ?? 0] || "I";
-            const psrc = troopVisualPath(t.fKey, t.branch.key, t.tier?.tierIdx ?? 0);
-            const fc = t.fColor || FACTION_META[t.fKey]?.c || "#888";
-            const ownedNow = (t.poolCount || 0) > 0 || (t.assigned || 0) > 0;
-            const quote = !isScrap && amount > 0
-              ? trainingQuote(
-                  t.bKey,
-                  amount,
-                  trainingSpeedMult,
-                  t.branch?.capstone
-                    ? capstoneTrainDiscount(bldgs[`b_${t.fKey}_${t.branch.key}`])
-                    : 0,
-                  trainingCostMult
-                )
-              : null;
-            const affordable = isScrap || !quote?.cost || canAfford(quote.cost);
-            const canSelect = isScrap ? maxAmount > 0 : maxAmount >= step && affordable;
-
-            return (
-              <div
-                key={t.key}
-                style={{
-                  width: TRAIN_CARD_W,
-                  height: "auto",
-                  minHeight: 0,
-                  flexShrink: 0,
-                  opacity: !ownedNow && !amount ? 0.72 : 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "flex-start",
-                  position: "relative",
-                  transform: `translate(${isTop ? 52 : -52}px, ${isTop ? -14 : -20}px)`,
-                  zIndex: Math.round(depth * 100),
-                }}
-              >
-                {/* The label/controls have their own fixed block. They never
-                    share the sprite box, so names cannot sit on the figures. */}
-                <div
-                  style={{
-                    width: "100%",
-                    height: 30,
-                    flexShrink: 0,
-                    textAlign: "center",
-                    pointerEvents: "none",
-                    lineHeight: 1.05,
-                    position: "relative",
-                    zIndex: 50,
-                  }}
-                >
-                  <div style={{
-                    fontFamily: P.ffc,
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: ".02em",
-                    textTransform: "uppercase",
-                    color: P.text,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    textShadow: "0 1px 2px #000, 0 0 5px #000",
-                  }}>{t.tier.label}</div>
-                  <div style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 3,
-                    marginTop: 2,
-                    padding: "0 5px",
-                    height: 12,
-                    borderRadius: 3,
-                    background: "rgba(0,0,0,.62)",
-                    border: `1px solid ${fc}66`,
-                  }}>
-                    <span style={{ fontFamily: P.ff, fontSize: 6.5, color: fc, fontWeight: 700 }}>{tierLabel}</span>
-                    <span style={{ width: 1, height: 7, background: `${fc}55` }} />
-                    <span style={{ fontFamily: P.ffc, fontSize: 7, fontWeight: 600, color: ownedNow ? P.gold : "#8a7a60" }}>
-                      {(t.poolCount || 0).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-                <div style={{
-                  width: "100%",
-                  height: 30,
-                  flexShrink: 0,
-                  padding: "1px 3px 1px",
-                  marginTop: 1,
-                  marginBottom: 2,
-                  borderRadius: 3,
-                  background: amount > 0 ? "rgba(5,7,9,.82)" : "rgba(5,7,9,.38)",
-                  border: amount > 0 ? `1px solid ${fc}77` : "1px solid rgba(255,255,255,.04)",
-                  boxSizing: "border-box",
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontFamily: P.ff, fontSize: 5.5 }}>
-                    <span style={{ color: "#c8b898", fontWeight: 700 }}>{isScrap ? "S" : "T"}</span>
-                    <span style={{ color: amount > 0 ? P.gold : "#6a5a48", fontWeight: 700 }}>{amount.toLocaleString()}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={Math.max(step, maxAmount)}
-                    step={step}
-                    value={Math.min(amount, maxAmount)}
-                    disabled={!canSelect && amount === 0}
-                    onChange={(e) => setValue(t, e.target.value)}
-                    style={{ width: "100%", margin: 0, accentColor: fc, cursor: canSelect ? "pointer" : "not-allowed", height: 10 }}
-                  />
-                </div>
-
-                <div style={{
-                  width: TRAIN_SPRITE_W,
-                  height: TRAIN_SPRITE_H,
-                  position: "relative",
-                  overflow: "visible",
-                  flexShrink: 0,
-                  marginTop: -6,
-                }}>
-                  {psrc ? (() => {
-                    // Consistent three-person diagonal cluster. The spacing is
-                    // deliberately normalized across all troop types so one
-                    // unit cannot randomly create a huge gap or overlap.
-                    const hw = TRAIN_SPRITE_W * 0.46;
-                    const layouts = [
-                      { x: -hw * 0.88, y: 1, s: 0.84, z: 1 },
-                      { x: 0,          y: 7, s: 0.98, z: 3 },
-                      { x: hw * 0.88,  y: 2, s: 0.86, z: 2 },
-                    ];
-                    const figH = Math.min(TRAIN_SPRITE_H * 0.94 * scale, SPRITE_ART_NATIVE_H);
-                    const figW = Math.min(figH * 0.55, SPRITE_ART_NATIVE_W);
-                    return layouts.map((p, idx) => (
-                      <div key={idx} style={{
-                        position: "absolute",
-                        left: `calc(50% + ${p.x}px)`,
-                        bottom: p.y,
-                        width: figW * p.s,
-                        height: figH * p.s,
-                        transform: "translateX(-50%)",
-                        zIndex: p.z,
-                      }}>
-                        <img
-                          src={psrc}
-                          alt=""
-                          draggable="false"
-                          style={{
-                            position: "absolute",
-                            left: "50%",
-                            bottom: 0,
-                            transform: "translateX(-50%)",
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
-                            objectPosition: "center bottom",
-                            imageRendering: "auto",
-                            filter: `saturate(${satAmt}) brightness(${briAmt})`,
-                          }}
-                          onError={(e) => { e.currentTarget.style.display = "none"; }}
-                        />
-                        <div style={{
-                          position: "absolute",
-                          left: "10%",
-                          right: "10%",
-                          bottom: -2,
-                          height: 10 * shadowScale * p.s,
-                          borderRadius: "50%",
-                          background: `radial-gradient(ellipse at center, rgba(0,0,0,${shadowOpacity + .25}) 0%, rgba(0,0,0,${shadowOpacity}) 45%, rgba(0,0,0,0) 75%)`,
-                          filter: "blur(1.2px)",
-                          pointerEvents: "none",
-                        }} />
-                      </div>
-                    ));
-                  })() : (
-                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, opacity: 0.4 }}>
-                      {t.fIcon || "⚔"}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          };
-
-          return (
-            <div style={{
-              display: "flex",
-              alignItems: "stretch",
-              gap: 18,
-              height: "100%",
-              minWidth: "max-content",
-              width: "max-content",
-              boxSizing: "border-box",
-              padding: "6px 72px 12px 72px",
-              position: "relative",
-              zIndex: 2,
-            }}>
-              {columns.map((col, i) => (
-                <div key={i} style={{
-                  width: TRAIN_CARD_W,
-                  height: "100%",
-                  flexShrink: 0,
-                  display: "grid",
-                  gridTemplateRows: "minmax(0,1fr) minmax(0,1fr)",
-                  rowGap: 0,
-                  position: "relative",
-                }}>
-                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "visible", position: "relative" }}>
-                    {renderUnit(col.top, true)}
-                  </div>
-                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "visible", position: "relative" }}>
-                    {renderUnit(col.bottom, false)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-        {/* ── Unified color grade ───────────────────────────────────────────
-            Everything below the training-scroll div (background art AND every
-            troop sprite) sits behind these two overlays. Unlike the dark
-            gradient baked into the backgroundImage above — which only ever
-            touched the battlefield photo — these use mix-blend-mode so they
-            tint the sprites too, pulling each character's individually-lit
-            art toward one shared cool/moody grade. */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 5,
-            pointerEvents: "none",
-            mixBlendMode: "color",
-            background:
-              "linear-gradient(165deg, rgba(72,98,122,.44) 0%, rgba(46,60,74,.3) 55%, rgba(22,26,32,.4) 100%)",
-          }}
-        />
-        {/* Distance haze — a light, cool band weighted toward the top of the
-            field (where the far/back-row units sit) so the far units visibly
-            recede into the air instead of just sitting smaller. Fades out
-            completely by mid-field. */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 5,
-            pointerEvents: "none",
-            mixBlendMode: "screen",
-            background:
-              "linear-gradient(to bottom, rgba(150,168,190,.16) 0%, rgba(150,168,190,.07) 35%, rgba(150,168,190,0) 60%)",
-          }}
-        />
-        {/* Vignette + grounding darkness — reinforces the top/bottom fade and
-            darkens the outer edges so focus stays center, on the sprites. */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 6,
-            pointerEvents: "none",
-            mixBlendMode: "multiply",
-            background:
-              "radial-gradient(ellipse 72% 65% at 50% 42%, rgba(0,0,0,0) 0%, rgba(0,0,0,.14) 60%, rgba(0,0,0,.5) 100%), " +
-              "linear-gradient(to bottom, rgba(0,0,0,.28) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 68%, rgba(0,0,0,.42) 100%)",
-          }}
-        />
-      </div>
-
-      {/* Fixed action bar */}
-      <div
-        style={{
-          flexShrink: 0,
-          borderTop: `1px solid ${P.border}`,
-          padding: "6px 10px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          background: "rgba(5,6,8,.98)",
-        }}
-      >
-        <div style={{ flex: 1, fontFamily: P.ff, fontSize: 8.5, color: P.dim }}>
-          <span style={{ color: P.gold, fontWeight: 700 }}>{selected.length}</span> TROOP TYPES ·{" "}
-          <span style={{ color: selectedTroops ? P.gold : P.dim, fontWeight: 700 }}>
-            {selectedTroops.toLocaleString()}
-          </span>{" "}
-          TROOPS ·{" "}
-          <span style={{ color: selectedCommands ? "#6aaa50" : P.dim, fontWeight: 700 }}>
-            {fmtCmd(selectedCommands)}
-          </span>{" "}
-          COMMANDS
-        </div>
-        <button
-          className="btn"
-          onClick={() => setValues({})}
-          style={{
-            padding: "8px 18px",
-            fontFamily: P.ff,
-            fontSize: 9,
-            borderRadius: 5,
-            cursor: "pointer",
-            background: "rgba(255,255,255,.03)",
-            border: `1px solid ${P.border}`,
-            color: P.dim,
-          }}
-        >
-          CANCEL
-        </button>
-        <button
-          className="btn"
-          disabled={!selected.length}
-          onClick={trainSelected}
-          style={{
-            padding: "8px 24px",
-            fontFamily: P.ff,
-            fontSize: 9,
-            fontWeight: 700,
-            borderRadius: 5,
-            cursor: selected.length ? "pointer" : "not-allowed",
-            background: selected.length
-              ? "linear-gradient(135deg,#c8903a,#8a5a18)"
-              : "rgba(255,255,255,.03)",
-            border: `1px solid ${selected.length ? "#f0c04077" : "#222"}`,
-            color: selected.length ? "#fff8e8" : "#333",
-          }}
-        >
-          {isScrap ? "SCRAP SELECTED" : "TRAIN SELECTED"}
-        </button>
-      </div>
-    </div>
+          <div className="ty-order-summary" role="status">
+            <span>{selected.length ? `${selectedTroops.toLocaleString()} troops · ${fmtCmd(selectedCommands)} commands · ${selected.length} troop ${selected.length === 1 ? "type" : "types"}` : "Choose an amount, then train your troops."}</span>
+            <span className={selected.length && blocked ? "ty-warning" : ""}>{selected.length && blocked ? blocked : selected.length > 1 && !isScrap ? `Total: ${Object.entries(totalCost).filter(([,v]) => v > 0).map(([k,v]) => `${v.toLocaleString()} ${RSS[k]?.lbl || k}`).join(" · ")}` : ""}</span>
+          </div>
+        </> : <div className="ty-order-heading">{isScrap ? "Your barracks are empty" : "No troops unlocked"}</div>}
+      </footer>
+    </section>
   );
 }
 
-// ── Root two-screen wrapper ────────────────────────────────────────────────────
 function StrikeCraftScreen({ bldgs, barracksPool, troopCounts, trainingQueues, setTrainingQueues,
   canAfford, queueTraining, rss, cmds, discardTroops, unlockedBranches, trainingSpeedMult, trainingCostMult = 1,
   neutralSources = {}, contractCommandsLeft, healQueue = [] }) {
@@ -3501,8 +3157,12 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
     ))}
   </>}
 
-  {/* Title bar */}
-  <div style={{ position:"relative", zIndex:5,
+  {/* Compact navigation gives the training yard more vertical room. */}
+  {hqTab === "troops" ? <header className="ty-navigation">
+    <button type="button" onClick={() => setHqTab("hub")} aria-label="Back to headquarters">‹ <span>HQ</span></button>
+    <h2>Barracks <small>Training grounds</small></h2>
+    <button type="button" onClick={() => setHqOpen(false)} aria-label="Close headquarters">✕</button>
+  </header> : <div style={{ position:"relative", zIndex:5,
     padding:"18px 24px 14px",
     paddingTop:"calc(var(--sat) + 18px)",
     borderBottom: isHub ? "2px solid #7a5028" : `1px solid ${P.border}`,
@@ -3550,7 +3210,7 @@ boxShadow:"inset 0 0 80px rgba(50,15,0,.6)" }}>
         fontSize:13, padding:"6px 14px", minHeight:36, minWidth:44, borderRadius:5, cursor:"pointer", touchAction:"manipulation" }}>
       {isHub ? "✕" : "✕ Close"}
     </button>
-  </div>
+  </div>}
 
   {/* Content */}
   {(() => {

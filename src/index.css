@@ -170,3 +170,155 @@ input[type="range"]:disabled { opacity: 0.4; }
   width: 16px;
   height: 16px;
 }
+
+/* Training yard: all text/controls stay above the scenery, outside its grading. */
+.ty-navigation { display:flex; align-items:center; gap:16px; padding:calc(var(--sat, 0px) + 6px) 20px 6px; padding-right:calc(var(--sar, 0px) + 20px); min-height:56px; flex-shrink:0; background:linear-gradient(110deg,#182026,#101419); border-bottom:1px solid #8c75473d; color:#e8d4a7; }
+.ty-navigation button { min-width:44px; min-height:40px; border:0; background:transparent; color:#d1b478; font-size:24px; cursor:pointer; }
+.ty-navigation button span { font:12px 'Cinzel',serif; }
+.ty-navigation h2 { flex:1; font:600 22px 'Cinzel',serif; }
+.ty-navigation h2 small { display:inline-block; margin-left:16px; color:#a7aba8; font:12px Arial,sans-serif; letter-spacing:.08em; }
+.training-yard { display:flex; flex-direction:column; height:100%; min-height:0; color:#e8e3d7; background:#141a1e; font:13px Arial,sans-serif; }
+.training-yard button { font:inherit; cursor:pointer; touch-action:manipulation; }
+.training-yard button:disabled { cursor:default; }
+.training-yard button:focus-visible, .training-yard input:focus-visible, .ty-field:focus-visible, .ty-navigation button:focus-visible { outline:2px solid #f1d59c; outline-offset:-2px; }
+.ty-status { display:flex; align-items:center; gap:20px; flex-shrink:0; padding:8px 24px; padding-right:calc(var(--sar, 0px) + 24px); background:#182127; border-bottom:1px solid #a68b4d38; }
+.ty-capacity { flex:1; max-width:580px; min-width:150px; }
+.ty-capacity > div:first-child { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:6px; }
+.ty-capacity strong { color:#ead09a; font-weight:500; white-space:nowrap; }
+.ty-capacity small { color:#b4c2c7; font-size:11px; }
+.ty-capacity-track { display:flex; height:5px; background:#090e13; border-radius:2px; overflow:hidden; }
+.ty-capacity-track i { background:linear-gradient(90deg,#957340,#d4b875); }
+.ty-capacity-track i.ty-reserved { background:#779fb2; }
+.ty-queue-count { color:#b4c2c7; font-size:12px; white-space:nowrap; }
+.ty-mode { margin-left:auto; min-height:36px; padding:4px 12px; color:#c5b5a5; background:#1e2325; border:1px solid #78644975; border-radius:3px; }
+.ty-scene { flex:1; min-height:0; position:relative; isolation:isolate; container-type:size; }
+.ty-scenery { position:absolute; inset:0; z-index:-1; background:url('/hq/training_muddy_battlefield.webp') center 57% / cover no-repeat; filter:brightness(1.65) saturate(.75); }
+.ty-scene::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(180deg,#a4b8c514,transparent 30%,transparent 78%,#10181fd9); z-index:0; }
+.ty-field { position:absolute; inset:0 0 24px; scrollbar-width:thin; scrollbar-color:#a58b55 #1a2228; z-index:1; }
+.ty-field::-webkit-scrollbar { height:5px; }
+.ty-field::-webkit-scrollbar-thumb { background:#a58b55; }
+.ty-formations { display:flex; width:max-content; min-width:100%; height:100%; padding:12px 9cqw 10px 3cqw; }
+.ty-column { display:grid; grid-template-rows:minmax(0,1fr) minmax(0,1fr); width:clamp(225px,31cqw,450px); height:100%; flex-shrink:0; }
+.training-yard .ty-formation { display:flex; flex-direction:column; align-items:center; min-width:0; min-height:0; width:100%; position:relative; border:0; padding:0 8px; background:none; color:#ede4d2; text-align:left; }
+.ty-far { left:17%; }
+.ty-near { left:-3%; }
+.ty-plaque { display:flex; align-items:center; width:90%; max-width:320px; min-height:43px; padding:4px 12px 4px 0; flex-shrink:0; position:relative; z-index:4; background:linear-gradient(100deg,#151e25f5,#17232aef 88%,#17232a00); border-top:1px solid #9c88554d; border-bottom:1px solid #9c885526; }
+.ty-tier { display:flex; align-items:center; justify-content:center; align-self:stretch; min-width:33px; margin-right:9px; font:16px 'Cinzel',serif; color:#d8ba79; border-left:2px solid #a58a54; border-right:1px solid #8f794840; background:#c3ac6820; }
+.ty-unit-name { display:flex; flex-direction:column; min-width:0; gap:3px; flex:1; }
+.ty-unit-name strong { font-weight:500; font-size:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ty-unit-name > span { font-size:13px; color:#d9d6cb; }
+.ty-unit-name small { font-size:11px; color:#9baaa9; }
+.ty-unit-name em { color:#b5d79d; font-style:normal; }
+.ty-draft { font-size:12px; color:#efcf88; padding-left:6px; }
+.ty-figures { display:block; position:relative; width:94%; flex:1; min-height:0; margin-top:2px; }
+.ty-figure { position:absolute; display:block; height:94%; width:42%; bottom:1%; left:29%; z-index:2; }
+.ty-figure-0 { height:80%; bottom:12%; left:7%; z-index:1; }
+.ty-figure-2 { height:84%; bottom:9%; left:52%; z-index:1; }
+.ty-far .ty-figure { max-height:260px; filter:saturate(.85); }
+.ty-near .ty-figure { max-height:320px; }
+.ty-figure::before { content:''; position:absolute; left:9%; width:82%; height:9%; bottom:-1%; background:radial-gradient(ellipse,#030609b8,transparent 70%); }
+.ty-figure img { position:relative; display:block; width:100%; height:100%; object-fit:contain; object-position:center bottom; filter:brightness(1.16) saturate(.85); user-select:none; }
+.ty-portrait .ty-figure { width:58%; left:21%; }
+.ty-portrait img { object-fit:contain; mask-image:linear-gradient(#000 85%,transparent); }
+.ty-formation.is-active .ty-plaque { border-color:#d5b876; background:linear-gradient(100deg,#374044fa,#293437ed 88%,transparent); }
+.ty-formation.is-active .ty-tier { color:#ffe1a0; border-left-color:#f2cf86; }
+.ty-formation.is-active .ty-figures::before { content:''; position:absolute; bottom:-1%; left:8%; right:8%; height:18%; border-radius:50%; border:1px solid #d2b16c70; background:radial-gradient(ellipse,#d0a94d24,transparent 70%); }
+.ty-formation:hover .ty-plaque { border-top-color:#c7ad76; }
+.ty-yard-caption { position:absolute; bottom:5px; left:24px; right:24px; display:flex; justify-content:space-between; color:#c4c1b0; font-size:10px; letter-spacing:.14em; z-index:2; pointer-events:none; }
+.ty-yard-caption span:first-child { color:#b6a780; }
+.ty-empty { position:absolute; inset:20px; display:grid; place-content:center; text-align:center; color:#e1d5b8; }
+.ty-command-panel { flex-shrink:0; padding:12px 24px calc(10px + var(--sab, 0px)); padding-right:calc(24px + var(--sar, 0px)); background:linear-gradient(110deg,#182229,#10181e); border-top:1px solid #a48c564f; box-shadow:0 -8px 30px #0b141b38; }
+.ty-order-heading { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
+.ty-eyebrow { color:#b7a474; font-size:9px; letter-spacing:.16em; }
+.ty-order-heading h3 { display:inline; margin-left:14px; color:#ebd7a8; font:600 17px 'Cinzel',serif; }
+.ty-order-heading > span { color:#b2bdbd; font-size:11px; }
+.ty-order-controls { display:grid; grid-template-columns:minmax(200px,1fr) minmax(240px,1.2fr) auto; align-items:center; gap:20px; }
+.ty-quantity { display:flex; align-items:center; gap:10px; }
+.ty-quantity button { min-width:36px; height:38px; border:1px solid #8f7b514f; background:#263036; color:#dfc58e; font-size:20px; border-radius:3px; }
+.ty-quantity button:disabled { opacity:.4; }
+.ty-quantity button.ty-max { font-size:11px; }
+.ty-quantity label { flex:1; min-width:70px; text-align:center; color:#eddfbc; font-size:13px; }
+.ty-quantity label small { font-size:10px; color:#b1baba; }
+.ty-quantity input[type=range] { display:block; width:100%; height:24px; margin:0; touch-action:none; }
+.ty-quote { display:flex; flex-wrap:wrap; align-items:center; gap:5px 14px; font-size:11px; color:#b8c0bd; }
+.ty-quote b { color:#ece1c4; font-weight:500; margin-left:3px; }
+.ty-quote .ty-quote-label { width:100%; color:#9aa9ae; font-size:10px; }
+.ty-submit { display:flex; align-items:center; gap:10px; }
+.ty-submit button { min-height:42px; padding:8px 16px; border-radius:3px; }
+.ty-clear { background:transparent; border:1px solid #8c805442; color:#c3b995; }
+.ty-clear:disabled { opacity:.45; }
+.ty-primary { background:linear-gradient(145deg,#ddbe75,#aa8442); color:#201b12; border:1px solid #f4dba4; font-family:'Cinzel',serif !important; font-weight:700 !important; box-shadow:inset 0 0 0 3px #5f452433,0 2px 6px #0005; }
+.ty-primary:disabled { background:#354047; border-color:#586268; color:#a4adae; box-shadow:none; }
+.ty-primary.ty-destructive:not(:disabled) { background:#71362e; border-color:#b67057; color:#ffe0c4; }
+.ty-order-summary { display:flex; justify-content:space-between; gap:8px; min-height:15px; margin-top:8px; color:#a9b3b2; font-size:11px; }
+.training-yard .ty-warning, .training-yard .ty-warning b { color:#ffb092; }
+@media (max-width:950px) {
+  .ty-status { gap:12px; padding:6px 14px; }
+  .ty-capacity { max-width:none; }
+  .ty-order-controls { grid-template-columns:minmax(180px,1fr) auto; gap:8px 18px; }
+  .ty-quote { grid-column:1; grid-row:2; gap:4px 10px; }
+  .ty-quote .ty-quote-label { width:auto; }
+  .ty-submit { grid-column:2; grid-row:1 / 3; }
+  .ty-command-panel { padding:8px 16px calc(6px + var(--sab, 0px)); }
+  .ty-order-heading { margin-bottom:4px; }
+  .ty-order-summary { margin-top:5px; font-size:10px; }
+  .ty-order-heading h3 { font-size:15px; }
+}
+@media (max-height:500px) and (min-width:601px) {
+  .ty-navigation { min-height:40px; padding-top:var(--sat, 0px); padding-bottom:0; }
+  .ty-navigation button { min-height:36px; }
+  .ty-navigation h2 { font-size:18px; }
+  .ty-status { padding-top:3px; padding-bottom:3px; }
+  .ty-capacity > div:first-child { margin-bottom:3px; font-size:11px; }
+  .ty-mode { min-height:30px; font-size:11px !important; }
+  .ty-formations { padding-top:6px; padding-bottom:4px; }
+  .ty-plaque { min-height:32px; padding-top:2px; padding-bottom:2px; }
+  .ty-unit-name { gap:1px; }
+  .ty-unit-name strong { font-size:12px; }
+  .ty-unit-name > span { font-size:11px; }
+  .ty-unit-name small { font-size:10px; }
+  .ty-tier { font-size:13px; min-width:26px; margin-right:6px; }
+  .ty-command-panel { padding-top:5px; padding-bottom:calc(3px + var(--sab, 0px)); }
+  .ty-order-heading { margin-bottom:1px; }
+  .ty-eyebrow { display:none; }
+  .ty-order-heading h3 { margin-left:0; font-size:13px; }
+  .ty-quantity button { height:30px; min-width:30px; }
+  .ty-quantity label { font-size:11px; }
+  .ty-order-controls { gap:2px 14px; }
+  .ty-submit button { min-height:38px; padding:6px 12px; }
+  .ty-order-summary { margin-top:3px; }
+  .ty-yard-caption { font-size:8px; }
+}
+@media (max-width:600px) {
+  .ty-navigation { padding-left:8px; padding-right:8px; gap:8px; }
+  .ty-navigation h2 { font-size:18px; }
+  .ty-navigation h2 small { display:none; }
+  .ty-status { flex-wrap:wrap; gap:6px 12px; }
+  .ty-capacity { flex-basis:100%; }
+  .ty-mode { min-height:30px; font-size:11px !important; }
+  .ty-column { width:70cqw; }
+  .ty-unit-name strong { font-size:14px; }
+  .ty-order-controls { display:flex; flex-wrap:wrap; gap:8px; }
+  .ty-quantity { flex-basis:100%; }
+  .ty-quote { flex:1; }
+  .ty-quote .ty-quote-label { width:100%; }
+  .ty-submit { gap:6px; }
+  .ty-submit button { padding:6px 10px; font-size:11px; }
+  .ty-order-heading h3 { display:block; margin-left:0; }
+  .ty-order-summary { flex-direction:column; gap:2px; }
+  .ty-yard-caption { left:12px; right:12px; font-size:8px; }
+}
+/* On short phones, use one staggered line so figures retain a useful size. */
+@media (max-height:500px) and (min-width:601px) {
+  .ty-formations { align-items:flex-end; gap:12px; padding-left:3cqw; padding-right:3cqw; }
+  .ty-column { display:contents; }
+  .training-yard .ty-formation { width:34cqw; flex-shrink:0; }
+  .ty-formation.ty-far { height:86%; left:0; align-self:flex-start; }
+  .ty-formation.ty-near { height:92%; left:0; }
+}
+/* Landscape phones are the primary target; keep touch controls finger-sized. */
+@media (max-height:500px) and (min-width:601px) {
+  .ty-quantity button { min-width:44px; height:40px; }
+  .ty-submit button { min-height:44px; }
+  .ty-quantity input[type=range] { height:28px; }
+}
