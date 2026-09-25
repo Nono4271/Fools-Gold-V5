@@ -1493,13 +1493,13 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
 // at runtime (see FIT below) and scales everything to actually fit, so rows
 // can never clip again regardless of what this is set to.
 const TRAIN_FIELD_ZOOM = 1.0; // base layout scale; the field itself handles responsive sizing
-const TRAIN_CARD_W = 164;
-const TRAIN_SPRITE_W = 150;
-const TRAIN_SPRITE_H = 148;
+const TRAIN_CARD_W = 180;
+const TRAIN_SPRITE_W = 170;
+const TRAIN_SPRITE_H = 158;
 // Depth-based per-card scale (foreshortening) — near/bottom-row cards sit
 // bigger than far/top-row ones. This still only moves LAYOUT size.
-const TRAIN_SCALE_MIN = 0.82;
-const TRAIN_SCALE_MAX = 1.08;
+const TRAIN_SCALE_MIN = 0.88;
+const TRAIN_SCALE_MAX = 1.02;
 
 // Standing sprites are authored at 512×1024 (wide poses 768×1024). Cap display
 // size so we never upsample past source (blur). Layout size is driven by
@@ -1678,7 +1678,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
             // the available height, so this scale only affects visual depth;
             // it is no longer responsible for fitting the two-row layout.
             const scale = TRAIN_SCALE_MIN + depth * (TRAIN_SCALE_MAX - TRAIN_SCALE_MIN);
-            const yJitter = (hash01(t.key + "y") - 0.5) * 4; // light scatter, keep rows readable
+            const yJitter = 0; // keep label/sprite alignment stable; depth is handled by row scale
             const satAmt = 0.78 + depth * 0.28; // far units slightly desaturated
             const briAmt = 0.90 + depth * 0.12; // far units slightly dimmer/hazier
             // No CSS blur on the sprites themselves — it reads as soft/mushy art
@@ -1723,12 +1723,11 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  // Fake camera depth: near units (bottom row / high depth)
-                  // render bigger and slightly forward; far units shrink back.
-                  // The stable per-unit yJitter breaks up the two dead-straight
-                  // rows into something closer to a scattered formation.
-                  transform: `translateY(${yJitter}px) scale(${scale})`,
-                  transformOrigin: "bottom center",
+                  // Keep the card itself unscaled so its label and controls stay
+                  // in a predictable place. Depth is applied only to the troop
+                  // figures below; scaling the whole card was what caused labels
+                  // to drift into the sprite area and disappear on the lower row.
+                  transform: "none",
                   zIndex: Math.round(depth * 100),
                 }}
               >
@@ -1736,10 +1735,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 <div
                   style={{
                     width: "100%",
+                    minHeight: 25,
                     textAlign: "center",
                     pointerEvents: "none",
                     lineHeight: 1.05,
-                    marginBottom: 1,
+                    marginBottom: 7,
+                    position: "relative",
+                    zIndex: 50,
                   }}
                 >
                   <div
@@ -1786,7 +1788,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   style={{
                     width: "100%",
                     padding: "1px 2px 2px",
-                    marginBottom: 2,
+                    marginBottom: 6,
                     borderRadius: 3,
                     background: amount > 0 ? "rgba(5,7,9,.8)" : "rgba(5,7,9,.35)",
                     border: amount > 0 ? `1px solid ${fc}77` : "1px solid transparent",
@@ -1832,6 +1834,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                     width: TRAIN_SPRITE_W,
                     height: TRAIN_SPRITE_H,
                     position: "relative",
+                    overflow: "visible",
+                    flexShrink: 0,
                   }}
                 >
                   {psrc ? (
@@ -1841,33 +1845,23 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                       // (not stacked on top of each other). Offsets are in
                       // layout px relative to TRAIN_SPRITE_W so they scale with
                       // the card instead of being hard-coded for a 100px art box.
-                      const roll = hash01(t.key + "n");
-                      const clusterN = roll < 0.18 ? 2 : roll < 0.55 ? 3 : 4;
-                      // Spread figures across more of the sprite box so each
-                      // unit reads as a small formation instead of a tight stack.
+                      // Use a consistent three-figure formation. The previous
+                      // 2/3/4 random formation made some units look oddly
+                      // gapped while others were packed together.
                       const hw = TRAIN_SPRITE_W * 0.50;
+                      const clusterN = 3;
                       const layouts = {
-                        2: [
-                          { x: -hw * 0.62, y: 4, s: 0.86, z: 1 },
-                          { x:  hw * 0.62, y: 0, s: 0.98,  z: 2 },
-                        ],
                         3: [
-                          { x: -hw * 0.95, y: 6, s: 0.80, z: 1 },
-                          { x:  0,         y: 0, s: 0.98, z: 3 },
-                          { x:  hw * 0.95, y: 4, s: 0.84, z: 2 },
-                        ],
-                        4: [
-                          { x: -hw * 1.00, y: 12, s: 0.70, z: 1 },
-                          { x: -hw * 0.34, y: 14, s: 0.73, z: 1 },
-                          { x:  hw * 0.34, y:  0, s: 0.94, z: 2 },
-                          { x:  hw * 1.00, y:  2, s: 0.96, z: 2 },
+                          { x: -hw * 0.72, y: 5, s: 0.88, z: 1 },
+                          { x:  0,         y: 0, s: 0.96, z: 3 },
+                          { x:  hw * 0.72, y: 3, s: 0.90, z: 2 },
                         ],
                       };
                       // Display size of each figure: driven by the layout box
                       // so two rows fit, hard-capped at native art so we never
                       // upsample (blur). Keep within the sprite box so row
                       // overflow doesn't clip under overflowY:hidden.
-                      const figH = Math.min(TRAIN_SPRITE_H * 0.98, SPRITE_ART_NATIVE_H);
+                      const figH = Math.min(TRAIN_SPRITE_H * 0.96 * scale, SPRITE_ART_NATIVE_H);
                       const figW = Math.min(figH * 0.55, SPRITE_ART_NATIVE_W);
                       return layouts[clusterN].map((p, idx) => (
                         <div
@@ -1959,12 +1953,12 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
             >
               {/* Top row — back of field. A real grid row reserves its height,
                   so the second row can never be pushed below the viewport. */}
-              <div style={{ display: "flex", alignItems: "flex-end", minHeight: 0, gap: 26, paddingLeft: 48, overflow: "visible" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", minHeight: 0, gap: 34, paddingLeft: 48, paddingTop: 8, paddingBottom: 4, overflow: "visible" }}>
                 {top.map((t) => renderUnit(t, true))}
               </div>
               {/* Bottom row — front of field. Slightly larger through the
                   depth scale, like the reference battlefield formation. */}
-              <div style={{ display: "flex", alignItems: "flex-end", minHeight: 0, gap: 26, paddingLeft: 48, overflow: "visible" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", minHeight: 0, gap: 34, paddingLeft: 48, paddingTop: 8, paddingBottom: 4, overflow: "visible" }}>
                 {bot.map((t) => renderUnit(t, false))}
               </div>
             </div>
