@@ -27,8 +27,8 @@ test('build-on-crewmate\'s-tile: founder/officer can build on any crew member\'s
   assert.equal(tileOwnerInCrew({ owner: 'ai', ownerPlayerId: 'm' }, crew), true);
   // A tile owned by someone outside the crew is not buildable.
   assert.equal(tileOwnerInCrew({ owner: 'ai', ownerPlayerId: 'outsider' }, crew), false);
-  // Unclaimed tile (no owner) is always fine.
-  assert.equal(tileOwnerInCrew({}, crew), true);
+  // Unclaimed tile (no owner) no longer qualifies — must be claimed first.
+  assert.equal(tileOwnerInCrew({}, crew), false);
 
   const p10crewmateTile = { powerLevel: FORTRESS_MIN_POWER_LEVEL, owner: 'ai', ownerPlayerId: 'm' };
   assert.equal(canBuildFortressOnTile(p10crewmateTile, crew).ok, true);
@@ -40,13 +40,14 @@ test('build-on-crewmate\'s-tile: founder/officer can build on any crew member\'s
   assert.equal(canStartFortressBuild(crew, 'f', outsiderTile, FORTRESS_COST).ok, false);
 });
 
-test('canBuildFortressOnTile: needs p10+, no camp, unclaimed, no existing structure', () => {
+test('canBuildFortressOnTile: needs p10+, no camp, must already be claimed (by you or crew), no existing structure', () => {
   assert.equal(canBuildFortressOnTile(null).ok, false);
   assert.equal(canBuildFortressOnTile({ powerLevel: 9 }).ok, false);
   assert.equal(canBuildFortressOnTile({ powerLevel: FORTRESS_MIN_POWER_LEVEL, isCamp: true }).ok, false);
   assert.equal(canBuildFortressOnTile({ powerLevel: FORTRESS_MIN_POWER_LEVEL, owner: 'someone' }).ok, false);
   assert.equal(canBuildFortressOnTile({ powerLevel: FORTRESS_MIN_POWER_LEVEL, fort: {} }).ok, false);
-  assert.equal(canBuildFortressOnTile({ powerLevel: FORTRESS_MIN_POWER_LEVEL }).ok, true);
+  assert.equal(canBuildFortressOnTile({ powerLevel: FORTRESS_MIN_POWER_LEVEL }).ok, false, 'unclaimed tile is no longer buildable');
+  assert.equal(canBuildFortressOnTile({ powerLevel: FORTRESS_MIN_POWER_LEVEL, owner: 'player' }).ok, true, 'your own tile is buildable');
 });
 
 test('canAffordFortress checks all three resources against FORTRESS_COST', () => {
@@ -57,7 +58,7 @@ test('canAffordFortress checks all three resources against FORTRESS_COST', () =>
 
 test('canStartFortressBuild: role, slots, tile and resources all gate it', () => {
   const crew = crewWith({ members: ['f', 'm'], officers: [] });
-  const tile = { powerLevel: 10 };
+  const tile = { powerLevel: 10, owner: 'player' };
   assert.equal(canStartFortressBuild(crew, 'm', tile, FORTRESS_COST).ok, false); // member can't build
   assert.equal(canStartFortressBuild(crew, 'f', tile, { wood: 0, stone: 0, gas: 0 }).ok, false); // can't afford
   assert.equal(canStartFortressBuild(crew, 'f', tile, FORTRESS_COST).ok, true);

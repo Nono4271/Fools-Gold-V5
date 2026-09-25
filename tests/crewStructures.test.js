@@ -18,18 +18,21 @@ import { simBattle } from '../shared/utils/battle.js';
 import { generateSpawnCommander } from '../src/utils/spawnUtils.js';
 
 const RICH = { wood: 1e9, stone: 1e9, gas: 1e9, food: 1e9 };
-const TILE = { powerLevel: 10, terrain: 'grass' };
+// Owned by the player by default — Wells/Outposts require an already-claimed
+// tile, not unclaimed wilds (see the dedicated 'unclaimed' assertions below).
+const TILE = { powerLevel: 10, terrain: 'grass', owner: 'player' };
 const crew = (over = {}) => ({ id: 'c1', founder: 'me', officers: ['off'], members: ['me', 'off', 'mem'], level: 50, wells: [], outpost: null, fortresses: [], ...over });
 const NOW = 1_700_000_000_000;
 
 // ── Well ──────────────────────────────────────────────────────────────────
-test('Well: founder or officer, level-gated, p10+ tile unclaimed or owned by a crewmate, affordable', () => {
+test('Well: founder or officer, level-gated, p10+ tile owned by you or a crewmate, affordable', () => {
   const none = new Set();
   assert.equal(canStartWellBuild(crew(), 'me', TILE, 'k', RICH, none).ok, true);
   assert.equal(canStartWellBuild(crew(), 'off', TILE, 'k', RICH, none).ok, true, 'officers can');
   assert.equal(canStartWellBuild(crew(), 'mem', TILE, 'k', RICH, none).ok, false, 'plain members cannot');
   assert.equal(canStartWellBuild(crew({ level: 30 }), 'me', TILE, 'k', RICH, none).ok, false, 'needs level 31');
-  assert.equal(canStartWellBuild(crew(), 'me', { powerLevel: 9 }, 'k', RICH, none).ok, false);
+  assert.equal(canStartWellBuild(crew(), 'me', { powerLevel: 9, owner: 'player' }, 'k', RICH, none).ok, false);
+  assert.equal(canStartWellBuild(crew(), 'me', { powerLevel: 10, terrain: 'grass' }, 'k', RICH, none).ok, false, 'unclaimed tile is no longer buildable');
   assert.equal(canStartWellBuild(crew(), 'me', { ...TILE, owner: 'player' }, 'k', RICH, none).ok, true, 'own tile is buildable');
   assert.equal(canStartWellBuild(crew(), 'me', { ...TILE, owner: 'ai', ownerPlayerId: 'outsider' }, 'k', RICH, none).ok, false, 'tile owned outside the crew');
   assert.equal(canStartWellBuild(crew(), 'me', { ...TILE, isCamp: true }, 'k', RICH, none).ok, false);
@@ -71,12 +74,13 @@ test('Well gather: all 4 resources at the p11 rate (same 4x-per-tick formula as 
 });
 
 // ── Contract Outpost ──────────────────────────────────────────────────────
-test('Outpost: founder or officer, level 35+, one per crew', () => {
+test('Outpost: founder or officer, level 35+, one per crew, tile owned by you or a crewmate', () => {
   const none = new Set();
   assert.equal(canStartOutpostBuild(crew(), 'me', TILE, 'k', RICH, none).ok, true);
   assert.equal(canStartOutpostBuild(crew(), 'off', TILE, 'k', RICH, none).ok, true, 'officers can');
   assert.equal(canStartOutpostBuild(crew(), 'mem', TILE, 'k', RICH, none).ok, false, 'plain members cannot');
   assert.equal(canStartOutpostBuild(crew({ level: 34 }), 'me', TILE, 'k', RICH, none).ok, false);
+  assert.equal(canStartOutpostBuild(crew(), 'me', { powerLevel: 10, terrain: 'grass' }, 'k', RICH, none).ok, false, 'unclaimed tile is no longer buildable');
   const op = createOutpost({ id: 'o', crewId: 'c1', tileKey: 'b', now: NOW });
   assert.equal(canStartOutpostBuild(crew({ outpost: op }), 'me', TILE, 'k', RICH, none).ok, false);
   assert.equal(canStartOutpostBuild(crew(), 'me', TILE, 'k', { ...OUTPOST_COST, wood: 0 }, none).ok, false);
