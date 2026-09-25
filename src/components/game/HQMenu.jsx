@@ -1493,9 +1493,9 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
 // at runtime (see FIT below) and scales everything to actually fit, so rows
 // can never clip again regardless of what this is set to.
 const TRAIN_FIELD_ZOOM = 1.0; // base layout scale; the field itself handles responsive sizing
-const TRAIN_CARD_W = 245;
-const TRAIN_SPRITE_W = 190;
-const TRAIN_SPRITE_H = 132;
+const TRAIN_CARD_W = 225;
+const TRAIN_SPRITE_W = 180;
+const TRAIN_SPRITE_H = 124;
 // Depth-based per-card scale (foreshortening) — near/bottom-row cards sit
 // bigger than far/top-row ones. This still only moves LAYOUT size.
 const TRAIN_SCALE_MIN = 0.84;
@@ -1628,7 +1628,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           flex: 1,
           minHeight: 0, // allowed to actually shrink — fitScale compensates instead
           overflowX: "scroll",
-          overflowY: "hidden",
+          overflowY: "auto",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-x",
           padding: "8px 10px 2px",
@@ -1710,7 +1710,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 key={t.key}
                 style={{
                   width: TRAIN_CARD_W,
-                  height: "100%",
+                  height: "auto",
+                  minHeight: 0,
                   flexShrink: 0,
                   opacity: !ownedNow && !amount ? 0.72 : 1,
                   display: "flex",
@@ -1718,7 +1719,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   alignItems: "center",
                   justifyContent: "flex-start",
                   position: "relative",
-                  transform: `translate(${isTop ? -55 : 55}px, ${isTop ? -6 + (0.5 - depth) * 10 : -14 + (0.5 - depth) * 10}px)`,
+                  transform: `translate(${isTop ? 52 : -52}px, ${isTop ? -2 : -8}px)`,
                   zIndex: Math.round(depth * 100),
                 }}
               >
@@ -1807,13 +1808,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                     // Consistent three-person diagonal cluster. The spacing is
                     // deliberately normalized across all troop types so one
                     // unit cannot randomly create a huge gap or overlap.
-                    const hw = TRAIN_SPRITE_W * 0.47;
+                    const hw = TRAIN_SPRITE_W * 0.46;
                     const layouts = [
                       { x: -hw * 0.88, y: 1, s: 0.84, z: 1 },
                       { x: 0,          y: 7, s: 0.98, z: 3 },
                       { x: hw * 0.88,  y: 2, s: 0.86, z: 2 },
                     ];
-                    const figH = Math.min(TRAIN_SPRITE_H * 0.98 * scale, SPRITE_ART_NATIVE_H);
+                    const figH = Math.min(TRAIN_SPRITE_H * 0.94 * scale, SPRITE_ART_NATIVE_H);
                     const figW = Math.min(figH * 0.55, SPRITE_ART_NATIVE_W);
                     return layouts.map((p, idx) => (
                       <div key={idx} style={{
@@ -1875,7 +1876,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               minWidth: "max-content",
               width: "max-content",
               boxSizing: "border-box",
-              padding: "2px 34px 8px 34px",
+              padding: "6px 72px 12px 72px",
               position: "relative",
               zIndex: 2,
             }}>
@@ -1889,10 +1890,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   rowGap: 0,
                   position: "relative",
                 }}>
-                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "hidden" }}>
+                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "visible", position: "relative" }}>
                     {renderUnit(col.top, true)}
                   </div>
-                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "hidden" }}>
+                  <div style={{ minHeight: 0, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "visible", position: "relative" }}>
                     {renderUnit(col.bottom, false)}
                   </div>
                 </div>
