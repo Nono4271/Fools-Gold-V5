@@ -1492,23 +1492,20 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
 // the raster art itself. The field container measures its own real height
 // at runtime (see FIT below) and scales everything to actually fit, so rows
 // can never clip again regardless of what this is set to.
-const TRAIN_FIELD_ZOOM = 1.4; // 1 = old default. Bigger cards/spacing now that fit is automatic.
-const TRAIN_CARD_W = Math.round(210 * TRAIN_FIELD_ZOOM);
-const TRAIN_SPRITE_W = Math.round(190 * TRAIN_FIELD_ZOOM);
-const TRAIN_SPRITE_H = Math.round(150 * TRAIN_FIELD_ZOOM);
+const TRAIN_FIELD_ZOOM = 1.15; // slightly under previous 1.4 so two rows + labels fit cleanly in landscape
+const TRAIN_CARD_W = Math.round(168 * TRAIN_FIELD_ZOOM);
+const TRAIN_SPRITE_W = Math.round(140 * TRAIN_FIELD_ZOOM);
+const TRAIN_SPRITE_H = Math.round(160 * TRAIN_FIELD_ZOOM);
 // Depth-based per-card scale (foreshortening) — near/bottom-row cards sit
 // bigger than far/top-row ones. This still only moves LAYOUT size.
-const TRAIN_SCALE_MIN = 0.72;
-const TRAIN_SCALE_MAX = 1.3;
+const TRAIN_SCALE_MIN = 0.78;
+const TRAIN_SCALE_MAX = 1.18;
 
-// Hard ceiling on how big the *source art* is ever allowed to render, in px,
-// independent of TRAIN_FIELD_ZOOM/depth-scale. Standing sprites are authored
-// at 512×1024 (some wide poses 768×1024). Rendering past that just upsamples
-// and reads as blurry, so this is a cap, not a knob. Previously set to
-// 100×150 which forced the browser to upsample under CSS transform:scale,
-// producing the landscape blur / vanishing-sprite bug.
-const SPRITE_ART_NATIVE_W = 256;
-const SPRITE_ART_NATIVE_H = 512;
+// Standing sprites are authored at 512×1024 (wide poses 768×1024). Cap display
+// size so we never upsample past source (blur). Layout size is driven by
+// TRAIN_SPRITE_* above; this is only a hard max on the <img> pixel box.
+const SPRITE_ART_NATIVE_W = 320;
+const SPRITE_ART_NATIVE_H = 640;
 
 // ── Screen 2: Train / Scrap — unit list | selected unit + slider | queues ──────
 function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troopCards, trainingQueues, setTrainingQueues, trainingSpeedMult, trainingCostMult = 1,
@@ -1594,11 +1591,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  // Height two full-zoom rows would want, at TRAIN_FIELD_ZOOM, before fitting.
-  const wantedRowsH = TRAIN_SPRITE_H * TRAIN_SCALE_MAX * 2 + 140;
+  // Height two full-zoom rows would want before fitting: sprite box + label/
+  // slider stack + inter-row gap + bottom clearance. Tuned so landscape still
+  // shows both rows instead of collapsing to one.
+  const wantedRowsH = TRAIN_SPRITE_H * TRAIN_SCALE_MAX * 2 + 120;
   // Scale everything vertical down (never up) so it always fits fieldH.
-  // 1 while unmeasured on first paint, so nothing flashes at 0 height.
-  const fitScale = fieldH > 0 ? Math.min(1, fieldH / wantedRowsH) : 1;
+  // Floor at 0.55 so landscape never shrinks figures into unreadability.
+  const fitScale = fieldH > 0 ? Math.min(1, Math.max(0.55, fieldH / wantedRowsH)) : 1;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#08090b" }}>
@@ -1665,10 +1664,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           boxShadow: "inset 0 18px 30px rgba(0,0,0,.18), inset 0 -24px 42px rgba(0,0,0,.35)",
-          // Small overall punch so the field, the overlays below, and every
-          // sprite's own per-image filter all read as one graded shot instead
-          // of separately-lit cutouts pasted over a photo.
-          filter: "contrast(1.03) saturate(1.05)",
+          // Intentionally NO filter on this container. A parent CSS filter
+          // forces the browser to flatten every transformed sprite into an
+          // offscreen bitmap, which is a major source of soft/blurry art.
+          // Color grade is handled by the mix-blend overlays below instead.
         }}
       >
         {(() => {
@@ -1703,13 +1702,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
             // too short for the requested zoom — this is what replaces the
             // old fixed minHeight and actually guarantees both rows fit.
             const scale = (TRAIN_SCALE_MIN + depth * (TRAIN_SCALE_MAX - TRAIN_SCALE_MIN)) * fitScale;
-            const yJitter = (hash01(t.key + "y") - 0.5) * 12 * fitScale; // organic scatter, px
-            const satAmt = 0.66 + depth * 0.4; // far units slightly desaturated
-            const briAmt = 0.86 + depth * 0.2; // far units slightly dimmer/hazier
-            // Keep atmospheric blur subtle. At the old 1.1px * (1-depth) far
-            // units (especially after fitScale on short landscape panels)
-            // became an unreadable smear and often looked "missing".
-            const blurAmt = (1 - depth) * 0.35;
+            const yJitter = (hash01(t.key + "y") - 0.5) * 6 * fitScale; // light scatter, px — keep rows readable
+            const satAmt = 0.78 + depth * 0.28; // far units slightly desaturated
+            const briAmt = 0.90 + depth * 0.12; // far units slightly dimmer/hazier
+            // No CSS blur on the sprites themselves — it reads as soft/mushy art
+            // and was a big part of the "still blurry" report. Depth is already
+            // conveyed by scale + desat + the field haze overlay.
+            const blurAmt = 0;
             const shadowScale = 0.65 + depth * 0.5; // near units cast bigger shadows
             const shadowOpacity = 0.14 + depth * 0.32;
             const amount = values[t.key] || 0;
@@ -1861,39 +1860,37 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 >
                   {psrc ? (
                     (() => {
-                      // RTW-style formations: small blocks with actual ranks
-                      // (rows), not just a couple of scattered guys. Denser
-                      // rolls are weighted so most cards read as a little
-                      // regiment; a few stay small 2–3 clusters for variety.
+                      // Reference-style clusters: 2–4 figures, clearly spaced
+                      // so they read as a small regiment standing on the field
+                      // (not stacked on top of each other). Offsets are in
+                      // layout px relative to TRAIN_SPRITE_W so they scale with
+                      // the card instead of being hard-coded for a 100px art box.
                       const roll = hash01(t.key + "n");
-                      const clusterN = roll < 0.12 ? 2 : roll < 0.32 ? 3 : roll < 0.62 ? 4 : 6;
+                      const clusterN = roll < 0.18 ? 2 : roll < 0.55 ? 3 : 4;
+                      // Base half-width of the formation relative to sprite box
+                      const hw = TRAIN_SPRITE_W * 0.42;
                       const layouts = {
                         2: [
-                          { x: -26, y: 5, s: 0.82, z: 1 },
-                          { x: 24, y: 0, s: 1, z: 2 },
+                          { x: -hw * 0.55, y: 4, s: 0.88, z: 1 },
+                          { x:  hw * 0.55, y: 0, s: 1.0,  z: 2 },
                         ],
                         3: [
-                          { x: -42, y: 7, s: 0.76, z: 1 },
-                          { x: 5, y: -5, s: 1, z: 3 },
-                          { x: 43, y: 5, s: 0.8, z: 2 },
+                          { x: -hw * 0.85, y: 6, s: 0.82, z: 1 },
+                          { x:  0,         y: 0, s: 1.0,  z: 3 },
+                          { x:  hw * 0.85, y: 4, s: 0.86, z: 2 },
                         ],
-                        // 2x2 block: back rank smaller/higher, front rank bigger/lower
                         4: [
-                          { x: -34, y: 16, s: 0.7, z: 1 },
-                          { x: -10, y: 18, s: 0.72, z: 1 },
-                          { x: 12, y: 0, s: 0.96, z: 2 },
-                          { x: 38, y: 2, s: 0.98, z: 2 },
-                        ],
-                        // 3+3 block: two full ranks, like RTW's unit clumps
-                        6: [
-                          { x: -48, y: 18, s: 0.62, z: 1 },
-                          { x: -18, y: 20, s: 0.64, z: 1 },
-                          { x: 14, y: 17, s: 0.63, z: 1 },
-                          { x: -32, y: 0, s: 0.9, z: 2 },
-                          { x: -2, y: 2, s: 0.94, z: 2 },
-                          { x: 30, y: 0, s: 0.9, z: 2 },
+                          { x: -hw * 0.95, y: 14, s: 0.72, z: 1 },
+                          { x: -hw * 0.30, y: 16, s: 0.74, z: 1 },
+                          { x:  hw * 0.30, y:  0, s: 0.96, z: 2 },
+                          { x:  hw * 0.95, y:  2, s: 0.98, z: 2 },
                         ],
                       };
+                      // Display size of each figure: driven by the layout box
+                      // so two rows fit, hard-capped at native art so we never
+                      // upsample (blur). Aspect matches standing sprites (~1:2).
+                      const figH = Math.min(TRAIN_SPRITE_H * 1.15, SPRITE_ART_NATIVE_H);
+                      const figW = Math.min(figH * 0.55, SPRITE_ART_NATIVE_W);
                       return layouts[clusterN].map((p, idx) => (
                         <div
                           key={idx}
@@ -1901,16 +1898,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                             position: "absolute",
                             left: `calc(50% + ${p.x}px)`,
                             bottom: p.y,
-                            // Size the bitmap at (or under) native art resolution.
-                            // The parent card already applies fitScale + depth
-                            // scale via transform:scale — applying fitScale
-                            // here a second time made sprites microscopic on
-                            // short landscape panels and forced the browser to
-                            // upsample a tiny raster (blur). Offset positions
-                            // stay in layout units; the card transform scales
-                            // them together with the art.
-                            width: SPRITE_ART_NATIVE_W * p.s,
-                            height: SPRITE_ART_NATIVE_H * p.s,
+                            width: figW * p.s,
+                            height: figH * p.s,
                             transform: "translateX(-50%)",
                             zIndex: p.z,
                           }}
@@ -1924,40 +1913,29 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                               left: "50%",
                               bottom: 0,
                               transform: "translateX(-50%)",
-                              // Wrapper is sized at native (or under). Card
-                              // transform:scale only ever shrinks when the
-                              // field is short (fitScale ≤ 1), so the high-res
-                              // source is downsampled — sharp on retina and
-                              // landscape. TRAIN_FIELD_ZOOM never reaches the
-                              // img; it only changes card/spacing layout.
                               width: "100%",
                               height: "100%",
                               objectFit: "contain",
                               objectPosition: "center bottom",
-                              // Atmospheric perspective: far-back units read a touch
-                              // hazier/cooler, less saturated, and slightly soft
-                              // (depth of field) compared to near ones, so depth
-                              // reads even before the color-grade overlay.
-                              filter: `saturate(${satAmt}) brightness(${briAmt}) blur(${blurAmt.toFixed(2)}px)`,
+                              // Sharp downsample; no CSS blur filter.
+                              imageRendering: "auto",
+                              filter: `saturate(${satAmt}) brightness(${briAmt})`,
                             }}
                             onError={(e) => {
                               e.currentTarget.style.display = "none";
                             }}
                           />
-                          {/* soft ground shadow per member — blurred radial ellipse,
-                              matches a single overhead light source so every unit
-                              reads as standing on the same field instead of a flat
-                              pasted-on cutout */}
+                          {/* soft ground shadow per member */}
                           <div
                             style={{
                               position: "absolute",
-                              left: "8%",
-                              right: "8%",
+                              left: "10%",
+                              right: "10%",
                               bottom: -2,
-                              height: 14 * shadowScale * p.s,
+                              height: 10 * shadowScale * p.s,
                               borderRadius: "50%",
-                              background: `radial-gradient(ellipse at center, rgba(0,0,0,${shadowOpacity + .3}) 0%, rgba(0,0,0,${shadowOpacity}) 45%, rgba(0,0,0,0) 75%)`,
-                              filter: "blur(1.5px)",
+                              background: `radial-gradient(ellipse at center, rgba(0,0,0,${shadowOpacity + .25}) 0%, rgba(0,0,0,${shadowOpacity}) 45%, rgba(0,0,0,0) 75%)`,
+                              filter: "blur(1.2px)",
                               pointerEvents: "none",
                             }}
                           />
@@ -1990,7 +1968,9 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "center",
-                gap: 10,
+                // Clear vertical separation between back row and front row so
+                // landscape doesn't read as a single stacked line of units.
+                gap: Math.round(28 * fitScale),
                 width: "max-content",
                 minWidth: "100%",
                 paddingRight: 24,
@@ -1998,18 +1978,18 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 // jitters downward for the foreshortening effect, so this
                 // needs enough slack that feet + ground shadow never touch
                 // the scroll container's clipped edge.
-                paddingBottom: 26,
+                paddingBottom: 20,
                 position: "relative",
                 zIndex: 2,
               }}
             >
               {/* Top row — pushed back: offset up and left for a diagonal /
                   staggered feel, like it's sitting further out on the field */}
-              <div style={{ display: "flex", flexDirection: "row", gap: 10, paddingLeft: 76, paddingTop: 6, transform: "translateY(-14px)" }}>
+              <div style={{ display: "flex", flexDirection: "row", gap: Math.round(18 * fitScale), paddingLeft: 56, paddingTop: 4, transform: "translateY(-8px)" }}>
                 {top.map((t) => renderUnit(t, true))}
               </div>
               {/* Bottom row — pushed forward, closer to camera */}
-              <div style={{ display: "flex", flexDirection: "row", gap: 10, paddingBottom: 4, transform: "translateY(10px)" }}>
+              <div style={{ display: "flex", flexDirection: "row", gap: Math.round(18 * fitScale), paddingBottom: 4, transform: "translateY(6px)" }}>
                 {bot.map((t) => renderUnit(t, false))}
               </div>
             </div>
