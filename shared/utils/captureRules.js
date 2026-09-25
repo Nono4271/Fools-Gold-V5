@@ -6,7 +6,22 @@
 //  patch). Pure, no React/DOM/state — safe to import from server/index.js.
 // ─────────────────────────────────────────────────────────────────────────────
 import { SIEGE_BASE, KEEP_GARRISON_RESET_MS, GATE_GARRISON_RESET_MS, SIEGE_RESET_MS } from "../constants/map.js";
+import { FORTRESS_MIN_POWER_LEVEL } from "../constants/crew.js";
 import { TILE_PROTECTION_MS } from "./tileTimers.js";
+
+// A P10-P13 "structure" tile (mapGen's stampP10) is a garrisoned obstacle,
+// not a real territory Keep: it has its own 2-wave garrison but, unlike a
+// named region Keep (fixed powerLevel 4, permanent F_KEEP) or a border Gate,
+// it's meant to fall away once cleared and leave a bare, unclaimed P10+ tile
+// behind for a crew to build a Fortress/Well/Outpost on (see crewFortress.js
+// and crewStructures.js — both gate their build checks on `!tile.isKeep`
+// *and* `powerLevel >= FORTRESS_MIN_POWER_LEVEL`, a combination no tile can
+// ever satisfy unless something clears isKeep here first). Gates are
+// excluded even though they also carry F_KEEP, since they never carry a
+// powerLevel in this range and must remain permanent chokepoints regardless.
+function isP10Structure(tile) {
+  return !!tile?.isKeep && !tile?.isGate && (tile?.powerLevel || 0) >= FORTRESS_MIN_POWER_LEVEL;
+}
 
 // Garrison reset delay for a tile: keeps/gates take an hour, everything else
 // resets in 15 min (moved verbatim from useMarch.js's garrisonResetMs).
@@ -38,6 +53,31 @@ export function resolveSiegeOutcome({ tile, siegePower, now = Date.now(), captur
   const siegeMax = capture.siegeMax ?? tile.siegeMax ?? SIEGE_BASE;
 
   if (siegePower >= currentSiege) {
+    // Clearing a P10+ structure's native garrison doesn't hand the tile to
+    // the attacker — it drops the Keep flag and leaves the tile unclaimed,
+    // becoming the "bare p10+ tile" a crew's founder/officer can then start
+    // a Fortress/Well/Outpost build on. A real region Keep or a Gate is
+    // captured normally (owner goes to the attacker) — see isP10Structure.
+    if (isP10Structure(tile)) {
+      return {
+        captured: true,
+        patch: {
+          isKeep: false,
+          keepName: null,
+          owner: null,
+          faction: undefined,
+          ownerPlayerId: undefined,
+          garrison: 0,
+          siege: siegeMax,
+          siegeMax,
+          defeatedWaves: [],
+          resetAt: null,
+          defCmd: null,
+          hasAiCommander: false,
+          ...(capture.protect !== false ? { protectedUntil: now + TILE_PROTECTION_MS } : {}),
+        },
+      };
+    }
     return {
       captured: true,
       patch: {
