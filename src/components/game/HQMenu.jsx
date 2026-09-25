@@ -1617,6 +1617,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           boxShadow: "inset 0 18px 30px rgba(0,0,0,.18), inset 0 -24px 42px rgba(0,0,0,.35)",
+          // Small overall punch so the field, the overlays below, and every
+          // sprite's own per-image filter all read as one graded shot instead
+          // of separately-lit cutouts pasted over a photo.
+          filter: "contrast(1.03) saturate(1.05)",
         }}
       >
         {(() => {
@@ -1628,7 +1632,29 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
             else bot.push(t);
           });
 
-          const renderUnit = (t) => {
+          // Deterministic per-unit "depth" (0 = distant/back row, 1 = near/
+          // front row) with a small stable jitter so units don't line up
+          // like a flat wall of trading cards. Same key always gets the same
+          // depth, so nothing shifts between re-renders.
+          const hash01 = (str) => {
+            let h = 0;
+            for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+            return (h % 1000) / 1000;
+          };
+          const depthFor = (key, isTop) => {
+            const base = isTop ? 0.14 : 0.86;
+            const jitter = (hash01(key) - 0.5) * 0.22;
+            return Math.min(1, Math.max(0, base + jitter));
+          };
+
+          const renderUnit = (t, isTop) => {
+            const depth = depthFor(t.key, isTop); // 0 = far, 1 = near
+            const scale = 0.85 + depth * 0.22; // far units read smaller
+            const yJitter = (hash01(t.key + "y") - 0.5) * 9; // organic scatter, px
+            const satAmt = 0.72 + depth * 0.32; // far units slightly desaturated
+            const briAmt = 0.9 + depth * 0.16; // far units slightly dimmer/hazier
+            const shadowScale = 0.7 + depth * 0.4; // near units cast bigger shadows
+            const shadowOpacity = 0.16 + depth * 0.3;
             const amount = values[t.key] || 0;
             const size = t.branch?.size || "small";
             const step = isScrap ? 1 : (CMD_SIZE[size] || 100);
@@ -1665,6 +1691,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
+                  // Fake camera depth: near units (bottom row / high depth)
+                  // render bigger and slightly forward; far units shrink back.
+                  // The stable per-unit yJitter breaks up the two dead-straight
+                  // rows into something closer to a scattered formation.
+                  transform: `translateY(${yJitter}px) scale(${scale})`,
+                  transformOrigin: "bottom center",
+                  zIndex: Math.round(depth * 100),
                 }}
               >
                 {/* Floating label above head */}
@@ -1760,6 +1793,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                         height: "100%",
                         objectFit: "contain",
                         objectPosition: "center bottom",
+                        // Atmospheric perspective: far-back units read a touch
+                        // hazier/cooler and less saturated than near ones, so
+                        // depth reads even before the color-grade overlay.
+                        filter: `saturate(${satAmt}) brightness(${briAmt})`,
                       }}
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -1786,13 +1823,12 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                   <div
                     style={{
                       position: "absolute",
-                      left: "6%",
-                      right: "6%",
+                      left: `${6 + (1 - shadowScale) * 20}%`,
+                      right: `${6 + (1 - shadowScale) * 20}%`,
                       bottom: -2,
-                      height: 11,
+                      height: 11 * shadowScale,
                       borderRadius: "50%",
-                      background:
-                        "radial-gradient(ellipse at center, rgba(0,0,0,.6) 0%, rgba(0,0,0,.32) 45%, rgba(0,0,0,0) 75%)",
+                      background: `radial-gradient(ellipse at center, rgba(0,0,0,${shadowOpacity + .3}) 0%, rgba(0,0,0,${shadowOpacity}) 45%, rgba(0,0,0,0) 75%)`,
                       filter: "blur(1.5px)",
                       pointerEvents: "none",
                     }}
@@ -1816,13 +1852,14 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 zIndex: 2,
               }}
             >
-              {/* Top row — offset for diagonal / staggered feel */}
-              <div style={{ display: "flex", flexDirection: "row", gap: 5, paddingLeft: 42, transform: "translateY(-2px)" }}>
-                {top.map(renderUnit)}
+              {/* Top row — pushed back: offset up and left for a diagonal /
+                  staggered feel, like it's sitting further out on the field */}
+              <div style={{ display: "flex", flexDirection: "row", gap: 5, paddingLeft: 42, paddingTop: 4, transform: "translateY(-7px)" }}>
+                {top.map((t) => renderUnit(t, true))}
               </div>
-              {/* Bottom row */}
-              <div style={{ display: "flex", flexDirection: "row", gap: 5, transform: "translateY(2px)" }}>
-                {bot.map(renderUnit)}
+              {/* Bottom row — pushed forward, closer to camera */}
+              <div style={{ display: "flex", flexDirection: "row", gap: 5, paddingBottom: 4, transform: "translateY(5px)" }}>
+                {bot.map((t) => renderUnit(t, false))}
               </div>
             </div>
           );
@@ -1843,7 +1880,22 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
             pointerEvents: "none",
             mixBlendMode: "color",
             background:
-              "linear-gradient(165deg, rgba(72,98,122,.38) 0%, rgba(46,60,74,.26) 55%, rgba(22,26,32,.34) 100%)",
+              "linear-gradient(165deg, rgba(72,98,122,.44) 0%, rgba(46,60,74,.3) 55%, rgba(22,26,32,.4) 100%)",
+          }}
+        />
+        {/* Distance haze — a light, cool band weighted toward the top of the
+            field (where the far/back-row units sit) so the far units visibly
+            recede into the air instead of just sitting smaller. Fades out
+            completely by mid-field. */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 5,
+            pointerEvents: "none",
+            mixBlendMode: "screen",
+            background:
+              "linear-gradient(to bottom, rgba(150,168,190,.16) 0%, rgba(150,168,190,.07) 35%, rgba(150,168,190,0) 60%)",
           }}
         />
         {/* Vignette + grounding darkness — reinforces the top/bottom fade and
