@@ -1607,7 +1607,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           overflowY: "hidden",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-x",
-          padding: "4px 6px 2px",
+          minHeight: 300,
+          padding: "8px 10px 2px",
           position: "relative",
           zIndex: 1,
           // Shared dark-fantasy battlefield: faction-neutral so every troop type
@@ -1650,12 +1651,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
 
           const renderUnit = (t, isTop) => {
             const depth = depthFor(t.key, isTop); // 0 = far, 1 = near
-            const scale = 0.85 + depth * 0.22; // far units read smaller
-            const yJitter = (hash01(t.key + "y") - 0.5) * 9; // organic scatter, px
-            const satAmt = 0.72 + depth * 0.32; // far units slightly desaturated
-            const briAmt = 0.9 + depth * 0.16; // far units slightly dimmer/hazier
-            const shadowScale = 0.7 + depth * 0.4; // near units cast bigger shadows
-            const shadowOpacity = 0.16 + depth * 0.3;
+            const scale = 0.72 + depth * 0.5; // far units read noticeably smaller — wider spread than before for real foreshortening
+            const yJitter = (hash01(t.key + "y") - 0.5) * 12; // organic scatter, px
+            const satAmt = 0.66 + depth * 0.4; // far units slightly desaturated
+            const briAmt = 0.86 + depth * 0.2; // far units slightly dimmer/hazier
+            const blurAmt = (1 - depth) * 1.1; // far units read a touch soft, like the eye/lens is focused on the front row
+            const shadowScale = 0.65 + depth * 0.5; // near units cast bigger shadows
+            const shadowOpacity = 0.14 + depth * 0.32;
             const amount = values[t.key] || 0;
             const size = t.branch?.size || "small";
             const step = isScrap ? 1 : (CMD_SIZE[size] || 100);
@@ -1686,7 +1688,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               <div
                 key={t.key}
                 style={{
-                  width: 118,
+                  width: 210,
                   flexShrink: 0,
                   opacity: !ownedNow && !amount ? 0.7 : 1,
                   display: "flex",
@@ -1798,8 +1800,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                     re-renders. */}
                 <div
                   style={{
-                    width: 112,
-                    height: 88,
+                    width: 190,
+                    height: 150,
                     position: "relative",
                   }}
                 >
@@ -1808,13 +1810,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                       const clusterN = hash01(t.key + "n") < 0.5 ? 2 : 3;
                       const layouts = {
                         2: [
-                          { x: -15, y: 3, s: 0.82, z: 1 },
-                          { x: 14, y: 0, s: 1, z: 2 },
+                          { x: -26, y: 5, s: 0.82, z: 1 },
+                          { x: 24, y: 0, s: 1, z: 2 },
                         ],
                         3: [
-                          { x: -24, y: 4, s: 0.76, z: 1 },
-                          { x: 3, y: -3, s: 1, z: 3 },
-                          { x: 25, y: 3, s: 0.8, z: 2 },
+                          { x: -42, y: 7, s: 0.76, z: 1 },
+                          { x: 5, y: -5, s: 1, z: 3 },
+                          { x: 43, y: 5, s: 0.8, z: 2 },
                         ],
                       };
                       return layouts[clusterN].map((p, idx) => (
@@ -1824,8 +1826,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                             position: "absolute",
                             left: `calc(50% + ${p.x}px)`,
                             bottom: p.y,
-                            width: 60 * p.s,
-                            height: 88 * p.s,
+                            width: 100 * p.s,
+                            height: 150 * p.s,
                             transform: "translateX(-50%)",
                             zIndex: p.z,
                           }}
@@ -1842,9 +1844,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                               objectFit: "contain",
                               objectPosition: "center bottom",
                               // Atmospheric perspective: far-back units read a touch
-                              // hazier/cooler and less saturated than near ones, so
-                              // depth reads even before the color-grade overlay.
-                              filter: `saturate(${satAmt}) brightness(${briAmt})`,
+                              // hazier/cooler, less saturated, and slightly soft
+                              // (depth of field) compared to near ones, so depth
+                              // reads even before the color-grade overlay.
+                              filter: `saturate(${satAmt}) brightness(${briAmt}) blur(${blurAmt.toFixed(2)}px)`,
                             }}
                             onError={(e) => {
                               e.currentTarget.style.display = "none";
@@ -1860,7 +1863,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                               left: "8%",
                               right: "8%",
                               bottom: -2,
-                              height: 9 * shadowScale * p.s,
+                              height: 14 * shadowScale * p.s,
                               borderRadius: "50%",
                               background: `radial-gradient(ellipse at center, rgba(0,0,0,${shadowOpacity + .3}) 0%, rgba(0,0,0,${shadowOpacity}) 45%, rgba(0,0,0,0) 75%)`,
                               filter: "blur(1.5px)",
@@ -1895,22 +1898,27 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 7,
+                justifyContent: "center",
+                gap: 10,
                 width: "max-content",
                 minWidth: "100%",
-                paddingRight: 20,
-                paddingBottom: 7,
+                paddingRight: 24,
+                // Extra bottom clearance: the near/bottom row scales up and
+                // jitters downward for the foreshortening effect, so this
+                // needs enough slack that feet + ground shadow never touch
+                // the scroll container's clipped edge.
+                paddingBottom: 26,
                 position: "relative",
                 zIndex: 2,
               }}
             >
               {/* Top row — pushed back: offset up and left for a diagonal /
                   staggered feel, like it's sitting further out on the field */}
-              <div style={{ display: "flex", flexDirection: "row", gap: 5, paddingLeft: 42, paddingTop: 4, transform: "translateY(-7px)" }}>
+              <div style={{ display: "flex", flexDirection: "row", gap: 10, paddingLeft: 76, paddingTop: 6, transform: "translateY(-14px)" }}>
                 {top.map((t) => renderUnit(t, true))}
               </div>
               {/* Bottom row — pushed forward, closer to camera */}
-              <div style={{ display: "flex", flexDirection: "row", gap: 5, paddingBottom: 4, transform: "translateY(5px)" }}>
+              <div style={{ display: "flex", flexDirection: "row", gap: 10, paddingBottom: 4, transform: "translateY(10px)" }}>
                 {bot.map((t) => renderUnit(t, false))}
               </div>
             </div>
