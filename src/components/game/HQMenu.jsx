@@ -1487,6 +1487,20 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
   );
 }
 
+// Training field "zoom": the one knob to turn cards bigger/smaller.
+// Card width and sprite-box size both scale off this, and FIELD_MIN_H is
+// derived from it too, so raising it can never re-introduce the row-2
+// clipping bug — the container always grows to match.
+const TRAIN_FIELD_ZOOM = 1; // 1 = current/default size. Try 1.4–1.6 for bigger, fewer-per-row cards.
+const TRAIN_CARD_W = Math.round(210 * TRAIN_FIELD_ZOOM);
+const TRAIN_SPRITE_W = Math.round(190 * TRAIN_FIELD_ZOOM);
+const TRAIN_SPRITE_H = Math.round(150 * TRAIN_FIELD_ZOOM);
+// Depth-based per-card scale (foreshortening). Capped so the near/bottom
+// row never upscales the source art past ~1.3x its native box, which is
+// the point past which the sprites start reading as blurry.
+const TRAIN_SCALE_MIN = 0.72;
+const TRAIN_SCALE_MAX = 1.3;
+
 // ── Screen 2: Train / Scrap — unit list | selected unit + slider | queues ──────
 function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troopCards, trainingQueues, setTrainingQueues, trainingSpeedMult, trainingCostMult = 1,
   neutralSources = {}, contractCommandsLeft, initialKey,
@@ -1607,7 +1621,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           overflowY: "hidden",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-x",
-          minHeight: 300,
+          // Two rows, each up to TRAIN_SPRITE_H tall at TRAIN_SCALE_MAX, plus
+          // row gap/padding/label+slider headroom. Scales with TRAIN_FIELD_ZOOM
+          // so a bigger zoom can never clip the bottom row again.
+          minHeight: Math.round(TRAIN_SPRITE_H * TRAIN_SCALE_MAX * 2 + 140),
           padding: "8px 10px 2px",
           position: "relative",
           zIndex: 1,
@@ -1651,7 +1668,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
 
           const renderUnit = (t, isTop) => {
             const depth = depthFor(t.key, isTop); // 0 = far, 1 = near
-            const scale = 0.72 + depth * 0.5; // far units read noticeably smaller — wider spread than before for real foreshortening
+            // Far units read noticeably smaller than near ones, but never past
+            // TRAIN_SCALE_MAX — beyond that the sprite art upscales visibly and
+            // starts looking blurry.
+            const scale = TRAIN_SCALE_MIN + depth * (TRAIN_SCALE_MAX - TRAIN_SCALE_MIN);
             const yJitter = (hash01(t.key + "y") - 0.5) * 12; // organic scatter, px
             const satAmt = 0.66 + depth * 0.4; // far units slightly desaturated
             const briAmt = 0.86 + depth * 0.2; // far units slightly dimmer/hazier
@@ -1688,7 +1708,7 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
               <div
                 key={t.key}
                 style={{
-                  width: 210,
+                  width: TRAIN_CARD_W,
                   flexShrink: 0,
                   opacity: !ownedNow && !amount ? 0.7 : 1,
                   display: "flex",
@@ -1800,8 +1820,8 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                     re-renders. */}
                 <div
                   style={{
-                    width: 190,
-                    height: 150,
+                    width: TRAIN_SPRITE_W,
+                    height: TRAIN_SPRITE_H,
                     position: "relative",
                   }}
                 >
@@ -1824,10 +1844,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                           key={idx}
                           style={{
                             position: "absolute",
-                            left: `calc(50% + ${p.x}px)`,
-                            bottom: p.y,
-                            width: 100 * p.s,
-                            height: 150 * p.s,
+                            left: `calc(50% + ${p.x * TRAIN_FIELD_ZOOM}px)`,
+                            bottom: p.y * TRAIN_FIELD_ZOOM,
+                            width: 100 * p.s * TRAIN_FIELD_ZOOM,
+                            height: 150 * p.s * TRAIN_FIELD_ZOOM,
                             transform: "translateX(-50%)",
                             zIndex: p.z,
                           }}
