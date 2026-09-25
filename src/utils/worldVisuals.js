@@ -57,7 +57,13 @@ export function hqJoinedBorderSegments(pc, r0, tiles) {
 // The surface centre is shared by selection, props and the large resource base.
 export function resourceFootprint(c, r, tile = {}) {
   const {cx, cy} = isoXY(c, r);
-  const large = tile.isKeep && !tile.isGate && (tile.powerLevel || 0) >= 10;
+  // A P10+ primary tile is "large" (2x2) whether or not it's still garrisoned
+  // (tile.isKeep): capture intentionally clears isKeep on it to unlock
+  // building, so gating on isKeep alone would silently shrink a captured
+  // tile back to 1x1. powerLevel >= 10 alone is enough to identify it —
+  // mapGen.worker.js's stampP10 always demotes neighbor/non-structure tiles
+  // below 10 — so only !tile.isGate is needed as a guard.
+  const large = (tile.powerLevel || 0) >= 10 && !tile.isGate;
   const hw = large ? TW : TW / 2;
   const hh = large ? TH : TH / 2;
   const y = cy - 4 + hh;
