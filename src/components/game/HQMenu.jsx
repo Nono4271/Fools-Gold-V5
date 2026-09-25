@@ -949,9 +949,26 @@ const STANDING_SPRITES = {
     leviathan: { 0: "/troops/pirates_leviathan_t1_standing.webp" }, // capstone
   },
   // Capstones only for now (T1-T3 still use the painted portraits until
-  // those sprites are made) - Wizards, Orcs, Dragons, Holy Knights,
+  // those sprites are made) - Orcs, Dragons, Holy Knights,
   // Creatures of the Night, Coldborns, Ashen Dead.
-  wizards:        { hexblade_sovereign:  { 0: "/troops/wizards_hexblade_sovereign_t1_standing.webp" } },
+  wizards: {
+    acolytes: {
+      0: "/troops/wizards_acolytes_t1_standing.webp",
+      1: "/troops/wizards_acolytes_t2_standing.webp",
+      2: "/troops/wizards_acolytes_t3_standing.webp",
+    },
+    golems: {
+      0: "/troops/wizards_golems_t1_standing.webp",
+      1: "/troops/wizards_golems_t2_standing.webp",
+      2: "/troops/wizards_golems_t3_standing.webp",
+    },
+    spellblades: {
+      0: "/troops/wizards_spellblades_t1_standing.webp",
+      1: "/troops/wizards_spellblades_t2_standing.webp",
+      2: "/troops/wizards_spellblades_t3_standing.webp",
+    },
+    hexblade_sovereign: { 0: "/troops/wizards_hexblade_sovereign_t1_standing.webp" }, // capstone
+  },
   orcs:           { doomfang_alpha:      { 0: "/troops/orcs_doomfang_alpha_t1_standing.webp" } },
   dragons:        { sovereign_wyrm:      { 0: "/troops/dragons_sovereign_wyrm_t1_standing.webp" } },
   holyknights:    { seraph_vanguard:     { 0: "/troops/holyknights_seraph_vanguard_t1_standing.webp" } },
