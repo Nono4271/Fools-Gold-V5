@@ -1623,7 +1623,6 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
       {/* Field: zoomed-out, two staggered rows (diagonal feel like LOTR reference).
           Scroll LEFT/RIGHT. Most of the screen is the troop field. */}
       <div
-        ref={fieldRef}
         className="training-scroll"
         style={{
           flex: 1,
