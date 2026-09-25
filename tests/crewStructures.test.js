@@ -23,13 +23,15 @@ const crew = (over = {}) => ({ id: 'c1', founder: 'me', officers: ['off'], membe
 const NOW = 1_700_000_000_000;
 
 // ── Well ──────────────────────────────────────────────────────────────────
-test('Well: founder-only, level-gated, p10+ unclaimed tile, affordable', () => {
+test('Well: founder or officer, level-gated, p10+ tile unclaimed or owned by a crewmate, affordable', () => {
   const none = new Set();
   assert.equal(canStartWellBuild(crew(), 'me', TILE, 'k', RICH, none).ok, true);
-  assert.equal(canStartWellBuild(crew(), 'off', TILE, 'k', RICH, none).ok, false, 'officers cannot');
+  assert.equal(canStartWellBuild(crew(), 'off', TILE, 'k', RICH, none).ok, true, 'officers can');
+  assert.equal(canStartWellBuild(crew(), 'mem', TILE, 'k', RICH, none).ok, false, 'plain members cannot');
   assert.equal(canStartWellBuild(crew({ level: 30 }), 'me', TILE, 'k', RICH, none).ok, false, 'needs level 31');
   assert.equal(canStartWellBuild(crew(), 'me', { powerLevel: 9 }, 'k', RICH, none).ok, false);
-  assert.equal(canStartWellBuild(crew(), 'me', { ...TILE, owner: 'player' }, 'k', RICH, none).ok, false);
+  assert.equal(canStartWellBuild(crew(), 'me', { ...TILE, owner: 'player' }, 'k', RICH, none).ok, true, 'own tile is buildable');
+  assert.equal(canStartWellBuild(crew(), 'me', { ...TILE, owner: 'ai', ownerPlayerId: 'outsider' }, 'k', RICH, none).ok, false, 'tile owned outside the crew');
   assert.equal(canStartWellBuild(crew(), 'me', { ...TILE, isCamp: true }, 'k', RICH, none).ok, false);
   assert.equal(canStartWellBuild(crew(), 'me', TILE, 'k', RICH, new Set(['k'])).ok, false, 'occupied');
   assert.equal(canStartWellBuild(crew(), 'me', TILE, 'k', { ...WELL_COST, gas: WELL_COST.gas - 1 }, none).ok, false);
@@ -69,10 +71,11 @@ test('Well gather: all 4 resources at the p11 rate (same 4x-per-tick formula as 
 });
 
 // ── Contract Outpost ──────────────────────────────────────────────────────
-test('Outpost: founder-only, level 35+, one per crew', () => {
+test('Outpost: founder or officer, level 35+, one per crew', () => {
   const none = new Set();
   assert.equal(canStartOutpostBuild(crew(), 'me', TILE, 'k', RICH, none).ok, true);
-  assert.equal(canStartOutpostBuild(crew(), 'off', TILE, 'k', RICH, none).ok, false);
+  assert.equal(canStartOutpostBuild(crew(), 'off', TILE, 'k', RICH, none).ok, true, 'officers can');
+  assert.equal(canStartOutpostBuild(crew(), 'mem', TILE, 'k', RICH, none).ok, false, 'plain members cannot');
   assert.equal(canStartOutpostBuild(crew({ level: 34 }), 'me', TILE, 'k', RICH, none).ok, false);
   const op = createOutpost({ id: 'o', crewId: 'c1', tileKey: 'b', now: NOW });
   assert.equal(canStartOutpostBuild(crew({ outpost: op }), 'me', TILE, 'k', RICH, none).ok, false);

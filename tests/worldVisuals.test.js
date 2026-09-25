@@ -39,6 +39,16 @@ test('resource roots and selection use the same centre for single and 2x2 tiles'
   assert.equal(big.y-small.y,26.5);
 });
 
+test('captured P10+ tile (isKeep cleared) stays large — regression for the 2x2-outline-collapses-to-1x1 bug',()=>{
+  const garrisoned=resourceFootprint(225,1293,{powerLevel:10,isKeep:true});
+  const captured=resourceFootprint(225,1293,{powerLevel:10,isKeep:false,owner:'player'});
+  assert.deepEqual(captured,garrisoned);
+  // A gate never gets the 2x2 treatment even with a stray high powerLevel.
+  const gate=resourceFootprint(225,1293,{powerLevel:10,isKeep:false,isGate:true});
+  const small=resourceFootprint(225,1293,{powerLevel:9});
+  assert.equal(gate.halfWidth,small.halfWidth);
+});
+
 test('selection beside an HQ omits only the shared edge',()=>{
   const tiles={'10,10':{isHQPart:true}};
   assert.deepEqual(selectionEdgesBesideHq(10,11,tiles),[false,true,true,true]);

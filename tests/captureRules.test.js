@@ -10,12 +10,12 @@ function p10Tile(overrides) {
   return { isKeep: true, isGate: false, powerLevel: FORTRESS_MIN_POWER_LEVEL, siege: 8000, siegeMax: 8000, garrison: 500, ...overrides };
 }
 
-test('clearing a P10+ structure leaves a bare, unclaimed tile (no owner, no keep flag)', () => {
+test('clearing a P10+ structure leaves a bare tile, owned by the capturer (no keep flag)', () => {
   const tile = p10Tile();
   const { captured, patch } = resolveSiegeOutcome({ tile, siegePower: 9000, capture: { owner: 'player' } });
   assert.equal(captured, true);
   assert.equal(patch.isKeep, false);
-  assert.equal(patch.owner, null);
+  assert.equal(patch.owner, 'player');
   assert.equal(patch.ownerPlayerId, undefined);
   assert.equal(patch.faction, undefined);
   assert.equal(patch.garrison, 0);

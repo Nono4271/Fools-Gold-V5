@@ -7,12 +7,38 @@ import {
   createFortress, isFortressBuilt, completeFortressBuild,
   commanderSlotCapFor, stationedCount, canStationCommander, stationCommander,
   unstationCommander, isClearToSiege, applySiegeDamage, removeFortress,
-  canDemolishFortress, nextDefender,
+  canDemolishFortress, nextDefender, tileOwnerInCrew,
 } from '../shared/utils/crewFortress.js';
 
 function crewWith(overrides) {
   return { ...createCrew({ id: 'c1', name: 'Iron Tide', abbr: 'IRON', faction: 'pirates', founderId: 'f' }), ...overrides };
 }
+
+// Regression: founder/officer can build on ANY crewmate's captured p10+ tile
+// (the tile changes hands to the crew via the structure, not the founder
+// personally) — see tileOwnerInCrew / canBuildFortressOnTile.
+test('build-on-crewmate\'s-tile: founder/officer can build on any crew member\'s owned p10+ tile; blocked on an outsider\'s', () => {
+  const crew = crewWith({ founder: 'f', officers: ['o'], members: ['f', 'o', 'm'] });
+  // The human player's own tile is always "in crew".
+  assert.equal(tileOwnerInCrew({ owner: 'player' }, crew), true);
+  // An AI-owned tile whose ownerPlayerId belongs to the crew (founder, officer, or member).
+  assert.equal(tileOwnerInCrew({ owner: 'ai', ownerPlayerId: 'f' }, crew), true);
+  assert.equal(tileOwnerInCrew({ owner: 'ai', ownerPlayerId: 'o' }, crew), true);
+  assert.equal(tileOwnerInCrew({ owner: 'ai', ownerPlayerId: 'm' }, crew), true);
+  // A tile owned by someone outside the crew is not buildable.
+  assert.equal(tileOwnerInCrew({ owner: 'ai', ownerPlayerId: 'outsider' }, crew), false);
+  // Unclaimed tile (no owner) is always fine.
+  assert.equal(tileOwnerInCrew({}, crew), true);
+
+  const p10crewmateTile = { powerLevel: FORTRESS_MIN_POWER_LEVEL, owner: 'ai', ownerPlayerId: 'm' };
+  assert.equal(canBuildFortressOnTile(p10crewmateTile, crew).ok, true);
+  assert.equal(canStartFortressBuild(crew, 'o', p10crewmateTile, FORTRESS_COST).ok, true, 'officer can build on a crewmate\'s tile');
+  assert.equal(canStartFortressBuild(crew, 'm', p10crewmateTile, FORTRESS_COST).ok, false, 'plain member still cannot start the build');
+
+  const outsiderTile = { powerLevel: FORTRESS_MIN_POWER_LEVEL, owner: 'ai', ownerPlayerId: 'outsider' };
+  assert.equal(canBuildFortressOnTile(outsiderTile, crew).ok, false);
+  assert.equal(canStartFortressBuild(crew, 'f', outsiderTile, FORTRESS_COST).ok, false);
+});
 
 test('canBuildFortressOnTile: needs p10+, no camp, unclaimed, no existing structure', () => {
   assert.equal(canBuildFortressOnTile(null).ok, false);
