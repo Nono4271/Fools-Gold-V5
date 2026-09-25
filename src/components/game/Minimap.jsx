@@ -36,7 +36,7 @@ function panToVC(panSt, zoom) {
 // Minimap receives panRef/zoomRef (stable refs) instead of panSt/zoom state values.
 // redrawRef is a ref passed from Game — Minimap stores its draw function into it
 // so Game.onPanChange can call it directly without any setState or re-render.
-export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef, playerFacKey, crewmatePlayerIds, playerHqKey, aiHqKeys, onWorldMap, forts }) {
+export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef, playerFacKey, crewmatePlayerIds, playerHqKey, aiHqKeys, onWorldMap, forts, crewFortresses }) {
   const canvasRef = useRef(null);
   const tilesRef  = useRef(tiles);
   const pKeysRef  = useRef(pKeys);
@@ -50,6 +50,8 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
   useEffect(() => { aiHqKeysRef.current = aiHqKeys; }, [aiHqKeys]);
   const fortsRef = useRef(forts || []);
   useEffect(() => { fortsRef.current = forts || []; }, [forts]);
+  const crewFortressesRef = useRef(crewFortresses || []);
+  useEffect(() => { crewFortressesRef.current = crewFortresses || []; }, [crewFortresses]);
 
   const drawMinimap = useCallback(() => {
     const canvas = canvasRef.current;
@@ -136,6 +138,10 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
     for (const fort of (fortsRef.current || [])) {
       const [fc, fr] = fort.tileKey.split(",").map(Number);
       anchors.push({ c: fc, r: fr, type: "fort" });
+    }
+    for (const fortress of (crewFortressesRef.current || [])) {
+      const [fc, fr] = fortress.tileKey.split(",").map(Number);
+      anchors.push({ c: fc, r: fr, type: "fortress" });
     }
     for (const anchor of anchors) {
       const { x: ax, y: ay } = tileToMM(anchor.c, anchor.r, vc, vr);
@@ -227,7 +233,7 @@ export default memo(function Minimap({ tiles, pKeys, panRef, zoomRef, redrawRef,
   }, [drawMinimap, redrawRef]);
 
   // Redraw when tiles or pKeys change (ownership changes etc.)
-  useEffect(() => { drawMinimap(); }, [tiles, pKeys, crewmatePlayerIds, playerHqKey, forts, drawMinimap]);
+  useEffect(() => { drawMinimap(); }, [tiles, pKeys, crewmatePlayerIds, playerHqKey, forts, crewFortresses, drawMinimap]);
 
   return (
     <div style={{

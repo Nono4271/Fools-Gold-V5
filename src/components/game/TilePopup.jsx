@@ -14,6 +14,7 @@ import { canBuildFortressOnTile, canStartFortressBuild, isFortressBuilt, tileOwn
 import { canManageFortress } from "../../../shared/utils/crewRules.js";
 import CommanderCard from "./popup/CommanderCard.jsx";
 import FortPanel from "./popup/FortPanel.jsx";
+import FortressPanel from "./popup/FortressPanel.jsx";
 import CrewStructurePanel from "./popup/CrewStructurePanel.jsx";
 import { isWounded } from "../../../shared/utils/commanderStatus.js";
 import { cmdTroopCount } from "../../../shared/utils/structureDefense.js";
@@ -91,6 +92,7 @@ export default memo(function TilePopup({
   isValidRelocPad,
   myCrew, crewFortressAtTile, rss,
   onBuildCrewFortress, onDemolishCrewFortressHere,
+  onStationAtFortress, onUnstationFromFortress,
   // Crew Well / Contract Outpost (see popup/CrewStructurePanel.jsx)
   wellAtTile = null, wellCrew = null, outpostAtTile = null, outpostCrew = null,
   crewStructureKeys = null, myCrewStructureKeys = null, contractCommandsLeft,
@@ -865,6 +867,12 @@ export default memo(function TilePopup({
               <div style={{ flex:1, fontSize:9, color:"#e0a0a0", fontFamily:"'Cinzel',serif", textAlign:"center", padding:"6px 0" }}>
                 🏰 Siege: {crewFortressAtTile.siege.toLocaleString()}/{crewFortressAtTile.siegeMax.toLocaleString()}
               </div>
+              {isMyStructureTile && (
+                <FortressPanel
+                  fortress={crewFortressAtTile} selKey={selKey} myCrew={myCrew} facKey={facKey} cmds={cmds}
+                  onStationAtFortress={onStationAtFortress} onUnstationFromFortress={onUnstationFromFortress}
+                />
+              )}
               {ownership!=="player"&&ownership!=="crew"&&!isMyStructureTile&&canAtk&&(
                 <button onClick={()=>canSiegeFortressNow?(setAtkKey(selKey),setMode("pickSiegeCmd"),setPick(null)):null}
                   style={{ flex:1, padding:"6px 0", background:canSiegeFortressNow?"linear-gradient(160deg,#6a0808,#3a0404)":"rgba(60,20,20,.3)", border:`1px solid ${canSiegeFortressNow?"#cc2020":"#553030"}`, borderRadius:5, color:canSiegeFortressNow?"#ff8080":"#7a5050", fontFamily:"'Cinzel',serif", fontSize:10, fontWeight:700, letterSpacing:".05em", cursor:canSiegeFortressNow?"pointer":"not-allowed", opacity:canSiegeFortressNow?1:.6 }}>
