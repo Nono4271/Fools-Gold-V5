@@ -1,7 +1,7 @@
 import {trainingQuote,trainingSecondsLeft,capstoneTrainDiscount} from "../../../shared/utils/training.js";
 import {poolCommands,queuedCommands,troopsThatFit} from "../../../shared/utils/barracks.js";
 import {healingFoodCost,healingRate} from "../../../shared/utils/armyEconomy.js";
-import { useState, useEffect, memo, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, memo, useMemo } from "react";
 import { useGameContext } from "../../GameContext.js";
 import { createPortal } from "react-dom";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel, troopPortraitPath } from "../../../shared/constants/troops.js";
@@ -1487,19 +1487,27 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
   );
 }
 
-// Training field "zoom": the one knob to turn cards bigger/smaller.
-// Card width and sprite-box size both scale off this, and FIELD_MIN_H is
-// derived from it too, so raising it can never re-introduce the row-2
-// clipping bug — the container always grows to match.
-const TRAIN_FIELD_ZOOM = 1.0; // 1 = current/default size. Try 1.4–1.6 for bigger, fewer-per-row cards.
+// Training field "zoom": the one knob to turn cards/spacing bigger or smaller.
+// IMPORTANT: this only scales LAYOUT (card width, sprite box, gaps) — never
+// the raster art itself. The field container measures its own real height
+// at runtime (see FIT below) and scales everything to actually fit, so rows
+// can never clip again regardless of what this is set to.
+const TRAIN_FIELD_ZOOM = 1.4; // 1 = old default. Bigger cards/spacing now that fit is automatic.
 const TRAIN_CARD_W = Math.round(210 * TRAIN_FIELD_ZOOM);
 const TRAIN_SPRITE_W = Math.round(190 * TRAIN_FIELD_ZOOM);
 const TRAIN_SPRITE_H = Math.round(150 * TRAIN_FIELD_ZOOM);
-// Depth-based per-card scale (foreshortening). Capped so the near/bottom
-// row never upscales the source art past ~1.3x its native box, which is
-// the point past which the sprites start reading as blurry.
+// Depth-based per-card scale (foreshortening) — near/bottom-row cards sit
+// bigger than far/top-row ones. This still only moves LAYOUT size.
 const TRAIN_SCALE_MIN = 0.72;
 const TRAIN_SCALE_MAX = 1.3;
+
+// Hard ceiling on how big the *source art* is ever allowed to render, in px,
+// independent of TRAIN_FIELD_ZOOM/depth-scale. This is roughly the native
+// resolution the sprite art was authored at — rendering past it just
+// upsamples the same pixels and reads as blurry, so it's a cap, not a knob.
+// Raise this only if/when higher-res sprite art is available.
+const SPRITE_ART_NATIVE_W = 100;
+const SPRITE_ART_NATIVE_H = 150;
 
 // ── Screen 2: Train / Scrap — unit list | selected unit + slider | queues ──────
 function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troopCards, trainingQueues, setTrainingQueues, trainingSpeedMult, trainingCostMult = 1,
@@ -1568,6 +1576,29 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
   const rest = listCards.filter(t => !((t.poolCount||0) > 0 || (t.assigned||0) > 0));
   const ordered = [...owned, ...rest];
 
+  // ── Auto-fit: measure the field's REAL available height and derive a
+  // vertical scale from it, instead of demanding a fixed minHeight and
+  // hoping the parent is tall enough. This is what actually fixes the
+  // "rows don't fit at higher zoom" bug — the field now always fits the
+  // space it's given, at whatever zoom TRAIN_FIELD_ZOOM requests.
+  const fieldRef = useRef(null);
+  const [fieldH, setFieldH] = useState(0);
+  useLayoutEffect(() => {
+    const el = fieldRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const h = entries[0]?.contentRect?.height;
+      if (h) setFieldH(h);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  // Height two full-zoom rows would want, at TRAIN_FIELD_ZOOM, before fitting.
+  const wantedRowsH = TRAIN_SPRITE_H * TRAIN_SCALE_MAX * 2 + 140;
+  // Scale everything vertical down (never up) so it always fits fieldH.
+  // 1 while unmeasured on first paint, so nothing flashes at 0 height.
+  const fitScale = fieldH > 0 ? Math.min(1, fieldH / wantedRowsH) : 1;
+
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#08090b" }}>
       {/* Compact top bar: SCRAP/TRAIN + barracks inline (no separate barracks box) */}
@@ -1613,18 +1644,15 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
       {/* Field: zoomed-out, two staggered rows (diagonal feel like LOTR reference).
           Scroll LEFT/RIGHT. Most of the screen is the troop field. */}
       <div
+        ref={fieldRef}
         className="training-scroll"
         style={{
           flex: 1,
-          minHeight: 0,
+          minHeight: 0, // allowed to actually shrink — fitScale compensates instead
           overflowX: "scroll",
           overflowY: "hidden",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-x",
-          // Two rows, each up to TRAIN_SPRITE_H tall at TRAIN_SCALE_MAX, plus
-          // row gap/padding/label+slider headroom. Scales with TRAIN_FIELD_ZOOM
-          // so a bigger zoom can never clip the bottom row again.
-          minHeight: Math.round(TRAIN_SPRITE_H * TRAIN_SCALE_MAX * 2 + 140),
           padding: "8px 10px 2px",
           position: "relative",
           zIndex: 1,
@@ -1668,11 +1696,13 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
 
           const renderUnit = (t, isTop) => {
             const depth = depthFor(t.key, isTop); // 0 = far, 1 = near
-            // Far units read noticeably smaller than near ones, but never past
-            // TRAIN_SCALE_MAX — beyond that the sprite art upscales visibly and
-            // starts looking blurry.
-            const scale = TRAIN_SCALE_MIN + depth * (TRAIN_SCALE_MAX - TRAIN_SCALE_MIN);
-            const yJitter = (hash01(t.key + "y") - 0.5) * 12; // organic scatter, px
+            // Far units read smaller than near ones (TRAIN_SCALE_MIN..MAX).
+            // fitScale shrinks the whole card vertically-and-horizontally
+            // together (so nothing looks stretched) whenever the panel is
+            // too short for the requested zoom — this is what replaces the
+            // old fixed minHeight and actually guarantees both rows fit.
+            const scale = (TRAIN_SCALE_MIN + depth * (TRAIN_SCALE_MAX - TRAIN_SCALE_MIN)) * fitScale;
+            const yJitter = (hash01(t.key + "y") - 0.5) * 12 * fitScale; // organic scatter, px
             const satAmt = 0.66 + depth * 0.4; // far units slightly desaturated
             const briAmt = 0.86 + depth * 0.2; // far units slightly dimmer/hazier
             const blurAmt = (1 - depth) * 1.1; // far units read a touch soft, like the eye/lens is focused on the front row
@@ -1827,7 +1857,12 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                 >
                   {psrc ? (
                     (() => {
-                      const clusterN = hash01(t.key + "n") < 0.5 ? 2 : 3;
+                      // RTW-style formations: small blocks with actual ranks
+                      // (rows), not just a couple of scattered guys. Denser
+                      // rolls are weighted so most cards read as a little
+                      // regiment; a few stay small 2–3 clusters for variety.
+                      const roll = hash01(t.key + "n");
+                      const clusterN = roll < 0.12 ? 2 : roll < 0.32 ? 3 : roll < 0.62 ? 4 : 6;
                       const layouts = {
                         2: [
                           { x: -26, y: 5, s: 0.82, z: 1 },
@@ -1838,16 +1873,37 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                           { x: 5, y: -5, s: 1, z: 3 },
                           { x: 43, y: 5, s: 0.8, z: 2 },
                         ],
+                        // 2x2 block: back rank smaller/higher, front rank bigger/lower
+                        4: [
+                          { x: -34, y: 16, s: 0.7, z: 1 },
+                          { x: -10, y: 18, s: 0.72, z: 1 },
+                          { x: 12, y: 0, s: 0.96, z: 2 },
+                          { x: 38, y: 2, s: 0.98, z: 2 },
+                        ],
+                        // 3+3 block: two full ranks, like RTW's unit clumps
+                        6: [
+                          { x: -48, y: 18, s: 0.62, z: 1 },
+                          { x: -18, y: 20, s: 0.64, z: 1 },
+                          { x: 14, y: 17, s: 0.63, z: 1 },
+                          { x: -32, y: 0, s: 0.9, z: 2 },
+                          { x: -2, y: 2, s: 0.94, z: 2 },
+                          { x: 30, y: 0, s: 0.9, z: 2 },
+                        ],
                       };
                       return layouts[clusterN].map((p, idx) => (
                         <div
                           key={idx}
                           style={{
                             position: "absolute",
-                            left: `calc(50% + ${p.x * TRAIN_FIELD_ZOOM}px)`,
-                            bottom: p.y * TRAIN_FIELD_ZOOM,
-                            width: 100 * p.s * TRAIN_FIELD_ZOOM,
-                            height: 150 * p.s * TRAIN_FIELD_ZOOM,
+                            left: `calc(50% + ${p.x * fitScale}px)`,
+                            bottom: p.y * fitScale,
+                            // Native art size × this member's own scale ×
+                            // fitScale (which only ever shrinks, to squeeze
+                            // into a short panel — never grows past native,
+                            // so this can't blur). TRAIN_FIELD_ZOOM never
+                            // touches this at all.
+                            width: SPRITE_ART_NATIVE_W * p.s * fitScale,
+                            height: SPRITE_ART_NATIVE_H * p.s * fitScale,
                             transform: "translateX(-50%)",
                             zIndex: p.z,
                           }}
@@ -1858,7 +1914,16 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                             draggable="false"
                             style={{
                               position: "absolute",
-                              inset: 0,
+                              left: "50%",
+                              bottom: 0,
+                              transform: "translateX(-50%)",
+                              // The wrapper box above is already capped at
+                              // native art resolution (× fitScale, which only
+                              // ever shrinks — never upscales past native).
+                              // TRAIN_FIELD_ZOOM does NOT reach this img at
+                              // all anymore, so raising zoom can never blur
+                              // the raster; it only affects card/spacing
+                              // layout. Feet stay pinned to the ground line.
                               width: "100%",
                               height: "100%",
                               objectFit: "contain",
