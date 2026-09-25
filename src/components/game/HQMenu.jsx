@@ -1,7 +1,7 @@
 import {trainingQuote,trainingSecondsLeft,capstoneTrainDiscount} from "../../../shared/utils/training.js";
 import {poolCommands,queuedCommands,troopsThatFit} from "../../../shared/utils/barracks.js";
 import {healingFoodCost,healingRate} from "../../../shared/utils/armyEconomy.js";
-import { useState, useEffect, useLayoutEffect, useRef, memo, useMemo } from "react";
+import { useState, useEffect, memo, useMemo } from "react";
 import { useGameContext } from "../../GameContext.js";
 import { createPortal } from "react-dom";
 import { FACTION_TROOPS, COMMAND_COST, getTierSkills, skillOrbCost, skillProcAtLevel, troopPortraitPath } from "../../../shared/constants/troops.js";
@@ -1492,10 +1492,10 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
 // the raster art itself. The field container measures its own real height
 // at runtime (see FIT below) and scales everything to actually fit, so rows
 // can never clip again regardless of what this is set to.
-const TRAIN_FIELD_ZOOM = 1.15; // slightly under previous 1.4 so two rows + labels fit cleanly in landscape
-const TRAIN_CARD_W = Math.round(168 * TRAIN_FIELD_ZOOM);
-const TRAIN_SPRITE_W = Math.round(140 * TRAIN_FIELD_ZOOM);
-const TRAIN_SPRITE_H = Math.round(160 * TRAIN_FIELD_ZOOM);
+const TRAIN_FIELD_ZOOM = 1.0; // base layout scale; the field itself handles responsive sizing
+const TRAIN_CARD_W = 164;
+const TRAIN_SPRITE_W = 150;
+const TRAIN_SPRITE_H = 148;
 // Depth-based per-card scale (foreshortening) — near/bottom-row cards sit
 // bigger than far/top-row ones. This still only moves LAYOUT size.
 const TRAIN_SCALE_MIN = 0.82;
@@ -1574,34 +1574,10 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
   const rest = listCards.filter(t => !((t.poolCount||0) > 0 || (t.assigned||0) > 0));
   const ordered = [...owned, ...rest];
 
-  // ── Auto-fit: measure the field's REAL available height and derive a
-  // vertical scale from it, instead of demanding a fixed minHeight and
-  // hoping the parent is tall enough. This is what actually fixes the
-  // "rows don't fit at higher zoom" bug — the field now always fits the
-  // space it's given, at whatever zoom TRAIN_FIELD_ZOOM requests.
-  const fieldRef = useRef(null);
-  const [fieldH, setFieldH] = useState(0);
-  useLayoutEffect(() => {
-    const el = fieldRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(entries => {
-      const h = entries[0]?.contentRect?.height;
-      if (h) setFieldH(h);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  // True height two rows need at full zoom: per-card chrome (name + tier
-  // badge + slider ≈ 44px) + sprite box + inter-row gap + padding.
-  // Underestimating this is what made landscape clip the second row.
-  const CARD_CHROME_H = 44;
-  const wantedRowsH =
-    (TRAIN_SPRITE_H * TRAIN_SCALE_MAX + CARD_CHROME_H) * 2 + 36;
-  // Scale down to fit. Soft floor at 0.42 so figures stay readable, but low
-  // enough that both rows fit on short landscape panels instead of the
-  // bottom row getting clipped by overflowY:hidden.
-  const fitScale = fieldH > 0 ? Math.min(1, Math.max(0.42, fieldH / wantedRowsH)) : 1;
-
+  // The field is deliberately laid out as two real CSS rows.  Do not use a
+  // whole-card transform as the mechanism that makes the rows fit: transforms
+  // do not change layout height, which was allowing the second row to be
+  // visually pushed outside the battlefield on short landscape screens.
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#08090b" }}>
       {/* Compact top bar: SCRAP/TRAIN + barracks inline (no separate barracks box) */}
@@ -1699,13 +1675,11 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
 
           const renderUnit = (t, isTop) => {
             const depth = depthFor(t.key, isTop); // 0 = far, 1 = near
-            // Far units read smaller than near ones (TRAIN_SCALE_MIN..MAX).
-            // fitScale shrinks the whole card vertically-and-horizontally
-            // together (so nothing looks stretched) whenever the panel is
-            // too short for the requested zoom — this is what replaces the
-            // old fixed minHeight and actually guarantees both rows fit.
-            const scale = (TRAIN_SCALE_MIN + depth * (TRAIN_SCALE_MAX - TRAIN_SCALE_MIN)) * fitScale;
-            const yJitter = (hash01(t.key + "y") - 0.5) * 6 * fitScale; // light scatter, px — keep rows readable
+            // Far units read smaller than near units.  The row itself owns
+            // the available height, so this scale only affects visual depth;
+            // it is no longer responsible for fitting the two-row layout.
+            const scale = TRAIN_SCALE_MIN + depth * (TRAIN_SCALE_MAX - TRAIN_SCALE_MIN);
+            const yJitter = (hash01(t.key + "y") - 0.5) * 4; // light scatter, keep rows readable
             const satAmt = 0.78 + depth * 0.28; // far units slightly desaturated
             const briAmt = 0.90 + depth * 0.12; // far units slightly dimmer/hazier
             // No CSS blur on the sprites themselves — it reads as soft/mushy art
@@ -1870,23 +1844,24 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
                       // the card instead of being hard-coded for a 100px art box.
                       const roll = hash01(t.key + "n");
                       const clusterN = roll < 0.18 ? 2 : roll < 0.55 ? 3 : 4;
-                      // Base half-width of the formation relative to sprite box
-                      const hw = TRAIN_SPRITE_W * 0.42;
+                      // Spread figures across more of the sprite box so each
+                      // unit reads as a small formation instead of a tight stack.
+                      const hw = TRAIN_SPRITE_W * 0.50;
                       const layouts = {
                         2: [
-                          { x: -hw * 0.55, y: 4, s: 0.88, z: 1 },
-                          { x:  hw * 0.55, y: 0, s: 1.0,  z: 2 },
+                          { x: -hw * 0.62, y: 4, s: 0.86, z: 1 },
+                          { x:  hw * 0.62, y: 0, s: 0.98,  z: 2 },
                         ],
                         3: [
-                          { x: -hw * 0.85, y: 6, s: 0.82, z: 1 },
-                          { x:  0,         y: 0, s: 1.0,  z: 3 },
-                          { x:  hw * 0.85, y: 4, s: 0.86, z: 2 },
+                          { x: -hw * 0.95, y: 6, s: 0.80, z: 1 },
+                          { x:  0,         y: 0, s: 0.98, z: 3 },
+                          { x:  hw * 0.95, y: 4, s: 0.84, z: 2 },
                         ],
                         4: [
-                          { x: -hw * 0.95, y: 14, s: 0.72, z: 1 },
-                          { x: -hw * 0.30, y: 16, s: 0.74, z: 1 },
-                          { x:  hw * 0.30, y:  0, s: 0.96, z: 2 },
-                          { x:  hw * 0.95, y:  2, s: 0.98, z: 2 },
+                          { x: -hw * 1.00, y: 12, s: 0.70, z: 1 },
+                          { x: -hw * 0.34, y: 14, s: 0.73, z: 1 },
+                          { x:  hw * 0.34, y:  0, s: 0.94, z: 2 },
+                          { x:  hw * 1.00, y:  2, s: 0.96, z: 2 },
                         ],
                       };
                       // Display size of each figure: driven by the layout box
@@ -1969,29 +1944,28 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
           return (
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                // Pin rows to the available field height so both stay visible
-                // in landscape instead of centering a too-tall stack and
-                // clipping the bottom row under overflowY:hidden.
-                justifyContent: "space-between",
+                display: "grid",
+                gridTemplateRows: "minmax(0, 1fr) minmax(0, 1fr)",
+                rowGap: 4,
                 height: "100%",
                 boxSizing: "border-box",
                 width: "max-content",
                 minWidth: "100%",
                 paddingRight: 24,
-                paddingTop: 4,
-                paddingBottom: 8,
+                paddingTop: 2,
+                paddingBottom: 4,
                 position: "relative",
                 zIndex: 2,
               }}
             >
-              {/* Top row — back of field */}
-              <div style={{ display: "flex", flexDirection: "row", gap: Math.round(16 * fitScale), paddingLeft: 48, flexShrink: 0 }}>
+              {/* Top row — back of field. A real grid row reserves its height,
+                  so the second row can never be pushed below the viewport. */}
+              <div style={{ display: "flex", alignItems: "flex-end", minHeight: 0, gap: 26, paddingLeft: 48, overflow: "visible" }}>
                 {top.map((t) => renderUnit(t, true))}
               </div>
-              {/* Bottom row — front of field */}
-              <div style={{ display: "flex", flexDirection: "row", gap: Math.round(16 * fitScale), flexShrink: 0 }}>
+              {/* Bottom row — front of field. Slightly larger through the
+                  depth scale, like the reference battlefield formation. */}
+              <div style={{ display: "flex", alignItems: "flex-end", minHeight: 0, gap: 26, paddingLeft: 48, overflow: "visible" }}>
                 {bot.map((t) => renderUnit(t, false))}
               </div>
             </div>
