@@ -1491,7 +1491,7 @@ function TrainingListScreen({ bldgs, troopCounts = {}, troopCards, trainingQueue
 // Card width and sprite-box size both scale off this, and FIELD_MIN_H is
 // derived from it too, so raising it can never re-introduce the row-2
 // clipping bug — the container always grows to match.
-const TRAIN_FIELD_ZOOM = 1.4; // 1 = current/default size. Try 1.4–1.6 for bigger, fewer-per-row cards.
+const TRAIN_FIELD_ZOOM = 1.0; // 1 = current/default size. Try 1.4–1.6 for bigger, fewer-per-row cards.
 const TRAIN_CARD_W = Math.round(210 * TRAIN_FIELD_ZOOM);
 const TRAIN_SPRITE_W = Math.round(190 * TRAIN_FIELD_ZOOM);
 const TRAIN_SPRITE_H = Math.round(150 * TRAIN_FIELD_ZOOM);
