@@ -28,6 +28,10 @@ import { resolveAncientUnit, ANCIENT_FACTION_KEY } from "../constants/ancientTro
 import { tileOwnerInCrew } from "./crewFortress.js";
 
 const isFounder = (crew, actorId) => !!crew && crew.founder === actorId;
+// Founder or officer — same role check crewFortress.js's canStartFortressBuild
+// uses, so Wells/Outposts follow the same build permissions as Fortresses.
+const isFounderOrOfficer = (crew, actorId) =>
+  !!crew && (crew.founder === actorId || (crew.officers || []).includes(actorId));
 
 function canAfford(cost, resources) {
   const r = resources || {};
@@ -114,7 +118,7 @@ export function wellSlotsAvailable(crew) {
 }
 
 export function canStartWellBuild(crew, actorId, tile, tileKey, resources, occupiedKeys) {
-  if (!isFounder(crew, actorId)) return { ok: false, reason: "Only the founder can build a Well" };
+  if (!isFounderOrOfficer(crew, actorId)) return { ok: false, reason: "Only the founder or an officer can build a Well" };
   if (crewWellSlotsForLevel(crew.level) <= 0) return { ok: false, reason: "Crew level 31 unlocks the Well" };
   if (wellSlotsAvailable(crew) <= 0) return { ok: false, reason: "No Well slots available" };
   const t = canBuildCrewStructureOnTile(tile, tileKey, occupiedKeys, WELL_MIN_POWER_LEVEL, crew);
@@ -146,7 +150,7 @@ export function canStationAtWell(crew, well, playerId, cmd, now) {
 
 // ── Contract Outpost ──────────────────────────────────────────────────────
 export function canStartOutpostBuild(crew, actorId, tile, tileKey, resources, occupiedKeys) {
-  if (!isFounder(crew, actorId)) return { ok: false, reason: "Only the founder can build a Contract Outpost" };
+  if (!isFounderOrOfficer(crew, actorId)) return { ok: false, reason: "Only the founder or an officer can build a Contract Outpost" };
   if (!crewOutpostUnlocked(crew.level)) return { ok: false, reason: "Crew level 35 unlocks the Contract Outpost" };
   if (crew.outpost) return { ok: false, reason: "Crew already has a Contract Outpost" };
   const t = canBuildCrewStructureOnTile(tile, tileKey, occupiedKeys, OUTPOST_MIN_POWER_LEVEL, crew);
