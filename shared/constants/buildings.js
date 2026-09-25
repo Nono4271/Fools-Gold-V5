@@ -707,8 +707,8 @@ export function tierFromBranchLevel(bLvl) {
 
 // Barracks space is measured in COMMANDS (the same unit as a commander's
 // command cap): one command = CMD_SIZE[size] troops (small 100, medium 50,
-// large 4). Lv1 holds 30 commands, Lv20 holds 1000.
-export const BARRACKS_CMD_MIN = 30;
+// large 4). Lv1 holds 75 commands, Lv20 holds 1000.
+export const BARRACKS_CMD_MIN = 75;
 export const BARRACKS_CMD_MAX = 1000;
 export function barracksCommandCapacity(lvl) {
   const l = Math.max(1, Math.min(20, lvl || 0));
