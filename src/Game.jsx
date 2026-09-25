@@ -1101,9 +1101,12 @@ export default function RiseToWar() {
     setRss(p => ({ ...p, wood: p.wood - FORTRESS_COST.wood, stone: p.stone - FORTRESS_COST.stone, gas: p.gas - FORTRESS_COST.gas }));
     const fortress = createFortress({ id: `ft_${Date.now()}_${Math.random().toString(36).slice(2,7)}`, crewId: myCrew.id, tileKey, now: Date.now() });
     setCrews(prev => prev.map(c => c.id === myCrew.id ? { ...c, fortresses: [...(c.fortresses||[]), fortress] } : c));
+    // Construction claims the tile immediately — whoever owned it (player or
+    // a crewmate) loses it; the structure record above is the crew's claim.
+    patchTile(tileKey, { owner: null, faction: undefined, ownerPlayerId: undefined });
     floaty("🏰 Fortress construction started!", "#f0c040", tileKey);
     return { ok: true };
-  }, [myCrew, facKey, rss, floaty, crewStructureKeys]);
+  }, [myCrew, facKey, rss, floaty, crewStructureKeys, patchTile]);
 
   // Demolish a fortress the player's crew owns on the given tile.
   const demolishCrewFortressHere = useCallback((fortress) => {
@@ -1125,9 +1128,10 @@ export default function RiseToWar() {
     spendCost(WELL_COST);
     const well = createWell({ id: newStructId("well"), crewId: myCrew.id, tileKey, now: Date.now() });
     updateMyCrew(c => ({ ...c, wells: [...(c.wells || []), well] }));
+    patchTile(tileKey, { owner: null, faction: undefined, ownerPlayerId: undefined });
     floaty("💧 Well construction started!", "#60c0f0", tileKey);
     return { ok: true };
-  }, [myCrew, facKey, rss, crewStructureKeys, floaty]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [myCrew, facKey, rss, crewStructureKeys, floaty, patchTile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const demolishCrewWell = useCallback((well) => {
     if (!myCrew || !well || myCrew.founder !== facKey) { floaty("⚠ Only the founder can demolish a Well", "#cc8030", well?.tileKey); return; }
@@ -1158,9 +1162,10 @@ export default function RiseToWar() {
     spendCost(OUTPOST_COST);
     const outpost = createOutpost({ id: newStructId("outpost"), crewId: myCrew.id, tileKey, now: Date.now() });
     updateMyCrew(c => ({ ...c, outpost }));
+    patchTile(tileKey, { owner: null, faction: undefined, ownerPlayerId: undefined });
     floaty("📜 Contract Outpost construction started!", "#e0c080", tileKey);
     return { ok: true };
-  }, [myCrew, facKey, rss, crewStructureKeys, floaty]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [myCrew, facKey, rss, crewStructureKeys, floaty, patchTile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const demolishCrewOutpost = useCallback(() => {
     if (!myCrew?.outpost || myCrew.founder !== facKey) { floaty("⚠ Only the founder can demolish the Outpost", "#cc8030", myCrew?.outpost?.tileKey); return; }
