@@ -1513,8 +1513,24 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
   const setValue = (t, raw) => {
     const size = t.branch?.size || "small";
     const step = isScrap ? 1 : (CMD_SIZE[size] || 100);
-    const room = troopsThatFit(t.bKey, freeCmds);
-    const max = isScrap ? (t.poolCount||0) : Math.max(0, Math.floor(Math.min(maxBatch, room) / step) * step);
+    if (isScrap) {
+      const max = t.poolCount || 0;
+      const v = Math.min(max, Math.max(0, Math.floor(Number(raw || 0) / step) * step));
+      setValues(prev => ({ ...prev, [t.key]: v }));
+      return;
+    }
+    // Starting a brand-new queue needs a free queue slot; growing one already
+    // committed to (via another slider) doesn't cost an extra slot.
+    const alreadyIn = (values[t.key] || 0) > 0;
+    if (!alreadyIn && selected.length >= freeQueues) {
+      setValues(prev => ({ ...prev, [t.key]: 0 }));
+      return;
+    }
+    // Room left for this troop type has to exclude commands other sliders
+    // have already claimed, or the sliders can collectively overfill the barracks.
+    const otherCmds = selected.reduce((s, x) => x.key === t.key ? s : s + (values[x.key] || 0) / (CMD_SIZE[x.branch?.size || "small"] || 1), 0);
+    const room = troopsThatFit(t.bKey, Math.max(0, freeCmds - otherCmds));
+    const max = Math.max(0, Math.floor(Math.min(maxBatch, room) / step) * step);
     const v = Math.min(max, Math.max(0, Math.floor(Number(raw || 0) / step) * step));
     setValues(prev => ({ ...prev, [t.key]: v }));
   };
@@ -1556,9 +1572,15 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
   const ordered = [...owned, ...rest];
 
   const active = ordered.find(t => t.key === activeKey) || ordered[0];
+  const freeQueues = Math.max(0, maxQueues - (trainingQueues?.length || 0));
   const stepFor = t => isScrap ? 1 : (CMD_SIZE[t.branch?.size || "small"] || 100);
-  const maxFor = t => isScrap ? (t.poolCount || 0) : Math.max(0,
-    Math.floor(Math.min(maxBatch, troopsThatFit(t.bKey, freeCmds)) / stepFor(t)) * stepFor(t));
+  const maxFor = t => {
+    if (isScrap) return t.poolCount || 0;
+    const alreadyIn = (values[t.key] || 0) > 0;
+    if (!alreadyIn && selected.length >= freeQueues) return 0;
+    const otherCmds = selected.reduce((s, x) => x.key === t.key ? s : s + (values[x.key] || 0) / (CMD_SIZE[x.branch?.size || "small"] || 1), 0);
+    return Math.max(0, Math.floor(Math.min(maxBatch, troopsThatFit(t.bKey, Math.max(0, freeCmds - otherCmds))) / stepFor(t)) * stepFor(t));
+  };
   const quoteFor = (t, amount) => trainingQuote(t.bKey, amount, trainingSpeedMult,
     t.branch?.capstone ? capstoneTrainDiscount(bldgs[`b_${t.fKey}_${t.branch.key}`]) : 0, trainingCostMult);
   const activeAmount = active ? Math.min(values[active.key] || 0, maxFor(active)) : 0;
@@ -1568,7 +1590,6 @@ function TrainingQueueScreen({ mode, bldgs, barracksPool, troopCounts = {}, troo
     Object.entries(quote?.cost || {}).forEach(([key, value]) => { cost[key] = (cost[key] || 0) + value; });
     return cost;
   }, {});
-  const freeQueues = Math.max(0, maxQueues - (trainingQueues?.length || 0));
   const blocked = !selected.length ? "Choose an amount to begin" :
     isScrap ? (selected.some(t => values[t.key] > maxFor(t)) ? "Troop availability changed; adjust the amount" : "") :
     selected.length > freeQueues ? "Not enough training queues" :
