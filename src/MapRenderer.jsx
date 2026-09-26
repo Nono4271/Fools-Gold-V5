@@ -2197,7 +2197,10 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const selGfx = new PIXI.Graphics();
     world.addChildAt(selGfx, world.children.indexOf(propsGfx));
     const guardGfx = new PIXI.Graphics(); world.addChild(guardGfx); guardGfxRef.current = guardGfx;
-    const protectGfx = new PIXI.Container(); world.addChild(protectGfx); protectGfxRef.current = protectGfx;
+    // Protection glow belongs to the ground too — same depth as selection, so forts occlude it.
+    const protectGfx = new PIXI.Container();
+    world.addChildAt(protectGfx, world.children.indexOf(selGfx) + 1);
+    protectGfxRef.current = protectGfx;
     const spawnGfx = new PIXI.Graphics(); world.addChild(spawnGfx); spawnGfxRef.current = spawnGfx;
     const marchGfx = new PIXI.Graphics(); world.addChild(marchGfx); marchGfxRef.current = marchGfx;
     const convoyGfx = new PIXI.Graphics(); world.addChild(convoyGfx); convoyGfxRef.current = convoyGfx;
