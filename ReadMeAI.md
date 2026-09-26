@@ -36,6 +36,32 @@ so the owner can switch models and say ready.
   regression is reported. Separate future art work: varied formation poses and a
   purpose-built barracks-yard background if requested.
 
+
+## 2026-09-26 — HQ foundation calibration (Codex)
+
+Owner workflow preference (2026-09-25): commit completed authorized changes directly
+to codex/core-fixes-20260919, the live testing branch. Avoid separate review branches
+unless the owner explicitly asks; preserve earlier versions through Git history.
+
+Owner requested all eight HQs centred/scaled to their 3x3 footprint with existing
+art designs. `src/utils/hqLayout.js` now measures each shipped asset's foundation
+contour, centres it in diamond coordinates and uses the largest uniform fit with
+2.5% ground-edge clearance. See `docs/hq-alignment.md` and its preview sheet.
+`MapRenderer.jsx` shares exact nine-cell geometry between ground, border, hit
+area and art. Removed per-faction x/y nudges and independent stretch multipliers.
+Names sit above the measured visible top. Both cached and async sprites use the
+same function. Original image files, territory joins and gameplay are unchanged.
+
+Verified: production build; 19 focused layout/renderer/world-visual checks covering
+all factions, ground containment, maximum proportional size, centring, relocation,
+existing borders and cached/async rendering. Preview is a calibration diagram,
+not a physical iPhone screenshot. Irregular foundations cannot touch every corner
+without stretching the artwork; this fit preserves original proportions.
+COMPLETE: HQ placement pass; do not re-audit unrelated systems.
+The earlier P10/crew task was canceled by the owner; their current fixes were
+pulled before this branch and are retained.
+
+
 ---
 
 ---

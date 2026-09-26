@@ -3,6 +3,7 @@ import * as PIXI from "pixi.js";
 import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js";
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
 import {usesNewWorldVisuals, sameTerritory, resourceFootprint, selectionEdgesBesideHq, hqJoinedBorderSegments} from "./utils/worldVisuals.js";
+import {hqArtFor, hqFootprint, fitHqArt} from "./utils/hqLayout.js";
 import {softenTerritoryColor} from "./utils/hqTerrainStyle.js";
 import {createResourceSpriteCache} from "./utils/resourceSprites.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
@@ -1400,48 +1401,6 @@ function drawAmbientScatter(gfx, tile, cx, sy, pl = 1) {
   }
 }
 
-const HQ_SPRITES = {
-  pirates:       "hq_pirates.webp",
-  orcs:          "hq_orcs.webp",
-  nightcreatures:"hq_nightcreatures.webp",
-  holyknights:   "hq_holyknights.webp",
-  dragons:       "hq_dragons.webp",
-  wizards:       "hq_arcane.webp",
-  coldborns:     "hq_coldborns.webp",
-  ashen_dead:  "hq_ashen_dead.webp",
-  player:        "hq_pirates.webp",
-  ai:            "hq_orcs.webp",
-};
-
-const DARK_HQ_SPRITES = {
-  "hq_pirates.webp":        "hq_pirates_dark_v2.webp",
-  "hq_dragons.webp":        "hq_dragons_dark_v2.webp",
-  "hq_nightcreatures.webp": "hq_nightcreatures_dark_v2.webp",
-  "hq_orcs.webp":           "hq_orcs_dark_v2.webp",
-  "hq_arcane.webp":         "hq_arcane_dark_v2.webp",
-  "hq_ashen_dead.webp":     "hq_ashen_dead_dark_v2.webp",
-  "hq_coldborns.webp":      "hq_coldborns_dark_v2.webp",
-  "hq_holyknights.webp":    "hq_holyknights_dark_v2.webp",
-};
-
-// Measured from each dark-v2 sprite's actual alpha content (not the full
-// square canvas, which has large transparent padding on these assets).
-// x = horizontal centroid of the visible art, y = fraction down the canvas
-// where the castle's visible base sits. Using these as the PIXI anchor
-// point (instead of a blanket 0.5/0.905 guess) is what keeps the building
-// grounded in the middle of the 3x3 footprint instead of drifting toward
-// the top-right. Pirates are excluded — that art is full-bleed and uses
-// its own approved anchor.
-const TRUE_HQ_ANCHOR = {
-  "hq_orcs_dark_v2.webp":           { x: 0.5000, y: 0.8213 },
-  "hq_dragons_dark_v2.webp":        { x: 0.4956, y: 0.8154 },
-  "hq_arcane_dark_v2.webp":         { x: 0.4907, y: 0.8154 },
-  "hq_holyknights_dark_v2.webp":    { x: 0.4888, y: 0.9395 },
-  "hq_nightcreatures_dark_v2.webp": { x: 0.4956, y: 0.8193 },
-  "hq_coldborns_dark_v2.webp":      { x: 0.4961, y: 0.8193 },
-  "hq_ashen_dead_dark_v2.webp":     { x: 0.4946, y: 0.8184 },
-};
-
 const FORT_SPRITES = {
   1: "/forts/fort_l1.webp",
   2: "/forts/fort_l2.webp",
@@ -1624,42 +1583,10 @@ export function syncCrewStructures(list, layer) {
 function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCache, playerName, playerFacKey, crewPids, groundTexture, tiles, diplomacyPids) {
   const [pc, pr] = tileKey.split(",").map(Number);
   const blendWithTerrain = usesNewWorldVisuals(pc,pr);
-  // tileKey is the CENTER tile. Top-left of the 3×3 is one step back.
-  const tlc = pc - 1, tlr = pr - 1;
   // Visual centre = middle tile of 3×3
-  const { cx: bx, cy: worldCY } = isoXY(pc, pr);
-  const elev = 0;
+  const { cx: bx } = isoXY(pc, pr);
 
-  // 3×3 outer diamond corners (for hit area + selection outline)
-  // N=(tlc+1,tlr), E=(tlc+2,tlr+1), S=(tlc+1,tlr+2), W=(tlc,tlr+1)
-  const nPt = isoXY(tlc + 1, tlr);
-  const ePt = isoXY(tlc + 2, tlr + 1);
-  const sPt = isoXY(tlc + 1, tlr + 2);
-  const wPt = isoXY(tlc,     tlr + 1);
-
-  // Sprite-aligned footprint — corners map to the 3x3 iso diamond.
-  // rotation=0 so no trig needed; fractions derived from sprite dims + anchor.
-  const _sW  = TW * 3.0;
-  const _sH  = _sW * 0.80;
-  const _aY  = 0.905;
-  const _sx  = bx;
-  const _sy  = sPt.cy - elev + TH * 0.95;
-  const _fp  = (fx, fy) => ({
-    x: _sx + (fx - 0.5) * _sW,
-    y: _sy + (fy - _aY) * _sH,
-  });
-  const _fpN = _fp(0.75, 0.25);
-  const _fpE = _fp(0.75, 0.65);
-  const _fpS = _fp(0.25, 0.65);
-  const _fpW = _fp(0.25, 0.25);
-
-  const FOOTPRINT = [
-    _fpN.x, _fpN.y,
-    _fpE.x, _fpE.y,
-    _fpS.x, _fpS.y,
-    _fpW.x, _fpW.y,
-  ];
-
+  const footprint = hqFootprint(pc, pr);
   const isSelected = selKey === tileKey;
   const owner      = tile.owner || null;
   const faction    = tile.faction || owner || "player";
@@ -1671,11 +1598,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   const borderGfx = new PIXI.Graphics();
   const borderTint = ownerTint(owner, tile?.faction, playerFacKey, crewPids, tile?.ownerPlayerId, diplomacyPids) ?? 0xdc3c28;
   
-  const borderPath = [];
-  borderPath.push(isoXY(tlc, tlr).cx, isoXY(tlc, tlr).cy - elev);
-  borderPath.push(isoXY(tlc + 2, tlr).cx + TW/2, isoXY(tlc + 2, tlr).cy - elev + TH/2);
-  borderPath.push(isoXY(tlc + 2, tlr + 2).cx, isoXY(tlc + 2, tlr + 2).cy - elev + TH);
-  borderPath.push(isoXY(tlc, tlr + 2).cx - TW/2, isoXY(tlc, tlr + 2).cy - elev + TH/2);
+  const borderPath = footprint.points;
 
   // Repaint only the occupied 3x3 footprint above the prop layer. Neighboring
   // props stay centered on their own tiles, while pixels that extend beneath
@@ -1702,109 +1625,28 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
   group.addChild(borderGfx);
 
   // ── Sprite ──
-  const originalSpriteName = HQ_SPRITES[faction] || HQ_SPRITES[owner] || HQ_SPRITES.player;
-  const darkHQSpriteName = DARK_HQ_SPRITES[originalSpriteName];
-  const useDarkHQArt = blendWithTerrain && !!darkHQSpriteName;
-  // Pirate has a deliberately different visible-base anchor because its approved
-  // dark asset was authored at a different framing; other factions keep their
-  // existing faction-specific placement logic.
-  const useApprovedPirateArt = useDarkHQArt && originalSpriteName === "hq_pirates.webp";
-  const spriteName = useDarkHQArt ? darkHQSpriteName : originalSpriteName;
-  const spriteUrl  = `/hq/${spriteName}`;
-
-  // Width covers the full 3x3 diamond left<->right extent.
-  // Height = 0.75x width so towers stay visible without blocking back tiles.
-  // anchor.y = 0.78 keeps the base grounded on the front tile row.
-  // Source image is 2048x2048 (square) — preserve aspect ratio to avoid lean.
-  // Scale so width fits the 3x3 footprint; height follows naturally.
-  // Per-faction fine-tuning offsets (xOff/yOff in pixels, positive = right/down)
-  // scale multiplier (default 1.0) for factions that need larger sprites
-  const HQ_OFFSETS = {
-    pirates:        { xOff:  0,  yOff:  0, scale: 1.0,  yScale: 1.00 },
-    player:         { xOff:  0,  yOff:  0, scale: 1.0,  yScale: 1.00 },
-    // Dark-v2 HQs: positioning comes from TRUE_HQ_ANCHOR (measured from each
-    // sprite's real content); xOff/yOff below are now small deliberate nudges,
-    // not fudges to fake centering. scale/yScale/xScale are for sizing only.
-    orcs:           { xOff:  0,  yOff:  0, scale: 1.20, yScale: 1.00 },
-    ai:             { xOff:  0,  yOff:  0, scale: 1.20, yScale: 1.00 },
-    // Dragons: sized up again, plus nudged toward the diamond's bottom-left
-    // corner like the others below.
-    dragons:        { xOff: -10, yOff:  8, scale: 1.42, yScale: 1.00 },
-    // Wizard: previous two passes moved this the WRONG direction — a gap
-    // on the LEFT means the castle sits too far right, so it needs to move
-    // LEFT (negative xOff) to close that gap, not right. Also restoring the
-    // xScale widen, since dropping it to 1.00 is what brought the squished
-    // look back.
-    wizards:        { xOff: -18, yOff:  0, scale: 1.18, yScale: 1.34, xScale: 1.16 },
-    // Coldborns: confirmed good, untouched.
-    coldborns:      { xOff: -8,  yOff:  6, scale: 1.16, yScale: 1.00 },
-    // Holyknights: still needs to sit further toward the bottom-left corner
-    // — pushed further than the last pass.
-    holyknights:    { xOff: -16, yOff: 12, scale: 1.14, yScale: 1.00 },
-    // Nightcreatures ("Creature of the Night"): nudged toward bottom-left.
-    nightcreatures: { xOff: -10, yOff:  8, scale: 1.30, yScale: 1.00 },
-    // Ashen dead: nudged toward bottom-left.
-    ashen_dead:     { xOff: -10, yOff:  8, scale: 1.30, yScale: 1.00 },
-  };
-  const off = HQ_OFFSETS[faction] || { xOff: 0, yOff: 0, scale: 1.0, yScale: 1.0 };
-
-  const baseW = TW * 2.2;
-  // xScale is an independent horizontal-only multiplier layered on top of
-  // `scale`, for factions whose silhouette needs widening without changing
-  // height (see wizards above). Height never depends on it.
-  const targetW = baseW * (off.scale || 1.0) * (off.xScale || 1.0);
-  // Original HQ art keeps its historical 0.80 height fit. Dark-v2 art is
-  // rendered from its native square frame so it is no longer flattened.
-  // Height is derived from baseW*scale (NOT targetW) so xScale never leaks
-  // into vertical sizing.
-  const targetH = useDarkHQArt
-    ? baseW * (off.scale || 1.0) * (off.yScale || 1.0)
-    : targetW * 0.80;
-
-  const spriteX = bx + off.xOff;
-  const measuredAnchor = TRUE_HQ_ANCHOR[spriteName];
-  const spriteAnchorX = useApprovedPirateArt ? 0.5 : (measuredAnchor ? measuredAnchor.x : 0.5);
-  const spriteAnchorY = useApprovedPirateArt ? 0.97 : (measuredAnchor ? measuredAnchor.y : 0.905);
-  // Keep the visible base on the same map-ground line when a faction gets
-  // enlarged or vertically corrected.  Previously spriteY was fixed while
-  // height changed, which made larger HQs drift downward and look off-center.
-  const groundY = useApprovedPirateArt
-    ? worldCY + TH * 1.55 + off.yOff
-    : sPt.cy - elev + TH * 0.60 + off.yOff;
-  // BUG FIXED: this used to be `groundY - (1 - spriteAnchorY) * targetH`,
-  // which is mathematically identical to groundY for ANY anchor value
-  // (the two terms cancel out — anchor.y ends up having no effect on
-  // position at all). That's why raising the wizard's anchor last round
-  // didn't move it. When the anchor point IS the sprite's true visible
-  // base (measuredAnchor, measured from real pixel content), the correct
-  // placement is simply spriteY = groundY — no extra offset needed.
-  // Pirates and any faction without a measured anchor keep the old formula.
-  const spriteY = (measuredAnchor && !useApprovedPirateArt)
-    ? groundY
-    : groundY - (1 - spriteAnchorY) * targetH;
+  const art = hqArtFor(faction, owner);
+  const spriteUrl = `/hq/${art.file}`;
+  const layout = fitHqArt(art, footprint);
+  const labelY = layout.visibleTop - 8;
 
   if (blendWithTerrain) {
+    // Ground shadow stays inside the same diamond as the foundation/selection.
     const shadow = new PIXI.Graphics();
-    const groundY = worldCY - 4 + TH / 2;
-    for (let i=3;i>=1;i--) {
-      shadow.beginFill(0x252b1c,0.035);
-      shadow.drawEllipse(bx,groundY+13,targetW*(0.43+i*0.02),TH*(0.54+i*0.05));
-      shadow.endFill();
-    }
+    shadow.beginFill(0x182018, 0.10);
+    shadow.drawPolygon(footprint.points.map((v, i) =>
+      (i % 2 ? footprint.y : footprint.x) + (v - (i % 2 ? footprint.y : footprint.x)) * 0.94));
+    shadow.endFill();
     group.addChild(shadow);
   }
 
   const applySprite = (sp) => {
-    sp.anchor.set(spriteAnchorX, spriteAnchorY);
-    sp.width  = targetW;
-    // Preserve the approved sprite proportions; other factions keep their existing fit.
-    sp.height = useApprovedPirateArt ? targetW * sp.texture.height / sp.texture.width : targetH;
-    sp.x = spriteX;
-    sp.y = spriteY;
-
+    sp.anchor.set(layout.anchorX, layout.anchorY);
+    sp.width = layout.width;
+    sp.height = layout.height;
+    sp.position.set(layout.x, layout.y);
     sp.rotation = 0;
-    sp.skew.x   = 0;
-    sp.skew.y   = 0;
+    sp.skew.set(0, 0);
   };
 
   if (texCache[spriteUrl]) {
@@ -1829,7 +1671,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
         const sp = new PIXI.Sprite(tex);
         applySprite(sp);
         // Find name badge elements (pill and labelText) and insert sprite before them
-        const pillIndex = group.children.findIndex(c => c instanceof PIXI.Graphics && c.x === bx && c.y === nPt.cy - 18);
+        const pillIndex = group.children.findIndex(c => c instanceof PIXI.Graphics && c.x === bx && c.y === labelY);
         if (pillIndex > 0) {
           group.addChildAt(sp, pillIndex);
         } else {
@@ -1855,10 +1697,10 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
       dropShadowBlur:  4,
       dropShadowDistance: 1,
     });
-    // Position above the north tip of the HQ diamond
+    // Position above the visible artwork, including the tallest faction towers
     labelText.anchor.set(0.5, 1);
     labelText.x = bx;
-    labelText.y = nPt.cy - 18;
+    labelText.y = labelY;
 
     // Dark pill background
     const pill = new PIXI.Graphics();
@@ -1869,7 +1711,7 @@ function _buildOneHQ(tileKey, tile, selKey, onHQClick, PIXI, isPanningRef, texCa
     pill.drawRoundedRect(-pw / 2, -ph, pw, ph, 4);
     pill.endFill();
     pill.x = bx;
-    pill.y = nPt.cy - 18;
+    pill.y = labelY;
 
     group.addChild(pill);
     group.addChild(labelText);
