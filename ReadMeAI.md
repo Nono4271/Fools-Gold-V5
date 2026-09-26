@@ -37,6 +37,22 @@ so the owner can switch models and say ready.
   purpose-built barracks-yard background if requested.
 
 
+## 2026-09-26 — Personal fort foundation calibration (Codex)
+
+- All five personal fort levels now use measured ground contours to centre and
+  proportionally fill their 1×1 terrain diamond, including the -4 surface height.
+- Shared `structureLayout.js` holds the existing HQ fitting algorithm; HQ behavior
+  is preserved. `fortLayout.js` holds the five independent art calibrations.
+- Level-one art had an opaque white exterior shadow. Built-in image editing
+  cleaned it; RGBA alpha is preserved in `public/forts/fort_l1.webp`. Other fort
+  art is unchanged. Old art remains in Git history.
+- Fort renderer loads initial forts, prevents stale/duplicate async sprites on
+  upgrades/removal, sorts by ground depth and aligns fallback markers correctly.
+- `docs/fort-alignment.md` records the math, asset prompt and calibration preview.
+- Verified: 32 focused fort/HQ/world tests and production build. Preview includes
+  80×53 base-size tiles; no physical-phone test is claimed. Costs, times, ownership
+  and construction rules unchanged. Commit directly to the live branch per owner.
+
 ## 2026-09-26 — HQ foundation calibration (Codex)
 
 Owner workflow preference (2026-09-25): commit completed authorized changes directly

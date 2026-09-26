@@ -4,6 +4,7 @@ import {drawCommanderIcons, clearCommanderIcons} from "./utils/commanderIcons.js
 import {marchSegmentMs} from "../shared/utils/marchMotion.js";
 import {usesNewWorldVisuals, sameTerritory, resourceFootprint, selectionEdgesBesideHq, hqJoinedBorderSegments} from "./utils/worldVisuals.js";
 import {hqArtFor, hqFootprint, fitHqArt} from "./utils/hqLayout.js";
+import {fortArtFor, fortFootprint, fitFortArt} from "./utils/fortLayout.js";
 import {softenTerritoryColor} from "./utils/hqTerrainStyle.js";
 import {createResourceSpriteCache} from "./utils/resourceSprites.js";
 import { COLS, ROWS, TW, TH, TOP_PAD, ISO_W, ISO_H } from "../shared/constants/geometry.js";
@@ -1401,73 +1402,80 @@ function drawAmbientScatter(gfx, tile, cx, sy, pl = 1) {
   }
 }
 
-const FORT_SPRITES = {
-  1: "/forts/fort_l1.webp",
-  2: "/forts/fort_l2.webp",
-  3: "/forts/fort_l3.webp",
-  4: "/forts/fort_l4.webp",
-  5: "/forts/fort_l5.webp",
-};
-
 const _hqStateCache = new Map(); // tileKey → { faction, owner, isSelected }
 const _hqKeyIndex = new Set();
 export function clearHQCache() { _hqStateCache.clear(); _hqKeyIndex.clear(); }
 
 // ── Fort sprite layer ─────────────────────────────────────────────────────────
-const _fortSpriteMap = new Map(); // tileKey → PIXI.Sprite
-export function clearFortCache() { _fortSpriteMap.clear(); }
+const _fortSpriteMap = new Map(); // tileKey → PIXI.Sprite / fallback
+const _fortPending = new Map(); // tileKey → load token (invalidated on upgrade/removal)
+export function clearFortCache() { _fortSpriteMap.clear(); _fortPending.clear(); }
 
 function buildFortSprite(fort, PIXI, texCache, fortLayer) {
   const tileKey = fort.tileKey;
-  if (_fortSpriteMap.has(tileKey)) return; // already rendered
-
+  if (_fortSpriteMap.has(tileKey) || _fortPending.has(tileKey)) return;
   const [fc, fr] = tileKey.split(",").map(Number);
-  const { cx, cy } = isoXY(fc, fr);
-  const spriteUrl = FORT_SPRITES[fort.level] || FORT_SPRITES[1];
-
-  const applySprite = (sp) => {
-    // 1x1 tile: diamond is TW wide. Scale sprite to fit.
-    const w = TW * 0.9;
-    sp.width = w;
-    sp.height = w;
-    sp.anchor.set(0.5, 0.6);
-    sp.x = cx;
-    sp.y = cy + TH * 0.25; // shift to visual center of tile diamond
-    sp.zOrder = cy;
-    sp.__fortLevel = fort.level;
-    _fortSpriteMap.set(tileKey, sp);
-    fortLayer.addChild(sp);
+  const footprint = fortFootprint(fc, fr);
+  const art = fortArtFor(fort.level);
+  const layout = fitFortArt(art, footprint);
+  const spriteUrl = `/forts/${art.file}`;
+  const token = { level: fort.level };
+  _fortPending.set(tileKey, token);
+  const isCurrent = () => !fortLayer.destroyed && _fortPending.get(tileKey) === token;
+  const attach = (node) => {
+    node.zIndex = footprint.y;
+    node.__fortLevel = fort.level;
+    _fortPending.delete(tileKey);
+    _fortSpriteMap.set(tileKey, node);
+    fortLayer.addChild(node);
   };
-
+  const applyTexture = (tex) => {
+    if (!isCurrent()) return;
+    const sp = new PIXI.Sprite(tex);
+    sp.width = layout.width;
+    sp.height = layout.height;
+    sp.anchor.set(layout.anchorX, layout.anchorY);
+    sp.x = layout.x;
+    sp.y = layout.y;
+    attach(sp);
+  };
   if (texCache[spriteUrl]) {
-    const sp = new PIXI.Sprite(texCache[spriteUrl]);
-    applySprite(sp);
+    applyTexture(texCache[spriteUrl]);
   } else {
     PIXI.Texture.fromURL(spriteUrl).then(tex => {
       texCache[spriteUrl] = tex;
-      if (!fortLayer.destroyed) {
-        const sp = new PIXI.Sprite(tex);
-        applySprite(sp);
-      }
+      applyTexture(tex);
     }).catch(() => {
-      if (fortLayer.destroyed) return;
-      // Fort sprite not found — render a fallback diamond
+      if (!isCurrent()) return;
       const gfx = new PIXI.Graphics();
       gfx.beginFill(0x8a6020, 0.8);
-      gfx.drawPolygon([cx, cy - TH/2, cx + TW/2, cy, cx, cy + TH/2, cx - TW/2, cy]);
+      gfx.drawPolygon(footprint.points);
       gfx.endFill();
-      _fortSpriteMap.set(tileKey, gfx);
-      fortLayer.addChild(gfx);
+      attach(gfx);
     });
   }
 }
 
-function removeFortSprite(tileKey, fortLayer) {
+function removeFortSprite(tileKey) {
+  _fortPending.delete(tileKey);
   const sp = _fortSpriteMap.get(tileKey);
   if (sp) {
     if (sp.parent) sp.parent.removeChild(sp);
     sp.destroy?.();
     _fortSpriteMap.delete(tileKey);
+  }
+}
+
+function syncForts(forts, PIXI, texCache, fortLayer) {
+  if (!fortLayer || fortLayer.destroyed) return;
+  const currentKeys = new Set(forts.map(f => f.tileKey));
+  for (const key of new Set([..._fortSpriteMap.keys(), ..._fortPending.keys()])) {
+    if (!currentKeys.has(key)) removeFortSprite(key);
+  }
+  for (const fort of forts) {
+    const level = _fortSpriteMap.get(fort.tileKey)?.__fortLevel ?? _fortPending.get(fort.tileKey)?.level;
+    if (level !== undefined && level !== fort.level) removeFortSprite(fort.tileKey);
+    buildFortSprite(fort, PIXI, texCache, fortLayer);
   }
 }
 
@@ -2002,24 +2010,7 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
   const fortsRef_ = useRef(forts || []);
   useEffect(() => {
     fortsRef_.current = forts || [];
-    const fortLayer = fortContRef.current;
-    if (!fortLayer) return;
-    const currentKeys = new Set((forts || []).map(f => f.tileKey));
-    // Remove sprites for destroyed forts
-    for (const [key] of _fortSpriteMap) {
-      if (!currentKeys.has(key)) removeFortSprite(key, fortLayer);
-    }
-    // Add/update sprites for forts
-    for (const fort of (forts || [])) {
-      const existing = _fortSpriteMap.get(fort.tileKey);
-      // If level changed, remove and re-add
-      if (existing && existing.__fortLevel !== fort.level) {
-        removeFortSprite(fort.tileKey, fortLayer);
-      }
-      if (!_fortSpriteMap.has(fort.tileKey)) {
-        buildFortSprite(fort, PIXI, _hqTexCache, fortLayer);
-      }
-    }
+    syncForts(forts || [], PIXI, _hqTexCache, fortContRef.current);
   }, [forts]);
 
   // ── Crew structure layer sync (Fortress / Well / Contract Outpost) ─────────
@@ -2199,6 +2190,8 @@ export const MapRenderer = memo(forwardRef(function MapRenderer({ tiles, cmds, s
     const fortCont = new PIXI.Container();
     world.addChildAt(fortCont, world.children.indexOf(hqCont));
     fortContRef.current = fortCont;
+    fortCont.sortableChildren = true;
+    syncForts(fortsRef_.current, PIXI, _hqTexCache, fortCont);
     syncCrewStructures(crewStructsRef.current, fortCont);
     // Selection belongs to the ground: trees, rocks, forts and bases occlude it.
     const selGfx = new PIXI.Graphics();
