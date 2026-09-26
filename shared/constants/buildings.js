@@ -739,7 +739,7 @@ export function trainingBatches(lvl) {
 
 // Queue unlocks at Lv5, 11, 16 (instead of 3, 6, 9)
 export function trainingQueueCount(lvl) {
-  let count = 1;
+  let count = 2;
   if (lvl >= 5)  count++;
   if (lvl >= 11) count++;
   if (lvl >= 16) count++;
